@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_padding.dart';
+import 'package:koala/product/constants/app_radius.dart';
+import 'package:koala/product/constants/app_sizes.dart';
+import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 
 /// Bildirim türleri
@@ -34,6 +37,16 @@ class BNotificationsPage extends StatefulWidget {
 }
 
 class _BNotificationsPageState extends State<BNotificationsPage> {
+  /// Boş durum ikonunu taşıyan kutu.
+  static const double _emptyIconBox = 80;
+
+  /// Bildirim türünü gösteren renkli ikon kutusu.
+  static const double _typeIconBox = 44;
+
+  /// Okunmamış satırın zemin vurgusu; renk değil ton farkı olsun diye çok
+  /// düşük opaklık.
+  static const double _unreadTintAlpha = 0.04;
+
   late List<_BNotification> _notifications;
 
   @override
@@ -128,13 +141,12 @@ class _BNotificationsPageState extends State<BNotificationsPage> {
     });
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text(
-          'Tüm bildirimler okundu olarak işaretlendi',
-          style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w500),
-        ),
-        backgroundColor: AppColors.primaryColor,
+        content: const Text('Tüm bildirimler okundu olarak işaretlendi'),
+        backgroundColor: context.accentColor,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: const RoundedRectangleBorder(
+          borderRadius: AppRadius.smallCircular,
+        ),
         duration: const Duration(seconds: 2),
       ),
     );
@@ -151,7 +163,7 @@ class _BNotificationsPageState extends State<BNotificationsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: context.backgroundColor,
       appBar: MyAppbar(
         title: 'Bildirimler',
         actions: [
@@ -160,11 +172,9 @@ class _BNotificationsPageState extends State<BNotificationsPage> {
               onPressed: _markAllAsRead,
               child: Text(
                 'Tümünü Oku',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 13,
+                style: context.textTheme.bodySmall?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: AppColors.primaryColor,
+                  color: context.accentColor,
                 ),
               ),
             ),
@@ -173,7 +183,10 @@ class _BNotificationsPageState extends State<BNotificationsPage> {
       body: _notifications.isEmpty
           ? _emptyState()
           : ListView.builder(
-              padding: const EdgeInsets.only(top: 8, bottom: 100),
+              padding: const EdgeInsets.only(
+                top: AppSizes.spaceSmall,
+                bottom: AppSizes.navBarClearance,
+              ),
               itemCount: _notifications.length,
               itemBuilder: (context, index) {
                 final notification = _notifications[index];
@@ -191,35 +204,30 @@ class _BNotificationsPageState extends State<BNotificationsPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 80,
-              height: 80,
+              width: _emptyIconBox,
+              height: _emptyIconBox,
               decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(20),
+                color: context.tileColor,
+                borderRadius: AppRadius.secondaryCircular,
               ),
               child: Icon(
                 HugeIcons.strokeRoundedNotification03,
-                size: 40,
-                color: Colors.grey[300],
+                size: AppSizes.iconLarge,
+                color: context.dividerColor,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppSizes.spaceLarge),
             Text(
               'Bildirim yok',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[500],
+              style: context.textTheme.titleMedium?.copyWith(
+                color: context.textTertiary,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSizes.spaceSmall),
             Text(
               'Yeni bildirimler geldiğinde\nburada görünecek.',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 14,
-                color: Colors.grey[400],
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: context.textTertiary,
               ),
               textAlign: TextAlign.center,
             ),
@@ -238,35 +246,42 @@ class _BNotificationsPageState extends State<BNotificationsPage> {
       onDismissed: (_) => _dismissNotification(notification.id),
       background: Container(
         alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 24),
-        color: Colors.red[50],
-        child: Icon(HugeIcons.strokeRoundedDelete02, color: Colors.red[400]),
+        padding: const EdgeInsets.only(right: AppSizes.spaceLarge),
+        color: AppColors.danger.withValues(alpha: 0.1),
+        child: const Icon(
+          HugeIcons.strokeRoundedDelete02,
+          color: AppColors.danger,
+        ),
       ),
       child: Container(
         decoration: BoxDecoration(
           color: notification.isRead
-              ? Colors.white
-              : AppColors.primaryColor.withValues(alpha: 0.04),
+              ? context.backgroundColor
+              : context.accentColor.withValues(alpha: _unreadTintAlpha),
           border: Border(
-            bottom: BorderSide(color: Colors.grey[100]!, width: 1),
+            bottom: BorderSide(color: context.dividerColor, width: 1),
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: AppPadding.tileTall,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // İkon
               Container(
-                width: 44,
-                height: 44,
+                width: _typeIconBox,
+                height: _typeIconBox,
                 decoration: BoxDecoration(
                   color: config.color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppRadius.innerCircular,
                 ),
-                child: Icon(config.icon, size: 20, color: config.color),
+                child: Icon(
+                  config.icon,
+                  size: AppSizes.iconMedium,
+                  color: config.color,
+                ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSizes.space),
 
               // İçerik
               Expanded(
@@ -278,46 +293,36 @@ class _BNotificationsPageState extends State<BNotificationsPage> {
                         Expanded(
                           child: Text(
                             notification.title,
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: 14,
+                            style: context.textTheme.bodyMedium?.copyWith(
                               fontWeight: notification.isRead
                                   ? FontWeight.w500
                                   : FontWeight.w600,
-                              color: Colors.black87,
                             ),
                           ),
                         ),
                         if (!notification.isRead)
                           Container(
-                            width: 8,
-                            height: 8,
+                            width: AppSizes.badgeDot,
+                            height: AppSizes.badgeDot,
                             decoration: BoxDecoration(
-                              color: AppColors.primaryColor,
+                              color: context.accentColor,
                               shape: BoxShape.circle,
                             ),
                           ),
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AppSizes.spaceTiny),
                     Text(
                       notification.body,
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 13,
-                        color: Colors.grey[600],
-                        height: 1.4,
-                      ),
+                      style: context.textTheme.bodySmall?.copyWith(height: 1.4),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: AppSizes.spaceTiny),
                     Text(
                       notification.timeAgo,
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 12,
-                        color: Colors.grey[400],
+                      style: context.textTheme.labelMedium?.copyWith(
+                        color: context.textTertiary,
                       ),
                     ),
                   ],
@@ -335,7 +340,7 @@ class _BNotificationsPageState extends State<BNotificationsPage> {
       case BNotificationType.applicant:
         return _NotificationTypeConfig(
           icon: HugeIcons.strokeRoundedUserAdd01,
-          color: const Color(0xff5B8DEF),
+          color: AppColors.info,
         );
       case BNotificationType.approved:
         return _NotificationTypeConfig(
@@ -345,17 +350,17 @@ class _BNotificationsPageState extends State<BNotificationsPage> {
       case BNotificationType.rejected:
         return _NotificationTypeConfig(
           icon: HugeIcons.strokeRoundedCancelCircle,
-          color: Colors.red,
+          color: AppColors.danger,
         );
       case BNotificationType.info:
         return _NotificationTypeConfig(
           icon: HugeIcons.strokeRoundedInformationCircle,
-          color: const Color(0xffF5A623),
+          color: AppColors.warning,
         );
       case BNotificationType.system:
         return _NotificationTypeConfig(
           icon: HugeIcons.strokeRoundedSettings01,
-          color: Colors.grey[600]!,
+          color: context.textSecondary,
         );
     }
   }

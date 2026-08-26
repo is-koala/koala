@@ -1,6 +1,7 @@
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:koala/product/router/router_manager.dart';
+import 'package:koala/product/theme/theme.dart';
 import 'package:koala/product/theme/theme_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -33,7 +34,9 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       title: 'Koala',
-      theme: Provider.of<ThemeProvider>(context).themeData,
+      theme: lightTheme,
+      darkTheme: darkTheme,
+      themeMode: context.watch<ThemeProvider>().themeMode,
       routerConfig: RouterManager.router,
     );
   }

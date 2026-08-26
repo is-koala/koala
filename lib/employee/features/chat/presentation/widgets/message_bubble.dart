@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:koala/employee/features/chat/domain/message.dart';
+import 'package:koala/employee/features/chat/models/message.dart';
+import 'package:koala/product/constants/app_padding.dart';
+import 'package:koala/product/constants/app_sizes.dart';
+import 'package:koala/product/extensions/context_extensions.dart';
 
 class MessageBubble extends StatelessWidget {
   final Message message;
@@ -11,26 +14,38 @@ class MessageBubble extends StatelessWidget {
     required this.isNextSameSender,
   });
 
+  /// Balonun kaplayabileceği en fazla genişlik. Karşı tarafın balonuyla
+  /// aynı hizada durmaması için ekranın tamamını kaplamıyor.
+  static const double _maxWidthRatio = 0.75;
+
+  /// Balonun karşı kenarında bırakılan boşluk; kimin yazdığı hizadan
+  /// anlaşılsın diye.
+  static const double _oppositeMargin = 48;
+
+  /// Balonun köşe yuvarlaklığı. Sabit listelerdeki değerlerden bağımsız:
+  /// sohbet balonuna özgü bir ölçü.
+  static const double _bubbleRadius = 18;
+
   @override
   Widget build(BuildContext context) {
     final isMe = message.isMe;
-    final maxWidth = MediaQuery.of(context).size.width * 0.75;
+    final maxWidth = MediaQuery.sizeOf(context).width * _maxWidthRatio;
+    final foreground = isMe ? context.onAccentColor : context.textPrimary;
 
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         constraints: BoxConstraints(maxWidth: maxWidth),
         margin: EdgeInsets.only(
-          bottom: isNextSameSender ? 4 : 12,
-          left: isMe ? 48 : 0,
-          right: isMe ? 0 : 48,
+          // Aynı kişinin peş peşe mesajları birbirine yakın dursun.
+          bottom: isNextSameSender ? AppSizes.spaceTiny : AppSizes.space,
+          left: isMe ? _oppositeMargin : 0,
+          right: isMe ? 0 : _oppositeMargin,
         ),
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: AppPadding.messageBubble,
         decoration: BoxDecoration(
-          color: isMe
-              ? Theme.of(context).colorScheme.primary
-              : Colors.grey[300],
-          borderRadius: BorderRadius.circular(18),
+          color: isMe ? context.accentColor : context.tileColor,
+          borderRadius: BorderRadius.circular(_bubbleRadius),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -38,17 +53,13 @@ class MessageBubble extends StatelessWidget {
           children: [
             Text(
               message.text,
-              style: TextStyle(
-                color: isMe ? Colors.white : Colors.black,
-                fontSize: 16,
-              ),
+              style: context.textTheme.bodyLarge?.copyWith(color: foreground),
             ),
-            SizedBox(height: 4),
+            const SizedBox(height: AppSizes.spaceTiny),
             Text(
               message.timeString,
-              style: TextStyle(
-                color: isMe ? Colors.white70 : Colors.grey[600],
-                fontSize: 12,
+              style: context.textTheme.labelMedium?.copyWith(
+                color: foreground.withValues(alpha: 0.7),
               ),
             ),
           ],

@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:koala/product/constants/app_assets.dart';
+import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
+import 'package:koala/product/constants/app_sizes.dart';
+import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
@@ -16,6 +20,12 @@ class _OnboardingPageState extends State<OnboardingPage> {
   final controller = PageController();
   bool isLastPage = false;
   double currentPage = 0.0;
+
+  static const int _pageCount = 3;
+
+  /// Sayfa göstergesinin dikey konumu. Ekranın ortasının biraz altında:
+  /// görselin yanında duruyor, metnin üstüne binmiyor.
+  static const double _indicatorHeightRatio = 0.45;
 
   @override
   void initState() {
@@ -46,62 +56,53 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 scrollDirection: Axis.vertical,
                 onPageChanged: (index) {
                   setState(() {
-                    isLastPage = index == 2;
+                    isLastPage = index == _pageCount - 1;
                   });
                 },
-                children: [
+                children: const [
                   OnboardingContent(
+                    imagePath: AppAssets.onboarding1,
                     title: "Günlük İş Bul",
                     description:
                         "Sana yakın günlük iş ilanlarını keşfet ve hemen başvur",
                   ),
                   OnboardingContent(
+                    imagePath: AppAssets.onboarding2,
                     title: "Hızlı Başvuru",
                     description:
                         "Tek tıkla başvuru yap, işverenler seninle direkt iletişime geçsin",
                   ),
                   OnboardingContent(
+                    imagePath: AppAssets.onboarding3,
                     title: "Kazanmaya Başla",
                     description: "İstediğin zamanlarda çalış, ek gelir elde et",
                   ),
                 ],
               ),
               Positioned(
-                right: 2,
-                bottom: MediaQuery.of(context).size.height * 0.45,
+                right: AppSizes.spaceTiny,
+                bottom:
+                    MediaQuery.sizeOf(context).height * _indicatorHeightRatio,
                 child: SmoothPageIndicator(
                   controller: controller,
                   axisDirection: Axis.vertical,
-                  count: 3,
+                  count: _pageCount,
                   effect: ExpandingDotsEffect(
-                    dotHeight: 8,
-                    dotWidth: 8,
-                    spacing: 6,
-                    activeDotColor: Theme.of(context).colorScheme.primary,
+                    dotHeight: AppSizes.badgeDot,
+                    dotWidth: AppSizes.badgeDot,
+                    spacing: AppSizes.spaceTiny,
+                    activeDotColor: context.accentColor,
                   ),
                 ),
               ),
               Positioned(
-                bottom: 10,
+                bottom: AppSizes.spaceSmall,
                 left: 0,
                 right: 0,
                 child: _AnimatedButton(
                   currentPage: currentPage,
                   isLastPage: isLastPage,
-                  onPressed: () async {
-                    if (isLastPage) {
-                      final prefs = await SharedPreferences.getInstance();
-                      await prefs.setBool('seen_onboarding', true);
-                      if (context.mounted) {
-                        context.go('/auth');
-                      }
-                    } else {
-                      controller.nextPage(
-                        duration: const Duration(milliseconds: 600),
-                        curve: Curves.easeInOut,
-                      );
-                    }
-                  },
+                  onPressed: _onNext,
                 ),
               ),
             ],
@@ -110,33 +111,59 @@ class _OnboardingPageState extends State<OnboardingPage> {
       ),
     );
   }
+
+  Future<void> _onNext() async {
+    if (!isLastPage) {
+      controller.nextPage(
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOut,
+      );
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('seen_onboarding', true);
+    if (mounted) {
+      context.go('/auth');
+    }
+  }
 }
 
 class OnboardingContent extends StatelessWidget {
+  final String imagePath;
   final String title;
   final String description;
 
   const OnboardingContent({
     super.key,
+    required this.imagePath,
     required this.title,
     required this.description,
   });
+
+  /// Tanıtım görselinin yüksekliği; metin bloğuyla birlikte sayfayı
+  /// dolduracak kadar büyük, gösterge sütununu ezmeyecek kadar küçük.
+  static const double _imageHeight = 250;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(Icons.star, size: 100, color: Colors.blueAccent),
-        const SizedBox(height: 24),
+        Image.asset(imagePath, height: _imageHeight, fit: BoxFit.contain),
+        const SizedBox(height: AppSizes.spaceLarge),
         Text(
           title,
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          style: context.textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSizes.space),
         Text(
           description,
-          style: const TextStyle(fontSize: 18),
+          style: context.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w400,
+          ),
           textAlign: TextAlign.center,
         ),
       ],
@@ -144,6 +171,7 @@ class OnboardingContent extends StatelessWidget {
   }
 }
 
+/// Sayfa ilerledikçe tam genişlikten daireye küçülen ileri butonu.
 class _AnimatedButton extends StatelessWidget {
   final double currentPage;
   final bool isLastPage;
@@ -161,16 +189,18 @@ class _AnimatedButton extends StatelessWidget {
     final rawProgress = currentPage.clamp(0.0, 1.0);
     // Daha hızlı küçülme için easing curve uygula
     final progress = Curves.easeOutCubic.transform(rawProgress);
-    final screenWidth = MediaQuery.of(context).size.width;
+    // Sayfanın kendi boşluğu + butonun kendi yatay boşluğu
     final padding =
-        AppPadding.primary * 2 + 24; // Container padding + button padding
-    final fullWidth = screenWidth - padding;
-    final circularSize = 60.0;
+        AppPadding.primary * 2 + AppPadding.horizontalSmall.horizontal;
+    final fullWidth = context.width - padding;
+    const circularSize = AppSizes.buttonHeight;
 
     // 0 = full width, 1 = circular
     final buttonWidth = fullWidth - ((fullWidth - circularSize) * progress);
+    // Daralırken köşe yarıçapı da yükseklik yarısına iner; tam daire olur.
+    const circularRadius = circularSize / 2;
     final borderRadius =
-        AppRadius.primary + ((30.0 - AppRadius.primary) * progress);
+        AppRadius.primary + ((circularRadius - AppRadius.primary) * progress);
 
     // Text görünürlüğü: 0-0.5 arası fade out
     final textOpacity = (1.0 - (progress * 2)).clamp(0.0, 1.0);
@@ -184,13 +214,10 @@ class _AnimatedButton extends StatelessWidget {
     // Tik: 1.0'dan 2.0'a giderken fade in
     final checkOpacity = secondProgress.clamp(0.0, 1.0);
 
-    String buttonText = 'SONRAKİ';
-    if (isLastPage) {
-      buttonText = 'HAYDİ BAŞLAYALIM!';
-    }
+    final buttonText = isLastPage ? 'HAYDİ BAŞLAYALIM!' : 'SONRAKİ';
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: AppPadding.horizontalSmall,
       child: Align(
         alignment: Alignment.centerRight,
         child: AnimatedContainer(
@@ -203,9 +230,9 @@ class _AnimatedButton extends StatelessWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(borderRadius),
               ),
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              overlayColor: Colors.green[50],
-              padding: const EdgeInsets.all(12.0),
+              backgroundColor: context.accentColor,
+              overlayColor: AppColors.primarySoft,
+              padding: AppPadding.button,
             ),
             child: Stack(
               alignment: Alignment.center,
@@ -215,10 +242,8 @@ class _AnimatedButton extends StatelessWidget {
                     opacity: textOpacity,
                     child: Text(
                       buttonText,
-                      style: const TextStyle(
-                        fontFamily: 'Poppins',
-                        color: Colors.white,
-                        fontSize: 16,
+                      style: context.textTheme.bodyLarge?.copyWith(
+                        color: context.onAccentColor,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -226,19 +251,19 @@ class _AnimatedButton extends StatelessWidget {
                 if (iconOpacity > 0 && arrowOpacity > 0)
                   Opacity(
                     opacity: iconOpacity * arrowOpacity,
-                    child: const Icon(
+                    child: Icon(
                       Icons.arrow_downward,
-                      color: Colors.white,
-                      size: 24,
+                      color: context.onAccentColor,
+                      size: AppSizes.icon,
                     ),
                   ),
                 if (iconOpacity > 0 && checkOpacity > 0)
                   Opacity(
                     opacity: iconOpacity * checkOpacity,
-                    child: const Icon(
+                    child: Icon(
                       Icons.check,
-                      color: Colors.white,
-                      size: 24,
+                      color: context.onAccentColor,
+                      size: AppSizes.icon,
                     ),
                   ),
               ],

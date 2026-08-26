@@ -1,13 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_radius.dart';
+import 'package:koala/product/constants/app_sizes.dart';
+import 'package:koala/product/extensions/context_extensions.dart';
 
-class BNavItem extends StatefulWidget {
+/// Business navbar'ının bir öğesi.
+///
+/// Navbar zemini temadan bağımsız marka yeşili; bu yüzden öğenin renkleri de
+/// `context` erişimcilerinden değil [AppColors]'tan geliyor.
+class BNavItem extends StatelessWidget {
   final int index;
   final IconData icon;
   final bool isSelected;
   final VoidCallback onTap;
   final String? label;
+
+  /// Ortadaki "ilan oluştur" butonu mu. Bu öğe beyaz dolu bir daire olarak
+  /// çizilir ve etiket taşımaz.
   final bool? centerItem;
 
   const BNavItem({
@@ -15,62 +25,54 @@ class BNavItem extends StatefulWidget {
     required this.index,
     required this.isSelected,
     required this.onTap,
-
+    required this.icon,
     this.label,
     this.centerItem,
-    required this.icon,
   });
 
-  @override
-  State<BNavItem> createState() => _BNavItemState();
-}
+  /// Seçili olmayan öğenin rengi; yeşil zeminde beyazdan geri planda dursun
+  /// diye soluk.
+  static const double _idleAlpha = 0.7;
 
-class _BNavItemState extends State<BNavItem> {
   @override
   Widget build(BuildContext context) {
+    final isCenter = centerItem == true;
+    final radius = isCenter
+        ? AppRadius.stadiumCircular
+        : AppRadius.secondaryCircular;
+    final foreground = isSelected
+        ? AppColors.onAccent
+        : (isCenter
+              ? AppColors.primaryColor
+              : AppColors.onAccent.withValues(alpha: _idleAlpha));
+
     return Material(
       color: AppColors.primaryColor,
-      borderRadius: widget.centerItem == true
-          ? BorderRadius.circular(200)
-          : BorderRadius.circular(25),
+      borderRadius: radius,
       child: InkWell(
-        borderRadius: widget.centerItem == true
-            ? BorderRadius.circular(200)
-            : BorderRadius.circular(25),
-        onTap: widget.onTap,
+        borderRadius: radius,
+        onTap: onTap,
         child: Container(
           decoration: BoxDecoration(
-            color: widget.centerItem == true
-                ? Colors.white
-                : Colors.transparent,
+            color: isCenter ? AppColors.onAccent : Colors.transparent,
             shape: BoxShape.circle,
           ),
           child: Padding(
-            padding: EdgeInsets.all(widget.centerItem == true ? 14 : 8),
+            padding: EdgeInsets.all(
+              isCenter ? AppSizes.spaceMedium : AppSizes.spaceSmall,
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                HugeIcon(
-                  icon: widget.icon,
-                  size: 26,
-                  color: widget.isSelected
-                      ? Colors.white
-                      : (widget.centerItem == true
-                            ? AppColors.primaryColor
-                            : Colors.grey[300]!),
-                ),
-                if (widget.centerItem != true && widget.label != null)
+                HugeIcon(icon: icon, size: AppSizes.icon, color: foreground),
+                if (!isCenter && label != null)
                   Padding(
-                    padding: const EdgeInsets.only(top: 5.0),
+                    padding: const EdgeInsets.only(top: AppSizes.spaceTiny),
                     child: Text(
-                      widget.label!,
-                      style: TextStyle(
-                        color: widget.isSelected
-                            ? Colors.white
-                            : Colors.grey[300],
-                        fontSize: 9,
-                        fontFamily: 'Poppins',
-                        fontWeight: widget.isSelected
+                      label!,
+                      style: context.textTheme.labelSmall?.copyWith(
+                        color: foreground,
+                        fontWeight: isSelected
                             ? FontWeight.bold
                             : FontWeight.normal,
                       ),

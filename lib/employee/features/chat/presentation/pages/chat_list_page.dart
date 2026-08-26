@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:koala/employee/features/chat/data/chat_service.dart';
-import 'package:koala/employee/features/chat/domain/chat.dart';
+import 'package:koala/employee/features/chat/services/chat_service.dart';
+import 'package:koala/employee/features/chat/models/chat.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/chat_list_tile.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 

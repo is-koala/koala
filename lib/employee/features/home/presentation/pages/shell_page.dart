@@ -7,7 +7,11 @@ import 'package:koala/employee/features/home/presentation/pages/explore_pages/ex
 import 'package:koala/employee/features/jobs/presentation/pages/jobs_page.dart';
 import 'package:koala/employee/features/chat/presentation/pages/chat_list_page.dart';
 import 'package:koala/employee/features/profile/presentation/pages/profile_page.dart';
+import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
+import 'package:koala/product/constants/app_sizes.dart';
+import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:provider/provider.dart';
 
 class ShellPage extends StatefulWidget {
@@ -137,16 +141,18 @@ class _ShellPageState extends State<ShellPage> {
             right: 0,
             bottom: 0,
             child: IgnorePointer(
+              // Listenin son satırı navbar'ın altına girerken sertçe
+              // kesilmesin diye sayfanın altına zemine giden bir geçiş.
               child: Container(
-                height: 60,
+                height: AppSizes.navBar,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Colors.white.withValues(alpha: 0.0),
-                      Colors.white.withValues(alpha: 0.4),
-                      Colors.white,
+                      context.backgroundColor.withValues(alpha: 0.0),
+                      context.backgroundColor.withValues(alpha: 0.4),
+                      context.backgroundColor,
                     ],
                   ),
                 ),
@@ -156,21 +162,21 @@ class _ShellPageState extends State<ShellPage> {
         ],
       ),
       bottomNavigationBar: Padding(
-        padding: const EdgeInsets.only(bottom: 30, left: 36, right: 36),
+        padding: AppPadding.bottomNavBarPadding,
         child: Container(
           decoration: BoxDecoration(
             borderRadius: AppRadius.primaryCircular,
-            color: Theme.of(context).colorScheme.primary,
+            color: context.accentColor,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.3),
+                color: AppColors.navShadow,
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.all(10),
+            padding: AppPadding.navBarContent,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               mainAxisSize: MainAxisSize.max,

@@ -2,15 +2,15 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:koala/employee/features/home/data/models/job_model.dart';
+import 'package:koala/employee/features/home/models/job.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 class JobMarkerGenerator {
   static final Map<JobCategory, BitmapDescriptor> _iconCache = {};
 
   static Future<Set<Marker>> generateMarkers({
-    required List<JobModel> jobs,
-    required void Function(JobModel job) onMarkerTap,
+    required List<Job> jobs,
+    required void Function(Job job) onMarkerTap,
   }) async {
     final Set<Marker> markers = {};
 
@@ -23,8 +23,8 @@ class JobMarkerGenerator {
   }
 
   static Future<Marker> _createMarker(
-    JobModel job,
-    void Function(JobModel job) onMarkerTap,
+    Job job,
+    void Function(Job job) onMarkerTap,
   ) async {
     final BitmapDescriptor icon = await _getOrCreateIcon(job.category);
 

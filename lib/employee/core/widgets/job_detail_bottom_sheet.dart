@@ -1,14 +1,20 @@
+import 'dart:ui' show lerpDouble;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:koala/employee/features/home/data/models/job_model.dart';
+import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/saved_jobs_provider.dart';
+import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
+import 'package:koala/product/constants/app_sizes.dart';
+import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/extensions/num_extensions.dart';
 import 'package:provider/provider.dart';
 
 class JobDetailBottomSheet extends StatefulWidget {
-  final JobModel job;
+  final Job job;
   final VoidCallback? onApply;
   final VoidCallback? onClose;
   final ScrollController? scrollController;
@@ -23,7 +29,12 @@ class JobDetailBottomSheet extends StatefulWidget {
     this.sheetController,
   });
 
-  static void show(BuildContext context, JobModel job) {
+  /// Sheet'in kapalı ve tam açık yükseklikleri. Genişleme oranı bu ikisi
+  /// arasında normalize ediliyor; içerideki animasyonların hepsi o orana bakar.
+  static const double _collapsedSize = 0.4;
+  static const double _expandedSize = 0.95;
+
+  static void show(BuildContext context, Job job) {
     final sheetController = DraggableScrollableController();
 
     showModalBottomSheet(
@@ -34,12 +45,12 @@ class JobDetailBottomSheet extends StatefulWidget {
       enableDrag: true,
       builder: (context) => DraggableScrollableSheet(
         controller: sheetController,
-        initialChildSize: 0.4,
+        initialChildSize: _collapsedSize,
         minChildSize: 0.3,
-        maxChildSize: 0.95,
+        maxChildSize: _expandedSize,
         expand: false,
         snap: true,
-        snapSizes: const [0.4, 0.95],
+        snapSizes: const [_collapsedSize, _expandedSize],
         builder: (context, scrollController) => JobDetailBottomSheet(
           job: job,
           onClose: () => Navigator.pop(context),
@@ -56,6 +67,29 @@ class JobDetailBottomSheet extends StatefulWidget {
 
 class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
   double _sheetSize = 0.5;
+
+  /// Genişleme oranının hangi eşikten sonra "açık" sayılacağı. Açıkken ek
+  /// bölümler ve kaydet butonu görünür.
+  static const double _expandedThreshold = 0.3;
+
+  static const Duration _animation = Duration(milliseconds: 200);
+
+  // Sheet açılırken büyüyen metinlerin uç değerleri. Ölçek slotlarına
+  // oturmuyorlar çünkü ikisi arasında sürekli olarak interpolasyon yapılıyor.
+  static const double _companyFontMin = 13;
+  static const double _companyFontMax = 14;
+  static const double _titleFontMin = 22;
+  static const double _titleFontMax = 28;
+  static const double _priceFontMin = 26;
+  static const double _priceFontMax = 30;
+  static const double _descriptionFontMin = 14;
+  static const double _descriptionFontMax = 15;
+  static const double _descriptionHeightMin = 1.5;
+  static const double _descriptionHeightMax = 1.6;
+
+  /// Sheet başlığının kapalı ve açık yükseklikleri.
+  static const double _headerHeightMin = 8;
+  static const double _headerHeightMax = 64;
 
   @override
   void initState() {
@@ -84,13 +118,17 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
   @override
   Widget build(BuildContext context) {
     // 0.5 ile 0.95 arasında normalize et (0.0 - 1.0)
-    final expandProgress = ((_sheetSize - 0.5) / (0.95 - 0.5)).clamp(0.0, 1.0);
-    final isExpanded = expandProgress > 0.3;
+    final expandProgress =
+        ((_sheetSize - 0.5) / (JobDetailBottomSheet._expandedSize - 0.5)).clamp(
+          0.0,
+          1.0,
+        );
+    final isExpanded = expandProgress > _expandedThreshold;
 
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: context.backgroundColor,
+        borderRadius: AppRadius.sheetTop,
       ),
       child: Column(
         children: [
@@ -102,6 +140,8 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     );
   }
 
+  // ------------------------------------------------------------- Alt butonlar
+
   Container bottomButtonsBar(BuildContext context, bool isExpanded) {
     final savedJobsProvider = context.watch<SavedJobsProvider>();
     final applyProvider = context.watch<ApplyProvider>();
@@ -109,17 +149,14 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     final alreadyApplied = applyProvider.hasApplied(widget.job.id);
 
     return Container(
-      padding: EdgeInsets.fromLTRB(
-        AppPadding.primary,
-        12,
-        AppPadding.primary,
-        MediaQuery.of(context).padding.bottom + 12,
+      padding: AppPadding.bottomBar.copyWith(
+        bottom: context.padding.bottom + AppPadding.bottomBar.bottom,
       ),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.backgroundColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: AppColors.barShadow,
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),
@@ -127,86 +164,12 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
       ),
       child: Row(
         children: [
-          // Kaydet butonu
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: isExpanded ? 56 : 0,
-            height: 56,
-            child: isExpanded
-                ? Material(
-                    color: Colors.transparent,
-                    child: Ink(
-                      decoration: BoxDecoration(
-                        color: isSaved
-                            ? Theme.of(
-                                context,
-                              ).colorScheme.primary.withValues(alpha: 0.15)
-                            : Colors.grey[200],
-                        borderRadius: AppRadius.primaryCircular,
-                      ),
-                      child: InkWell(
-                        borderRadius: AppRadius.primaryCircular,
-                        onTap: () {
-                          savedJobsProvider.toggleSave(widget.job);
-                        },
-                        child: Center(
-                          child: Icon(
-                            isSaved ? Icons.bookmark : Icons.bookmark_border,
-                            color: isSaved
-                                ? Theme.of(context).colorScheme.primary
-                                : Colors.grey[700],
-                          ),
-                        ),
-                      ),
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          ),
-
-          if (isExpanded) const SizedBox(width: 12),
-
-          // Ana buton
+          _saveButton(savedJobsProvider, isSaved: isSaved, show: isExpanded),
+          if (isExpanded) const SizedBox(width: AppSizes.space),
           Expanded(
-            child: SizedBox(
-              height: 56,
-              child: ElevatedButton(
-                onPressed: alreadyApplied
-                    ? null
-                    : (isExpanded
-                          ? () {
-                              Navigator.pop(context);
-                              context.push('/apply', extra: widget.job);
-                            }
-                          : () {
-                              widget.sheetController?.animateTo(
-                                0.95,
-                                duration: const Duration(milliseconds: 400),
-                                curve: Curves.easeInOut,
-                              );
-                            }),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: alreadyApplied
-                      ? Colors.grey[300]
-                      : Theme.of(context).colorScheme.primary,
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: Colors.grey[300],
-                  disabledForegroundColor: Colors.grey[500],
-                  shape: RoundedRectangleBorder(
-                    borderRadius: AppRadius.primaryCircular,
-                  ),
-                  elevation: 0,
-                ),
-                child: Text(
-                  alreadyApplied
-                      ? 'Başvuruldu ✓'
-                      : (isExpanded ? 'Başvur' : 'Detayları Gör'),
-                  style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
+            child: _primaryButton(
+              isExpanded: isExpanded,
+              alreadyApplied: alreadyApplied,
             ),
           ),
         ],
@@ -214,239 +177,132 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     );
   }
 
+  Widget _saveButton(
+    SavedJobsProvider provider, {
+    required bool isSaved,
+    required bool show,
+  }) {
+    return AnimatedContainer(
+      duration: _animation,
+      width: show ? AppSizes.buttonHeightCompact : 0,
+      height: AppSizes.buttonHeightCompact,
+      child: show
+          ? Material(
+              color: Colors.transparent,
+              child: Ink(
+                decoration: BoxDecoration(
+                  color: isSaved
+                      ? context.accentColor.withValues(alpha: 0.15)
+                      : context.tileColor,
+                  borderRadius: AppRadius.primaryCircular,
+                ),
+                child: InkWell(
+                  borderRadius: AppRadius.primaryCircular,
+                  onTap: () => provider.toggleSave(widget.job),
+                  child: Center(
+                    child: Icon(
+                      isSaved ? Icons.bookmark : Icons.bookmark_border,
+                      color: isSaved
+                          ? context.accentColor
+                          : context.textSecondary,
+                    ),
+                  ),
+                ),
+              ),
+            )
+          : const SizedBox.shrink(),
+    );
+  }
+
+  Widget _primaryButton({
+    required bool isExpanded,
+    required bool alreadyApplied,
+  }) {
+    return SizedBox(
+      height: AppSizes.buttonHeightCompact,
+      child: ElevatedButton(
+        onPressed: alreadyApplied
+            ? null
+            : (isExpanded
+                  ? () {
+                      Navigator.pop(context);
+                      context.push('/apply', extra: widget.job);
+                    }
+                  // Kapalıyken buton başvuru değil, sheet'i açma eylemi.
+                  : () {
+                      widget.sheetController?.animateTo(
+                        JobDetailBottomSheet._expandedSize,
+                        duration: const Duration(milliseconds: 400),
+                        curve: Curves.easeInOut,
+                      );
+                    }),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: context.accentColor,
+          foregroundColor: context.onAccentColor,
+          disabledBackgroundColor: context.elevatedColor,
+          disabledForegroundColor: context.textTertiary,
+          shape: const RoundedRectangleBorder(
+            borderRadius: AppRadius.primaryCircular,
+          ),
+          elevation: 0,
+          // Metin rengi burada değil; butonun kendi foregroundColor'ı
+          // uyguluyor, böylece pasif hâlde disabledForegroundColor geçerli
+          // oluyor.
+          textStyle: context.textTheme.titleSmall,
+        ),
+        child: Text(
+          alreadyApplied
+              ? 'Başvuruldu ✓'
+              : (isExpanded ? 'Başvur' : 'Detayları Gör'),
+        ),
+      ),
+    );
+  }
+
+  // -------------------------------------------------------------------- Gövde
+
   Expanded body(double expandProgress, bool isExpanded, BuildContext context) {
     return Expanded(
       child: ListView(
         controller: widget.scrollController,
         padding: AppPadding.primaryHorizontal,
         children: [
-          // Handle bar (sadece küçükken görünür)
-          AnimatedOpacity(
-            opacity: 1 - expandProgress,
-            duration: const Duration(milliseconds: 200),
-            child: Center(
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: 40,
-                height: 4,
-                margin: EdgeInsets.symmetric(
-                  vertical: 8 * (1 - expandProgress),
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-          ),
-
-          // Şirket adı (varsa)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: widget.job.companyDetails != null
-                      ? () {
-                          context.push(
-                            '/company-detail',
-                            extra: widget.job.companyDetails,
-                          );
-                        }
-                      : null,
-                  child: Text(
-                    widget.job.company!,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 13 + (1 * expandProgress),
-                      fontWeight: FontWeight.w500,
-                      color: widget.job.companyDetails != null
-                          ? Theme.of(context).colorScheme.primary
-                          : Colors.grey[600],
-                    ),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(left: 8.0),
-                child: AnimatedOpacity(
-                  opacity: 1 - expandProgress,
-                  duration: const Duration(milliseconds: 200),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: expandProgress > 0.5 ? 0 : null,
-                    padding: expandProgress > 0.5
-                        ? EdgeInsets.zero
-                        : const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                    decoration: BoxDecoration(
-                      color: widget.job.category.color.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: expandProgress > 0.5
-                        ? const SizedBox.shrink()
-                        : Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                widget.job.category.icon,
-                                size: 18,
-                                color: widget.job.category.color,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                widget.job.category.displayName,
-                                style: TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: widget.job.category.color,
-                                ),
-                              ),
-                            ],
-                          ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          // Başlık
-          Text(
-            widget.job.title,
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 22 + (6 * expandProgress),
-              fontWeight: FontWeight.w700,
-              color: Colors.black87,
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    widget.job.type.displayName,
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey[700],
-                    ),
-                  ),
-                ),
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  child: Text(
-                    '${widget.job.price.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}₺',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 26 + (4 * expandProgress),
-                      fontWeight: FontWeight.w700,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Açıklama başlığı (sadece genişlediğinde)
-          AnimatedOpacity(
-            opacity: expandProgress,
-            duration: const Duration(milliseconds: 200),
-            child: expandProgress > 0.3
-                ? const Padding(
-                    padding: EdgeInsets.only(bottom: 8, top: 8),
-                    child: Text(
-                      'Açıklama',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          ),
-
-          // Açıklama
-          Text(
-            widget.job.description ?? widget.job.subtitle,
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 14 + (1 * expandProgress),
-              fontWeight: FontWeight.w400,
-              color: Colors.grey[isExpanded ? 700 : 600],
-              height: 1.5 + (0.1 * expandProgress),
-            ),
-            maxLines: isExpanded ? null : 2,
-            overflow: isExpanded ? null : TextOverflow.ellipsis,
-          ),
-
-          // Ek detaylar (sadece genişlediğinde)
+          _handleBar(expandProgress),
+          _companyRow(expandProgress),
+          _title(expandProgress),
+          const SizedBox(height: AppSizes.spaceMedium),
+          _typeAndPriceRow(expandProgress),
+          _sectionTitle('Açıklama', expandProgress),
+          _description(expandProgress, isExpanded),
           if (isExpanded && widget.job.duties != null) ...[
-            const SizedBox(height: 24),
-            const Text(
-              'Görevler',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSizes.spaceLarge),
+            Text('Görevler', style: context.textTheme.titleSmall),
+            const SizedBox(height: AppSizes.spaceSmall),
             Text(
               widget.job.duties!,
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
-                color: Colors.grey[700],
-                height: 1.5,
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: context.textSecondary,
+                height: _descriptionHeightMin,
               ),
             ),
           ],
-
-          // İş detayları kartları (sadece genişlediğinde)
           if (isExpanded) ...[
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSizes.spaceLarge),
             _buildInfoCard('Tarih ve Saat', [
               if (widget.job.startDateTime != null)
                 _buildInfoRow(
                   Icons.calendar_today,
                   'Başlangıç',
-                  '${widget.job.startDateTime!.day}/${widget.job.startDateTime!.month}/${widget.job.startDateTime!.year} - ${widget.job.startDateTime!.hour}:${widget.job.startDateTime!.minute.toString().padLeft(2, '0')}',
+                  _formatDateTime(widget.job.startDateTime!),
                 ),
               if (widget.job.endDateTime != null)
                 _buildInfoRow(
                   Icons.calendar_today,
                   'Bitiş',
-                  '${widget.job.endDateTime!.day}/${widget.job.endDateTime!.month}/${widget.job.endDateTime!.year} - ${widget.job.endDateTime!.hour}:${widget.job.endDateTime!.minute.toString().padLeft(2, '0')}',
+                  _formatDateTime(widget.job.endDateTime!),
                 ),
             ]),
-          ],
-
-          if (isExpanded) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSizes.spaceMedium),
             _buildInfoCard('Gereksinimler', [
               if (widget.job.minAge != null || widget.job.maxAge != null)
                 _buildInfoRow(
@@ -474,10 +330,9 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
                 ),
             ]),
           ],
-
           if (isExpanded &&
               (widget.job.sector != null || widget.job.position != null)) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSizes.spaceMedium),
             _buildInfoCard('İş Bilgileri', [
               if (widget.job.sector != null)
                 _buildInfoRow(Icons.business, 'Sektör', widget.job.sector!),
@@ -485,91 +340,262 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
                 _buildInfoRow(Icons.badge, 'Pozisyon', widget.job.position!),
             ]),
           ],
-
-          // Konum bilgisi (sadece genişlediğinde)
-          AnimatedOpacity(
-            opacity: expandProgress,
-            duration: const Duration(milliseconds: 200),
-            child: expandProgress > 0.3
-                ? Padding(
-                    padding: const EdgeInsets.only(top: 24),
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.location_on,
-                            color: Theme.of(context).colorScheme.primary,
-                            size: 24,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Konum',
-                                  style: TextStyle(
-                                    fontFamily: 'Poppins',
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                                Text(
-                                  widget.job.address ??
-                                      '${widget.job.latitude.toStringAsFixed(4)}, ${widget.job.longitude.toStringAsFixed(4)}',
-                                  style: const TextStyle(
-                                    fontFamily: 'Poppins',
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          // TextButton(
-                          //   onPressed: () {},
-                          //   child: const Text(
-                          //     'Haritada Gör',
-                          //     style: TextStyle(
-                          //       fontFamily: 'Poppins',
-                          //       fontSize: 13,
-                          //       fontWeight: FontWeight.w600,
-                          //     ),
-                          //   ),
-                          // ),
-                        ],
-                      ),
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          ),
-
-          SizedBox(height: MediaQuery.of(context).padding.bottom + 100),
+          _locationCard(expandProgress),
+          SizedBox(height: context.padding.bottom + AppSizes.navBarClearance),
         ],
       ),
     );
   }
 
+  String _formatDateTime(DateTime value) =>
+      '${value.day}/${value.month}/${value.year} - '
+      '${value.hour}:${value.minute.toString().padLeft(2, '0')}';
+
+  /// Sheet kapalıyken görünen tutamaç; açıldıkça kaybolur.
+  Widget _handleBar(double expandProgress) {
+    return AnimatedOpacity(
+      opacity: 1 - expandProgress,
+      duration: _animation,
+      child: Center(
+        child: AnimatedContainer(
+          duration: _animation,
+          width: AppSizes.sheetHandleWidth,
+          height: AppSizes.sheetHandleHeight,
+          margin: EdgeInsets.symmetric(
+            vertical: AppSizes.spaceSmall * (1 - expandProgress),
+          ),
+          decoration: BoxDecoration(
+            color: context.dividerColor,
+            borderRadius: BorderRadius.circular(AppSizes.sheetHandleHeight / 2),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _companyRow(double expandProgress) {
+    final hasDetails = widget.job.companyDetails != null;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: hasDetails
+                ? () => context.push(
+                    '/company-detail',
+                    extra: widget.job.companyDetails,
+                  )
+                : null,
+            child: Text(
+              widget.job.company!,
+              overflow: TextOverflow.ellipsis,
+              style: context.textTheme.bodySmall?.copyWith(
+                fontSize: lerpDouble(
+                  _companyFontMin,
+                  _companyFontMax,
+                  expandProgress,
+                ),
+                fontWeight: FontWeight.w500,
+                color: hasDetails ? context.accentColor : context.textSecondary,
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(left: AppSizes.spaceSmall),
+          child: _categoryChip(expandProgress),
+        ),
+      ],
+    );
+  }
+
+  /// Kategori rozeti yalnızca sheet kapalıyken görünür; açıldığında yerini
+  /// başlıktaki kategori adına bırakır.
+  Widget _categoryChip(double expandProgress) {
+    final isHidden = expandProgress > 0.5;
+
+    return AnimatedOpacity(
+      opacity: 1 - expandProgress,
+      duration: _animation,
+      child: AnimatedContainer(
+        duration: _animation,
+        width: isHidden ? 0 : null,
+        padding: isHidden ? EdgeInsets.zero : AppPadding.chip,
+        decoration: BoxDecoration(
+          color: widget.job.category.color.withValues(alpha: 0.15),
+          borderRadius: AppRadius.secondaryCircular,
+        ),
+        child: isHidden
+            ? const SizedBox.shrink()
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    widget.job.category.icon,
+                    size: AppSizes.iconSmall,
+                    color: widget.job.category.color,
+                  ),
+                  const SizedBox(width: AppSizes.spaceTiny),
+                  Text(
+                    widget.job.category.displayName,
+                    style: context.textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: widget.job.category.color,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _title(double expandProgress) {
+    return Text(
+      widget.job.title,
+      style: context.textTheme.headlineSmall?.copyWith(
+        fontSize: lerpDouble(_titleFontMin, _titleFontMax, expandProgress),
+        fontWeight: FontWeight.w700,
+      ),
+    );
+  }
+
+  Widget _typeAndPriceRow(double expandProgress) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSizes.space),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Container(
+            padding: AppPadding.chip,
+            decoration: BoxDecoration(
+              color: context.tileColor,
+              borderRadius: AppRadius.secondaryCircular,
+            ),
+            child: Text(
+              widget.job.type.displayName,
+              style: context.textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: context.textSecondary,
+              ),
+            ),
+          ),
+          Text(
+            '${widget.job.price.asPrice}₺',
+            style: context.textTheme.displaySmall?.copyWith(
+              fontSize: lerpDouble(
+                _priceFontMin,
+                _priceFontMax,
+                expandProgress,
+              ),
+              fontWeight: FontWeight.w700,
+              color: context.accentColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Yalnızca sheet açıkken görünen bölüm başlığı.
+  Widget _sectionTitle(String title, double expandProgress) {
+    return AnimatedOpacity(
+      opacity: expandProgress,
+      duration: _animation,
+      child: expandProgress > _expandedThreshold
+          ? Padding(
+              padding: const EdgeInsets.symmetric(
+                vertical: AppSizes.spaceSmall,
+              ),
+              child: Text(title, style: context.textTheme.titleMedium),
+            )
+          : const SizedBox.shrink(),
+    );
+  }
+
+  Widget _description(double expandProgress, bool isExpanded) {
+    return Text(
+      widget.job.description ?? widget.job.subtitle,
+      style: context.textTheme.bodyMedium?.copyWith(
+        fontSize: lerpDouble(
+          _descriptionFontMin,
+          _descriptionFontMax,
+          expandProgress,
+        ),
+        color: isExpanded ? context.textSecondary : context.textTertiary,
+        height: lerpDouble(
+          _descriptionHeightMin,
+          _descriptionHeightMax,
+          expandProgress,
+        ),
+      ),
+      maxLines: isExpanded ? null : 2,
+      overflow: isExpanded ? null : TextOverflow.ellipsis,
+    );
+  }
+
+  Widget _locationCard(double expandProgress) {
+    if (expandProgress <= _expandedThreshold) {
+      return const SizedBox.shrink();
+    }
+
+    return AnimatedOpacity(
+      opacity: expandProgress,
+      duration: _animation,
+      child: Padding(
+        padding: const EdgeInsets.only(top: AppSizes.spaceLarge),
+        child: Container(
+          padding: AppPadding.primaryAll,
+          decoration: BoxDecoration(
+            color: context.tileColor,
+            borderRadius: AppRadius.innerCircular,
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.location_on,
+                color: context.accentColor,
+                size: AppSizes.icon,
+              ),
+              const SizedBox(width: AppSizes.space),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Konum', style: context.textTheme.labelMedium),
+                    Text(
+                      widget.job.address ??
+                          '${widget.job.latitude.toStringAsFixed(4)}, '
+                              '${widget.job.longitude.toStringAsFixed(4)}',
+                      style: context.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ------------------------------------------------------------------ Başlık
+
   AnimatedContainer appBar(double expandProgress) {
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      height: 8 + (56 * expandProgress),
-      child: expandProgress > 0.3
+      duration: _animation,
+      height: lerpDouble(_headerHeightMin, _headerHeightMax, expandProgress),
+      child: expandProgress > _expandedThreshold
           ? Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              padding: AppPadding.iconButton,
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.keyboard_arrow_down,
-                      color: Colors.black87,
+                      color: context.textPrimary,
                     ),
                     onPressed: _closeSheet,
                   ),
@@ -577,12 +603,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
                     opacity: expandProgress,
                     child: Text(
                       widget.job.category.displayName,
-                      style: const TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
+                      style: context.textTheme.titleMedium,
                     ),
                   ),
                 ],
@@ -592,27 +613,21 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     );
   }
 
+  // -------------------------------------------------------------- Bilgi kartı
+
   Widget _buildInfoCard(String title, List<Widget> children) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: AppPadding.primaryAll,
       decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
+        color: context.tileColor,
+        borderRadius: AppRadius.innerCircular,
+        border: Border.all(color: context.dividerColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 12),
+          Text(title, style: context.textTheme.titleSmall),
+          const SizedBox(height: AppSizes.space),
           ...children,
         ],
       ),
@@ -621,31 +636,20 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
 
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AppSizes.space),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
-          const SizedBox(width: 12),
+          Icon(icon, size: AppSizes.iconMedium, color: context.accentColor),
+          const SizedBox(width: AppSizes.space),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey,
-                  ),
-                ),
+                Text(label, style: context.textTheme.labelMedium),
                 Text(
                   value,
-                  style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 14,
+                  style: context.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w500,
-                    color: Colors.black87,
                   ),
                 ),
               ],

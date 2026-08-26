@@ -2,13 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:koala/employee/features/home/data/location_service.dart';
-import 'package:koala/employee/features/home/data/models/job_model.dart';
-import 'package:koala/employee/features/home/data/repositories/job_repository.dart';
+import 'package:koala/employee/features/home/services/location_service.dart';
+import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:koala/employee/features/home/presentation/providers/search_provider.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_marker_generator.dart';
 import 'package:koala/employee/core/widgets/job_detail_bottom_sheet.dart';
+import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_padding.dart';
+import 'package:koala/product/constants/app_radius.dart';
+import 'package:koala/product/constants/app_sizes.dart';
+import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:provider/provider.dart';
 
 part 'map_explore_pagemodel.dart';
@@ -21,6 +25,16 @@ class MapExplorePage extends StatefulWidget {
 }
 
 class _MapExplorePageState extends MapExplorePageModel {
+  /// Arama sonucu listesinin ekranın en fazla ne kadarını kaplayacağı.
+  /// Altındaki harita görünür kalmalı ki kullanıcı nereye baktığını bilsin.
+  static const double _overlayMaxHeightRatio = 0.4;
+
+  /// Konum butonunun alttan yüksekliği: navbar'ın üstünde kalmalı.
+  static const double _locationButtonBottom = 110;
+
+  /// Harita üstündeki kartların gölge yüksekliği.
+  static const double _overlayElevation = 8;
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -50,120 +64,109 @@ class _MapExplorePageState extends MapExplorePageModel {
     );
   }
 
-  Widget _searchResultsOverlay() {
+  /// Harita üstünde duran kartların ortak sarmalayıcısı.
+  Widget _overlayCard({required Widget child}) {
     return Positioned(
-      top: MediaQuery.of(context).padding.top + kToolbarHeight + 8,
-      left: 16,
-      right: 16,
+      top: context.padding.top + kToolbarHeight + AppSizes.spaceSmall,
+      left: AppPadding.primary,
+      right: AppPadding.primary,
       child: Material(
-        elevation: 8,
-        borderRadius: BorderRadius.circular(16),
-        color: Colors.white,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.4,
+        elevation: _overlayElevation,
+        borderRadius: AppRadius.secondaryCircular,
+        color: context.backgroundColor,
+        child: child,
+      ),
+    );
+  }
+
+  Widget _searchResultsOverlay() {
+    return _overlayCard(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * _overlayMaxHeightRatio,
+        ),
+        child: ListView.separated(
+          shrinkWrap: true,
+          padding: const EdgeInsets.symmetric(vertical: AppSizes.spaceSmall),
+          itemCount: _searchResults.length,
+          separatorBuilder: (_, _) => const Divider(
+            height: 1,
+            indent: AppPadding.primary,
+            endIndent: AppPadding.primary,
           ),
-          child: ListView.separated(
-            shrinkWrap: true,
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: _searchResults.length,
-            separatorBuilder: (_, __) =>
-                Divider(height: 1, indent: 16, endIndent: 16),
-            itemBuilder: (context, index) {
-              final job = _searchResults[index];
-              return ListTile(
-                leading: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: job.category.color.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    job.category.icon,
-                    color: job.category.color,
-                    size: 20,
-                  ),
-                ),
-                title: Text(
-                  job.title,
-                  style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                subtitle: Text(
-                  '${job.company ?? ''} • ${job.address ?? ''}',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                trailing: Text(
-                  '₺${job.price.toStringAsFixed(0)}',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-                onTap: () => _focusOnJob(job),
-              );
-            },
-          ),
+          itemBuilder: (context, index) =>
+              _searchResultTile(_searchResults[index]),
         ),
       ),
     );
   }
 
+  Widget _searchResultTile(Job job) {
+    return ListTile(
+      leading: Container(
+        width: AppSizes.iconCircle,
+        height: AppSizes.iconCircle,
+        decoration: BoxDecoration(
+          color: job.category.color.withValues(alpha: 0.15),
+          borderRadius: AppRadius.smallCircular,
+        ),
+        child: Icon(
+          job.category.icon,
+          color: job.category.color,
+          size: AppSizes.iconMedium,
+        ),
+      ),
+      title: Text(
+        job.title,
+        style: context.textTheme.labelLarge,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: Text(
+        '${job.company ?? ''} • ${job.address ?? ''}',
+        style: context.textTheme.labelMedium,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      trailing: Text(
+        '₺${job.price.toStringAsFixed(0)}',
+        style: context.textTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.w700,
+          color: context.accentColor,
+        ),
+      ),
+      onTap: () => _focusOnJob(job),
+    );
+  }
+
   Widget _noResultsOverlay() {
-    return Positioned(
-      top: MediaQuery.of(context).padding.top + kToolbarHeight + 8,
-      left: 16,
-      right: 16,
-      child: Material(
-        elevation: 8,
-        borderRadius: BorderRadius.circular(16),
-        color: Colors.white,
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                HugeIcons.strokeRoundedSearchList01,
-                size: 40,
-                color: Colors.grey[400],
+    return _overlayCard(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSizes.spaceLarge),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              HugeIcons.strokeRoundedSearchList01,
+              size: AppSizes.iconLarge,
+              color: context.textTertiary,
+            ),
+            const SizedBox(height: AppSizes.spaceSmall),
+            Text(
+              'Sonuç bulunamadı',
+              style: context.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w500,
+                color: context.textSecondary,
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Sonuç bulunamadı',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.grey[600],
-                ),
+            ),
+            const SizedBox(height: AppSizes.spaceTiny),
+            Text(
+              'Farklı bir arama terimi deneyin',
+              style: context.textTheme.labelMedium?.copyWith(
+                color: context.textTertiary,
               ),
-              const SizedBox(height: 4),
-              Text(
-                'Farklı bir arama terimi deneyin',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 12,
-                  color: Colors.grey[400],
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -171,12 +174,12 @@ class _MapExplorePageState extends MapExplorePageModel {
 
   Positioned currentPositionButton() {
     return Positioned(
-      bottom: 110,
+      bottom: _locationButtonBottom,
       right: AppPadding.primary,
       child: FloatingActionButton(
         mini: true,
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.white,
+        backgroundColor: context.accentColor,
+        foregroundColor: context.onAccentColor,
         elevation: 4,
         onPressed: () {
           if (_currentLatLng != null && _mapController != null) {
@@ -188,31 +191,28 @@ class _MapExplorePageState extends MapExplorePageModel {
             HapticFeedback.lightImpact();
           }
         },
-        child: const Icon(Icons.my_location, size: 24),
+        child: const Icon(Icons.my_location, size: AppSizes.icon),
       ),
     );
   }
 
   Container loadingOverlay() {
     return Container(
-      color: Colors.black.withValues(alpha: 0.2),
+      // Karartma haritanın üstünde; temadan bağımsız koyu kalıyor.
+      color: AppColors.scrim.withValues(alpha: 0.2),
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(
-                Theme.of(context).colorScheme.primary,
-              ),
+              valueColor: AlwaysStoppedAnimation<Color>(context.accentColor),
               strokeWidth: 3.0,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSizes.spaceMedium),
             Text(
               _loadingMessage,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontFamily: 'Poppins',
+              style: context.textTheme.bodyLarge?.copyWith(
+                color: AppColors.onAccent,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -253,38 +253,32 @@ class _MapExplorePageState extends MapExplorePageModel {
           listen: false,
         );
         if (searchProvider.isSearching) {
-          searchProvider.stopSearching();
-          _searchController.clear();
-          _searchFocusNode.unfocus();
-          setState(() {
-            _searchResults = [];
-          });
+          _resetSearch(searchProvider);
         }
       },
     );
   }
 
   AppBar appBar(SearchProvider searchProvider) {
+    // Appbar saydamken arkasında harita var: harita iki temada da açık
+    // çizdiği için durum çubuğu ikonları sabit koyu kalmalı.
+    const overMapStyle = SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+      statusBarBrightness: Brightness.light,
+    );
+
     if (searchProvider.isSearching) {
       return AppBar(
-        systemOverlayStyle: const SystemUiOverlayStyle(
-          statusBarColor: Colors.transparent,
-          statusBarIconBrightness: Brightness.dark,
-          statusBarBrightness: Brightness.light,
-        ),
-        backgroundColor: Colors.white,
+        // Arama açıkken appbar'ın kendi zemini var; ikon parlaklığını
+        // Flutter o zeminden çıkarsın, yoksa koyu temada koyu ikon koyu
+        // zeminde kayboluyor.
+        backgroundColor: context.backgroundColor,
         elevation: 2,
-        shadowColor: Colors.black.withValues(alpha: 0.1),
+        shadowColor: AppColors.barShadow,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
-          onPressed: () {
-            searchProvider.stopSearching();
-            _searchController.clear();
-            _searchFocusNode.unfocus();
-            setState(() {
-              _searchResults = [];
-            });
-          },
+          icon: Icon(Icons.arrow_back, color: context.textPrimary),
+          onPressed: () => _resetSearch(searchProvider),
         ),
         title: TextField(
           controller: _searchController,
@@ -294,17 +288,11 @@ class _MapExplorePageState extends MapExplorePageModel {
             searchProvider.setQuery(value);
             _onMapSearch(value);
           },
-          style: const TextStyle(
-            fontFamily: 'Poppins',
-            fontSize: 16,
-            color: Colors.black87,
-          ),
+          style: context.textTheme.bodyLarge,
           decoration: InputDecoration(
             hintText: 'İş, şirket veya konum ara...',
-            hintStyle: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 16,
-              color: Colors.grey[400],
+            hintStyle: context.textTheme.bodyLarge?.copyWith(
+              color: context.textTertiary,
             ),
             border: InputBorder.none,
           ),
@@ -312,7 +300,7 @@ class _MapExplorePageState extends MapExplorePageModel {
         actions: [
           if (_searchController.text.isNotEmpty)
             IconButton(
-              icon: const Icon(Icons.close, color: Colors.black54),
+              icon: Icon(Icons.close, color: context.textSecondary),
               onPressed: () {
                 _searchController.clear();
                 searchProvider.clearQuery();
@@ -324,20 +312,14 @@ class _MapExplorePageState extends MapExplorePageModel {
     }
 
     return AppBar(
-      systemOverlayStyle: const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
-        statusBarBrightness: Brightness.light,
-      ),
+      systemOverlayStyle: overMapStyle,
       backgroundColor: Colors.transparent,
       elevation: 0,
       title: Text(
         'KOALA',
-        style: TextStyle(
-          fontFamily: 'Poppins',
-          fontSize: 30,
+        style: context.textTheme.displaySmall?.copyWith(
           fontWeight: FontWeight.w800,
-          color: Theme.of(context).colorScheme.primary,
+          color: context.accentColor,
         ),
       ),
       centerTitle: false,
@@ -345,19 +327,24 @@ class _MapExplorePageState extends MapExplorePageModel {
         IconButton(
           icon: HugeIcon(
             icon: HugeIcons.strokeRoundedSearch01,
-            color: Colors.white,
+            color: context.onAccentColor,
           ),
           style: ButtonStyle(
-            backgroundColor: WidgetStatePropertyAll(
-              Theme.of(context).colorScheme.primary,
-            ),
+            backgroundColor: WidgetStatePropertyAll(context.accentColor),
           ),
-          onPressed: () {
-            searchProvider.startSearching();
-          },
+          onPressed: searchProvider.startSearching,
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: AppSizes.spaceMedium),
       ],
     );
+  }
+
+  void _resetSearch(SearchProvider searchProvider) {
+    searchProvider.stopSearching();
+    _searchController.clear();
+    _searchFocusNode.unfocus();
+    setState(() {
+      _searchResults = [];
+    });
   }
 }

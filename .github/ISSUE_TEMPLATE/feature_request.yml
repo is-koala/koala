@@ -1,0 +1,84 @@
+name: Özellik önerisi
+description: Yeni bir özellik ya da mevcut bir akışta iyileştirme öner
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Hangi ihtiyacı karşılıyor?
+      description: Önerinin çözdüğü problemi anlat. Doğrudan çözümü değil, sorunu yazmak daha faydalı.
+      placeholder: İlan listesinde tarihe göre sıralama yok, yakın tarihli işleri bulmak zor.
+    validations:
+      required: true
+
+  - type: textarea
+    id: cozum
+    attributes:
+      label: Önerdiğin çözüm
+    validations:
+      required: true
+
+  - type: dropdown
+    id: taraf
+    attributes:
+      label: Hangi taraf?
+      multiple: true
+      options:
+        - Employee (iş arayan)
+        - Business (işveren)
+        - Giriş / kayıt akışı
+        - Ortak (product)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: alan
+    attributes:
+      label: Hangi ekran / özellik?
+      options:
+        - auth (giriş, kayıt, onboarding)
+        - explore (harita + liste)
+        - jobs (başvurular, kayıtlılar, değerlendirme)
+        - chat (sohbet)
+        - profile (profil)
+        - company_detail (şirket detayı)
+        - settings (ayarlar)
+        - business / home (ilanlar, başvuranlar)
+        - business / posts (ilan yönetimi)
+        - business / create (ilan oluşturma)
+        - product / ortak (tema, router, ortak widget)
+        - Yeni bir feature
+    validations:
+      required: true
+
+  - type: dropdown
+    id: backend
+    attributes:
+      label: Backend gerektiriyor mu?
+      description: Projede henüz gerçek bir API yok; veri sahte servislerden geliyor.
+      options:
+        - Hayır, mevcut sahte veriyle yapılabilir
+        - Evet, gerçek API olmadan tamamlanamaz
+        - Emin değilim
+    validations:
+      required: true
+
+  - type: textarea
+    id: tasarim
+    attributes:
+      label: Tasarım referansı / görsel
+      description: Varsa ekran taslağı, benzer bir uygulamadan örnek ya da Figma bağlantısı ekle.
+
+  - type: textarea
+    id: alternatif
+    attributes:
+      label: Düşündüğün alternatifler
+      description: Başka bir yol denendi ya da elendiyse yaz.
+
+  - type: checkboxes
+    id: katki
+    attributes:
+      label: Katkı
+      options:
+        - label: Bu özelliği kendim geliştirmek istiyorum
+          required: false

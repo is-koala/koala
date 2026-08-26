@@ -1,13 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:koala/employee/features/home/data/models/job_model.dart';
+import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/core/widgets/job_detail_bottom_sheet.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/saved_jobs_provider.dart';
+import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_padding.dart';
+import 'package:koala/product/constants/app_radius.dart';
+import 'package:koala/product/constants/app_sizes.dart';
+import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/extensions/num_extensions.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:provider/provider.dart';
 
 class SavedJobsPage extends StatelessWidget {
   const SavedJobsPage({super.key});
+
+  /// Boş durum ikonu; sayfanın tek görseli olduğu için normal ikonlardan
+  /// belirgin biçimde büyük.
+  static const double _emptyIconSize = 80;
+
+  /// Kaydırıp silme sırasında açılan kırmızı zeminin sağ boşluğu.
+  static const double _dismissPadding = 24;
 
   @override
   Widget build(BuildContext context) {
@@ -18,53 +30,47 @@ class SavedJobsPage extends StatelessWidget {
           final savedJobs = provider.savedJobs;
 
           if (savedJobs.isEmpty) {
-            return _emptyState();
+            return _emptyState(context);
           }
 
           return ListView.separated(
             padding: AppPadding.primaryAll,
             itemCount: savedJobs.length,
-            separatorBuilder: (context, index) => Divider(
-              color: Colors.black.withValues(alpha: 0.1),
-              thickness: 1,
-              height: 1,
-            ),
-            itemBuilder: (context, index) {
-              final job = savedJobs[index];
-              return _savedJobTile(context, job, provider);
-            },
+            separatorBuilder: (context, index) =>
+                Divider(color: context.dividerColor, thickness: 1, height: 1),
+            itemBuilder: (context, index) =>
+                _savedJobTile(context, savedJobs[index], provider),
           );
         },
       ),
     );
   }
 
-  Widget _emptyState() {
+  Widget _emptyState(BuildContext context) {
     return Center(
       child: Padding(
         padding: AppPadding.primaryAll,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.bookmark_border, size: 80, color: Colors.grey[300]),
-            SizedBox(height: 16),
+            Icon(
+              Icons.bookmark_border,
+              size: _emptyIconSize,
+              color: context.dividerColor,
+            ),
+            const SizedBox(height: AppSizes.spaceMedium),
             Text(
               'Henüz kaydedilmiş iş yok',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[600],
+              style: context.textTheme.titleMedium?.copyWith(
+                color: context.textSecondary,
               ),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: AppSizes.spaceSmall),
             Text(
               'İş detaylarında kaydet butonuna basarak\nişleri buraya ekleyebilirsiniz.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 14,
-                color: Colors.grey[500],
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: context.textTertiary,
               ),
             ),
           ],
@@ -75,7 +81,7 @@ class SavedJobsPage extends StatelessWidget {
 
   Widget _savedJobTile(
     BuildContext context,
-    JobModel job,
+    Job job,
     SavedJobsProvider provider,
   ) {
     return Dismissible(
@@ -95,46 +101,44 @@ class SavedJobsPage extends StatelessWidget {
       },
       background: Container(
         alignment: Alignment.centerRight,
-        padding: EdgeInsets.only(right: 24),
-        color: Colors.red.shade400,
-        child: Icon(Icons.delete_outline, color: Colors.white, size: 28),
+        padding: const EdgeInsets.only(right: _dismissPadding),
+        // Silme zemini ve üstündeki ikon temadan bağımsız.
+        color: AppColors.danger,
+        child: const Icon(
+          Icons.delete_outline,
+          color: AppColors.onAccent,
+          size: AppSizes.iconNav,
+        ),
       ),
       child: ListTile(
-        contentPadding: EdgeInsets.symmetric(horizontal: 0, vertical: 4),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: AppSizes.spaceTiny,
+        ),
         onTap: () => JobDetailBottomSheet.show(context, job),
         leading: Container(
-          width: 48,
-          height: 48,
+          width: AppSizes.avatar,
+          height: AppSizes.avatar,
           decoration: BoxDecoration(
             color: job.category.color.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: AppRadius.innerCircular,
           ),
-          child: Icon(job.category.icon, color: job.category.color, size: 24),
-        ),
-        title: Text(
-          job.title,
-          style: TextStyle(
-            fontFamily: "Poppins",
-            color: Colors.black,
-            fontWeight: FontWeight.w600,
-            fontSize: 15,
+          child: Icon(
+            job.category.icon,
+            color: job.category.color,
+            size: AppSizes.icon,
           ),
         ),
+        title: Text(job.title, style: context.textTheme.titleSmall),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              job.company ?? '',
-              style: TextStyle(
-                fontFamily: "Poppins",
-                color: Colors.black54,
-                fontSize: 13,
-              ),
-            ),
-            SizedBox(height: 2),
+            Text(job.company ?? '', style: context.textTheme.bodySmall),
+            const SizedBox(height: AppSizes.smallGap),
             Text(
               job.subtitle,
-              style: TextStyle(color: Colors.black38, fontSize: 12),
+              style: context.textTheme.labelMedium?.copyWith(
+                color: context.textTertiary,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -145,20 +149,18 @@ class SavedJobsPage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(
-              '${job.price.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}₺',
-              style: TextStyle(
-                fontFamily: "Poppins",
-                color: Theme.of(context).colorScheme.primary,
-                fontSize: 16,
+              '${job.price.asPrice}₺',
+              style: context.textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.w700,
+                color: context.accentColor,
               ),
             ),
             GestureDetector(
               onTap: () => provider.removeJob(job.id),
               child: Icon(
                 Icons.bookmark,
-                color: Theme.of(context).colorScheme.primary,
-                size: 24,
+                color: context.accentColor,
+                size: AppSizes.icon,
               ),
             ),
           ],

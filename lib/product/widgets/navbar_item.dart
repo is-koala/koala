@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_padding.dart';
+import 'package:koala/product/constants/app_sizes.dart';
 
 class NavItem extends StatefulWidget {
   final int index;
@@ -68,11 +71,14 @@ class _NavItemState extends State<NavItem> with SingleTickerProviderStateMixin {
       child: AnimatedBuilder(
         animation: _animationController,
         builder: (context, child) {
+          // Navbar zemini temadan bağımsız marka yeşili; üstündeki içerik
+          // de öyle. Bu yüzden renkler context'ten değil AppColors'tan
+          // okunuyor.
           Color backgroundColor;
           if (widget.isSelected) {
-            backgroundColor = Colors.white;
+            backgroundColor = AppColors.onAccent;
           } else if (_isPressed) {
-            backgroundColor = Colors.white.withValues(alpha: 0.3);
+            backgroundColor = AppColors.onAccent.withValues(alpha: 0.3);
           } else {
             backgroundColor = Colors.transparent;
           }
@@ -80,7 +86,7 @@ class _NavItemState extends State<NavItem> with SingleTickerProviderStateMixin {
           return Transform.scale(
             scale: _scaleAnimation.value,
             child: Container(
-              padding: EdgeInsets.all(8),
+              padding: AppPadding.iconButton,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: backgroundColor,
@@ -88,9 +94,9 @@ class _NavItemState extends State<NavItem> with SingleTickerProviderStateMixin {
               child: Icon(
                 widget.isSelected ? widget.selectedIcon : widget.unSelectedIcon,
                 color: widget.isSelected
-                    ? Theme.of(context).colorScheme.primary
-                    : Colors.white,
-                size: 28,
+                    ? AppColors.primaryColor
+                    : AppColors.onAccent,
+                size: AppSizes.iconNav,
               ),
             ),
           );

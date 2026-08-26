@@ -1,12 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:koala/employee/features/chat/domain/chat.dart';
+import 'package:koala/employee/features/chat/models/chat.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/chat_avatar.dart';
+import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_padding.dart';
+import 'package:koala/product/constants/app_radius.dart';
+import 'package:koala/product/constants/app_sizes.dart';
+import 'package:koala/product/extensions/context_extensions.dart';
 
 class ChatListTile extends StatelessWidget {
   final Chat chat;
 
   const ChatListTile({super.key, required this.chat});
+
+  /// Satır yüksekliği avatardan büyük: avatarın altında ve üstünde eşit pay
+  /// kalsın ve bütün satırlar aynı boyda dursun.
+  static const double _tileHeight = 74;
 
   @override
   Widget build(BuildContext context) {
@@ -15,20 +24,17 @@ class ChatListTile extends StatelessWidget {
         context.push('/chat-detail', extra: chat);
       },
       child: Container(
-        height: 74,
-        padding: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-        margin: EdgeInsets.only(bottom: 4),
+        height: _tileHeight,
+        padding: AppPadding.tile,
+        margin: const EdgeInsets.only(bottom: AppSizes.spaceTiny),
         child: Row(
           children: [
             ChatAvatar(
               avatarUrl: chat.avatarUrl,
               fallbackText: chat.avatar,
-              size: 60,
-              borderRadius: 20,
               isOnline: chat.isOnline,
-              onlineDotSize: 16,
             ),
-            SizedBox(width: 16),
+            const SizedBox(width: AppSizes.spaceMedium),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -36,43 +42,50 @@ class ChatListTile extends StatelessWidget {
                 children: [
                   Text(
                     chat.name,
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: context.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: AppSizes.spaceTiny),
                   Text(
                     chat.lastMessage ?? '',
-                    style: TextStyle(color: Colors.grey),
+                    style: context.textTheme.bodyMedium?.copyWith(
+                      color: context.textSecondary,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-            SizedBox(width: 16),
+            const SizedBox(width: AppSizes.spaceMedium),
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
-                  chat.timeString,
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-                if (chat.unreadCount > 0)
-                  Container(
-                    margin: EdgeInsets.only(top: 4),
-                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      chat.unreadCount.toString(),
-                      style: TextStyle(color: Colors.white, fontSize: 10),
-                    ),
-                  ),
+                Text(chat.timeString, style: context.textTheme.labelMedium),
+                if (chat.unreadCount > 0) _unreadBadge(context),
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _unreadBadge(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(top: AppSizes.spaceTiny),
+      padding: AppPadding.badge,
+      decoration: BoxDecoration(
+        color: AppColors.danger,
+        borderRadius: AppRadius.smallCircular,
+      ),
+      child: Text(
+        chat.unreadCount.toString(),
+        // Rozet zemini temadan bağımsız kırmızı; üstündeki sayı da öyle.
+        style: context.textTheme.labelSmall?.copyWith(
+          color: AppColors.onAccent,
         ),
       ),
     );

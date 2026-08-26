@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:koala/product/constants/app_padding.dart';
+import 'package:koala/product/constants/app_radius.dart';
+import 'package:koala/product/constants/app_sizes.dart';
+import 'package:koala/product/extensions/context_extensions.dart';
 
 class MessageTextField extends StatelessWidget {
   final TextEditingController controller;
@@ -12,51 +16,52 @@ class MessageTextField extends StatelessWidget {
     this.onAddPressed,
   });
 
+  /// Mesaj kutusunun yüksekliği; içindeki gönder dairesi kutuya sığacak
+  /// kadar büyük.
+  static const double _fieldHeight = 52;
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: Container(
-        padding: EdgeInsets.all(8),
-        decoration: BoxDecoration(color: Colors.white),
+        padding: AppPadding.iconButton,
+        decoration: BoxDecoration(color: context.backgroundColor),
         child: Row(
           children: [
-            // Container(
-            //   width: 50,
-            //   height: 50,
-            //   margin: EdgeInsets.only(right: 6),
-            //   decoration: BoxDecoration(
-            //     color: Colors.grey[100],
-            //     shape: BoxShape.circle,
-            //   ),
-            //   child: IconButton(
-            //     icon: Icon(Icons.add, color: Colors.grey[600], size: 18),
-            //     onPressed: onAddPressed,
-            //   ),
-            // ),
             Expanded(
               child: Container(
-                height: 52,
+                height: _fieldHeight,
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(25),
+                  color: context.tileColor,
+                  borderRadius: AppRadius.stadiumCircular,
                 ),
                 child: TextFormField(
                   controller: controller,
                   maxLines: null,
                   expands: true,
                   textAlignVertical: TextAlignVertical.center,
+                  style: context.textTheme.bodyLarge,
                   decoration: InputDecoration(
                     hintText: 'Mesaj yazın...',
+                    hintStyle: context.textTheme.bodyLarge?.copyWith(
+                      color: context.textTertiary,
+                    ),
                     border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 20),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: AppSizes.spaceLarge,
+                    ),
                     suffixIcon: Container(
-                      margin: EdgeInsets.all(4),
+                      margin: const EdgeInsets.all(AppSizes.spaceTiny),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary,
+                        color: context.accentColor,
                         shape: BoxShape.circle,
                       ),
                       child: IconButton(
-                        icon: Icon(Icons.send, color: Colors.white, size: 18),
+                        icon: Icon(
+                          Icons.send,
+                          color: context.onAccentColor,
+                          size: AppSizes.iconSmall,
+                        ),
                         onPressed: onSendMessage,
                       ),
                     ),

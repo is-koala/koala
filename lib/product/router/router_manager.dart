@@ -12,7 +12,7 @@ import 'package:koala/business/features/home/presentation/pages/b_user_profile_p
 import 'package:koala/business/features/home/presentation/pages/b_notifications_page.dart';
 import 'package:koala/business/features/chat/presentation/pages/b_chat_list_page.dart';
 import 'package:koala/business/features/chat/presentation/pages/b_chat_page.dart';
-import 'package:koala/business/features/home/data/models/b_applicant_model.dart';
+import 'package:koala/business/features/home/models/b_applicant.dart';
 import 'package:koala/employee/features/auth/presentation/pages/auth_gate.dart';
 import 'package:koala/employee/features/auth/presentation/pages/auth_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/company_informations_page.dart';
@@ -22,23 +22,23 @@ import 'package:koala/employee/features/auth/presentation/pages/register_type_pa
 import 'package:koala/employee/features/home/presentation/pages/explore_pages/explore_page.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/jobs_page.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/review_page.dart';
-import 'package:koala/employee/features/jobs/data/models/my_jobs_model.dart';
+import 'package:koala/employee/features/jobs/models/my_job.dart';
 import 'package:koala/employee/features/chat/presentation/pages/chat_list_page.dart';
 import 'package:koala/employee/features/chat/presentation/pages/chat_page.dart';
-import 'package:koala/employee/features/chat/domain/chat.dart';
+import 'package:koala/employee/features/chat/models/chat.dart';
 import 'package:koala/employee/features/profile/presentation/pages/profile_page.dart';
 import 'package:koala/employee/features/home/presentation/pages/shell_page.dart';
 import 'package:koala/employee/features/company_detail/presentation/pages/company_detail_page.dart';
-import 'package:koala/employee/features/company_detail/domain/company_model.dart';
+import 'package:koala/employee/features/company_detail/models/company.dart';
 import 'package:koala/employee/features/settings/presentation/pages/settings_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:koala/employee/features/auth/presentation/pages/login_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/register_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/email_verification_pending_page.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/apply_page.dart';
-import 'package:koala/employee/features/home/data/models/job_model.dart';
+import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/settings/presentation/pages/account_info_page.dart';
-import 'package:koala/employee/features/profile/data/models/user.dart';
+import 'package:koala/employee/features/profile/models/user.dart';
 
 class RouterManager {
   static Future<bool> isUserLoggedIn() async {
@@ -160,7 +160,7 @@ class RouterManager {
       GoRoute(
         path: '/company-detail',
         builder: (context, state) {
-          final companyData = state.extra as CompanyModel;
+          final companyData = state.extra as Company;
           return CompanyDetailPage(company: companyData);
         },
       ),
@@ -168,7 +168,7 @@ class RouterManager {
       GoRoute(
         path: '/review',
         builder: (context, state) {
-          final job = state.extra as MyJobsModel;
+          final job = state.extra as MyJob;
           return ReviewPage(job: job);
         },
       ),
@@ -176,7 +176,7 @@ class RouterManager {
       GoRoute(
         path: '/apply',
         builder: (context, state) {
-          final job = state.extra as JobModel;
+          final job = state.extra as Job;
           return ApplyPage(job: job);
         },
       ),
@@ -270,7 +270,7 @@ class RouterManager {
       GoRoute(
         path: '/business/user-profile',
         builder: (context, state) {
-          final applicant = state.extra as BApplicantModel;
+          final applicant = state.extra as BApplicant;
           return BUserProfilePage(applicant: applicant);
         },
       ),

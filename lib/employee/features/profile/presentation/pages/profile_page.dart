@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:koala/employee/features/profile/data/fake_user.dart';
-import 'package:koala/employee/features/profile/data/models/user.dart';
+import 'package:koala/employee/features/profile/services/fake_user.dart';
+import 'package:koala/employee/features/profile/models/user.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/experience_card.dart';
-import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_assets.dart';
 import 'package:koala/product/constants/app_padding.dart';
+import 'package:koala/product/constants/app_radius.dart';
+import 'package:koala/product/constants/app_sizes.dart';
+import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -16,6 +19,16 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  /// Profil fotoğrafının kenar uzunluğu.
+  static const double _avatarSize = 100;
+
+  /// Rozet şeridinin yüksekliği; rozetler kare görseller.
+  static const double _badgeStripHeight = 150;
+
+  /// Navbar'ın altında kalmasın diye sayfanın sonuna eklenen pay. Profilde
+  /// liste değil tek sütun var, o yüzden standart paydan geniş.
+  static const double _bottomClearance = 120;
+
   late User user;
 
   @override
@@ -53,7 +66,7 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       appBar: MyAppbar(
         title: "Profilim",
-        fontSize: 24,
+        isLarge: true,
         showBackButton: false,
         actions: [
           IconButton(
@@ -66,7 +79,7 @@ class _ProfilePageState extends State<ProfilePage> {
             },
             icon: HugeIcon(
               icon: HugeIcons.strokeRoundedSettings01,
-              color: Colors.black,
+              color: context.textPrimary,
             ),
           ),
         ],
@@ -78,15 +91,15 @@ class _ProfilePageState extends State<ProfilePage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               profileHeader(),
-              SizedBox(height: 20),
+              const SizedBox(height: AppSizes.spaceLarge),
               aboutProfile(),
-              SizedBox(height: 20),
+              const SizedBox(height: AppSizes.spaceLarge),
               cvArea(),
-              SizedBox(height: 30),
+              const SizedBox(height: AppSizes.spaceXLarge),
               rosettes(),
-              SizedBox(height: 30),
+              const SizedBox(height: AppSizes.spaceXLarge),
               experienceSection(),
-              SizedBox(height: 120),
+              const SizedBox(height: _bottomClearance),
             ],
           ),
         ),
@@ -99,18 +112,18 @@ class _ProfilePageState extends State<ProfilePage> {
       width: double.infinity,
       child: OutlinedButton.icon(
         onPressed: _navigateToAccountInfo,
-        icon: Icon(Icons.edit, size: 18),
-        label: Text(
-          "Profili Düzenle",
-          style: TextStyle(fontFamily: "Poppins", fontWeight: FontWeight.w500),
-        ),
+        icon: const Icon(Icons.edit, size: AppSizes.iconSmall),
+        label: const Text("Profili Düzenle"),
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.primaryColor,
-          side: BorderSide(color: AppColors.primaryColor),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+          foregroundColor: context.accentColor,
+          side: BorderSide(color: context.accentColor),
+          shape: const RoundedRectangleBorder(
+            borderRadius: AppRadius.innerCircular,
           ),
-          padding: EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: AppSizes.space),
+          textStyle: context.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ),
     );
@@ -120,17 +133,14 @@ class _ProfilePageState extends State<ProfilePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          "Rozetler",
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
+        _sectionTitle("Rozetler"),
         SizedBox(
-          height: 150,
+          height: _badgeStripHeight,
           child: ListView(
             scrollDirection: Axis.horizontal,
             children: [
-              Image.asset("assets/images/koala_gezgin_altin.png"),
-              Image.asset("assets/images/koala_gezgin_gumus_1.png"),
+              Image.asset(AppAssets.badgeGold),
+              Image.asset(AppAssets.badgeSilverAlt),
             ],
           ),
         ),
@@ -142,22 +152,22 @@ class _ProfilePageState extends State<ProfilePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          "Hakkımda",
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        SizedBox(height: 4),
-        Text(user.about, style: TextStyle(fontFamily: "Poppins", fontSize: 14)),
+        _sectionTitle("Hakkımda"),
+        const SizedBox(height: AppSizes.spaceTiny),
+        Text(user.about, style: context.textTheme.bodyMedium),
       ],
     );
   }
 
   Container cvArea() {
     return Container(
-      padding: EdgeInsets.symmetric(vertical: 10, horizontal: 24),
+      padding: const EdgeInsets.symmetric(
+        vertical: AppSizes.spaceSmall,
+        horizontal: AppSizes.spaceLarge,
+      ),
       decoration: BoxDecoration(
-        color: AppColors.primaryColor,
-        borderRadius: BorderRadius.circular(8),
+        color: context.accentColor,
+        borderRadius: AppRadius.smallCircular,
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -167,18 +177,22 @@ class _ProfilePageState extends State<ProfilePage> {
             children: [
               Text(
                 "Özgeçmiş",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
+                style: context.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
+                  color: context.onAccentColor,
                 ),
               ),
-              Text(user.cvFileName, style: TextStyle(color: Colors.white)),
+              Text(
+                user.cvFileName,
+                style: context.textTheme.bodyMedium?.copyWith(
+                  color: context.onAccentColor,
+                ),
+              ),
             ],
           ),
           HugeIcon(
             icon: HugeIcons.strokeRoundedFileAttachment,
-            color: Colors.white,
+            color: context.onAccentColor,
           ),
         ],
       ),
@@ -189,63 +203,46 @@ class _ProfilePageState extends State<ProfilePage> {
     return Row(
       children: [
         Container(
-          width: 100,
-          height: 100,
+          width: _avatarSize,
+          height: _avatarSize,
           decoration: BoxDecoration(
             shape: BoxShape.rectangle,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: AppRadius.secondaryCircular,
             image: DecorationImage(
               fit: BoxFit.cover,
               image: AssetImage(user.profileImage),
             ),
           ),
         ),
-        SizedBox(width: 20),
+        const SizedBox(width: AppSizes.spaceLarge),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               user.fullName,
-              style: TextStyle(
-                fontFamily: "Poppins",
-                color: Colors.black,
-                fontSize: 28,
+              style: context.textTheme.headlineLarge?.copyWith(
                 fontWeight: FontWeight.w500,
               ),
             ),
-            Text(
-              user.jobTitle,
-              style: TextStyle(
-                fontFamily: "Poppins",
-                color: Colors.black,
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-            Text(
-              user.location,
-              style: TextStyle(
-                fontFamily: "Poppins",
-                color: Colors.black,
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
-              ),
-            ),
+            Text(user.jobTitle, style: context.textTheme.bodyMedium),
+            Text(user.location, style: context.textTheme.bodyMedium),
           ],
         ),
       ],
     );
   }
 
+  Widget _sectionTitle(String title) => Text(
+    title,
+    style: context.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+  );
+
   Column experienceSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          "Tecrübe",
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        SizedBox(height: 12),
+        _sectionTitle("Tecrübe"),
+        const SizedBox(height: AppSizes.space),
         ...user.experiences.asMap().entries.map((entry) {
           final index = entry.key;
           final exp = entry.value;

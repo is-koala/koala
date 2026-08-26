@@ -1,0 +1,88 @@
+name: Teknik iş / bakım
+description: Temizlik, refactor, backend entegrasyonu, CI, bağımlılık ya da performans işi
+labels: ["chore"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Kullanıcıya yansıyan bir hata ya da yeni bir özellik değil de kod tarafında
+        yapılması gereken bir iş için burayı kullan. Kullanıcı bir şeyin bozuk
+        olduğunu görüyorsa hata bildirimi, yeni bir akış isteniyorsa özellik önerisi
+        daha doğru yer.
+
+  - type: dropdown
+    id: tur
+    attributes:
+      label: İşin türü
+      options:
+        - Hard-code temizliği (renk / padding / fontSize → sabitler)
+        - Backend entegrasyonu (sahte servisi gerçek API'ye bağlama)
+        - Ölü kod / temizlik
+        - Refactor
+        - CI / derleme
+        - Bağımlılık güncellemesi
+        - Performans
+        - Dokümantasyon
+        - Diğer
+    validations:
+      required: true
+
+  - type: textarea
+    id: durum
+    attributes:
+      label: Şu an ne var?
+      description: Mevcut durumu ve neden sorun olduğunu anlat.
+      placeholder: auth'un servis katmanı yok; giriş sayfaları doğrudan SharedPreferences'a yazıyor.
+    validations:
+      required: true
+
+  - type: textarea
+    id: hedef
+    attributes:
+      label: Ne yapılmalı?
+      description: İşin bittiğini nasıl anlayacağımızı da yazarsan iyi olur.
+    validations:
+      required: true
+
+  - type: textarea
+    id: dosyalar
+    attributes:
+      label: İlgili dosyalar
+      description: Repo köküne göre yol ver; biliniyorsa satır numarasıyla.
+      placeholder: |
+        lib/employee/features/auth/presentation/pages/login_page.dart
+        lib/product/router/router_manager.dart
+
+  - type: dropdown
+    id: alan
+    attributes:
+      label: Hangi ekran / özellik?
+      multiple: true
+      options:
+        - auth (giriş, kayıt, onboarding)
+        - explore (harita + liste)
+        - jobs (başvurular, kayıtlılar, değerlendirme)
+        - chat (sohbet)
+        - profile (profil)
+        - company_detail (şirket detayı)
+        - settings (ayarlar)
+        - business / genel
+        - product / ortak (tema, router, ortak widget)
+        - ci / altyapı
+        - bağımlılıklar
+    validations:
+      required: true
+
+  - type: textarea
+    id: risk
+    attributes:
+      label: Davranış değişikliği / risk
+      description: Kullanıcıya yansıyan bir değişiklik olacak mı, dikkat edilmesi gereken bir şey var mı?
+
+  - type: checkboxes
+    id: katki
+    attributes:
+      label: Katkı
+      options:
+        - label: Bu işi kendim yapmak istiyorum
+          required: false

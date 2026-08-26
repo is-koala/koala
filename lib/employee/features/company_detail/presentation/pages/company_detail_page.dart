@@ -1,171 +1,149 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:koala/employee/features/chat/data/chat_service.dart';
-import 'package:koala/employee/features/chat/presentation/pages/chat_page.dart';
-import 'package:koala/employee/features/company_detail/domain/company_model.dart';
-import 'package:koala/employee/features/home/data/repositories/job_repository.dart';
-import 'package:koala/employee/features/home/data/models/job_model.dart';
+import 'package:koala/employee/features/chat/services/chat_service.dart';
+import 'package:koala/employee/features/company_detail/models/company.dart';
+import 'package:koala/employee/features/home/services/job_service.dart';
+import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_padding.dart';
+import 'package:koala/product/constants/app_radius.dart';
+import 'package:koala/product/constants/app_sizes.dart';
+import 'package:koala/product/extensions/context_extensions.dart';
+
+part 'company_detail_pagemodel.dart';
 
 class CompanyDetailPage extends StatefulWidget {
-  final CompanyModel company;
+  final Company company;
 
   const CompanyDetailPage({super.key, required this.company});
+
+  /// Kapak alanının açık yüksekliği. Logo, şirket adı ve tür rozetini
+  /// birlikte taşıyacak kadar.
+  static const double appBarExpandedHeight = 180;
 
   @override
   State<CompanyDetailPage> createState() => _CompanyDetailPageState();
 }
 
-class _CompanyDetailPageState extends State<CompanyDetailPage> {
-  bool _isFollowing = false;
-  final JobRepository _jobRepository = JobRepository();
-  final ScrollController _scrollController = ScrollController();
-  double _scrollOffset = 0.0;
-  late Future<List<JobModel>> _companyJobsFuture;
+class _CompanyDetailPageState extends CompanyDetailPagemodel {
+  /// Kapaktaki şirket logosunun kenar uzunluğu.
+  static const double _logoSize = 80;
 
-  @override
-  void initState() {
-    super.initState();
-    _scrollController.addListener(() {
-      setState(() {
-        _scrollOffset = _scrollController.offset;
-      });
-    });
-    _companyJobsFuture = _loadCompanyJobs();
-  }
+  /// Eylem butonlarının yüksekliği; sayfa butonlarından alçak çünkü yan
+  /// yana iki tane duruyorlar.
+  static const double _actionButtonHeight = 48;
 
-  Future<List<JobModel>> _loadCompanyJobs() async {
-    final allJobs = await _jobRepository.getJobs();
-    return allJobs.where((job) => job.company == widget.company.name).toList();
-  }
+  /// Kapak üstündeki tür rozetinin zemin opaklığı.
+  static const double _badgeAlpha = 0.25;
 
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
+  /// Kategori rozetinin zemin opaklığı.
+  static const double _categoryTintAlpha = 0.15;
 
   @override
   Widget build(BuildContext context) {
-    // AppBar'ın collapse olma durumuna göre opacity hesapla
-    // expandedHeight - kToolbarHeight = collapse başlangıcı
-    final double collapsedStartOffset = 180 - kToolbarHeight;
-    final double titleOpacity = (_scrollOffset - collapsedStartOffset) / 40;
-    final double clampedOpacity = titleOpacity.clamp(0.0, 1.0);
-
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: context.backgroundColor,
       body: CustomScrollView(
-        controller: _scrollController,
+        controller: scrollController,
         slivers: [
-          appBar(context, clampedOpacity),
+          appBar(context, titleOpacity),
           actionButtons(context),
+          SliverToBoxAdapter(child: _content()),
+        ],
+      ),
+    );
+  }
 
-          // Content
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: AppPadding.primaryAll,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Approval Status
-                  if (!widget.company.isApproved)
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Colors.orange.withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            HugeIcons.strokeRoundedAlert02,
-                            color: Colors.orange[700],
-                            size: 20,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Bu şirket henüz onaylanmamıştır',
-                              style: TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.orange[700],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+  // ------------------------------------------------------------------ İçerik
 
-                  // Description
-                  if (widget.company.description != null) ...[
-                    _buildSectionTitle('Hakkında'),
-                    const SizedBox(height: 8),
-                    Text(
-                      widget.company.description!,
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.grey[700],
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
+  Widget _content() {
+    final company = widget.company;
 
-                  // Contact Information
-                  _buildSectionTitle('İletişim Bilgileri'),
-                  const SizedBox(height: 12),
-                  _buildInfoCard([
-                    _buildInfoRow(
-                      HugeIcons.strokeRoundedMail01,
-                      'E-posta',
-                      widget.company.email,
-                    ),
-                    if (widget.company.phoneNumber != null)
-                      _buildInfoRow(
-                        HugeIcons.strokeRoundedCall,
-                        'Telefon',
-                        widget.company.phoneNumber!,
-                      ),
-                    if (widget.company.website != null)
-                      _buildInfoRow(
-                        HugeIcons.strokeRoundedInternetAntenna01,
-                        'Website',
-                        widget.company.website!,
-                      ),
-                  ]),
+    return Padding(
+      padding: AppPadding.primaryAll,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!company.isApproved) _approvalWarning(),
+          if (company.description != null) ...[
+            _buildSectionTitle('Hakkında'),
+            const SizedBox(height: AppSizes.spaceSmall),
+            Text(
+              company.description!,
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: context.textSecondary,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: AppSizes.spaceLarge),
+          ],
+          _buildSectionTitle('İletişim Bilgileri'),
+          const SizedBox(height: AppSizes.space),
+          _buildInfoCard([
+            _buildInfoRow(
+              HugeIcons.strokeRoundedMail01,
+              'E-posta',
+              company.email,
+            ),
+            if (company.phoneNumber != null)
+              _buildInfoRow(
+                HugeIcons.strokeRoundedCall,
+                'Telefon',
+                company.phoneNumber!,
+              ),
+            if (company.website != null)
+              _buildInfoRow(
+                HugeIcons.strokeRoundedInternetAntenna01,
+                'Website',
+                company.website!,
+              ),
+          ]),
+          if (company.address != null) ...[
+            const SizedBox(height: AppSizes.spaceLarge),
+            _buildSectionTitle('Adres'),
+            const SizedBox(height: AppSizes.space),
+            _buildInfoCard([
+              _buildInfoRow(
+                HugeIcons.strokeRoundedLocation01,
+                'Adres',
+                company.address!.fullAddress,
+              ),
+            ]),
+          ],
+          const SizedBox(height: AppSizes.spaceLarge),
+          _buildSectionTitle('İlanlar'),
+          const SizedBox(height: AppSizes.space),
+          _buildJobsSection(),
+          const SizedBox(height: AppSizes.sectionSpace),
+        ],
+      ),
+    );
+  }
 
-                  // Address
-                  if (widget.company.address != null) ...[
-                    const SizedBox(height: 24),
-                    _buildSectionTitle('Adres'),
-                    const SizedBox(height: 12),
-                    _buildInfoCard([
-                      _buildInfoRow(
-                        HugeIcons.strokeRoundedLocation01,
-                        'Adres',
-                        widget.company.address!.fullAddress,
-                      ),
-                    ]),
-                  ],
-
-                  // İlanlar Section
-                  const SizedBox(height: 24),
-                  _buildSectionTitle('İlanlar'),
-                  const SizedBox(height: 12),
-                  _buildJobsSection(),
-
-                  const SizedBox(height: 40),
-                ],
+  Widget _approvalWarning() {
+    return Container(
+      padding: AppPadding.card,
+      margin: const EdgeInsets.only(bottom: AppSizes.spaceMedium),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: 0.1),
+        borderRadius: AppRadius.innerCircular,
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            HugeIcons.strokeRoundedAlert02,
+            color: AppColors.warning,
+            size: AppSizes.iconMedium,
+          ),
+          const SizedBox(width: AppSizes.space),
+          Expanded(
+            child: Text(
+              'Bu şirket henüz onaylanmamıştır',
+              style: context.textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w500,
+                color: AppColors.warning,
               ),
             ),
           ),
@@ -174,128 +152,91 @@ class _CompanyDetailPageState extends State<CompanyDetailPage> {
     );
   }
 
+  // ---------------------------------------------------------- Eylem butonları
+
   SliverToBoxAdapter actionButtons(BuildContext context) {
     return SliverToBoxAdapter(
       child: Container(
         padding: AppPadding.primaryAll,
-        color: Colors.white,
-        child: Column(
+        color: context.backgroundColor,
+        child: Row(
           children: [
-            // Action Buttons Row
-            Row(
-              children: [
-                // Takip Et Butonu
-                Expanded(
-                  child: SizedBox(
-                    height: 48,
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        setState(() {
-                          _isFollowing = !_isFollowing;
-                        });
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              _isFollowing
-                                  ? '${widget.company.name} takip edildi'
-                                  : '${widget.company.name} takipten çıkarıldı',
-                            ),
-                            duration: const Duration(seconds: 2),
-                          ),
-                        );
-                      },
-                      icon: Icon(
-                        _isFollowing
-                            ? HugeIcons.strokeRoundedUserCheck01
-                            : HugeIcons.strokeRoundedUserAdd01,
-                        size: 18,
-                      ),
-                      label: Text(
-                        _isFollowing ? 'Takip Ediliyor' : 'Takip Et',
-                        style: const TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _isFollowing
-                            ? Colors.grey[100]
-                            : Theme.of(context).colorScheme.primary,
-                        foregroundColor: _isFollowing
-                            ? Colors.grey[700]
-                            : Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: _isFollowing
-                              ? BorderSide(color: Colors.grey[300]!)
-                              : BorderSide.none,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                // Mesaj At Butonu
-                Expanded(
-                  child: SizedBox(
-                    height: 48,
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        final chatService = ChatService();
-                        final chat = chatService.getOrCreateChatByCompany(
-                          companyId: widget.company.id,
-                          companyName: widget.company.name,
-                          avatarUrl: widget.company.logo?.url,
-                        );
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ChatPage(chat: chat),
-                          ),
-                        );
-                      },
-                      icon: const Icon(
-                        HugeIcons.strokeRoundedMessage01,
-                        size: 18,
-                      ),
-                      label: const Text(
-                        'Mesaj At',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Theme.of(context).colorScheme.primary,
-                        side: BorderSide(
-                          color: Theme.of(context).colorScheme.primary,
-                          width: 1.5,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            Expanded(child: _followButton()),
+            const SizedBox(width: AppSizes.space),
+            Expanded(child: _messageButton()),
           ],
         ),
       ),
     );
   }
 
+  Widget _followButton() {
+    return SizedBox(
+      height: _actionButtonHeight,
+      child: ElevatedButton.icon(
+        onPressed: toggleFollow,
+        icon: Icon(
+          isFollowing
+              ? HugeIcons.strokeRoundedUserCheck01
+              : HugeIcons.strokeRoundedUserAdd01,
+          size: AppSizes.iconSmall,
+        ),
+        label: Text(isFollowing ? 'Takip Ediliyor' : 'Takip Et'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: isFollowing
+              ? context.tileColor
+              : context.accentColor,
+          foregroundColor: isFollowing
+              ? context.textSecondary
+              : context.onAccentColor,
+          elevation: 0,
+          textStyle: context.textTheme.labelLarge,
+          shape: RoundedRectangleBorder(
+            borderRadius: AppRadius.innerCircular,
+            side: isFollowing
+                ? BorderSide(color: context.dividerColor)
+                : BorderSide.none,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _messageButton() {
+    return SizedBox(
+      height: _actionButtonHeight,
+      child: OutlinedButton.icon(
+        onPressed: openChat,
+        icon: const Icon(
+          HugeIcons.strokeRoundedMessage01,
+          size: AppSizes.iconSmall,
+        ),
+        label: const Text('Mesaj At'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: context.accentColor,
+          side: BorderSide(color: context.accentColor, width: 1.5),
+          textStyle: context.textTheme.labelLarge,
+          shape: const RoundedRectangleBorder(
+            borderRadius: AppRadius.innerCircular,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ------------------------------------------------------------------ Kapak
+
   SliverAppBar appBar(BuildContext context, double clampedOpacity) {
     return SliverAppBar(
       pinned: true,
-      expandedHeight: 180,
-      backgroundColor: Theme.of(context).colorScheme.primary,
+      expandedHeight: CompanyDetailPage.appBarExpandedHeight,
+      backgroundColor: context.accentColor,
+      // Kapak marka yeşili; üstündeki her şey temadan bağımsız beyaz.
       leading: IconButton(
-        icon: Icon(HugeIcons.strokeRoundedArrowLeft01, color: Colors.white),
+        icon: const Icon(
+          HugeIcons.strokeRoundedArrowLeft01,
+          color: AppColors.onAccent,
+        ),
         onPressed: () => context.pop(),
       ),
       centerTitle: false,
@@ -303,11 +244,8 @@ class _CompanyDetailPageState extends State<CompanyDetailPage> {
         opacity: clampedOpacity,
         child: Text(
           widget.company.name,
-          style: const TextStyle(
-            fontFamily: 'Poppins',
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
+          style: context.textTheme.titleMedium?.copyWith(
+            color: AppColors.onAccent,
           ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -316,88 +254,27 @@ class _CompanyDetailPageState extends State<CompanyDetailPage> {
       flexibleSpace: FlexibleSpaceBar(
         background: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.only(bottom: AppSizes.spaceMedium),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // Logo
-                    Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: widget.company.logo != null
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: Image.network(
-                                widget.company.logo!.url,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    const Icon(
-                                      Icons.business,
-                                      size: 40,
-                                      color: Colors.grey,
-                                    ),
-                              ),
-                            )
-                          : const Icon(
-                              Icons.business,
-                              size: 40,
-                              color: Colors.grey,
-                            ),
-                    ),
-                    const SizedBox(height: 12),
-                    // Company Name
-                    Text(
-                      widget.company.name,
-                      style: const TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    // Type
-                    if (widget.company.type != null) ...[
-                      const SizedBox(height: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.25),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          widget.company.type!.displayName,
-                          style: const TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
+                _logo(),
+                const SizedBox(height: AppSizes.space),
+                Text(
+                  widget.company.name,
+                  style: context.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.onAccent,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
+                if (widget.company.type != null) ...[
+                  const SizedBox(height: AppSizes.spaceTiny),
+                  _typeBadge(),
+                ],
               ],
             ),
           ),
@@ -406,91 +283,133 @@ class _CompanyDetailPageState extends State<CompanyDetailPage> {
     );
   }
 
+  Widget _logo() {
+    final placeholder = Icon(
+      Icons.business,
+      size: AppSizes.iconLarge,
+      color: context.textTertiary,
+    );
+
+    return Container(
+      width: _logoSize,
+      height: _logoSize,
+      decoration: BoxDecoration(
+        color: context.backgroundColor,
+        borderRadius: AppRadius.secondaryCircular,
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.mapShadow,
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: widget.company.logo != null
+          ? ClipRRect(
+              borderRadius: AppRadius.secondaryCircular,
+              child: Image.network(
+                widget.company.logo!.url,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => placeholder,
+              ),
+            )
+          : placeholder,
+    );
+  }
+
+  Widget _typeBadge() {
+    return Container(
+      padding: AppPadding.badge,
+      decoration: BoxDecoration(
+        color: AppColors.onAccent.withValues(alpha: _badgeAlpha),
+        borderRadius: AppRadius.smallCircular,
+      ),
+      child: Text(
+        widget.company.type!.displayName,
+        style: context.textTheme.labelMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+          color: AppColors.onAccent,
+        ),
+      ),
+    );
+  }
+
+  // ------------------------------------------------------------------ İlanlar
+
   Widget _buildJobsSection() {
-    return FutureBuilder<List<JobModel>>(
-      future: _companyJobsFuture,
+    return FutureBuilder<List<Job>>(
+      future: companyJobsFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32.0),
-              child: CircularProgressIndicator(
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
+          return _centered(
+            CircularProgressIndicator(color: context.accentColor),
           );
         }
 
         if (snapshot.hasError) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32.0),
-              child: Text(
-                'İlanlar yüklenirken bir hata oluştu',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.grey[600],
-                ),
+          return _centered(
+            Text(
+              'İlanlar yüklenirken bir hata oluştu',
+              style: context.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w500,
+                color: context.textSecondary,
               ),
             ),
           );
         }
 
         final companyJobs = snapshot.data ?? [];
-
         if (companyJobs.isEmpty) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32.0),
-              child: Column(
-                children: [
-                  Icon(
-                    HugeIcons.strokeRoundedJobSearch,
-                    size: 64,
-                    color: Colors.grey[300],
+          return _centered(
+            Column(
+              children: [
+                Icon(
+                  HugeIcons.strokeRoundedJobSearch,
+                  size: AppSizes.iconHuge,
+                  color: context.dividerColor,
+                ),
+                const SizedBox(height: AppSizes.spaceMedium),
+                Text(
+                  'Henüz ilan yok',
+                  style: context.textTheme.titleSmall?.copyWith(
+                    color: context.textTertiary,
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Henüz ilan yok',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey[400],
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           );
         }
 
         return Column(
-          children: companyJobs
-              .map(
-                (job) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _buildJobCard(job),
-                ),
-              )
-              .toList(),
+          children: [
+            for (final job in companyJobs)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSizes.space),
+                child: _buildJobCard(job),
+              ),
+          ],
         );
       },
     );
   }
 
-  Widget _buildJobCard(JobModel job) {
+  Widget _centered(Widget child) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(AppSizes.spaceXLarge),
+      child: child,
+    ),
+  );
+
+  Widget _buildJobCard(Job job) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: AppPadding.primaryAll,
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[200]!),
+        color: context.backgroundColor,
+        borderRadius: AppRadius.secondaryCircular,
+        border: Border.all(color: context.dividerColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: AppColors.barShadow,
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -499,155 +418,127 @@ class _CompanyDetailPageState extends State<CompanyDetailPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Category Badge & Type
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: job.category.color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      job.category.icon,
-                      size: 14,
-                      color: job.category.color,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      job.category.displayName,
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: job.category.color,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  job.type.displayName,
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey[700],
-                  ),
-                ),
-              ),
+              _categoryBadge(job),
+              const SizedBox(width: AppSizes.spaceSmall),
+              _typeChip(job),
             ],
           ),
-
-          const SizedBox(height: 12),
-
-          // Title
+          const SizedBox(height: AppSizes.space),
           Text(
             job.title,
-            style: const TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
+            style: context.textTheme.titleSmall,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
-
-          const SizedBox(height: 4),
-
-          // Subtitle
+          const SizedBox(height: AppSizes.spaceTiny),
           Text(
             job.subtitle,
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 13,
-              fontWeight: FontWeight.w400,
-              color: Colors.grey[600],
-            ),
+            style: context.textTheme.bodySmall,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
+          const SizedBox(height: AppSizes.space),
+          _priceAndLocationRow(job),
+        ],
+      ),
+    );
+  }
 
-          const SizedBox(height: 12),
-
-          // Price & Location
-          Row(
-            children: [
-              Icon(
-                HugeIcons.strokeRoundedMoneyBag02,
-                size: 16,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                '₺${job.price.toStringAsFixed(0)}',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Icon(
-                HugeIcons.strokeRoundedLocation01,
-                size: 16,
-                color: Colors.grey[600],
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  job.address ?? 'Ankara',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey[600],
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
+  Widget _categoryBadge(Job job) {
+    return Container(
+      padding: AppPadding.badge,
+      decoration: BoxDecoration(
+        color: job.category.color.withValues(alpha: _categoryTintAlpha),
+        borderRadius: AppRadius.smallCircular,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            job.category.icon,
+            size: AppSizes.iconSmall,
+            color: job.category.color,
+          ),
+          const SizedBox(width: AppSizes.spaceTiny),
+          Text(
+            job.category.displayName,
+            style: context.textTheme.labelSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: job.category.color,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontFamily: 'Poppins',
-        fontSize: 18,
-        fontWeight: FontWeight.w600,
-        color: Colors.black87,
+  Widget _typeChip(Job job) {
+    return Container(
+      padding: AppPadding.badge,
+      decoration: BoxDecoration(
+        color: context.tileColor,
+        borderRadius: AppRadius.smallCircular,
+      ),
+      child: Text(
+        job.type.displayName,
+        style: context.textTheme.labelSmall?.copyWith(
+          color: context.textSecondary,
+        ),
       ),
     );
   }
 
+  Widget _priceAndLocationRow(Job job) {
+    return Row(
+      children: [
+        Icon(
+          HugeIcons.strokeRoundedMoneyBag02,
+          size: AppSizes.iconSmall,
+          color: context.accentColor,
+        ),
+        const SizedBox(width: AppSizes.spaceTiny),
+        Text(
+          '₺${job.price.toStringAsFixed(0)}',
+          style: context.textTheme.bodyLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: context.accentColor,
+          ),
+        ),
+        const SizedBox(width: AppSizes.spaceMedium),
+        Icon(
+          HugeIcons.strokeRoundedLocation01,
+          size: AppSizes.iconSmall,
+          color: context.textSecondary,
+        ),
+        const SizedBox(width: AppSizes.spaceTiny),
+        Expanded(
+          child: Text(
+            job.address ?? 'Ankara',
+            style: context.textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w500,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ------------------------------------------------------------ Ortak parçalar
+
+  Widget _buildSectionTitle(String title) =>
+      Text(title, style: context.textTheme.titleMedium);
+
   Widget _buildInfoCard(List<Widget> children) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: AppPadding.primaryAll,
       decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
+        color: context.tileColor,
+        borderRadius: AppRadius.innerCircular,
+        border: Border.all(color: context.dividerColor),
       ),
       child: Column(children: children),
     );
@@ -655,33 +546,22 @@ class _CompanyDetailPageState extends State<CompanyDetailPage> {
 
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: AppSizes.spaceMedium),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
-          const SizedBox(width: 12),
+          Icon(icon, size: AppSizes.iconMedium, color: context.accentColor),
+          const SizedBox(width: AppSizes.space),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                const SizedBox(height: 2),
+                Text(label, style: context.textTheme.labelMedium),
+                const SizedBox(height: AppSizes.smallGap),
                 Text(
                   value,
-                  style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 14,
+                  style: context.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w500,
-                    color: Colors.black87,
                   ),
                 ),
               ],

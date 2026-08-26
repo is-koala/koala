@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
+import 'package:koala/product/constants/app_sizes.dart';
+import 'package:koala/product/extensions/context_extensions.dart';
 
 class MyTextfield extends StatelessWidget {
   const MyTextfield({
@@ -11,6 +14,9 @@ class MyTextfield extends StatelessWidget {
     this.controller,
     this.onChanged,
     this.keyboardType = TextInputType.text,
+    this.height = AppSizes.fieldHeight,
+    this.expands = false,
+    this.borderRadius = AppRadius.primaryCircular,
   });
 
   final String labelText;
@@ -21,33 +27,46 @@ class MyTextfield extends StatelessWidget {
   final Function(String)? onChanged;
   final TextInputType keyboardType;
 
+  /// Alanın yüksekliği. Çok satırlı kullanımda ([expands] true iken)
+  /// büyütülür; tek satırlıkta varsayılan bırakılır.
+  final double height;
+
+  /// Alan verilen yüksekliği doldursun ve metin yukarıdan başlasın mı.
+  /// Açıklama gibi uzun metin alanları için.
+  final bool expands;
+
+  /// Çerçevenin köşe yuvarlaklığı. Tek satırlık alanlar tam yuvarlak durur;
+  /// çok satırlı kutularda o kadar yuvarlak köşe metni sıkıştırdığı için
+  /// daha küçük bir değer geçilebilir.
+  final BorderRadius borderRadius;
+
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 60,
+      height: height,
       child: TextField(
         controller: controller,
         onChanged: onChanged,
         obscureText: isObscureText,
+        maxLines: expands ? null : 1,
+        expands: expands,
+        textAlignVertical: expands ? TextAlignVertical.top : null,
         decoration: InputDecoration(
           labelText: labelText,
-          labelStyle: TextStyle(fontFamily: 'Poppins', color: Colors.grey[600]),
-          border: OutlineInputBorder(borderRadius: AppRadius.primaryCircular),
+          alignLabelWithHint: expands,
+          labelStyle: context.textTheme.bodyLarge?.copyWith(
+            color: context.textSecondary,
+          ),
+          border: OutlineInputBorder(borderRadius: borderRadius),
           focusedBorder: OutlineInputBorder(
-            borderRadius: AppRadius.primaryCircular,
-            borderSide: BorderSide(
-              color: Theme.of(context).colorScheme.primary,
-              width: 2.0,
-            ),
+            borderRadius: borderRadius,
+            borderSide: BorderSide(color: context.accentColor, width: 2.0),
           ),
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: 16.0,
-            vertical: 18.0,
-          ),
+          contentPadding: AppPadding.field,
           isDense: true,
           suffixIcon: showSuffixIcon == true ? suffixIcon : null,
         ),
-        style: TextStyle(fontFamily: 'Poppins', fontSize: 16),
+        style: context.textTheme.bodyLarge,
         keyboardType: keyboardType,
       ),
     );

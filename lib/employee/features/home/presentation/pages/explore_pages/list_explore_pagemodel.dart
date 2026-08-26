@@ -3,11 +3,11 @@ part of 'list_explore_page.dart';
 abstract class ListExplorePagemodel extends State<ListExplorePage>
     with AutomaticKeepAliveClientMixin<ListExplorePage> {
   bool isOpen = true;
-  List<JobModel> _jobs = [];
-  List<JobModel> _filteredJobs = [];
+  List<Job> _jobs = [];
+  List<Job> _filteredJobs = [];
   Position? _currentPosition;
   bool _loading = true;
-  final JobRepository _jobRepository = JobRepository();
+  final JobService _jobService = JobService();
 
   // Arama
   final TextEditingController _searchController = TextEditingController();
@@ -40,7 +40,7 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
   Future<void> _loadJobsAndLocation() async {
     try {
       // İşleri yükle
-      final jobs = await _jobRepository.getJobs();
+      final jobs = await _jobService.getJobs();
 
       // Konumu al
       Position? position;
@@ -85,7 +85,7 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
     }
   }
 
-  double? _getDistance(JobModel job) {
+  double? _getDistance(Job job) {
     if (_currentPosition == null) return null;
     final distance = Geolocator.distanceBetween(
       _currentPosition!.latitude,
@@ -112,7 +112,7 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
   }
 
   void _applyAllFilters() {
-    List<JobModel> filtered = _jobs;
+    List<Job> filtered = _jobs;
 
     // Arama filtresi
     if (_searchQuery.trim().isNotEmpty) {

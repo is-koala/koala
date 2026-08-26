@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:koala/employee/features/auth/presentation/widgets/auth_divider.dart';
+import 'package:koala/employee/features/auth/presentation/widgets/auth_legal_footer.dart';
+import 'package:koala/employee/features/auth/presentation/widgets/google_auth_button.dart';
 import 'package:koala/product/widgets/my_button.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
-import 'package:koala/product/constants/app_radius.dart';
+import 'package:koala/product/constants/app_padding.dart';
+import 'package:koala/product/constants/app_sizes.dart';
+import 'package:koala/product/extensions/context_extensions.dart';
 
 class RegisterPage extends StatelessWidget {
   const RegisterPage({super.key, required this.isBusiness});
@@ -13,232 +18,81 @@ class RegisterPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: context.backgroundColor,
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
         leading: IconButton(
-          icon: Icon(HugeIcons.strokeRoundedArrowLeft01, color: Colors.black),
+          icon: Icon(
+            HugeIcons.strokeRoundedArrowLeft01,
+            color: context.textPrimary,
+          ),
           onPressed: () => context.pop(),
         ),
-        elevation: 0,
-        iconTheme: IconThemeData(color: Colors.black),
       ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.only(bottom: 40.0, left: 12.0, right: 12.0),
-        child: RichText(
-          textAlign: TextAlign.center,
-          text: TextSpan(
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 10,
-              color: Colors.grey[600],
-              height: 1.5,
-            ),
-            children: [
-              TextSpan(text: 'Devam ederek '),
-              WidgetSpan(
-                child: GestureDetector(
-                  onTap: () {},
-                  child: Text(
-                    'Kullanım Şartları',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 10,
-                      color: Theme.of(context).colorScheme.primary,
-                      fontWeight: FontWeight.w600,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                ),
-              ),
-              TextSpan(text: ' ve '),
-              WidgetSpan(
-                child: GestureDetector(
-                  onTap: () {},
-                  child: Text(
-                    'Gizlilik Politikası',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 10,
-                      color: Theme.of(context).colorScheme.primary,
-                      fontWeight: FontWeight.w600,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                ),
-              ),
-              TextSpan(text: "'nı kabul etmiş olursunuz."),
-            ],
-          ),
-        ),
-      ),
+      bottomNavigationBar: const AuthLegalFooter(),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Center(
             child: Padding(
-              padding: EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16.0),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      children: [
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: 12.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                isBusiness
-                                    ? "İş Hesabınızı Açalım!"
-                                    : "Haydi Kayıt Olalım!",
-                                style: TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 40,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.black,
-                                ),
-                              ),
-                              const SizedBox(height: 36),
-                              Row(
-                                children: [
-                                  Expanded(child: MyTextfield(labelText: "Ad")),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: MyTextfield(labelText: "Soyad"),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-                              MyTextfield(labelText: 'E-posta'),
-                              const SizedBox(height: 20),
-                            ],
-                          ),
-                        ),
-                        Column(
-                          children: [
-                            SizedBox(
-                              width: double.infinity,
-                              height: 60,
-                              child: MyButton(
-                                onPressed: () {
-                                  context.go(
-                                    '/auth/register-type/register/email-verification-pending?isBusiness=$isBusiness',
-                                  );
-                                },
-                                title: 'KAYIT OL',
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-
-                            // "YA DA" Divider
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12.0,
-                              ),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Divider(
-                                      color: Colors.grey[300],
-                                      thickness: 1,
-                                    ),
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16.0,
-                                    ),
-                                    child: Text(
-                                      'YA DA',
-                                      style: TextStyle(
-                                        fontFamily: 'Poppins',
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: Divider(
-                                      color: Colors.grey[300],
-                                      thickness: 1,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12.0,
-                              ),
-                              child: SizedBox(
-                                width: double.infinity,
-                                height: 60,
-                                child: ElevatedButton(
-                                  onPressed: () {},
-                                  style: ElevatedButton.styleFrom(
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: AppRadius.primaryCircular,
-                                      side: BorderSide(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.primary,
-                                        width: 3.0,
-                                      ),
-                                    ),
-                                    backgroundColor: Colors.white,
-                                    padding: const EdgeInsets.all(12.0),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Row(
-                                        children: [
-                                          SizedBox(width: 10),
-                                          Image.asset(
-                                            'assets/images/google_logo.png',
-                                            width: 24,
-                                            height: 24,
-                                          ),
-                                        ],
-                                      ),
-                                      Expanded(
-                                        child: Center(
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Text(
-                                                "GOOGLE İLE KAYIT OL",
-                                                style: TextStyle(
-                                                  fontFamily: 'Poppins',
-                                                  color: Theme.of(
-                                                    context,
-                                                  ).colorScheme.primary,
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.w700,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 34),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+              padding: AppPadding.authContent,
+              child: Column(
+                children: [_formSection(context), _actionsSection(context)],
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _formSection(BuildContext context) {
+    return Container(
+      padding: AppPadding.horizontalSmall,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            isBusiness ? "İş Hesabınızı Açalım!" : "Haydi Kayıt Olalım!",
+            style: context.textTheme.displayMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: AppSizes.sectionSpace),
+          Row(
+            children: [
+              Expanded(child: MyTextfield(labelText: "Ad")),
+              const SizedBox(width: AppSizes.space),
+              Expanded(child: MyTextfield(labelText: "Soyad")),
+            ],
+          ),
+          const SizedBox(height: AppSizes.space),
+          MyTextfield(labelText: 'E-posta'),
+          const SizedBox(height: AppSizes.spaceLarge),
+        ],
+      ),
+    );
+  }
+
+  Widget _actionsSection(BuildContext context) {
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          height: AppSizes.buttonHeight,
+          child: MyButton(
+            onPressed: () {
+              context.go(
+                '/auth/register-type/register/email-verification-pending?isBusiness=$isBusiness',
+              );
+            },
+            title: 'KAYIT OL',
+          ),
+        ),
+        const SizedBox(height: AppSizes.space),
+        const AuthDivider(),
+        const SizedBox(height: AppSizes.space),
+        GoogleAuthButton(title: 'GOOGLE İLE KAYIT OL', onPressed: () {}),
+      ],
     );
   }
 }

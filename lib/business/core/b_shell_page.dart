@@ -4,6 +4,9 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/business/core/widgets/b_nav_item.dart';
 import 'package:koala/business/features/home/presentation/providers/b_page_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_padding.dart';
+import 'package:koala/product/constants/app_sizes.dart';
+import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:provider/provider.dart';
 
 class BShellPage extends StatelessWidget {
@@ -28,20 +31,18 @@ class BShellPage extends StatelessWidget {
                 color: AppColors.primaryColor,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.3),
+                    color: AppColors.navShadow,
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
                 ],
               ),
               child: Padding(
-                padding: EdgeInsets.only(
-                  left: 8,
-                  right: 8,
-                  bottom: MediaQuery.of(context).padding.bottom,
+                padding: AppPadding.bNavBarPadding.copyWith(
+                  bottom: context.padding.bottom,
                 ),
                 child: SizedBox(
-                  height: 76,
+                  height: AppSizes.bNavBar,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     mainAxisSize: MainAxisSize.max,

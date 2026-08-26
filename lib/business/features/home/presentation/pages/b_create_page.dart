@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:koala/business/features/home/data/fake_business_company.dart';
+import 'package:koala/business/features/home/services/fake_business_company.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
-import 'package:koala/employee/features/home/data/models/job_model.dart';
+import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_padding.dart';
+import 'package:koala/product/constants/app_radius.dart';
+import 'package:koala/product/constants/app_sizes.dart';
+import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/button_navbar.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
@@ -18,6 +21,13 @@ class BCreatePage extends StatefulWidget {
 }
 
 class _BCreatePageState extends State<BCreatePage> {
+  /// Açıklama alanının yüksekliği: yaklaşık dört satır.
+  static const double _descriptionHeight = 120;
+
+  /// Başarı diyaloğundaki tik dairesi.
+  static const double _successCircleSize = 72;
+  static const double _successIconSize = 48;
+
   final _titleController = TextEditingController();
   final _subtitleController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -56,11 +66,8 @@ class _BCreatePageState extends State<BCreatePage> {
         _priceController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'Lütfen başlık ve ücret alanlarını doldurun',
-            style: TextStyle(fontFamily: 'Poppins'),
-          ),
-          backgroundColor: Colors.red,
+          content: Text('Lütfen başlık ve ücret alanlarını doldurun'),
+          backgroundColor: AppColors.danger,
         ),
       );
       return;
@@ -70,7 +77,7 @@ class _BCreatePageState extends State<BCreatePage> {
     final now = DateTime.now();
     final jobId = 'b_${now.millisecondsSinceEpoch}';
 
-    final job = JobModel(
+    final job = Job(
       id: jobId,
       latitude: 39.9208,
       longitude: 32.8541,
@@ -118,47 +125,44 @@ class _BCreatePageState extends State<BCreatePage> {
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: const RoundedRectangleBorder(
+          borderRadius: AppRadius.secondaryCircular,
+        ),
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(AppSizes.spaceLarge),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 72,
-                height: 72,
+                width: _successCircleSize,
+                height: _successCircleSize,
                 decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.1),
+                  color: AppColors.success.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
                   Icons.check_circle_outline,
-                  color: Colors.green,
-                  size: 48,
+                  color: AppColors.success,
+                  size: _successIconSize,
                 ),
               ),
-              const SizedBox(height: 16),
-              const Text(
+              const SizedBox(height: AppSizes.spaceMedium),
+              Text(
                 'İlan Oluşturuldu!',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 20,
+                style: context.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w700,
-                  color: Colors.black87,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSizes.spaceSmall),
               Text(
                 'İlanınız başarıyla oluşturuldu ve aktif ilanlarınızda görüntülenecek.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 14,
-                  color: Colors.grey[600],
+                style: context.textTheme.bodyMedium?.copyWith(
+                  color: context.textSecondary,
                   height: 1.4,
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSizes.spaceLarge),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -167,22 +171,18 @@ class _BCreatePageState extends State<BCreatePage> {
                     context.go('/business/posts');
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryColor,
-                    foregroundColor: Colors.white,
+                    backgroundColor: context.accentColor,
+                    foregroundColor: context.onAccentColor,
                     elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: AppRadius.innerCircular,
                     ),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  child: const Text(
-                    'İlanlarıma Git',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSizes.spaceMedium,
                     ),
+                    textStyle: context.textTheme.labelLarge,
                   ),
+                  child: const Text('İlanlarıma Git'),
                 ),
               ),
             ],
@@ -195,7 +195,7 @@ class _BCreatePageState extends State<BCreatePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: context.backgroundColor,
       appBar: MyAppbar(title: "Yeni İlan Oluştur"),
       bottomNavigationBar: ButtonNavbar(
         onPressed: _createJob,
@@ -209,55 +209,55 @@ class _BCreatePageState extends State<BCreatePage> {
             children: [
               // Temel Bilgiler
               _sectionLabel("Temel Bilgiler"),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSizes.spaceMedium),
               MyTextfield(
                 labelText: "İlan Başlığı *",
                 controller: _titleController,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSizes.spaceMedium),
               MyTextfield(
                 labelText: "Kısa Açıklama",
                 controller: _subtitleController,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSizes.spaceMedium),
               MyTextfield(
                 labelText: "Ücret (₺) *",
                 controller: _priceController,
                 keyboardType: TextInputType.number,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSizes.spaceMedium),
               MyTextfield(labelText: "Adres", controller: _addressController),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSizes.spaceLarge),
 
               // Kategori & Tip
               _sectionLabel("Kategori ve Tip"),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSizes.space),
               _categorySelector(),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSizes.spaceMedium),
               _typeSelector(),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSizes.spaceLarge),
 
               // Detaylı Bilgiler
               _sectionLabel("Detaylı Bilgiler"),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSizes.space),
               _descriptionTextField(),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSizes.spaceMedium),
               MyTextfield(labelText: "Sektör", controller: _sectorController),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSizes.spaceMedium),
               MyTextfield(
                 labelText: "Pozisyon",
                 controller: _positionController,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSizes.spaceMedium),
               MyTextfield(labelText: "Görevler", controller: _dutiesController),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSizes.spaceLarge),
 
               // Gereksinimler
               _sectionLabel("Gereksinimler"),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSizes.space),
               Row(
                 children: [
                   Expanded(
@@ -267,7 +267,7 @@ class _BCreatePageState extends State<BCreatePage> {
                       keyboardType: TextInputType.number,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: AppSizes.spaceMedium),
                   Expanded(
                     child: MyTextfield(
                       labelText: "Max Yaş",
@@ -277,12 +277,12 @@ class _BCreatePageState extends State<BCreatePage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSizes.spaceMedium),
               MyTextfield(
                 labelText: "Kıyafet Kuralı",
                 controller: _dressCodeController,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSizes.space),
               _switchTile(
                 title: "Deneyim Gerekli",
                 value: _experienceRequired,
@@ -294,7 +294,7 @@ class _BCreatePageState extends State<BCreatePage> {
                 onChanged: (v) => setState(() => _insuranceRequired = v),
               ),
 
-              const SizedBox(height: 60),
+              const SizedBox(height: AppSizes.navBarClearance),
             ],
           ),
         ),
@@ -302,35 +302,26 @@ class _BCreatePageState extends State<BCreatePage> {
     );
   }
 
-  Widget _sectionLabel(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontFamily: 'Poppins',
-        fontSize: 18,
-        fontWeight: FontWeight.w600,
-        color: Colors.black87,
-      ),
-    );
-  }
+  Widget _sectionLabel(String title) =>
+      Text(title, style: context.textTheme.titleMedium);
 
   Widget _categorySelector() {
     return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+      spacing: AppSizes.spaceSmall,
+      runSpacing: AppSizes.spaceSmall,
       children: JobCategory.values.map((category) {
         final isSelected = _selectedCategory == category;
         return GestureDetector(
           onTap: () => setState(() => _selectedCategory = category),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            padding: AppPadding.chip,
             decoration: BoxDecoration(
               color: isSelected
                   ? category.color.withValues(alpha: 0.15)
-                  : Colors.grey[100],
-              borderRadius: BorderRadius.circular(12),
+                  : context.tileColor,
+              borderRadius: AppRadius.innerCircular,
               border: Border.all(
-                color: isSelected ? category.color : Colors.grey[300]!,
+                color: isSelected ? category.color : context.dividerColor,
                 width: isSelected ? 2 : 1,
               ),
             ),
@@ -339,17 +330,15 @@ class _BCreatePageState extends State<BCreatePage> {
               children: [
                 Icon(
                   category.icon,
-                  size: 16,
-                  color: isSelected ? category.color : Colors.grey[600],
+                  size: AppSizes.iconSmall,
+                  color: isSelected ? category.color : context.textSecondary,
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: AppSizes.spaceTiny),
                 Text(
                   category.displayName,
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 13,
+                  style: context.textTheme.bodySmall?.copyWith(
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                    color: isSelected ? category.color : Colors.grey[600],
+                    color: isSelected ? category.color : context.textSecondary,
                   ),
                 ),
               ],
@@ -369,32 +358,30 @@ class _BCreatePageState extends State<BCreatePage> {
             onTap: () => setState(() => _selectedType = type),
             child: Container(
               margin: EdgeInsets.only(
-                right: type == JobType.oneTime ? 8 : 0,
-                left: type == JobType.recurring ? 8 : 0,
+                right: type == JobType.oneTime ? AppSizes.spaceSmall : 0,
+                left: type == JobType.recurring ? AppSizes.spaceSmall : 0,
               ),
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.symmetric(vertical: AppSizes.space),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? AppColors.primaryColor.withValues(alpha: 0.1)
-                    : Colors.grey[100],
-                borderRadius: BorderRadius.circular(12),
+                    ? context.accentColor.withValues(alpha: 0.1)
+                    : context.tileColor,
+                borderRadius: AppRadius.innerCircular,
                 border: Border.all(
                   color: isSelected
-                      ? AppColors.primaryColor
-                      : Colors.grey[300]!,
+                      ? context.accentColor
+                      : context.dividerColor,
                   width: isSelected ? 2 : 1,
                 ),
               ),
               child: Center(
                 child: Text(
                   type.displayName,
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 14,
+                  style: context.textTheme.bodyMedium?.copyWith(
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                     color: isSelected
-                        ? AppColors.primaryColor
-                        : Colors.grey[600],
+                        ? context.accentColor
+                        : context.textSecondary,
                   ),
                 ),
               ),
@@ -406,26 +393,14 @@ class _BCreatePageState extends State<BCreatePage> {
   }
 
   Widget _descriptionTextField() {
-    return TextField(
+    return MyTextfield(
+      labelText: "Açıklama",
       controller: _descriptionController,
-      maxLines: 4,
-      decoration: InputDecoration(
-        labelText: "Açıklama",
-        labelStyle: TextStyle(fontFamily: 'Poppins', color: Colors.grey[600]),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: Theme.of(context).colorScheme.primary,
-            width: 2.0,
-          ),
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16.0,
-          vertical: 14.0,
-        ),
-      ),
-      style: const TextStyle(fontFamily: 'Poppins', fontSize: 16),
+      height: _descriptionHeight,
+      expands: true,
+      // Tek satırlık alanların tam yuvarlak köşesi bu yükseklikte metni
+      // sıkıştırıyor.
+      borderRadius: AppRadius.innerCircular,
     );
   }
 
@@ -435,23 +410,20 @@ class _BCreatePageState extends State<BCreatePage> {
     required ValueChanged<bool> onChanged,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.only(bottom: AppSizes.spaceTiny),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             title,
-            style: const TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 15,
+            style: context.textTheme.bodyLarge?.copyWith(
               fontWeight: FontWeight.w500,
-              color: Colors.black87,
             ),
           ),
           Switch(
             value: value,
             onChanged: onChanged,
-            activeThumbColor: AppColors.primaryColor,
+            activeThumbColor: context.accentColor,
           ),
         ],
       ),

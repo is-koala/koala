@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:koala/product/constants/app_sizes.dart';
+import 'package:koala/product/extensions/context_extensions.dart';
 
 class MyAppbar extends StatelessWidget implements PreferredSizeWidget {
   const MyAppbar({
@@ -8,29 +10,33 @@ class MyAppbar extends StatelessWidget implements PreferredSizeWidget {
     required this.title,
     this.showBackButton = true,
     this.actions,
-    this.fontSize = 22,
+    this.isLarge = false,
   });
 
   final String title;
   final bool showBackButton;
   final List<Widget>? actions;
-  final double fontSize;
+
+  /// Başlık bir tık büyük çizilsin mi.
+  ///
+  /// Sekme kökü olan sayfalar (Profilim, Ayarlar, Sohbetler) alt sayfalardan
+  /// ayrışsın diye büyük başlık kullanıyor.
+  final bool isLarge;
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
   @override
   Widget build(BuildContext context) {
+    // Zemin, gölge ve başlık stili appBarTheme'den geliyor; burada yalnızca
+    // sayfaya özgü olanlar veriliyor.
     return AppBar(
-      centerTitle: false,
-      surfaceTintColor: Colors.white,
-      backgroundColor: Colors.white,
-      elevation: 0,
       leading: showBackButton
           ? IconButton(
               icon: Icon(
                 HugeIcons.strokeRoundedArrowLeft01,
-                color: Colors.black,
+                color: context.textPrimary,
+                size: AppSizes.icon,
               ),
               onPressed: () => context.pop(),
             )
@@ -38,12 +44,11 @@ class MyAppbar extends StatelessWidget implements PreferredSizeWidget {
       automaticallyImplyLeading: false,
       title: Text(
         title,
-        style: TextStyle(
-          fontFamily: "Poppins",
-          color: Colors.black,
-          fontSize: fontSize,
-          fontWeight: FontWeight.w500,
-        ),
+        style: isLarge
+            ? context.theme.appBarTheme.titleTextStyle?.copyWith(
+                fontSize: context.textTheme.headlineMedium?.fontSize,
+              )
+            : null,
       ),
       actions: actions,
     );

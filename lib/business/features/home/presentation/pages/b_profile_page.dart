@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:koala/business/features/home/data/fake_business_company.dart';
-import 'package:koala/employee/features/company_detail/domain/company_model.dart';
+import 'package:koala/business/features/home/services/fake_business_company.dart';
+import 'package:koala/employee/features/company_detail/models/company.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_padding.dart';
+import 'package:koala/product/constants/app_radius.dart';
+import 'package:koala/product/constants/app_sizes.dart';
+import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 
 class BProfilePage extends StatefulWidget {
@@ -15,7 +18,19 @@ class BProfilePage extends StatefulWidget {
 }
 
 class _BProfilePageState extends State<BProfilePage> {
-  late CompanyModel company;
+  late Company company;
+
+  /// Kapaktaki şirket logosu ve çevresindeki beyaz halka.
+  static const double _logoSize = 90;
+  static const double _logoBorder = 3;
+
+  /// Kapak üzerindeki ikincil metin ve rozet zeminlerinin opaklıkları.
+  static const double _onCoverMuted = 0.9;
+  static const double _onCoverSurface = 0.2;
+
+  /// Navbar'ın altında kalmasın diye sayfanın sonuna eklenen pay; profilde
+  /// liste değil tek sütun var, o yüzden standart paydan geniş.
+  static const double _bottomClearance = 120;
 
   @override
   void initState() {
@@ -26,22 +41,23 @@ class _BProfilePageState extends State<BProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: context.backgroundColor,
       appBar: MyAppbar(
         title: "Profilim",
-        fontSize: 24,
+        isLarge: true,
         showBackButton: false,
         actions: [
           IconButton(
             onPressed: () async {
               await context.push('/business/settings');
+              if (!mounted) return;
               setState(() {
                 company = FakeBusinessCompany.instance;
               });
             },
             icon: HugeIcon(
               icon: HugeIcons.strokeRoundedSettings01,
-              color: Colors.black,
+              color: context.textPrimary,
             ),
           ),
         ],
@@ -56,15 +72,15 @@ class _BProfilePageState extends State<BProfilePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSizes.spaceLarge),
                   _aboutSection(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSizes.spaceLarge),
                   _contactInfoSection(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSizes.spaceLarge),
                   _addressSection(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSizes.spaceLarge),
                   _statsSection(),
-                  const SizedBox(height: 120),
+                  const SizedBox(height: _bottomClearance),
                 ],
               ),
             ),
@@ -74,136 +90,132 @@ class _BProfilePageState extends State<BProfilePage> {
     );
   }
 
+  // -------------------------------------------------------------------- Kapak
+
+  /// Kapak marka yeşili; üstündeki her şey temadan bağımsız beyaz.
   Widget _profileHeader() {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.primaryColor,
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(24),
-          bottomRight: Radius.circular(24),
-        ),
+        color: context.accentColor,
+        borderRadius: AppRadius.secondaryBottom,
       ),
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      padding: const EdgeInsets.fromLTRB(
+        AppPadding.primary,
+        AppSizes.spaceSmall,
+        AppPadding.primary,
+        AppSizes.spaceLarge,
+      ),
       child: Column(
         children: [
-          // Logo
-          Container(
-            width: 90,
-            height: 90,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 3),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.15),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: ClipOval(
-              child: company.logo != null
-                  ? Image.network(
-                      company.logo!.url,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _logoPlaceholder(),
-                    )
-                  : _logoPlaceholder(),
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // Şirket Adı
+          _logo(),
+          const SizedBox(height: AppSizes.space),
           Text(
             company.name,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 22,
+            style: context.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.w600,
-              color: Colors.white,
+              color: AppColors.onAccent,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSizes.spaceTiny),
+          if (company.type != null) _typeBadge(),
+          const SizedBox(height: AppSizes.spaceSmall),
+          _approvalRow(),
+        ],
+      ),
+    );
+  }
 
-          // Şirket Tipi Badge
-          if (company.type != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                company.type!.displayName,
-                style: const TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          const SizedBox(height: 8),
-
-          // Onay durumu
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                company.isApproved
-                    ? HugeIcons.strokeRoundedCheckmarkCircle02
-                    : HugeIcons.strokeRoundedAlert02,
-                color: Colors.white,
-                size: 16,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                company.isApproved ? 'Onaylı İşletme' : 'Onay Bekliyor',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w400,
-                  color: Colors.white.withValues(alpha: 0.9),
-                ),
-              ),
-            ],
+  Widget _logo() {
+    return Container(
+      width: _logoSize,
+      height: _logoSize,
+      decoration: BoxDecoration(
+        color: AppColors.onAccent,
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.onAccent, width: _logoBorder),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.mapShadow,
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
+      ),
+      child: ClipOval(
+        child: company.logo != null
+            ? Image.network(
+                company.logo!.url,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => _logoPlaceholder(),
+              )
+            : _logoPlaceholder(),
       ),
     );
   }
 
   Widget _logoPlaceholder() {
     return Container(
-      color: Colors.grey[200],
+      color: context.tileColor,
       child: Icon(
         HugeIcons.strokeRoundedBuilding06,
-        size: 40,
-        color: Colors.grey[400],
+        size: AppSizes.iconLarge,
+        color: context.textTertiary,
       ),
     );
   }
 
-  // _editProfileButton removed — editing is now in BSettingsPage > BCompanyInfoPage
+  Widget _typeBadge() {
+    return Container(
+      padding: AppPadding.badge,
+      decoration: BoxDecoration(
+        color: AppColors.onAccent.withValues(alpha: _onCoverSurface),
+        borderRadius: AppRadius.secondaryCircular,
+      ),
+      child: Text(
+        company.type!.displayName,
+        style: context.textTheme.bodySmall?.copyWith(
+          fontWeight: FontWeight.w500,
+          color: AppColors.onAccent,
+        ),
+      ),
+    );
+  }
+
+  Widget _approvalRow() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          company.isApproved
+              ? HugeIcons.strokeRoundedCheckmarkCircle02
+              : HugeIcons.strokeRoundedAlert02,
+          color: AppColors.onAccent,
+          size: AppSizes.iconSmall,
+        ),
+        const SizedBox(width: AppSizes.spaceTiny),
+        Text(
+          company.isApproved ? 'Onaylı İşletme' : 'Onay Bekliyor',
+          style: context.textTheme.bodySmall?.copyWith(
+            color: AppColors.onAccent.withValues(alpha: _onCoverMuted),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ------------------------------------------------------------- Bölümler
 
   Widget _aboutSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionTitle("Hakkımızda"),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSizes.spaceSmall),
         Text(
           company.description ?? 'Henüz bir açıklama eklenmemiş.',
-          style: const TextStyle(
-            fontFamily: 'Poppins',
-            fontSize: 14,
-            fontWeight: FontWeight.w400,
-            color: Colors.black87,
-            height: 1.5,
-          ),
+          style: context.textTheme.bodyMedium?.copyWith(height: 1.5),
         ),
       ],
     );
@@ -214,7 +226,7 @@ class _BProfilePageState extends State<BProfilePage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionTitle("İletişim Bilgileri"),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSizes.space),
         _infoCard([
           _infoRow(HugeIcons.strokeRoundedMail01, "E-posta", company.email),
           if (company.phoneNumber != null)
@@ -243,28 +255,30 @@ class _BProfilePageState extends State<BProfilePage> {
   Widget _addressSection() {
     if (company.address == null) return const SizedBox.shrink();
 
+    final locality = [
+      company.address!.district,
+      company.address!.city,
+      company.address!.country,
+    ].where((e) => e != null && e.isNotEmpty).join(', ');
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionTitle("Adres"),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSizes.space),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.grey[50],
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[200]!),
-          ),
+          padding: AppPadding.primaryAll,
+          decoration: _panelDecoration,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(
                 HugeIcons.strokeRoundedLocation01,
-                size: 22,
-                color: AppColors.primaryColor,
+                size: AppSizes.iconMedium,
+                color: context.accentColor,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSizes.space),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -272,27 +286,12 @@ class _BProfilePageState extends State<BProfilePage> {
                     if (company.address!.street != null)
                       Text(
                         company.address!.street!,
-                        style: const TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 14,
+                        style: context.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w500,
-                          color: Colors.black87,
                         ),
                       ),
-                    const SizedBox(height: 2),
-                    Text(
-                      [
-                        company.address!.district,
-                        company.address!.city,
-                        company.address!.country,
-                      ].where((e) => e != null && e.isNotEmpty).join(', '),
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 13,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.grey[600],
-                      ),
-                    ),
+                    const SizedBox(height: AppSizes.smallGap),
+                    Text(locality, style: context.textTheme.bodySmall),
                   ],
                 ),
               ),
@@ -308,7 +307,8 @@ class _BProfilePageState extends State<BProfilePage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionTitle("İstatistikler"),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSizes.space),
+        // TODO(backend): Sayılar sabit; gerçek servise bağlanacak.
         Row(
           children: [
             Expanded(
@@ -318,7 +318,7 @@ class _BProfilePageState extends State<BProfilePage> {
                 label: "Aktif İlan",
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSizes.space),
             Expanded(
               child: _statCard(
                 icon: HugeIcons.strokeRoundedUserMultiple,
@@ -326,7 +326,7 @@ class _BProfilePageState extends State<BProfilePage> {
                 label: "Başvuru",
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSizes.space),
             Expanded(
               child: _statCard(
                 icon: HugeIcons.strokeRoundedStar,
@@ -346,96 +346,75 @@ class _BProfilePageState extends State<BProfilePage> {
     required String label,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      padding: const EdgeInsets.symmetric(
+        vertical: AppSizes.spaceMedium,
+        horizontal: AppSizes.spaceSmall,
+      ),
       decoration: BoxDecoration(
-        color: AppColors.primaryColor.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.primaryColor.withValues(alpha: 0.2),
-        ),
+        color: context.accentColor.withValues(alpha: 0.08),
+        borderRadius: AppRadius.secondaryCircular,
+        border: Border.all(color: context.accentColor.withValues(alpha: 0.2)),
       ),
       child: Column(
         children: [
-          Icon(icon, size: 24, color: AppColors.primaryColor),
-          const SizedBox(height: 8),
+          Icon(icon, size: AppSizes.icon, color: context.accentColor),
+          const SizedBox(height: AppSizes.spaceSmall),
           Text(
             value,
-            style: const TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 20,
+            style: context.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w700,
-              color: Colors.black87,
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 12,
-              fontWeight: FontWeight.w400,
-              color: Colors.grey[600],
-            ),
-          ),
+          const SizedBox(height: AppSizes.smallGap),
+          Text(label, style: context.textTheme.labelMedium),
         ],
       ),
     );
   }
 
-  Widget _sectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontFamily: 'Poppins',
-        fontSize: 18,
-        fontWeight: FontWeight.w600,
-        color: Colors.black87,
-      ),
-    );
-  }
+  // --------------------------------------------------------- Ortak parçalar
+
+  Widget _sectionTitle(String title) =>
+      Text(title, style: context.textTheme.titleMedium);
+
+  BoxDecoration get _panelDecoration => BoxDecoration(
+    color: context.tileColor,
+    borderRadius: AppRadius.innerCircular,
+    border: Border.all(color: context.dividerColor),
+  );
 
   Widget _infoCard(List<Widget> children) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
+      padding: AppPadding.primaryAll,
+      decoration: _panelDecoration,
       child: Column(children: children),
     );
   }
 
   Widget _infoRow(IconData icon, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: AppSizes.spaceMedium),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: AppColors.primaryColor),
-          const SizedBox(width: 12),
+          Icon(icon, size: AppSizes.iconMedium, color: context.accentColor),
+          const SizedBox(width: AppSizes.space),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   label,
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 12,
-                    fontWeight: FontWeight.w400,
-                    color: Colors.grey[500],
+                  style: context.textTheme.labelMedium?.copyWith(
+                    color: context.textTertiary,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSizes.smallGap),
                 Text(
                   value,
-                  style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 14,
+                  style: context.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w500,
-                    color: Colors.black87,
                   ),
                 ),
               ],

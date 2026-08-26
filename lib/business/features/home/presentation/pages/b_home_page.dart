@@ -1,17 +1,49 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:koala/business/features/home/data/fake_business_company.dart';
-import 'package:koala/business/features/home/data/models/b_applicant_model.dart';
-import 'package:koala/business/features/home/data/models/b_job_post_model.dart';
+import 'package:koala/business/features/home/services/fake_business_company.dart';
+import 'package:koala/business/features/home/models/b_applicant.dart';
+import 'package:koala/business/features/home/models/b_job_post.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
-import 'package:koala/employee/features/home/data/models/job_model.dart';
+import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/product/constants/app_assets.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_padding.dart';
+import 'package:koala/product/constants/app_radius.dart';
+import 'package:koala/product/constants/app_sizes.dart';
+import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:provider/provider.dart';
 
 class BHomePage extends StatelessWidget {
   const BHomePage({super.key});
+
+  /// Appbar'ın yüksekliği; iki satırlık marka bloğunu taşıyor.
+  static const double _appBarHeight = 70;
+
+  /// Appbar'daki logo kutusu.
+  static const double _appBarLogo = 42;
+
+  /// Karşılama bloğundaki maskot kutusu ve görseli.
+  static const double _mascotBox = 72;
+  static const double _mascotImage = 56;
+
+  /// İstatistik ve satır kartlarındaki ikon kutuları.
+  static const double _statIconBox = 40;
+  static const double _rowIconBox = 44;
+
+  /// Rozet ve kart zeminlerinin opaklıkları.
+  static const double _tintAlpha = 0.12;
+  static const double _panelAlpha = 0.08;
+
+  /// Karşılama bloğu üzerindeki içeriğin opaklıkları.
+  static const double _onCoverMuted = 0.9;
+  static const double _onCoverSurface = 0.2;
+
+  /// Ana sayfada listelenen en fazla kayıt sayısı; devamı ilgili sekmede.
+  static const int _previewCount = 3;
+
+  /// Navbar'ın altında kalmasın diye sayfanın sonuna eklenen pay.
+  static const double _bottomClearance = 120;
 
   @override
   Widget build(BuildContext context) {
@@ -25,111 +57,30 @@ class BHomePage extends StatelessWidget {
     );
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: context.backgroundColor,
       body: CustomScrollView(
         slivers: [
-          // =================== APP BAR ===================
-          SliverAppBar(
-            floating: true,
-            snap: true,
-            backgroundColor: Colors.white,
-            surfaceTintColor: Colors.white,
-            elevation: 0,
-            toolbarHeight: 70,
-            title: Row(
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Center(
-                    child: Text('🐨', style: const TextStyle(fontSize: 22)),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'KOALA',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        color: AppColors.primaryColor,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                    Text(
-                      'İşveren Paneli',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 11,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.grey[500],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            actions: [
-              IconButton(
-                onPressed: () => context.push('/business/notifications'),
-                icon: Badge(
-                  smallSize: 8,
-                  backgroundColor: Colors.red,
-                  child: Icon(
-                    HugeIcons.strokeRoundedNotification03,
-                    color: Colors.grey[700],
-                    size: 24,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 4),
-            ],
-          ),
-
-          // =================== CONTENT ===================
+          _appBar(context),
           SliverToBoxAdapter(
             child: Padding(
               padding: AppPadding.primaryHorizontal,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 8),
-
-                  // ===== HOŞGELDİN BANNER =====
+                  const SizedBox(height: AppSizes.spaceSmall),
                   _welcomeBanner(context, company.name),
-
-                  const SizedBox(height: 24),
-
-                  // ===== İSTATİSTİKLER =====
+                  const SizedBox(height: AppSizes.spaceLarge),
                   _statsRow(
+                    context,
                     activeCount: activePosts.length,
                     pastCount: pastPosts.length,
                     applicantCount: totalApplicants,
                   ),
-
-                  const SizedBox(height: 28),
-
-                  // ===== HIZLI İŞLEMLER =====
-                  _quickActionsSection(context),
-
-                  const SizedBox(height: 28),
-
-                  // ===== SON BAŞVURULAR =====
+                  const SizedBox(height: AppSizes.spaceXLarge),
                   _recentApplicantsSection(context, bJobsProvider),
-
-                  const SizedBox(height: 28),
-
-                  // ===== AKTİF İLANLAR =====
+                  const SizedBox(height: AppSizes.spaceXLarge),
                   _activePostsSection(context, activePosts),
-
-                  const SizedBox(height: 120),
+                  const SizedBox(height: _bottomClearance),
                 ],
               ),
             ),
@@ -139,12 +90,80 @@ class BHomePage extends StatelessWidget {
     );
   }
 
-  // =================== HOŞGELDİN BANNER ===================
+  // ------------------------------------------------------------------ AppBar
 
+  SliverAppBar _appBar(BuildContext context) {
+    return SliverAppBar(
+      floating: true,
+      snap: true,
+      backgroundColor: context.backgroundColor,
+      surfaceTintColor: context.backgroundColor,
+      elevation: 0,
+      toolbarHeight: _appBarHeight,
+      title: Row(
+        children: [
+          Container(
+            width: _appBarLogo,
+            height: _appBarLogo,
+            decoration: BoxDecoration(
+              color: context.accentColor.withValues(alpha: _tintAlpha),
+              borderRadius: AppRadius.innerCircular,
+            ),
+            child: ClipRRect(
+              borderRadius: AppRadius.innerCircular,
+              child: Padding(
+                padding: const EdgeInsets.all(AppSizes.spaceTiny),
+                child: Image.asset(AppAssets.koalaLogo, fit: BoxFit.contain),
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSizes.spaceSmall),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'KOALA',
+                style: context.textTheme.titleLarge?.copyWith(
+                  color: context.accentColor,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              Text(
+                'İşveren Paneli',
+                style: context.textTheme.labelSmall?.copyWith(
+                  color: context.textTertiary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+      actions: [
+        IconButton(
+          onPressed: () => context.push('/business/notifications'),
+          icon: Badge(
+            smallSize: AppSizes.badgeDot,
+            backgroundColor: AppColors.danger,
+            child: Icon(
+              HugeIcons.strokeRoundedNotification03,
+              color: context.textSecondary,
+              size: AppSizes.icon,
+            ),
+          ),
+        ),
+        const SizedBox(width: AppSizes.spaceTiny),
+      ],
+    );
+  }
+
+  // -------------------------------------------------------- Karşılama bloğu
+
+  /// Zemin marka yeşili bir gradyan; üstündeki her şey temadan bağımsız beyaz.
   Widget _welcomeBanner(BuildContext context, String companyName) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: AppPadding.sheet,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -152,10 +171,10 @@ class BHomePage extends StatelessWidget {
           colors: [
             AppColors.primaryColor,
             AppColors.primaryColor.withValues(alpha: 0.8),
-            const Color(0xff5a9a58),
+            AppColors.primaryDeep,
           ],
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: AppRadius.secondaryCircular,
         boxShadow: [
           BoxShadow(
             color: AppColors.primaryColor.withValues(alpha: 0.3),
@@ -172,86 +191,80 @@ class BHomePage extends StatelessWidget {
               children: [
                 Text(
                   'Hoş geldin! 👋',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 15,
-                    fontWeight: FontWeight.w400,
-                    color: Colors.white.withValues(alpha: 0.9),
+                  style: context.textTheme.bodyLarge?.copyWith(
+                    color: AppColors.onAccent.withValues(alpha: _onCoverMuted),
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSizes.spaceTiny),
                 Text(
                   companyName,
-                  style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 22,
+                  style: context.textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                    color: AppColors.onAccent,
                   ),
                 ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.verified,
-                        size: 14,
-                        color: Colors.white.withValues(alpha: 0.9),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Onaylı İşveren',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white.withValues(alpha: 0.95),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                const SizedBox(height: AppSizes.space),
+                _approvedBadge(context),
               ],
             ),
           ),
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Center(
-              child: Image.asset(
-                'assets/images/koala_business.png',
-                width: 56,
-                height: 56,
-                fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => Icon(
-                  HugeIcons.strokeRoundedBuilding06,
-                  size: 36,
-                  color: Colors.white.withValues(alpha: 0.8),
-                ),
-              ),
-            ),
+          _mascot(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _approvedBadge(BuildContext context) {
+    final muted = AppColors.onAccent.withValues(alpha: _onCoverMuted);
+
+    return Container(
+      padding: AppPadding.chip,
+      decoration: BoxDecoration(
+        color: AppColors.onAccent.withValues(alpha: _onCoverSurface),
+        borderRadius: AppRadius.secondaryCircular,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.verified, size: AppSizes.iconSmall, color: muted),
+          const SizedBox(width: AppSizes.spaceTiny),
+          Text(
+            'Onaylı İşveren',
+            style: context.textTheme.labelMedium?.copyWith(color: muted),
           ),
         ],
       ),
     );
   }
 
-  // =================== İSTATİSTİKLER ===================
+  Widget _mascot(BuildContext context) {
+    return Container(
+      width: _mascotBox,
+      height: _mascotBox,
+      decoration: BoxDecoration(
+        color: AppColors.onAccent.withValues(alpha: _onCoverSurface),
+        borderRadius: AppRadius.secondaryCircular,
+      ),
+      child: Center(
+        child: Image.asset(
+          AppAssets.koalaBusiness,
+          width: _mascotImage,
+          height: _mascotImage,
+          fit: BoxFit.contain,
+          errorBuilder: (_, _, _) => Icon(
+            HugeIcons.strokeRoundedBuilding06,
+            size: AppSizes.iconLarge,
+            color: AppColors.onAccent.withValues(alpha: 0.8),
+          ),
+        ),
+      ),
+    );
+  }
 
-  Widget _statsRow({
+  // --------------------------------------------------------- İstatistikler
+
+  Widget _statsRow(
+    BuildContext context, {
     required int activeCount,
     required int pastCount,
     required int applicantCount,
@@ -260,76 +273,78 @@ class BHomePage extends StatelessWidget {
       children: [
         Expanded(
           child: _statCard(
+            context,
             icon: HugeIcons.strokeRoundedWork,
             label: 'Aktif İlan',
             value: '$activeCount',
-            color: AppColors.primaryColor,
+            color: context.accentColor,
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSizes.space),
         Expanded(
           child: _statCard(
+            context,
             icon: HugeIcons.strokeRoundedUserMultiple,
             label: 'Başvuru',
             value: '$applicantCount',
-            color: const Color(0xff5B8DEF),
+            color: AppColors.info,
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSizes.space),
         Expanded(
           child: _statCard(
+            context,
             icon: HugeIcons.strokeRoundedCheckmarkCircle02,
             label: 'Tamamlanan',
             value: '$pastCount',
-            color: const Color(0xffF5A623),
+            color: AppColors.warning,
           ),
         ),
       ],
     );
   }
 
-  Widget _statCard({
+  Widget _statCard(
+    BuildContext context, {
     required IconData icon,
     required String label,
     required String value,
     required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+      padding: const EdgeInsets.symmetric(
+        vertical: AppSizes.spaceMedium,
+        horizontal: AppSizes.space,
+      ),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
+        color: color.withValues(alpha: _panelAlpha),
+        borderRadius: AppRadius.secondaryCircular,
         border: Border.all(color: color.withValues(alpha: 0.15)),
       ),
       child: Column(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: _statIconBox,
+            height: _statIconBox,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppRadius.innerCircular,
             ),
-            child: Icon(icon, size: 20, color: color),
+            child: Icon(icon, size: AppSizes.iconMedium, color: color),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSizes.spaceSmall),
           Text(
             value,
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 24,
+            style: context.textTheme.headlineMedium?.copyWith(
               fontWeight: FontWeight.w700,
               color: color,
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: AppSizes.smallGap),
           Text(
             label,
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 12,
+            style: context.textTheme.labelMedium?.copyWith(
               fontWeight: FontWeight.w500,
-              color: Colors.grey[600],
             ),
             textAlign: TextAlign.center,
           ),
@@ -338,50 +353,48 @@ class BHomePage extends StatelessWidget {
     );
   }
 
-  // =================== HIZLI İŞLEMLER ===================
+  // --------------------------------------------------------- Hızlı işlemler
 
+  // Park edilmiş bölüm: tasarımı hazır ama henüz hiçbir yerden çağrılmıyor.
+  // Silmek yerine ignore ediliyor; bağlanacağı akış netleşince kaldırılır.
+  // ignore: unused_element
   Widget _quickActionsSection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Hızlı İşlemler',
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 12),
+        _sectionHeader(context, 'Hızlı İşlemler'),
+        const SizedBox(height: AppSizes.space),
         Row(
           children: [
             Expanded(
               child: _quickActionCard(
+                context,
                 icon: HugeIcons.strokeRoundedPlusSign,
                 label: 'Yeni İlan',
                 subtitle: 'İlan oluştur',
-                color: AppColors.primaryColor,
+                color: context.accentColor,
                 onTap: () => context.push('/business/create'),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSizes.space),
             Expanded(
               child: _quickActionCard(
+                context,
                 icon: HugeIcons.strokeRoundedWork,
                 label: 'İlanlarım',
                 subtitle: 'Tümünü gör',
-                color: const Color(0xff5B8DEF),
+                color: AppColors.info,
                 onTap: () => context.go('/business/posts'),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSizes.space),
             Expanded(
               child: _quickActionCard(
+                context,
                 icon: HugeIcons.strokeRoundedUser,
                 label: 'Profilim',
                 subtitle: 'Düzenle',
-                color: const Color(0xffF5A623),
+                color: AppColors.warning,
                 onTap: () => context.go('/business/profile'),
               ),
             ),
@@ -391,7 +404,8 @@ class BHomePage extends StatelessWidget {
     );
   }
 
-  Widget _quickActionCard({
+  Widget _quickActionCard(
+    BuildContext context, {
     required IconData icon,
     required String label,
     required String subtitle,
@@ -401,48 +415,35 @@ class BHomePage extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey[200]!),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+        padding: const EdgeInsets.symmetric(
+          vertical: AppSizes.spaceMedium,
+          horizontal: AppSizes.spaceSmall,
         ),
+        decoration: _cardDecoration(context),
         child: Column(
           children: [
             Container(
-              width: 44,
-              height: 44,
+              width: _rowIconBox,
+              height: _rowIconBox,
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
+                color: color.withValues(alpha: _tintAlpha),
+                borderRadius: AppRadius.innerCircular,
               ),
-              child: Icon(icon, size: 22, color: color),
+              child: Icon(icon, size: AppSizes.iconMedium, color: color),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSizes.spaceSmall),
             Text(
               label,
-              style: const TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 13,
+              style: context.textTheme.bodySmall?.copyWith(
                 fontWeight: FontWeight.w600,
-                color: Colors.black87,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: AppSizes.smallGap),
             Text(
               subtitle,
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 11,
-                color: Colors.grey[500],
+              style: context.textTheme.labelSmall?.copyWith(
+                color: context.textTertiary,
               ),
               textAlign: TextAlign.center,
             ),
@@ -452,95 +453,34 @@ class BHomePage extends StatelessWidget {
     );
   }
 
-  // =================== SON BAŞVURULAR ===================
+  // ------------------------------------------------------- Son başvurular
 
   Widget _recentApplicantsSection(
     BuildContext context,
     BJobsProvider provider,
   ) {
     // Tüm aktif ilanlardan son başvuranları topla
-    final List<_RecentApplicant> recentApplicants = [];
-    for (final post in provider.activePosts) {
-      for (final applicant in post.applicants) {
-        recentApplicants.add(
+    final recentApplicants = [
+      for (final post in provider.activePosts)
+        for (final applicant in post.applicants)
           _RecentApplicant(applicant: applicant, post: post),
-        );
-      }
-    }
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Son Başvurular',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-            if (recentApplicants.isNotEmpty)
-              GestureDetector(
-                onTap: () => context.go('/business/posts'),
-                child: Text(
-                  'Tümünü Gör',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primaryColor,
-                  ),
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 12),
+        _sectionHeader(context, 'Son Başvurular'),
+        const SizedBox(height: AppSizes.space),
         if (recentApplicants.isEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.grey[50],
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.grey[200]!),
-            ),
-            child: Column(
-              children: [
-                Icon(
-                  HugeIcons.strokeRoundedUserMultiple,
-                  size: 40,
-                  color: Colors.grey[300],
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Henüz başvuru yok',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey[500],
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'İlanlara başvuru geldiğinde burada görünecek',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 12,
-                    color: Colors.grey[400],
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
+          _emptyPanel(
+            context,
+            icon: HugeIcons.strokeRoundedUserMultiple,
+            title: 'Henüz başvuru yok',
+            subtitle: 'İlanlara başvuru geldiğinde burada görünecek',
           )
         else
           ...recentApplicants
-              .take(3)
+              .take(_previewCount)
               .map((ra) => _recentApplicantCard(context, ra)),
       ],
     );
@@ -548,370 +488,350 @@ class BHomePage extends StatelessWidget {
 
   Widget _recentApplicantCard(BuildContext context, _RecentApplicant ra) {
     return GestureDetector(
-      onTap: () {
-        context.push('/business/job-detail', extra: ra.post.job.id);
-      },
+      onTap: () => context.push('/business/job-detail', extra: ra.post.job.id),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey[200]!),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
+        margin: const EdgeInsets.only(bottom: AppSizes.spaceSmall),
+        padding: AppPadding.selectionCard,
+        decoration: _cardDecoration(context),
         child: Row(
           children: [
             Container(
-              width: 44,
-              height: 44,
+              width: _rowIconBox,
+              height: _rowIconBox,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: AppRadius.innerCircular,
                 image: DecorationImage(
                   fit: BoxFit.cover,
                   image: AssetImage(ra.applicant.profileImage),
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSizes.space),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     ra.applicant.fullName,
-                    style: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 14,
+                    style: context.textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: Colors.black87,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: AppSizes.smallGap),
                   Text(
                     ra.post.job.title,
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 12,
-                      color: Colors.grey[500],
+                    style: context.textTheme.labelMedium?.copyWith(
+                      color: context.textTertiary,
                     ),
                   ),
                 ],
               ),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: ra.post.job.category.color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                ra.post.job.category.displayName,
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: ra.post.job.category.color,
-                ),
-              ),
+            _categoryBadge(context, ra.post.job),
+            const SizedBox(width: AppSizes.spaceSmall),
+            Icon(
+              Icons.chevron_right,
+              size: AppSizes.iconMedium,
+              color: context.textTertiary,
             ),
-            const SizedBox(width: 8),
-            Icon(Icons.chevron_right, size: 20, color: Colors.grey[400]),
           ],
         ),
       ),
     );
   }
 
-  // =================== AKTİF İLANLAR ===================
+  // --------------------------------------------------------- Aktif ilanlar
 
-  Widget _activePostsSection(
-    BuildContext context,
-    List<BJobPostModel> activePosts,
-  ) {
+  Widget _activePostsSection(BuildContext context, List<BJobPost> activePosts) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Aktif İlanlar',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-            if (activePosts.isNotEmpty)
-              GestureDetector(
-                onTap: () => context.go('/business/posts'),
-                child: Text(
-                  'Tümünü Gör',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primaryColor,
+        _sectionHeader(
+          context,
+          'Aktif İlanlar',
+          action: activePosts.isEmpty
+              ? null
+              : GestureDetector(
+                  onTap: () => context.go('/business/posts'),
+                  child: Text(
+                    'Tümünü Gör',
+                    style: context.textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: context.accentColor,
+                    ),
                   ),
                 ),
-              ),
-          ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSizes.space),
         if (activePosts.isEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.grey[50],
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.grey[200]!),
-            ),
-            child: Column(
-              children: [
-                Icon(
-                  HugeIcons.strokeRoundedWork,
-                  size: 40,
-                  color: Colors.grey[300],
+          _emptyPanel(
+            context,
+            icon: HugeIcons.strokeRoundedWork,
+            title: 'Aktif ilan yok',
+            action: GestureDetector(
+              onTap: () => context.push('/business/create'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppPadding.primary,
+                  vertical: AppSizes.spaceSmall,
                 ),
-                const SizedBox(height: 10),
-                Text(
-                  'Aktif ilan yok',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey[500],
+                decoration: BoxDecoration(
+                  color: context.accentColor,
+                  borderRadius: AppRadius.smallCircular,
+                ),
+                child: Text(
+                  'Hemen İlan Oluştur',
+                  style: context.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: context.onAccentColor,
                   ),
                 ),
-                const SizedBox(height: 8),
-                GestureDetector(
-                  onTap: () => context.push('/business/create'),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryColor,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Text(
-                      'Hemen İlan Oluştur',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           )
         else
-          ...activePosts.take(3).map((post) => _activePostCard(context, post)),
+          ...activePosts
+              .take(_previewCount)
+              .map((post) => _activePostCard(context, post)),
       ],
     );
   }
 
-  Widget _activePostCard(BuildContext context, BJobPostModel post) {
+  Widget _activePostCard(BuildContext context, BJobPost post) {
     final job = post.job;
+
     return GestureDetector(
-      onTap: () {
-        context.push('/business/job-detail', extra: job.id);
-      },
+      onTap: () => context.push('/business/job-detail', extra: job.id),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey[200]!),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
+        margin: const EdgeInsets.only(bottom: AppSizes.space),
+        padding: AppPadding.primaryAll,
+        decoration: _cardDecoration(context),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Üst: Kategori + Tip
             Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: job.category.color.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        job.category.icon,
-                        size: 13,
-                        color: job.category.color,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        job.category.displayName,
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: job.category.color,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    'Aktif',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.green[700],
-                    ),
-                  ),
-                ),
+                _categoryBadge(context, job, withIcon: true),
+                const SizedBox(width: AppSizes.spaceSmall),
+                _activeBadge(context),
                 const Spacer(),
-                Icon(Icons.chevron_right, size: 20, color: Colors.grey[400]),
+                Icon(
+                  Icons.chevron_right,
+                  size: AppSizes.iconMedium,
+                  color: context.textTertiary,
+                ),
               ],
             ),
-
-            const SizedBox(height: 12),
-
-            // Başlık
+            const SizedBox(height: AppSizes.space),
             Text(
               job.title,
-              style: const TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
+              style: context.textTheme.titleSmall,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSizes.spaceTiny),
             Text(
               job.subtitle,
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 13,
-                color: Colors.grey[600],
-              ),
+              style: context.textTheme.bodySmall,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-
-            const SizedBox(height: 12),
-
-            // Alt: Fiyat + Konum + Başvuru sayısı
-            Row(
-              children: [
-                Icon(
-                  Icons.monetization_on_outlined,
-                  size: 16,
-                  color: AppColors.primaryColor,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '₺${job.price.toStringAsFixed(0)}',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primaryColor,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Icon(
-                  Icons.location_on_outlined,
-                  size: 16,
-                  color: Colors.grey[500],
-                ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    job.address ?? 'Ankara',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 12,
-                      color: Colors.grey[500],
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: post.applicants.isNotEmpty
-                        ? const Color(0xff5B8DEF).withValues(alpha: 0.1)
-                        : Colors.grey[100],
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        HugeIcons.strokeRoundedUserMultiple,
-                        size: 12,
-                        color: post.applicants.isNotEmpty
-                            ? const Color(0xff5B8DEF)
-                            : Colors.grey[400],
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${post.applicants.length}',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: post.applicants.isNotEmpty
-                              ? const Color(0xff5B8DEF)
-                              : Colors.grey[400],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+            const SizedBox(height: AppSizes.space),
+            _postFooterRow(context, post),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _postFooterRow(BuildContext context, BJobPost post) {
+    final job = post.job;
+    final hasApplicants = post.applicants.isNotEmpty;
+    final applicantColor = hasApplicants
+        ? AppColors.info
+        : context.textTertiary;
+
+    return Row(
+      children: [
+        Icon(
+          Icons.monetization_on_outlined,
+          size: AppSizes.iconSmall,
+          color: context.accentColor,
+        ),
+        const SizedBox(width: AppSizes.spaceTiny),
+        Text(
+          '₺${job.price.toStringAsFixed(0)}',
+          style: context.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: context.accentColor,
+          ),
+        ),
+        const SizedBox(width: AppSizes.spaceMedium),
+        Icon(
+          Icons.location_on_outlined,
+          size: AppSizes.iconSmall,
+          color: context.textTertiary,
+        ),
+        const SizedBox(width: AppSizes.spaceTiny),
+        Expanded(
+          child: Text(
+            job.address ?? 'Ankara',
+            style: context.textTheme.labelMedium?.copyWith(
+              color: context.textTertiary,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        const SizedBox(width: AppSizes.spaceSmall),
+        Container(
+          padding: AppPadding.badge,
+          decoration: BoxDecoration(
+            color: hasApplicants
+                ? AppColors.info.withValues(alpha: 0.1)
+                : context.tileColor,
+            borderRadius: AppRadius.smallCircular,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                HugeIcons.strokeRoundedUserMultiple,
+                size: AppSizes.iconSmall,
+                color: applicantColor,
+              ),
+              const SizedBox(width: AppSizes.spaceTiny),
+              Text(
+                '${post.applicants.length}',
+                style: context.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: applicantColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // --------------------------------------------------------- Ortak parçalar
+
+  BoxDecoration _cardDecoration(BuildContext context) => BoxDecoration(
+    color: context.backgroundColor,
+    borderRadius: AppRadius.secondaryCircular,
+    border: Border.all(color: context.dividerColor),
+    boxShadow: [
+      BoxShadow(
+        color: AppColors.barShadow,
+        blurRadius: 8,
+        offset: const Offset(0, 2),
+      ),
+    ],
+  );
+
+  Widget _sectionHeader(BuildContext context, String title, {Widget? action}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(title, style: context.textTheme.titleMedium),
+        if (action != null) action,
+      ],
+    );
+  }
+
+  Widget _categoryBadge(
+    BuildContext context,
+    Job job, {
+    bool withIcon = false,
+  }) {
+    return Container(
+      padding: AppPadding.badge,
+      decoration: BoxDecoration(
+        color: job.category.color.withValues(alpha: _tintAlpha),
+        borderRadius: AppRadius.smallCircular,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (withIcon) ...[
+            Icon(
+              job.category.icon,
+              size: AppSizes.iconSmall,
+              color: job.category.color,
+            ),
+            const SizedBox(width: AppSizes.spaceTiny),
+          ],
+          Text(
+            job.category.displayName,
+            style: context.textTheme.labelSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: job.category.color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _activeBadge(BuildContext context) {
+    return Container(
+      padding: AppPadding.badge,
+      decoration: BoxDecoration(
+        color: AppColors.success.withValues(alpha: 0.1),
+        borderRadius: AppRadius.smallCircular,
+      ),
+      child: Text(
+        'Aktif',
+        style: context.textTheme.labelSmall?.copyWith(
+          fontWeight: FontWeight.w600,
+          color: AppColors.successStrong,
+        ),
+      ),
+    );
+  }
+
+  Widget _emptyPanel(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    Widget? action,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSizes.spaceLarge),
+      decoration: BoxDecoration(
+        color: context.tileColor,
+        borderRadius: AppRadius.innerCircular,
+        border: Border.all(color: context.dividerColor),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: AppSizes.iconLarge, color: context.dividerColor),
+          const SizedBox(height: AppSizes.spaceSmall),
+          Text(
+            title,
+            style: context.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w500,
+              color: context.textTertiary,
+            ),
+          ),
+          if (subtitle != null) ...[
+            const SizedBox(height: AppSizes.spaceTiny),
+            Text(
+              subtitle,
+              style: context.textTheme.labelMedium?.copyWith(
+                color: context.textTertiary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+          if (action != null) ...[
+            const SizedBox(height: AppSizes.spaceSmall),
+            action,
+          ],
+        ],
       ),
     );
   }
@@ -919,8 +839,8 @@ class BHomePage extends StatelessWidget {
 
 /// Başvuran + ait olduğu ilan çifti (dahili yardımcı sınıf)
 class _RecentApplicant {
-  final BApplicantModel applicant;
-  final BJobPostModel post;
+  final BApplicant applicant;
+  final BJobPost post;
 
   const _RecentApplicant({required this.applicant, required this.post});
 }

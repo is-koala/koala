@@ -13,6 +13,7 @@
 migrate_working_dir/
 .env
 ios/Flutter/Secrets.xcconfig
+.claude/settings.local.json
 
 # IntelliJ related
 *.iml

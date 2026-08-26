@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:koala/employee/features/profile/data/models/user.dart';
-import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/employee/features/profile/models/user.dart';
 import 'package:koala/product/constants/app_padding.dart';
+import 'package:koala/product/constants/app_radius.dart';
+import 'package:koala/product/constants/app_sizes.dart';
+import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
 import 'package:koala/product/widgets/button_navbar.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
@@ -17,6 +19,12 @@ class AccountInfoPage extends StatefulWidget {
 }
 
 class _AccountInfoPageState extends State<AccountInfoPage> {
+  /// Profil fotoğrafının kenar uzunluğu.
+  static const double _avatarSize = 100;
+
+  /// "Hakkımda" alanının yüksekliği: yaklaşık dört satır.
+  static const double _aboutHeight = 120;
+
   late TextEditingController _fullNameController;
   late TextEditingController _jobTitleController;
   late TextEditingController _locationController;
@@ -65,57 +73,24 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Center(
-                child: Stack(
-                  children: [
-                    Container(
-                      width: 100,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        image: DecorationImage(
-                          fit: BoxFit.cover,
-                          image: AssetImage(widget.user.profileImage),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: Container(
-                        padding: EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryColor,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.camera_alt,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: 30),
-              SizedBox(height: 8),
+              Center(child: _avatar()),
+              const SizedBox(height: AppSizes.sectionSpace),
               MyTextfield(
                 labelText: "Ad Soyad",
                 controller: _fullNameController,
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: AppSizes.spaceMedium),
               MyTextfield(labelText: "Meslek", controller: _jobTitleController),
-              SizedBox(height: 16),
+              const SizedBox(height: AppSizes.spaceMedium),
               MyTextfield(labelText: "Konum", controller: _locationController),
-              SizedBox(height: 16),
+              const SizedBox(height: AppSizes.spaceMedium),
               _aboutTextField(),
               // SizedBox(height: 16),
               // MyTextfield(
               //   labelText: "CV Dosya Adı",
               //   controller: _cvFileNameController,
               // ),
-              SizedBox(height: 40),
+              const SizedBox(height: AppSizes.sectionSpace),
             ],
           ),
         ),
@@ -123,24 +98,50 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
     );
   }
 
-  Widget _aboutTextField() {
-    return TextField(
-      controller: _aboutController,
-      maxLines: 4,
-      decoration: InputDecoration(
-        labelText: "Hakkımda",
-        labelStyle: TextStyle(fontFamily: 'Poppins', color: Colors.grey[600]),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
-            color: Theme.of(context).colorScheme.primary,
-            width: 2.0,
+  /// Profil fotoğrafı ve üstündeki değiştirme rozeti.
+  Widget _avatar() {
+    return Stack(
+      children: [
+        Container(
+          width: _avatarSize,
+          height: _avatarSize,
+          decoration: BoxDecoration(
+            borderRadius: AppRadius.secondaryCircular,
+            image: DecorationImage(
+              fit: BoxFit.cover,
+              image: AssetImage(widget.user.profileImage),
+            ),
           ),
         ),
-        contentPadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
-      ),
-      style: TextStyle(fontFamily: 'Poppins', fontSize: 16),
+        Positioned(
+          bottom: 0,
+          right: 0,
+          child: Container(
+            padding: const EdgeInsets.all(AppSizes.spaceTiny),
+            decoration: BoxDecoration(
+              color: context.accentColor,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.camera_alt,
+              color: context.onAccentColor,
+              size: AppSizes.iconSmall,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _aboutTextField() {
+    return MyTextfield(
+      labelText: "Hakkımda",
+      controller: _aboutController,
+      height: _aboutHeight,
+      expands: true,
+      // Tek satırlık alanların tam yuvarlak köşesi bu yükseklikte metni
+      // sıkıştırıyor.
+      borderRadius: AppRadius.innerCircular,
     );
   }
 }

@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Katkı kuralları
+    url: https://github.com/yakupkahraman/koala/blob/main/CONTRIBUTING.md
+    about: Kod yazmadan önce klasör yapısı, renk, tipografi ve sabit kullanımı kurallarına göz at.
+  - name: Mimari ve bilinen tuzaklar
+    url: https://github.com/yakupkahraman/koala/blob/main/AGENTS.md
+    about: Dual-app yapısı, router guard'ı, shell'ler ve sahte veri katmanı burada anlatılıyor.

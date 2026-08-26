@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Aynı PR'a arka arkaya push atılırsa önceki çalışmayı iptal et.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: 3.47.1
+  JAVA_VERSION: 17
+
+jobs:
+  analyze:
+    name: Format & Analiz
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Bağımlılıkları indir
+        run: flutter pub get
+
+      - name: Format kontrolü
+        run: dart format --output=none --set-exit-if-changed lib
+
+      # Info seviyesi de kırmızı: kod tabanı bu eşiği geçecek şekilde
+      # temizlendi, geriye düşmesin.
+      - name: Statik analiz
+        run: flutter analyze --fatal-infos
+
+  build-android:
+    name: Android derleme
+    needs: analyze
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: gradle
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Bağımlılıkları indir
+        run: flutter pub get
+
+      # MAPS_API_KEY gitignore'lu local.properties'ten okunuyor; yoksa
+      # build.gradle.kts boş string'e düşüyor, derleme geçiyor. Haritanın
+      # kendisi CI APK'sında çalışmaz — amaç derlemenin bozulmadığını görmek.
+      - name: APK derle (debug)
+        run: flutter build apk --debug
+
+      # Test edecek arkadaşlar APK'yı doğrudan PR sayfasından indirebilsin.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: koala-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 7
+
+  build-ios:
+    name: iOS derleme
+    needs: analyze
+    # macOS runner yavaş; PR'ları bekletmemek için sadece main'e push ve
+    # elle tetiklemede çalışır.
+    if: github.event_name != 'pull_request'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Bağımlılıkları indir
+        run: flutter pub get
+
+      # Debug/Release.xcconfig, Secrets.xcconfig'i koşulsuz `#include`
+      # ediyor ama o dosya gitignore'lu. Dosya yoksa derleme daha başlamadan
+      # patlıyor, o yüzden boş bir tane üretiliyor.
+      - name: Secrets.xcconfig yer tutucusu
+        run: |
+          if [ ! -f ios/Flutter/Secrets.xcconfig ]; then
+            echo "MAPS_API_KEY=" > ios/Flutter/Secrets.xcconfig
+          fi
+
+      # İmzalama sertifikası olmadığı için --no-codesign; amaç native tarafın
+      # derlendiğini görmek.
+      - name: iOS derle (imzasız)
+        run: flutter build ios --no-codesign

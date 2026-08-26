@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:koala/employee/features/company_detail/data/company_repository.dart';
-import 'package:koala/employee/features/company_detail/domain/company_model.dart';
-import 'package:koala/employee/features/jobs/data/models/my_jobs_model.dart';
-import 'package:koala/employee/features/jobs/data/repositories/my_jobs_repository.dart';
+import 'package:koala/employee/features/company_detail/services/company_service.dart';
+import 'package:koala/employee/features/company_detail/models/company.dart';
+import 'package:koala/employee/features/jobs/models/my_job.dart';
+import 'package:koala/employee/features/jobs/services/my_jobs_service.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/review_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_padding.dart';
+import 'package:koala/product/constants/app_radius.dart';
+import 'package:koala/product/constants/app_sizes.dart';
+import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:provider/provider.dart';
+
+part 'my_jobs_pagemodel.dart';
 
 class MyJobsPage extends StatefulWidget {
   const MyJobsPage({super.key});
@@ -18,80 +23,41 @@ class MyJobsPage extends StatefulWidget {
   State<MyJobsPage> createState() => _MyJobsPageState();
 }
 
-class _MyJobsPageState extends State<MyJobsPage> {
-  final MyJobsRepository _repository = MyJobsRepository();
-  final CompanyRepository _companyRepository = CompanyRepository();
-  bool showAllPastJobs = false;
-  List<MyJobsModel> _allJobs = [];
-  bool _loading = true;
+class _MyJobsPageState extends MyJobsPagemodel {
+  /// "Değerlendir" butonunun yüksekliği; satır içinde durduğu için sayfa
+  /// butonlarından belirgin biçimde alçak.
+  static const double _inlineButtonHeight = 36;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadJobs();
-  }
-
-  Future<void> _loadJobs() async {
-    final jobs = await _repository.getMyJobs();
-    if (!mounted) return;
-    setState(() {
-      _allJobs = jobs;
-      _loading = false;
-    });
-  }
-
-  List<MyJobsModel> _getJobsByStatus(
-    MyJobStatus status, {
-    List<MyJobsModel> extraJobs = const [],
-  }) {
-    final combined = [
-      ...extraJobs.where((j) => j.status == status),
-      ..._allJobs.where((job) => job.status == status),
-    ];
-    return combined;
-  }
-
-  Future<void> _navigateToCompany(MyJobsModel job) async {
-    CompanyModel? company;
-
-    if (job.companyId != null) {
-      company = await _companyRepository.getCompanyById(job.companyId!);
-    }
-
-    if (!mounted) return;
-
-    company ??= await _companyRepository.getCompanyByName(job.company);
-
-    if (company != null && mounted) {
-      context.push('/company-detail', extra: company);
-    }
-  }
+  /// Bölüm zeminine göre soluklaştırılmış metinlerin opaklıkları.
+  static const double _mutedAlpha = 0.5;
+  static const double _dividerAlpha = 0.2;
+  static const double _dateAlpha = 0.6;
+  static const double _linkAlpha = 0.7;
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
+    if (loading) {
       return Scaffold(
         appBar: MyAppbar(title: 'İşlerim', showBackButton: false),
-        body: Center(child: CircularProgressIndicator()),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
-    final applyProvider = context.watch<ApplyProvider>();
-    final appliedJobs = applyProvider.appliedJobs;
+    final appliedJobs = context.watch<ApplyProvider>().appliedJobs;
 
-    final pendingJobs = _getJobsByStatus(
+    final pendingJobs = jobsByStatus(
       MyJobStatus.pending,
       extraJobs: appliedJobs,
     );
-    final approvedJobs = _getJobsByStatus(
+    final approvedJobs = jobsByStatus(
       MyJobStatus.approved,
       extraJobs: appliedJobs,
     );
-    final completedJobs = _getJobsByStatus(
+    final completedJobs = jobsByStatus(
       MyJobStatus.completed,
       extraJobs: appliedJobs,
     );
-    final pastJobs = _getJobsByStatus(MyJobStatus.past, extraJobs: appliedJobs);
+    final pastJobs = jobsByStatus(MyJobStatus.past, extraJobs: appliedJobs);
 
     return Scaffold(
       appBar: MyAppbar(title: 'İşlerim', showBackButton: false),
@@ -103,42 +69,19 @@ class _MyJobsPageState extends State<MyJobsPage> {
             children: [
               // Onaylanmış işler - en üstte ve belirgin
               if (approvedJobs.isNotEmpty) ...[
-                _statusSection(
-                  title: 'Gitmeniz Gereken İşler',
-                  jobs: approvedJobs,
-                  backgroundColor: AppColors.primaryColor,
-                  textColor: Colors.white,
-                  icon: Icons.directions_walk_rounded,
-                  statusChipColor: Colors.white,
-                  statusChipTextColor: AppColors.primaryColor,
-                ),
-                SizedBox(height: 20),
+                _approvedSection(approvedJobs),
+                const SizedBox(height: AppSizes.spaceLarge),
               ],
-
-              // Ödeme bekleyen işler
               if (completedJobs.isNotEmpty) ...[
                 _completedSection(completedJobs),
-                SizedBox(height: 20),
+                const SizedBox(height: AppSizes.spaceLarge),
               ],
-
-              // Başvuru bekleyen işler
               if (pendingJobs.isNotEmpty) ...[
-                _statusSection(
-                  title: 'Başvurularım',
-                  jobs: pendingJobs,
-                  backgroundColor: Color(0xFFF3E5F5),
-                  textColor: Colors.black,
-                  icon: Icons.hourglass_top_rounded,
-                  statusChipColor: Colors.purple,
-                  statusChipTextColor: Colors.white,
-                ),
-                SizedBox(height: 20),
+                _pendingSection(pendingJobs),
+                const SizedBox(height: AppSizes.spaceLarge),
               ],
-
-              // Geçmiş işler
-              if (pastJobs.isNotEmpty) ...[_pastJobsSection(pastJobs)],
-
-              SizedBox(height: 100),
+              if (pastJobs.isNotEmpty) _pastJobsSection(pastJobs),
+              const SizedBox(height: AppSizes.navBarClearance),
             ],
           ),
         ),
@@ -146,447 +89,116 @@ class _MyJobsPageState extends State<MyJobsPage> {
     );
   }
 
-  Widget _tappableCompanyName(MyJobsModel job, Color textColor) {
-    final hasTapAction = job.companyId != null;
+  // ------------------------------------------------------------- Bölümler
 
-    return GestureDetector(
-      onTap: hasTapAction ? () => _navigateToCompany(job) : null,
-      child: Text(
-        job.company,
-        style: TextStyle(
-          fontFamily: "Poppins",
-          color: hasTapAction
-              ? (textColor == Colors.white
-                    ? Colors.white
-                    : AppColors.primaryColor)
-              : textColor.withValues(alpha: 0.7),
-          fontSize: 13,
-          fontWeight: hasTapAction ? FontWeight.w600 : FontWeight.w400,
-          decoration: hasTapAction
-              ? TextDecoration.underline
-              : TextDecoration.none,
-          decorationColor: hasTapAction
-              ? (textColor == Colors.white
-                    ? Colors.white
-                    : AppColors.primaryColor)
-              : null,
-        ),
+  Widget _approvedSection(List<MyJob> jobs) {
+    // Zemin marka yeşili; üstündeki her şey temadan bağımsız beyaz.
+    return _sectionCard(
+      background: context.accentColor,
+      foreground: AppColors.onAccent,
+      header: _sectionHeader(
+        icon: Icons.directions_walk_rounded,
+        title: 'Gitmeniz Gereken İşler',
+        count: jobs.length,
+        foreground: AppColors.onAccent,
+        chipColor: AppColors.onAccent,
+        chipTextColor: context.accentColor,
+      ),
+      child: _jobList(
+        jobs: jobs,
+        foreground: AppColors.onAccent,
+        itemBuilder: (job) => _jobTile(job, AppColors.onAccent),
       ),
     );
   }
 
-  Widget _statusSection({
-    required String title,
-    required List<MyJobsModel> jobs,
-    required Color backgroundColor,
-    required Color textColor,
-    required IconData icon,
-    required Color statusChipColor,
-    required Color statusChipTextColor,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        color: backgroundColor,
+  Widget _pendingSection(List<MyJob> jobs) {
+    return _sectionCard(
+      background: context.pendingSurface,
+      foreground: context.textPrimary,
+      header: _sectionHeader(
+        icon: Icons.hourglass_top_rounded,
+        title: 'Başvurularım',
+        count: jobs.length,
+        foreground: context.textPrimary,
+        chipColor: AppColors.pending,
+        chipTextColor: AppColors.onAccent,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: textColor, size: 24),
-              SizedBox(width: 8),
-              Text(
-                title,
-                style: TextStyle(
-                  fontFamily: "Poppins",
-                  color: textColor,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              SizedBox(width: 8),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                decoration: BoxDecoration(
-                  color: statusChipColor,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '${jobs.length}',
-                  style: TextStyle(
-                    fontFamily: "Poppins",
-                    color: statusChipTextColor,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 12),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            padding: EdgeInsets.zero,
-            itemCount: jobs.length,
-            separatorBuilder: (context, index) => Divider(
-              color: textColor.withValues(alpha: 0.2),
-              thickness: 1,
-              height: 1,
-            ),
-            itemBuilder: (context, index) {
-              final job = jobs[index];
-              return _jobTile(job, textColor);
-            },
-          ),
-        ],
+      child: _jobList(
+        jobs: jobs,
+        foreground: context.textPrimary,
+        itemBuilder: (job) => _jobTile(job, context.textPrimary),
       ),
     );
   }
 
-  Widget _completedSection(List<MyJobsModel> jobs) {
+  Widget _completedSection(List<MyJob> jobs) {
     final reviewProvider = context.watch<ReviewProvider>();
 
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        color: Color(0xFFFFF3E0),
+    return _sectionCard(
+      background: context.payoutSurface,
+      foreground: context.textPrimary,
+      header: _sectionHeader(
+        icon: Icons.account_balance_wallet_rounded,
+        title: 'Ödeme Bekleniyor',
+        count: jobs.length,
+        foreground: context.textPrimary,
+        chipColor: AppColors.warning,
+        chipTextColor: AppColors.onAccent,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.account_balance_wallet_rounded,
-                color: Colors.black,
-                size: 24,
-              ),
-              SizedBox(width: 8),
-              Text(
-                'Ödeme Bekleniyor',
-                style: TextStyle(
-                  fontFamily: "Poppins",
-                  color: Colors.black,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              SizedBox(width: 8),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.orange,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '${jobs.length}',
-                  style: TextStyle(
-                    fontFamily: "Poppins",
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 12),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            padding: EdgeInsets.zero,
-            itemCount: jobs.length,
-            separatorBuilder: (context, index) => Divider(
-              color: Colors.black.withValues(alpha: 0.2),
-              thickness: 1,
-              height: 1,
-            ),
-            itemBuilder: (context, index) {
-              final job = jobs[index];
-              final alreadyReviewed = reviewProvider.hasReviewed(job.id);
-
-              return ListTile(
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 0,
-                  vertical: 4,
-                ),
-                title: Text(
-                  job.title,
-                  style: TextStyle(
-                    fontFamily: "Poppins",
-                    color: Colors.black,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                  ),
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _tappableCompanyName(job, Colors.black),
-                    SizedBox(height: 2),
-                    Text(
-                      job.description,
-                      style: TextStyle(
-                        color: Colors.black.withValues(alpha: 0.5),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-                trailing: alreadyReviewed
-                    ? Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.check_circle,
-                              color: Colors.green,
-                              size: 18,
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              'Değerlendirildi',
-                              style: TextStyle(
-                                fontFamily: "Poppins",
-                                color: Colors.green.shade700,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : SizedBox(
-                        height: 36,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            context.push('/review', extra: job);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orange,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            padding: EdgeInsets.symmetric(horizontal: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          child: Text(
-                            'Değerlendir',
-                            style: TextStyle(
-                              fontFamily: "Poppins",
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _jobTile(MyJobsModel job, Color textColor) {
-    return ListTile(
-      contentPadding: EdgeInsets.symmetric(horizontal: 0, vertical: 4),
-      title: Text(
-        job.title,
-        style: TextStyle(
-          fontFamily: "Poppins",
-          color: textColor,
-          fontWeight: FontWeight.w600,
-          fontSize: 15,
+      child: _jobList(
+        jobs: jobs,
+        foreground: context.textPrimary,
+        itemBuilder: (job) => _completedTile(
+          job,
+          alreadyReviewed: reviewProvider.hasReviewed(job.id),
         ),
       ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _tappableCompanyName(job, textColor),
-          SizedBox(height: 2),
-          Text(
-            job.description,
-            style: TextStyle(
-              color: textColor.withValues(alpha: 0.5),
-              fontSize: 12,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-      trailing: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text(
-            '₺${job.price.toStringAsFixed(0)}',
-            style: TextStyle(
-              fontFamily: "Poppins",
-              color: textColor,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          Text(
-            job.date,
-            style: TextStyle(
-              color: textColor.withValues(alpha: 0.6),
-              fontSize: 12,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
-  Widget _pastJobsSection(List<MyJobsModel> pastJobs) {
-    final int pastJobsToShow = showAllPastJobs ? pastJobs.length : 2;
+  Widget _pastJobsSection(List<MyJob> pastJobs) {
+    final visibleCount = showAllPastJobs
+        ? pastJobs.length
+        : MyJobsPagemodel.collapsedPastJobCount;
+    final hiddenCount = pastJobs.length - MyJobsPagemodel.collapsedPastJobCount;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          children: [
-            Icon(Icons.history_rounded, color: Colors.black54, size: 24),
-            SizedBox(width: 8),
-            Text(
-              "Geçmiş",
-              style: TextStyle(
-                fontFamily: "Poppins",
-                color: Colors.black,
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            SizedBox(width: 8),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade400,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                '${pastJobs.length}',
-                style: TextStyle(
-                  fontFamily: "Poppins",
-                  color: Colors.white,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
+        _sectionHeader(
+          icon: Icons.history_rounded,
+          title: 'Geçmiş',
+          count: pastJobs.length,
+          foreground: context.textPrimary,
+          chipColor: context.textTertiary,
+          chipTextColor: AppColors.onAccent,
         ),
-        SizedBox(height: 12),
-        ListView.separated(
-          shrinkWrap: true,
-          physics: NeverScrollableScrollPhysics(),
-          padding: EdgeInsets.zero,
-          itemCount: pastJobsToShow,
-          separatorBuilder: (context, index) => Divider(
-            color: Colors.black.withValues(alpha: 0.1),
-            thickness: 1,
-            height: 1,
-          ),
-          itemBuilder: (context, index) {
-            final job = pastJobs[index];
-            return ListTile(
-              contentPadding: EdgeInsets.symmetric(horizontal: 0, vertical: 4),
-              title: Text(
-                job.title,
-                style: TextStyle(
-                  fontFamily: "Poppins",
-                  color: Colors.black87,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15,
-                ),
-              ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _tappableCompanyName(job, Colors.black87),
-                  SizedBox(height: 2),
-                  Text(
-                    job.description,
-                    style: TextStyle(color: Colors.black38, fontSize: 12),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-              trailing: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '₺${job.price.toStringAsFixed(0)}',
-                    style: TextStyle(
-                      fontFamily: "Poppins",
-                      color: Colors.green.shade700,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        job.date,
-                        style: TextStyle(color: Colors.black45, fontSize: 12),
-                      ),
-                      SizedBox(width: 4),
-                      Icon(Icons.check_circle, color: Colors.green, size: 16),
-                    ],
-                  ),
-                ],
-              ),
-            );
-          },
+        const SizedBox(height: AppSizes.space),
+        _jobList(
+          jobs: pastJobs.take(visibleCount).toList(),
+          foreground: context.textPrimary,
+          itemBuilder: _pastJobTile,
         ),
-        if (pastJobs.length > 2)
+        if (hiddenCount > 0)
           Center(
             child: Padding(
-              padding: EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.only(top: AppSizes.spaceSmall),
               child: TextButton.icon(
-                onPressed: () {
-                  setState(() {
-                    showAllPastJobs = !showAllPastJobs;
-                  });
-                },
+                onPressed: togglePastJobs,
                 icon: Icon(
                   showAllPastJobs
                       ? Icons.keyboard_arrow_up
                       : Icons.keyboard_arrow_down,
-                  color: AppColors.primaryColor,
+                  color: context.accentColor,
                 ),
                 label: Text(
                   showAllPastJobs
                       ? "Daha az göster"
-                      : "Daha fazla göster (${pastJobs.length - 2} daha)",
-                  style: TextStyle(
-                    color: AppColors.primaryColor,
+                      : "Daha fazla göster ($hiddenCount daha)",
+                  style: context.textTheme.bodyMedium?.copyWith(
+                    color: context.accentColor,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -594,6 +206,267 @@ class _MyJobsPageState extends State<MyJobsPage> {
             ),
           ),
       ],
+    );
+  }
+
+  // --------------------------------------------------------- Ortak parçalar
+
+  Widget _sectionCard({
+    required Color background,
+    required Color foreground,
+    required Widget header,
+    required Widget child,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: AppPadding.primaryAll,
+      decoration: BoxDecoration(
+        borderRadius: AppRadius.secondaryCircular,
+        color: background,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          header,
+          const SizedBox(height: AppSizes.space),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionHeader({
+    required IconData icon,
+    required String title,
+    required int count,
+    required Color foreground,
+    required Color chipColor,
+    required Color chipTextColor,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, color: foreground, size: AppSizes.icon),
+        const SizedBox(width: AppSizes.spaceSmall),
+        Text(
+          title,
+          style: context.textTheme.titleLarge?.copyWith(color: foreground),
+        ),
+        const SizedBox(width: AppSizes.spaceSmall),
+        Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSizes.spaceSmall,
+            vertical: AppSizes.smallGap,
+          ),
+          decoration: BoxDecoration(
+            color: chipColor,
+            borderRadius: AppRadius.innerCircular,
+          ),
+          child: Text(
+            '$count',
+            style: context.textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: chipTextColor,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _jobList({
+    required List<MyJob> jobs,
+    required Color foreground,
+    required Widget Function(MyJob job) itemBuilder,
+  }) {
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: AppPadding.zero,
+      itemCount: jobs.length,
+      separatorBuilder: (context, index) => Divider(
+        color: foreground.withValues(alpha: _dividerAlpha),
+        thickness: 1,
+        height: 1,
+      ),
+      itemBuilder: (context, index) => itemBuilder(jobs[index]),
+    );
+  }
+
+  /// Şirket adı; şirket kaydı varsa detaya gider ve altı çizilir.
+  Widget _tappableCompanyName(MyJob job, Color foreground) {
+    final hasTapAction = job.companyId != null;
+    // Yeşil zeminde bağlantı beyaz, açık zeminde marka yeşili.
+    final linkColor = foreground == AppColors.onAccent
+        ? AppColors.onAccent
+        : context.accentColor;
+
+    return GestureDetector(
+      onTap: hasTapAction ? () => navigateToCompany(job) : null,
+      child: Text(
+        job.company,
+        style: context.textTheme.bodySmall?.copyWith(
+          color: hasTapAction
+              ? linkColor
+              : foreground.withValues(alpha: _linkAlpha),
+          fontWeight: hasTapAction ? FontWeight.w600 : FontWeight.w400,
+          decoration: hasTapAction
+              ? TextDecoration.underline
+              : TextDecoration.none,
+          decorationColor: hasTapAction ? linkColor : null,
+        ),
+      ),
+    );
+  }
+
+  Widget _tileTitle(String title, Color foreground) => Text(
+    title,
+    style: context.textTheme.titleSmall?.copyWith(color: foreground),
+  );
+
+  Widget _tileSubtitle(MyJob job, Color foreground, {int? maxLines}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _tappableCompanyName(job, foreground),
+        const SizedBox(height: AppSizes.smallGap),
+        Text(
+          job.description,
+          style: context.textTheme.labelMedium?.copyWith(
+            color: foreground.withValues(alpha: _mutedAlpha),
+          ),
+          maxLines: maxLines,
+          overflow: maxLines == null ? null : TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+
+  // ------------------------------------------------------------- Satırlar
+
+  Widget _jobTile(MyJob job, Color foreground) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(vertical: AppSizes.spaceTiny),
+      title: _tileTitle(job.title, foreground),
+      subtitle: _tileSubtitle(job, foreground, maxLines: 1),
+      trailing: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            '₺${job.price.toStringAsFixed(0)}',
+            style: context.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: foreground,
+            ),
+          ),
+          Text(
+            job.date,
+            style: context.textTheme.labelMedium?.copyWith(
+              color: foreground.withValues(alpha: _dateAlpha),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _completedTile(MyJob job, {required bool alreadyReviewed}) {
+    final foreground = context.textPrimary;
+
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(vertical: AppSizes.spaceTiny),
+      title: _tileTitle(job.title, foreground),
+      subtitle: _tileSubtitle(job, foreground),
+      trailing: alreadyReviewed
+          ? _reviewedBadge()
+          : SizedBox(
+              height: _inlineButtonHeight,
+              child: ElevatedButton(
+                onPressed: () => context.push('/review', extra: job),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.warning,
+                  foregroundColor: AppColors.onAccent,
+                  elevation: 0,
+                  padding: AppPadding.primaryHorizontal,
+                  textStyle: context.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: AppRadius.smallCircular,
+                  ),
+                ),
+                child: const Text('Değerlendir'),
+              ),
+            ),
+    );
+  }
+
+  Widget _reviewedBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSizes.space,
+        vertical: AppSizes.spaceSmall,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.success.withValues(alpha: 0.15),
+        borderRadius: AppRadius.smallCircular,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.check_circle,
+            color: AppColors.success,
+            size: AppSizes.iconSmall,
+          ),
+          const SizedBox(width: AppSizes.spaceTiny),
+          Text(
+            'Değerlendirildi',
+            style: context.textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: AppColors.successStrong,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _pastJobTile(MyJob job) {
+    final foreground = context.textPrimary;
+
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(vertical: AppSizes.spaceTiny),
+      title: _tileTitle(job.title, foreground),
+      subtitle: _tileSubtitle(job, foreground, maxLines: 1),
+      trailing: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            '₺${job.price.toStringAsFixed(0)}',
+            style: context.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: AppColors.successStrong,
+            ),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(job.date, style: context.textTheme.labelMedium),
+              const SizedBox(width: AppSizes.spaceTiny),
+              const Icon(
+                Icons.check_circle,
+                color: AppColors.success,
+                size: AppSizes.iconSmall,
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

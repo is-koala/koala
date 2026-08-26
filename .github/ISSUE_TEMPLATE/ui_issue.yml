@@ -1,0 +1,73 @@
+name: Tasarım / arayüz tutarsızlığı
+description: Renk, boşluk, ikon, tipografi ya da tema uyumsuzluğu bildir
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Arayüz kuralları CONTRIBUTING.md'de tanımlı: renkler `context` erişimcilerinden,
+        boşluk/radius/boyut değerleri `product/constants` altından, yazı ölçeği
+        `context.textTheme`'den gelir.
+
+        > Mevcut sayfaların çoğunda hâlâ hard-code `Colors.white` / `fontSize:` var.
+        > Bu bilinen borç; buraya bildirmek yerine ilgili feature'ın temizliği için
+        > "Teknik iş / bakım" issue'su açmak daha faydalı olabilir.
+
+  - type: textarea
+    id: sorun
+    attributes:
+      label: Tutarsızlık ne?
+      placeholder: Başvurularım sayfasındaki kartların köşe yuvarlaklığı explore'daki kartlardan farklı.
+    validations:
+      required: true
+
+  - type: input
+    id: konum
+    attributes:
+      label: Nerede görülüyor?
+      description: Ekran adı, mümkünse dosya yolu.
+      placeholder: lib/employee/features/jobs/presentation/pages/my_jobs_page.dart
+    validations:
+      required: true
+
+  - type: dropdown
+    id: tur
+    attributes:
+      label: Tutarsızlık türü
+      multiple: true
+      options:
+        - Renk (tema uyumsuzluğu)
+        - Boşluk / padding
+        - Köşe yuvarlaklığı (radius)
+        - Yazı tipi / boyutu
+        - İkon
+        - Hizalama / yerleşim
+        - Navbar altında kalan içerik
+        - Diğer
+    validations:
+      required: true
+
+  - type: dropdown
+    id: tema
+    attributes:
+      label: Hangi temada görülüyor?
+      options:
+        - Her iki temada
+        - Sadece koyu tema
+        - Sadece açık tema
+    validations:
+      required: true
+
+  - type: textarea
+    id: gorsel
+    attributes:
+      label: Ekran görüntüsü
+      description: Açık ve koyu tema için ayrı ayrı ekle; tema uyumsuzluklarının çoğu ancak yan yana görünce fark ediliyor.
+    validations:
+      required: true
+
+  - type: textarea
+    id: beklenen
+    attributes:
+      label: Nasıl olmalıydı?
+      description: Referans aldığın ekran ya da CONTRIBUTING'deki ilgili kural varsa belirt.

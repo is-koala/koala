@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:koala/employee/features/home/presentation/widgets/my_list_tile.dart';
+import 'package:koala/product/widgets/my_list_tile.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
+import 'package:koala/product/theme/theme_provider.dart';
+import 'package:koala/product/widgets/theme_mode_sheet.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class BSettingsPage extends StatelessWidget {
@@ -12,7 +15,7 @@ class BSettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: MyAppbar(title: "Ayarlar", fontSize: 24),
+      appBar: MyAppbar(title: "Ayarlar", isLarge: true),
       body: SingleChildScrollView(
         child: Padding(
           padding: AppPadding.primaryAll,
@@ -34,6 +37,12 @@ class BSettingsPage extends StatelessWidget {
           onTap: () {
             context.push('/business/company-info');
           },
+        ),
+        MyListTile(
+          icon: HugeIcons.strokeRoundedPaintBoard,
+          title: "Görünüm",
+          value: context.watch<ThemeProvider>().themeMode.label,
+          onTap: () => ThemeModeSheet.show(context),
         ),
         MyListTile(
           icon: HugeIcons.strokeRoundedLogout01,

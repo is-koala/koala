@@ -1,18 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:koala/product/constants/app_assets.dart';
+import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
+import 'package:koala/product/constants/app_sizes.dart';
+import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class RegisterTypePage extends StatelessWidget {
   const RegisterTypePage({super.key});
+
+  /// Seçim kartındaki görselin ölçüsü. Dikey dikdörtgen: maskot boydan
+  /// görünsün ve kart yüksekliğini görsel belirlesin diye.
+  static const double _cardImageWidth = 100;
+  static const double _cardImageHeight = 150;
+
+  /// Kartın kenarlık kalınlığı; kart zeminsiz olduğu için seçilebilir
+  /// olduğunu yalnızca bu çerçeve anlatıyor.
+  static const double _cardBorderWidth = 3;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: Icon(HugeIcons.strokeRoundedArrowLeft01, color: Colors.black),
+          icon: Icon(
+            HugeIcons.strokeRoundedArrowLeft01,
+            color: context.textPrimary,
+          ),
           onPressed: () => context.pop(),
         ),
       ),
@@ -20,180 +37,31 @@ class RegisterTypePage extends StatelessWidget {
         child: SingleChildScrollView(
           child: Center(
             child: Container(
-              padding: EdgeInsets.only(left: 28.0, right: 28.0, bottom: 16.0),
+              padding: AppPadding.authContentWide,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     "Ne olmak istersin?",
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 40,
+                    style: context.textTheme.displayMedium?.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: Colors.black,
                     ),
                   ),
-                  const SizedBox(height: 64),
-
-                  // İş Veren Kartı
-                  Card(
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: AppRadius.primaryCircular,
-                      side: BorderSide(
-                        color: Theme.of(context).colorScheme.primary,
-                        width: 3,
-                      ),
-                    ),
-                    child: InkWell(
-                      splashColor: Colors.green[100],
-                      highlightColor: Colors.green[50],
-                      borderRadius: AppRadius.primaryCircular,
-                      onTap: () async {
-                        final prefs = await SharedPreferences.getInstance();
-                        await prefs.setBool('isBusiness', true);
-
-                        if (context.mounted) {
-                          context.push(
-                            '/auth/register-type/register?isBusiness=true',
-                          );
-                        }
-                      },
-                      child: Container(
-                        padding: EdgeInsets.all(14.0),
-                        child: Row(
-                          children: [
-                            // İş Veren İmajı
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8.0),
-                              child: Image.asset(
-                                'assets/images/koala_business.png',
-                                width: 100,
-                                height: 150,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-
-                            // İş Veren Yazısı
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'İş Veren',
-                                    style: TextStyle(
-                                      fontFamily: 'Poppins',
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'İş yeriniz için',
-                                    style: TextStyle(
-                                      fontFamily: 'Poppins',
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w400,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            // Arrow Right
-                            Icon(
-                              HugeIcons.strokeRoundedArrowRight01,
-                              color: Colors.grey[600],
-                              size: 24,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                  const SizedBox(height: AppSizes.spaceHuge),
+                  _typeCard(
+                    context,
+                    imagePath: AppAssets.koalaBusiness,
+                    title: 'İş Veren',
+                    subtitle: 'İş yeriniz için',
+                    isBusiness: true,
                   ),
-                  const SizedBox(height: 16),
-
-                  // Çalışan Kartı
-                  Card(
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: AppRadius.primaryCircular,
-                      side: BorderSide(
-                        color: Theme.of(context).colorScheme.primary,
-                        width: 3,
-                      ),
-                    ),
-                    child: InkWell(
-                      splashColor: Colors.green[100],
-                      highlightColor: Colors.green[50],
-                      borderRadius: AppRadius.primaryCircular,
-                      onTap: () async {
-                        final prefs = await SharedPreferences.getInstance();
-                        await prefs.setBool('isBusiness', false);
-
-                        if (context.mounted) {
-                          context.push(
-                            '/auth/register-type/register?isBusiness=false',
-                          );
-                        }
-                      },
-                      child: Container(
-                        padding: EdgeInsets.all(14.0),
-                        child: Row(
-                          children: [
-                            // Çalışan İmajı
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8.0),
-                              child: Image.asset(
-                                'assets/images/koala_worker.png',
-                                width: 100,
-                                height: 150,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-
-                            // Çalışan Yazısı
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Çalışan',
-                                    style: TextStyle(
-                                      fontFamily: 'Poppins',
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Para kazanmak için',
-                                    style: TextStyle(
-                                      fontFamily: 'Poppins',
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w400,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            // Arrow Right
-                            Icon(
-                              HugeIcons.strokeRoundedArrowRight01,
-                              color: Colors.grey[600],
-                              size: 24,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                  const SizedBox(height: AppSizes.spaceMedium),
+                  _typeCard(
+                    context,
+                    imagePath: AppAssets.koalaWorker,
+                    title: 'Çalışan',
+                    subtitle: 'Para kazanmak için',
+                    isBusiness: false,
                   ),
                 ],
               ),
@@ -202,5 +70,76 @@ class RegisterTypePage extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Widget _typeCard(
+    BuildContext context, {
+    required String imagePath,
+    required String title,
+    required String subtitle,
+    required bool isBusiness,
+  }) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadius.primaryCircular,
+        side: BorderSide(color: context.accentColor, width: _cardBorderWidth),
+      ),
+      child: InkWell(
+        splashColor: AppColors.primaryTint,
+        highlightColor: AppColors.primarySoft,
+        borderRadius: AppRadius.primaryCircular,
+        onTap: () => _onTypeSelected(context, isBusiness: isBusiness),
+        child: Container(
+          padding: AppPadding.selectionCard,
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: AppRadius.smallCircular,
+                child: Image.asset(
+                  imagePath,
+                  width: _cardImageWidth,
+                  height: _cardImageHeight,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              const SizedBox(width: AppSizes.spaceMedium),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: context.textTheme.titleLarge),
+                    const SizedBox(height: AppSizes.spaceTiny),
+                    Text(
+                      subtitle,
+                      style: context.textTheme.bodyMedium?.copyWith(
+                        color: context.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                HugeIcons.strokeRoundedArrowRight01,
+                color: context.textSecondary,
+                size: AppSizes.icon,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _onTypeSelected(
+    BuildContext context, {
+    required bool isBusiness,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isBusiness', isBusiness);
+
+    if (context.mounted) {
+      context.push('/auth/register-type/register?isBusiness=$isBusiness');
+    }
   }
 }

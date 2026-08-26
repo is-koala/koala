@@ -1,24 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:koala/employee/features/home/data/models/job_model.dart';
-import 'package:koala/employee/features/jobs/data/models/my_jobs_model.dart';
+import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/jobs/models/my_job.dart';
 
 class ApplyProvider extends ChangeNotifier {
-  final List<MyJobsModel> _appliedJobs = [];
+  final List<MyJob> _appliedJobs = [];
 
-  List<MyJobsModel> get appliedJobs => List.unmodifiable(_appliedJobs);
+  List<MyJob> get appliedJobs => List.unmodifiable(_appliedJobs);
 
   bool hasApplied(String jobId) {
     return _appliedJobs.any((job) => job.id == 'applied_$jobId');
   }
 
-  void applyToJob(JobModel job, {String? coverLetter}) {
+  void applyToJob(Job job, {String? coverLetter}) {
     if (hasApplied(job.id)) return;
 
     final now = DateTime.now();
     final dateStr =
         '${now.day.toString().padLeft(2, '0')}.${now.month.toString().padLeft(2, '0')}.${now.year}';
 
-    final myJob = MyJobsModel(
+    final myJob = MyJob(
       id: 'applied_${job.id}',
       title: job.title,
       company: job.company ?? 'Bilinmeyen Şirket',

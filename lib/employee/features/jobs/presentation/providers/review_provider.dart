@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:koala/employee/features/jobs/data/models/review_model.dart';
-import 'package:koala/employee/features/jobs/data/repositories/review_repository.dart';
+import 'package:koala/employee/features/jobs/models/review.dart';
+import 'package:koala/employee/features/jobs/services/review_service.dart';
 
 class ReviewProvider extends ChangeNotifier {
-  final ReviewRepository _repository = ReviewRepository();
+  final ReviewService _reviewService = ReviewService();
 
-  List<ReviewModel> get reviews => _repository.reviews;
+  List<Review> get reviews => _reviewService.reviews;
 
-  bool hasReviewed(String jobId) => _repository.hasReviewed(jobId);
+  bool hasReviewed(String jobId) => _reviewService.hasReviewed(jobId);
 
-  Future<void> submitReview(ReviewModel review) async {
-    await _repository.submitReview(review);
+  Future<void> submitReview(Review review) async {
+    await _reviewService.submitReview(review);
     notifyListeners();
   }
 }

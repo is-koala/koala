@@ -4,7 +4,7 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
     with AutomaticKeepAliveClientMixin<MapExplorePage> {
   GoogleMapController? _mapController;
   late LocationService _locationService;
-  late JobRepository _jobRepository;
+  late JobService _jobService;
 
   bool _loading = true;
   LatLng? _currentLatLng;
@@ -14,8 +14,8 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
 
   // İş verileri
   Set<Marker> _markers = {};
-  List<JobModel> _allJobs = [];
-  List<JobModel> _searchResults = [];
+  List<Job> _allJobs = [];
+  List<Job> _searchResults = [];
 
   // Arama
   final TextEditingController _searchController = TextEditingController();
@@ -25,7 +25,7 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
   void initState() {
     super.initState();
 
-    _jobRepository = JobRepository();
+    _jobService = JobService();
 
     _locationService = LocationService(
       context,
@@ -51,7 +51,7 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
   /// İşleri yükle ve marker'ları oluştur
   Future<void> _loadJobs() async {
     try {
-      final jobs = await _jobRepository.getJobs();
+      final jobs = await _jobService.getJobs();
       _allJobs = jobs;
 
       final markers = await JobMarkerGenerator.generateMarkers(
@@ -91,7 +91,7 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
   }
 
   /// Arama sonucuna tıklanınca haritada o işe odaklan
-  void _focusOnJob(JobModel job) {
+  void _focusOnJob(Job job) {
     _searchFocusNode.unfocus();
 
     final searchProvider = Provider.of<SearchProvider>(context, listen: false);
@@ -123,7 +123,7 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
   }
 
   /// Marker'a tıklandığında bottom sheet göster
-  void _onJobMarkerTap(JobModel job) {
+  void _onJobMarkerTap(Job job) {
     HapticFeedback.lightImpact();
     JobDetailBottomSheet.show(context, job);
   }

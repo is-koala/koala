@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:koala/business/features/home/data/fake_business_company.dart';
-import 'package:koala/business/features/home/data/models/b_applicant_model.dart';
-import 'package:koala/business/features/home/data/models/b_job_post_model.dart';
-import 'package:koala/employee/features/home/data/models/job_model.dart';
+import 'package:koala/business/features/home/services/fake_business_company.dart';
+import 'package:koala/business/features/home/models/b_applicant.dart';
+import 'package:koala/business/features/home/models/b_job_post.dart';
+import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
-import 'package:koala/employee/features/profile/data/fake_user.dart';
+import 'package:koala/employee/features/profile/services/fake_user.dart';
 
 /// İşveren tarafında iş ilanlarını yöneten provider.
 /// - Yeni ilan oluşturma
 /// - Aktif / Geçmiş ilanları listeleme
 /// - Çalışan tarafındaki ApplyProvider ile bağlantı (başvuranlar)
 class BJobsProvider extends ChangeNotifier {
-  final List<BJobPostModel> _jobPosts = [];
+  final List<BJobPost> _jobPosts = [];
 
   BJobsProvider() {
     _loadInitialJobs();
@@ -22,8 +22,8 @@ class BJobsProvider extends ChangeNotifier {
     final companyName = FakeBusinessCompany.instance.name;
 
     _jobPosts.addAll([
-      BJobPostModel(
-        job: JobModel(
+      BJobPost(
+        job: Job(
           id: 'b_1',
           latitude: 39.9208,
           longitude: 32.8541,
@@ -54,7 +54,7 @@ class BJobsProvider extends ChangeNotifier {
         isActive: true,
         createdAt: DateTime(2026, 3, 1),
         applicants: [
-          BApplicantModel(
+          BApplicant(
             id: 'applicant_1',
             fullName: 'Yakup Demir',
             jobTitle: 'Fotoğrafçı',
@@ -65,8 +65,8 @@ class BJobsProvider extends ChangeNotifier {
           ),
         ],
       ),
-      BJobPostModel(
-        job: JobModel(
+      BJobPost(
+        job: Job(
           id: 'b_2',
           latitude: 39.9208,
           longitude: 32.8541,
@@ -96,7 +96,7 @@ class BJobsProvider extends ChangeNotifier {
         isActive: true,
         createdAt: DateTime(2026, 3, 3),
         applicants: [
-          BApplicantModel(
+          BApplicant(
             id: 'applicant_2',
             fullName: 'Ayşe Yılmaz',
             jobTitle: 'Barista',
@@ -104,7 +104,7 @@ class BJobsProvider extends ChangeNotifier {
             appliedDate: '06.03.2026',
             coverLetter: '3 yıldır specialty coffee alanında çalışıyorum.',
           ),
-          BApplicantModel(
+          BApplicant(
             id: 'applicant_3',
             fullName: 'Mehmet Kaya',
             jobTitle: 'Barista / Garson',
@@ -114,8 +114,8 @@ class BJobsProvider extends ChangeNotifier {
         ],
       ),
       // Geçmiş ilan
-      BJobPostModel(
-        job: JobModel(
+      BJobPost(
+        job: Job(
           id: 'b_3',
           latitude: 39.9208,
           longitude: 32.8541,
@@ -144,7 +144,7 @@ class BJobsProvider extends ChangeNotifier {
         ),
         isActive: false,
         createdAt: DateTime(2026, 2, 1),
-        worker: const BApplicantModel(
+        worker: const BApplicant(
           id: 'applicant_4',
           fullName: 'Burak Şen',
           jobTitle: 'Fotoğrafçı',
@@ -156,19 +156,17 @@ class BJobsProvider extends ChangeNotifier {
   }
 
   /// Tüm ilanlar
-  List<BJobPostModel> get allPosts => List.unmodifiable(_jobPosts);
+  List<BJobPost> get allPosts => List.unmodifiable(_jobPosts);
 
   /// Aktif ilanlar
-  List<BJobPostModel> get activePosts =>
-      _jobPosts.where((p) => p.isActive).toList();
+  List<BJobPost> get activePosts => _jobPosts.where((p) => p.isActive).toList();
 
   /// Geçmiş ilanlar
-  List<BJobPostModel> get pastPosts =>
-      _jobPosts.where((p) => !p.isActive).toList();
+  List<BJobPost> get pastPosts => _jobPosts.where((p) => !p.isActive).toList();
 
   /// Yeni iş ilanı oluştur
-  void createJobPost(JobModel job) {
-    final post = BJobPostModel(
+  void createJobPost(Job job) {
+    final post = BJobPost(
       job: job,
       isActive: true,
       applicants: [],
@@ -194,7 +192,7 @@ class BJobsProvider extends ChangeNotifier {
   }
 
   /// Başvuranı onayla — ilanı geçmişe taşır ve worker olarak atar
-  void approveApplicant(String jobId, BApplicantModel applicant) {
+  void approveApplicant(String jobId, BApplicant applicant) {
     final index = _jobPosts.indexWhere((p) => p.job.id == jobId);
     if (index != -1) {
       _jobPosts[index] = _jobPosts[index].copyWith(
@@ -219,7 +217,7 @@ class BJobsProvider extends ChangeNotifier {
   }
 
   /// Belirli bir ilanı getir
-  BJobPostModel? getPostByJobId(String jobId) {
+  BJobPost? getPostByJobId(String jobId) {
     try {
       return _jobPosts.firstWhere((p) => p.job.id == jobId);
     } catch (_) {
@@ -245,7 +243,7 @@ class BJobsProvider extends ChangeNotifier {
       );
 
       if (!alreadyExists) {
-        final newApplicant = BApplicantModel(
+        final newApplicant = BApplicant(
           id: 'sync_${applied.id}',
           fullName: fakeUser.fullName,
           jobTitle: fakeUser.jobTitle,

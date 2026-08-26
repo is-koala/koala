@@ -1,19 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:koala/business/features/home/data/models/b_applicant_model.dart';
+import 'package:koala/business/features/home/models/b_applicant.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_padding.dart';
+import 'package:koala/product/constants/app_radius.dart';
+import 'package:koala/product/constants/app_sizes.dart';
+import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 
 class BUserProfilePage extends StatelessWidget {
-  final BApplicantModel applicant;
+  final BApplicant applicant;
 
   const BUserProfilePage({super.key, required this.applicant});
+
+  /// Kapaktaki profil fotoğrafı ve çevresindeki beyaz halka.
+  static const double _avatarSize = 100;
+  static const double _avatarBorder = 3;
+
+  /// Bilgi satırındaki etiket sütununun genişliği; değerler hizalı dursun
+  /// diye sabit.
+  static const double _infoLabelWidth = 100;
+
+  /// Kapaktaki gradyanın koyu ucu.
+  static const double _gradientEndAlpha = 0.8;
+
+  /// Kapak üzerindeki ikincil metin ve rozetlerin opaklıkları.
+  static const double _onCoverMuted = 0.9;
+  static const double _onCoverSurface = 0.2;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: context.backgroundColor,
       appBar: MyAppbar(title: "Profil"),
       body: SingleChildScrollView(
         child: Column(
@@ -24,13 +42,13 @@ class BUserProfilePage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 8),
-                  _aboutSection(),
-                  const SizedBox(height: 24),
-                  _infoSection(),
-                  const SizedBox(height: 24),
-                  _cvSection(),
-                  const SizedBox(height: 100),
+                  const SizedBox(height: AppSizes.spaceSmall),
+                  _aboutSection(context),
+                  const SizedBox(height: AppSizes.spaceLarge),
+                  _infoSection(context),
+                  const SizedBox(height: AppSizes.spaceLarge),
+                  _cvSection(context),
+                  const SizedBox(height: AppSizes.navBarClearance),
                 ],
               ),
             ),
@@ -40,115 +58,117 @@ class BUserProfilePage extends StatelessWidget {
     );
   }
 
+  // -------------------------------------------------------------------- Kapak
+
+  /// Kapak marka yeşili bir gradyan; üstündeki her şey temadan bağımsız beyaz.
   Widget _profileHeader(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 32),
+      padding: const EdgeInsets.symmetric(vertical: AppSizes.spaceXLarge),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
             AppColors.primaryColor,
-            AppColors.primaryColor.withValues(alpha: 0.8),
+            AppColors.primaryColor.withValues(alpha: _gradientEndAlpha),
           ],
         ),
       ),
       child: Column(
         children: [
           Container(
-            width: 100,
-            height: 100,
+            width: _avatarSize,
+            height: _avatarSize,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white, width: 3),
+              borderRadius: AppRadius.secondaryCircular,
+              border: Border.all(
+                color: AppColors.onAccent,
+                width: _avatarBorder,
+              ),
               image: DecorationImage(
                 fit: BoxFit.cover,
                 image: AssetImage(applicant.profileImage),
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSizes.spaceMedium),
           Text(
             applicant.fullName,
-            style: const TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 22,
+            style: context.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.w700,
-              color: Colors.white,
+              color: AppColors.onAccent,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSizes.spaceTiny),
           Text(
             applicant.jobTitle,
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 15,
-              fontWeight: FontWeight.w400,
-              color: Colors.white.withValues(alpha: 0.9),
+            style: context.textTheme.bodyLarge?.copyWith(
+              color: AppColors.onAccent.withValues(alpha: _onCoverMuted),
             ),
           ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.location_on_outlined,
-                  size: 14,
-                  color: Colors.white.withValues(alpha: 0.9),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  'Ankara, Türkiye',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 13,
-                    color: Colors.white.withValues(alpha: 0.9),
-                  ),
-                ),
-              ],
-            ),
+          const SizedBox(height: AppSizes.spaceSmall),
+          _locationBadge(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _locationBadge(BuildContext context) {
+    final muted = AppColors.onAccent.withValues(alpha: _onCoverMuted);
+
+    return Container(
+      padding: AppPadding.badge,
+      decoration: BoxDecoration(
+        color: AppColors.onAccent.withValues(alpha: _onCoverSurface),
+        borderRadius: AppRadius.secondaryCircular,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.location_on_outlined,
+            size: AppSizes.iconSmall,
+            color: muted,
+          ),
+          const SizedBox(width: AppSizes.spaceTiny),
+          Text(
+            'Ankara, Türkiye',
+            style: context.textTheme.bodySmall?.copyWith(color: muted),
           ),
         ],
       ),
     );
   }
 
-  Widget _aboutSection() {
+  // ------------------------------------------------------------- Bölümler
+
+  Widget _sectionTitle(BuildContext context, String title) =>
+      Text(title, style: context.textTheme.titleMedium);
+
+  BoxDecoration _panelDecoration(BuildContext context) => BoxDecoration(
+    color: context.tileColor,
+    borderRadius: AppRadius.innerCircular,
+    border: Border.all(color: context.dividerColor),
+  );
+
+  Widget _aboutSection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Hakkında',
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 8),
+        _sectionTitle(context, 'Hakkında'),
+        const SizedBox(height: AppSizes.spaceSmall),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.grey[50],
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[200]!),
-          ),
+          padding: AppPadding.primaryAll,
+          decoration: _panelDecoration(context),
           child: Text(
             applicant.coverLetter ??
-                'Merhaba! Deneyimli bir ${applicant.jobTitle} olarak farklı projelerde yer aldım. Ekip çalışmasına yatkın, sorumluluk sahibi ve enerjik biriyim.',
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 14,
-              color: Colors.grey[700],
+                'Merhaba! Deneyimli bir ${applicant.jobTitle} olarak farklı '
+                    'projelerde yer aldım. Ekip çalışmasına yatkın, sorumluluk '
+                    'sahibi ve enerjik biriyim.',
+            style: context.textTheme.bodyMedium?.copyWith(
+              color: context.textSecondary,
               height: 1.5,
             ),
           ),
@@ -157,46 +177,38 @@ class BUserProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _infoSection() {
+  Widget _infoSection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Bilgiler',
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 12),
+        _sectionTitle(context, 'Bilgiler'),
+        const SizedBox(height: AppSizes.space),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.grey[50],
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey[200]!),
-          ),
+          padding: AppPadding.primaryAll,
+          decoration: _panelDecoration(context),
           child: Column(
             children: [
               _infoRow(
+                context,
                 HugeIcons.strokeRoundedUser,
                 'Ad Soyad',
                 applicant.fullName,
               ),
               _infoRow(
+                context,
                 HugeIcons.strokeRoundedWork,
                 'Meslek',
                 applicant.jobTitle,
               ),
               _infoRow(
+                context,
                 HugeIcons.strokeRoundedCalendar03,
                 'Başvuru Tarihi',
                 applicant.appliedDate,
               ),
               _infoRow(
+                context,
                 HugeIcons.strokeRoundedLocation01,
                 'Konum',
                 'Ankara, Türkiye',
@@ -208,33 +220,33 @@ class BUserProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _infoRow(IconData icon, String label, String value) {
+  Widget _infoRow(
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value,
+  ) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AppSizes.space),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: AppColors.primaryColor),
-          const SizedBox(width: 12),
+          Icon(icon, size: AppSizes.iconSmall, color: context.accentColor),
+          const SizedBox(width: AppSizes.space),
           SizedBox(
-            width: 100,
+            width: _infoLabelWidth,
             child: Text(
               label,
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 13,
-                fontWeight: FontWeight.w400,
-                color: Colors.grey[500],
+              style: context.textTheme.bodySmall?.copyWith(
+                color: context.textTertiary,
               ),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 13,
+              style: context.textTheme.bodySmall?.copyWith(
                 fontWeight: FontWeight.w500,
-                color: Colors.black87,
+                color: context.textPrimary,
               ),
             ),
           ),
@@ -243,65 +255,54 @@ class BUserProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _cvSection() {
+  Widget _cvSection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Özgeçmiş',
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 12),
+        _sectionTitle(context, 'Özgeçmiş'),
+        const SizedBox(height: AppSizes.space),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(16),
+          padding: AppPadding.primaryAll,
           decoration: BoxDecoration(
-            color: AppColors.primaryColor.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(12),
+            color: context.accentColor.withValues(alpha: 0.08),
+            borderRadius: AppRadius.innerCircular,
             border: Border.all(
-              color: AppColors.primaryColor.withValues(alpha: 0.2),
+              color: context.accentColor.withValues(alpha: 0.2),
             ),
           ),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(AppSizes.spaceSmall),
                 decoration: BoxDecoration(
-                  color: AppColors.primaryColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
+                  color: context.accentColor.withValues(alpha: 0.15),
+                  borderRadius: AppRadius.smallCircular,
                 ),
                 child: Icon(
                   HugeIcons.strokeRoundedFile02,
-                  size: 24,
-                  color: AppColors.primaryColor,
+                  size: AppSizes.icon,
+                  color: context.accentColor,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSizes.space),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // TODO(backend): Gerçek CV dosyası bağlanınca indirilebilir
+                    // olacak.
                     Text(
-                      '${applicant.fullName}_CV.pdf',
-                      style: const TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 14,
+                      '${applicant.fullName}_CV.pdf (Demoda indirilemez)',
+                      style: context.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w500,
-                        color: Colors.black87,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AppSizes.smallGap),
                     Text(
                       'PDF • 245 KB',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 12,
-                        color: Colors.grey[500],
+                      style: context.textTheme.labelMedium?.copyWith(
+                        color: context.textTertiary,
                       ),
                     ),
                   ],
@@ -309,8 +310,8 @@ class BUserProfilePage extends StatelessWidget {
               ),
               Icon(
                 HugeIcons.strokeRoundedDownload04,
-                size: 20,
-                color: AppColors.primaryColor,
+                size: AppSizes.iconMedium,
+                color: context.accentColor,
               ),
             ],
           ),

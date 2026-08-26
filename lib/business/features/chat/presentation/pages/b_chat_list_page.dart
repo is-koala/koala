@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:koala/business/features/chat/data/b_chat_service.dart';
-import 'package:koala/employee/features/chat/domain/chat.dart';
+import 'package:koala/business/features/chat/services/b_chat_service.dart';
+import 'package:koala/employee/features/chat/models/chat.dart';
+import 'package:koala/employee/features/chat/presentation/widgets/chat_avatar.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_padding.dart';
+import 'package:koala/product/constants/app_radius.dart';
+import 'package:koala/product/constants/app_sizes.dart';
+import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 
 class BChatListPage extends StatefulWidget {
@@ -17,6 +21,19 @@ class BChatListPage extends StatefulWidget {
 class _BChatListPageState extends State<BChatListPage> {
   final BChatService _chatService = BChatService();
   late List<Chat> _chatList;
+
+  /// Boş durum ikonunu taşıyan kutu.
+  static const double _emptyIconBox = 80;
+
+  /// Sohbet satırındaki avatarın ölçüleri; employee listesindekinden küçük,
+  /// satır burada iki değil tek blok metin taşıyor.
+  static const double _avatarSize = 54;
+  static const double _avatarRadius = 16;
+  static const double _avatarDotSize = 14;
+
+  /// Okunmamış satırın zemin vurgusu; renk değil ton farkı olsun diye çok
+  /// düşük opaklık.
+  static const double _unreadTintAlpha = 0.04;
 
   @override
   void initState() {
@@ -35,8 +52,12 @@ class _BChatListPageState extends State<BChatListPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: MyAppbar(title: "Sohbetler", fontSize: 24, showBackButton: false),
+      backgroundColor: context.backgroundColor,
+      appBar: MyAppbar(
+        title: "Sohbetler",
+        isLarge: true,
+        showBackButton: false,
+      ),
       body: _chatList.isEmpty ? _emptyState() : _chatListView(),
     );
   }
@@ -49,35 +70,30 @@ class _BChatListPageState extends State<BChatListPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 80,
-              height: 80,
+              width: _emptyIconBox,
+              height: _emptyIconBox,
               decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(20),
+                color: context.tileColor,
+                borderRadius: AppRadius.secondaryCircular,
               ),
               child: Icon(
                 HugeIcons.strokeRoundedBubbleChat,
-                size: 40,
-                color: Colors.grey[300],
+                size: AppSizes.iconLarge,
+                color: context.dividerColor,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppSizes.spaceLarge),
             Text(
               'Henüz sohbet yok',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[500],
+              style: context.textTheme.titleMedium?.copyWith(
+                color: context.textTertiary,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSizes.spaceSmall),
             Text(
               'Başvuranlarla iletişime geçtiğinizde\nsohbetler burada görünecek.',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 14,
-                color: Colors.grey[400],
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: context.textTertiary,
               ),
               textAlign: TextAlign.center,
             ),
@@ -89,12 +105,12 @@ class _BChatListPageState extends State<BChatListPage> {
 
   Widget _chatListView() {
     return ListView.builder(
-      padding: const EdgeInsets.only(top: 8, bottom: 100),
+      padding: const EdgeInsets.only(
+        top: AppSizes.spaceSmall,
+        bottom: AppSizes.navBarClearance,
+      ),
       itemCount: _chatList.length,
-      itemBuilder: (context, index) {
-        final chat = _chatList[index];
-        return _chatTile(chat);
-      },
+      itemBuilder: (context, index) => _chatTile(_chatList[index]),
     );
   }
 
@@ -105,100 +121,52 @@ class _BChatListPageState extends State<BChatListPage> {
       onTap: () async {
         await context.push('/business/chat-detail', extra: chat);
         // Geri döndüğünde listeyi güncelle
-        setState(() {
-          _chatList = _chatService.getChats();
-        });
+        if (mounted) {
+          setState(() {
+            _chatList = _chatService.getChats();
+          });
+        }
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: AppPadding.infoTile,
         decoration: BoxDecoration(
           color: hasUnread
-              ? AppColors.primaryColor.withValues(alpha: 0.04)
-              : Colors.white,
+              ? context.accentColor.withValues(alpha: _unreadTintAlpha)
+              : context.backgroundColor,
           border: Border(
-            bottom: BorderSide(color: Colors.grey[100]!, width: 1),
+            bottom: BorderSide(color: context.dividerColor, width: 1),
           ),
         ),
         child: Row(
           children: [
-            // Avatar
-            Stack(
-              children: [
-                Container(
-                  width: 54,
-                  height: 54,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    color: AppColors.primaryColor,
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: chat.avatarUrl != null
-                      ? Image.network(
-                          chat.avatarUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Center(
-                            child: Text(
-                              chat.avatar,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 20,
-                              ),
-                            ),
-                          ),
-                        )
-                      : Center(
-                          child: Text(
-                            chat.avatar,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 20,
-                            ),
-                          ),
-                        ),
-                ),
-                if (chat.isOnline)
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      width: 14,
-                      height: 14,
-                      decoration: BoxDecoration(
-                        color: Colors.green,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                    ),
-                  ),
-              ],
+            ChatAvatar(
+              avatarUrl: chat.avatarUrl,
+              fallbackText: chat.avatar,
+              size: _avatarSize,
+              borderRadius: _avatarRadius,
+              isOnline: chat.isOnline,
+              onlineDotSize: _avatarDotSize,
             ),
-            const SizedBox(width: 14),
-
-            // İsim + Son mesaj
+            const SizedBox(width: AppSizes.spaceMedium),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     chat.name,
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 15,
+                    style: context.textTheme.bodyLarge?.copyWith(
                       fontWeight: hasUnread ? FontWeight.w600 : FontWeight.w500,
-                      color: Colors.black87,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSizes.spaceTiny),
                   Text(
                     chat.lastMessage ?? '',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 13,
+                    style: context.textTheme.bodySmall?.copyWith(
                       fontWeight: hasUnread ? FontWeight.w500 : FontWeight.w400,
-                      color: hasUnread ? Colors.black54 : Colors.grey[500],
+                      color: hasUnread
+                          ? context.textSecondary
+                          : context.textTertiary,
                     ),
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
@@ -206,48 +174,43 @@ class _BChatListPageState extends State<BChatListPage> {
                 ],
               ),
             ),
-            const SizedBox(width: 12),
-
-            // Zaman + Badge
+            const SizedBox(width: AppSizes.space),
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
                   chat.timeString,
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 12,
+                  style: context.textTheme.labelMedium?.copyWith(
                     color: hasUnread
-                        ? AppColors.primaryColor
-                        : Colors.grey[400],
+                        ? context.accentColor
+                        : context.textTertiary,
                     fontWeight: hasUnread ? FontWeight.w600 : FontWeight.w400,
                   ),
                 ),
                 if (hasUnread) ...[
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 7,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryColor,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      chat.unreadCount.toString(),
-                      style: const TextStyle(
-                        fontFamily: 'Poppins',
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
+                  const SizedBox(height: AppSizes.spaceTiny),
+                  _unreadBadge(chat.unreadCount),
                 ],
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _unreadBadge(int count) {
+    return Container(
+      padding: AppPadding.badge,
+      decoration: BoxDecoration(
+        color: context.accentColor,
+        borderRadius: AppRadius.smallCircular,
+      ),
+      child: Text(
+        count.toString(),
+        style: context.textTheme.labelSmall?.copyWith(
+          fontWeight: FontWeight.w600,
+          color: AppColors.onAccent,
         ),
       ),
     );
