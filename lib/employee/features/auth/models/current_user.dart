@@ -1,10 +1,34 @@
 import 'package:koala/employee/features/auth/models/company_membership.dart';
+import 'package:koala/employee/features/auth/models/user_address.dart';
 
-/// `/users/me` yanıtının oturum için gereken kısmı.
+/// Kullanıcının cinsiyeti. Backend `Gender` enum'ının birebir karşılığı.
+enum Gender {
+  male('MALE', 'Erkek'),
+  female('FEMALE', 'Kadın'),
+  notSpecified('NOT_SPECIFIED', 'Belirtilmemiş');
+
+  const Gender(this.code, this.displayName);
+
+  /// Backend'e gidip gelen değer.
+  final String code;
+
+  /// Arayüzde gösterilen Türkçe karşılık.
+  final String displayName;
+
+  /// Tanınmayan ya da boş değerde [Gender.notSpecified] döner; backend
+  /// ileride yeni bir değer eklerse uygulama patlamasın.
+  static Gender fromCode(Object? value) {
+    return Gender.values.firstWhere(
+      (gender) => gender.code == value,
+      orElse: () => Gender.notSpecified,
+    );
+  }
+}
+
+/// `/users/me` yanıtının tamamı.
 ///
-/// Uç bundan fazlasını (doğum tarihi, cinsiyet, TC kimlik no, hakkında,
-/// yetkinlikler, adres) da döndürüyor; profil ekranı bağlanırken o alanlar
-/// profil feature'ının kendi modeline eklenecek.
+/// Hem oturum (router'ın baktığı [isEmployer]) hem profil ekranı bu modeli
+/// okuyor: uç tek yanıt döndürdüğü için ikiye bölmenin anlamı yok.
 class CurrentUser {
   const CurrentUser({
     required this.id,
@@ -13,6 +37,13 @@ class CurrentUser {
     required this.email,
     this.profilePictureUrl,
     this.phoneNumber,
+    this.birthDate,
+    this.gender = Gender.notSpecified,
+    this.tcIdentityNumber,
+    this.about,
+    this.qualifications,
+    this.interests,
+    this.address,
     this.isEmployer = false,
     this.emailVerified = false,
     this.phoneVerified = false,
@@ -27,6 +58,24 @@ class CurrentUser {
   final String email;
   final String? profilePictureUrl;
   final String? phoneNumber;
+
+  final DateTime? birthDate;
+  final Gender gender;
+
+  /// TC kimlik numarası. Kimlik doğrulaması yapılana kadar `null`.
+  final String? tcIdentityNumber;
+
+  /// Profildeki "Hakkımda" metni.
+  final String? about;
+
+  /// Kullanıcının yetkinlikleri; backend'de düz metin.
+  final String? qualifications;
+
+  /// İlgi alanları; backend'de düz metin.
+  final String? interests;
+
+  /// Kayıtlı adres. Profil başlığındaki konum satırı buradan çiziliyor.
+  final UserAddress? address;
 
   /// Kullanıcının iş veren olup olmadığı. Router hangi arayüzün açılacağına
   /// buna bakarak karar veriyor.
@@ -49,6 +98,8 @@ class CurrentUser {
   factory CurrentUser.fromJson(Map<String, dynamic> json) {
     final companies = json['companies'];
     final roles = json['roles'];
+    final address = json['address'];
+    final birthDate = json['birthDate'];
 
     return CurrentUser(
       id: json['id'] as String,
@@ -57,6 +108,15 @@ class CurrentUser {
       email: json['email'] as String? ?? '',
       profilePictureUrl: json['profilePictureUrl'] as String?,
       phoneNumber: json['phoneNumber'] as String?,
+      birthDate: birthDate is String ? DateTime.tryParse(birthDate) : null,
+      gender: Gender.fromCode(json['gender']),
+      tcIdentityNumber: json['tcIdentityNumber'] as String?,
+      about: json['about'] as String?,
+      qualifications: json['qualifications'] as String?,
+      interests: json['interests'] as String?,
+      address: address is Map<String, dynamic>
+          ? UserAddress.fromJson(address)
+          : null,
       isEmployer: readEmployerFlag(json),
       emailVerified: json['emailVerified'] as bool? ?? false,
       phoneVerified: json['phoneVerified'] as bool? ?? false,
@@ -89,6 +149,13 @@ class CurrentUser {
       'email': email,
       'profilePictureUrl': profilePictureUrl,
       'phoneNumber': phoneNumber,
+      'birthDate': birthDate?.toIso8601String(),
+      'gender': gender.code,
+      'tcIdentityNumber': tcIdentityNumber,
+      'about': about,
+      'qualifications': qualifications,
+      'interests': interests,
+      'address': address?.toJson(),
       'isEmployer': isEmployer,
       'emailVerified': emailVerified,
       'phoneVerified': phoneVerified,

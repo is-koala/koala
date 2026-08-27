@@ -84,6 +84,18 @@ class ApiClient {
     return _send<void>(() => _dio.post<dynamic>(path, data: body));
   }
 
+  /// Gövdesinde veri dönen `PATCH` isteği.
+  ///
+  /// Backend kısmi güncellemede yalnızca gönderilen alanlara bakıyor, o yüzden
+  /// [body]'ye değişmeyen alanları koymamak gerekiyor.
+  Future<T> patch<T>(
+    String path, {
+    Object? body,
+    required T Function(Object? data) parse,
+  }) {
+    return _send<T>(() => _dio.patch<dynamic>(path, data: body), parse: parse);
+  }
+
   Future<T> _send<T>(
     Future<Response<dynamic>> Function() request, {
     T Function(Object? data)? parse,

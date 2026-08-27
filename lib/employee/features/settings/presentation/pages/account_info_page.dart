@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:koala/employee/features/profile/models/user.dart';
+import 'package:koala/employee/features/auth/models/current_user.dart';
+import 'package:koala/employee/features/auth/models/pending_verification.dart';
+import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
+import 'package:koala/employee/features/profile/presentation/widgets/profile_avatar.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
-import 'package:koala/product/widgets/my_textfield.dart';
 import 'package:koala/product/widgets/button_navbar.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
+import 'package:koala/product/widgets/my_textfield.dart';
+import 'package:provider/provider.dart';
 
 class AccountInfoPage extends StatefulWidget {
-  final User user;
+  final CurrentUser user;
 
   const AccountInfoPage({super.key, required this.user});
 
@@ -25,48 +29,112 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
   /// "Hakkımda" alanının yüksekliği: yaklaşık dört satır.
   static const double _aboutHeight = 120;
 
-  late TextEditingController _fullNameController;
-  late TextEditingController _jobTitleController;
+  late TextEditingController _firstNameController;
+  late TextEditingController _lastNameController;
+  late TextEditingController _occupationController;
+  late TextEditingController _phoneController;
   late TextEditingController _locationController;
   late TextEditingController _aboutController;
-  late TextEditingController _cvFileNameController;
 
   @override
   void initState() {
     super.initState();
-    _fullNameController = TextEditingController(text: widget.user.fullName);
-    _jobTitleController = TextEditingController(text: widget.user.jobTitle);
-    _locationController = TextEditingController(text: widget.user.location);
-    _aboutController = TextEditingController(text: widget.user.about);
-    _cvFileNameController = TextEditingController(text: widget.user.cvFileName);
+    final user = widget.user;
+
+    _firstNameController = TextEditingController(text: user.firstName);
+    _lastNameController = TextEditingController(text: user.lastName);
+    _occupationController = TextEditingController(
+      text: user.qualifications ?? '',
+    );
+    _phoneController = TextEditingController(text: user.phoneNumber ?? '');
+    _locationController = TextEditingController(
+      text: user.address?.shortLabel ?? '',
+    );
+    _aboutController = TextEditingController(text: user.about ?? '');
   }
 
   @override
   void dispose() {
-    _fullNameController.dispose();
-    _jobTitleController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _occupationController.dispose();
+    _phoneController.dispose();
     _locationController.dispose();
     _aboutController.dispose();
-    _cvFileNameController.dispose();
     super.dispose();
   }
 
-  void _save() {
-    final updatedUser = widget.user.copyWith(
-      fullName: _fullNameController.text.trim(),
-      jobTitle: _jobTitleController.text.trim(),
-      location: _locationController.text.trim(),
-      about: _aboutController.text.trim(),
-      cvFileName: _cvFileNameController.text.trim(),
+  /// Kimliği doğrulanmış kullanıcı ad ve soyadını değiştiremiyor; backend
+  /// isteği reddettiği için alanlar en baştan kapalı açılıyor.
+  bool get _canEditName => !widget.user.identityVerified;
+
+  Future<void> _save() async {
+    final user = widget.user;
+    final provider = context.read<UserProvider>();
+
+    // PATCH kısmi: değişmeyen alan gövdeye hiç konmuyor. Aksi hâlde kimliği
+    // doğrulanmış kullanıcı hiçbir şeyi değiştirmese bile ad alanını
+    // gönderdiği için hata alırdı.
+    final firstName = _changed(_firstNameController.text, user.firstName);
+    final lastName = _changed(_lastNameController.text, user.lastName);
+    final about = _changed(_aboutController.text, user.about);
+    final qualifications = _changed(
+      _occupationController.text,
+      user.qualifications,
     );
-    context.pop(updatedUser);
+
+    final pending = await provider.updateProfile(
+      firstName: _canEditName ? firstName : null,
+      lastName: _canEditName ? lastName : null,
+      about: about,
+      qualifications: qualifications,
+    );
+
+    if (!mounted) return;
+
+    if (pending == null) {
+      _showMessage(provider.errorMessage ?? "Profil güncellenemedi.");
+      return;
+    }
+
+    _showMessage(_successMessage(pending));
+    context.pop();
+  }
+
+  /// Yeni değer eskisinden farklıysa onu, aynıysa `null` döner.
+  static String? _changed(String value, String? current) {
+    final trimmed = value.trim();
+    return trimmed == (current ?? '') ? null : trimmed;
+  }
+
+  /// Telefon değişikliği hemen yazılmıyor; kullanıcı doğrulamayı tamamlayana
+  /// kadar eski numara geçerli olduğu için mesaj buna göre kuruluyor.
+  static String _successMessage(List<PendingVerification> pending) {
+    if (pending.isEmpty) return "Profilin güncellendi.";
+
+    final message = pending.first.message;
+    if (message != null && message.isNotEmpty) return message;
+
+    return "Profilin güncellendi. Doğrulama bekleyen alanlar var.";
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
+    final isSaving = context.watch<UserProvider>().isLoading;
+
     return Scaffold(
       appBar: MyAppbar(title: "Hesabı Düzenle"),
-      bottomNavigationBar: ButtonNavbar(onPressed: _save, title: "Kaydet"),
+      bottomNavigationBar: ButtonNavbar(
+        onPressed: isSaving ? null : _save,
+        title: "Kaydet",
+        isLoading: isSaving,
+      ),
       body: SingleChildScrollView(
         child: Padding(
           padding: AppPadding.primaryAll,
@@ -76,20 +144,49 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
               Center(child: _avatar()),
               const SizedBox(height: AppSizes.sectionSpace),
               MyTextfield(
-                labelText: "Ad Soyad",
-                controller: _fullNameController,
+                labelText: "Ad",
+                controller: _firstNameController,
+                enabled: _canEditName,
               ),
               const SizedBox(height: AppSizes.spaceMedium),
-              MyTextfield(labelText: "Meslek", controller: _jobTitleController),
+              MyTextfield(
+                labelText: "Soyad",
+                controller: _lastNameController,
+                enabled: _canEditName,
+              ),
+              if (!_canEditName)
+                _hint(
+                  "Kimliğin doğrulandığı için ad ve soyad "
+                  "değiştirilemiyor.",
+                ),
               const SizedBox(height: AppSizes.spaceMedium),
-              MyTextfield(labelText: "Konum", controller: _locationController),
+              MyTextfield(
+                labelText: "Meslek",
+                controller: _occupationController,
+              ),
+              const SizedBox(height: AppSizes.spaceMedium),
+              // TODO(backend): `PATCH /users/me` telefon alanını okuyor ama
+              // hiçbir şey yapmadan 200 dönüyor (`UserManager.patchCurrentUser`
+              // içindeki blok boş). Açık bırakmak "kaydedildi" deyip değeri
+              // yutmak olurdu; uç gerçekten yazana kadar salt okunur.
+              MyTextfield(
+                labelText: "Telefon",
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
+                enabled: false,
+              ),
+              const SizedBox(height: AppSizes.spaceMedium),
+              // TODO(backend): Konum `PUT /users/me/address` ile yazılıyor ve
+              // ülke/şehir/ilçe kimliği istiyor; `/reference` uçlarından
+              // beslenen bir seçici gerekiyor. O ekran gelene kadar salt
+              // okunur.
+              MyTextfield(
+                labelText: "Konum",
+                controller: _locationController,
+                enabled: false,
+              ),
               const SizedBox(height: AppSizes.spaceMedium),
               _aboutTextField(),
-              // SizedBox(height: 16),
-              // MyTextfield(
-              //   labelText: "CV Dosya Adı",
-              //   controller: _cvFileNameController,
-              // ),
               const SizedBox(height: AppSizes.sectionSpace),
             ],
           ),
@@ -98,20 +195,31 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
     );
   }
 
+  Widget _hint(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(
+        top: AppSizes.spaceTiny,
+        left: AppSizes.space,
+      ),
+      child: Text(
+        text,
+        style: context.textTheme.bodySmall?.copyWith(
+          color: context.textTertiary,
+        ),
+      ),
+    );
+  }
+
   /// Profil fotoğrafı ve üstündeki değiştirme rozeti.
+  ///
+  /// TODO(backend): `PUT /users/me/profile-picture` multipart bekliyor; görsel
+  /// seçmek için henüz bir yol yok, rozet şimdilik sadece duruyor.
   Widget _avatar() {
     return Stack(
       children: [
-        Container(
-          width: _avatarSize,
-          height: _avatarSize,
-          decoration: BoxDecoration(
-            borderRadius: AppRadius.secondaryCircular,
-            image: DecorationImage(
-              fit: BoxFit.cover,
-              image: AssetImage(widget.user.profileImage),
-            ),
-          ),
+        ProfileAvatar(
+          imageUrl: widget.user.profilePictureUrl,
+          size: _avatarSize,
         ),
         Positioned(
           bottom: 0,

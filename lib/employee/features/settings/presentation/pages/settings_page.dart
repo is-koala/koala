@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/services/auth_service.dart';
-import 'package:koala/employee/features/profile/models/user.dart';
-import 'package:koala/employee/features/profile/services/fake_user.dart';
+import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/theme/theme_provider.dart';
@@ -37,17 +36,27 @@ class SettingsPage extends StatelessWidget {
           icon: AppIcons.user,
           title: "Hesabı Düzenle",
           onTap: () async {
-            final user = FakeUser.instance;
-            final updatedUser = await context.push<User>(
-              '/account-info',
-              extra: user,
-            );
-            if (updatedUser != null) {
-              FakeUser.instance.fullName = updatedUser.fullName;
-              FakeUser.instance.jobTitle = updatedUser.jobTitle;
-              FakeUser.instance.location = updatedUser.location;
-              FakeUser.instance.about = updatedUser.about;
-              FakeUser.instance.cvFileName = updatedUser.cvFileName;
+            // Profil henüz yüklenmediyse düzenleme ekranı boş açılırdı;
+            // önce veriyi getirip öyle geçiliyor.
+            final provider = context.read<UserProvider>();
+            if (provider.user == null) await provider.load();
+
+            final user = provider.user;
+            if (user == null) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      provider.errorMessage ?? "Profil bilgisi alınamadı.",
+                    ),
+                  ),
+                );
+              }
+              return;
+            }
+
+            if (context.mounted) {
+              await context.push('/account-info', extra: user);
             }
           },
         ),
@@ -66,6 +75,8 @@ class SettingsPage extends StatelessWidget {
             await AuthService().logout();
 
             if (context.mounted) {
+              // Bir sonraki oturum, çıkan kullanıcının profilini görmesin.
+              context.read<UserProvider>().clear();
               context.go('/authgate');
             }
           },

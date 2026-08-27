@@ -18,6 +18,9 @@ class ApiPaths {
   // -------------------------------------------------------------------- Users
 
   static const String currentUser = '/users/me';
+  static const String currentUserPassword = '/users/me/password';
+  static const String currentUserProfilePicture = '/users/me/profile-picture';
+  static const String currentUserAddress = '/users/me/address';
 
   // -------------------------------------------------------------------- Legal
 

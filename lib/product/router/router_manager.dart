@@ -13,6 +13,7 @@ import 'package:koala/business/features/home/presentation/pages/b_notifications_
 import 'package:koala/business/features/chat/presentation/pages/b_chat_list_page.dart';
 import 'package:koala/business/features/chat/presentation/pages/b_chat_page.dart';
 import 'package:koala/business/features/home/models/b_applicant.dart';
+import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/presentation/pages/auth_gate.dart';
 import 'package:koala/employee/features/auth/presentation/pages/auth_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/company_informations_page.dart';
@@ -38,7 +39,6 @@ import 'package:koala/employee/features/auth/presentation/pages/email_verificati
 import 'package:koala/employee/features/jobs/presentation/pages/apply_page.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/settings/presentation/pages/account_info_page.dart';
-import 'package:koala/employee/features/profile/models/user.dart';
 import 'package:koala/product/network/session_manager.dart';
 
 class RouterManager {
@@ -206,7 +206,7 @@ class RouterManager {
       GoRoute(
         path: '/account-info',
         builder: (context, state) {
-          final user = state.extra as User;
+          final user = state.extra as CurrentUser;
           return AccountInfoPage(user: user);
         },
       ),

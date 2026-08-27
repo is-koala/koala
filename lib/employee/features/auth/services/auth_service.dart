@@ -3,6 +3,7 @@ import 'package:koala/employee/features/auth/models/auth_tokens.dart';
 import 'package:koala/employee/features/auth/models/consent_decision.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/models/registration_verification.dart';
+import 'package:koala/employee/features/auth/services/user_service.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/network/api_paths.dart';
@@ -13,11 +14,12 @@ import 'package:koala/product/network/session_manager.dart';
 /// Token'ların saklanması ve oturum bayraklarının yazılması da burada:
 /// sayfalar `SharedPreferences`'a doğrudan yazmak yerine bu servisi çağırıyor.
 class AuthService {
-  AuthService._(this._apiClient, this._sessionManager);
+  AuthService._(this._apiClient, this._sessionManager, this._userService);
 
   static final AuthService _instance = AuthService._(
     ApiClient(),
     SessionManager(),
+    UserService(),
   );
 
   factory AuthService() => _instance;
@@ -26,12 +28,18 @@ class AuthService {
   factory AuthService.withClient(
     ApiClient apiClient, {
     SessionManager? sessionManager,
+    UserService? userService,
   }) {
-    return AuthService._(apiClient, sessionManager ?? SessionManager());
+    return AuthService._(
+      apiClient,
+      sessionManager ?? SessionManager(),
+      userService ?? UserService.withClient(apiClient),
+    );
   }
 
   final ApiClient _apiClient;
   final SessionManager _sessionManager;
+  final UserService _userService;
 
   /// Kayıt akışının ilk adımı: backend doğrulama e-postası gönderiyor.
   ///
@@ -122,12 +130,10 @@ class AuthService {
   }
 
   /// Oturumu açmış kullanıcının bilgileri.
-  Future<CurrentUser> fetchCurrentUser() {
-    return _apiClient.get<CurrentUser>(
-      ApiPaths.currentUser,
-      parse: (data) => CurrentUser.fromJson(data! as Map<String, dynamic>),
-    );
-  }
+  ///
+  /// Ucun tek sarmalayıcısı [UserService]; buradaki kısayol giriş akışının
+  /// kendi içinde kapalı kalması için duruyor.
+  Future<CurrentUser> fetchCurrentUser() => _userService.fetchCurrentUser();
 
   /// Çıkış yapar.
   ///

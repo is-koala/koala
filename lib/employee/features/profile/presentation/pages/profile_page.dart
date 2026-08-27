@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:koala/employee/features/profile/models/user.dart';
-import 'package:koala/employee/features/profile/presentation/widgets/experience_card.dart';
-import 'package:koala/employee/features/profile/services/fake_user.dart';
+import 'package:koala/employee/features/auth/models/current_user.dart';
+import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
+import 'package:koala/employee/features/profile/presentation/widgets/profile_avatar.dart';
 import 'package:koala/product/constants/app_assets.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -11,6 +11,7 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
+import 'package:provider/provider.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -30,40 +31,33 @@ class _ProfilePageState extends State<ProfilePage> {
   /// liste değil tek sütun var, o yüzden standart paydan geniş.
   static const double _bottomClearance = 120;
 
-  late User user;
+  /// Hata durumundaki ikon; boş durum ekranlarındaki ölçüyle aynı.
+  static const double _errorIconSize = 64;
 
   @override
   void initState() {
     super.initState();
-    user = FakeUser.instance;
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Ayarlardan döndüğünde güncel veriyi al
-    setState(() {
-      user = FakeUser.instance;
+    // Sayfa `ShellPage`'in `PageView`'ında bir kez kurulup canlı kaldığı için
+    // ilk kare çizildikten sonra tek seferlik yükleme yapılıyor; sekmeye her
+    // dönüşte `initState` çalışmıyor.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<UserProvider>().load();
     });
   }
 
-  void _navigateToAccountInfo() async {
-    final updatedUser = await context.push<User>('/account-info', extra: user);
-    if (updatedUser != null) {
-      setState(() {
-        user = updatedUser;
-        // Fake user'ı da güncelle ki uygulama genelinde tutarlı olsun
-        FakeUser.instance.fullName = updatedUser.fullName;
-        FakeUser.instance.jobTitle = updatedUser.jobTitle;
-        FakeUser.instance.location = updatedUser.location;
-        FakeUser.instance.about = updatedUser.about;
-        FakeUser.instance.cvFileName = updatedUser.cvFileName;
-      });
-    }
+  Future<void> _navigateToAccountInfo(CurrentUser user) async {
+    await context.push('/account-info', extra: user);
+    // Düzenleme ekranı kaydı doğrudan provider üzerinden güncelliyor; burada
+    // yalnızca ekranın açık kaldığı sürede sunucuda değişen bir şey varsa
+    // yakalamak için sessiz tazeleme yapılıyor.
+    if (mounted) await context.read<UserProvider>().load(silent: true);
   }
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<UserProvider>();
+    final user = provider.user;
+
     return Scaffold(
       appBar: MyAppbar(
         title: "Profilim",
@@ -73,30 +67,71 @@ class _ProfilePageState extends State<ProfilePage> {
           IconButton(
             onPressed: () async {
               await context.push('/settings');
-              // Ayarlardan döndüğünde profili güncelle
-              setState(() {
-                user = FakeUser.instance;
-              });
+              if (context.mounted) {
+                await context.read<UserProvider>().load(silent: true);
+              }
             },
             icon: AppIcon(AppIcons.settings, color: context.textPrimary),
           ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: switch ((user, provider.isLoading, provider.errorMessage)) {
+        (null, true, _) => const Center(child: CircularProgressIndicator()),
+        (null, _, final String message) => _errorState(message),
+        (null, _, _) => const SizedBox.shrink(),
+        (final CurrentUser value, _, _) => _content(value),
+      },
+    );
+  }
+
+  Widget _errorState(String message) {
+    return Center(
+      child: Padding(
+        padding: AppPadding.primaryAll,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppIcon(
+              AppIcons.alert,
+              size: _errorIconSize,
+              color: context.dividerColor,
+            ),
+            const SizedBox(height: AppSizes.spaceMedium),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: context.textSecondary,
+              ),
+            ),
+            const SizedBox(height: AppSizes.spaceMedium),
+            OutlinedButton(
+              onPressed: () => context.read<UserProvider>().load(),
+              child: const Text("Tekrar Dene"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _content(CurrentUser user) {
+    return RefreshIndicator(
+      onRefresh: () => context.read<UserProvider>().load(silent: true),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         child: Padding(
           padding: AppPadding.primaryAll,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              profileHeader(),
+              profileHeader(user),
               const SizedBox(height: AppSizes.spaceLarge),
-              aboutProfile(),
+              aboutProfile(user),
               const SizedBox(height: AppSizes.spaceLarge),
               cvArea(),
               const SizedBox(height: AppSizes.spaceXLarge),
               rosettes(),
-              const SizedBox(height: AppSizes.spaceXLarge),
-              experienceSection(),
               const SizedBox(height: _bottomClearance),
             ],
           ),
@@ -105,11 +140,11 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget editProfileButton() {
+  Widget editProfileButton(CurrentUser user) {
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton.icon(
-        onPressed: _navigateToAccountInfo,
+        onPressed: () => _navigateToAccountInfo(user),
         icon: const Icon(Icons.edit, size: AppSizes.iconSmall),
         label: const Text("Profili Düzenle"),
         style: OutlinedButton.styleFrom(
@@ -127,6 +162,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  /// TODO(backend): Rozetlerin karşılığı henüz yok; görseller sabit.
   Column rosettes() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -146,17 +182,26 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Column aboutProfile() {
+  Column aboutProfile(CurrentUser user) {
+    final about = user.about;
+    final isEmpty = about == null || about.isEmpty;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionTitle("Hakkımda"),
         const SizedBox(height: AppSizes.spaceTiny),
-        Text(user.about, style: context.textTheme.bodyMedium),
+        Text(
+          isEmpty ? "Henüz bir tanıtım yazısı eklemedin." : about,
+          style: context.textTheme.bodyMedium?.copyWith(
+            color: isEmpty ? context.textTertiary : null,
+          ),
+        ),
       ],
     );
   }
 
+  /// TODO(backend): Özgeçmiş yükleme ucu yok; kart sabit metinle çiziliyor.
   Container cvArea() {
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -181,7 +226,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ),
               Text(
-                user.cvFileName,
+                "Henüz yüklenmedi",
                 style: context.textTheme.bodyMedium?.copyWith(
                   color: context.onAccentColor,
                 ),
@@ -194,34 +239,32 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Row profileHeader() {
+  Row profileHeader(CurrentUser user) {
+    final location = user.address?.shortLabel;
+    // "Meslek" alanının backend'deki karşılığı `qualifications`; ayrı bir
+    // ünvan alanı yok.
+    final occupation = user.qualifications;
+
     return Row(
       children: [
-        Container(
-          width: _avatarSize,
-          height: _avatarSize,
-          decoration: BoxDecoration(
-            shape: BoxShape.rectangle,
-            borderRadius: AppRadius.secondaryCircular,
-            image: DecorationImage(
-              fit: BoxFit.cover,
-              image: AssetImage(user.profileImage),
-            ),
-          ),
-        ),
+        ProfileAvatar(imageUrl: user.profilePictureUrl, size: _avatarSize),
         const SizedBox(width: AppSizes.spaceLarge),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              user.fullName,
-              style: context.textTheme.headlineLarge?.copyWith(
-                fontWeight: FontWeight.w500,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                user.fullName,
+                style: context.textTheme.headlineLarge?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-            ),
-            Text(user.jobTitle, style: context.textTheme.bodyMedium),
-            Text(user.location, style: context.textTheme.bodyMedium),
-          ],
+              if (occupation != null && occupation.isNotEmpty)
+                Text(occupation, style: context.textTheme.bodyMedium),
+              if (location != null)
+                Text(location, style: context.textTheme.bodyMedium),
+            ],
+          ),
         ),
       ],
     );
@@ -231,25 +274,4 @@ class _ProfilePageState extends State<ProfilePage> {
     title,
     style: context.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
   );
-
-  Column experienceSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _sectionTitle("Tecrübe"),
-        const SizedBox(height: AppSizes.space),
-        ...user.experiences.asMap().entries.map((entry) {
-          final index = entry.key;
-          final exp = entry.value;
-          return ExperienceCard(
-            title: exp.title,
-            company: exp.company,
-            duration: exp.duration,
-            description: exp.description,
-            isLast: index == user.experiences.length - 1,
-          );
-        }),
-      ],
-    );
-  }
 }

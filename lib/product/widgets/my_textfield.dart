@@ -17,6 +17,7 @@ class MyTextfield extends StatelessWidget {
     this.height = AppSizes.fieldHeight,
     this.expands = false,
     this.borderRadius = AppRadius.primaryCircular,
+    this.enabled = true,
   });
 
   final String labelText;
@@ -40,12 +41,18 @@ class MyTextfield extends StatelessWidget {
   /// daha küçük bir değer geçilebilir.
   final BorderRadius borderRadius;
 
+  /// Alan düzenlenebilir mi. Kapalıyken içerik okunabilir kalıyor ama
+  /// odaklanılamıyor: karşılığı henüz olmayan ya da başka bir ekrandan
+  /// değiştirilen alanlar için.
+  final bool enabled;
+
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       height: height,
       child: TextField(
         controller: controller,
+        enabled: enabled,
         onChanged: onChanged,
         obscureText: isObscureText,
         maxLines: expands ? null : 1,

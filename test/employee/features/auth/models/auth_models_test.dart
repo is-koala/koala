@@ -3,6 +3,7 @@ import 'package:koala/employee/features/auth/models/agreement_version.dart';
 import 'package:koala/employee/features/auth/models/auth_tokens.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/models/registration_verification.dart';
+import 'package:koala/employee/features/auth/models/user_address.dart';
 
 void main() {
   group('AuthTokens', () {
@@ -108,6 +109,96 @@ void main() {
       expect(user.isEmployer, isFalse);
       expect(user.companies, isEmpty);
       expect(user.roles, isEmpty);
+    });
+
+    test('profil alanları JSON gidiş dönüşünde korunur', () {
+      final json = {
+        'id': 'user-1',
+        'firstName': 'Yakup',
+        'lastName': 'Kahraman',
+        'email': 'a@b.com',
+        'birthDate': '1998-05-12',
+        'gender': 'FEMALE',
+        'tcIdentityNumber': '11111111110',
+        'about': 'Merhaba',
+        'qualifications': 'Fotoğrafçı',
+        'interests': 'Doğa',
+        'address': {
+          'id': 'address-1',
+          'cityName': 'İstanbul',
+          'districtName': 'Küçükçekmece',
+          'latitude': 41.0,
+          'longitude': 28.8,
+        },
+      };
+
+      final user = CurrentUser.fromJson(json);
+
+      expect(user.birthDate, DateTime(1998, 5, 12));
+      expect(user.gender, Gender.female);
+      expect(user.about, 'Merhaba');
+      expect(user.qualifications, 'Fotoğrafçı');
+      expect(user.interests, 'Doğa');
+      expect(user.address?.cityName, 'İstanbul');
+      expect(CurrentUser.fromJson(user.toJson()).toJson(), user.toJson());
+    });
+
+    test('cinsiyet gelmezse ya da tanınmazsa belirtilmemiş sayılır', () {
+      final base = {
+        'id': 'user-1',
+        'firstName': 'Yakup',
+        'lastName': 'Kahraman',
+        'email': 'a@b.com',
+      };
+
+      expect(CurrentUser.fromJson(base).gender, Gender.notSpecified);
+      expect(
+        CurrentUser.fromJson({...base, 'gender': 'UZAYLI'}).gender,
+        Gender.notSpecified,
+      );
+    });
+
+    test('bozuk doğum tarihi çökme yerine null olur', () {
+      final user = CurrentUser.fromJson({
+        'id': 'user-1',
+        'firstName': 'Yakup',
+        'lastName': 'Kahraman',
+        'email': 'a@b.com',
+        'birthDate': 'tarih değil',
+      });
+
+      expect(user.birthDate, isNull);
+    });
+  });
+
+  group('UserAddress', () {
+    test('kısa etiket ilçe/il olarak kurulur', () {
+      final address = UserAddress.fromJson({
+        'id': 'address-1',
+        'cityName': 'İstanbul',
+        'districtName': 'Küçükçekmece',
+      });
+
+      expect(address.shortLabel, 'Küçükçekmece/İstanbul');
+    });
+
+    test('yalnız biri doluysa tek başına döner', () {
+      final address = UserAddress.fromJson({
+        'id': 'address-1',
+        'cityName': 'İstanbul',
+      });
+
+      expect(address.shortLabel, 'İstanbul');
+    });
+
+    test('ikisi de boşsa null döner; satır hiç çizilmemeli', () {
+      final address = UserAddress.fromJson({
+        'id': 'address-1',
+        'cityName': '',
+        'districtName': null,
+      });
+
+      expect(address.shortLabel, isNull);
     });
   });
 
