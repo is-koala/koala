@@ -3,18 +3,28 @@ import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/employee/features/auth/presentation/widgets/auth_divider.dart';
 import 'package:koala/employee/features/auth/presentation/widgets/auth_legal_footer.dart';
+import 'package:koala/employee/features/auth/presentation/widgets/auth_snackbar.dart';
 import 'package:koala/employee/features/auth/presentation/widgets/google_auth_button.dart';
+import 'package:koala/employee/features/auth/services/auth_service.dart';
+import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/my_button.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 
-class RegisterPage extends StatelessWidget {
+part 'register_pagemodel.dart';
+
+class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key, required this.isBusiness});
 
   final bool isBusiness;
 
+  @override
+  State<RegisterPage> createState() => _RegisterPageState();
+}
+
+class _RegisterPageState extends RegisterPagemodel {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -52,7 +62,7 @@ class RegisterPage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            isBusiness ? "İş Hesabınızı Açalım!" : "Haydi Kayıt Olalım!",
+            widget.isBusiness ? "İş Hesabınızı Açalım!" : "Haydi Kayıt Olalım!",
             style: context.textTheme.displayMedium?.copyWith(
               fontWeight: FontWeight.w600,
             ),
@@ -60,13 +70,29 @@ class RegisterPage extends StatelessWidget {
           const SizedBox(height: AppSizes.sectionSpace),
           Row(
             children: [
-              Expanded(child: MyTextfield(labelText: "Ad")),
+              Expanded(
+                child: MyTextfield(
+                  labelText: "Ad",
+                  controller: firstNameController,
+                  keyboardType: TextInputType.name,
+                ),
+              ),
               const SizedBox(width: AppSizes.space),
-              Expanded(child: MyTextfield(labelText: "Soyad")),
+              Expanded(
+                child: MyTextfield(
+                  labelText: "Soyad",
+                  controller: lastNameController,
+                  keyboardType: TextInputType.name,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: AppSizes.space),
-          MyTextfield(labelText: 'E-posta'),
+          MyTextfield(
+            labelText: 'E-posta',
+            controller: emailController,
+            keyboardType: TextInputType.emailAddress,
+          ),
           const SizedBox(height: AppSizes.spaceLarge),
         ],
       ),
@@ -80,12 +106,9 @@ class RegisterPage extends StatelessWidget {
           width: double.infinity,
           height: AppSizes.buttonHeight,
           child: MyButton(
-            onPressed: () {
-              context.go(
-                '/auth/register-type/register/email-verification-pending?isBusiness=$isBusiness',
-              );
-            },
+            onPressed: onRegister,
             title: 'KAYIT OL',
+            isLoading: isSubmitting,
           ),
         ),
         const SizedBox(height: AppSizes.space),

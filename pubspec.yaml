@@ -36,6 +36,10 @@ dependencies:
   # State Management
   provider: ^6.1.5
 
+  # Network
+  dio: ^5.11.0
+  flutter_secure_storage: ^11.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

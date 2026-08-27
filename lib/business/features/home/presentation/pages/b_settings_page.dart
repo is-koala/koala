@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:koala/employee/features/auth/services/auth_service.dart';
 import 'package:koala/product/widgets/my_list_tile.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:koala/product/theme/theme_provider.dart';
 import 'package:koala/product/widgets/theme_mode_sheet.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class BSettingsPage extends StatelessWidget {
   const BSettingsPage({super.key});
@@ -48,9 +48,9 @@ class BSettingsPage extends StatelessWidget {
           icon: HugeIcons.strokeRoundedLogout01,
           title: "Çıkış Yap",
           onTap: () async {
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.setBool('is_logged_in', false);
-            await prefs.remove('user_type');
+            // Sunucudaki oturumu da kapatıyor; çağrı başarısız olsa bile
+            // token'lar cihazdan siliniyor.
+            await AuthService().logout();
 
             if (context.mounted) {
               context.go('/authgate');

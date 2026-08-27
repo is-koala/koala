@@ -163,11 +163,37 @@ Everything else (`/apply`, `/review`, `/company-detail`, `/chat-detail`, `/setti
 
 ### Backend
 
-**There is none yet.** This is the single most important thing to know about this codebase.
+**Auth is wired to a real backend; everything else is still fake.** This is the single most important thing to know about this codebase.
 
-- No HTTP client is in `pubspec.yaml` — no `http`, `dio`, `firebase` or `supabase`.
-- All data comes from fake services that return hard-coded lists, one `services/` folder per feature: `employee/features/home/services/` (`job_service.dart` with Ankara coordinates, `location_service.dart`), `company_detail/services/company_service.dart`, `chat/services/chat_service.dart`, `jobs/services/` (`my_jobs_service.dart`, `review_service.dart`), `profile/services/fake_user.dart`, `business/features/chat/services/b_chat_service.dart` and `business/features/home/services/fake_business_company.dart`. Avatars are generated URLs from `ui-avatars.com`.
-- "Authentication" is `SharedPreferences.setBool('is_logged_in', true)` plus a `user_type` string. There is no token, no session, no server. `auth` has no `services/` folder at all — the login and register pages write to `SharedPreferences` directly, so that is where the real client will have to be introduced.
+The API is a Spring Boot service in a separate repository (`github.com/yustyy/koala`): layered `webAPI → business → dataAccess`, Postgres + Liquibase, RabbitMQ for mail/SMS/push, R2 for files, Iyzico for payments. Every response comes wrapped in the same envelope — `{success, message, httpStatus, path, timeStamp, correlationId, data}` — and errors add `errorCode` plus a `details` array of field errors. Messages are localized; the app sends `Accept-Language: tr`.
+
+**The network layer lives in `lib/product/network/`** and is shared by both apps:
+
+| File | Responsibility |
+|---|---|
+| `api_config.dart` | Base URL and timeouts. The URL defaults to `https://api.iskoala.com` and is overridden with `--dart-define=API_BASE_URL=...` (`http://10.0.2.2:8080` on the Android emulator). |
+| `api_paths.dart` | Endpoint paths, plus the set of paths that need no token. |
+| `api_client.dart` | The only place `dio` is touched: unwraps the envelope, turns `DioException` into `ApiException`. |
+| `api_exception.dart` | `ApiException` / `ApiErrorType` — the single error type services and pages see. |
+| `auth_interceptor.dart` | Attaches the bearer token, refreshes once on a 401 and retries. |
+| `token_storage.dart` | Access/refresh tokens in Keychain/Keystore (`flutter_secure_storage`). |
+| `session_manager.dart` | Opens and closes the session: tokens plus the `is_logged_in` / `user_type` flags the router reads. |
+| `device_identity.dart` | The per-install id sent as `X-Device-Id`, and the descriptive `User-Agent`. The backend binds sessions to the device, so the id must survive app updates — it lives in `SharedPreferences` and is **not** cleared on logout. |
+| `device_interceptor.dart` | Puts `X-Device-Id` on every request, signed in or not. |
+
+Two feature services are on real endpoints: `auth_service.dart` (registration in three steps, login, logout, forgot/reset password, `/users/me`) and `legal_service.dart` (agreements, consents, account deletion) — both under `employee/features/auth/services/`, because registration is where consents are collected.
+
+**Registration needs consents.** `/auth/complete-registration` rejects the request unless every mandatory agreement is granted, so the password screen first calls `GET /legal/agreements` (public) and sends `consents: [{agreementVersionId, granted}]` along with the password. Today the server seeds three mandatory agreements (terms, privacy, explicit consent) and one optional (commercial messages).
+
+**One thing to watch on the server side**, marked `TODO(backend)` in the code: **job categories have no seed data.** The `code` column exists and is slugified from the Turkish name (`Fotoğrafçılık` → `FOTOGRAFCILIK`), but the table is empty, so the app's five-value `JobCategory` enum (icon, pin, colour) has nothing to map onto yet.
+
+The employer flag is spelled **`isEmployer`** everywhere — the server pins it with `@JsonProperty("isEmployer")` on `AuthStartRegistrationDto`, `AuthSetPasswordDto` and `UserMeResponseDto`, and the request field is `@NotNull`. Read it through `CurrentUser.readEmployerFlag` so the two models that carry it stay in step.
+
+Refreshing works with an expired access token: the server skips its session filter on `/auth/refresh-token` and reads the session id out of the expired JWT's claims. The call still has to carry the `Authorization` header, which is why that path is deliberately not in `ApiPaths.publicPaths`.
+
+**Still fake:** everything except auth. Data comes from services that return hard-coded lists, one `services/` folder per feature: `employee/features/home/services/` (`job_service.dart` with Ankara coordinates, `location_service.dart`), `company_detail/services/company_service.dart`, `chat/services/chat_service.dart`, `jobs/services/` (`my_jobs_service.dart`, `review_service.dart`), `profile/services/fake_user.dart`, `business/features/chat/services/b_chat_service.dart` and `business/features/home/services/fake_business_company.dart`. Avatars are generated URLs from `ui-avatars.com`.
+- `GET /jobs` is ready to be wired: `JobSummaryDto` carries `latitude`/`longitude`, `GET /jobs/{jobId}` returns the richer `JobDetailDto` (description, duties, dress code, age range, full address, creator, company) and the search takes a bounding box (`minLatitude`/`maxLatitude`/`minLongitude`/`maxLongitude`). Only the category mapping is missing.
+- Sessions are no longer faked: `SessionManager` writes `is_logged_in` / `user_type` **and** the tokens together. Do not write those prefs keys by hand; a flag without a token is a user who looks logged in and gets 401s.
 
 > A service class is named after its file: `job_service.dart` → `JobService`. There is no `*Repository` naming in the codebase.
 

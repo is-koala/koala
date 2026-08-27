@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:koala/employee/features/auth/models/agreement_version.dart';
+import 'package:koala/employee/features/auth/models/consent_decision.dart';
+import 'package:koala/employee/features/auth/presentation/widgets/auth_snackbar.dart';
+import 'package:koala/employee/features/auth/presentation/widgets/consent_checkbox.dart';
+import 'package:koala/employee/features/auth/services/auth_service.dart';
+import 'package:koala/employee/features/auth/services/legal_service.dart';
+import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/my_button.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
 import 'package:koala/product/constants/app_colors.dart';
@@ -33,23 +40,98 @@ class _CreatingPasswordPageState extends CreatingPasswordPagemodel {
           onPressed: () => context.pop(),
         ),
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Center(
-            child: Padding(
-              padding: AppPadding.primaryAll,
-              child: Column(
-                children: [
-                  _formSection(),
-                  MyButton(
-                    onPressed: onSubmit,
-                    title: isBusiness ? "DEVAM ET" : "BİTİR",
-                  ),
-                ],
+      body: SafeArea(child: _body()),
+    );
+  }
+
+  /// Sayfanın üç hâli var: hazırlık sürüyor, hazırlık başarısız ve form.
+  Widget _body() {
+    if (isPreparing) {
+      return Center(
+        child: CircularProgressIndicator(color: context.accentColor),
+      );
+    }
+
+    final error = preparationError;
+    if (error != null) {
+      return _errorSection(error);
+    }
+
+    return SingleChildScrollView(
+      child: Center(
+        child: Padding(
+          padding: AppPadding.primaryAll,
+          child: Column(
+            children: [
+              _formSection(),
+              _consentsSection(),
+              MyButton(
+                onPressed: canSubmit ? onSubmit : null,
+                title: isBusiness ? "DEVAM ET" : "BİTİR",
+                isLoading: isSubmitting,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Token doğrulanamadığında ya da sözleşmeler alınamadığında gösterilir.
+  Widget _errorSection(String message) {
+    return Padding(
+      padding: AppPadding.primaryAll,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          HugeIcon(
+            icon: HugeIcons.strokeRoundedCancelCircle,
+            color: AppColors.danger,
+            size: AppSizes.iconLarge,
+          ),
+          const SizedBox(height: AppSizes.spaceMedium),
+          Text(
+            message,
+            style: context.textTheme.bodyLarge?.copyWith(
+              color: context.textSecondary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSizes.sectionSpace),
+          MyButton(onPressed: bootstrap, title: 'TEKRAR DENE'),
+          const SizedBox(height: AppSizes.spaceSmall),
+          TextButton(
+            onPressed: () => context.go('/auth/register-type'),
+            child: Text(
+              'Kayıt ekranına dön',
+              style: context.textTheme.labelLarge?.copyWith(
+                color: context.textSecondary,
               ),
             ),
           ),
-        ),
+        ],
+      ),
+    );
+  }
+
+  /// Sözleşme onayları. Zorunlu olanlar işaretlenmeden buton açılmıyor.
+  Widget _consentsSection() {
+    if (agreements.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: AppPadding.horizontalSmall,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final agreement in agreements)
+            ConsentCheckbox(
+              label: agreement.type.consentLabel,
+              isMandatory: agreement.mandatory,
+              value: consents[agreement.id] ?? false,
+              onChanged: (value) => toggleConsent(agreement.id, value),
+            ),
+          const SizedBox(height: AppSizes.space),
+        ],
       ),
     );
   }

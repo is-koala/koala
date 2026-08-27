@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/product/constants/app_assets.dart';
+import 'package:koala/product/network/session_manager.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
@@ -8,9 +9,17 @@ import 'package:lottie/lottie.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class EmailVerificationPendingPage extends StatelessWidget {
-  const EmailVerificationPendingPage({super.key, required this.isBusiness});
+  const EmailVerificationPendingPage({
+    super.key,
+    required this.isBusiness,
+    this.email,
+  });
 
   final bool isBusiness;
+
+  /// Doğrulama postasının gittiği adres. Kayıt ekranından geliyor; derin
+  /// bağlantıyla doğrudan bu sayfaya düşüldüğünde `null` olabilir.
+  final String? email;
 
   /// Bekleme animasyonunun kenar uzunluğu; sayfanın tek görseli olduğu için
   /// diğer ekranlardaki görsellerden büyük.
@@ -41,21 +50,28 @@ class EmailVerificationPendingPage extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSizes.spaceMedium),
                 Text(
-                  "Lütfen e-posta adresinize gelen doğrulama linkine tıklayın.",
+                  email == null
+                      ? "Lütfen e-posta adresinize gelen doğrulama linkine tıklayın."
+                      : "Doğrulama linkini $email adresine gönderdik. "
+                            "Lütfen gelen linke tıklayın.",
                   style: context.textTheme.bodyLarge?.copyWith(
                     color: context.textSecondary,
                   ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: AppSizes.sectionSpace),
-                // TODO(backend): Gerçek doğrulama akışı bağlanınca kaldırılacak.
+                // TODO(backend): Kayıt akışı artık gerçek uçlara bağlı; bu
+                // kısayol yalnızca sunucuya erişilemediğinde arayüzü gezmek
+                // için duruyor, sunucu ayağa kalkınca kaldırılacak.
                 TextButton(
                   onPressed: () async {
                     final prefs = await SharedPreferences.getInstance();
-                    await prefs.setBool('is_logged_in', true);
+                    await prefs.setBool(SessionManager.isLoggedInKey, true);
                     await prefs.setString(
-                      'user_type',
-                      isBusiness ? 'business' : 'employee',
+                      SessionManager.userTypeKey,
+                      isBusiness
+                          ? SessionManager.businessType
+                          : SessionManager.employeeType,
                     );
 
                     if (context.mounted) {

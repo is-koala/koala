@@ -51,11 +51,17 @@ abstract class CompanyInformationsPagemodel
       return;
     }
 
-    // TODO(backend): Şirket bilgileri gerçek servise gönderilecek.
+    // TODO(backend): `POST /companies` ile kaydedilecek. Uç bugünkü formdan
+    // fazlasını istiyor: şirket tipi (`CompanyType` enum'u) ve serbest metin
+    // yerine yapılandırılmış adres (ülke kodu, il, ilçe, enlem/boylam). Bu
+    // alanlar forma eklenmeden çağrı yapılamıyor.
     _showSnack(
       'Şirket bilgileri başarıyla kaydedildi',
       Theme.of(context).colorScheme.primary,
     );
+
+    // Kayıt akışı burada bitiyor; oturum şifre adımında açılmıştı.
+    context.go('/business/home');
   }
 
   void _showSnack(String message, Color background) {

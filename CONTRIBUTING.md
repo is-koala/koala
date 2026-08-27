@@ -365,7 +365,7 @@ Eski dosyalarda hâlâ Material `Icons.*` var; yenisini ekleme. Harita pinleri `
 
 ## Veri Katmanı
 
-Backend henüz yok; tüm veri feature'ların `services/` klasöründeki sahte (fake) sınıflardan geliyor. Yeni veri eklerken:
+Auth dışındaki her şey hâlâ sahte: veri, feature'ların `services/` klasöründeki fake sınıflardan geliyor. Gerçek API çağrıları `lib/product/network/` altındaki `ApiClient` üzerinden yapılıyor ve hata olarak yalnızca `ApiException` yükseliyor — servisler `dio`'yu görmüyor. Yeni veri eklerken:
 
 - Sayfanın içine liste gömme; ilgili repository/service sınıfına koy.
 - Sayfa her zaman `Future` döndüren bir metot üzerinden okusun — gerçek API geldiğinde değişen tek dosya o servis olsun.

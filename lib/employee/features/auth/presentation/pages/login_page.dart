@@ -1,19 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/presentation/widgets/auth_divider.dart';
 import 'package:koala/employee/features/auth/presentation/widgets/auth_legal_footer.dart';
+import 'package:koala/employee/features/auth/presentation/widgets/auth_snackbar.dart';
 import 'package:koala/employee/features/auth/presentation/widgets/google_auth_button.dart';
+import 'package:koala/employee/features/auth/services/auth_service.dart';
+import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/my_button.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-class LoginPage extends StatelessWidget {
+part 'login_pagemodel.dart';
+
+class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends LoginPagemodel {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -57,13 +67,36 @@ class LoginPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSizes.sectionSpace),
-          MyTextfield(labelText: 'E-posta'),
+          MyTextfield(
+            labelText: 'E-posta',
+            controller: emailController,
+            keyboardType: TextInputType.emailAddress,
+          ),
           const SizedBox(height: AppSizes.space),
-          MyTextfield(labelText: 'Şifre'),
+          MyTextfield(
+            labelText: 'Şifre',
+            controller: passwordController,
+            isObscureText: isPasswordHidden,
+            showSuffixIcon: true,
+            keyboardType: TextInputType.visiblePassword,
+            suffixIcon: IconButton(
+              icon: HugeIcon(
+                icon: isPasswordHidden
+                    ? HugeIcons.strokeRoundedViewOff
+                    : HugeIcons.strokeRoundedView,
+                color: context.textSecondary,
+              ),
+              onPressed: () =>
+                  setState(() => isPasswordHidden = !isPasswordHidden),
+            ),
+          ),
           const SizedBox(height: AppSizes.spaceSmall),
           Padding(
             padding: AppPadding.primaryLeft,
             child: GestureDetector(
+              // TODO(backend): Şifre sıfırlama `/auth/forgot-password` ile
+              // başlıyor ama sıfırlama bağlantısının açacağı ekran henüz yok;
+              // o ekran eklenince burası bağlanacak.
               onTap: () {},
               child: Text(
                 'Şifrenizi mi unuttunuz?',
@@ -87,40 +120,16 @@ class LoginPage extends StatelessWidget {
           width: double.infinity,
           height: AppSizes.buttonHeight,
           child: MyButton(
-            onPressed: () => _loginAs(context, 'employee', '/explore'),
+            onPressed: onLogin,
             title: 'GİRİŞ YAP',
+            isLoading: isSubmitting,
           ),
         ),
         const SizedBox(height: AppSizes.space),
         const AuthDivider(),
         const SizedBox(height: AppSizes.space),
         GoogleAuthButton(title: 'GOOGLE İLE GİRİŞ YAP', onPressed: () {}),
-        const SizedBox(height: AppSizes.space),
-        // TODO(backend): Gerçek giriş akışı bağlanınca kaldırılacak.
-        TextButton(
-          onPressed: () => _loginAs(context, 'business', '/business/home'),
-          child: Text(
-            'İş Veren Arayüzünü Gör (Demo)',
-            style: context.textTheme.labelLarge?.copyWith(
-              color: context.accentColor,
-            ),
-          ),
-        ),
       ],
     );
-  }
-
-  Future<void> _loginAs(
-    BuildContext context,
-    String userType,
-    String destination,
-  ) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('is_logged_in', true);
-    await prefs.setString('user_type', userType);
-
-    if (context.mounted) {
-      context.go(destination);
-    }
   }
 }

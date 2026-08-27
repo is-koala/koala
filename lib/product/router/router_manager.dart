@@ -39,16 +39,17 @@ import 'package:koala/employee/features/jobs/presentation/pages/apply_page.dart'
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/settings/presentation/pages/account_info_page.dart';
 import 'package:koala/employee/features/profile/models/user.dart';
+import 'package:koala/product/network/session_manager.dart';
 
 class RouterManager {
   static Future<bool> isUserLoggedIn() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool('is_logged_in') ?? false;
+    return prefs.getBool(SessionManager.isLoggedInKey) ?? false;
   }
 
   static Future<String?> getUserType() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('user_type');
+    return prefs.getString(SessionManager.userTypeKey);
   }
 
   /// Yönlendirme kararını veren saf fonksiyon.
@@ -134,6 +135,7 @@ class RouterManager {
                     builder: (context, state) => EmailVerificationPendingPage(
                       isBusiness:
                           state.uri.queryParameters['isBusiness'] == 'true',
+                      email: state.uri.queryParameters['email'],
                     ),
                   ),
                   GoRoute(
@@ -141,19 +143,21 @@ class RouterManager {
                     builder: (context, state) => CreatingPasswordPage(
                       token: state.uri.queryParameters['token'],
                     ),
-                    routes: [
-                      GoRoute(
-                        path: 'company-informations',
-                        builder: (context, state) =>
-                            const CompanyInformationsPage(),
-                      ),
-                    ],
                   ),
                 ],
               ),
             ],
           ),
         ],
+      ),
+
+      // Şirket bilgileri adımı bilerek `/auth` altında değil: kayıt bittiğinde
+      // oturum açılmış oluyor ve `redirect` giriş yapmış kullanıcıyı auth
+      // rotalarından kendi ana sayfasına atıyor. Üst seviyede durunca adım
+      // kayıttan sonra açılabiliyor.
+      GoRoute(
+        path: '/company-informations',
+        builder: (context, state) => const CompanyInformationsPage(),
       ),
 
       GoRoute(path: '/authgate', builder: (context, state) => const AuthGate()),
