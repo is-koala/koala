@@ -28,8 +28,8 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     return AppBar(
       leading: IconButton(
-        icon: Icon(
-          HugeIcons.strokeRoundedArrowLeft01,
+        icon: HugeIcon(
+          icon: HugeIcons.strokeRoundedArrowLeft01,
           color: context.textPrimary,
         ),
         onPressed: () => context.pop(),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:koala/employee/features/home/models/job.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/employee/core/widgets/job_detail_bottom_sheet.dart';
+import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
@@ -32,8 +33,8 @@ class JobCard extends StatelessWidget {
         leading: CircleAvatar(
           backgroundColor: job.category.color,
           // Kategori rengi doygun ve temadan bağımsız; üstündeki ikon da öyle.
-          child: Icon(
-            job.category.icon,
+          child: HugeIcon(
+            icon: job.category.icon,
             color: AppColors.onAccent,
             size: AppSizes.icon,
           ),

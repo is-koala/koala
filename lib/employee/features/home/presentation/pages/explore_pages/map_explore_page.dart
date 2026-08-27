@@ -110,8 +110,8 @@ class _MapExplorePageState extends MapExplorePageModel {
           color: job.category.color.withValues(alpha: 0.15),
           borderRadius: AppRadius.smallCircular,
         ),
-        child: Icon(
-          job.category.icon,
+        child: HugeIcon(
+          icon: job.category.icon,
           color: job.category.color,
           size: AppSizes.iconMedium,
         ),
@@ -146,8 +146,8 @@ class _MapExplorePageState extends MapExplorePageModel {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              HugeIcons.strokeRoundedSearchList01,
+            HugeIcon(
+              icon: HugeIcons.strokeRoundedSearchList01,
               size: AppSizes.iconLarge,
               color: context.textTertiary,
             ),

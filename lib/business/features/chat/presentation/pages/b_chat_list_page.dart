@@ -76,8 +76,8 @@ class _BChatListPageState extends State<BChatListPage> {
                 color: context.tileColor,
                 borderRadius: AppRadius.secondaryCircular,
               ),
-              child: Icon(
-                HugeIcons.strokeRoundedBubbleChat,
+              child: HugeIcon(
+                icon: HugeIcons.strokeRoundedBubbleChat,
                 size: AppSizes.iconLarge,
                 color: context.dividerColor,
               ),

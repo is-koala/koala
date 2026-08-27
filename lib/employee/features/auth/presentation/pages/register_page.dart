@@ -22,8 +22,8 @@ class RegisterPage extends StatelessWidget {
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
         leading: IconButton(
-          icon: Icon(
-            HugeIcons.strokeRoundedArrowLeft01,
+          icon: HugeIcon(
+            icon: HugeIcons.strokeRoundedArrowLeft01,
             color: context.textPrimary,
           ),
           onPressed: () => context.pop(),

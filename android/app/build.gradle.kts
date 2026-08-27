@@ -10,23 +10,22 @@ val mapsApiKey: String = localProperties.getProperty("MAPS_API_KEY") ?: ""
 
 plugins {
     id("com.android.application")
-    id("kotlin-android")
+    // Kotlin derlemesi AGP'nin built-in Kotlin'i üzerinden yürüyor; ayrı bir
+    // kotlin-android eklentisi uygulanmıyor (android.builtInKotlin=true).
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
 android {
     namespace = "com.example.koala"
-    compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.0.12077973"
+    // permission_handler_android 14 compileSdk 37 ile derleniyor; Flutter'ın
+    // varsayılanı (flutter.compileSdkVersion) hâlâ 36 olduğu için elle sabitlendi.
+    compileSdk = 37
+    ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
-
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     defaultConfig {
@@ -47,6 +46,12 @@ android {
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
         }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
 }
 

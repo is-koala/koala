@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
@@ -11,7 +12,7 @@ import 'package:koala/product/extensions/context_extensions.dart';
 /// `context` erişimcilerinden değil [AppColors]'tan geliyor.
 class BNavItem extends StatelessWidget {
   final int index;
-  final IconData icon;
+  final AppIconData icon;
   final bool isSelected;
   final VoidCallback onTap;
   final String? label;

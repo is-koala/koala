@@ -3,9 +3,10 @@ import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
 import 'package:koala/employee/features/company_detail/models/company.dart';
-import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
@@ -132,8 +133,8 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
       ),
       child: Row(
         children: [
-          Icon(
-            HugeIcons.strokeRoundedAlert02,
+          HugeIcon(
+            icon: HugeIcons.strokeRoundedAlert02,
             color: AppColors.warning,
             size: AppSizes.iconMedium,
           ),
@@ -175,8 +176,8 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
       height: _actionButtonHeight,
       child: ElevatedButton.icon(
         onPressed: toggleFollow,
-        icon: Icon(
-          isFollowing
+        icon: HugeIcon(
+          icon: isFollowing
               ? HugeIcons.strokeRoundedUserCheck01
               : HugeIcons.strokeRoundedUserAdd01,
           size: AppSizes.iconSmall,
@@ -207,8 +208,8 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
       height: _actionButtonHeight,
       child: OutlinedButton.icon(
         onPressed: openChat,
-        icon: const Icon(
-          HugeIcons.strokeRoundedMessage01,
+        icon: const HugeIcon(
+          icon: HugeIcons.strokeRoundedMessage01,
           size: AppSizes.iconSmall,
         ),
         label: const Text('Mesaj At'),
@@ -233,8 +234,8 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
       backgroundColor: context.accentColor,
       // Kapak marka yeşili; üstündeki her şey temadan bağımsız beyaz.
       leading: IconButton(
-        icon: const Icon(
-          HugeIcons.strokeRoundedArrowLeft01,
+        icon: const HugeIcon(
+          icon: HugeIcons.strokeRoundedArrowLeft01,
           color: AppColors.onAccent,
         ),
         onPressed: () => context.pop(),
@@ -363,8 +364,8 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
           return _centered(
             Column(
               children: [
-                Icon(
-                  HugeIcons.strokeRoundedJobSearch,
+                HugeIcon(
+                  icon: HugeIcons.strokeRoundedJobSearch,
                   size: AppSizes.iconHuge,
                   color: context.dividerColor,
                 ),
@@ -456,8 +457,8 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            job.category.icon,
+          HugeIcon(
+            icon: job.category.icon,
             size: AppSizes.iconSmall,
             color: job.category.color,
           ),
@@ -493,8 +494,8 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
   Widget _priceAndLocationRow(Job job) {
     return Row(
       children: [
-        Icon(
-          HugeIcons.strokeRoundedMoneyBag02,
+        HugeIcon(
+          icon: HugeIcons.strokeRoundedMoneyBag02,
           size: AppSizes.iconSmall,
           color: context.accentColor,
         ),
@@ -507,8 +508,8 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
           ),
         ),
         const SizedBox(width: AppSizes.spaceMedium),
-        Icon(
-          HugeIcons.strokeRoundedLocation01,
+        HugeIcon(
+          icon: HugeIcons.strokeRoundedLocation01,
           size: AppSizes.iconSmall,
           color: context.textSecondary,
         ),
@@ -544,13 +545,17 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
+  Widget _buildInfoRow(AppIconData icon, String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSizes.spaceMedium),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: AppSizes.iconMedium, color: context.accentColor),
+          HugeIcon(
+            icon: icon,
+            size: AppSizes.iconMedium,
+            color: context.accentColor,
+          ),
           const SizedBox(width: AppSizes.space),
           Expanded(
             child: Column(

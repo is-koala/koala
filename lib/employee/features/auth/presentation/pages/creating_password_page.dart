@@ -26,8 +26,8 @@ class _CreatingPasswordPageState extends CreatingPasswordPagemodel {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: Icon(
-            HugeIcons.strokeRoundedArrowLeft01,
+          icon: HugeIcon(
+            icon: HugeIcons.strokeRoundedArrowLeft01,
             color: context.textPrimary,
           ),
           onPressed: () => context.pop(),
@@ -107,8 +107,8 @@ class _CreatingPasswordPageState extends CreatingPasswordPagemodel {
     required VoidCallback onPressed,
   }) {
     return IconButton(
-      icon: Icon(
-        isVisible
+      icon: HugeIcon(
+        icon: isVisible
             ? HugeIcons.strokeRoundedViewOff
             : HugeIcons.strokeRoundedView,
         color: context.textSecondary,
@@ -165,8 +165,8 @@ class _CreatingPasswordPageState extends CreatingPasswordPagemodel {
     final color = isOk ? AppColors.success : failColor;
     return Row(
       children: [
-        Icon(
-          isOk
+        HugeIcon(
+          icon: isOk
               ? HugeIcons.strokeRoundedCheckmarkCircle02
               : HugeIcons.strokeRoundedCancelCircle,
           color: color,

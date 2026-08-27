@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/employee/features/company_detail/models/company.dart';
+import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icon_data.dart';
 
 /// İş kategorilerini temsil eden enum
 enum JobCategory { photography, waiter, petCare, design, barista }
@@ -12,7 +13,7 @@ enum JobType { oneTime, recurring }
 /// JobCategory için extension - ikon ve renk bilgileri
 extension JobCategoryExtension on JobCategory {
   /// Her iş kategorisi için ikon
-  IconData get icon {
+  AppIconData get icon {
     switch (this) {
       case JobCategory.photography:
         return HugeIcons.strokeRoundedCamera01;

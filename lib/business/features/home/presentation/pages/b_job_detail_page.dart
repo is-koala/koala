@@ -7,6 +7,7 @@ import 'package:koala/business/features/home/presentation/providers/b_jobs_provi
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
@@ -172,8 +173,8 @@ class BJobDetailPage extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            job.category.icon,
+          HugeIcon(
+            icon: job.category.icon,
             size: AppSizes.iconSmall,
             color: job.category.color,
           ),
@@ -311,7 +312,7 @@ class BJobDetailPage extends StatelessWidget {
 
   Widget _detailRow(
     BuildContext context,
-    IconData icon,
+    AppIconData icon,
     String label,
     String value,
   ) {
@@ -320,7 +321,11 @@ class BJobDetailPage extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: AppSizes.iconSmall, color: context.accentColor),
+          HugeIcon(
+            icon: icon,
+            size: AppSizes.iconSmall,
+            color: context.accentColor,
+          ),
           const SizedBox(width: AppSizes.space),
           SizedBox(
             width: _detailLabelWidth,
@@ -616,7 +621,7 @@ class BJobDetailPage extends StatelessWidget {
 
   Widget _emptyPanel(
     BuildContext context, {
-    required IconData icon,
+    required AppIconData icon,
     required String title,
     String? subtitle,
   }) {
@@ -626,7 +631,11 @@ class BJobDetailPage extends StatelessWidget {
       decoration: _panelDecoration(context),
       child: Column(
         children: [
-          Icon(icon, size: AppSizes.iconLarge, color: context.dividerColor),
+          HugeIcon(
+            icon: icon,
+            size: AppSizes.iconLarge,
+            color: context.dividerColor,
+          ),
           const SizedBox(height: AppSizes.space),
           Text(
             title,

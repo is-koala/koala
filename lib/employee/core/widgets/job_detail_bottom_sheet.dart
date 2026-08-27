@@ -1,7 +1,7 @@
 import 'dart:ui' show lerpDouble;
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/saved_jobs_provider.dart';
@@ -431,8 +431,8 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
             : Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    widget.job.category.icon,
+                  HugeIcon(
+                    icon: widget.job.category.icon,
                     size: AppSizes.iconSmall,
                     color: widget.job.category.color,
                   ),

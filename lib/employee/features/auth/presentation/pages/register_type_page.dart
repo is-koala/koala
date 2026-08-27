@@ -26,8 +26,8 @@ class RegisterTypePage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: Icon(
-            HugeIcons.strokeRoundedArrowLeft01,
+          icon: HugeIcon(
+            icon: HugeIcons.strokeRoundedArrowLeft01,
             color: context.textPrimary,
           ),
           onPressed: () => context.pop(),
@@ -119,8 +119,8 @@ class RegisterTypePage extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(
-                HugeIcons.strokeRoundedArrowRight01,
+              HugeIcon(
+                icon: HugeIcons.strokeRoundedArrowRight01,
                 color: context.textSecondary,
                 size: AppSizes.icon,
               ),

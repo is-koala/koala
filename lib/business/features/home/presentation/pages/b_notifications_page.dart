@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
@@ -210,8 +211,8 @@ class _BNotificationsPageState extends State<BNotificationsPage> {
                 color: context.tileColor,
                 borderRadius: AppRadius.secondaryCircular,
               ),
-              child: Icon(
-                HugeIcons.strokeRoundedNotification03,
+              child: HugeIcon(
+                icon: HugeIcons.strokeRoundedNotification03,
                 size: AppSizes.iconLarge,
                 color: context.dividerColor,
               ),
@@ -248,8 +249,8 @@ class _BNotificationsPageState extends State<BNotificationsPage> {
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: AppSizes.spaceLarge),
         color: AppColors.danger.withValues(alpha: 0.1),
-        child: const Icon(
-          HugeIcons.strokeRoundedDelete02,
+        child: const HugeIcon(
+          icon: HugeIcons.strokeRoundedDelete02,
           color: AppColors.danger,
         ),
       ),
@@ -275,8 +276,8 @@ class _BNotificationsPageState extends State<BNotificationsPage> {
                   color: config.color.withValues(alpha: 0.12),
                   borderRadius: AppRadius.innerCircular,
                 ),
-                child: Icon(
-                  config.icon,
+                child: HugeIcon(
+                  icon: config.icon,
                   size: AppSizes.iconMedium,
                   color: config.color,
                 ),
@@ -367,7 +368,7 @@ class _BNotificationsPageState extends State<BNotificationsPage> {
 }
 
 class _NotificationTypeConfig {
-  final IconData icon;
+  final AppIconData icon;
   final Color color;
 
   const _NotificationTypeConfig({required this.icon, required this.color});

@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/employee/features/home/models/job.dart';
-import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_card.dart';
+import 'package:koala/employee/features/home/services/job_service.dart';
+import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_bottom_sheet.dart';
-import 'package:geolocator/geolocator.dart';
 
 part 'list_explore_pagemodel.dart';
 
@@ -132,8 +133,8 @@ class _ListExplorePageState extends ListExplorePagemodel {
   Widget _emptyState() {
     return Column(
       children: [
-        Icon(
-          HugeIcons.strokeRoundedSearchList01,
+        HugeIcon(
+          icon: HugeIcons.strokeRoundedSearchList01,
           size: AppSizes.iconHuge,
           color: context.textTertiary,
         ),
@@ -212,7 +213,7 @@ class _ListExplorePageState extends ListExplorePagemodel {
   }
 
   Widget _buildFilterButton({
-    required IconData icon,
+    required AppIconData icon,
     required String label,
     required VoidCallback onTap,
     bool isActive = false,
@@ -239,7 +240,7 @@ class _ListExplorePageState extends ListExplorePagemodel {
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: AppSizes.iconSmall, color: foreground),
+              HugeIcon(icon: icon, size: AppSizes.iconSmall, color: foreground),
               const SizedBox(width: AppSizes.spaceTiny),
               Flexible(
                 child: Text(
@@ -342,8 +343,8 @@ class _ListExplorePageState extends ListExplorePagemodel {
                 )
               : null,
           suffixIcon: IconButton(
-            icon: const Icon(
-              HugeIcons.strokeRoundedSearch01,
+            icon: const HugeIcon(
+              icon: HugeIcons.strokeRoundedSearch01,
               size: AppSizes.icon,
             ),
             style: ButtonStyle(

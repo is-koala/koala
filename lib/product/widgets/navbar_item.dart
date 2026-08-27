@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 
 class NavItem extends StatefulWidget {
   final int index;
-  final IconData unSelectedIcon;
-  final IconData selectedIcon;
+  final AppIconData unSelectedIcon;
+  final AppIconData selectedIcon;
   final bool isSelected;
   final VoidCallback onTap;
 
@@ -91,8 +93,10 @@ class _NavItemState extends State<NavItem> with SingleTickerProviderStateMixin {
                 shape: BoxShape.circle,
                 color: backgroundColor,
               ),
-              child: Icon(
-                widget.isSelected ? widget.selectedIcon : widget.unSelectedIcon,
+              child: HugeIcon(
+                icon: widget.isSelected
+                    ? widget.selectedIcon
+                    : widget.unSelectedIcon,
                 color: widget.isSelected
                     ? AppColors.primaryColor
                     : AppColors.onAccent,

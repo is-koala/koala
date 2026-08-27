@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/business/features/home/models/b_applicant.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
@@ -222,7 +223,7 @@ class BUserProfilePage extends StatelessWidget {
 
   Widget _infoRow(
     BuildContext context,
-    IconData icon,
+    AppIconData icon,
     String label,
     String value,
   ) {
@@ -230,7 +231,11 @@ class BUserProfilePage extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: AppSizes.space),
       child: Row(
         children: [
-          Icon(icon, size: AppSizes.iconSmall, color: context.accentColor),
+          HugeIcon(
+            icon: icon,
+            size: AppSizes.iconSmall,
+            color: context.accentColor,
+          ),
           const SizedBox(width: AppSizes.space),
           SizedBox(
             width: _infoLabelWidth,
@@ -279,8 +284,8 @@ class BUserProfilePage extends StatelessWidget {
                   color: context.accentColor.withValues(alpha: 0.15),
                   borderRadius: AppRadius.smallCircular,
                 ),
-                child: Icon(
-                  HugeIcons.strokeRoundedFile02,
+                child: HugeIcon(
+                  icon: HugeIcons.strokeRoundedFile02,
                   size: AppSizes.icon,
                   color: context.accentColor,
                 ),
@@ -308,8 +313,8 @@ class BUserProfilePage extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(
-                HugeIcons.strokeRoundedDownload04,
+              HugeIcon(
+                icon: HugeIcons.strokeRoundedDownload04,
                 size: AppSizes.iconMedium,
                 color: context.accentColor,
               ),

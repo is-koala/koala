@@ -92,6 +92,10 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     dotWidth: AppSizes.badgeDot,
                     spacing: AppSizes.spaceTiny,
                     activeDotColor: context.accentColor,
+                    // smooth_page_indicator 3.0 varsayılan renkleri artık
+                    // temadan almıyor, sabit bir griye düşüyor. Pasif nokta
+                    // iki temada da doğru okunsun diye elle veriliyor.
+                    dotColor: context.textTertiary,
                   ),
                 ),
               ),

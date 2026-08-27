@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
@@ -22,7 +23,7 @@ extension ThemeModeLabel on ThemeMode {
     ThemeMode.dark => 'Her zaman koyu tema',
   };
 
-  IconData get icon => switch (this) {
+  AppIconData get icon => switch (this) {
     ThemeMode.system => HugeIcons.strokeRoundedSmartPhone01,
     ThemeMode.light => HugeIcons.strokeRoundedSun03,
     ThemeMode.dark => HugeIcons.strokeRoundedMoon02,

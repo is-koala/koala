@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
@@ -15,7 +16,7 @@ class MyListTile extends StatelessWidget {
   });
 
   final String title;
-  final IconData icon;
+  final AppIconData icon;
   final VoidCallback? onTap;
 
   /// Satırın sağında, chevron'dan önce gösterilen mevcut değer. Ayarın o

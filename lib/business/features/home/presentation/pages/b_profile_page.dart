@@ -4,6 +4,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/business/features/home/services/fake_business_company.dart';
 import 'package:koala/employee/features/company_detail/models/company.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
@@ -158,8 +159,8 @@ class _BProfilePageState extends State<BProfilePage> {
   Widget _logoPlaceholder() {
     return Container(
       color: context.tileColor,
-      child: Icon(
-        HugeIcons.strokeRoundedBuilding06,
+      child: HugeIcon(
+        icon: HugeIcons.strokeRoundedBuilding06,
         size: AppSizes.iconLarge,
         color: context.textTertiary,
       ),
@@ -187,8 +188,8 @@ class _BProfilePageState extends State<BProfilePage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(
-          company.isApproved
+        HugeIcon(
+          icon: company.isApproved
               ? HugeIcons.strokeRoundedCheckmarkCircle02
               : HugeIcons.strokeRoundedAlert02,
           color: AppColors.onAccent,
@@ -273,8 +274,8 @@ class _BProfilePageState extends State<BProfilePage> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                HugeIcons.strokeRoundedLocation01,
+              HugeIcon(
+                icon: HugeIcons.strokeRoundedLocation01,
                 size: AppSizes.iconMedium,
                 color: context.accentColor,
               ),
@@ -341,7 +342,7 @@ class _BProfilePageState extends State<BProfilePage> {
   }
 
   Widget _statCard({
-    required IconData icon,
+    required AppIconData icon,
     required String value,
     required String label,
   }) {
@@ -357,7 +358,7 @@ class _BProfilePageState extends State<BProfilePage> {
       ),
       child: Column(
         children: [
-          Icon(icon, size: AppSizes.icon, color: context.accentColor),
+          HugeIcon(icon: icon, size: AppSizes.icon, color: context.accentColor),
           const SizedBox(height: AppSizes.spaceSmall),
           Text(
             value,
@@ -392,13 +393,17 @@ class _BProfilePageState extends State<BProfilePage> {
     );
   }
 
-  Widget _infoRow(IconData icon, String label, String value) {
+  Widget _infoRow(AppIconData icon, String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSizes.spaceMedium),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: AppSizes.iconMedium, color: context.accentColor),
+          HugeIcon(
+            icon: icon,
+            size: AppSizes.iconMedium,
+            color: context.accentColor,
+          ),
           const SizedBox(width: AppSizes.space),
           Expanded(
             child: Column(

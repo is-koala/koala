@@ -34,8 +34,8 @@ class _CompanyInformationsPageState extends CompanyInformationsPagemodel {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: Icon(
-            HugeIcons.strokeRoundedArrowLeft01,
+          icon: HugeIcon(
+            icon: HugeIcons.strokeRoundedArrowLeft01,
             color: context.textPrimary,
           ),
           onPressed: () => context.pop(),
@@ -176,8 +176,8 @@ class _CompanyInformationsPageState extends CompanyInformationsPagemodel {
                     width: _editBadgeBorder,
                   ),
                 ),
-                child: Icon(
-                  HugeIcons.strokeRoundedEdit03,
+                child: HugeIcon(
+                  icon: HugeIcons.strokeRoundedEdit03,
                   size: AppSizes.iconSmall,
                   color: context.onAccentColor,
                 ),

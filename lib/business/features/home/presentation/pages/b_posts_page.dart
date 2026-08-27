@@ -132,8 +132,8 @@ class _BPostsPageState extends State<BPostsPage>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              isActive
+            HugeIcon(
+              icon: isActive
                   ? HugeIcons.strokeRoundedWork
                   : HugeIcons.strokeRoundedClock01,
               size: AppSizes.iconHuge,
@@ -235,8 +235,8 @@ class _BPostsPageState extends State<BPostsPage>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            job.category.icon,
+          HugeIcon(
+            icon: job.category.icon,
             size: AppSizes.iconSmall,
             color: job.category.color,
           ),
@@ -363,8 +363,8 @@ class _BPostsPageState extends State<BPostsPage>
     return _footerRow(
       isFilled: hasApplicants,
       children: [
-        Icon(
-          HugeIcons.strokeRoundedUserMultiple,
+        HugeIcon(
+          icon: HugeIcons.strokeRoundedUserMultiple,
           size: AppSizes.iconSmall,
           color: color,
         ),
@@ -429,8 +429,8 @@ class _BPostsPageState extends State<BPostsPage>
               ),
             ]
           : [
-              Icon(
-                HugeIcons.strokeRoundedUser,
+              HugeIcon(
+                icon: HugeIcons.strokeRoundedUser,
                 size: AppSizes.iconSmall,
                 color: context.textTertiary,
               ),

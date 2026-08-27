@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:koala/business/features/home/services/fake_business_company.dart';
 import 'package:koala/business/features/home/models/b_applicant.dart';
 import 'package:koala/business/features/home/models/b_job_post.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
+import 'package:koala/business/features/home/services/fake_business_company.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/product/constants/app_assets.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
@@ -145,8 +146,8 @@ class BHomePage extends StatelessWidget {
           icon: Badge(
             smallSize: AppSizes.badgeDot,
             backgroundColor: AppColors.danger,
-            child: Icon(
-              HugeIcons.strokeRoundedNotification03,
+            child: HugeIcon(
+              icon: HugeIcons.strokeRoundedNotification03,
               color: context.textSecondary,
               size: AppSizes.icon,
             ),
@@ -251,8 +252,8 @@ class BHomePage extends StatelessWidget {
           width: _mascotImage,
           height: _mascotImage,
           fit: BoxFit.contain,
-          errorBuilder: (_, _, _) => Icon(
-            HugeIcons.strokeRoundedBuilding06,
+          errorBuilder: (_, _, _) => HugeIcon(
+            icon: HugeIcons.strokeRoundedBuilding06,
             size: AppSizes.iconLarge,
             color: AppColors.onAccent.withValues(alpha: 0.8),
           ),
@@ -306,7 +307,7 @@ class BHomePage extends StatelessWidget {
 
   Widget _statCard(
     BuildContext context, {
-    required IconData icon,
+    required AppIconData icon,
     required String label,
     required String value,
     required Color color,
@@ -330,7 +331,11 @@ class BHomePage extends StatelessWidget {
               color: color.withValues(alpha: 0.15),
               borderRadius: AppRadius.innerCircular,
             ),
-            child: Icon(icon, size: AppSizes.iconMedium, color: color),
+            child: HugeIcon(
+              icon: icon,
+              size: AppSizes.iconMedium,
+              color: color,
+            ),
           ),
           const SizedBox(height: AppSizes.spaceSmall),
           Text(
@@ -406,7 +411,7 @@ class BHomePage extends StatelessWidget {
 
   Widget _quickActionCard(
     BuildContext context, {
-    required IconData icon,
+    required AppIconData icon,
     required String label,
     required String subtitle,
     required Color color,
@@ -429,7 +434,11 @@ class BHomePage extends StatelessWidget {
                 color: color.withValues(alpha: _tintAlpha),
                 borderRadius: AppRadius.innerCircular,
               ),
-              child: Icon(icon, size: AppSizes.iconMedium, color: color),
+              child: HugeIcon(
+                icon: icon,
+                size: AppSizes.iconMedium,
+                color: color,
+              ),
             ),
             const SizedBox(height: AppSizes.spaceSmall),
             Text(
@@ -695,8 +704,8 @@ class BHomePage extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                HugeIcons.strokeRoundedUserMultiple,
+              HugeIcon(
+                icon: HugeIcons.strokeRoundedUserMultiple,
                 size: AppSizes.iconSmall,
                 color: applicantColor,
               ),
@@ -735,7 +744,7 @@ class BHomePage extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(title, style: context.textTheme.titleMedium),
-        if (action != null) action,
+        ?action,
       ],
     );
   }
@@ -755,8 +764,8 @@ class BHomePage extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (withIcon) ...[
-            Icon(
-              job.category.icon,
+            HugeIcon(
+              icon: job.category.icon,
               size: AppSizes.iconSmall,
               color: job.category.color,
             ),
@@ -793,7 +802,7 @@ class BHomePage extends StatelessWidget {
 
   Widget _emptyPanel(
     BuildContext context, {
-    required IconData icon,
+    required AppIconData icon,
     required String title,
     String? subtitle,
     Widget? action,
@@ -808,7 +817,11 @@ class BHomePage extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Icon(icon, size: AppSizes.iconLarge, color: context.dividerColor),
+          HugeIcon(
+            icon: icon,
+            size: AppSizes.iconLarge,
+            color: context.dividerColor,
+          ),
           const SizedBox(height: AppSizes.spaceSmall),
           Text(
             title,

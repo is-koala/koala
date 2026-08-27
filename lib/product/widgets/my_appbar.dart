@@ -33,8 +33,8 @@ class MyAppbar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       leading: showBackButton
           ? IconButton(
-              icon: Icon(
-                HugeIcons.strokeRoundedArrowLeft01,
+              icon: HugeIcon(
+                icon: HugeIcons.strokeRoundedArrowLeft01,
                 color: context.textPrimary,
                 size: AppSizes.icon,
               ),
