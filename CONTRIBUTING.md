@@ -14,7 +14,7 @@ Koala tek kod tabanında **iki uygulama** barındırır: `employee/` (iş arayan
 lib/
 ├── main.dart
 ├── product/                      # iki uygulamanın da ortak kullandığı katman
-│   ├── my_app.dart
+│   ├── app.dart
 │   ├── constants/
 │   │   ├── app_assets.dart
 │   │   ├── app_colors.dart

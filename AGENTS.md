@@ -82,7 +82,7 @@ CI runs `flutter test` on every PR and blocks the Android and iOS build jobs beh
 lib/
 ├── main.dart                     # MultiProvider registrations + runApp
 ├── product/                      # shared by both apps (employee + business)
-│   ├── my_app.dart               # MaterialApp.router, theme, deep link listener
+│   ├── app.dart                  # MaterialApp.router, theme, deep link listener
 │   ├── constants/                # AppColors, AppPadding, AppRadius, AppSizes,
 │   │                             # AppAssets + app_icon_data.dart (AppIconData)
 │   ├── extensions/               # context_extensions.dart (theme colors, sizes,
@@ -159,7 +159,7 @@ Everything else (`/apply`, `/review`, `/company-detail`, `/chat-detail`, `/setti
 
 ### Deep links
 
-`app_links` listens in `my_app.dart`. A link carrying a `token` query parameter is routed to `/auth/register-type/register/creating-password?token=...` — this is the e-mail verification flow. The listener is registered in `initState` and is never cancelled.
+`app_links` listens in `app.dart`. A link carrying a `token` query parameter is routed to `/auth/register-type/register/creating-password?token=...` — this is the e-mail verification flow. The listener is registered in `initState` and is never cancelled.
 
 ### Backend
 
