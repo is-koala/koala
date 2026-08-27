@@ -15,7 +15,7 @@ Both files are the single source of truth; do not duplicate their content here.
 
 - **Never run `git commit` or `git push`.** Summarize the changed files and stop; the user commits.
 - **Write in Turkish.** Answers, in-code comments and user-facing strings are Turkish; identifiers stay English.
-- **Run `flutter analyze --no-pub` after every change** and leave it clean. A clean analyze means "it compiles", not "it looks right".
+- **Run `flutter analyze --no-pub` after every change** and leave it clean. A clean analyze means "the Dart typechecks", not "it builds" and not "it looks right" — see the *Commands* section for when to build as well.
 - **The user does the visual verification.** If you changed anything visual, say explicitly that you did not verify it on screen and point out what to look at — in **both** the light and the dark theme.
 - **No tests unless asked.** The project has no `test/` folder on purpose.
 - **Do not add new dependencies or invent new patterns** — reuse what is in `lib/product/constants` and `lib/product/widgets` first.
@@ -31,4 +31,8 @@ Both files are the single source of truth; do not duplicate their content here.
 flutter analyze --no-pub
 dart format lib/
 flutter pub get
+
+# Native tarafa dokunduysan analyze yetmez — ilgili build'i de al.
+flutter build apk --debug
+flutter build ios --no-codesign   # pod çözümlemesini tetikler, önce kullanıcıya sor
 ```

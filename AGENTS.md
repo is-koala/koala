@@ -27,9 +27,9 @@ Flutter 3.47.1 (stable), Dart SDK `^3.8.1`. The font is Poppins.
 
 **Never commit.** Do not run `git commit` or `git push`. When a task is done, summarize the changed files and stop; the user commits themselves. This is an absolute rule.
 
-**Visual verification is done by the user.** They are the one who runs the app, sends screenshots and asks for fixes. A clean `flutter analyze` means "it compiles", not "it looks right" — do not conflate the two. If you made a visual change, say explicitly that you did not verify it on screen and point out what to look at.
+**Visual verification is done by the user.** They are the one who runs the app, sends screenshots and asks for fixes. A green `flutter analyze` plus a green `flutter build` mean "it compiles", never "it looks right" — do not conflate the two. If you made a visual change, say explicitly that you did not verify it on screen and point out what to look at.
 
-**Do not add dependencies or invent new patterns.** Reuse what is already in `lib/product/constants` and `lib/product/widgets` first. If a value is missing from a constant file, add it there with a meaningful name instead of hard-coding it.
+**Do not add dependencies or invent new patterns.** Reuse what is already in `lib/product/constants` and `lib/product/widgets` first. If a value is missing from a constant file, add it there with a meaningful name instead of hard-coding it. The one kind of addition that does not need asking is a package an existing dependency already requires — `cupertino_icons` is in `pubspec.yaml` for exactly that reason; say so when you add one.
 
 ---
 
@@ -43,7 +43,18 @@ flutter pub get
 
 The project has **no tests** (there is no `test/` folder). Do not write tests unless asked.
 
-> **The iOS simulator is unavailable on this machine:** `xcode-select` is not pointed at Xcode. The fix needs sudo (`sudo xcode-select -s /Applications/Xcode.app/Contents/Developer`), so an agent cannot run it — ask the user. There is no Android emulator booted either, and the project has no `macos/` or `web/` target, so **an agent generally cannot run this app at all**. `flutter analyze` is the only verification available to you; the user runs it.
+> **You can build this project — do it.** `flutter doctor` is green (Xcode installed and `xcode-select` pointed at it, Android SDK 37, JDK 17), so both of these work and are the real check that a change compiles end to end:
+>
+> ```bash
+> flutter build apk --debug        # ya da --release
+> flutter build ios --no-codesign
+> ```
+>
+> `flutter analyze` alone only proves the Dart typechecks — it says nothing about the Gradle or Xcode side. After touching anything under `android/` or `ios/`, run the matching build.
+>
+> What you still **cannot** do is judge how it looks: that is the user's job (see *Visual verification* above). Running the app on a device or simulator is also theirs.
+
+> ⚠️ **`pod install` / `pod update` are denied in `.claude/settings.json`.** `flutter build ios` triggers pod resolution itself and rewrites the tracked `ios/Podfile.lock`, so ask the user before the first iOS build of a session that changes dependencies.
 
 > ⚠️ **A fresh clone cannot build for iOS.** `ios/Flutter/Debug.xcconfig` and `Release.xcconfig` `#include "Secrets.xcconfig"` unconditionally, but that file is gitignored. Until the include is changed to the optional form (`#include?`), every new checkout — and CI — has to create the file first. The CI workflow writes an empty placeholder for exactly this reason.
 
@@ -60,7 +71,8 @@ lib/
 ├── main.dart                     # MultiProvider registrations + runApp
 ├── product/                      # shared by both apps (employee + business)
 │   ├── my_app.dart               # MaterialApp.router, theme, deep link listener
-│   ├── constants/                # AppColors, AppPadding, AppRadius, AppSizes, AppAssets
+│   ├── constants/                # AppColors, AppPadding, AppRadius, AppSizes,
+│   │                             # AppAssets + app_icon_data.dart (AppIconData)
 │   ├── extensions/               # context_extensions.dart (theme colors, sizes,
 │   │                             # paddings) + num_extensions.dart (`asPrice`)
 │   ├── router/                   # router_manager.dart (single GoRouter)
@@ -156,6 +168,21 @@ The Google Maps key is **not** in the repo. It is read from:
 
 Both files are gitignored, as is `.env`. Never print a key value into an answer, a comment or a committed file.
 
+### Platform toolchain
+
+The native side sits at Flutter 3.47.1's own baseline; **the plugins pin most of it, so do not lower any of these**.
+
+**Android** (`android/settings.gradle.kts`, `gradle/wrapper/`, `app/build.gradle.kts`) — Gradle 9.3.1, AGP 9.1.0, Kotlin 2.4.0, Java 17. Below AGP 8.11.1 / Gradle 8.14 / KGP 2.2.20 the Flutter Gradle plugin fails the build outright, so this is a floor, not a preference.
+
+- `compileSdk = 37` is **hardcoded on purpose**: `permission_handler_android` 14 compiles against 37 while `flutter.compileSdkVersion` is still 36. Do not "restore" it to the Flutter default.
+- Kotlin comes from **AGP's built-in Kotlin** (`android.builtInKotlin=true`); `app/build.gradle.kts` deliberately does not apply `kotlin-android`, and the jvmTarget lives in a top-level `kotlin { compilerOptions { … } }` block, not in `kotlinOptions`. `settings.gradle.kts` still declares the KGP version because the plugin modules resolve it from there — leave it.
+- `android.newDsl=false` is still set; that migration has not happened yet.
+
+**iOS** — deployment target 15.0. Dependencies are a **hybrid**: `app_links`, `geolocator_apple`, `package_info_plus`, `permission_handler_apple` and `shared_preferences_foundation` come through **Swift Package Manager** (on by default in Flutter 3.47), and CocoaPods is still there for one reason only — `google_maps_flutter_ios` ships no `Package.swift`. `ios/Podfile` exists solely for it and can be deleted outright the day that plugin adopts SPM. The build prints a "does not support Swift Package Manager" warning about it every time; that is expected, not something to fix.
+
+- The app uses the **UIScene lifecycle**. Plugins are registered in `didInitializeImplicitFlutterEngine`, *not* in `didFinishLaunchingWithOptions` — putting them back would break plugin registration. `Info.plist` carries the matching `UIApplicationSceneManifest`, pointing at Flutter's own `FlutterSceneDelegate` (there is no `SceneDelegate.swift`, and adding one means editing `project.pbxproj`).
+- `GMSServices.provideAPIKey` stays in `didFinishLaunchingWithOptions`: it is an app-level service, unrelated to the engine.
+
 ---
 
 ## Theme and color
@@ -204,11 +231,29 @@ Bottom sheets go through **`AppBottomSheet`** (`product/widgets/`), which owns t
 
 ## Icons
 
-Two sources, both already in use:
+Three sources, all already in use:
 
 - **`hugeicons`** for UI icons — `HugeIcons.strokeRoundedArrowLeft01` and friends. This is the default; reach for it first.
 - **`Icons`** (Material) still appears in older files. Do not add new ones; when you touch such a file, a Huge Icons equivalent is welcome but not mandatory.
 - **`flutter_svg`** for the map pins in `assets/map_pins/`, drawn through `employee/features/home/presentation/widgets/job_marker_generator.dart`.
+
+> ⚠️ **A Huge Icons icon is not an `IconData`.** Since hugeicons 1.x an icon is raw SVG path data, not a font glyph, so it does **not** go into `Icon(...)`, `IconButton(icon: Icon(...))` or any other `IconData` slot — that is a compile error, and it is the single most common mistake in this codebase.
+>
+> ```dart
+> // ❌ derlenmez
+> Icon(HugeIcons.strokeRoundedArrowLeft01, size: AppSizes.icon)
+>
+> // ✅
+> HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft01, size: AppSizes.icon)
+> ```
+>
+> The `HugeIcon` widget takes `icon`, `color`, `size` and `strokeWidth`. Two differences from `Icon` worth knowing: `size` defaults to a hard **24** instead of following the surrounding `IconTheme`, and every icon is rendered through `flutter_svg` rather than a font — so avoid putting a lot of them in one long scrolling list without checking the frame times.
+>
+> When you need to **type** one — a widget field, a helper parameter, an enum getter — use **`AppIconData`** from `product/constants/app_icon_data.dart`, never `IconData`. That is the project's alias for hugeicons' unreadable `List<List<dynamic>>`. `MyListTile`, `NavItem`, `BNavItem`, `JobCategory.icon` and `ThemeMode.icon` all use it. Helpers that carry a Material `Icons.` value keep `IconData` — the two are not interchangeable.
+
+**Filled icons do not exist here.** The free hugeicons package ships stroke-rounded only; solid/duotone are behind their paid plan. If a design needs a filled icon, raise it rather than improvising.
+
+> **`cupertino_icons` looks unused — do not remove it.** No file imports it. It is there because go_router 18 renders iOS page chrome through `cupertino_ui`, which draws `CupertinoIcons.back` from that font. Without the package the build warns about a missing font family and the glyph renders as an empty box. It costs 734 bytes in a release APK (the font is tree-shaken from 257 KB down to 848 bytes), and the icon cannot be swapped for a Huge Icons one because `cupertino_ui` hardcodes it.
 
 ---
 
@@ -241,6 +286,7 @@ Every place that needs the real backend is marked with a `// TODO(backend):` com
 - `auth` has no service layer; the pages talk to `SharedPreferences` directly.
 - `business/features/home/presentation/pages/b_home_page.dart` has a `_quickActionsSection` that nothing calls. It carries an `// ignore: unused_element` so analyze stays clean — it is a parked section, not dead code to delete without asking.
 - The stat numbers on the business profile, the applicant CV download and the "follow company" action all render but write nowhere.
+- `business/features/home/presentation/pages/b_create_page.dart` hardcodes `latitude: 39.9208, longitude: 32.8541` for **every** job an employer posts, so they all land on the same map pin. The "Adres" field is free text and is never turned into coordinates. There is no `TODO(backend)` marker on it, so `grep` will not find it — it silently produces wrong data. Letting the employer drop a pin on a `google_maps_flutter` map is the obvious fix; the `geocoding` package is the other option but guesses at free-text addresses.
 
 
 **Onboarding** is shown once — `seen_onboarding` in `SharedPreferences`, checked by `AuthGate`.
@@ -249,7 +295,7 @@ Every place that needs the real backend is marked with a `// TODO(backend):` com
 
 ## Working habits
 
-- Run `flutter analyze --no-pub` after every change and leave it clean.
+- Run `flutter analyze --no-pub` after every change and leave it clean. If the change touched `android/` or `ios/`, run the matching `flutter build` too — analyze does not see the native side.
 - When adding values to the constant files, give them meaningful names and a `///` comment saying *why* that value, not what it is.
 - Before deleting anything, verify it is committed, and report what was deleted along with the command to undo it.
 - When the user sends a screenshot, do not guess the problem; trace it from the code and explain the cause. Most layout problems come from constraints — a missing `Center`/`Expanded`/`stretch` and the like.
