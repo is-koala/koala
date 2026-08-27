@@ -185,7 +185,13 @@ Two feature services are on real endpoints: `auth_service.dart` (registration in
 
 **Registration needs consents.** `/auth/complete-registration` rejects the request unless every mandatory agreement is granted, so the password screen first calls `GET /legal/agreements` (public) and sends `consents: [{agreementVersionId, granted}]` along with the password. Today the server seeds three mandatory agreements (terms, privacy, explicit consent) and one optional (commercial messages).
 
-**One thing to watch on the server side**, marked `TODO(backend)` in the code: **job categories have no seed data.** The `code` column exists and is slugified from the Turkish name (`Fotoğrafçılık` → `FOTOGRAFCILIK`), but the table is empty, so the app's five-value `JobCategory` enum (icon, pin, colour) has nothing to map onto yet.
+**Job categories come from the server.** `JobCategory` is no longer an enum — it is a plain class carrying `id`, `name`, `code` and `requiresInsurance`, fetched from `GET /reference/job-categories` by `employee/features/home/services/job_category_service.dart` and cached app-wide in `JobCategoryProvider` (registered in `main.dart`, read by both the employee explore filter and the business create-job picker).
+
+The icon, colour and map pin are *presentation*, resolved from `code` by the `JobCategoryStyle` extension, with a fallback for codes the app has no artwork for. **A code mismatch does not throw** — the category silently renders with the default icon, brand green and the waiter pin. That has already happened once, when the server migrated the codes from Turkish slugs to English, so `JobCategoryCodes` is guarded by a test in `test/employee/features/home/models/job_test.dart` that fails if any known code falls through to the fallback. The five seeded codes are `PHOTOGRAPHY`, `WAITER`, `PET_CARE`, `DESIGN`, `BARISTA` (`27-10-job-category-seed.xml`).
+
+`JobCategorySeeds` exists only so the remaining fake services and the tests can build a `Job`; its ids are deliberately `seed-` prefixed rather than UUIDs so they can never match a real record. It goes away with the fakes.
+
+> There is no neutral map pin for an unknown category — the waiter pin is reused, recoloured. Marked `TODO(tasarım)` in `job.dart`.
 
 The employer flag is spelled **`isEmployer`** everywhere — the server pins it with `@JsonProperty("isEmployer")` on `AuthStartRegistrationDto`, `AuthSetPasswordDto` and `UserMeResponseDto`, and the request field is `@NotNull`. Read it through `CurrentUser.readEmployerFlag` so the two models that carry it stay in step.
 

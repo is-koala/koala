@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/home/presentation/providers/job_category_provider.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_card.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
@@ -11,6 +12,7 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_bottom_sheet.dart';
 import 'package:koala/product/widgets/app_icon.dart';
+import 'package:provider/provider.dart';
 
 part 'list_explore_pagemodel.dart';
 
@@ -359,15 +361,14 @@ class _ListExplorePageState extends ListExplorePagemodel {
     _showCategoryFilter();
     _openFilterSheet(
       title: 'Kategoriler',
-      options: const [
+      // Kategori satırları sunucudan geliyor; tip seçenekleri sabit kalıyor
+      // çünkü onların karşılığı `JobType` enum'ı.
+      options: [
         ('Tümü', 'all'),
         ('Günlük', 'oneTime'),
         ('Tekrarlı', 'recurring'),
-        ('Fotoğrafçılık', 'photography'),
-        ('Garsonluk', 'waiter'),
-        ('Hayvan Bakımı', 'petCare'),
-        ('Tasarım', 'design'),
-        ('Barista', 'barista'),
+        for (final category in context.read<JobCategoryProvider>().categories)
+          (category.displayName, category.code),
       ],
       selected: () => _tempFilter,
       onSelect: (value) => _tempFilter = value,

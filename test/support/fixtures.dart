@@ -11,7 +11,7 @@ Job buildJob({
   String subtitle = 'Hafta sonu çalışacak garson aranıyor.',
   double price = 800,
   JobType type = JobType.oneTime,
-  JobCategory category = JobCategory.waiter,
+  JobCategory category = JobCategorySeeds.waiter,
   double latitude = 39.9208,
   double longitude = 32.8541,
   String? company = 'Koala Cafe',

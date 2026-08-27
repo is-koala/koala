@@ -22,6 +22,10 @@ class ApiPaths {
   static const String currentUserProfilePicture = '/users/me/profile-picture';
   static const String currentUserAddress = '/users/me/address';
 
+  // ---------------------------------------------------------- Reference data
+
+  static const String jobCategories = '/reference/job-categories';
+
   // -------------------------------------------------------------------- Legal
 
   static const String agreements = '/legal/agreements';
@@ -41,5 +45,7 @@ class ApiPaths {
     forgotPassword,
     resetPassword,
     agreements,
+    // `/reference/**` GET'leri backend'de `permitAll`.
+    jobCategories,
   };
 }

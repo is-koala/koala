@@ -28,6 +28,11 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
   void initState() {
     super.initState();
     _loadJobsAndLocation();
+    // Filtre sheet'i açıldığında kategoriler hazır olsun; provider aynı
+    // listeyi ikinci kez çekmiyor.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<JobCategoryProvider>().load();
+    });
   }
 
   @override
@@ -139,11 +144,12 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
             .where((job) => job.type == JobType.recurring)
             .toList();
       } else {
-        final category = JobCategory.values.firstWhere(
-          (c) => c.name == _selectedFilter,
-          orElse: () => JobCategory.waiter,
-        );
-        filtered = filtered.where((job) => job.category == category).toList();
+        // Geriye kalan tek seçenek kategori: filtre anahtarı kategorinin
+        // backend'deki `code` değeri. Tanınmayan bir anahtar hiçbir işi
+        // elemesin diye doğrudan kodla karşılaştırılıyor.
+        filtered = filtered
+            .where((job) => job.category.code == _selectedFilter)
+            .toList();
       }
     }
 

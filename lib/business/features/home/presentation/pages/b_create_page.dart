@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
 import 'package:koala/business/features/home/services/fake_business_company.dart';
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/home/presentation/providers/job_category_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
@@ -41,10 +42,20 @@ class _BCreatePageState extends State<BCreatePage> {
   final _minAgeController = TextEditingController();
   final _maxAgeController = TextEditingController();
 
-  JobCategory _selectedCategory = JobCategory.waiter;
+  /// Kategoriler `/reference/job-categories`'ten geldiği için başlangıçta
+  /// seçili kategori yok; liste dolduğunda ilki seçiliyor.
+  JobCategory? _selectedCategory;
   JobType _selectedType = JobType.oneTime;
   bool _experienceRequired = false;
   bool _insuranceRequired = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<JobCategoryProvider>().load();
+    });
+  }
 
   @override
   void dispose() {
@@ -74,6 +85,17 @@ class _BCreatePageState extends State<BCreatePage> {
       return;
     }
 
+    final category = _selectedCategory;
+    if (category == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Lütfen bir kategori seçin'),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+      return;
+    }
+
     final companyName = FakeBusinessCompany.instance.name;
     final now = DateTime.now();
     final jobId = 'b_${now.millisecondsSinceEpoch}';
@@ -83,7 +105,7 @@ class _BCreatePageState extends State<BCreatePage> {
       latitude: 39.9208,
       longitude: 32.8541,
       type: _selectedType,
-      category: _selectedCategory,
+      category: category,
       title: _titleController.text.trim(),
       subtitle: _subtitleController.text.trim().isEmpty
           ? _titleController.text.trim()
@@ -303,14 +325,76 @@ class _BCreatePageState extends State<BCreatePage> {
     );
   }
 
+  /// Kategori çipleri çizilemediğinde onların yerine geçen kutu.
+  Widget _categoryNotice(String message, {required bool canRetry}) {
+    return Container(
+      width: double.infinity,
+      padding: AppPadding.chip,
+      decoration: BoxDecoration(
+        color: context.tileColor,
+        borderRadius: AppRadius.innerCircular,
+        border: Border.all(color: context.dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            message,
+            style: context.textTheme.bodySmall?.copyWith(
+              color: context.textSecondary,
+            ),
+          ),
+          if (canRetry) ...[
+            const SizedBox(height: AppSizes.spaceTiny),
+            GestureDetector(
+              onTap: () =>
+                  context.read<JobCategoryProvider>().load(force: true),
+              child: Text(
+                'Tekrar dene',
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: context.accentColor,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _sectionLabel(String title) =>
       Text(title, style: context.textTheme.titleMedium);
 
   Widget _categorySelector() {
+    final provider = context.watch<JobCategoryProvider>();
+
+    if (provider.isLoading && provider.categories.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: AppSizes.spaceSmall),
+        child: SizedBox(
+          height: AppSizes.icon,
+          width: AppSizes.icon,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    final message = provider.errorMessage;
+    if (message != null) return _categoryNotice(message, canRetry: true);
+
+    if (provider.isEmpty) {
+      return _categoryNotice(
+        'Kategoriler henüz tanımlı değil. Sunucuda tanımlandığında burada '
+        'görünecek.',
+        canRetry: true,
+      );
+    }
+
     return Wrap(
       spacing: AppSizes.spaceSmall,
       runSpacing: AppSizes.spaceSmall,
-      children: JobCategory.values.map((category) {
+      children: provider.categories.map((category) {
         final isSelected = _selectedCategory == category;
         return GestureDetector(
           onTap: () => setState(() => _selectedCategory = category),
