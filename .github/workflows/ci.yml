@@ -32,16 +32,45 @@ jobs:
         run: flutter pub get
 
       - name: Format kontrolü
-        run: dart format --output=none --set-exit-if-changed lib
+        run: dart format --output=none --set-exit-if-changed lib test
 
       # Info seviyesi de kırmızı: kod tabanı bu eşiği geçecek şekilde
       # temizlendi, geriye düşmesin.
       - name: Statik analiz
         run: flutter analyze --fatal-infos
 
+  test:
+    name: Testler
+    needs: analyze
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Bağımlılıkları indir
+        run: flutter pub get
+
+      # Testler birim ve widget seviyesinde; cihaz ya da emülatör gerekmiyor.
+      - name: Testleri çalıştır
+        run: flutter test --reporter expanded --coverage
+
+      # PR'da bir testin neden düştüğü, hangi satırın kapsanmadığı
+      # sorulduğunda ham lcov'a bakılabilsin.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: koala-coverage
+          path: coverage/lcov.info
+          retention-days: 7
+
   build-android:
     name: Android derleme
-    needs: analyze
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -76,7 +105,7 @@ jobs:
 
   build-ios:
     name: iOS derleme
-    needs: analyze
+    needs: test
     # macOS runner yavaş; PR'ları bekletmemek için sadece main'e push ve
     # elle tetiklemede çalışır.
     if: github.event_name != 'pull_request'

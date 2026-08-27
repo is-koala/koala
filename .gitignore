@@ -36,6 +36,9 @@ ios/Flutter/Secrets.xcconfig
 .pub/
 /build/
 
+# flutter test --coverage çıktısı
+/coverage/
+
 # Symbolication related
 app.*.symbols
 

@@ -17,7 +17,7 @@ Both files are the single source of truth; do not duplicate their content here.
 - **Write in Turkish.** Answers, in-code comments and user-facing strings are Turkish; identifiers stay English.
 - **Run `flutter analyze --no-pub` after every change** and leave it clean. A clean analyze means "the Dart typechecks", not "it builds" and not "it looks right" — see the *Commands* section for when to build as well.
 - **The user does the visual verification.** If you changed anything visual, say explicitly that you did not verify it on screen and point out what to look at — in **both** the light and the dark theme.
-- **No tests unless asked.** The project has no `test/` folder on purpose.
+- **Run `flutter test` after touching logic** and leave it green. `test/` mirrors `lib/`; see the *Tests* section in AGENTS.md for the shared helpers. CI blocks the build jobs behind it.
 - **Do not add new dependencies or invent new patterns** — reuse what is in `lib/product/constants` and `lib/product/widgets` first.
 - **Never print a secret.** The Google Maps key lives in `android/local.properties` and `ios/Flutter/Secrets.xcconfig`, both gitignored. Do not copy a key value into an answer, a comment or a committed file.
 
@@ -29,7 +29,8 @@ Both files are the single source of truth; do not duplicate their content here.
 
 ```bash
 flutter analyze --no-pub
-dart format lib/
+flutter test
+dart format lib test
 flutter pub get
 
 # Native tarafa dokunduysan analyze yetmez — ilgili build'i de al.

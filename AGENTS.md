@@ -37,11 +37,23 @@ Flutter 3.47.1 (stable), Dart SDK `^3.8.1`. The font is Poppins.
 
 ```bash
 flutter analyze --no-pub     # after every change; must stay clean
-dart format lib/             # before handing the work over
+flutter test                 # after every change to logic
+dart format lib test         # before handing the work over
 flutter pub get
 ```
 
-The project has **no tests** (there is no `test/` folder). Do not write tests unless asked.
+### Tests
+
+`test/` mirrors `lib/`: a test for `lib/product/router/router_manager.dart` lives at `test/product/router/router_manager_test.dart`. Test names and `group` labels are Turkish like everything else.
+
+What is covered today: the router redirect guard, the `Job` model's JSON round-trip, `asPrice`, the `SavedJobs` / `Page` / `Search` / `Apply` / `Theme` / `BJobs` providers, and `MyButton` / `MyListTile` as widget tests. There are **no integration tests** — everything runs headless, no device or emulator.
+
+Two shared helpers under `test/support/`, use them instead of rolling your own:
+
+- **`fixtures.dart`** → `buildJob(...)`. `Job` has eight required fields; passing only the one the test cares about keeps the test readable.
+- **`pump.dart`** → `pumpInApp(tester, widget, brightness: ...)`. Product widgets read their colors from `context`, so they cannot be pumped bare — they need a `MaterialApp` with the real theme. The `brightness` parameter is there so a widget can be asserted in **both** themes, which is the project's core rule.
+
+CI runs `flutter test` on every PR and blocks the Android and iOS build jobs behind it, so a red test stops the pipeline.
 
 > **You can build this project — do it.** `flutter doctor` is green (Xcode installed and `xcode-select` pointed at it, Android SDK 37, JDK 17), so both of these work and are the real check that a change compiles end to end:
 >
@@ -129,6 +141,8 @@ A feature has at most three top-level folders: **`models/`** (plain data classes
 `go_router`. A single `GoRouter` inside `product/router/router_manager.dart`, `initialLocation: '/explore'`.
 
 **The `redirect` guard** reads `is_logged_in` and `user_type` from `SharedPreferences` on **every** navigation and enforces four rules: not logged in → `/authgate`; logged in but on an auth route → the home of your type; business user on an employee route → `/business/home`; employee user on a business route → `/explore`.
+
+The decision itself lives in `RouterManager.resolveRedirect(loggedIn:, userType:, location:)`, a pure static function — only the `SharedPreferences` reads stay in the `redirect` callback. Change the rules there and cover them in `test/product/router/router_manager_test.dart`; this is the one piece of logic that keeps the two apps apart.
 
 > The guard is `async` and hits `SharedPreferences` on every route change. It works, but it means the redirect is not synchronous — do not assume the first frame of a route is already the final destination.
 
@@ -296,6 +310,7 @@ Every place that needs the real backend is marked with a `// TODO(backend):` com
 ## Working habits
 
 - Run `flutter analyze --no-pub` after every change and leave it clean. If the change touched `android/` or `ios/`, run the matching `flutter build` too — analyze does not see the native side.
+- Run `flutter test` after every change to logic, and add a test with it. If a bug got through, the fix and the test that would have caught it belong in the same change.
 - When adding values to the constant files, give them meaningful names and a `///` comment saying *why* that value, not what it is.
 - Before deleting anything, verify it is committed, and report what was deleted along with the command to undo it.
 - When the user sends a screenshot, do not guess the problem; trace it from the code and explain the cause. Most layout problems come from constraints — a missing `Center`/`Expanded`/`stretch` and the like.

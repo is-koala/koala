@@ -51,50 +51,63 @@ class RouterManager {
     return prefs.getString('user_type');
   }
 
+  /// Yönlendirme kararını veren saf fonksiyon.
+  ///
+  /// `SharedPreferences`'tan okuma [redirect] içinde kalıyor, karar mantığı
+  /// burada: girdileri parametre olduğu için testten doğrudan çağrılabiliyor.
+  /// `null` dönmesi "olduğun yerde kal" demek.
+  @visibleForTesting
+  static String? resolveRedirect({
+    required bool loggedIn,
+    required String? userType,
+    required String location,
+  }) {
+    final authRoutes = ['/auth', '/authgate', '/onboarding'];
+    final isAuthRoute = authRoutes.any((route) => location.startsWith(route));
+
+    // Giriş yapmamışsa auth'a yönlendir
+    if (!loggedIn && !isAuthRoute) {
+      return '/authgate';
+    }
+
+    // Giriş yapmışsa ve auth sayfasındaysa kullanıcı tipine göre yönlendir
+    if (loggedIn && isAuthRoute) {
+      if (userType == 'business') {
+        return '/business/home';
+      } else {
+        return '/explore';
+      }
+    }
+
+    // Business kullanıcısı employee sayfalarına erişmeye çalışırsa
+    final employeeRoutes = ['/explore', '/jobs', '/chat', '/profile'];
+    final isEmployeeRoute = employeeRoutes.any(
+      (route) => location.startsWith(route),
+    );
+    if (loggedIn && userType == 'business' && isEmployeeRoute) {
+      return '/business/home';
+    }
+
+    // Employee kullanıcısı business sayfalarına erişmeye çalışırsa
+    final businessRoutes = ['/business'];
+    final isBusinessRoute = businessRoutes.any(
+      (route) => location.startsWith(route),
+    );
+    if (loggedIn && userType == 'employee' && isBusinessRoute) {
+      return '/explore';
+    }
+
+    return null;
+  }
+
   static final GoRouter router = GoRouter(
     initialLocation: '/explore',
     redirect: (context, state) async {
-      final loggedIn = await isUserLoggedIn();
-      final userType = await getUserType();
-
-      final authRoutes = ['/auth', '/authgate', '/onboarding'];
-      final isAuthRoute = authRoutes.any(
-        (route) => state.matchedLocation.startsWith(route),
+      return resolveRedirect(
+        loggedIn: await isUserLoggedIn(),
+        userType: await getUserType(),
+        location: state.matchedLocation,
       );
-
-      // Giriş yapmamışsa auth'a yönlendir
-      if (!loggedIn && !isAuthRoute) {
-        return '/authgate';
-      }
-
-      // Giriş yapmışsa ve auth sayfasındaysa kullanıcı tipine göre yönlendir
-      if (loggedIn && isAuthRoute) {
-        if (userType == 'business') {
-          return '/business/home';
-        } else {
-          return '/explore';
-        }
-      }
-
-      // Business kullanıcısı employee sayfalarına erişmeye çalışırsa
-      final employeeRoutes = ['/explore', '/jobs', '/chat', '/profile'];
-      final isEmployeeRoute = employeeRoutes.any(
-        (route) => state.matchedLocation.startsWith(route),
-      );
-      if (loggedIn && userType == 'business' && isEmployeeRoute) {
-        return '/business/home';
-      }
-
-      // Employee kullanıcısı business sayfalarına erişmeye çalışırsa
-      final businessRoutes = ['/business'];
-      final isBusinessRoute = businessRoutes.any(
-        (route) => state.matchedLocation.startsWith(route),
-      );
-      if (loggedIn && userType == 'employee' && isBusinessRoute) {
-        return '/explore';
-      }
-
-      return null;
     },
     routes: [
       // Auth Routes
