@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/business/features/home/models/b_applicant.dart';
 import 'package:koala/business/features/home/models/b_job_post.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
@@ -9,10 +8,12 @@ import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/product/constants/app_assets.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/widgets/app_icon.dart';
 import 'package:provider/provider.dart';
 
 class BHomePage extends StatelessWidget {
@@ -146,8 +147,8 @@ class BHomePage extends StatelessWidget {
           icon: Badge(
             smallSize: AppSizes.badgeDot,
             backgroundColor: AppColors.danger,
-            child: HugeIcon(
-              icon: HugeIcons.strokeRoundedNotification03,
+            child: AppIcon(
+              AppIcons.notification,
               color: context.textSecondary,
               size: AppSizes.icon,
             ),
@@ -252,8 +253,8 @@ class BHomePage extends StatelessWidget {
           width: _mascotImage,
           height: _mascotImage,
           fit: BoxFit.contain,
-          errorBuilder: (_, _, _) => HugeIcon(
-            icon: HugeIcons.strokeRoundedBuilding06,
+          errorBuilder: (_, _, _) => AppIcon(
+            AppIcons.building,
             size: AppSizes.iconLarge,
             color: AppColors.onAccent.withValues(alpha: 0.8),
           ),
@@ -275,7 +276,7 @@ class BHomePage extends StatelessWidget {
         Expanded(
           child: _statCard(
             context,
-            icon: HugeIcons.strokeRoundedWork,
+            icon: AppIcons.work,
             label: 'Aktif İlan',
             value: '$activeCount',
             color: context.accentColor,
@@ -285,7 +286,7 @@ class BHomePage extends StatelessWidget {
         Expanded(
           child: _statCard(
             context,
-            icon: HugeIcons.strokeRoundedUserMultiple,
+            icon: AppIcons.userMultiple,
             label: 'Başvuru',
             value: '$applicantCount',
             color: AppColors.info,
@@ -295,7 +296,7 @@ class BHomePage extends StatelessWidget {
         Expanded(
           child: _statCard(
             context,
-            icon: HugeIcons.strokeRoundedCheckmarkCircle02,
+            icon: AppIcons.checkCircle,
             label: 'Tamamlanan',
             value: '$pastCount',
             color: AppColors.warning,
@@ -331,11 +332,7 @@ class BHomePage extends StatelessWidget {
               color: color.withValues(alpha: 0.15),
               borderRadius: AppRadius.innerCircular,
             ),
-            child: HugeIcon(
-              icon: icon,
-              size: AppSizes.iconMedium,
-              color: color,
-            ),
+            child: AppIcon(icon, size: AppSizes.iconMedium, color: color),
           ),
           const SizedBox(height: AppSizes.spaceSmall),
           Text(
@@ -374,7 +371,7 @@ class BHomePage extends StatelessWidget {
             Expanded(
               child: _quickActionCard(
                 context,
-                icon: HugeIcons.strokeRoundedPlusSign,
+                icon: AppIcons.plus,
                 label: 'Yeni İlan',
                 subtitle: 'İlan oluştur',
                 color: context.accentColor,
@@ -385,7 +382,7 @@ class BHomePage extends StatelessWidget {
             Expanded(
               child: _quickActionCard(
                 context,
-                icon: HugeIcons.strokeRoundedWork,
+                icon: AppIcons.work,
                 label: 'İlanlarım',
                 subtitle: 'Tümünü gör',
                 color: AppColors.info,
@@ -396,7 +393,7 @@ class BHomePage extends StatelessWidget {
             Expanded(
               child: _quickActionCard(
                 context,
-                icon: HugeIcons.strokeRoundedUser,
+                icon: AppIcons.user,
                 label: 'Profilim',
                 subtitle: 'Düzenle',
                 color: AppColors.warning,
@@ -434,11 +431,7 @@ class BHomePage extends StatelessWidget {
                 color: color.withValues(alpha: _tintAlpha),
                 borderRadius: AppRadius.innerCircular,
               ),
-              child: HugeIcon(
-                icon: icon,
-                size: AppSizes.iconMedium,
-                color: color,
-              ),
+              child: AppIcon(icon, size: AppSizes.iconMedium, color: color),
             ),
             const SizedBox(height: AppSizes.spaceSmall),
             Text(
@@ -483,7 +476,7 @@ class BHomePage extends StatelessWidget {
         if (recentApplicants.isEmpty)
           _emptyPanel(
             context,
-            icon: HugeIcons.strokeRoundedUserMultiple,
+            icon: AppIcons.userMultiple,
             title: 'Henüz başvuru yok',
             subtitle: 'İlanlara başvuru geldiğinde burada görünecek',
           )
@@ -575,7 +568,7 @@ class BHomePage extends StatelessWidget {
         if (activePosts.isEmpty)
           _emptyPanel(
             context,
-            icon: HugeIcons.strokeRoundedWork,
+            icon: AppIcons.work,
             title: 'Aktif ilan yok',
             action: GestureDetector(
               onTap: () => context.push('/business/create'),
@@ -704,8 +697,8 @@ class BHomePage extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              HugeIcon(
-                icon: HugeIcons.strokeRoundedUserMultiple,
+              AppIcon(
+                AppIcons.userMultiple,
                 size: AppSizes.iconSmall,
                 color: applicantColor,
               ),
@@ -764,8 +757,8 @@ class BHomePage extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (withIcon) ...[
-            HugeIcon(
-              icon: job.category.icon,
+            AppIcon(
+              job.category.icon,
               size: AppSizes.iconSmall,
               color: job.category.color,
             ),
@@ -817,11 +810,7 @@ class BHomePage extends StatelessWidget {
       ),
       child: Column(
         children: [
-          HugeIcon(
-            icon: icon,
-            size: AppSizes.iconLarge,
-            color: context.dividerColor,
-          ),
+          AppIcon(icon, size: AppSizes.iconLarge, color: context.dividerColor),
           const SizedBox(height: AppSizes.spaceSmall),
           Text(
             title,

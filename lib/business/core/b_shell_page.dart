@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/business/core/widgets/b_nav_item.dart';
 import 'package:koala/business/features/home/presentation/providers/b_page_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
@@ -53,7 +53,7 @@ class BShellPage extends StatelessWidget {
                           label: 'Ana Sayfa',
                           isSelected: currentLocation == '/business/home',
                           onTap: () => context.go('/business/home'),
-                          icon: HugeIcons.strokeRoundedHome02,
+                          icon: AppIcons.home,
                         ),
                       ),
                       Expanded(
@@ -62,7 +62,7 @@ class BShellPage extends StatelessWidget {
                           label: 'İlanlar',
                           isSelected: currentLocation == '/business/posts',
                           onTap: () => context.go('/business/posts'),
-                          icon: HugeIcons.strokeRoundedWork,
+                          icon: AppIcons.work,
                         ),
                       ),
                       Expanded(
@@ -70,7 +70,7 @@ class BShellPage extends StatelessWidget {
                           index: 2,
                           isSelected: currentLocation == '/business/create',
                           onTap: () => context.push('/business/create'),
-                          icon: HugeIcons.strokeRoundedPlusSign,
+                          icon: AppIcons.plus,
                           centerItem: true,
                         ),
                       ),
@@ -80,7 +80,7 @@ class BShellPage extends StatelessWidget {
                           label: 'Sohbetler',
                           isSelected: currentLocation == '/business/chat',
                           onTap: () => context.go('/business/chat'),
-                          icon: HugeIcons.strokeRoundedBubbleChat,
+                          icon: AppIcons.chat,
                         ),
                       ),
 
@@ -90,7 +90,7 @@ class BShellPage extends StatelessWidget {
                           label: 'Profil',
                           isSelected: currentLocation == '/business/profile',
                           onTap: () => context.go('/business/profile'),
-                          icon: HugeIcons.strokeRoundedUser,
+                          icon: AppIcons.user,
                         ),
                       ),
                     ],

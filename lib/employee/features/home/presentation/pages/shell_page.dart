@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
-import 'package:koala/product/widgets/navbar_item.dart';
 import 'package:go_router/go_router.dart';
-import 'package:koala/employee/features/home/presentation/providers/page_provider.dart';
-import 'package:koala/employee/features/home/presentation/pages/explore_pages/explore_page.dart';
-import 'package:koala/employee/features/jobs/presentation/pages/jobs_page.dart';
 import 'package:koala/employee/features/chat/presentation/pages/chat_list_page.dart';
+import 'package:koala/employee/features/home/presentation/pages/explore_pages/explore_page.dart';
+import 'package:koala/employee/features/home/presentation/providers/page_provider.dart';
+import 'package:koala/employee/features/jobs/presentation/pages/jobs_page.dart';
 import 'package:koala/employee/features/profile/presentation/pages/profile_page.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/widgets/navbar_item.dart';
 import 'package:provider/provider.dart';
 
 class ShellPage extends StatefulWidget {
@@ -186,15 +186,15 @@ class _ShellPageState extends State<ShellPage> {
                   unSelectedIcon: _selectedIndex == 0
                       ? (context.watch<PageProvider>().exploreViewType ==
                                 ExploreViewType.map
-                            ? HugeIcons.strokeRoundedNavigation05
-                            : HugeIcons.strokeRoundedMenu05)
-                      : HugeIcons.strokeRoundedNavigation05,
+                            ? AppIcons.navigation
+                            : AppIcons.menu)
+                      : AppIcons.navigation,
                   selectedIcon: _selectedIndex == 0
                       ? (context.watch<PageProvider>().exploreViewType ==
                                 ExploreViewType.map
-                            ? HugeIcons.strokeRoundedNavigation05
-                            : HugeIcons.strokeRoundedMenu05)
-                      : HugeIcons.strokeRoundedNavigation05,
+                            ? AppIcons.navigation
+                            : AppIcons.menu)
+                      : AppIcons.navigation,
                   isSelected: _selectedIndex == 0,
                   onTap: () => _onItemTapped(0, '/explore'),
                 ),
@@ -203,29 +203,29 @@ class _ShellPageState extends State<ShellPage> {
                   unSelectedIcon: _selectedIndex == 1
                       ? (context.watch<PageProvider>().jobsViewType ==
                                 JobsViewType.home
-                            ? HugeIcons.strokeRoundedWork
-                            : HugeIcons.strokeRoundedBookmark02)
-                      : HugeIcons.strokeRoundedWork,
+                            ? AppIcons.work
+                            : AppIcons.bookmark)
+                      : AppIcons.work,
                   selectedIcon: _selectedIndex == 1
                       ? (context.watch<PageProvider>().jobsViewType ==
                                 JobsViewType.home
-                            ? HugeIcons.strokeRoundedWork
-                            : HugeIcons.strokeRoundedBookmark02)
-                      : HugeIcons.strokeRoundedWork,
+                            ? AppIcons.work
+                            : AppIcons.bookmark)
+                      : AppIcons.work,
                   isSelected: _selectedIndex == 1,
                   onTap: () => _onItemTapped(1, '/jobs'),
                 ),
                 NavItem(
                   index: 2,
-                  unSelectedIcon: HugeIcons.strokeRoundedBubbleChat,
-                  selectedIcon: HugeIcons.strokeRoundedBubbleChat,
+                  unSelectedIcon: AppIcons.chat,
+                  selectedIcon: AppIcons.chat,
                   isSelected: _selectedIndex == 2,
                   onTap: () => _onItemTapped(2, '/chat'),
                 ),
                 NavItem(
                   index: 3,
-                  unSelectedIcon: HugeIcons.strokeRoundedUser,
-                  selectedIcon: HugeIcons.strokeRoundedUser,
+                  unSelectedIcon: AppIcons.user,
+                  selectedIcon: AppIcons.user,
                   isSelected: _selectedIndex == 3,
                   onTap: () => _onItemTapped(3, '/profile'),
                 ),

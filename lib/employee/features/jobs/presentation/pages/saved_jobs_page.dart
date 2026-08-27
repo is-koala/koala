@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/employee/core/widgets/job_detail_bottom_sheet.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/saved_jobs_provider.dart';
@@ -9,6 +8,7 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/num_extensions.dart';
+import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:provider/provider.dart';
 
@@ -123,8 +123,8 @@ class SavedJobsPage extends StatelessWidget {
             color: job.category.color.withValues(alpha: 0.15),
             borderRadius: AppRadius.innerCircular,
           ),
-          child: HugeIcon(
-            icon: job.category.icon,
+          child: AppIcon(
+            job.category.icon,
             color: job.category.color,
             size: AppSizes.icon,
           ),

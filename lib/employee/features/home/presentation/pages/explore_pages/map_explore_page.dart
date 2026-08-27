@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:hugeicons/hugeicons.dart';
-import 'package:koala/employee/features/home/services/location_service.dart';
+import 'package:koala/employee/core/widgets/job_detail_bottom_sheet.dart';
 import 'package:koala/employee/features/home/models/job.dart';
-import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:koala/employee/features/home/presentation/providers/search_provider.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_marker_generator.dart';
-import 'package:koala/employee/core/widgets/job_detail_bottom_sheet.dart';
+import 'package:koala/employee/features/home/services/job_service.dart';
+import 'package:koala/employee/features/home/services/location_service.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/widgets/app_icon.dart';
 import 'package:provider/provider.dart';
 
 part 'map_explore_pagemodel.dart';
@@ -110,8 +111,8 @@ class _MapExplorePageState extends MapExplorePageModel {
           color: job.category.color.withValues(alpha: 0.15),
           borderRadius: AppRadius.smallCircular,
         ),
-        child: HugeIcon(
-          icon: job.category.icon,
+        child: AppIcon(
+          job.category.icon,
           color: job.category.color,
           size: AppSizes.iconMedium,
         ),
@@ -146,8 +147,8 @@ class _MapExplorePageState extends MapExplorePageModel {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            HugeIcon(
-              icon: HugeIcons.strokeRoundedSearchList01,
+            AppIcon(
+              AppIcons.searchList,
               size: AppSizes.iconLarge,
               color: context.textTertiary,
             ),
@@ -325,10 +326,7 @@ class _MapExplorePageState extends MapExplorePageModel {
       centerTitle: false,
       actions: [
         IconButton(
-          icon: HugeIcon(
-            icon: HugeIcons.strokeRoundedSearch01,
-            color: context.onAccentColor,
-          ),
+          icon: AppIcon(AppIcons.search, color: context.onAccentColor),
           style: ButtonStyle(
             backgroundColor: WidgetStatePropertyAll(context.accentColor),
           ),

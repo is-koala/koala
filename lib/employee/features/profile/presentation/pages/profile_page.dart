@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hugeicons/hugeicons.dart';
-import 'package:koala/employee/features/profile/services/fake_user.dart';
 import 'package:koala/employee/features/profile/models/user.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/experience_card.dart';
+import 'package:koala/employee/features/profile/services/fake_user.dart';
 import 'package:koala/product/constants/app_assets.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -77,10 +78,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 user = FakeUser.instance;
               });
             },
-            icon: HugeIcon(
-              icon: HugeIcons.strokeRoundedSettings01,
-              color: context.textPrimary,
-            ),
+            icon: AppIcon(AppIcons.settings, color: context.textPrimary),
           ),
         ],
       ),
@@ -190,10 +188,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ],
           ),
-          HugeIcon(
-            icon: HugeIcons.strokeRoundedFileAttachment,
-            color: context.onAccentColor,
-          ),
+          AppIcon(AppIcons.attachment, color: context.onAccentColor),
         ],
       ),
     );

@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/business/features/home/models/b_job_post.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:provider/provider.dart';
 
@@ -132,10 +133,8 @@ class _BPostsPageState extends State<BPostsPage>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            HugeIcon(
-              icon: isActive
-                  ? HugeIcons.strokeRoundedWork
-                  : HugeIcons.strokeRoundedClock01,
+            AppIcon(
+              isActive ? AppIcons.work : AppIcons.clock,
               size: AppSizes.iconHuge,
               color: context.dividerColor,
             ),
@@ -235,8 +234,8 @@ class _BPostsPageState extends State<BPostsPage>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          HugeIcon(
-            icon: job.category.icon,
+          AppIcon(
+            job.category.icon,
             size: AppSizes.iconSmall,
             color: job.category.color,
           ),
@@ -363,11 +362,7 @@ class _BPostsPageState extends State<BPostsPage>
     return _footerRow(
       isFilled: hasApplicants,
       children: [
-        HugeIcon(
-          icon: HugeIcons.strokeRoundedUserMultiple,
-          size: AppSizes.iconSmall,
-          color: color,
-        ),
+        AppIcon(AppIcons.userMultiple, size: AppSizes.iconSmall, color: color),
         const SizedBox(width: AppSizes.spaceSmall),
         Text(
           hasApplicants
@@ -429,8 +424,8 @@ class _BPostsPageState extends State<BPostsPage>
               ),
             ]
           : [
-              HugeIcon(
-                icon: HugeIcons.strokeRoundedUser,
+              AppIcon(
+                AppIcons.user,
                 size: AppSizes.iconSmall,
                 color: context.textTertiary,
               ),

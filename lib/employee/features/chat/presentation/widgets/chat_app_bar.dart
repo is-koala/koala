@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/employee/features/chat/models/conversation.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/chat_avatar.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/widgets/app_icon.dart';
 
 /// Sohbet detayının başlığı: avatar, ad ve çevrimiçi durumu.
 ///
@@ -28,10 +29,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     return AppBar(
       leading: IconButton(
-        icon: HugeIcon(
-          icon: HugeIcons.strokeRoundedArrowLeft01,
-          color: context.textPrimary,
-        ),
+        icon: AppIcon(AppIcons.arrowLeft, color: context.textPrimary),
         onPressed: () => context.pop(),
       ),
       title: Row(

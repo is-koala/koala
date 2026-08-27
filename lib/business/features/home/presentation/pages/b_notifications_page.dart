@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 
 /// Bildirim türleri
@@ -211,8 +212,8 @@ class _BNotificationsPageState extends State<BNotificationsPage> {
                 color: context.tileColor,
                 borderRadius: AppRadius.secondaryCircular,
               ),
-              child: HugeIcon(
-                icon: HugeIcons.strokeRoundedNotification03,
+              child: AppIcon(
+                AppIcons.notification,
                 size: AppSizes.iconLarge,
                 color: context.dividerColor,
               ),
@@ -249,10 +250,7 @@ class _BNotificationsPageState extends State<BNotificationsPage> {
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: AppSizes.spaceLarge),
         color: AppColors.danger.withValues(alpha: 0.1),
-        child: const HugeIcon(
-          icon: HugeIcons.strokeRoundedDelete02,
-          color: AppColors.danger,
-        ),
+        child: const AppIcon(AppIcons.delete, color: AppColors.danger),
       ),
       child: Container(
         decoration: BoxDecoration(
@@ -276,8 +274,8 @@ class _BNotificationsPageState extends State<BNotificationsPage> {
                   color: config.color.withValues(alpha: 0.12),
                   borderRadius: AppRadius.innerCircular,
                 ),
-                child: HugeIcon(
-                  icon: config.icon,
+                child: AppIcon(
+                  config.icon,
                   size: AppSizes.iconMedium,
                   color: config.color,
                 ),
@@ -340,27 +338,27 @@ class _BNotificationsPageState extends State<BNotificationsPage> {
     switch (type) {
       case BNotificationType.applicant:
         return _NotificationTypeConfig(
-          icon: HugeIcons.strokeRoundedUserAdd01,
+          icon: AppIcons.userAdd,
           color: AppColors.info,
         );
       case BNotificationType.approved:
         return _NotificationTypeConfig(
-          icon: HugeIcons.strokeRoundedCheckmarkCircle02,
+          icon: AppIcons.checkCircle,
           color: AppColors.primaryColor,
         );
       case BNotificationType.rejected:
         return _NotificationTypeConfig(
-          icon: HugeIcons.strokeRoundedCancelCircle,
+          icon: AppIcons.cancelCircle,
           color: AppColors.danger,
         );
       case BNotificationType.info:
         return _NotificationTypeConfig(
-          icon: HugeIcons.strokeRoundedInformationCircle,
+          icon: AppIcons.info,
           color: AppColors.warning,
         );
       case BNotificationType.system:
         return _NotificationTypeConfig(
-          icon: HugeIcons.strokeRoundedSettings01,
+          icon: AppIcons.settings,
           color: context.textSecondary,
         );
     }

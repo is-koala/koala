@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/theme/theme_provider.dart';
 import 'package:koala/product/widgets/app_bottom_sheet.dart';
+import 'package:koala/product/widgets/app_icon.dart';
 import 'package:provider/provider.dart';
 
 /// Ayarlarda gösterilen tema adı.
@@ -24,9 +25,9 @@ extension ThemeModeLabel on ThemeMode {
   };
 
   AppIconData get icon => switch (this) {
-    ThemeMode.system => HugeIcons.strokeRoundedSmartPhone01,
-    ThemeMode.light => HugeIcons.strokeRoundedSun03,
-    ThemeMode.dark => HugeIcons.strokeRoundedMoon02,
+    ThemeMode.system => AppIcons.mobile,
+    ThemeMode.light => AppIcons.sun,
+    ThemeMode.dark => AppIcons.moon,
   };
 }
 
@@ -99,8 +100,8 @@ class ThemeModeSheet extends StatelessWidget {
           ),
           child: Row(
             children: [
-              HugeIcon(
-                icon: mode.icon,
+              AppIcon(
+                mode.icon,
                 color: isSelected ? accent : context.textSecondary,
                 size: AppSizes.iconMedium,
               ),
@@ -129,8 +130,8 @@ class ThemeModeSheet extends StatelessWidget {
                 ),
               ),
               if (isSelected)
-                HugeIcon(
-                  icon: HugeIcons.strokeRoundedTick02,
+                AppIcon(
+                  AppIcons.tick,
                   color: accent,
                   size: AppSizes.iconMedium,
                 ),

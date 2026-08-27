@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/business/features/chat/services/b_chat_service.dart';
 import 'package:koala/employee/features/chat/models/conversation.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/chat_avatar.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 
 class BChatListPage extends StatefulWidget {
@@ -76,8 +77,8 @@ class _BChatListPageState extends State<BChatListPage> {
                 color: context.tileColor,
                 borderRadius: AppRadius.secondaryCircular,
               ),
-              child: HugeIcon(
-                icon: HugeIcons.strokeRoundedBubbleChat,
+              child: AppIcon(
+                AppIcons.chat,
                 size: AppSizes.iconLarge,
                 color: context.dividerColor,
               ),

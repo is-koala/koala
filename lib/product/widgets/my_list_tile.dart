@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/widgets/app_icon.dart';
 
 class MyListTile extends StatelessWidget {
   const MyListTile({
@@ -41,7 +41,7 @@ class MyListTile extends StatelessWidget {
             ),
             child: Row(
               children: [
-                HugeIcon(icon: icon, color: context.textPrimary),
+                AppIcon(icon, color: context.textPrimary),
                 const SizedBox(width: AppSizes.spaceMedium),
                 Expanded(
                   child: Text(

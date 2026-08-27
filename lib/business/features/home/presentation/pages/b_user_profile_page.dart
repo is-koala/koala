@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/business/features/home/models/b_applicant.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 
 class BUserProfilePage extends StatelessWidget {
@@ -190,30 +191,15 @@ class BUserProfilePage extends StatelessWidget {
           decoration: _panelDecoration(context),
           child: Column(
             children: [
+              _infoRow(context, AppIcons.user, 'Ad Soyad', applicant.fullName),
+              _infoRow(context, AppIcons.work, 'Meslek', applicant.jobTitle),
               _infoRow(
                 context,
-                HugeIcons.strokeRoundedUser,
-                'Ad Soyad',
-                applicant.fullName,
-              ),
-              _infoRow(
-                context,
-                HugeIcons.strokeRoundedWork,
-                'Meslek',
-                applicant.jobTitle,
-              ),
-              _infoRow(
-                context,
-                HugeIcons.strokeRoundedCalendar03,
+                AppIcons.calendar,
                 'Başvuru Tarihi',
                 applicant.appliedDate,
               ),
-              _infoRow(
-                context,
-                HugeIcons.strokeRoundedLocation01,
-                'Konum',
-                'Ankara, Türkiye',
-              ),
+              _infoRow(context, AppIcons.location, 'Konum', 'Ankara, Türkiye'),
             ],
           ),
         ),
@@ -230,12 +216,9 @@ class BUserProfilePage extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSizes.space),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          HugeIcon(
-            icon: icon,
-            size: AppSizes.iconSmall,
-            color: context.accentColor,
-          ),
+          AppIcon(icon, size: AppSizes.iconSmall, color: context.accentColor),
           const SizedBox(width: AppSizes.space),
           SizedBox(
             width: _infoLabelWidth,
@@ -284,8 +267,8 @@ class BUserProfilePage extends StatelessWidget {
                   color: context.accentColor.withValues(alpha: 0.15),
                   borderRadius: AppRadius.smallCircular,
                 ),
-                child: HugeIcon(
-                  icon: HugeIcons.strokeRoundedFile02,
+                child: AppIcon(
+                  AppIcons.fileText,
                   size: AppSizes.icon,
                   color: context.accentColor,
                 ),
@@ -313,8 +296,8 @@ class BUserProfilePage extends StatelessWidget {
                   ],
                 ),
               ),
-              HugeIcon(
-                icon: HugeIcons.strokeRoundedDownload04,
+              AppIcon(
+                AppIcons.download,
                 size: AppSizes.iconMedium,
                 color: context.accentColor,
               ),

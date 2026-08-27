@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_card.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_bottom_sheet.dart';
+import 'package:koala/product/widgets/app_icon.dart';
 
 part 'list_explore_pagemodel.dart';
 
@@ -79,7 +80,14 @@ class _ListExplorePageState extends ListExplorePagemodel {
   );
 
   Widget _loadingIndicator() =>
-      CircularProgressIndicator(color: context.accentColor);
+      Center(child: CircularProgressIndicator(color: context.accentColor));
+
+  Widget _listHeader() {
+    return Padding(
+      padding: AppPadding.primaryHorizontal,
+      child: Text('Yakındaki İşler', style: context.textTheme.titleMedium),
+    );
+  }
 
   Widget _searchSummary() {
     return Container(
@@ -113,28 +121,11 @@ class _ListExplorePageState extends ListExplorePagemodel {
     );
   }
 
-  Widget _listHeader() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(
-        AppPadding.primary,
-        AppSizes.spaceMedium,
-        0,
-        AppSizes.spaceMedium,
-      ),
-      child: Text(
-        _searchQuery.isNotEmpty ? 'Arama Sonuçları' : 'Yakındaki İşler',
-        style: context.textTheme.displaySmall?.copyWith(
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
   Widget _emptyState() {
     return Column(
       children: [
-        HugeIcon(
-          icon: HugeIcons.strokeRoundedSearchList01,
+        AppIcon(
+          AppIcons.searchList,
           size: AppSizes.iconHuge,
           color: context.textTertiary,
         ),
@@ -181,27 +172,27 @@ class _ListExplorePageState extends ListExplorePagemodel {
         child: Row(
           children: [
             _buildFilterButton(
-              icon: HugeIcons.strokeRoundedArrowDataTransferVertical,
+              icon: AppIcons.transferV,
               label: 'Sırala',
               onTap: () {},
             ),
             const SizedBox(width: AppSizes.spaceSmall),
             _buildFilterButton(
-              icon: HugeIcons.strokeRoundedMenu01,
+              icon: AppIcons.menu2,
               label: 'Kategoriler',
               isActive: _selectedFilter != 'all',
               onTap: _showCategoryFilterSheet,
             ),
             const SizedBox(width: AppSizes.spaceSmall),
             _buildFilterButton(
-              icon: HugeIcons.strokeRoundedMoneyBag02,
+              icon: AppIcons.moneyBag,
               label: 'Ücret',
               isActive: _selectedPriceRange != 'all',
               onTap: _showPriceFilterSheet,
             ),
             const SizedBox(width: AppSizes.spaceSmall),
             _buildFilterButton(
-              icon: HugeIcons.strokeRoundedRoute02,
+              icon: AppIcons.route,
               label: 'Mesafe',
               isActive: _selectedDistance != 'all',
               onTap: _showDistanceFilterSheet,
@@ -240,7 +231,7 @@ class _ListExplorePageState extends ListExplorePagemodel {
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              HugeIcon(icon: icon, size: AppSizes.iconSmall, color: foreground),
+              AppIcon(icon, size: AppSizes.iconSmall, color: foreground),
               const SizedBox(width: AppSizes.spaceTiny),
               Flexible(
                 child: Text(
@@ -343,10 +334,7 @@ class _ListExplorePageState extends ListExplorePagemodel {
                 )
               : null,
           suffixIcon: IconButton(
-            icon: const HugeIcon(
-              icon: HugeIcons.strokeRoundedSearch01,
-              size: AppSizes.icon,
-            ),
+            icon: const AppIcon(AppIcons.search, size: AppSizes.icon),
             style: ButtonStyle(
               backgroundColor: WidgetStatePropertyAll(context.accentColor),
               padding: const WidgetStatePropertyAll(AppPadding.iconButton),

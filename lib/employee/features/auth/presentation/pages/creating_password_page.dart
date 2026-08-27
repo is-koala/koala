@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/employee/features/auth/models/agreement_version.dart';
 import 'package:koala/employee/features/auth/models/consent_decision.dart';
 import 'package:koala/employee/features/auth/presentation/widgets/auth_snackbar.dart';
 import 'package:koala/employee/features/auth/presentation/widgets/consent_checkbox.dart';
 import 'package:koala/employee/features/auth/services/auth_service.dart';
 import 'package:koala/employee/features/auth/services/legal_service.dart';
-import 'package:koala/product/network/api_exception.dart';
-import 'package:koala/product/widgets/my_button.dart';
-import 'package:koala/product/widgets/my_textfield.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/network/api_exception.dart';
+import 'package:koala/product/widgets/app_icon.dart';
+import 'package:koala/product/widgets/my_button.dart';
+import 'package:koala/product/widgets/my_textfield.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 part 'creating_password_pagemodel.dart';
@@ -33,10 +34,7 @@ class _CreatingPasswordPageState extends CreatingPasswordPagemodel {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: HugeIcon(
-            icon: HugeIcons.strokeRoundedArrowLeft01,
-            color: context.textPrimary,
-          ),
+          icon: AppIcon(AppIcons.arrowLeft, color: context.textPrimary),
           onPressed: () => context.pop(),
         ),
       ),
@@ -84,8 +82,8 @@ class _CreatingPasswordPageState extends CreatingPasswordPagemodel {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          HugeIcon(
-            icon: HugeIcons.strokeRoundedCancelCircle,
+          AppIcon(
+            AppIcons.cancelCircle,
             color: AppColors.danger,
             size: AppSizes.iconLarge,
           ),
@@ -189,10 +187,8 @@ class _CreatingPasswordPageState extends CreatingPasswordPagemodel {
     required VoidCallback onPressed,
   }) {
     return IconButton(
-      icon: HugeIcon(
-        icon: isVisible
-            ? HugeIcons.strokeRoundedViewOff
-            : HugeIcons.strokeRoundedView,
+      icon: AppIcon(
+        isVisible ? AppIcons.eyeClosed : AppIcons.eyeOpen,
         color: context.textSecondary,
       ),
       onPressed: onPressed,
@@ -247,10 +243,8 @@ class _CreatingPasswordPageState extends CreatingPasswordPagemodel {
     final color = isOk ? AppColors.success : failColor;
     return Row(
       children: [
-        HugeIcon(
-          icon: isOk
-              ? HugeIcons.strokeRoundedCheckmarkCircle02
-              : HugeIcons.strokeRoundedCancelCircle,
+        AppIcon(
+          isOk ? AppIcons.checkCircle : AppIcons.cancelCircle,
           color: color,
           size: AppSizes.iconMedium,
         ),

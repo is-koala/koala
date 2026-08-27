@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/widgets/app_icon.dart';
 
 /// Business navbar'ının bir öğesi.
 ///
@@ -65,7 +65,12 @@ class BNavItem extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                HugeIcon(icon: icon, size: AppSizes.icon, color: foreground),
+                AppIcon(
+                  icon,
+                  size: AppSizes.icon,
+                  color: foreground,
+                  filled: isSelected,
+                ),
                 if (!isCenter && label != null)
                   Padding(
                     padding: const EdgeInsets.only(top: AppSizes.spaceTiny),

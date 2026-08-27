@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/product/constants/app_assets.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/widgets/app_icon.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class RegisterTypePage extends StatelessWidget {
@@ -26,10 +27,7 @@ class RegisterTypePage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: HugeIcon(
-            icon: HugeIcons.strokeRoundedArrowLeft01,
-            color: context.textPrimary,
-          ),
+          icon: AppIcon(AppIcons.arrowLeft, color: context.textPrimary),
           onPressed: () => context.pop(),
         ),
       ),
@@ -119,8 +117,8 @@ class RegisterTypePage extends StatelessWidget {
                   ],
                 ),
               ),
-              HugeIcon(
-                icon: HugeIcons.strokeRoundedArrowRight01,
+              AppIcon(
+                AppIcons.arrowRight,
                 color: context.textSecondary,
                 size: AppSizes.icon,
               ),

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/widgets/app_icon.dart';
 
 class MyAppbar extends StatelessWidget implements PreferredSizeWidget {
   const MyAppbar({
@@ -33,8 +34,8 @@ class MyAppbar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       leading: showBackButton
           ? IconButton(
-              icon: HugeIcon(
-                icon: HugeIcons.strokeRoundedArrowLeft01,
+              icon: AppIcon(
+                AppIcons.arrowLeft,
                 color: context.textPrimary,
                 size: AppSizes.icon,
               ),

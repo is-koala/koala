@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hugeicons/hugeicons.dart';
-import 'package:koala/product/widgets/my_button.dart';
-import 'package:koala/product/widgets/my_textfield.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/widgets/app_icon.dart';
+import 'package:koala/product/widgets/my_button.dart';
+import 'package:koala/product/widgets/my_textfield.dart';
 
 part 'company_informations_pagemodel.dart';
 
@@ -34,10 +35,7 @@ class _CompanyInformationsPageState extends CompanyInformationsPagemodel {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: HugeIcon(
-            icon: HugeIcons.strokeRoundedArrowLeft01,
-            color: context.textPrimary,
-          ),
+          icon: AppIcon(AppIcons.arrowLeft, color: context.textPrimary),
           onPressed: () => context.pop(),
         ),
       ),
@@ -176,8 +174,8 @@ class _CompanyInformationsPageState extends CompanyInformationsPagemodel {
                     width: _editBadgeBorder,
                   ),
                 ),
-                child: HugeIcon(
-                  icon: HugeIcons.strokeRoundedEdit03,
+                child: AppIcon(
+                  AppIcons.edit,
                   size: AppSizes.iconSmall,
                   color: context.onAccentColor,
                 ),

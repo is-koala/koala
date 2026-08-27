@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/business/features/home/models/b_applicant.dart';
 import 'package:koala/business/features/home/models/b_job_post.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
@@ -8,10 +7,12 @@ import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:provider/provider.dart';
 
@@ -173,8 +174,8 @@ class BJobDetailPage extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          HugeIcon(
-            icon: job.category.icon,
+          AppIcon(
+            job.category.icon,
             size: AppSizes.iconSmall,
             color: job.category.color,
           ),
@@ -259,49 +260,29 @@ class BJobDetailPage extends StatelessWidget {
       child: Column(
         children: [
           if (job.sector != null)
-            _detailRow(
-              context,
-              HugeIcons.strokeRoundedBuilding06,
-              'Sektör',
-              job.sector!,
-            ),
+            _detailRow(context, AppIcons.building, 'Sektör', job.sector!),
           if (job.position != null)
-            _detailRow(
-              context,
-              HugeIcons.strokeRoundedUser,
-              'Pozisyon',
-              job.position!,
-            ),
+            _detailRow(context, AppIcons.user, 'Pozisyon', job.position!),
           if (job.duties != null)
-            _detailRow(
-              context,
-              HugeIcons.strokeRoundedTask01,
-              'Görevler',
-              job.duties!,
-            ),
+            _detailRow(context, AppIcons.task, 'Görevler', job.duties!),
           if (job.dressCode != null)
-            _detailRow(
-              context,
-              HugeIcons.strokeRoundedDress01,
-              'Kıyafet',
-              job.dressCode!,
-            ),
+            _detailRow(context, AppIcons.dress, 'Kıyafet', job.dressCode!),
           if (job.minAge != null || job.maxAge != null)
             _detailRow(
               context,
-              HugeIcons.strokeRoundedUserMultiple,
+              AppIcons.userMultiple,
               'Yaş Aralığı',
               '${job.minAge ?? '-'} - ${job.maxAge ?? '-'} yaş',
             ),
           _detailRow(
             context,
-            HugeIcons.strokeRoundedWork,
+            AppIcons.work,
             'Deneyim',
             job.experienceRequired == true ? 'Gerekli' : 'Gerekli Değil',
           ),
           _detailRow(
             context,
-            HugeIcons.strokeRoundedShield01,
+            AppIcons.shield,
             'Sigorta',
             job.insuranceRequired == true ? 'Gerekli' : 'Gerekli Değil',
           ),
@@ -321,11 +302,7 @@ class BJobDetailPage extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          HugeIcon(
-            icon: icon,
-            size: AppSizes.iconSmall,
-            color: context.accentColor,
-          ),
+          AppIcon(icon, size: AppSizes.iconSmall, color: context.accentColor),
           const SizedBox(width: AppSizes.space),
           SizedBox(
             width: _detailLabelWidth,
@@ -356,7 +333,7 @@ class BJobDetailPage extends StatelessWidget {
     if (post.applicants.isEmpty) {
       return _emptyPanel(
         context,
-        icon: HugeIcons.strokeRoundedUserMultiple,
+        icon: AppIcons.userMultiple,
         title: 'Henüz başvuru yok',
         subtitle: 'Başvurular geldiğinde burada görünecek',
       );
@@ -541,7 +518,7 @@ class BJobDetailPage extends StatelessWidget {
     if (worker == null) {
       return _emptyPanel(
         context,
-        icon: HugeIcons.strokeRoundedUser,
+        icon: AppIcons.user,
         title: 'Yapan kişi bilgisi yok',
       );
     }
@@ -631,11 +608,7 @@ class BJobDetailPage extends StatelessWidget {
       decoration: _panelDecoration(context),
       child: Column(
         children: [
-          HugeIcon(
-            icon: icon,
-            size: AppSizes.iconLarge,
-            color: context.dividerColor,
-          ),
+          AppIcon(icon, size: AppSizes.iconLarge, color: context.dividerColor),
           const SizedBox(height: AppSizes.space),
           Text(
             title,

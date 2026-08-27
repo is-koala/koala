@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:koala/product/constants/app_icons.dart';
+import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/my_list_tile.dart';
 
 import '../../support/pump.dart';
@@ -9,7 +10,7 @@ void main() {
   testWidgets('başlığı gösterir', (tester) async {
     await pumpInApp(
       tester,
-      MyListTile(title: 'Görünüm', icon: HugeIcons.strokeRoundedPaintBoard),
+      const MyListTile(title: 'Görünüm', icon: AppIcons.paint),
     );
 
     expect(find.text('Görünüm'), findsOneWidget);
@@ -18,11 +19,7 @@ void main() {
   testWidgets('value verilince sağda gösterilir', (tester) async {
     await pumpInApp(
       tester,
-      MyListTile(
-        title: 'Görünüm',
-        icon: HugeIcons.strokeRoundedPaintBoard,
-        value: 'Sistem',
-      ),
+      const MyListTile(title: 'Görünüm', icon: AppIcons.paint, value: 'Sistem'),
     );
 
     expect(find.text('Sistem'), findsOneWidget);
@@ -31,7 +28,7 @@ void main() {
   testWidgets('value yokken sadece başlık var', (tester) async {
     await pumpInApp(
       tester,
-      MyListTile(title: 'Görünüm', icon: HugeIcons.strokeRoundedPaintBoard),
+      const MyListTile(title: 'Görünüm', icon: AppIcons.paint),
     );
 
     expect(find.byType(Text), findsOneWidget);
@@ -43,7 +40,7 @@ void main() {
       tester,
       MyListTile(
         title: 'Görünüm',
-        icon: HugeIcons.strokeRoundedPaintBoard,
+        icon: AppIcons.paint,
         onTap: () => dokunuldu++,
       ),
     );
@@ -53,26 +50,24 @@ void main() {
     expect(dokunuldu, 1);
   });
 
-  // hugeicons 1.x ikonu artık IconData değil; ikon bir HugeIcon widget'ı
-  // olarak çiziliyor. Paket tekrar kırıcı bir sürüm çıkarırsa burada yakalanır.
-  testWidgets('ikon HugeIcon olarak çizilir', (tester) async {
+  testWidgets('ikon AppIcon olarak çizilir', (tester) async {
     await pumpInApp(
       tester,
-      MyListTile(title: 'Görünüm', icon: HugeIcons.strokeRoundedPaintBoard),
+      const MyListTile(title: 'Görünüm', icon: AppIcons.paint),
     );
 
-    final hugeIcon = tester.widget<HugeIcon>(find.byType(HugeIcon));
-    expect(hugeIcon.icon, HugeIcons.strokeRoundedPaintBoard);
-    expect(hugeIcon.color, isNotNull);
+    final appIcon = tester.widget<AppIcon>(find.byType(AppIcon));
+    expect(appIcon.name, AppIcons.paint);
+    expect(appIcon.color, isNotNull);
   });
 
   testWidgets('her iki temada da hatasız çizilir', (tester) async {
     for (final brightness in Brightness.values) {
       await pumpInApp(
         tester,
-        MyListTile(
+        const MyListTile(
           title: 'Görünüm',
-          icon: HugeIcons.strokeRoundedPaintBoard,
+          icon: AppIcons.paint,
           value: 'Sistem',
         ),
         brightness: brightness,

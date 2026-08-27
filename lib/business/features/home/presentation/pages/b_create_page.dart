@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
 import 'package:koala/business/features/home/services/fake_business_company.dart';
 import 'package:koala/employee/features/home/models/job.dart';
@@ -9,6 +8,7 @@ import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/button_navbar.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
@@ -329,8 +329,8 @@ class _BCreatePageState extends State<BCreatePage> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                HugeIcon(
-                  icon: category.icon,
+                AppIcon(
+                  category.icon,
                   size: AppSizes.iconSmall,
                   color: isSelected ? category.color : context.textSecondary,
                 ),

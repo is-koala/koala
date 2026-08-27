@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
 import 'package:koala/employee/features/company_detail/models/company.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/widgets/app_icon.dart';
 
 part 'company_detail_pagemodel.dart';
 
@@ -82,23 +83,11 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
           _buildSectionTitle('İletişim Bilgileri'),
           const SizedBox(height: AppSizes.space),
           _buildInfoCard([
-            _buildInfoRow(
-              HugeIcons.strokeRoundedMail01,
-              'E-posta',
-              company.email,
-            ),
+            _buildInfoRow(AppIcons.mail, 'E-posta', company.email),
             if (company.phoneNumber != null)
-              _buildInfoRow(
-                HugeIcons.strokeRoundedCall,
-                'Telefon',
-                company.phoneNumber!,
-              ),
+              _buildInfoRow(AppIcons.call, 'Telefon', company.phoneNumber!),
             if (company.website != null)
-              _buildInfoRow(
-                HugeIcons.strokeRoundedInternetAntenna01,
-                'Website',
-                company.website!,
-              ),
+              _buildInfoRow(AppIcons.antenna, 'Website', company.website!),
           ]),
           if (company.address != null) ...[
             const SizedBox(height: AppSizes.spaceLarge),
@@ -106,7 +95,7 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
             const SizedBox(height: AppSizes.space),
             _buildInfoCard([
               _buildInfoRow(
-                HugeIcons.strokeRoundedLocation01,
+                AppIcons.location,
                 'Adres',
                 company.address!.fullAddress,
               ),
@@ -133,8 +122,8 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
       ),
       child: Row(
         children: [
-          HugeIcon(
-            icon: HugeIcons.strokeRoundedAlert02,
+          AppIcon(
+            AppIcons.alert,
             color: AppColors.warning,
             size: AppSizes.iconMedium,
           ),
@@ -176,10 +165,8 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
       height: _actionButtonHeight,
       child: ElevatedButton.icon(
         onPressed: toggleFollow,
-        icon: HugeIcon(
-          icon: isFollowing
-              ? HugeIcons.strokeRoundedUserCheck01
-              : HugeIcons.strokeRoundedUserAdd01,
+        icon: AppIcon(
+          isFollowing ? AppIcons.userCheck : AppIcons.userAdd,
           size: AppSizes.iconSmall,
         ),
         label: Text(isFollowing ? 'Takip Ediliyor' : 'Takip Et'),
@@ -208,10 +195,7 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
       height: _actionButtonHeight,
       child: OutlinedButton.icon(
         onPressed: openChat,
-        icon: const HugeIcon(
-          icon: HugeIcons.strokeRoundedMessage01,
-          size: AppSizes.iconSmall,
-        ),
+        icon: const AppIcon(AppIcons.message, size: AppSizes.iconSmall),
         label: const Text('Mesaj At'),
         style: OutlinedButton.styleFrom(
           foregroundColor: context.accentColor,
@@ -234,10 +218,7 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
       backgroundColor: context.accentColor,
       // Kapak marka yeşili; üstündeki her şey temadan bağımsız beyaz.
       leading: IconButton(
-        icon: const HugeIcon(
-          icon: HugeIcons.strokeRoundedArrowLeft01,
-          color: AppColors.onAccent,
-        ),
+        icon: const AppIcon(AppIcons.arrowLeft, color: AppColors.onAccent),
         onPressed: () => context.pop(),
       ),
       centerTitle: false,
@@ -364,8 +345,8 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
           return _centered(
             Column(
               children: [
-                HugeIcon(
-                  icon: HugeIcons.strokeRoundedJobSearch,
+                AppIcon(
+                  AppIcons.search,
                   size: AppSizes.iconHuge,
                   color: context.dividerColor,
                 ),
@@ -457,8 +438,8 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          HugeIcon(
-            icon: job.category.icon,
+          AppIcon(
+            job.category.icon,
             size: AppSizes.iconSmall,
             color: job.category.color,
           ),
@@ -494,8 +475,8 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
   Widget _priceAndLocationRow(Job job) {
     return Row(
       children: [
-        HugeIcon(
-          icon: HugeIcons.strokeRoundedMoneyBag02,
+        AppIcon(
+          AppIcons.moneyBag,
           size: AppSizes.iconSmall,
           color: context.accentColor,
         ),
@@ -508,8 +489,8 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
           ),
         ),
         const SizedBox(width: AppSizes.spaceMedium),
-        HugeIcon(
-          icon: HugeIcons.strokeRoundedLocation01,
+        AppIcon(
+          AppIcons.location,
           size: AppSizes.iconSmall,
           color: context.textSecondary,
         ),
@@ -551,11 +532,7 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          HugeIcon(
-            icon: icon,
-            size: AppSizes.iconMedium,
-            color: context.accentColor,
-          ),
+          AppIcon(icon, size: AppSizes.iconMedium, color: context.accentColor),
           const SizedBox(width: AppSizes.space),
           Expanded(
             child: Column(

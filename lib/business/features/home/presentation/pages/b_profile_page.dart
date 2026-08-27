@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/business/features/home/services/fake_business_company.dart';
 import 'package:koala/employee/features/company_detail/models/company.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 
 class BProfilePage extends StatefulWidget {
@@ -56,10 +57,7 @@ class _BProfilePageState extends State<BProfilePage> {
                 company = FakeBusinessCompany.instance;
               });
             },
-            icon: HugeIcon(
-              icon: HugeIcons.strokeRoundedSettings01,
-              color: context.textPrimary,
-            ),
+            icon: AppIcon(AppIcons.settings, color: context.textPrimary),
           ),
         ],
       ),
@@ -159,8 +157,8 @@ class _BProfilePageState extends State<BProfilePage> {
   Widget _logoPlaceholder() {
     return Container(
       color: context.tileColor,
-      child: HugeIcon(
-        icon: HugeIcons.strokeRoundedBuilding06,
+      child: AppIcon(
+        AppIcons.building,
         size: AppSizes.iconLarge,
         color: context.textTertiary,
       ),
@@ -188,10 +186,8 @@ class _BProfilePageState extends State<BProfilePage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        HugeIcon(
-          icon: company.isApproved
-              ? HugeIcons.strokeRoundedCheckmarkCircle02
-              : HugeIcons.strokeRoundedAlert02,
+        AppIcon(
+          company.isApproved ? AppIcons.checkCircle : AppIcons.alert,
           color: AppColors.onAccent,
           size: AppSizes.iconSmall,
         ),
@@ -229,25 +225,13 @@ class _BProfilePageState extends State<BProfilePage> {
         _sectionTitle("İletişim Bilgileri"),
         const SizedBox(height: AppSizes.space),
         _infoCard([
-          _infoRow(HugeIcons.strokeRoundedMail01, "E-posta", company.email),
+          _infoRow(AppIcons.mail, "E-posta", company.email),
           if (company.phoneNumber != null)
-            _infoRow(
-              HugeIcons.strokeRoundedCall,
-              "Telefon",
-              company.phoneNumber!,
-            ),
+            _infoRow(AppIcons.call, "Telefon", company.phoneNumber!),
           if (company.website != null)
-            _infoRow(
-              HugeIcons.strokeRoundedGlobe02,
-              "Website",
-              company.website!,
-            ),
+            _infoRow(AppIcons.globe, "Website", company.website!),
           if (company.taxNumber != null)
-            _infoRow(
-              HugeIcons.strokeRoundedFile01,
-              "Vergi No",
-              company.taxNumber!,
-            ),
+            _infoRow(AppIcons.file, "Vergi No", company.taxNumber!),
         ]),
       ],
     );
@@ -274,8 +258,8 @@ class _BProfilePageState extends State<BProfilePage> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              HugeIcon(
-                icon: HugeIcons.strokeRoundedLocation01,
+              AppIcon(
+                AppIcons.location,
                 size: AppSizes.iconMedium,
                 color: context.accentColor,
               ),
@@ -314,7 +298,7 @@ class _BProfilePageState extends State<BProfilePage> {
           children: [
             Expanded(
               child: _statCard(
-                icon: HugeIcons.strokeRoundedWork,
+                icon: AppIcons.work,
                 value: "12",
                 label: "Aktif İlan",
               ),
@@ -322,7 +306,7 @@ class _BProfilePageState extends State<BProfilePage> {
             const SizedBox(width: AppSizes.space),
             Expanded(
               child: _statCard(
-                icon: HugeIcons.strokeRoundedUserMultiple,
+                icon: AppIcons.userMultiple,
                 value: "48",
                 label: "Başvuru",
               ),
@@ -330,7 +314,7 @@ class _BProfilePageState extends State<BProfilePage> {
             const SizedBox(width: AppSizes.space),
             Expanded(
               child: _statCard(
-                icon: HugeIcons.strokeRoundedStar,
+                icon: AppIcons.star,
                 value: "4.8",
                 label: "Puan",
               ),
@@ -358,7 +342,7 @@ class _BProfilePageState extends State<BProfilePage> {
       ),
       child: Column(
         children: [
-          HugeIcon(icon: icon, size: AppSizes.icon, color: context.accentColor),
+          AppIcon(icon, size: AppSizes.icon, color: context.accentColor),
           const SizedBox(height: AppSizes.spaceSmall),
           Text(
             value,
@@ -399,11 +383,7 @@ class _BProfilePageState extends State<BProfilePage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          HugeIcon(
-            icon: icon,
-            size: AppSizes.iconMedium,
-            color: context.accentColor,
-          ),
+          AppIcon(icon, size: AppSizes.iconMedium, color: context.accentColor),
           const SizedBox(width: AppSizes.space),
           Expanded(
             child: Column(
