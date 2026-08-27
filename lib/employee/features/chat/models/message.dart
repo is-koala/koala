@@ -1,52 +1,100 @@
+/// Bir sohbetteki tek mesaj.
+///
+/// Backend'deki `MessageDto` (`{id, senderId, body, sentAt, readAt}`)
+/// karşılığı. `conversationId` ve [isMe] sunucudan gelmiyor; ikisi de
+/// çağrının bağlamından türetiliyor.
 class Message {
-  final String id;
-  final String chatId;
-  final String senderId;
-  final String text;
-  final DateTime timestamp;
-  final bool isMe;
-  final MessageStatus status;
-
-  Message({
+  const Message({
     required this.id,
-    required this.chatId,
+    required this.conversationId,
     required this.senderId,
-    required this.text,
-    required this.timestamp,
+    required this.body,
+    required this.sentAt,
     required this.isMe,
+    this.readAt,
     this.status = MessageStatus.sent,
   });
 
+  final String id;
+
+  /// Mesajın ait olduğu sohbet. `MessageDto` taşımıyor — mesajlar zaten
+  /// `/conversations/{id}/messages` altından geldiği için biliniyor.
+  final String conversationId;
+
+  final String senderId;
+
+  /// Mesaj metni. Sunucuda en fazla 4000 karakter.
+  final String body;
+
+  final DateTime sentAt;
+
+  /// Karşı tarafın mesajı okuduğu an; okunmadıysa `null`.
+  final DateTime? readAt;
+
+  /// Mesajı oturumu açan kullanıcı mı gönderdi. [senderId] ile karşılaştırma
+  /// sonucunda doluyor.
+  final bool isMe;
+
+  /// Gönderim durumu.
+  ///
+  /// Sunucu yalnızca okundu/okunmadı ayrımı yapıyor ([readAt]);
+  /// [MessageStatus.sending] ve [MessageStatus.failed] iyimser gönderim için
+  /// yalnızca istemcide yaşıyor.
+  final MessageStatus status;
+
+  /// Balonun altındaki zaman etiketi.
   String get timeString {
-    final now = DateTime.now();
-    final difference = now.difference(timestamp);
+    final difference = DateTime.now().difference(sentAt);
 
     if (difference.inDays == 0) {
-      return '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
-    } else if (difference.inDays == 1) {
-      return 'Dün';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays} gün önce';
-    } else {
-      return '${timestamp.day}/${timestamp.month}/${timestamp.year}';
+      final hour = sentAt.hour.toString().padLeft(2, '0');
+      final minute = sentAt.minute.toString().padLeft(2, '0');
+      return '$hour:$minute';
     }
+    if (difference.inDays == 1) return 'Dün';
+    if (difference.inDays < 7) return '${difference.inDays} gün önce';
+
+    return '${sentAt.day}/${sentAt.month}/${sentAt.year}';
+  }
+
+  factory Message.fromJson(
+    Map<String, dynamic> json, {
+    required String conversationId,
+    required String currentUserId,
+  }) {
+    final readAt = json['readAt'] as String?;
+    final senderId = json['senderId'] as String? ?? '';
+
+    return Message(
+      id: json['id'] as String,
+      conversationId: conversationId,
+      senderId: senderId,
+      body: json['body'] as String? ?? '',
+      sentAt:
+          DateTime.tryParse(json['sentAt'] as String? ?? '') ?? DateTime.now(),
+      readAt: readAt == null ? null : DateTime.tryParse(readAt),
+      isMe: senderId == currentUserId,
+      status: readAt == null ? MessageStatus.sent : MessageStatus.read,
+    );
   }
 
   Message copyWith({
     String? id,
-    String? chatId,
+    String? conversationId,
     String? senderId,
-    String? text,
-    DateTime? timestamp,
+    String? body,
+    DateTime? sentAt,
+    DateTime? readAt,
     bool? isMe,
     MessageStatus? status,
   }) {
     return Message(
       id: id ?? this.id,
-      chatId: chatId ?? this.chatId,
+      conversationId: conversationId ?? this.conversationId,
       senderId: senderId ?? this.senderId,
-      text: text ?? this.text,
-      timestamp: timestamp ?? this.timestamp,
+      body: body ?? this.body,
+      sentAt: sentAt ?? this.sentAt,
+      readAt: readAt ?? this.readAt,
       isMe: isMe ?? this.isMe,
       status: status ?? this.status,
     );
@@ -55,28 +103,14 @@ class Message {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'chatId': chatId,
+      'conversationId': conversationId,
       'senderId': senderId,
-      'text': text,
-      'timestamp': timestamp.toIso8601String(),
+      'body': body,
+      'sentAt': sentAt.toIso8601String(),
+      'readAt': readAt?.toIso8601String(),
       'isMe': isMe,
       'status': status.name,
     };
-  }
-
-  factory Message.fromJson(Map<String, dynamic> json) {
-    return Message(
-      id: json['id'],
-      chatId: json['chatId'],
-      senderId: json['senderId'],
-      text: json['text'],
-      timestamp: DateTime.parse(json['timestamp']),
-      isMe: json['isMe'],
-      status: MessageStatus.values.firstWhere(
-        (e) => e.name == json['status'],
-        orElse: () => MessageStatus.sent,
-      ),
-    );
   }
 }
 

@@ -25,7 +25,7 @@ import 'package:koala/employee/features/jobs/presentation/pages/review_page.dart
 import 'package:koala/employee/features/jobs/models/my_job.dart';
 import 'package:koala/employee/features/chat/presentation/pages/chat_list_page.dart';
 import 'package:koala/employee/features/chat/presentation/pages/chat_page.dart';
-import 'package:koala/employee/features/chat/models/chat.dart';
+import 'package:koala/employee/features/chat/models/conversation.dart';
 import 'package:koala/employee/features/profile/presentation/pages/profile_page.dart';
 import 'package:koala/employee/features/home/presentation/pages/shell_page.dart';
 import 'package:koala/employee/features/company_detail/presentation/pages/company_detail_page.dart';
@@ -169,7 +169,7 @@ class RouterManager {
       GoRoute(
         path: '/chat-detail',
         builder: (context, state) {
-          final chatData = state.extra as Chat;
+          final chatData = state.extra as Conversation;
           return ChatPage(chat: chatData);
         },
       ),
@@ -300,7 +300,7 @@ class RouterManager {
       GoRoute(
         path: '/business/chat-detail',
         builder: (context, state) {
-          final chat = state.extra as Chat;
+          final chat = state.extra as Conversation;
           return BChatPage(chat: chat);
         },
       ),

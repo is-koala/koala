@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:koala/employee/features/chat/models/chat.dart';
+import 'package:koala/employee/features/chat/models/conversation.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/chat_avatar.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_sizes.dart';
@@ -14,7 +14,7 @@ import 'package:koala/product/extensions/context_extensions.dart';
 class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   const ChatAppBar({super.key, required this.chat});
 
-  final Chat chat;
+  final Conversation chat;
 
   /// Başlıktaki avatarın ölçüleri; sohbet listesindekinden küçük.
   static const double _avatarSize = 40;

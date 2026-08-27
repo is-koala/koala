@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:koala/business/features/chat/services/b_chat_service.dart';
-import 'package:koala/employee/features/chat/models/chat.dart';
+import 'package:koala/employee/features/chat/models/conversation.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/chat_avatar.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -20,7 +20,7 @@ class BChatListPage extends StatefulWidget {
 
 class _BChatListPageState extends State<BChatListPage> {
   final BChatService _chatService = BChatService();
-  late List<Chat> _chatList;
+  late List<Conversation> _chatList;
 
   /// Boş durum ikonunu taşıyan kutu.
   static const double _emptyIconBox = 80;
@@ -114,7 +114,7 @@ class _BChatListPageState extends State<BChatListPage> {
     );
   }
 
-  Widget _chatTile(Chat chat) {
+  Widget _chatTile(Conversation chat) {
     final hasUnread = chat.unreadCount > 0;
 
     return InkWell(

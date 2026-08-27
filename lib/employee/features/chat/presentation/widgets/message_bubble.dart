@@ -52,7 +52,7 @@ class MessageBubble extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              message.text,
+              message.body,
               style: context.textTheme.bodyLarge?.copyWith(color: foreground),
             ),
             const SizedBox(height: AppSizes.spaceTiny),

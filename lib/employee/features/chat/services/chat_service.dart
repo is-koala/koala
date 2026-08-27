@@ -1,4 +1,4 @@
-import '../models/chat.dart';
+import '../models/conversation.dart';
 import '../models/message.dart';
 
 class ChatService {
@@ -8,110 +8,120 @@ class ChatService {
   ChatService._internal();
 
   // Fake data - chat listesi (şirketlere göre)
-  final List<Chat> _chats = [
-    Chat(
+  // Sahte veri: sohbetler ilana bağlanmadan önce yazıldığı için jobId ve
+  // jobTitle yer tutucu. Gerçek veri `/conversations` uçlarından gelecek.
+  final List<Conversation> _chats = [
+    Conversation(
       id: '1',
       name: 'Özlem & Murat Düğün Organizasyonu',
       avatar: 'Ö',
       avatarUrl:
           'https://ui-avatars.com/api/?name=Özlem+Murat&size=256&background=E91E63&color=ffffff&bold=true&format=png',
       lastMessage: 'Düğün için detayları konuşalım mı?',
-      lastMessageTime: DateTime.now().subtract(Duration(minutes: 30)),
+      lastMessageAt: DateTime.now().subtract(Duration(minutes: 30)),
       unreadCount: 2,
       isOnline: true,
-      userId: 'user1',
-      companyId: 'comp_1',
+      counterpartId: 'user1',
+      jobId: 'job_1',
+      jobTitle: 'Örnek İlan 1',
     ),
-    Chat(
+    Conversation(
       id: '2',
       name: 'Kahve Durağı Cafe',
       avatar: 'K',
       avatarUrl:
           'https://ui-avatars.com/api/?name=Kahve+Durağı&size=256&background=795548&color=ffffff&bold=true&format=png',
       lastMessage: 'Başvurunuz değerlendirildi',
-      lastMessageTime: DateTime.now().subtract(Duration(hours: 1)),
+      lastMessageAt: DateTime.now().subtract(Duration(hours: 1)),
       unreadCount: 0,
       isOnline: false,
-      userId: 'user2',
-      companyId: 'comp_2',
+      counterpartId: 'user2',
+      jobId: 'job_2',
+      jobTitle: 'Örnek İlan 2',
     ),
-    Chat(
+    Conversation(
       id: '3',
       name: 'Ahmet Yılmaz',
       avatar: 'A',
       avatarUrl:
           'https://ui-avatars.com/api/?name=Ahmet+Yılmaz&size=256&background=4CAF50&color=ffffff&bold=true&format=png',
       lastMessage: 'Kedilerim için bakıcı arıyorum',
-      lastMessageTime: DateTime.now().subtract(Duration(hours: 2)),
+      lastMessageAt: DateTime.now().subtract(Duration(hours: 2)),
       unreadCount: 1,
       isOnline: true,
-      userId: 'user3',
-      companyId: 'comp_3',
+      counterpartId: 'user3',
+      jobId: 'job_3',
+      jobTitle: 'Örnek İlan 3',
     ),
-    Chat(
+    Conversation(
       id: '4',
       name: 'Lezzet Durağı Restaurant',
       avatar: 'L',
       avatarUrl:
           'https://ui-avatars.com/api/?name=Lezzet+Durağı&size=256&background=FF5722&color=ffffff&bold=true&format=png',
       lastMessage: 'Teşekkürler, görüşmek üzere!',
-      lastMessageTime: DateTime.now().subtract(Duration(days: 1)),
+      lastMessageAt: DateTime.now().subtract(Duration(days: 1)),
       unreadCount: 0,
       isOnline: false,
-      userId: 'user4',
-      companyId: 'comp_4',
+      counterpartId: 'user4',
+      jobId: 'job_4',
+      jobTitle: 'Örnek İlan 4',
     ),
-    Chat(
+    Conversation(
       id: '5',
       name: 'Brew & Co. Specialty Coffee',
       avatar: 'B',
       avatarUrl:
           'https://ui-avatars.com/api/?name=Brew+Co&size=256&background=3E2723&color=ffffff&bold=true&format=png',
       lastMessage: 'Barista pozisyonu için müsait misiniz?',
-      lastMessageTime: DateTime.now().subtract(Duration(days: 1, hours: 5)),
+      lastMessageAt: DateTime.now().subtract(Duration(days: 1, hours: 5)),
       unreadCount: 3,
       isOnline: true,
-      userId: 'user5',
-      companyId: 'comp_5',
+      counterpartId: 'user5',
+      jobId: 'job_5',
+      jobTitle: 'Örnek İlan 5',
     ),
-    Chat(
+    Conversation(
       id: '6',
       name: 'TrendShop E-ticaret',
       avatar: 'T',
       avatarUrl:
           'https://ui-avatars.com/api/?name=Trend+Shop&size=256&background=9C27B0&color=ffffff&bold=true&format=png',
       lastMessage: 'Fotoğraf çekimi için tarih belirleyelim',
-      lastMessageTime: DateTime.now().subtract(Duration(days: 2)),
+      lastMessageAt: DateTime.now().subtract(Duration(days: 2)),
       unreadCount: 0,
       isOnline: false,
-      userId: 'user6',
-      companyId: 'comp_6',
+      counterpartId: 'user6',
+      jobId: 'job_6',
+      jobTitle: 'Örnek İlan 6',
     ),
-    Chat(
+    Conversation(
       id: '7',
       name: 'Elit Organizasyon',
       avatar: 'E',
       avatarUrl:
           'https://ui-avatars.com/api/?name=Elit+Org&size=256&background=1565C0&color=ffffff&bold=true&format=png',
       lastMessage: 'Etkinlik detayları hakkında bilgi verebilir misiniz?',
-      lastMessageTime: DateTime.now().subtract(Duration(days: 3)),
+      lastMessageAt: DateTime.now().subtract(Duration(days: 3)),
       unreadCount: 1,
       isOnline: true,
-      userId: 'user7',
-      companyId: 'comp_7',
+      counterpartId: 'user7',
+      jobId: 'job_7',
+      jobTitle: 'Örnek İlan 7',
     ),
-    Chat(
+    Conversation(
       id: '8',
       name: 'Zeynep Kaya',
       avatar: 'Z',
       avatarUrl:
           'https://ui-avatars.com/api/?name=Zeynep+Kaya&size=256&background=FF8F00&color=ffffff&bold=true&format=png',
       lastMessage: 'Köpeğim için bakıcı arıyorum',
-      lastMessageTime: DateTime.now().subtract(Duration(days: 4)),
+      lastMessageAt: DateTime.now().subtract(Duration(days: 4)),
       unreadCount: 0,
       isOnline: false,
-      userId: 'user8',
-      companyId: 'comp_8',
+      counterpartId: 'user8',
+      jobId: 'job_8',
+      jobTitle: 'Örnek İlan 8',
     ),
   ];
 
@@ -120,197 +130,197 @@ class ChatService {
     '1': [
       Message(
         id: 'm1',
-        chatId: '1',
+        conversationId: '1',
         senderId: 'user1',
-        text: 'Merhaba! Düğün organizasyonu için ilanınızı gördüm.',
-        timestamp: DateTime.now().subtract(Duration(minutes: 35)),
+        body: 'Merhaba! Düğün organizasyonu için ilanınızı gördüm.',
+        sentAt: DateTime.now().subtract(Duration(minutes: 35)),
         isMe: false,
       ),
       Message(
         id: 'm2',
-        chatId: '1',
+        conversationId: '1',
         senderId: 'me',
-        text: 'Merhaba, evet düğün için organizasyon hizmeti veriyoruz.',
-        timestamp: DateTime.now().subtract(Duration(minutes: 34)),
+        body: 'Merhaba, evet düğün için organizasyon hizmeti veriyoruz.',
+        sentAt: DateTime.now().subtract(Duration(minutes: 34)),
         isMe: true,
       ),
       Message(
         id: 'm3',
-        chatId: '1',
+        conversationId: '1',
         senderId: 'user1',
-        text: 'Harika! Fiyat ve tarih hakkında bilgi alabilir miyim?',
-        timestamp: DateTime.now().subtract(Duration(minutes: 33)),
+        body: 'Harika! Fiyat ve tarih hakkında bilgi alabilir miyim?',
+        sentAt: DateTime.now().subtract(Duration(minutes: 33)),
         isMe: false,
       ),
       Message(
         id: 'm4',
-        chatId: '1',
+        conversationId: '1',
         senderId: 'me',
-        text: 'Tabii, düğün tarihiniz ne zaman?',
-        timestamp: DateTime.now().subtract(Duration(minutes: 32)),
+        body: 'Tabii, düğün tarihiniz ne zaman?',
+        sentAt: DateTime.now().subtract(Duration(minutes: 32)),
         isMe: true,
       ),
       Message(
         id: 'm5',
-        chatId: '1',
+        conversationId: '1',
         senderId: 'user1',
-        text: 'Düğün için detayları konuşalım mı?',
-        timestamp: DateTime.now().subtract(Duration(minutes: 30)),
+        body: 'Düğün için detayları konuşalım mı?',
+        sentAt: DateTime.now().subtract(Duration(minutes: 30)),
         isMe: false,
       ),
     ],
     '2': [
       Message(
         id: 'm6',
-        chatId: '2',
+        conversationId: '2',
         senderId: 'user2',
-        text: 'Merhaba, barista pozisyonu için başvurmak istiyorum.',
-        timestamp: DateTime.now().subtract(Duration(hours: 2)),
+        body: 'Merhaba, barista pozisyonu için başvurmak istiyorum.',
+        sentAt: DateTime.now().subtract(Duration(hours: 2)),
         isMe: false,
       ),
       Message(
         id: 'm7',
-        chatId: '2',
+        conversationId: '2',
         senderId: 'me',
-        text: 'Merhaba! Başvurunuzu aldık, teşekkürler.',
-        timestamp: DateTime.now().subtract(Duration(hours: 1, minutes: 30)),
+        body: 'Merhaba! Başvurunuzu aldık, teşekkürler.',
+        sentAt: DateTime.now().subtract(Duration(hours: 1, minutes: 30)),
         isMe: true,
       ),
       Message(
         id: 'm8',
-        chatId: '2',
+        conversationId: '2',
         senderId: 'user2',
-        text: 'Başvurunuz değerlendirildi',
-        timestamp: DateTime.now().subtract(Duration(hours: 1)),
+        body: 'Başvurunuz değerlendirildi',
+        sentAt: DateTime.now().subtract(Duration(hours: 1)),
         isMe: false,
       ),
     ],
     '3': [
       Message(
         id: 'm9',
-        chatId: '3',
+        conversationId: '3',
         senderId: 'user3',
-        text: 'Merhaba, kedilerime bakacak birini arıyorum.',
-        timestamp: DateTime.now().subtract(Duration(hours: 3)),
+        body: 'Merhaba, kedilerime bakacak birini arıyorum.',
+        sentAt: DateTime.now().subtract(Duration(hours: 3)),
         isMe: false,
       ),
       Message(
         id: 'm10',
-        chatId: '3',
+        conversationId: '3',
         senderId: 'me',
-        text:
+        body:
             'Merhaba! Kaç kediniz var ve ne kadar süreliğine bakıcı arıyorsunuz?',
-        timestamp: DateTime.now().subtract(Duration(hours: 2, minutes: 30)),
+        sentAt: DateTime.now().subtract(Duration(hours: 2, minutes: 30)),
         isMe: true,
       ),
       Message(
         id: 'm11',
-        chatId: '3',
+        conversationId: '3',
         senderId: 'user3',
-        text: 'Kedilerim için bakıcı arıyorum',
-        timestamp: DateTime.now().subtract(Duration(hours: 2)),
+        body: 'Kedilerim için bakıcı arıyorum',
+        sentAt: DateTime.now().subtract(Duration(hours: 2)),
         isMe: false,
       ),
     ],
     '4': [
       Message(
         id: 'm12',
-        chatId: '4',
+        conversationId: '4',
         senderId: 'me',
-        text: 'Görüşme için teşekkür ederim.',
-        timestamp: DateTime.now().subtract(Duration(days: 1, hours: 1)),
+        body: 'Görüşme için teşekkür ederim.',
+        sentAt: DateTime.now().subtract(Duration(days: 1, hours: 1)),
         isMe: true,
       ),
       Message(
         id: 'm13',
-        chatId: '4',
+        conversationId: '4',
         senderId: 'user4',
-        text: 'Teşekkürler, görüşmek üzere!',
-        timestamp: DateTime.now().subtract(Duration(days: 1)),
+        body: 'Teşekkürler, görüşmek üzere!',
+        sentAt: DateTime.now().subtract(Duration(days: 1)),
         isMe: false,
       ),
     ],
     '5': [
       Message(
         id: 'm14',
-        chatId: '5',
+        conversationId: '5',
         senderId: 'user5',
-        text: 'Barista pozisyonu için müsait misiniz?',
-        timestamp: DateTime.now().subtract(Duration(days: 1, hours: 5)),
+        body: 'Barista pozisyonu için müsait misiniz?',
+        sentAt: DateTime.now().subtract(Duration(days: 1, hours: 5)),
         isMe: false,
       ),
     ],
     '6': [
       Message(
         id: 'm15',
-        chatId: '6',
+        conversationId: '6',
         senderId: 'user6',
-        text: 'Ürün fotoğrafı çekimi için fiyat teklifi alabilir miyim?',
-        timestamp: DateTime.now().subtract(Duration(days: 2, hours: 1)),
+        body: 'Ürün fotoğrafı çekimi için fiyat teklifi alabilir miyim?',
+        sentAt: DateTime.now().subtract(Duration(days: 2, hours: 1)),
         isMe: false,
       ),
       Message(
         id: 'm16',
-        chatId: '6',
+        conversationId: '6',
         senderId: 'me',
-        text: 'Tabii, kaç ürün için çekim yapılacak?',
-        timestamp: DateTime.now().subtract(Duration(days: 2, minutes: 30)),
+        body: 'Tabii, kaç ürün için çekim yapılacak?',
+        sentAt: DateTime.now().subtract(Duration(days: 2, minutes: 30)),
         isMe: true,
       ),
       Message(
         id: 'm17',
-        chatId: '6',
+        conversationId: '6',
         senderId: 'user6',
-        text: 'Fotoğraf çekimi için tarih belirleyelim',
-        timestamp: DateTime.now().subtract(Duration(days: 2)),
+        body: 'Fotoğraf çekimi için tarih belirleyelim',
+        sentAt: DateTime.now().subtract(Duration(days: 2)),
         isMe: false,
       ),
     ],
     '7': [
       Message(
         id: 'm18',
-        chatId: '7',
+        conversationId: '7',
         senderId: 'user7',
-        text: 'Etkinlik detayları hakkında bilgi verebilir misiniz?',
-        timestamp: DateTime.now().subtract(Duration(days: 3)),
+        body: 'Etkinlik detayları hakkında bilgi verebilir misiniz?',
+        sentAt: DateTime.now().subtract(Duration(days: 3)),
         isMe: false,
       ),
     ],
     '8': [
       Message(
         id: 'm19',
-        chatId: '8',
+        conversationId: '8',
         senderId: 'user8',
-        text: 'Merhaba, Golden Retriever\'ım için bakıcı arıyorum.',
-        timestamp: DateTime.now().subtract(Duration(days: 4, hours: 1)),
+        body: 'Merhaba, Golden Retriever\'ım için bakıcı arıyorum.',
+        sentAt: DateTime.now().subtract(Duration(days: 4, hours: 1)),
         isMe: false,
       ),
       Message(
         id: 'm20',
-        chatId: '8',
+        conversationId: '8',
         senderId: 'me',
-        text: 'Merhaba! Ne kadar süreliğine bakıcı arıyorsunuz?',
-        timestamp: DateTime.now().subtract(Duration(days: 4, minutes: 30)),
+        body: 'Merhaba! Ne kadar süreliğine bakıcı arıyorsunuz?',
+        sentAt: DateTime.now().subtract(Duration(days: 4, minutes: 30)),
         isMe: true,
       ),
       Message(
         id: 'm21',
-        chatId: '8',
+        conversationId: '8',
         senderId: 'user8',
-        text: 'Köpeğim için bakıcı arıyorum',
-        timestamp: DateTime.now().subtract(Duration(days: 4)),
+        body: 'Köpeğim için bakıcı arıyorum',
+        sentAt: DateTime.now().subtract(Duration(days: 4)),
         isMe: false,
       ),
     ],
   };
 
-  // Chat listesini getir
-  List<Chat> getChats() {
+  // Conversation listesini getir
+  List<Conversation> getChats() {
     return List.unmodifiable(_chats);
   }
 
   // Belirli bir chat'i getir
-  Chat? getChatById(String chatId) {
+  Conversation? getChatById(String chatId) {
     try {
       return _chats.firstWhere((chat) => chat.id == chatId);
     } catch (e) {
@@ -318,17 +328,27 @@ class ChatService {
     }
   }
 
+  /// Şirket kimliğinden sohbete giden eşleme.
+  ///
+  /// Eşleme modelde değil burada duruyor: sunucuda sohbet **ilana** bağlı
+  /// (`POST /conversations/jobs/{jobId}`), şirkete bağlı bir sohbet kavramı
+  /// yok. Şirket detayındaki "mesaj gönder" akışı bu yüzden gerçek uca
+  /// olduğu gibi bağlanamıyor.
+  /// TODO(backend): Ya şirket detayından mesaj gönderme kaldırılıp yerini
+  /// ilan üzerinden sohbete bırakmalı, ya da sunucu şirket bazlı sohbeti de
+  /// desteklemeli.
+  final Map<String, String> _conversationIdsByCompany = {};
+
   // CompanyId'ye göre chat getir
-  Chat? getChatByCompanyId(String companyId) {
-    try {
-      return _chats.firstWhere((chat) => chat.companyId == companyId);
-    } catch (e) {
-      return null;
-    }
+  Conversation? getChatByCompanyId(String companyId) {
+    final conversationId = _conversationIdsByCompany[companyId];
+    if (conversationId == null) return null;
+
+    return getChatById(conversationId);
   }
 
   // CompanyId'ye göre chat getir veya yeni oluştur
-  Chat getOrCreateChatByCompany({
+  Conversation getOrCreateChatByCompany({
     required String companyId,
     required String companyName,
     String? avatarUrl,
@@ -340,22 +360,24 @@ class ChatService {
     }
 
     // Yoksa yeni chat oluştur
-    final newChat = Chat(
+    final newChat = Conversation(
       id: 'chat_${DateTime.now().millisecondsSinceEpoch}',
       name: companyName,
-      avatar: companyName.isNotEmpty ? companyName[0].toUpperCase() : 'C',
+      avatar: Conversation.initialsOf(companyName),
       avatarUrl:
           avatarUrl ??
           'https://ui-avatars.com/api/?name=${Uri.encodeComponent(companyName)}&size=256&background=607D8B&color=ffffff&bold=true&format=png',
       lastMessage: null,
-      lastMessageTime: DateTime.now(),
+      lastMessageAt: DateTime.now(),
       unreadCount: 0,
       isOnline: false,
-      userId: 'company_$companyId',
-      companyId: companyId,
+      counterpartId: 'company_$companyId',
+      jobId: '',
+      jobTitle: '',
     );
 
     _chats.insert(0, newChat);
+    _conversationIdsByCompany[companyId] = newChat.id;
     return newChat;
   }
 
@@ -368,10 +390,10 @@ class ChatService {
   void sendMessage(String chatId, String text) {
     final message = Message(
       id: 'm${DateTime.now().millisecondsSinceEpoch}',
-      chatId: chatId,
+      conversationId: chatId,
       senderId: 'me',
-      text: text,
-      timestamp: DateTime.now(),
+      body: text,
+      sentAt: DateTime.now(),
       isMe: true,
       status: MessageStatus.sent,
     );
@@ -381,12 +403,12 @@ class ChatService {
     }
     _messages[chatId]!.add(message);
 
-    // Chat'in son mesajını ve zamanını güncelle
+    // Conversation'in son mesajını ve zamanını güncelle
     final chatIndex = _chats.indexWhere((chat) => chat.id == chatId);
     if (chatIndex != -1) {
       _chats[chatIndex] = _chats[chatIndex].copyWith(
         lastMessage: text,
-        lastMessageTime: DateTime.now(),
+        lastMessageAt: DateTime.now(),
       );
     }
   }
@@ -405,11 +427,11 @@ class ChatService {
   }
 
   // Yeni chat oluştur (gelecekte backend'e bağlanacak)
-  void createChat(Chat chat) {
+  void createChat(Conversation chat) {
     _chats.insert(0, chat);
   }
 
-  // Chat sil
+  // Conversation sil
   void deleteChat(String chatId) {
     _chats.removeWhere((chat) => chat.id == chatId);
     _messages.remove(chatId);

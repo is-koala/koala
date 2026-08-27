@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
-import 'package:koala/employee/features/chat/models/chat.dart';
+import 'package:koala/employee/features/chat/models/conversation.dart';
 import 'package:koala/employee/features/chat/models/message.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/chat_app_bar.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/message_bubble.dart';
@@ -8,7 +8,7 @@ import 'package:koala/employee/features/chat/presentation/widgets/message_textfi
 import 'package:koala/product/constants/app_padding.dart';
 
 class ChatPage extends StatefulWidget {
-  final Chat chat;
+  final Conversation chat;
 
   const ChatPage({super.key, required this.chat});
 

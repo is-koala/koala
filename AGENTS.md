@@ -117,7 +117,7 @@ A feature has at most three top-level folders: **`models/`** (plain data classes
 
 > `auth` lives under `employee/` even though it serves both sides (registration asks whether you are a business). That is historical; do not move it without being asked, but be aware the business flow runs through employee files.
 
-> The same applies to chat: `business/features/chat` imports `ChatAvatar`, `ChatAppBar`, `MessageBubble` and `MessageTextField` from `employee/features/chat/presentation/widgets/`, because the `Chat` and `Message` models live on the employee side. Strictly the shared parts belong in `product/`, but moving them would drag the domain models along; the existing convention is to reuse the employee widgets.
+> The same applies to chat: `business/features/chat` imports `ChatAvatar`, `ChatAppBar`, `MessageBubble` and `MessageTextField` from `employee/features/chat/presentation/widgets/`, because the `Conversation` and `Message` models live on the employee side. Strictly the shared parts belong in `product/`, but moving them would drag the domain models along; the existing convention is to reuse the employee widgets.
 
 ### State management
 
@@ -190,6 +190,12 @@ Two feature services are on real endpoints: `auth_service.dart` (registration in
 The employer flag is spelled **`isEmployer`** everywhere — the server pins it with `@JsonProperty("isEmployer")` on `AuthStartRegistrationDto`, `AuthSetPasswordDto` and `UserMeResponseDto`, and the request field is `@NotNull`. Read it through `CurrentUser.readEmployerFlag` so the two models that carry it stay in step.
 
 Refreshing works with an expired access token: the server skips its session filter on `/auth/refresh-token` and reads the session id out of the expired JWT's claims. The call still has to carry the `Authorization` header, which is why that path is deliberately not in `ApiPaths.publicPaths`.
+
+**The chat models already match the server.** `Conversation` (`employee/features/chat/models/conversation.dart`) maps `ConversationDto` and `Message` maps `MessageDto`, even though the pages still read from the fake services. Three things to know before wiring the pages:
+
+- **A conversation belongs to a job.** It is opened with `POST /conversations/jobs/{jobId}` and its two sides are fixed as employer and worker. There is no company-level conversation, so the "message" button on the company detail page has no real endpoint behind it — the company→conversation mapping now lives inside `ChatService`, not on the model.
+- **`ConversationDto` carries neither the last message text nor an unread count**, only `lastMessageAt`. The chat list renders both, so either the DTO grows or the list costs one extra request per row.
+- **There is no presence.** `isOnline` exists only to keep the current UI compiling and is always `false`.
 
 **Still fake:** everything except auth. Data comes from services that return hard-coded lists, one `services/` folder per feature: `employee/features/home/services/` (`job_service.dart` with Ankara coordinates, `location_service.dart`), `company_detail/services/company_service.dart`, `chat/services/chat_service.dart`, `jobs/services/` (`my_jobs_service.dart`, `review_service.dart`), `profile/services/fake_user.dart`, `business/features/chat/services/b_chat_service.dart` and `business/features/home/services/fake_business_company.dart`. Avatars are generated URLs from `ui-avatars.com`.
 - `GET /jobs` is ready to be wired: `JobSummaryDto` carries `latitude`/`longitude`, `GET /jobs/{jobId}` returns the richer `JobDetailDto` (description, duties, dress code, age range, full address, creator, company) and the search takes a bounding box (`minLatitude`/`maxLatitude`/`minLongitude`/`maxLongitude`). Only the category mapping is missing.

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
-import 'package:koala/employee/features/chat/models/chat.dart';
+import 'package:koala/employee/features/chat/models/conversation.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/chat_list_tile.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 
@@ -13,7 +13,7 @@ class ChatListPage extends StatefulWidget {
 
 class _ChatListPageState extends State<ChatListPage> {
   final ChatService _chatService = ChatService();
-  late List<Chat> chatList;
+  late List<Conversation> chatList;
 
   @override
   void initState() {
