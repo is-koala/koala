@@ -133,6 +133,14 @@ class CurrentUser {
     return null;
   }
 
+  /// Profilde gösterilecek şirket.
+  ///
+  /// [activeCompany]'den farkı onaya bakmaması: onay bekleyen şirketi de
+  /// göstermek gerekiyor, yoksa kullanıcı kurduğu şirketi hiç göremez ve
+  /// kendini bireysel işveren sanır.
+  CompanyMembership? get primaryCompany =>
+      companies.isEmpty ? null : companies.first;
+
   factory CurrentUser.fromJson(Map<String, dynamic> json) {
     final companies = json['companies'];
     final roles = json['roles'];

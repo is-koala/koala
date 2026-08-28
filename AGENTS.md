@@ -234,7 +234,7 @@ The same message arrives on **two channels** — the conversation topic and `/us
 
 > **The connection is optional.** If it cannot be established the app keeps working over REST — only updates stop being instant. Never let a realtime failure block a screen.
 
-> ⚠️ **Read receipts do not reach the personal queue.** `conversationRead` publishes only to the conversation topic, so reading a chat on your phone does not clear the unread badge in your tablet's list. The server side is a one-line change if we ask for it.
+> ⚠️ **Read receipts reach the personal queue, but the app drops them.** `RealtimePublisher.conversationRead` now publishes to `/topic/conversations/{id}` **and** to every participant's `/user/queue/messages` — the server side is done. `ChatListController` still returns early on anything that is not a `message` event, so reading a chat on your phone does not clear the unread badge in your tablet's list. The remaining fix is on our side, not the backend's.
 
 **Still fake:**
 
@@ -249,7 +249,18 @@ Four things worth knowing:
 
 > `JobApplicantDto` returns a `SafeUserDto`, which carries no `jobTitle` — the applicant's profession is parsed (`JobCreator.jobTitle`) but always `null` today, and every screen hides the line rather than fetching a profile per applicant. Same for the candidate profile screen's location and CV rows. Marked `TODO(backend)` at each site.
 
-**Still fake:** everything except auth, the employee profile, the jobs flow (explore, apply, İşlerim, saved jobs), chat and the employer's job flow. Data comes from services that return hard-coded lists, one `services/` folder per feature: `employee/features/home/services/location_service.dart`, `company_detail/services/company_service.dart`, `jobs/services/review_service.dart`, `business/features/home/services/fake_business_company.dart` (the business profile and company-info screens). Avatars are generated URLs from `ui-avatars.com`.
+**The employer's profile is real too.** `business/features/home/services/b_company_service.dart` reads `GET /companies/{id}`, writes `PATCH /companies/{id}` and reads `GET /users/{userId}/employer-stats`; `BCompanyProvider` (registered in `main.dart`) holds both for the profile, settings and company-info screens.
+
+- **The profile has two valid shapes.** An employer with a company membership sees the **company**; one without sees **themselves** — name, e-mail, phone and address off `/users/me`. Being company-less is not a gap: `POST /users/me/jobs` posts individual jobs. `b_profile_page` renders both from the same widgets.
+- **Two different "company" getters on `CurrentUser`.** `activeCompany` is the first **approved** membership and decides which create-job endpoint is used; `primaryCompany` is the first membership regardless of approval and is what the profile shows — otherwise someone who just registered a company would never see it and would think they were an individual employer.
+- **`PATCH /companies/{id}` accepts five fields only** — name, e-mail, phone, website, description (`UpdateCompanyRequestDto`), and only from the company's `ADMIN`. Tax number, address, type and logo are fixed at creation, so the company-info screen keeps those fields visible but `enabled: false` with a note saying why. Fields left blank are omitted from the body rather than sent as `""`, which would clear them.
+- **`CompanyDto` does not return `isApproved`,** although the entity has it. Approval reaches the app through `/users/me` → `CompanyMembershipDto.approved` (which maps from `company.approved`, not the contact), so `BCompanyProvider` feeds it into `BCompany.copyWith` after the fetch. Marked `TODO(backend)` on the model.
+- **`BCompany` is the real `CompanyDto`;** `employee/features/company_detail/models/company.dart` is the fake one and its fields do not match the server (`logo` ↔ `logoUrl`, `address.city` ↔ `address.cityName`, and a two-value `CompanyType` where the server has eight). The `b_` prefix exists only to keep the two apart until company detail is wired.
+- **Employer stats are per person, not per company** (`StatisticsManager` counts by `creatorId`), so two admins of the same company see different numbers. Zero reviews come back as `averageRating: 0`; `EmployerStats.hasRating` separates that from an actual bad score so the card shows "—" instead of "0.0".
+
+> Endpoints the profile could use but does not: the company gallery (`/companies/{id}/images`), the contact list and invitations (`/contacts`, `/contact-invitations`), and `followerCount` (parsed, not shown). Creating a company (`POST /companies`) is missing entirely — it is multipart with a logo and requires identity verification, so it needs its own screen and a file picker; the company-info screen explains this instead of offering it (`TODO(backend)`). There is no endpoint to change a logo after creation.
+
+**Still fake:** everything except auth, the employee profile, the jobs flow (explore, apply, İşlerim, saved jobs), chat, and the employer's job flow and profile. Data comes from services that return hard-coded lists, one `services/` folder per feature: `employee/features/home/services/location_service.dart`, `company_detail/services/company_service.dart`, `jobs/services/review_service.dart`. Avatars are generated URLs from `ui-avatars.com`.
 
 > The orphaned fakes were deleted once the employer's job flow landed: `profile/services/fake_user.dart` and its `profile/models/user.dart`, `jobs/services/my_jobs_service.dart`, `business/features/chat/services/b_chat_service.dart`. `employee/features/profile/` and `business/features/chat/` are `presentation/` only now — a feature carries `models/` and `services/` only when it has data of its own.
 - `GET /jobs` is ready to be wired: `JobSummaryDto` carries `latitude`/`longitude`, `GET /jobs/{jobId}` returns the richer `JobDetailDto` (description, duties, dress code, age range, full address, creator, company) and the search takes a bounding box (`minLatitude`/`maxLatitude`/`minLongitude`/`maxLongitude`). Only the category mapping is missing.
@@ -392,7 +403,7 @@ Every place that needs the real backend is marked with a `// TODO(backend):` com
 **Not wired up:**
 
 - `business/features/home/presentation/pages/b_home_page.dart` has a `_quickActionsSection` that nothing calls. It carries an `// ignore: unused_element` so analyze stays clean — it is a parked section, not dead code to delete without asking.
-- The stat numbers on the business profile, the applicant CV download and the "follow company" action all render but write nowhere.
+- The applicant CV download and the "follow company" action render but write nowhere. (The business profile's stat numbers are real now — `GET /users/{id}/employer-stats`.)
 - **Two states the server has and the UI cannot express.** Not a backend gap — the data arrives, the design has nowhere to put it:
   - **Rejected application.** `ApplicationStatus.REJECTED` comes back with a `rejectionReason`, but `MyJobStatus` only knows pending / approved / awaiting-payment / done. A rejected application currently renders as **pending**, so the worker never learns they were turned down. Needs a new status in the design before it can be mapped.
   - **Cancelled assignment.** `AssignmentStatus.CANCELLED` (and `REJECTED`) have the same problem.

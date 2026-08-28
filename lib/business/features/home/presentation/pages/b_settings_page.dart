@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:koala/business/features/home/presentation/providers/b_company_provider.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
 import 'package:koala/employee/features/auth/services/auth_service.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
@@ -60,6 +61,7 @@ class BSettingsPage extends StatelessWidget {
             // sonraki oturum öncekinin ilanlarını ve profilini görürdü.
             context.read<UserProvider>().clear();
             context.read<BJobsProvider>().clear();
+            context.read<BCompanyProvider>().clear();
 
             context.go('/auth');
           },

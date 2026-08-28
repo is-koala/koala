@@ -78,9 +78,7 @@ class BNavItem extends StatelessWidget {
                       label!,
                       style: context.textTheme.labelSmall?.copyWith(
                         color: foreground,
-                        fontWeight: isSelected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
+                        fontWeight: FontWeight.normal,
                       ),
                     ),
                   ),

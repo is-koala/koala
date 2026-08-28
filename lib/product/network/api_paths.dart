@@ -63,6 +63,28 @@ class ApiPaths {
   static String respondToApplication(String applicationId) =>
       '/job-applications/$applicationId/respond';
 
+  // ------------------------------------------------------------------ Şirket
+
+  static const String companies = '/companies';
+
+  /// Şirket detayı (GET) ve güncelleme (PATCH). Güncellemeyi yalnızca
+  /// şirketin `ADMIN` yetkilisi yapabiliyor; üye olmayan 404 alıyor.
+  static String company(String companyId) => '$companies/$companyId';
+
+  /// Şirketin galerisi.
+  static String companyImages(String companyId) =>
+      '${company(companyId)}/images';
+
+  /// Şirketin yetkilileri.
+  static String companyContacts(String companyId) =>
+      '${company(companyId)}/contacts';
+
+  /// Bir işverenin istatistikleri: açtığı ilan, tamamlanan iş, puan.
+  ///
+  /// Şirkete değil **kişiye** bağlı; şirket adına açılan ilanlar da ilanı
+  /// açan kullanıcının sayısına yazılıyor.
+  static String employerStats(String userId) => '/users/$userId/employer-stats';
+
   // ---------------------------------------------------------------- Sohbet
 
   static const String conversations = '/conversations';

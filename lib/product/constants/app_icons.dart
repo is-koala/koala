@@ -8,7 +8,7 @@ abstract final class AppIcons {
   static const String home = 'home';
   static const String navigation = 'compass';
   static const String work = 'briefcase2';
-  static const String chat = 'chatRoundDots';
+  static const String chat = 'chatRoundLine';
   static const String bookmark = 'bookmark';
   static const String search = 'search';
   static const String searchList = 'filterSearch';
