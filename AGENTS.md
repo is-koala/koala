@@ -207,7 +207,15 @@ Three things worth knowing:
 - **The server returns newest-first**; `MessagePage.fromJson` sorts ascending because the UI draws oldest to newest.
 - **Presence is a separate call.** `ConversationDto` carries no online flag; the list fetches it in one batch (`POST /presence/lookup`) and merges it in with `copyWith`. That call failing does not block the list — a missing green dot must not hide the conversations.
 
-> **No live updates.** New messages, read receipts and the typing indicator all arrive over WebSocket/STOMP on the server (`RealtimeController`), and the app has no WebSocket client — adding one is a new dependency, so ask first. Until then the list and thread refresh on open, on pull-to-refresh, and after sending.
+**Live updates run over STOMP.** `product/network/realtime_client.dart` holds one shared connection to `/ws` (`stomp_dart_client`, plain WebSocket — the server does not enable SockJS). Authentication is the `Authorization: Bearer` **native STOMP header on the CONNECT frame**, not a handshake header; `StompAuthChannelInterceptor` reads it there. The client reconnects on its own and re-subscribes, because STOMP subscriptions die with the connection.
+
+Two destinations: `/topic/conversations/{id}` (message / typing / read) and `/topic/presence` (open to everyone). Typing is published back to `/app/conversations/{id}/typing`, throttled to one frame every two seconds.
+
+`ChatThreadController` owns a single conversation — messages, sending, and the live events — and **both chat pages use it**, so that logic lives in one tested place. Two details it handles that are easy to get wrong: a message you send arrives twice (once from the `POST` response, once from the topic) and is deduped by id; and your own typing/read events echo back and must be ignored.
+
+> **The connection is optional.** If it cannot be established the app keeps working over REST — only updates stop being instant. Never let a realtime failure block a screen.
+
+> ⚠️ **The chat list cannot live-update on new messages.** `RealtimePublisher` only publishes to `/topic/conversations/{id}`, so the list would have to subscribe to every conversation separately. A per-user feed on `/user/queue/...` is what it needs — `TODO(backend)` in both chat list pages. Presence *is* live; the list still refreshes on open, pull-to-refresh and on return from a thread.
 
 **Still fake:**
 

@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:koala/employee/features/chat/services/chat_service.dart';
-import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
-import 'package:koala/product/network/api_exception.dart';
-import 'package:provider/provider.dart';
 import 'package:koala/employee/features/chat/models/conversation.dart';
-import 'package:koala/employee/features/chat/models/message.dart';
+import 'package:koala/employee/features/chat/presentation/providers/chat_thread_controller.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/chat_app_bar.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/message_bubble.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/message_textfield.dart';
+import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:provider/provider.dart';
 
 class BChatPage extends StatefulWidget {
   final Conversation chat;
@@ -23,159 +21,113 @@ class BChatPage extends StatefulWidget {
 
 class _BChatPageState extends State<BChatPage> {
   final TextEditingController _messageController = TextEditingController();
-  final ChatService _chatService = ChatService();
   final ScrollController _scrollController = ScrollController();
 
-  List<Message> messages = [];
-  bool _loading = true;
-  bool _sending = false;
-  String? _errorMessage;
-  String? _currentUserId;
+  late final ChatThreadController _thread = ChatThreadController(
+    conversationId: widget.chat.id,
+  );
+
+  /// Oturum sahibi yüklenemediyse gösterilecek mesaj. Sohbetin kendi hataları
+  /// [ChatThreadController] üzerinde.
+  String? _sessionError;
 
   @override
   void initState() {
     super.initState();
+    _thread.addListener(_onThreadChanged);
     _load();
   }
 
   @override
   void dispose() {
+    _thread.removeListener(_onThreadChanged);
+    _thread.dispose();
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
-  Future<void> _load() async {
-    setState(() {
-      _loading = messages.isEmpty;
-      _errorMessage = null;
+  /// Mesaj eklendiğinde en alta kaydır; liste eskiden yeniye çiziliyor.
+  void _onThreadChanged() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
     });
-
-    try {
-      final userProvider = context.read<UserProvider>();
-      if (userProvider.user == null) await userProvider.load();
-      if (!mounted) return;
-
-      final userId = userProvider.user?.id;
-      if (userId == null) {
-        setState(() {
-          _errorMessage =
-              userProvider.errorMessage ?? 'Oturum bilgisi alınamadı.';
-        });
-        return;
-      }
-
-      final page = await _chatService.fetchMessages(
-        conversationId: widget.chat.id,
-        currentUserId: userId,
-      );
-      if (!mounted) return;
-
-      setState(() {
-        _currentUserId = userId;
-        messages = page.messages;
-      });
-
-      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
-
-      try {
-        await _chatService.markRead(widget.chat.id);
-      } on ApiException {
-        // Yut: bir sonraki açılışta tekrar denenecek.
-      }
-    } on ApiException catch (error) {
-      if (!mounted) return;
-      setState(() => _errorMessage = error.message);
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
   }
 
-  void _scrollToBottom() {
-    if (_scrollController.hasClients) {
-      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+  Future<void> _load() async {
+    // Bir mesajı "ben mi gönderdim" ayrımı oturum sahibine göre yapılıyor,
+    // o yüzden mesajlardan önce kullanıcı gerekiyor.
+    final userProvider = context.read<UserProvider>();
+    if (userProvider.user == null) await userProvider.load();
+    if (!mounted) return;
+
+    final userId = userProvider.user?.id;
+    if (userId == null) {
+      setState(() {
+        _sessionError =
+            userProvider.errorMessage ?? 'Oturum bilgisi alınamadı.';
+      });
+      return;
     }
+
+    setState(() => _sessionError = null);
+    await _thread.load(currentUserId: userId);
   }
 
   Future<void> _sendMessage() async {
-    final body = _messageController.text.trim();
-    final userId = _currentUserId;
-    if (body.isEmpty || userId == null || _sending) return;
+    final sent = await _thread.send(_messageController.text);
+    if (!mounted) return;
 
-    setState(() => _sending = true);
-
-    try {
-      final message = await _chatService.sendMessage(
-        conversationId: widget.chat.id,
-        currentUserId: userId,
-        body: body,
-      );
-      if (!mounted) return;
-
-      setState(() => messages = [...messages, message]);
+    if (sent) {
       _messageController.clear();
-      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
-    } on ApiException catch (error) {
-      if (!mounted) return;
-      // Metin alanı temizlenmiyor: kullanıcı yazdığını kaybetmesin.
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
-    } finally {
-      if (mounted) setState(() => _sending = false);
+      return;
     }
+
+    final error = _thread.errorMessage;
+    if (error == null) return;
+
+    // Metin alanı temizlenmiyor: kullanıcı yazdığını kaybetmesin.
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: context.backgroundColor,
-      appBar: ChatAppBar(chat: widget.chat),
-      body: Column(
-        children: [
-          Expanded(child: _messageList()),
-          MessageTextField(
-            controller: _messageController,
-            onSendMessage: _sendMessage,
-            isSending: _sending,
-            onAddPressed: () {},
-          ),
-        ],
+    return ListenableBuilder(
+      listenable: _thread,
+      builder: (context, _) => Scaffold(
+        backgroundColor: context.backgroundColor,
+        appBar: ChatAppBar(
+          chat: widget.chat,
+          isTyping: _thread.isCounterpartTyping,
+        ),
+        body: Column(
+          children: [
+            Expanded(child: _messageList()),
+            MessageTextField(
+              controller: _messageController,
+              onSendMessage: _sendMessage,
+              isSending: _thread.isSending,
+              onChanged: (_) => _thread.notifyTyping(),
+              onAddPressed: () {
+                // Ek menü işlemleri (dosya ekleme, galeri vb.)
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  /// Mesaj listesi; yüklenme, hata ve boş durumlarını da o taşıyor.
   Widget _messageList() {
-    if (_loading && messages.isEmpty) {
+    final messages = _thread.messages;
+
+    if (_thread.isLoading && messages.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final error = _errorMessage;
-    if (error != null && messages.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: AppPadding.primaryAll,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                error,
-                textAlign: TextAlign.center,
-                style: context.textTheme.bodyMedium?.copyWith(
-                  color: context.textSecondary,
-                ),
-              ),
-              const SizedBox(height: AppSizes.spaceMedium),
-              OutlinedButton(
-                onPressed: _load,
-                child: const Text('Tekrar Dene'),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
+    final error = _sessionError ?? _thread.errorMessage;
+    if (error != null && messages.isEmpty) return _errorState(error);
 
     if (messages.isEmpty) {
       return Center(
@@ -208,6 +160,28 @@ class _BChatPageState extends State<BChatPage> {
           isNextSameSender: isNextSameSender,
         );
       },
+    );
+  }
+
+  Widget _errorState(String message) {
+    return Center(
+      child: Padding(
+        padding: AppPadding.primaryAll,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: context.textSecondary,
+              ),
+            ),
+            const SizedBox(height: AppSizes.spaceMedium),
+            OutlinedButton(onPressed: _load, child: const Text('Tekrar Dene')),
+          ],
+        ),
+      ),
     );
   }
 }

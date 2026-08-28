@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:koala/employee/features/chat/models/conversation.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/chat_list_tile.dart';
@@ -7,6 +9,8 @@ import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/network/api_exception.dart';
+import 'package:koala/product/network/realtime_client.dart';
+import 'package:koala/product/network/realtime_event.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:provider/provider.dart';
 
@@ -19,8 +23,11 @@ class ChatListPage extends StatefulWidget {
 
 class _ChatListPageState extends State<ChatListPage> {
   final ChatService _chatService = ChatService();
+  final RealtimeClient _realtimeClient = RealtimeClient();
 
-  List<Conversation> _conversations = [];
+  StreamSubscription<RealtimeEvent>? _presence;
+
+  List<Conversation> _chatList = [];
   bool _loading = true;
   String? _errorMessage;
 
@@ -32,11 +39,44 @@ class _ChatListPageState extends State<ChatListPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _load();
     });
+    _listenToPresence();
+  }
+
+  @override
+  void dispose() {
+    unawaited(_presence?.cancel());
+    super.dispose();
+  }
+
+  /// Çevrimiçi değişimlerini canlı dinler.
+  ///
+  /// TODO(backend): Yeni mesajlar için kullanıcıya özel bir kanal yok.
+  /// `RealtimePublisher` yalnızca `/topic/conversations/{id}`'ye yayın
+  /// yapıyor; liste bütün sohbetlere tek tek abone olmadan yeni mesajı
+  /// öğrenemiyor. `/user/queue/...` üzerinden tek bir akış gerekiyor.
+  void _listenToPresence() {
+    unawaited(_realtimeClient.connect());
+
+    _presence = _realtimeClient.presenceEvents().listen((event) {
+      final userId = event.userId;
+      final online = event.online;
+      if (userId == null || online == null || !mounted) return;
+
+      final index = _chatList.indexWhere(
+        (conversation) => conversation.counterpartId == userId,
+      );
+      if (index == -1) return;
+
+      setState(() {
+        _chatList = [..._chatList]
+          ..[index] = _chatList[index].copyWith(isOnline: online);
+      });
+    });
   }
 
   Future<void> _load() async {
     setState(() {
-      _loading = _conversations.isEmpty;
+      _loading = _chatList.isEmpty;
       _errorMessage = null;
     });
 
@@ -62,7 +102,7 @@ class _ChatListPageState extends State<ChatListPage> {
       final withPresence = await _withPresence(page.conversations);
       if (!mounted) return;
 
-      setState(() => _conversations = withPresence);
+      setState(() => _chatList = withPresence);
     } on ApiException catch (error) {
       if (!mounted) return;
       setState(() => _errorMessage = error.message);
@@ -110,22 +150,22 @@ class _ChatListPageState extends State<ChatListPage> {
   }
 
   Widget _body() {
-    if (_loading && _conversations.isEmpty) {
+    if (_loading && _chatList.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
     final error = _errorMessage;
-    if (error != null && _conversations.isEmpty) return _errorState(error);
+    if (error != null && _chatList.isEmpty) return _errorState(error);
 
-    if (_conversations.isEmpty) return _emptyState();
+    if (_chatList.isEmpty) return _emptyState();
 
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
-        itemCount: _conversations.length,
+        itemCount: _chatList.length,
         itemBuilder: (context, index) {
-          final chat = _conversations[index];
+          final chat = _chatList[index];
           return ChatListTile(
             chat: chat,
             // Sohbetten dönünce okunmamış sayacı ve son mesaj değişmiş olur.

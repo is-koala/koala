@@ -6,6 +6,7 @@ import 'package:koala/employee/features/jobs/presentation/providers/saved_jobs_p
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
+import 'package:koala/product/network/realtime_client.dart';
 import 'package:koala/product/theme/theme_provider.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:koala/product/widgets/my_list_tile.dart';
@@ -74,6 +75,9 @@ class SettingsPage extends StatelessWidget {
           onTap: () async {
             // Sunucudaki oturumu da kapatıyor; çağrı başarısız olsa bile
             // token'lar cihazdan siliniyor.
+            // Canlı bağlantı oturuma bağlı; token silinmeden önce
+            // kapatılıyor ki yeniden bağlanmaya çalışmasın.
+            await RealtimeClient().disconnect();
             await AuthService().logout();
 
             if (context.mounted) {

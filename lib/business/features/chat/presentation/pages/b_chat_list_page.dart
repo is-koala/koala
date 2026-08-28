@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/network/api_exception.dart';
+import 'package:koala/product/network/realtime_client.dart';
+import 'package:koala/product/network/realtime_event.dart';
 import 'package:provider/provider.dart';
 import 'package:koala/employee/features/chat/models/conversation.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/chat_avatar.dart';
@@ -24,6 +28,9 @@ class BChatListPage extends StatefulWidget {
 
 class _BChatListPageState extends State<BChatListPage> {
   final ChatService _chatService = ChatService();
+  final RealtimeClient _realtimeClient = RealtimeClient();
+
+  StreamSubscription<RealtimeEvent>? _presence;
 
   List<Conversation> _chatList = [];
   bool _loading = true;
@@ -47,6 +54,39 @@ class _BChatListPageState extends State<BChatListPage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _load();
+    });
+    _listenToPresence();
+  }
+
+  @override
+  void dispose() {
+    unawaited(_presence?.cancel());
+    super.dispose();
+  }
+
+  /// Çevrimiçi değişimlerini canlı dinler.
+  ///
+  /// TODO(backend): Yeni mesajlar için kullanıcıya özel bir kanal yok.
+  /// `RealtimePublisher` yalnızca `/topic/conversations/{id}`'ye yayın
+  /// yapıyor; liste bütün sohbetlere tek tek abone olmadan yeni mesajı
+  /// öğrenemiyor. `/user/queue/...` üzerinden tek bir akış gerekiyor.
+  void _listenToPresence() {
+    unawaited(_realtimeClient.connect());
+
+    _presence = _realtimeClient.presenceEvents().listen((event) {
+      final userId = event.userId;
+      final online = event.online;
+      if (userId == null || online == null || !mounted) return;
+
+      final index = _chatList.indexWhere(
+        (conversation) => conversation.counterpartId == userId,
+      );
+      if (index == -1) return;
+
+      setState(() {
+        _chatList = [..._chatList]
+          ..[index] = _chatList[index].copyWith(isOnline: online);
+      });
     });
   }
 

@@ -14,6 +14,19 @@ class ApiConfig {
     defaultValue: 'https://api.iskoala.com',
   );
 
+  /// STOMP/WebSocket adresi.
+  ///
+  /// [baseUrl]'den türetiliyor: şema `http` → `ws`, `https` → `wss`.
+  /// Yol backend'deki `realtime.endpoint` ayarıyla aynı olmalı.
+  static String get websocketUrl {
+    final uri = Uri.parse(baseUrl);
+    final scheme = uri.scheme == 'https' ? 'wss' : 'ws';
+    return uri.replace(scheme: scheme, path: websocketPath).toString();
+  }
+
+  /// Backend'in STOMP uç noktası (`RealtimeProperties.endpoint`).
+  static const String websocketPath = '/ws';
+
   /// Bağlantı kurulmasını bekleme süresi. Mobil şebekede ilk el sıkışma
   /// uzayabildiği için varsayılan 10 sn'den biraz cömert tutuldu.
   static const Duration connectTimeout = Duration(seconds: 15);

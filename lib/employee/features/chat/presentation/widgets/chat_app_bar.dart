@@ -13,9 +13,13 @@ import 'package:koala/product/widgets/app_icon.dart';
 /// Employee ve business tarafı aynı sohbet ekranını kullanıyor; başlık da
 /// ortak.
 class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const ChatAppBar({super.key, required this.chat});
+  const ChatAppBar({super.key, required this.chat, this.isTyping = false});
 
   final Conversation chat;
+
+  /// Karşı taraf şu an yazıyor mu. Canlı bağlantıdan geliyor ve kısa süre
+  /// sonra kendiliğinden sönüyor.
+  final bool isTyping;
 
   /// Başlıktaki avatarın ölçüleri; sohbet listesindekinden küçük.
   static const double _avatarSize = 40;
@@ -54,7 +58,17 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                if (chat.isOnline)
+                // "Yazıyor" çevrimiçi bilgisinin yerine geçiyor: ikisi de
+                // aynı satırda ve yazıyorsa zaten çevrimiçi.
+                if (isTyping)
+                  Text(
+                    'yazıyor...',
+                    style: context.textTheme.labelMedium?.copyWith(
+                      color: AppColors.success,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  )
+                else if (chat.isOnline)
                   Text(
                     'Çevrimiçi',
                     style: context.textTheme.labelMedium?.copyWith(

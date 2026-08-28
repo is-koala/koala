@@ -11,6 +11,10 @@ class MessageTextField extends StatelessWidget {
   /// Mesaj sunucuya giderken buton kilitleniyor; aynı mesajın iki kez
   /// gönderilmesini engelliyor.
   final bool isSending;
+
+  /// Kullanıcı yazdıkça çağrılıyor; karşı tarafa "yazıyor" bilgisi
+  /// göndermek için.
+  final ValueChanged<String>? onChanged;
   final VoidCallback? onAddPressed;
 
   const MessageTextField({
@@ -18,6 +22,7 @@ class MessageTextField extends StatelessWidget {
     required this.controller,
     required this.onSendMessage,
     this.isSending = false,
+    this.onChanged,
     this.onAddPressed,
   });
 
@@ -42,6 +47,7 @@ class MessageTextField extends StatelessWidget {
                 ),
                 child: TextFormField(
                   controller: controller,
+                  onChanged: onChanged,
                   maxLines: null,
                   expands: true,
                   textAlignVertical: TextAlignVertical.center,

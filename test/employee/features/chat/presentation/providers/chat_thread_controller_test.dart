@@ -1,0 +1,293 @@
+import 'dart:async';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:koala/employee/features/chat/presentation/providers/chat_thread_controller.dart';
+import 'package:koala/employee/features/chat/services/chat_service.dart';
+import 'package:koala/product/network/realtime_client.dart';
+import 'package:koala/product/network/realtime_event.dart';
+
+import '../../../../../support/fake_api.dart';
+
+const _me = 'user_me';
+const _other = 'user_other';
+const _conversationId = 'conv_1';
+
+/// Gerçek soket açmadan olay besleyen sahte canlı istemci.
+class FakeRealtimeClient implements RealtimeClient {
+  final _controller = StreamController<RealtimeEvent>.broadcast();
+  final List<String> typingSentFor = [];
+  bool connectCalled = false;
+
+  void emit(RealtimeEvent event) => _controller.add(event);
+
+  @override
+  Stream<RealtimeEvent> conversationEvents(String conversationId) =>
+      _controller.stream;
+
+  @override
+  Stream<RealtimeEvent> presenceEvents() => _controller.stream;
+
+  @override
+  Future<void> connect() async => connectCalled = true;
+
+  @override
+  void sendTyping(String conversationId) => typingSentFor.add(conversationId);
+
+  @override
+  Future<void> disconnect() async {}
+
+  @override
+  bool get isConnected => true;
+}
+
+Map<String, dynamic> messageBody({
+  String id = 'msg_1',
+  String senderId = _other,
+  String body = 'Merhaba',
+  String sentAt = '2026-03-05T10:00:00Z',
+  String? readAt,
+}) {
+  return {
+    'id': id,
+    'senderId': senderId,
+    'body': body,
+    'sentAt': sentAt,
+    'readAt': readAt,
+  };
+}
+
+void main() {
+  late FakeRealtimeClient realtime;
+
+  ChatThreadController build(FakeApi api) {
+    realtime = FakeRealtimeClient();
+    return ChatThreadController(
+      conversationId: _conversationId,
+      chatService: ChatService.withClient(api.client),
+      realtimeClient: realtime,
+    );
+  }
+
+  FakeApi apiWith(List<Map<String, dynamic>> messages) {
+    return FakeApi(
+      handler: (options) => options.method == 'GET'
+          ? FakeApiResponse(
+              statusCode: 200,
+              body: {
+                'success': true,
+                'data': {'content': messages},
+              },
+            )
+          : const FakeApiResponse(statusCode: 200, body: {'success': true}),
+    );
+  }
+
+  group('load', () {
+    test('mesajlar çekilir ve okundu işaretlenir', () async {
+      final api = apiWith([messageBody()]);
+      final thread = build(api);
+
+      await thread.load(currentUserId: _me);
+
+      expect(thread.messages.single.body, 'Merhaba');
+      expect(thread.isLoading, isFalse);
+      expect(
+        api.requests.map((r) => r.path),
+        contains('/conversations/$_conversationId/read'),
+      );
+      expect(realtime.connectCalled, isTrue);
+    });
+
+    test('okundu işaretleme patlarsa mesajlar yine gösterilir', () async {
+      final api = FakeApi(
+        handler: (options) => options.method == 'GET'
+            ? FakeApiResponse(
+                statusCode: 200,
+                body: {
+                  'success': true,
+                  'data': {
+                    'content': [messageBody()],
+                  },
+                },
+              )
+            : const FakeApiResponse(
+                statusCode: 500,
+                body: {'success': false, 'message': 'Sunucu hatası'},
+              ),
+      );
+      final thread = build(api);
+
+      await thread.load(currentUserId: _me);
+
+      expect(thread.messages, hasLength(1));
+      expect(thread.errorMessage, isNull);
+    });
+  });
+
+  group('canlı mesaj', () {
+    test('karşı taraftan gelen mesaj listeye eklenir', () async {
+      final thread = build(apiWith(const []));
+      await thread.load(currentUserId: _me);
+
+      realtime.emit(
+        RealtimeEvent.fromJson({
+          'type': 'MESSAGE',
+          'conversationId': _conversationId,
+          'userId': _other,
+          'message': messageBody(id: 'yeni', body: 'Selam'),
+        }),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(thread.messages.single.body, 'Selam');
+      expect(thread.messages.single.isMe, isFalse);
+    });
+
+    // Gönderdiğimiz mesaj hem POST yanıtından hem canlı kanaldan geliyor.
+    test('aynı mesaj iki kez eklenmiyor', () async {
+      final api = FakeApi(
+        handler: (options) => options.method == 'GET'
+            ? const FakeApiResponse(
+                statusCode: 200,
+                body: {
+                  'success': true,
+                  'data': {'content': []},
+                },
+              )
+            : FakeApiResponse(
+                statusCode: 201,
+                body: {
+                  'success': true,
+                  'data': messageBody(id: 'msg_9', senderId: _me, body: 'Ok'),
+                },
+              ),
+      );
+      final thread = build(api);
+      await thread.load(currentUserId: _me);
+
+      await thread.send('Ok');
+      realtime.emit(
+        RealtimeEvent.fromJson({
+          'type': 'MESSAGE',
+          'conversationId': _conversationId,
+          'userId': _me,
+          'message': messageBody(id: 'msg_9', senderId: _me, body: 'Ok'),
+        }),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(thread.messages, hasLength(1));
+    });
+  });
+
+  group('yazıyor', () {
+    test('karşı tarafın olayı göstergeyi yakar', () async {
+      final thread = build(apiWith(const []));
+      await thread.load(currentUserId: _me);
+
+      realtime.emit(
+        RealtimeEvent.fromJson({'type': 'TYPING', 'userId': _other}),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(thread.isCounterpartTyping, isTrue);
+    });
+
+    // Kendi yazdığımızın yankısı ekranda görünmemeli.
+    test('kendi yazma olayımız yok sayılır', () async {
+      final thread = build(apiWith(const []));
+      await thread.load(currentUserId: _me);
+
+      realtime.emit(RealtimeEvent.fromJson({'type': 'TYPING', 'userId': _me}));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(thread.isCounterpartTyping, isFalse);
+    });
+
+    test('notifyTyping kısıtlanıyor, her çağrıda gönderilmiyor', () async {
+      final thread = build(apiWith(const []));
+      await thread.load(currentUserId: _me);
+
+      thread.notifyTyping();
+      thread.notifyTyping();
+      thread.notifyTyping();
+
+      expect(realtime.typingSentFor, [_conversationId]);
+    });
+  });
+
+  group('okundu', () {
+    test('karşı taraf okuyunca kendi mesajlarımız okundu olur', () async {
+      final thread = build(apiWith([messageBody(id: 'benim', senderId: _me)]));
+      await thread.load(currentUserId: _me);
+      expect(thread.messages.single.readAt, isNull);
+
+      realtime.emit(
+        RealtimeEvent.fromJson({
+          'type': 'READ',
+          'userId': _other,
+          'at': '2026-03-05T11:00:00Z',
+        }),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(thread.messages.single.readAt, isNotNull);
+    });
+
+    test('karşı tarafın mesajları etkilenmez', () async {
+      final thread = build(apiWith([messageBody(senderId: _other)]));
+      await thread.load(currentUserId: _me);
+
+      realtime.emit(RealtimeEvent.fromJson({'type': 'READ', 'userId': _other}));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(thread.messages.single.readAt, isNull);
+    });
+  });
+
+  group('bilinmeyen olay', () {
+    test('uygulamayı düşürmez', () async {
+      final thread = build(apiWith(const []));
+      await thread.load(currentUserId: _me);
+
+      realtime.emit(RealtimeEvent.fromJson({'type': 'UZAYLI'}));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(thread.messages, isEmpty);
+    });
+  });
+
+  group('send', () {
+    test('hata durumunda false döner ve mesaj eklenmez', () async {
+      final api = FakeApi(
+        handler: (options) => options.method == 'GET'
+            ? const FakeApiResponse(
+                statusCode: 200,
+                body: {
+                  'success': true,
+                  'data': {'content': []},
+                },
+              )
+            : const FakeApiResponse(
+                statusCode: 400,
+                body: {'success': false, 'message': 'Mesaj boş olamaz'},
+              ),
+      );
+      final thread = build(api);
+      await thread.load(currentUserId: _me);
+
+      final sent = await thread.send('x');
+
+      expect(sent, isFalse);
+      expect(thread.errorMessage, 'Mesaj boş olamaz');
+      expect(thread.messages, isEmpty);
+    });
+
+    test('boş metin gönderilmez', () async {
+      final thread = build(apiWith(const []));
+      await thread.load(currentUserId: _me);
+
+      expect(await thread.send('   '), isFalse);
+    });
+  });
+}
