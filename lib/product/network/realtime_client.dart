@@ -180,16 +180,33 @@ class RealtimeClient {
   }
 
   /// Bağlantıyı kapatır ve bütün abonelikleri bırakır. Çıkışta çağrılıyor.
+  ///
+  /// ⚠️ **Önce kopya alınıp map'ler boşaltılıyor, sonra kapatılıyor.**
+  /// `controller.close()` dinleyicileri iptal ediyor, iptal [_streamFor]'daki
+  /// `onCancel`'ı tetikliyor, o da [_releaseIfUnused] üzerinden aynı map'ten
+  /// siliyor — map üzerinde gezinirken. Doğrudan `_controllers.values` üzerinde
+  /// dönmek bu yüzden `ConcurrentModificationError` fırlatıyordu ve çıkış
+  /// yapılamıyordu. Map'ler önden boşaldığı için yeniden giren
+  /// [_releaseIfUnused] artık silecek bir şey bulamıyor.
   Future<void> disconnect() async {
-    for (final unsubscribe in _subscriptions.values) {
-      unsubscribe(unsubscribeHeaders: null);
-    }
+    final unsubscribes = _subscriptions.values.toList();
+    final controllers = _controllers.values.toList();
     _subscriptions.clear();
+    _controllers.clear();
 
-    for (final controller in _controllers.values) {
+    for (final unsubscribe in unsubscribes) {
+      // Kopmuş bir bağlantıda abonelik bırakmak hata verebiliyor; kapanışı
+      // durdurmamalı, oturum her hâlükârda sonlanmalı.
+      try {
+        unsubscribe(unsubscribeHeaders: null);
+      } catch (error) {
+        debugPrint('Realtime abonelik bırakılamadı: $error');
+      }
+    }
+
+    for (final controller in controllers) {
       await controller.close();
     }
-    _controllers.clear();
 
     _client?.deactivate();
     _client = null;

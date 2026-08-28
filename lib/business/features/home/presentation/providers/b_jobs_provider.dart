@@ -7,14 +7,15 @@ import 'package:koala/product/network/api_exception.dart';
 
 /// İşverenin ilanları ve o ilanlara gelen başvurular.
 ///
-/// Veri iki uçtan geliyor ve tek listede birleşiyor:
-/// - `GET /users/me/jobs` → ilanların özeti,
-/// - `GET /jobs/{jobId}/applications` → her ilanın başvuruları.
+/// Veri iki uçtan geliyor ama **aynı anda değil**:
+/// - `GET /users/me/jobs` → ilanların özeti, başvuru sayısı dâhil,
+/// - `GET /jobs/{jobId}/applications` → yalnızca başvuranların kendisi.
 ///
-/// İkincisi ilan başına ayrı bir istek: liste ucu başvuru sayısını
-/// döndürmüyor. İstekler paralel gidiyor ama yine de N+1.
-/// TODO(backend): `JobSummaryDto`'ya `applicationCount` eklenirse liste tek
-/// istekle çizilebilir; başvuranların kendisi ancak detay ekranında gerekiyor.
+/// Sunucu `JobSummaryDto.applicationCount` döndürdüğü için sayıyı göstermek
+/// istek gerektirmiyor. Başvuranların kim olduğu ise ancak birkaç yerde
+/// gerekiyor: ilan detayı, ana sayfadaki son başvurular ve geçmiş ilanın işi
+/// alan kişisi. O yüzden başvurular toptan değil, [ensureApplicants] ile ilan
+/// ilan ve istendiğinde çekiliyor — listeyi çizmek için asla.
 class BJobsProvider extends ChangeNotifier {
   BJobsProvider({EmployerJobService? service})
     : _service = service ?? EmployerJobService();
@@ -48,11 +49,14 @@ class BJobsProvider extends ChangeNotifier {
   /// Hiç ilan yok mu. Hata durumundan ayrı: boş liste bir arıza değil.
   bool get isEmpty => _hasLoaded && _jobPosts.isEmpty && _errorMessage == null;
 
-  /// Aktif ilanlara gelen, henüz yanıtlanmamış başvuruların toplamı.
-  int get pendingApplicantCount =>
-      activePosts.fold<int>(0, (sum, post) => sum + post.applicants.length);
+  /// Aktif ilanlara gelen toplam başvuru sayısı.
+  ///
+  /// Sayı ilan listesiyle birlikte geldiği için başvuranları çekmeye gerek
+  /// yok; yanıtlanmış başvurular da bu toplama dâhil.
+  int get totalApplicantCount =>
+      activePosts.fold<int>(0, (sum, post) => sum + post.job.applicationCount);
 
-  /// İlanları ve başvurularını çeker.
+  /// İlan listesini çeker. Başvuranlar gelmiyor — bkz. [ensureApplicants].
   ///
   /// Daha önce başarıyla çekildiyse ağa çıkmaz; [force] ile yenilenir.
   Future<void> load({bool force = false}) async {
@@ -66,76 +70,78 @@ class BJobsProvider extends ChangeNotifier {
     try {
       final page = await _service.fetchMyJobs();
       _jobPosts = [for (final job in page.jobs) BJobPost(job: job)];
-
-      // İlanlar geldiği anda çizilebilsin; başvurular arkadan dolsun.
-      _isLoading = false;
-      _hasLoaded = true;
-      notifyListeners();
-
-      await _loadApplicants();
     } on ApiException catch (error) {
       _errorMessage = error.message;
+    } finally {
       _isLoading = false;
       _hasLoaded = true;
       notifyListeners();
     }
   }
 
-  /// Her ilanın başvurularını paralel çeker.
+  /// Uçuşta olan başvuru istekleri; aynı ilan iki kez istenmesin diye.
+  final Set<String> _pendingApplicantRequests = {};
+
+  /// Bir ilanın başvuranlarını, daha önce çekilmediyse çeker.
   ///
-  /// Tek bir ilanın başvuruları alınamazsa liste bütünüyle hataya düşmüyor:
-  /// o ilan başvurusuz görünüyor, diğerleri çiziliyor. Ekranı kaplayan bir
-  /// hata, elde duran ilanları da gizlerdi.
-  Future<void> _loadApplicants() async {
-    final posts = _jobPosts;
-    if (posts.isEmpty) return;
+  /// Aynı ilan için ikinci kez çağrılmak zararsız: elde veri varsa ağa
+  /// çıkmıyor. Ekranlar bunu ihtiyaç duydukları anda çağırıyor — ilan
+  /// listesindeki sayı ilanla birlikte geldiği için liste bu isteği hiç
+  /// atmıyor.
+  ///
+  /// Başvurular alınamazsa liste hataya düşmüyor: o ilan başvurusuz
+  /// görünüyor. Ekranı kaplayan bir hata elde duran ilanları da gizlerdi.
+  Future<void> ensureApplicants(String jobId, {bool force = false}) async {
+    final index = _jobPosts.indexWhere((post) => post.job.id == jobId);
+    if (index == -1) return;
+    if (_jobPosts[index].applicantsLoaded && !force) return;
+    if (!_pendingApplicantRequests.add(jobId)) return;
 
-    final results = await Future.wait([
-      for (final post in posts) _applicantsOf(post.job.id),
-    ]);
+    List<JobApplicant> applicants = const [];
+    try {
+      applicants = await _service.fetchApplicants(jobId);
+    } on ApiException {
+      // Yutuluyor: sayı zaten elde, eksik olan yalnızca kimlerin başvurduğu.
+    } finally {
+      _pendingApplicantRequests.remove(jobId);
+    }
 
-    // Bu arada yenileme yapıldıysa eski sonuçlar yazılmamalı.
-    if (!identical(_jobPosts, posts)) return;
+    // Bu arada liste yenilendiyse ilan yer değiştirmiş ya da düşmüş olabilir.
+    final current = _jobPosts.indexWhere((post) => post.job.id == jobId);
+    if (current == -1) return;
 
-    _jobPosts = [
-      for (var i = 0; i < posts.length; i++)
-        posts[i].copyWith(applications: results[i], applicantsLoaded: true),
-    ];
+    _jobPosts = [..._jobPosts];
+    _jobPosts[current] = _jobPosts[current].copyWith(
+      applications: applicants,
+      applicantsLoaded: true,
+    );
     notifyListeners();
   }
 
-  Future<List<JobApplicant>> _applicantsOf(String jobId) async {
-    try {
-      return await _service.fetchApplicants(jobId);
-    } on ApiException {
-      return const [];
-    }
-  }
-
   /// Yeni ilan açar. Başarılıysa liste yenilenir ve `true` döner.
-  Future<bool> createJobPost(
-    CreateJobRequest request, {
-    String? companyId,
-  }) async {
-    _errorMessage = null;
-
-    try {
-      await _service.createJob(request, companyId: companyId);
-      await load(force: true);
-      return true;
-    } on ApiException catch (error) {
-      _errorMessage = error.message;
-      notifyListeners();
-      return false;
-    }
+  Future<bool> createJobPost(CreateJobRequest request, {String? companyId}) {
+    return _mutate(() => _service.createJob(request, companyId: companyId));
   }
 
   /// İlanı başvuruya kapatır; ilan "Geçmiş" sekmesine geçer.
-  Future<bool> closePost(String jobId) async {
+  Future<bool> closePost(String jobId) {
+    return _mutate(() => _service.closeJob(jobId));
+  }
+
+  /// İlanı iptal eder; başvuranlara bildirim gider.
+  ///
+  /// Devam eden bir atama varsa sunucu reddediyor ve mesajı [errorMessage]'a
+  /// düşüyor — çağıran tarafın onu göstermesi gerekiyor.
+  Future<bool> cancelPost(String jobId) {
+    return _mutate(() => _service.cancelJob(jobId));
+  }
+
+  /// İlan listesini değiştiren işlemlerin ortak sarmalayıcısı.
+  Future<bool> _mutate(Future<void> Function() call) async {
     _errorMessage = null;
 
     try {
-      await _service.closeJob(jobId);
+      await call();
       await load(force: true);
       return true;
     } on ApiException catch (error) {
@@ -149,23 +155,37 @@ class BJobsProvider extends ChangeNotifier {
   ///
   /// Sunucuda bir atama oluşuyor ve çalışanın onayı bekleniyor; ilan
   /// kendiliğinden kapanmıyor, o yüzden liste olduğu gibi yenileniyor.
-  Future<bool> approveApplicant(String applicationId) {
-    return _respond(() => _service.acceptApplication(applicationId));
+  ///
+  /// [jobId] yalnızca yanıt sonrası o ilanın başvuranlarını tazelemek için;
+  /// sunucu kabul/ret'i başvuru kimliğiyle alıyor.
+  Future<bool> approveApplicant({
+    required String jobId,
+    required String applicationId,
+  }) {
+    return _respond(jobId, () => _service.acceptApplication(applicationId));
   }
 
   /// Başvuruyu reddeder. [reason] çalışanın gördüğü gerekçe.
-  Future<bool> rejectApplicant(String applicationId, {String? reason}) {
+  Future<bool> rejectApplicant({
+    required String jobId,
+    required String applicationId,
+    String? reason,
+  }) {
     return _respond(
+      jobId,
       () => _service.rejectApplication(applicationId, reason: reason),
     );
   }
 
-  Future<bool> _respond(Future<void> Function() call) async {
+  Future<bool> _respond(String jobId, Future<void> Function() call) async {
     _errorMessage = null;
 
     try {
       await call();
+      // İlanın durumu da değişmiş olabilir; liste ve o ilanın başvuranları
+      // birlikte tazeleniyor.
       await load(force: true);
+      await ensureApplicants(jobId, force: true);
       return true;
     } on ApiException catch (error) {
       _errorMessage = error.message;
@@ -185,6 +205,7 @@ class BJobsProvider extends ChangeNotifier {
   /// Çıkışta önceki işverenin ilanları kalmasın.
   void clear() {
     _jobPosts = const [];
+    _pendingApplicantRequests.clear();
     _errorMessage = null;
     _hasLoaded = false;
     notifyListeners();

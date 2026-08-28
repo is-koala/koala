@@ -187,6 +187,28 @@ abstract class BCreatePageModel extends State<BCreatePage> {
     if (picked != null) onSelected(picked);
   }
 
+  /// İlanın şirket adına mı açılacağı.
+  ///
+  /// Sigorta kuralı buna bağlı: bireysel ilan sunucuda `insuranceRequired`'ı
+  /// zorla `false` yazıyor ve sigorta gerektiren bir kategoride bireysel ilan
+  /// açılmasını hiç kabul etmiyor.
+  bool get _isCompanyJob =>
+      context.read<UserProvider>().user?.activeCompany != null;
+
+  /// Seçilebilir kategoriler.
+  ///
+  /// Bireysel işverende sigorta zorunlu kategoriler eleniyor: sunucu o
+  /// kategoride bireysel ilanı `400` ile geri çeviriyor (SGK bildirimi
+  /// işverenin yükümlülüğü, bir günlük iş için bireysel işverenden
+  /// beklenmiyor). Listeden çıkarmak, kullanıcıyı formu doldurup en sonda
+  /// hata almaya bırakmaktan iyi.
+  List<JobCategory> get _selectableCategories {
+    final categories = context.read<JobCategoryProvider>().categories;
+    if (_isCompanyJob) return categories;
+
+    return categories.where((category) => !category.requiresInsurance).toList();
+  }
+
   /// Kategoriyi seçtirir.
   ///
   /// Kategoriler `/reference/job-categories`'ten geliyor ve sayısı artabilir;
@@ -195,7 +217,7 @@ abstract class BCreatePageModel extends State<BCreatePage> {
     final picked = await BOptionSheet.show<JobCategory>(
       context,
       title: 'Kategori',
-      options: context.read<JobCategoryProvider>().categories,
+      options: _selectableCategories,
       selected: _selectedCategory,
       labelOf: (category) => category.displayName,
       iconOf: (category) => category.icon,
@@ -304,6 +326,11 @@ abstract class BCreatePageModel extends State<BCreatePage> {
 
     final category = _selectedCategory;
     if (category == null) return _warn('Bir kategori seçin');
+    // Seçici zaten elemiş olmalı; sunucudan `400` almaktansa burada anlaşılır
+    // bir mesaj vermek daha iyi.
+    if (category.requiresInsurance && !_isCompanyJob) {
+      return _warn('Bu kategoride ilan yalnızca şirket adına açılabilir');
+    }
 
     final position = _positionController.text.trim();
     if (position.isEmpty) return _warn('Pozisyon zorunlu');

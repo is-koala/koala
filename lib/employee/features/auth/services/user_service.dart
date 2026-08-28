@@ -1,5 +1,6 @@
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/models/profile_update_result.dart';
+import 'package:koala/employee/features/auth/models/public_profile.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
@@ -30,6 +31,17 @@ class UserService {
     return _apiClient.get<CurrentUser>(
       ApiPaths.currentUser,
       parse: (data) => CurrentUser.fromJson(data! as Map<String, dynamic>),
+    );
+  }
+
+  /// Başka bir kullanıcının herkese açık profili.
+  ///
+  /// Oturum açmış herkese açık; tam adres dönmüyor ve `cvUrl` yalnızca
+  /// yetkili görene doluyor — kuralın tamamı [PublicProfile]'da.
+  Future<PublicProfile> fetchPublicProfile(String userId) {
+    return _apiClient.get<PublicProfile>(
+      ApiPaths.publicProfile(userId),
+      parse: (data) => PublicProfile.fromJson(data! as Map<String, dynamic>),
     );
   }
 

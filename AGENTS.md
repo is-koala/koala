@@ -31,6 +31,8 @@ Flutter 3.47.1 (stable), Dart SDK `^3.8.1`. The font is Poppins.
 
 **Do not add dependencies or invent new patterns.** Reuse what is already in `lib/product/constants` and `lib/product/widgets` first. If a value is missing from a constant file, add it there with a meaningful name instead of hard-coding it. The one kind of addition that does not need asking is a package an existing dependency already requires — `cupertino_icons` is in `pubspec.yaml` for exactly that reason; say so when you add one.
 
+> `image_picker` and `url_launcher` were added on the user's explicit approval, both from `flutter/packages`. The first picks a company logo from the gallery, the second opens an applicant's CV. `image_picker` brought one native change with it: `NSPhotoLibraryUsageDescription` in `ios/Runner/Info.plist` (Android needs nothing — the gallery goes through the system photo picker).
+
 ---
 
 ## Commands
@@ -177,7 +179,7 @@ The API is a Spring Boot service in a separate repository (`github.com/yustyy/ko
 |---|---|
 | `api_config.dart` | Base URL and timeouts. The URL defaults to `https://api.iskoala.com` and is overridden with `--dart-define=API_BASE_URL=...` (`http://10.0.2.2:8080` on the Android emulator). |
 | `api_paths.dart` | Endpoint paths, plus the set of paths that need no token. |
-| `api_client.dart` | The only place `dio` is touched: unwraps the envelope, turns `DioException` into `ApiException`. |
+| `api_client.dart` | The only place `dio` is touched: unwraps the envelope, turns `DioException` into `ApiException`. `putFile` is the multipart upload path — it builds the `FormData` and forces the content type, because the base options say `application/json`. |
 | `api_exception.dart` | `ApiException` / `ApiErrorType` — the single error type services and pages see. |
 | `auth_interceptor.dart` | Attaches the bearer token, refreshes once on a 401 and retries. |
 | `token_storage.dart` | Access/refresh tokens in Keychain/Keystore (`flutter_secure_storage`). |
@@ -225,6 +227,10 @@ Anything else is `403`. **A STOMP error frame tears down the whole connection**,
 
 Typing is published back to `/app/conversations/{id}/typing`, throttled to one frame every two seconds.
 
+> ⚠️ **`RealtimeClient.disconnect()` must snapshot its maps before closing anything.** Each destination's `StreamController` has `onCancel: () => _releaseIfUnused(destination)`, and `close()` cancels the listeners — so closing while iterating `_controllers.values` re-enters and removes from the map being walked. That threw `ConcurrentModificationError` on logout and left the user signed in, because the exception landed before `AuthService().logout()`. Copy the values, clear the maps, *then* close; a re-entrant `_releaseIfUnused` then finds nothing. `test/product/network/realtime_client_test.dart` guards it.
+
+> Both logout paths (`settings_page` and `b_settings_page`) call `disconnect()` **before** `AuthService().logout()` — the connection is tied to the session, and tearing down after the token is gone leaves the client reconnecting with a dead session.
+
 Two controllers own all of this, and **both apps share them**:
 
 - **`ChatThreadController`** — one conversation: messages, sending, typing, read receipts.
@@ -242,23 +248,27 @@ The same message arrives on **two channels** — the conversation topic and `/us
 
 Four things worth knowing:
 
-- **The list endpoint does not carry an applicant count**, so the provider fires one `GET /jobs/{id}/applications` per post in parallel — an N+1 it lives with. `BJobPost.applicantsLoaded` exists so the card says "Başvurular yükleniyor..." instead of "henüz başvuru yok" during that second pass. `TODO(backend)` asks for `applicationCount` on `JobSummaryDto`.
-- **Individual and company posts differ by one field.** `CreateIndividualJobDto` has no `insuranceRequired`; `CreateJobRequest.toJson(forCompany:)` drops it, and the create screen hides the switch. Which endpoint is used comes from `CurrentUser.activeCompany` — the first **approved** membership.
-- **There is no endpoint that deletes a job.** Close is all there is, so the "İlanı Sil" menu item explains that instead of acting (`TODO(backend)` in `b_posts_page.dart`).
+- **The count is free, the people are not.** `JobSummaryDto.applicationCount` arrives with the list (the server fills it in the same pass as the cover images), so no screen fetches applicants just to show a number. Who actually applied comes from `GET /jobs/{id}/applications` and is fetched **per job, on demand**, through `BJobsProvider.ensureApplicants` — the detail screen for its own job, the home screen for the three posts its preview shows, and the posts list only for past posts, whose footer names the person who took the job. Never load them for the whole list; that was the old N+1.
+- **Insurance is a company-only concept, deliberately.** `CreateIndividualJobDto` has no `insuranceRequired`, the server forces it to `false`, and it rejects an individual job in any category whose `requiresInsurance` is set (`400`) — reporting SGK is the employer's legal duty and a one-day individual employer is not expected to carry it. So the create screen hides the switch for an individual employer, replaces it with a line saying why, **and filters those categories out of the picker** rather than letting the form fail on submit. Which endpoint is used comes from `CurrentUser.activeCompany` — the first **approved** membership.
+- **There is no endpoint that deletes a job, and there should not be.** The post menu offers two things instead: *İlanı Kapat* (`POST /jobs/{id}/close`) stops new applications and leaves the post valid, *İlanı İptal Et* (`POST /jobs/{id}/cancel`) invalidates it and notifies the applicants. Cancel asks for confirmation first because the two read alike but are not, and it refuses with `409` while a live assignment exists (`PENDING_CONFIRMATION` / `CONFIRMED` / `IN_PROGRESS`) — cancelling there would route around the escrow and the cancellation policy, and the assignment's own cancel flow must be used instead. Neither one deletes anything; the record and the application history stay.
 - **Accepting an application does not close the job.** The server opens an assignment in `PENDING_CONFIRMATION` and waits for the worker; the post stays in "Aktif" until its `JobStatus` says otherwise. Active vs. past is decided by `JobStatus` (`OPEN`/`IN_PROGRESS` → active), never by a local flag.
 
-> `JobApplicantDto` returns a `SafeUserDto`, which carries no `jobTitle` — the applicant's profession is parsed (`JobCreator.jobTitle`) but always `null` today, and every screen hides the line rather than fetching a profile per applicant. Same for the candidate profile screen's location and CV rows. Marked `TODO(backend)` at each site.
+> `JobApplicantDto` carries `jobTitle` and `cvUrl` **on itself**, not inside its `SafeUserDto` — that DTO is reused across ten responses and the profession does not belong in all of them. `cvUrl` is only filled for the job's employer, and the download route checks ownership again, so a leaked link still cannot be fetched.
+
+**The candidate profile** (`b_user_profile_page`) paints twice: the `JobApplicant` handed in through `state.extra` gives the name, photo, cover letter and date immediately, then `GET /users/{userId}` → `PublicProfile` fills in the profession, the "hakkında" text, the location and the CV. That endpoint deliberately returns **no full address** — city and district only — and it is open to signed-in users, not anonymous ones. If it fails the screen does not blank: a strip at the top offers *Tekrar dene* and the application data stays on screen. The CV opens in the external browser through `url_launcher`, because the URL is a redirect to a short-lived signed address rather than the file itself.
 
 **The employer's profile is real too.** `business/features/home/services/b_company_service.dart` reads `GET /companies/{id}`, writes `PATCH /companies/{id}` and reads `GET /users/{userId}/employer-stats`; `BCompanyProvider` (registered in `main.dart`) holds both for the profile, settings and company-info screens.
 
 - **The profile has two valid shapes.** An employer with a company membership sees the **company**; one without sees **themselves** — name, e-mail, phone and address off `/users/me`. Being company-less is not a gap: `POST /users/me/jobs` posts individual jobs. `b_profile_page` renders both from the same widgets.
 - **Two different "company" getters on `CurrentUser`.** `activeCompany` is the first **approved** membership and decides which create-job endpoint is used; `primaryCompany` is the first membership regardless of approval and is what the profile shows — otherwise someone who just registered a company would never see it and would think they were an individual employer.
 - **`PATCH /companies/{id}` accepts five fields only** — name, e-mail, phone, website, description (`UpdateCompanyRequestDto`), and only from the company's `ADMIN`. Tax number, address, type and logo are fixed at creation, so the company-info screen keeps those fields visible but `enabled: false` with a note saying why. Fields left blank are omitted from the body rather than sent as `""`, which would clear them.
-- **`CompanyDto` does not return `isApproved`,** although the entity has it. Approval reaches the app through `/users/me` → `CompanyMembershipDto.approved` (which maps from `company.approved`, not the contact), so `BCompanyProvider` feeds it into `BCompany.copyWith` after the fetch. Marked `TODO(backend)` on the model.
+- **The approval flag is spelled `approved`, not `isApproved`** — the same name `/users/me` → `CompanyMembershipDto.approved` uses, so the concept has one name across the API. `BCompany` parses `approved`; the Dart field stays `isApproved` because that is how a flag reads. `BCompanyProvider` still overwrites it from the membership after a fetch, which is now belt-and-braces rather than the only source.
 - **`BCompany` is the real `CompanyDto`;** `employee/features/company_detail/models/company.dart` is the fake one and its fields do not match the server (`logo` ↔ `logoUrl`, `address.city` ↔ `address.cityName`, and a two-value `CompanyType` where the server has eight). The `b_` prefix exists only to keep the two apart until company detail is wired.
 - **Employer stats are per person, not per company** (`StatisticsManager` counts by `creatorId`), so two admins of the same company see different numbers. Zero reviews come back as `averageRating: 0`; `EmployerStats.hasRating` separates that from an actual bad score so the card shows "—" instead of "0.0".
 
-> Endpoints the profile could use but does not: the company gallery (`/companies/{id}/images`), the contact list and invitations (`/contacts`, `/contact-invitations`), and `followerCount` (parsed, not shown). Creating a company (`POST /companies`) is missing entirely — it is multipart with a logo and requires identity verification, so it needs its own screen and a file picker; the company-info screen explains this instead of offering it (`TODO(backend)`). There is no endpoint to change a logo after creation.
+- **The logo is editable, the rest of the fixed fields are not.** `PUT /companies/{id}/logo` (multipart, part name `logo`, `ADMIN` only) and `DELETE` on the same path both return the company, so no second read is needed. The company-info screen picks from the gallery and checks extension and size **client-side** against the server's own limits (`png/jpg/jpeg/webp`, 10 MB, from `UploadProperties`) so the user is not left waiting for a rejection. The file is sent **unmodified** — re-encoding it would flatten a transparent PNG, which is visible on a logo.
+
+> Endpoints the profile could use but does not: the company gallery (`/companies/{id}/images`), the contact list and invitations (`/contacts`, `/contact-invitations`) and `followerCount` (parsed, not shown). Creating a company (`POST /companies`) is missing entirely — multipart with a logo, plus an identity-verification precondition; the company-info screen explains this instead of offering it (`TODO(backend)`).
 
 **Still fake:** everything except auth, the employee profile, the jobs flow (explore, apply, İşlerim, saved jobs), chat, and the employer's job flow and profile. Data comes from services that return hard-coded lists, one `services/` folder per feature: `employee/features/home/services/location_service.dart`, `company_detail/services/company_service.dart`, `jobs/services/review_service.dart`. Avatars are generated URLs from `ui-avatars.com`.
 

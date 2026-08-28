@@ -8,11 +8,16 @@ import '../../../../../support/fake_api.dart';
 import '../../services/employer_job_service_test.dart' show buildRequest;
 
 /// `PageDto<JobSummaryDto>` biçiminde tek ilan.
-Map<String, dynamic> jobJson(String id, {String status = 'OPEN'}) => {
+Map<String, dynamic> jobJson(
+  String id, {
+  String status = 'OPEN',
+  int applicationCount = 0,
+}) => {
   'id': id,
   'title': 'İlan $id',
   'salary': 800,
   'status': status,
+  'applicationCount': applicationCount,
   'category': {'id': 'c', 'code': 'WAITER', 'name': 'Garsonluk'},
 };
 
@@ -93,24 +98,38 @@ void main() {
       expect(provider.pastPosts.map((p) => p.job.id), ['c', 'd']);
     });
 
-    test('başvurular her ilan için ayrı istekle dolduruluyor', () async {
+    test('liste yüklenirken başvuru isteği atılmıyor', () async {
       final api = buildApi(
         jobs: [jobJson('a'), jobJson('b')],
         applicantsByJob: {
           'a': [applicantJson('app_1')],
-          'b': [],
         },
       );
       final provider = providerFor(api);
 
       await provider.load();
 
-      final paths = api.requests.map((r) => r.path).toList();
-      expect(paths, contains('/jobs/a/applications'));
-      expect(paths, contains('/jobs/b/applications'));
-      expect(provider.allPosts.every((p) => p.applicantsLoaded), isTrue);
-      expect(provider.getPostByJobId('a')!.applicants, hasLength(1));
-      expect(provider.getPostByJobId('b')!.applicants, isEmpty);
+      // Sayı `applicationCount` ile geldiği için liste artık N+1 atmıyor.
+      expect(api.requests.map((r) => r.path), ['/users/me/jobs']);
+      expect(provider.allPosts.every((post) => post.applicantsLoaded), isFalse);
+    });
+
+    test('başvuru sayısı ilanla birlikte geliyor', () async {
+      final provider = providerFor(
+        buildApi(
+          jobs: [
+            jobJson('a', applicationCount: 3),
+            jobJson('b', applicationCount: 1),
+            jobJson('c', status: 'CLOSED', applicationCount: 5),
+          ],
+        ),
+      );
+
+      await provider.load();
+
+      expect(provider.getPostByJobId('a')!.job.applicationCount, 3);
+      // Geçmiş ilan toplama girmiyor.
+      expect(provider.totalApplicantCount, 4);
     });
 
     test(
@@ -129,9 +148,11 @@ void main() {
         final provider = providerFor(api);
 
         await provider.load();
+        await provider.ensureApplicants('a');
         final post = provider.getPostByJobId('a')!;
 
         expect(post.applicants.map((a) => a.id), ['app_1']);
+        expect(post.acceptedApplicants.map((a) => a.id), ['app_2']);
         expect(post.worker!.fullName, 'Mehmet Yılmaz');
         expect(post.worker!.status, ApplicationStatus.accepted);
       },
@@ -148,32 +169,58 @@ void main() {
       final provider = providerFor(api);
 
       await provider.load();
+      await provider.ensureApplicants('a');
+      await provider.ensureApplicants('b');
 
       expect(provider.errorMessage, isNull);
       expect(provider.getPostByJobId('a')!.applicants, isEmpty);
       expect(provider.getPostByJobId('b')!.applicants, hasLength(1));
     });
 
-    test('bekleyen başvurular sayılırken kabul edilenler dışarıda', () async {
+    test('bir ilana birden çok aday kabul edilebiliyor', () async {
       final api = buildApi(
-        jobs: [
-          jobJson('a'),
-          jobJson('b', status: 'CLOSED'),
-        ],
+        jobs: [jobJson('a')],
         applicantsByJob: {
           'a': [
-            applicantJson('app_1'),
-            applicantJson('app_2', status: 'ACCEPTED'),
+            applicantJson('app_1', status: 'ACCEPTED'),
+            applicantJson('app_2', status: 'ACCEPTED', firstName: 'Mehmet'),
+            applicantJson('app_3'),
           ],
-          // Geçmiş ilanın başvurusu sayıma girmemeli.
-          'b': [applicantJson('app_3')],
         },
       );
       final provider = providerFor(api);
 
       await provider.load();
+      await provider.ensureApplicants('a');
+      final post = provider.getPostByJobId('a')!;
 
-      expect(provider.pendingApplicantCount, 1);
+      // Kabul ilanı kapatmıyor; ikinci bir aday da kabul edilebiliyor ve
+      // ikisi de "Onaylananlar" bölümünde görünmeli.
+      expect(post.acceptedApplicants, hasLength(2));
+      expect(post.worker!.id, 'app_1');
+      expect(post.applicants.map((a) => a.id), ['app_3']);
+      // Kabul edilen ilan hâlâ aktif.
+      expect(post.isActive, isTrue);
+    });
+
+    test('kabul edilen yoksa çalışan yok', () async {
+      final api = buildApi(
+        jobs: [jobJson('a')],
+        applicantsByJob: {
+          'a': [
+            applicantJson('app_1'),
+            applicantJson('app_2', status: 'REJECTED'),
+          ],
+        },
+      );
+      final provider = providerFor(api);
+
+      await provider.load();
+      await provider.ensureApplicants('a');
+      final post = provider.getPostByJobId('a')!;
+
+      expect(post.acceptedApplicants, isEmpty);
+      expect(post.worker, isNull);
     });
 
     test('boş liste hata değil', () async {
@@ -241,17 +288,51 @@ void main() {
       expect(api.requests.map((r) => r.path), contains('/jobs/a/close'));
     });
 
-    test('kabul isteği yanıt ucuna gidiyor', () async {
+    test('kabul sonrası o ilanın başvuranları tazeleniyor', () async {
       final api = buildApi(jobs: [jobJson('a')]);
       final provider = providerFor(api);
 
-      final approved = await provider.approveApplicant('app_1');
+      final approved = await provider.approveApplicant(
+        jobId: 'a',
+        applicationId: 'app_1',
+      );
 
       expect(approved, isTrue);
-      expect(
-        api.requests.map((r) => r.path),
-        contains('/job-applications/app_1/respond'),
+      final paths = api.requests.map((r) => r.path).toList();
+      expect(paths, contains('/job-applications/app_1/respond'));
+      // Liste yenileniyor ve o ilanın başvuranları yeniden çekiliyor;
+      // diğer ilanlar için istek atılmıyor.
+      expect(paths, contains('/jobs/a/applications'));
+    });
+
+    test('ensureApplicants aynı ilan için ikinci kez ağa çıkmıyor', () async {
+      final api = buildApi(
+        jobs: [jobJson('a')],
+        applicantsByJob: {
+          'a': [applicantJson('app_1')],
+        },
       );
+      final provider = providerFor(api);
+      await provider.load();
+
+      await provider.ensureApplicants('a');
+      final after = api.requests.length;
+      await provider.ensureApplicants('a');
+      expect(api.requests, hasLength(after));
+
+      await provider.ensureApplicants('a', force: true);
+      expect(api.requests.length, greaterThan(after));
+    });
+
+    test('bilinmeyen ilan için ensureApplicants istek atmıyor', () async {
+      final api = buildApi(jobs: [jobJson('a')]);
+      final provider = providerFor(api);
+      await provider.load();
+      final before = api.requests.length;
+
+      await provider.ensureApplicants('yok');
+
+      expect(api.requests, hasLength(before));
     });
 
     test(
@@ -279,7 +360,10 @@ void main() {
         );
         final provider = providerFor(api);
 
-        final approved = await provider.approveApplicant('app_1');
+        final approved = await provider.approveApplicant(
+          jobId: 'a',
+          applicationId: 'app_1',
+        );
 
         expect(approved, isFalse);
         expect(provider.errorMessage, 'Bu başvuru zaten cevaplanmış');

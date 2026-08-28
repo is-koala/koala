@@ -33,6 +33,12 @@ dependencies:
   permission_handler: ^13.0.1
   geolocator: ^14.0.3
 
+  # Media & dış bağlantı
+  # image_picker: şirket logosu galeriden seçiliyor.
+  # url_launcher: adayın özgeçmişi imzalı bir adrese yönlendiriliyor, tarayıcıda açılıyor.
+  image_picker: ^1.2.0
+  url_launcher: ^6.3.2
+
   # State Management
   provider: ^6.1.5
 

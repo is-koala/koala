@@ -97,6 +97,41 @@ class ApiClient {
     return _send<void>(() => _dio.delete<dynamic>(path));
   }
 
+  /// Gövdesinde veri dönen `DELETE` isteği.
+  ///
+  /// Bazı uçlar silme sonrası kaydın yeni hâlini döndürüyor (ör. logo
+  /// kaldırıldıktan sonra şirketin kendisi); ikinci bir okuma isteği
+  /// atmamak için.
+  Future<T> delete<T>(String path, {required T Function(Object? data) parse}) {
+    return _send<T>(() => _dio.delete<dynamic>(path), parse: parse);
+  }
+
+  /// Tek dosya yükleyen `PUT` isteği.
+  ///
+  /// Dosyayı `multipart/form-data` olarak gönderiyor; [fieldName] backend'in
+  /// beklediği parça adı (`logo`, `image`, `file` ...). İçerik tipi
+  /// `FormData` verildiğinde dio tarafından kuruluyor ama taban ayarlarda
+  /// `application/json` yazdığı için burada açıkça geçersiz kılınıyor.
+  Future<T> putFile<T>(
+    String path, {
+    required String fieldName,
+    required String filePath,
+    required T Function(Object? data) parse,
+  }) async {
+    final formData = FormData.fromMap({
+      fieldName: await MultipartFile.fromFile(filePath),
+    });
+
+    return _send<T>(
+      () => _dio.put<dynamic>(
+        path,
+        data: formData,
+        options: Options(contentType: Headers.multipartFormDataContentType),
+      ),
+      parse: parse,
+    );
+  }
+
   /// Gövdesinde veri dönen `PATCH` isteği.
   ///
   /// Backend kısmi güncellemede yalnızca gönderilen alanlara bakıyor, o yüzden

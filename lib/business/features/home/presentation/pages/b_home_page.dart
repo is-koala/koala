@@ -71,7 +71,7 @@ class _BHomePageState extends State<BHomePage> {
     final bJobsProvider = context.watch<BJobsProvider>();
     final activePosts = bJobsProvider.activePosts;
     final pastPosts = bJobsProvider.pastPosts;
-    final totalApplicants = bJobsProvider.pendingApplicantCount;
+    final totalApplicants = bJobsProvider.totalApplicantCount;
 
     return Scaffold(
       backgroundColor: context.backgroundColor,
@@ -475,13 +475,27 @@ class _BHomePageState extends State<BHomePage> {
 
   // ------------------------------------------------------- Son başvurular
 
+  /// Ana sayfadaki "Son Başvurular" listesi.
+  ///
+  /// Başvuranların kim olduğunu gösteren tek yer burası ve sunucuda "bütün
+  /// ilanlarıma gelen başvurular" diye bir uç yok. O yüzden istek yalnızca
+  /// **ilk [_previewCount] aktif ilan** için atılıyor; liste zaten o kadarını
+  /// gösteriyor.
   Widget _recentApplicantsSection(
     BuildContext context,
     BJobsProvider provider,
   ) {
-    // Tüm aktif ilanlardan son başvuranları topla
+    final previewPosts = provider.activePosts.take(_previewCount).toList();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      for (final post in previewPosts) {
+        provider.ensureApplicants(post.job.id);
+      }
+    });
+
     final recentApplicants = [
-      for (final post in provider.activePosts)
+      for (final post in previewPosts)
         for (final applicant in post.applicants)
           _RecentApplicant(applicant: applicant, post: post),
     ];
@@ -659,7 +673,8 @@ class _BHomePageState extends State<BHomePage> {
 
   Widget _postFooterRow(BuildContext context, BJobPost post) {
     final job = post.job;
-    final hasApplicants = post.applicants.isNotEmpty;
+    // Sayı ilan listesiyle geliyor; bu rozet için başvuranları çekmek gerekmiyor.
+    final hasApplicants = job.applicationCount > 0;
     final applicantColor = hasApplicants
         ? AppColors.info
         : context.textTertiary;
@@ -715,7 +730,7 @@ class _BHomePageState extends State<BHomePage> {
               ),
               const SizedBox(width: AppSizes.spaceTiny),
               Text(
-                '${post.applicants.length}',
+                '${job.applicationCount}',
                 style: context.textTheme.labelMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: applicantColor,

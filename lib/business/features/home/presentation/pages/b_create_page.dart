@@ -160,13 +160,16 @@ class _BCreatePageState extends BCreatePageModel {
                 onChanged: (v) => setState(() => _experienceRequired = v),
               ),
               // Sigorta yalnızca kurumsal ilanlarda sorulabiliyor: bireysel
-              // ilan ucu (`CreateIndividualJobDto`) bu alanı hiç taşımıyor.
+              // ilan ucu `insuranceRequired`'ı zorla `false` yazıyor ve
+              // sigorta gerektiren kategorilerde ilan açtırmıyor.
               if (company != null)
                 _switchTile(
                   title: "Sigorta Gerekli",
                   value: _insuranceRequired,
                   onChanged: (v) => setState(() => _insuranceRequired = v),
-                ),
+                )
+              else
+                _insuranceNotice(),
 
               const SizedBox(height: AppSizes.navBarClearance),
             ],
@@ -216,6 +219,43 @@ class _BCreatePageState extends BCreatePageModel {
 
   /// Bilgi kutularının zemin opaklığı.
   static const double _noticeAlpha = 0.1;
+
+  /// Bireysel işverene sigorta anahtarı yerine gösterilen açıklama.
+  ///
+  /// Kural sunucuda: SGK bildirimi işverenin yükümlülüğü olduğu için bir
+  /// günlük iş açan bireysel işverenden beklenmiyor; sigortalı çalışma
+  /// gerektiren kategoriler de bireysel ilana kapalı. Anahtarı sessizce
+  /// gizlemek yerine nedenini yazmak, kategori listesinde neden daha az
+  /// seçenek olduğunu da açıklıyor.
+  Widget _insuranceNotice() {
+    return Container(
+      width: double.infinity,
+      padding: AppPadding.chip,
+      decoration: BoxDecoration(
+        color: context.tileColor,
+        borderRadius: AppRadius.innerCircular,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppIcon(
+            AppIcons.info,
+            size: AppSizes.iconSmall,
+            color: context.textTertiary,
+          ),
+          const SizedBox(width: AppSizes.spaceSmall),
+          Expanded(
+            child: Text(
+              'Sigortalı çalışma yalnızca şirket ilanlarında sunulabilir.',
+              style: context.textTheme.bodySmall?.copyWith(
+                color: context.textSecondary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   // ----------------------------------------------------------------- Konum
 

@@ -58,6 +58,30 @@ class BCompanyService {
     );
   }
 
+  /// Şirketin logosunu değiştirir.
+  ///
+  /// Sunucu `multipart/form-data` bekliyor ve parçanın adı **`logo`**.
+  /// Yalnızca şirketin `ADMIN` yetkilisi çağırabiliyor; görselin metadata'sı
+  /// temizlenerek depoya yazılıyor. Yanıt şirketin yeni hâli.
+  Future<BCompany> updateLogo(String companyId, String filePath) {
+    return _apiClient.putFile<BCompany>(
+      ApiPaths.companyLogo(companyId),
+      fieldName: 'logo',
+      filePath: filePath,
+      parse: (data) => BCompany.fromJson(data! as Map<String, dynamic>),
+    );
+  }
+
+  /// Şirketin logosunu kaldırır.
+  ///
+  /// Yalnızca bağlantı düşüyor, depodaki nesne silinmiyor.
+  Future<BCompany> removeLogo(String companyId) {
+    return _apiClient.delete<BCompany>(
+      ApiPaths.companyLogo(companyId),
+      parse: (data) => BCompany.fromJson(data! as Map<String, dynamic>),
+    );
+  }
+
   /// İşverenin özet sayıları.
   Future<EmployerStats> fetchEmployerStats(String userId) {
     return _apiClient.get<EmployerStats>(

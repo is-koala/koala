@@ -49,6 +49,8 @@
 	<string>Bu uygulama yakınınızdaki koala işlerini göstermek için konumunuza erişim gerektirir.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Bu uygulama yakınınızdaki koala işlerini göstermek için konumunuza erişim gerektirir.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Şirket logonuzu seçebilmeniz için fotoğraflarınıza erişim gerekiyor.</string>
 	<key>MAPS_API_KEY</key>
 	<string>$(MAPS_API_KEY)</string>
 	<key>UIApplicationSceneManifest</key>

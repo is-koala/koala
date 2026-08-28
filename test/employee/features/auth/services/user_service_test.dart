@@ -6,6 +6,35 @@ import 'package:koala/product/network/api_exception.dart';
 import '../../../../support/fake_api.dart';
 
 void main() {
+  group('UserService.fetchPublicProfile', () {
+    test('başka bir kullanıcının profili çekiliyor', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {
+              'id': 'user_9',
+              'firstName': 'Ayşe',
+              'lastName': 'Yılmaz',
+              'jobTitle': 'Barista',
+              'cityName': 'Ankara',
+              'districtName': 'Çankaya',
+            },
+          },
+        ),
+      );
+
+      final profile = await UserService.withClient(
+        api.client,
+      ).fetchPublicProfile('user_9');
+
+      expect(api.requests.single.path, '/users/user_9');
+      expect(profile.jobTitle, 'Barista');
+      expect(profile.locationLabel, 'Çankaya/Ankara');
+    });
+  });
+
   group('UserService.fetchCurrentUser', () {
     test('yanıt modele çevrilir', () async {
       final api = FakeApi(

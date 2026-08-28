@@ -75,10 +75,10 @@ class BCompany {
 
   /// Şirket onaylanmış mı. Onaysız şirket adına ilan yayınlanamıyor.
   ///
-  /// TODO(backend): `CompanyDto` bu alanı döndürmüyor — `Company` entity'sinde
-  /// `isApproved` var ama yanıta konmamış. Bilgi bugün `/users/me`'deki
-  /// `CompanyMembershipDto.approved`'dan geliyor (o alan da şirketin onayını
-  /// taşıyor, üyeliğinkini değil), o yüzden burası dışarıdan besleniyor.
+  /// Sunucudaki alan adı `approved`, `isApproved` değil — `/users/me`'deki
+  /// `CompanyMembershipDto.approved` ile aynı kavram, API'de tek ad taşısın
+  /// diye böyle. Dart tarafında ad `isApproved` kalıyor çünkü bir bayrağın
+  /// okunuşu öyle.
   final bool isApproved;
 
   BCompany copyWith({bool? isApproved}) {
@@ -115,7 +115,7 @@ class BCompany {
           ? UserAddress.fromJson(address)
           : null,
       followerCount: (json['followerCount'] as num?)?.toInt() ?? 0,
-      isApproved: json['isApproved'] as bool? ?? false,
+      isApproved: json['approved'] as bool? ?? false,
     );
   }
 
@@ -131,6 +131,6 @@ class BCompany {
     'type': type?.code,
     'address': address?.toJson(),
     'followerCount': followerCount,
-    'isApproved': isApproved,
+    'approved': isApproved,
   };
 }

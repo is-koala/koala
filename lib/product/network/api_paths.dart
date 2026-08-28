@@ -56,8 +56,15 @@ class ApiPaths {
   /// Şirket adına ilan açma.
   static String companyJobs(String companyId) => '/companies/$companyId/jobs';
 
-  /// İlanı başvuruya kapatma. Silme ucu yok — bkz. `b_posts_page`.
+  /// İlanı başvuruya kapatma: yeni başvuru gelmez, ilan geçerliliğini korur.
   static String closeJob(String jobId) => '${job(jobId)}/close';
+
+  /// İlanı iptal etme: ilan geçersiz olur ve başvuranlara bildirim gider.
+  ///
+  /// Silme değil — kayıt ve başvuru geçmişi duruyor. Devam eden bir iş
+  /// ataması varken sunucu `409` döndürüyor; o durumda atamanın kendi iptal
+  /// akışı kullanılmalı.
+  static String cancelJob(String jobId) => '${job(jobId)}/cancel';
 
   /// Bir başvuruyu kabul etme ya da reddetme.
   static String respondToApplication(String applicationId) =>
@@ -78,6 +85,18 @@ class ApiPaths {
   /// Şirketin yetkilileri.
   static String companyContacts(String companyId) =>
       '${company(companyId)}/contacts';
+
+  /// Şirket logosu: `PUT` ile değiştiriliyor, `DELETE` ile kaldırılıyor.
+  /// Yalnızca şirketin `ADMIN` yetkilisi çağırabiliyor.
+  static String companyLogo(String companyId) => '${company(companyId)}/logo';
+
+  // ------------------------------------------------------------- Kullanıcı
+
+  /// Bir kullanıcının herkese açık profili.
+  ///
+  /// Tam adres dönmüyor, yalnızca il ve ilçe. `cvUrl` yalnızca kişinin
+  /// kendisine ya da o kişinin başvurduğu bir ilanın işverenine doluyor.
+  static String publicProfile(String userId) => '/users/$userId';
 
   /// Bir işverenin istatistikleri: açtığı ilan, tamamlanan iş, puan.
   ///

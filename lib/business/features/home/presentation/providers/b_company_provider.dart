@@ -137,20 +137,51 @@ class BCompanyProvider extends ChangeNotifier {
     final current = _company;
     if (current == null) return false;
 
-    _errorMessage = null;
-
-    try {
-      final updated = await _service.updateCompany(
+    return _replaceCompany(
+      () => _service.updateCompany(
         current.id,
         name: name,
         email: email,
         phoneNumber: phoneNumber,
         website: website,
         description: description,
-      );
+      ),
+    );
+  }
 
-      // Onay bilgisi yanıtta yok; eldeki değer korunuyor.
-      _company = updated.copyWith(isApproved: current.isApproved);
+  /// Şirketin logosunu değiştirir.
+  ///
+  /// [filePath] cihazdaki görselin yolu. Başarılıysa eldeki kayıt yanıttakiyle
+  /// değişiyor ve profil başlığı kendiliğinden tazeleniyor.
+  Future<bool> updateLogo(String filePath) {
+    final current = _company;
+    if (current == null) return Future.value(false);
+
+    return _replaceCompany(() => _service.updateLogo(current.id, filePath));
+  }
+
+  /// Şirketin logosunu kaldırır.
+  Future<bool> removeLogo() {
+    final current = _company;
+    if (current == null) return Future.value(false);
+
+    return _replaceCompany(() => _service.removeLogo(current.id));
+  }
+
+  /// Şirketin yeni hâlini döndüren isteklerin ortak sarmalayıcısı.
+  ///
+  /// Onay bilgisi yanıtlarda gelmeyebiliyor, eldeki değer korunuyor.
+  Future<bool> _replaceCompany(Future<BCompany> Function() call) async {
+    final current = _company;
+    if (current == null) return false;
+
+    _errorMessage = null;
+
+    try {
+      final updated = await call();
+      _company = updated.copyWith(
+        isApproved: updated.isApproved || current.isApproved,
+      );
       notifyListeners();
       return true;
     } on ApiException catch (error) {

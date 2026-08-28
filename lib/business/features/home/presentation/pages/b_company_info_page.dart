@@ -1,8 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:koala/business/features/home/models/b_company.dart';
 import 'package:koala/business/features/home/presentation/providers/b_company_provider.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
+import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
@@ -36,6 +40,24 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
 
   /// Bilgi kutusunun zemin opaklığı.
   static const double _noticeAlpha = 0.1;
+
+  /// Logonun önizleme boyutu.
+  static const double _logoSize = 88;
+
+  /// Sunucunun kabul ettiği en büyük görsel — `UploadProperties.maxImageSizeMb`.
+  /// İstemcide de bakılıyor ki kullanıcı yüklemeyi bekleyip hata almasın.
+  static const int _maxLogoBytes = 10 * 1024 * 1024;
+
+  /// Sunucunun kabul ettiği uzantılar (`UploadProperties.imageExtensions`).
+  static const Set<String> _allowedLogoExtensions = {
+    'png',
+    'jpg',
+    'jpeg',
+    'webp',
+  };
+
+  /// Logo işlemi sürerken; iki kez tetiklenmesin diye.
+  bool _isLogoBusy = false;
 
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -91,6 +113,68 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
     _addressLineController.text = company.address?.addressLine ?? '';
     _districtController.text = company.address?.districtName ?? '';
     _cityController.text = company.address?.cityName ?? '';
+  }
+
+  // ------------------------------------------------------------------- Logo
+
+  /// Galeriden logo seçer ve yükler.
+  ///
+  /// Boyut ve uzantı istemcide de kontrol ediliyor: sunucu aynı kuralları
+  /// uyguluyor ama kullanıcıyı yüklemeyi bekleyip hata almaya bırakmanın
+  /// anlamı yok.
+  Future<void> _pickLogo() async {
+    if (_isLogoBusy) return;
+
+    // Ham dosya gönderiliyor: yeniden kodlamak PNG saydamlığını kaybettirir,
+    // logolarda bu görünür bir bozulma.
+    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (picked == null || !mounted) return;
+
+    final extension = picked.path.split('.').last.toLowerCase();
+    if (!_allowedLogoExtensions.contains(extension)) {
+      AppToast.error(context, 'Yalnızca PNG, JPG veya WEBP yükleyebilirsiniz');
+      return;
+    }
+
+    final length = await File(picked.path).length();
+    if (!mounted) return;
+    if (length > _maxLogoBytes) {
+      AppToast.error(context, 'Görsel en fazla 10 MB olabilir');
+      return;
+    }
+
+    await _runLogoAction(
+      () => context.read<BCompanyProvider>().updateLogo(picked.path),
+      successMessage: 'Logo güncellendi',
+    );
+  }
+
+  Future<void> _removeLogo() async {
+    if (_isLogoBusy) return;
+
+    await _runLogoAction(
+      () => context.read<BCompanyProvider>().removeLogo(),
+      successMessage: 'Logo kaldırıldı',
+    );
+  }
+
+  Future<void> _runLogoAction(
+    Future<bool> Function() action, {
+    required String successMessage,
+  }) async {
+    setState(() => _isLogoBusy = true);
+
+    final provider = context.read<BCompanyProvider>();
+    final succeeded = await action();
+
+    if (!mounted) return;
+    setState(() => _isLogoBusy = false);
+
+    if (succeeded) {
+      AppToast.success(context, successMessage);
+    } else {
+      AppToast.error(context, provider.errorMessage ?? 'İşlem tamamlanamadı');
+    }
   }
 
   Future<void> _save() async {
@@ -183,6 +267,10 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _sectionLabel("Logo"),
+            const SizedBox(height: AppSizes.space),
+            _logoSection(company),
+            const SizedBox(height: AppSizes.spaceLarge),
             _sectionLabel("Firma Bilgileri"),
             const SizedBox(height: AppSizes.spaceMedium),
             MyTextfield(labelText: "Firma Adı", controller: _nameController),
@@ -240,6 +328,101 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
           ],
         ),
       ),
+    );
+  }
+
+  /// Logo önizlemesi ve değiştirme/kaldırma eylemleri.
+  Widget _logoSection(BCompany company) {
+    final hasLogo = company.logoUrl != null && company.logoUrl!.isNotEmpty;
+
+    return Row(
+      children: [
+        _logoPreview(company.logoUrl),
+        const SizedBox(width: AppSizes.spaceMedium),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'PNG, JPG veya WEBP · en fazla 10 MB',
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: context.textTertiary,
+                ),
+              ),
+              const SizedBox(height: AppSizes.spaceSmall),
+              Row(
+                children: [
+                  TextButton(
+                    onPressed: _isLogoBusy ? null : _pickLogo,
+                    style: TextButton.styleFrom(
+                      foregroundColor: context.accentColor,
+                      padding: EdgeInsets.zero,
+                      textStyle: context.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    child: Text(hasLogo ? 'Değiştir' : 'Logo Yükle'),
+                  ),
+                  if (hasLogo) ...[
+                    const SizedBox(width: AppSizes.spaceMedium),
+                    TextButton(
+                      onPressed: _isLogoBusy ? null : _removeLogo,
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.danger,
+                        padding: EdgeInsets.zero,
+                        textStyle: context.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      child: const Text('Kaldır'),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _logoPreview(String? logoUrl) {
+    return Container(
+      width: _logoSize,
+      height: _logoSize,
+      decoration: BoxDecoration(
+        color: context.tileColor,
+        shape: BoxShape.circle,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: _isLogoBusy
+          ? Center(
+              child: SizedBox(
+                width: AppSizes.icon,
+                height: AppSizes.icon,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    context.accentColor,
+                  ),
+                ),
+              ),
+            )
+          : logoUrl == null || logoUrl.isEmpty
+          ? _logoPlaceholder()
+          : Image.network(
+              logoUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => _logoPlaceholder(),
+            ),
+    );
+  }
+
+  Widget _logoPlaceholder() {
+    return AppIcon(
+      AppIcons.building,
+      size: AppSizes.iconLarge,
+      color: context.textTertiary,
     );
   }
 

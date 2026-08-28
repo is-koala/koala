@@ -294,6 +294,7 @@ class Job {
     this.cityName,
     this.districtName,
     this.company,
+    this.applicationCount = 0,
     this.latitude,
     this.longitude,
   });
@@ -321,6 +322,13 @@ class Job {
 
   /// İlanı açan şirketin adı. Bireysel ilanlarda `null`.
   final String? company;
+
+  /// İlana gelen toplam başvuru sayısı — yanıtlanmışlar dâhil.
+  ///
+  /// Yalnızca işverenin listesi kullanıyor; keşfette anlamı yok. Sunucu bu
+  /// sayıyı ilan listesiyle aynı geçişte doldurduğu için başvuru sayısını
+  /// göstermek ayrı bir istek gerektirmiyor.
+  final int applicationCount;
 
   /// Konum. Backend bu iki alanı **opsiyonel** döndürüyor; adresi
   /// koordinata çevrilmemiş ilanlar haritada gösterilemiyor — bkz. [hasLocation].
@@ -370,6 +378,7 @@ class Job {
       cityName: json['cityName'] as String?,
       districtName: json['districtName'] as String?,
       company: json['companyName'] as String?,
+      applicationCount: (json['applicationCount'] as num?)?.toInt() ?? 0,
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
     );
@@ -394,6 +403,7 @@ class Job {
       'cityName': cityName,
       'districtName': districtName,
       'companyName': company,
+      'applicationCount': applicationCount,
       'latitude': latitude,
       'longitude': longitude,
     };

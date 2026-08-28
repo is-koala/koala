@@ -169,8 +169,23 @@ class _BPostsPageState extends State<BPostsPage>
               itemCount: posts.length,
               separatorBuilder: (_, _) =>
                   const SizedBox(height: AppSizes.space),
-              itemBuilder: (context, index) =>
-                  _buildJobCard(posts[index], isActive: isActive),
+              itemBuilder: (context, index) {
+                final post = posts[index];
+                // Geçmiş ilanın alt satırı işi alan kişiyi gösteriyor ve o
+                // bilgi ancak başvurularda var. İstek yalnızca ekrana giren
+                // satırlar için atılıyor; aktif ilanlarda hiç gerekmiyor,
+                // sayı zaten ilanla geliyor.
+                if (!isActive) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) {
+                      context.read<BJobsProvider>().ensureApplicants(
+                        post.job.id,
+                      );
+                    }
+                  });
+                }
+                return _buildJobCard(post, isActive: isActive);
+              },
             ),
     );
   }
@@ -330,14 +345,8 @@ class _BPostsPageState extends State<BPostsPage>
       onSelected: (value) {
         if (value == 'close') {
           _closePost(job.id);
-        } else if (value == 'delete') {
-          // TODO(backend): İlan silen bir uç yok; `POST /jobs/{id}/close`
-          // yalnızca ilanı başvuruya kapatıyor. Menü öğesi duruyor çünkü
-          // tasarımda var — uç geldiğinde buraya bağlanacak.
-          AppToast.error(
-            context,
-            'İlan silme henüz desteklenmiyor. İlanı kapatabilirsiniz.',
-          );
+        } else if (value == 'cancel') {
+          _cancelPost(job);
         }
       },
       itemBuilder: (context) => [
@@ -346,9 +355,9 @@ class _BPostsPageState extends State<BPostsPage>
           child: Text('İlanı Kapat', style: context.textTheme.bodyMedium),
         ),
         PopupMenuItem(
-          value: 'delete',
+          value: 'cancel',
           child: Text(
-            'İlanı Sil',
+            'İlanı İptal Et',
             style: context.textTheme.bodyMedium?.copyWith(
               color: AppColors.danger,
             ),
@@ -374,6 +383,63 @@ class _BPostsPageState extends State<BPostsPage>
     } else {
       AppToast.error(context, provider.errorMessage ?? 'İlan kapatılamadı');
     }
+  }
+
+  /// İlanı iptal eder.
+  ///
+  /// Kapatmadan farklı olduğu için önce onay soruluyor: iptal ilanı geçersiz
+  /// kılıyor ve başvuranlara bildirim gidiyor.
+  Future<void> _cancelPost(Job job) async {
+    final confirmed = await _confirmCancel(job);
+    if (confirmed != true || !mounted) return;
+
+    final provider = context.read<BJobsProvider>();
+    final cancelled = await provider.cancelPost(job.id);
+
+    if (!mounted) return;
+    if (cancelled) {
+      AppToast.success(context, 'İlan iptal edildi');
+    } else {
+      // Devam eden bir atama varsa sunucu 409 döndürüyor; mesajı zaten
+      // Türkçe geliyor ve olduğu gibi gösteriliyor.
+      AppToast.error(context, provider.errorMessage ?? 'İlan iptal edilemedi');
+    }
+  }
+
+  Future<bool?> _confirmCancel(Job job) {
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: const RoundedRectangleBorder(
+          borderRadius: AppRadius.secondaryCircular,
+        ),
+        title: Text(
+          'İlanı iptal et',
+          style: dialogContext.textTheme.titleMedium,
+        ),
+        content: Text(
+          '"${job.title}" ilanı geçersiz olacak ve başvuranlara bildirim '
+          'gidecek. İlan kaydı ve başvuru geçmişi silinmiyor.\n\n'
+          'Yalnızca yeni başvuruyu durdurmak istiyorsanız "İlanı Kapat"ı '
+          'kullanın.',
+          style: dialogContext.textTheme.bodyMedium?.copyWith(
+            color: dialogContext.textSecondary,
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Vazgeç'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+            child: const Text('İptal Et'),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _priceAndLocationRow(Job job) {
@@ -427,10 +493,11 @@ class _BPostsPageState extends State<BPostsPage>
     );
   }
 
-  /// Başvurular ilanlardan sonra ayrı bir istekle geliyor; gelmeden önce
-  /// "henüz başvuru yok" yazmak yanlış bilgi olurdu.
+  /// Başvuru sayısı ilan listesiyle birlikte geliyor (`applicationCount`),
+  /// bu satır için ayrı bir istek atılmıyor.
   Widget _applicantsRow(BJobPost post) {
-    final hasApplicants = post.applicants.isNotEmpty;
+    final count = post.job.applicationCount;
+    final hasApplicants = count > 0;
     final color = hasApplicants ? context.accentColor : context.textTertiary;
 
     return _footerRow(
@@ -439,11 +506,7 @@ class _BPostsPageState extends State<BPostsPage>
         AppIcon(AppIcons.userMultiple, size: AppSizes.iconSmall, color: color),
         const SizedBox(width: AppSizes.spaceSmall),
         Text(
-          !post.applicantsLoaded
-              ? 'Başvurular yükleniyor...'
-              : hasApplicants
-              ? '${post.applicants.length} başvuru'
-              : 'Henüz başvuru yok',
+          hasApplicants ? '$count başvuru' : 'Henüz başvuru yok',
           style: context.textTheme.bodySmall?.copyWith(
             fontWeight: FontWeight.w500,
             color: color,

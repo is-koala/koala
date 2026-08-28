@@ -31,10 +31,13 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
   void initState() {
     super.initState();
     _loadDetail();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Başvurular provider'da; ilan detayına doğrudan bağlantıyla
-      // gelinmişse liste henüz çekilmemiş olabilir.
-      if (mounted) context.read<BJobsProvider>().load();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      // İlan listesi bu ekrana doğrudan bağlantıyla gelinmişse henüz
+      // çekilmemiş olabilir; başvuranlar da yalnızca istendiğinde geliyor.
+      final provider = context.read<BJobsProvider>();
+      await provider.load();
+      await provider.ensureApplicants(widget.jobId);
     });
   }
 
@@ -64,7 +67,10 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
   Future<void> _approve(JobApplicant applicant) async {
     await _respond(
       applicant,
-      call: (provider) => provider.approveApplicant(applicant.id),
+      call: (provider) => provider.approveApplicant(
+        jobId: widget.jobId,
+        applicationId: applicant.id,
+      ),
       successMessage: '${applicant.fullName} onaylandı',
     );
   }
@@ -77,7 +83,8 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
     await _respond(
       applicant,
       call: (provider) => provider.rejectApplicant(
-        applicant.id,
+        jobId: widget.jobId,
+        applicationId: applicant.id,
         reason: reason.isEmpty ? null : reason,
       ),
       successMessage: '${applicant.fullName} reddedildi',

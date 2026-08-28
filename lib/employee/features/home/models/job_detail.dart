@@ -9,7 +9,6 @@ class JobCreator {
     required this.lastName,
     this.username,
     this.profilePictureUrl,
-    this.jobTitle,
   });
 
   final String id;
@@ -17,10 +16,6 @@ class JobCreator {
   final String lastName;
   final String? username;
   final String? profilePictureUrl;
-
-  /// Kişinin mesleği. `SafeUserDto` bugün bu alanı döndürmüyor, o yüzden
-  /// çoğu yerde `null`; okuyan ekranlar satırı çizmeden geçiyor.
-  final String? jobTitle;
 
   String get fullName => '$firstName $lastName'.trim();
 
@@ -31,7 +26,6 @@ class JobCreator {
       lastName: json['lastName'] as String? ?? '',
       username: json['username'] as String?,
       profilePictureUrl: json['profilePictureUrl'] as String?,
-      jobTitle: json['jobTitle'] as String?,
     );
   }
 
@@ -41,7 +35,6 @@ class JobCreator {
     'lastName': lastName,
     'username': username,
     'profilePictureUrl': profilePictureUrl,
-    'jobTitle': jobTitle,
   };
 }
 

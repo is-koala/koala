@@ -103,10 +103,16 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     );
   }
 
-  /// Alt bölüm: aktif ilanda başvuranlar, kapanmış ilanda işi alan kişi.
+  /// Alt bölüm: aktif ilanda onaylananlar ve bekleyen başvurular, kapanmış
+  /// ilanda işi alan kişi.
   ///
   /// Başvurular ilan detayından ayrı geliyor; henüz gelmediyse boş liste
   /// yerine yükleme gösteriliyor — "henüz başvuru yok" yanlış bilgi olurdu.
+  ///
+  /// **Onaylananlar bekleyenlerin üstünde.** Bir başvuruyu kabul etmek ilanı
+  /// kapatmıyor (sunucu atama açıp çalışanın onayını bekliyor), o yüzden
+  /// kabul edilen aday ilan açıkken de gösterilmeli; önceki hâlinde bekleyen
+  /// listesinden düşüp görünmez oluyordu.
   List<Widget> _peopleSection(BJobPost? post, {required bool isActive}) {
     if (post == null || !post.applicantsLoaded) {
       return [
@@ -124,10 +130,23 @@ class _BJobDetailPageState extends BJobDetailPageModel {
       ];
     }
 
+    final accepted = post.acceptedApplicants;
+
     return [
+      if (accepted.isNotEmpty) ...[
+        _sectionTitle(context, "Onaylananlar (${accepted.length})"),
+        const SizedBox(height: AppSizes.space),
+        for (final applicant in accepted)
+          _applicantCard(context, applicant, isAccepted: true),
+        const SizedBox(height: AppSizes.spaceLarge),
+      ],
       _sectionTitle(context, "Başvuranlar (${post.applicants.length})"),
       const SizedBox(height: AppSizes.space),
-      _applicantsList(context, post.applicants),
+      _applicantsList(
+        context,
+        post.applicants,
+        hasAccepted: accepted.isNotEmpty,
+      ),
     ];
   }
 
@@ -416,13 +435,23 @@ class _BJobDetailPageState extends BJobDetailPageModel {
 
   // ------------------------------------------------------------- Başvuranlar
 
-  Widget _applicantsList(BuildContext context, List<JobApplicant> applicants) {
+  /// Yanıt bekleyen başvurular.
+  ///
+  /// [hasAccepted] doluyken boş durum metni değişiyor: yukarıda onaylanmış
+  /// bir aday dururken "henüz başvuru yok" demek yanlış olurdu.
+  Widget _applicantsList(
+    BuildContext context,
+    List<JobApplicant> applicants, {
+    bool hasAccepted = false,
+  }) {
     if (applicants.isEmpty) {
       return _emptyPanel(
         context,
         icon: AppIcons.userMultiple,
-        title: 'Henüz başvuru yok',
-        subtitle: 'Başvurular geldiğinde burada görünecek',
+        title: hasAccepted ? 'Bekleyen başvuru yok' : 'Henüz başvuru yok',
+        subtitle: hasAccepted
+            ? 'Yeni başvurular geldiğinde burada görünecek'
+            : 'Başvurular geldiğinde burada görünecek',
       );
     }
 
@@ -433,7 +462,16 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     );
   }
 
-  Widget _applicantCard(BuildContext context, JobApplicant applicant) {
+  /// Aday kartı.
+  ///
+  /// [isAccepted] iken kabul/ret butonları yerine yeşil bir rozet çiziliyor:
+  /// yanıtlanmış bir başvuru ikinci kez yanıtlanamıyor, sunucu `400`
+  /// döndürüyor.
+  Widget _applicantCard(
+    BuildContext context,
+    JobApplicant applicant, {
+    bool isAccepted = false,
+  }) {
     final jobTitle = applicant.jobTitle;
 
     return Container(
@@ -509,7 +547,31 @@ class _BJobDetailPageState extends BJobDetailPageModel {
             ),
           ],
           const SizedBox(height: AppSizes.space),
-          _applicantActions(context, applicant),
+          if (isAccepted)
+            _badge(
+              context,
+              color: AppColors.success,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AppIcon(
+                    AppIcons.checkCircle,
+                    size: AppSizes.iconSmall,
+                    color: AppColors.successStrong,
+                  ),
+                  const SizedBox(width: AppSizes.spaceTiny),
+                  Text(
+                    'Onaylandı',
+                    style: context.textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.successStrong,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            _applicantActions(context, applicant),
         ],
       ),
     );

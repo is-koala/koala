@@ -14,6 +14,8 @@ class JobApplicant {
     required this.user,
     this.applicationDateTime,
     this.notes,
+    this.jobTitle,
+    this.cvUrl,
   });
 
   /// Başvurunun kimliği. Kabul/ret bu kimlikle gönderiliyor
@@ -33,12 +35,15 @@ class JobApplicant {
 
   /// Başvuranın mesleği.
   ///
-  /// TODO(backend): `JobApplicantDto` bu alanı taşımıyor — `SafeUserDto`
-  /// yalnızca ad, kullanıcı adı ve fotoğraf döndürüyor. İşverenin aday
-  /// listesinde mesleği görmesi için `jobTitle`'ın da dönmesi gerekiyor;
-  /// gelene kadar satır çizilmiyor. Aday başına ayrı bir profil isteği
-  /// atmak N+1 olurdu, o yüzden burada doldurulmuyor.
-  String? get jobTitle => user.jobTitle;
+  /// Alan `SafeUserDto`'da değil `JobApplicantDto`'nun kendisinde: o DTO on
+  /// ayrı yanıtta kullanılıyor ve mesleği hepsine yaymanın gereği yok.
+  final String? jobTitle;
+
+  /// Başvuranın özgeçmişinin bağlantısı; yüklememişse `null`.
+  ///
+  /// Sunucu bu adresi yalnızca ilanın işverenine döndürüyor, indirme yolu da
+  /// ayrıca sahiplik kontrolü yapıyor — başkasının dosyası `404`.
+  final String? cvUrl;
 
   String get fullName => user.fullName;
 
@@ -58,6 +63,8 @@ class JobApplicant {
           : const JobCreator(id: '', firstName: '', lastName: ''),
       applicationDateTime: _parseDate(json['applicationDateTime']),
       notes: json['notes'] as String?,
+      jobTitle: json['jobTitle'] as String?,
+      cvUrl: json['cvUrl'] as String?,
     );
   }
 

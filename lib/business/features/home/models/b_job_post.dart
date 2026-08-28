@@ -36,12 +36,20 @@ class BJobPost {
   List<JobApplicant> get applicants =>
       applications.where((a) => a.isPending).toList();
 
-  /// İşi alan kişi: kabul edilmiş başvuru. Kabul edilen yoksa `null`.
+  /// Kabul edilmiş başvurular.
+  ///
+  /// Kabul, ilanı kendiliğinden kapatmıyor — sunucu bir atama açıp çalışanın
+  /// onayını bekliyor — ve bir ilana birden çok kişi kabul edilebiliyor. Bu
+  /// yüzden tek kişi değil liste: aksi hâlde kabul edilen aday, ilan hâlâ
+  /// açıkken hiçbir yerde görünmüyordu.
+  List<JobApplicant> get acceptedApplicants => applications
+      .where((application) => application.status == ApplicationStatus.accepted)
+      .toList();
+
+  /// İşi alan kişi: kabul edilmiş ilk başvuru. Kabul edilen yoksa `null`.
   JobApplicant? get worker {
-    for (final application in applications) {
-      if (application.status == ApplicationStatus.accepted) return application;
-    }
-    return null;
+    final accepted = acceptedApplicants;
+    return accepted.isEmpty ? null : accepted.first;
   }
 
   BJobPost copyWith({

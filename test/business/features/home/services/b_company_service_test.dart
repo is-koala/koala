@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/business/features/home/models/b_company.dart';
 import 'package:koala/business/features/home/services/b_company_service.dart';
@@ -25,6 +28,7 @@ const _companyBody = {
       'countryName': 'Türkiye',
     },
     'followerCount': 12,
+    'approved': true,
   },
 };
 
@@ -65,7 +69,7 @@ void main() {
       expect(company.type, BCompanyType.other);
     });
 
-    test('onay bilgisi yanıtta olmadığı için varsayılan false', () async {
+    test('onay bilgisi `approved` anahtarından okunuyor', () async {
       final api = FakeApi(
         handler: (_) =>
             const FakeApiResponse(statusCode: 200, body: _companyBody),
@@ -75,8 +79,26 @@ void main() {
         api.client,
       ).fetchCompany('comp_1');
 
-      // `CompanyDto` `isApproved` döndürmüyor; değer `/users/me`'deki üyelik
-      // kaydından besleniyor.
+      // Sunucudaki alan adı `approved`; `isApproved` okunursa sessizce
+      // "onay bekliyor" görünürdü.
+      expect(company.isApproved, isTrue);
+    });
+
+    test('onay alanı hiç gelmezse false', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {'id': 'c', 'name': 'X'},
+          },
+        ),
+      );
+
+      final company = await BCompanyService.withClient(
+        api.client,
+      ).fetchCompany('c');
+
       expect(company.isApproved, isFalse);
       expect(company.copyWith(isApproved: true).isApproved, isTrue);
     });
@@ -102,6 +124,44 @@ void main() {
       // koruyor, boş metin göndermek onu silmek olurdu.
       expect(body.containsKey('description'), isFalse);
       expect(body.containsKey('taxNumber'), isFalse);
+    });
+  });
+
+  group('logo', () {
+    test('kaldırma DELETE atıyor ve şirketin yeni hâlini döndürüyor', () async {
+      final api = FakeApi(
+        handler: (_) =>
+            const FakeApiResponse(statusCode: 200, body: _companyBody),
+      );
+
+      final company = await BCompanyService.withClient(
+        api.client,
+      ).removeLogo('comp_1');
+
+      expect(api.requests.single.method, 'DELETE');
+      expect(api.requests.single.path, '/companies/comp_1/logo');
+      expect(company.name, 'Kahve Durağı');
+    });
+
+    test('yükleme çok parçalı PUT olarak gidiyor', () async {
+      final api = FakeApi(
+        handler: (_) =>
+            const FakeApiResponse(statusCode: 200, body: _companyBody),
+      );
+      final file = File('${Directory.systemTemp.path}/koala_logo_test.png')
+        ..writeAsBytesSync(const [1, 2, 3]);
+      addTearDown(() => file.deleteSync());
+
+      await BCompanyService.withClient(
+        api.client,
+      ).updateLogo('comp_1', file.path);
+
+      final request = api.requests.single;
+      expect(request.method, 'PUT');
+      expect(request.path, '/companies/comp_1/logo');
+      expect(request.contentType, startsWith('multipart/form-data'));
+      // Parçanın adı `logo`; sunucu `@RequestPart("logo")` bekliyor.
+      expect((request.data as FormData).files.single.key, 'logo');
     });
   });
 

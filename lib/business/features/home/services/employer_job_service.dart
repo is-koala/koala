@@ -61,10 +61,23 @@ class EmployerJobService {
 
   /// İlanı başvuruya kapatır.
   ///
-  /// Silme değil: kayıt duruyor, yalnızca durumu değişiyor. Backend'de ilan
-  /// silen bir uç yok.
+  /// İlan geçerliliğini koruyor, yalnızca yeni başvuru alması duruyor.
   Future<void> closeJob(String jobId) {
     return _apiClient.postWithoutData(ApiPaths.closeJob(jobId));
+  }
+
+  /// İlanı iptal eder.
+  ///
+  /// Kapatmadan farkı ilanı geçersiz kılması ve başvuranlara bildirim
+  /// göndermesi. Kayıt silinmiyor, başvuru geçmişi duruyor — backend'de ilan
+  /// silen bir uç yok, olması da istenmedi.
+  ///
+  /// Devam eden bir iş ataması varsa (`PENDING_CONFIRMATION`, `CONFIRMED`,
+  /// `IN_PROGRESS`) uç `409` döndürüyor: iptal, emanetteki parayı ve iptal
+  /// politikasını arkadan dolanan ikinci bir yol olurdu. O durumda atamanın
+  /// kendi iptal akışı kullanılmalı.
+  Future<void> cancelJob(String jobId) {
+    return _apiClient.postWithoutData(ApiPaths.cancelJob(jobId));
   }
 
   /// Bir ilana gelen başvurular.

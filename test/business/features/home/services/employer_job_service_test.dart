@@ -3,6 +3,7 @@ import 'package:koala/business/features/home/models/create_job_request.dart';
 import 'package:koala/business/features/home/services/employer_job_service.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/jobs/models/job_application.dart';
+import 'package:koala/product/network/api_exception.dart';
 
 import '../../../../support/fake_api.dart';
 
@@ -123,6 +124,40 @@ void main() {
         expect(request.path, '/users/me/jobs');
         expect((request.data as Map).containsKey('insuranceRequired'), isFalse);
       },
+    );
+  });
+
+  test('cancelJob iptal ucuna gidiyor', () async {
+    final api = FakeApi(
+      handler: (_) =>
+          const FakeApiResponse(statusCode: 200, body: {'success': true}),
+    );
+
+    await EmployerJobService.withClient(api.client).cancelJob('job_1');
+
+    expect(api.requests.single.path, '/jobs/job_1/cancel');
+    expect(api.requests.single.method, 'POST');
+  });
+
+  test('devam eden atama varsa iptal hatası taşınıyor', () async {
+    final api = FakeApi(
+      handler: (_) => const FakeApiResponse(
+        statusCode: 409,
+        body: {'success': false, 'message': 'İlanın devam eden bir işi var'},
+      ),
+    );
+
+    await expectLater(
+      EmployerJobService.withClient(api.client).cancelJob('job_1'),
+      throwsA(
+        isA<ApiException>()
+            .having((e) => e.type, 'type', ApiErrorType.conflict)
+            .having(
+              (e) => e.message,
+              'message',
+              'İlanın devam eden bir işi var',
+            ),
+      ),
     );
   });
 

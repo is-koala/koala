@@ -4,6 +4,7 @@ import 'package:koala/business/features/home/presentation/providers/b_company_pr
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
 import 'package:koala/employee/features/auth/services/auth_service.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
+import 'package:koala/product/network/realtime_client.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/theme/theme_provider.dart';
@@ -51,6 +52,11 @@ class BSettingsPage extends StatelessWidget {
           icon: AppIcons.logout,
           title: "Çıkış Yap",
           onTap: () async {
+            // Canlı bağlantı oturuma bağlı; token silinmeden önce
+            // kapatılıyor ki yeniden bağlanmaya çalışmasın. İşveren tarafı da
+            // aynı `RealtimeClient` örneğini kullanıyor.
+            await RealtimeClient().disconnect();
+
             // Sunucudaki oturumu da kapatıyor; çağrı başarısız olsa bile
             // token'lar cihazdan siliniyor.
             await AuthService().logout();

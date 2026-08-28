@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:koala/business/features/home/models/job_applicant.dart';
+import 'package:koala/employee/features/auth/models/public_profile.dart';
+import 'package:koala/employee/features/auth/services/user_service.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/profile_avatar.dart';
-import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -9,41 +10,33 @@ import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/extensions/date_extensions.dart';
+import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/app_icon.dart';
+import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+part 'b_user_profile_pagemodel.dart';
 
 /// İşverenin bir adayın kartına dokununca açtığı profil.
 ///
-/// Veri bugün yalnızca başvurunun kendisinden geliyor: ad, fotoğraf, ön yazı
-/// ve başvuru tarihi.
+/// İki kaynaktan besleniyor: [applicant] başvuru listesinden geliyor ve ekran
+/// açılır açılmaz ad, fotoğraf, ön yazı ve tarihi çizebiliyor; meslek,
+/// hakkında, konum ve özgeçmiş `GET /users/{userId}`'den arkadan doluyor.
 ///
-/// TODO(backend): Adayın herkese açık profili için bir uç yok.
-/// `SafeUserDto` meslek, konum ve özgeçmiş taşımıyor; `/users/{userId}` gibi
-/// bir uç ya da `JobApplicantDto`'nun genişletilmesi gerekiyor. O gelene
-/// kadar bu ekrandaki meslek, konum ve CV satırları veri bekliyor.
-class BUserProfilePage extends StatelessWidget {
-  final JobApplicant applicant;
-
+/// Sunucu bu uçta tam adres döndürmüyor — yalnızca il/ilçe — ve `cvUrl`'i
+/// sadece bu ilanın işverenine veriyor.
+class BUserProfilePage extends StatefulWidget {
   const BUserProfilePage({super.key, required this.applicant});
 
-  /// Kapaktaki profil fotoğrafı ve çevresindeki beyaz halka.
-  static const double _avatarSize = 100;
-  static const double _avatarBorder = 3;
+  final JobApplicant applicant;
 
-  /// Bilgi satırındaki etiket sütununun genişliği; değerler hizalı dursun
-  /// diye sabit.
-  static const double _infoLabelWidth = 100;
+  @override
+  State<BUserProfilePage> createState() => _BUserProfilePageState();
+}
 
-  /// Karşılığı henüz olmayan alanların yerine yazılan işaret.
-  static const String _missing = '—';
-
-  /// Kapaktaki gradyanın koyu ucu.
-  static const double _gradientEndAlpha = 0.8;
-
-  /// Kapak üzerindeki ikincil metin ve rozetlerin opaklıkları.
-  static const double _onCoverMuted = 0.9;
-  static const double _onCoverSurface = 0.2;
-
+class _BUserProfilePageState extends BUserProfilePageModel {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -59,6 +52,12 @@ class BUserProfilePage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: AppSizes.spaceSmall),
+                  if (_errorMessage != null) ...[
+                    _errorNotice(),
+                    const SizedBox(height: AppSizes.spaceLarge),
+                  ],
+                  _coverLetterSection(context),
+                  const SizedBox(height: AppSizes.spaceLarge),
                   _aboutSection(context),
                   const SizedBox(height: AppSizes.spaceLarge),
                   _infoSection(context),
@@ -74,10 +73,63 @@ class BUserProfilePage extends StatelessWidget {
     );
   }
 
+  /// Profil çekilemediğinde ekranın üstüne konan şerit.
+  ///
+  /// Ekranı kaplayan bir hata göstermek yerine: başvurudan gelen ad, fotoğraf
+  /// ve ön yazı zaten elde ve işverenin işine yarıyor.
+  Widget _errorNotice() {
+    return Container(
+      width: double.infinity,
+      padding: AppPadding.chip,
+      decoration: BoxDecoration(
+        color: context.tileColor,
+        borderRadius: AppRadius.innerCircular,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppIcon(
+            AppIcons.alert,
+            size: AppSizes.iconSmall,
+            color: context.textTertiary,
+          ),
+          const SizedBox(width: AppSizes.spaceSmall),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _errorMessage!,
+                  style: context.textTheme.bodySmall?.copyWith(
+                    color: context.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: AppSizes.spaceTiny),
+                GestureDetector(
+                  onTap: _loadProfile,
+                  child: Text(
+                    'Tekrar dene',
+                    style: context.textTheme.bodySmall?.copyWith(
+                      color: context.accentColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // -------------------------------------------------------------------- Kapak
 
   /// Kapak marka yeşili bir gradyan; üstündeki her şey temadan bağımsız beyaz.
   Widget _profileHeader(BuildContext context) {
+    final jobTitle = _jobTitle;
+    final location = _profile?.locationLabel;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: AppSizes.spaceXLarge),
@@ -87,7 +139,9 @@ class BUserProfilePage extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [
             AppColors.primaryColor,
-            AppColors.primaryColor.withValues(alpha: _gradientEndAlpha),
+            AppColors.primaryColor.withValues(
+              alpha: BUserProfilePageModel._gradientEndAlpha,
+            ),
           ],
         ),
       ),
@@ -98,45 +152,55 @@ class BUserProfilePage extends StatelessWidget {
               borderRadius: AppRadius.secondaryCircular,
               border: Border.all(
                 color: AppColors.onAccent,
-                width: _avatarBorder,
+                width: BUserProfilePageModel._avatarBorder,
               ),
             ),
             child: ProfileAvatar(
-              imageUrl: applicant.profilePictureUrl,
-              size: _avatarSize,
+              imageUrl:
+                  _profile?.profilePictureUrl ??
+                  widget.applicant.profilePictureUrl,
+              size: BUserProfilePageModel._avatarSize,
             ),
           ),
           const SizedBox(height: AppSizes.spaceMedium),
           Text(
-            applicant.fullName,
+            _profile?.fullName ?? widget.applicant.fullName,
             style: context.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.w700,
               color: AppColors.onAccent,
             ),
           ),
-          if (applicant.jobTitle != null) ...[
+          if (jobTitle != null && jobTitle.isNotEmpty) ...[
             const SizedBox(height: AppSizes.spaceTiny),
             Text(
-              applicant.jobTitle!,
+              jobTitle,
               style: context.textTheme.bodyLarge?.copyWith(
-                color: AppColors.onAccent.withValues(alpha: _onCoverMuted),
+                color: AppColors.onAccent.withValues(
+                  alpha: BUserProfilePageModel._onCoverMuted,
+                ),
               ),
             ),
           ],
-          const SizedBox(height: AppSizes.spaceSmall),
-          _locationBadge(context),
+          if (location != null) ...[
+            const SizedBox(height: AppSizes.spaceSmall),
+            _locationBadge(context, location),
+          ],
         ],
       ),
     );
   }
 
-  Widget _locationBadge(BuildContext context) {
-    final muted = AppColors.onAccent.withValues(alpha: _onCoverMuted);
+  Widget _locationBadge(BuildContext context, String location) {
+    final muted = AppColors.onAccent.withValues(
+      alpha: BUserProfilePageModel._onCoverMuted,
+    );
 
     return Container(
       padding: AppPadding.badge,
       decoration: BoxDecoration(
-        color: AppColors.onAccent.withValues(alpha: _onCoverSurface),
+        color: AppColors.onAccent.withValues(
+          alpha: BUserProfilePageModel._onCoverSurface,
+        ),
         borderRadius: AppRadius.secondaryCircular,
       ),
       child: Row(
@@ -149,7 +213,7 @@ class BUserProfilePage extends StatelessWidget {
           ),
           const SizedBox(width: AppSizes.spaceTiny),
           Text(
-            'Ankara, Türkiye',
+            location,
             style: context.textTheme.bodySmall?.copyWith(color: muted),
           ),
         ],
@@ -159,15 +223,35 @@ class BUserProfilePage extends StatelessWidget {
 
   // ------------------------------------------------------------- Bölümler
 
-  Widget _sectionTitle(BuildContext context, String title) =>
-      Text(title, style: context.textTheme.titleMedium);
+  /// Adayın bu ilana yazdığı ön yazı. Uydurulmuyor: boşsa öyle yazıyor.
+  Widget _coverLetterSection(BuildContext context) {
+    final notes = widget.applicant.notes;
 
-  BoxDecoration _panelDecoration(BuildContext context) => BoxDecoration(
-    color: context.tileColor,
-    borderRadius: AppRadius.innerCircular,
-  );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle(context, 'Ön Yazı'),
+        const SizedBox(height: AppSizes.spaceSmall),
+        Container(
+          width: double.infinity,
+          padding: AppPadding.primaryAll,
+          decoration: _panelDecoration(context),
+          child: Text(
+            notes?.isNotEmpty == true ? notes! : 'Aday bir ön yazı bırakmamış.',
+            style: context.textTheme.bodyMedium?.copyWith(
+              color: context.textSecondary,
+              height: 1.5,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
+  /// Adayın profilindeki "Hakkında" metni.
   Widget _aboutSection(BuildContext context) {
+    final about = _profile?.about;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -177,17 +261,17 @@ class BUserProfilePage extends StatelessWidget {
           width: double.infinity,
           padding: AppPadding.primaryAll,
           decoration: _panelDecoration(context),
-          // Adayın kendi yazdığı ön yazı. Boşsa uydurulmuyor: işverenin
-          // adaya ait sandığı bir metin göstermek yanlış bilgi olur.
-          child: Text(
-            applicant.notes?.isNotEmpty == true
-                ? applicant.notes!
-                : 'Aday bir ön yazı bırakmamış.',
-            style: context.textTheme.bodyMedium?.copyWith(
-              color: context.textSecondary,
-              height: 1.5,
-            ),
-          ),
+          child: _isLoading
+              ? _loadingLine()
+              : Text(
+                  about?.isNotEmpty == true
+                      ? about!
+                      : 'Aday profiline bir açıklama eklememiş.',
+                  style: context.textTheme.bodyMedium?.copyWith(
+                    color: context.textSecondary,
+                    height: 1.5,
+                  ),
+                ),
         ),
       ],
     );
@@ -205,26 +289,158 @@ class BUserProfilePage extends StatelessWidget {
           decoration: _panelDecoration(context),
           child: Column(
             children: [
-              _infoRow(context, AppIcons.user, 'Ad Soyad', applicant.fullName),
+              _infoRow(
+                context,
+                AppIcons.user,
+                'Ad Soyad',
+                _profile?.fullName ?? widget.applicant.fullName,
+              ),
               _infoRow(
                 context,
                 AppIcons.work,
                 'Meslek',
-                applicant.jobTitle ?? _missing,
+                _jobTitle ?? BUserProfilePageModel._missing,
               ),
               _infoRow(
                 context,
                 AppIcons.calendar,
                 'Başvuru Tarihi',
-                applicant.applicationDateTime?.asShortDate ?? _missing,
+                widget.applicant.applicationDateTime?.asShortDate ??
+                    BUserProfilePageModel._missing,
               ),
-              _infoRow(context, AppIcons.location, 'Konum', _missing),
+              _infoRow(
+                context,
+                AppIcons.location,
+                'Konum',
+                // Sunucu tam adres döndürmüyor; il/ilçe kadarı geliyor.
+                _profile?.locationLabel ?? BUserProfilePageModel._missing,
+              ),
             ],
           ),
         ),
       ],
     );
   }
+
+  // ------------------------------------------------------------- Özgeçmiş
+
+  /// Özgeçmiş kartı.
+  ///
+  /// Bağlantı yoksa aday özgeçmiş yüklememiş demektir; sunucu adresi zaten
+  /// yalnızca yetkili görene döndürüyor.
+  Widget _cvSection(BuildContext context) {
+    final hasCv = _cvUrl != null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle(context, 'Özgeçmiş'),
+        const SizedBox(height: AppSizes.space),
+        Material(
+          color: context.tileColor,
+          borderRadius: AppRadius.innerCircular,
+          child: InkWell(
+            borderRadius: AppRadius.innerCircular,
+            onTap: hasCv ? _openCv : null,
+            child: Padding(
+              padding: AppPadding.primaryAll,
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(AppSizes.spaceSmall),
+                    decoration: BoxDecoration(
+                      color: context.accentColor.withValues(
+                        alpha: hasCv ? 0.15 : 0.06,
+                      ),
+                      borderRadius: AppRadius.smallCircular,
+                    ),
+                    child: AppIcon(
+                      AppIcons.fileText,
+                      size: AppSizes.icon,
+                      color: hasCv ? context.accentColor : context.textTertiary,
+                    ),
+                  ),
+                  const SizedBox(width: AppSizes.space),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          hasCv ? 'Özgeçmişi Görüntüle' : 'Özgeçmiş yok',
+                          style: context.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: AppSizes.smallGap),
+                        Text(
+                          hasCv
+                              ? 'Tarayıcıda açılır'
+                              : 'Aday henüz özgeçmiş yüklememiş',
+                          style: context.textTheme.labelMedium?.copyWith(
+                            color: context.textTertiary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (_isOpeningCv)
+                    SizedBox(
+                      width: AppSizes.iconMedium,
+                      height: AppSizes.iconMedium,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          context.accentColor,
+                        ),
+                      ),
+                    )
+                  else if (hasCv)
+                    AppIcon(
+                      AppIcons.arrowRight,
+                      size: AppSizes.iconMedium,
+                      color: context.accentColor,
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // --------------------------------------------------------- Ortak parçalar
+
+  /// Profil beklenirken metnin yerini tutan çubuk.
+  Widget _loadingLine() {
+    return Row(
+      children: [
+        SizedBox(
+          width: AppSizes.iconMedium,
+          height: AppSizes.iconMedium,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation<Color>(context.accentColor),
+          ),
+        ),
+        const SizedBox(width: AppSizes.space),
+        Text(
+          'Profil yükleniyor...',
+          style: context.textTheme.bodyMedium?.copyWith(
+            color: context.textTertiary,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _sectionTitle(BuildContext context, String title) =>
+      Text(title, style: context.textTheme.titleMedium);
+
+  BoxDecoration _panelDecoration(BuildContext context) => BoxDecoration(
+    color: context.tileColor,
+    borderRadius: AppRadius.innerCircular,
+  );
 
   Widget _infoRow(
     BuildContext context,
@@ -240,7 +456,7 @@ class BUserProfilePage extends StatelessWidget {
           AppIcon(icon, size: AppSizes.iconSmall, color: context.accentColor),
           const SizedBox(width: AppSizes.space),
           SizedBox(
-            width: _infoLabelWidth,
+            width: BUserProfilePageModel._infoLabelWidth,
             child: Text(
               label,
               style: context.textTheme.bodySmall?.copyWith(
@@ -259,71 +475,6 @@ class BUserProfilePage extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _cvSection(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _sectionTitle(context, 'Özgeçmiş'),
-        const SizedBox(height: AppSizes.space),
-        Container(
-          width: double.infinity,
-          padding: AppPadding.primaryAll,
-          decoration: BoxDecoration(
-            color: context.accentColor.withValues(alpha: 0.08),
-            borderRadius: AppRadius.innerCircular,
-            border: Border.all(
-              color: context.accentColor.withValues(alpha: 0.2),
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(AppSizes.spaceSmall),
-                decoration: BoxDecoration(
-                  color: context.accentColor.withValues(alpha: 0.15),
-                  borderRadius: AppRadius.smallCircular,
-                ),
-                child: AppIcon(
-                  AppIcons.fileText,
-                  size: AppSizes.icon,
-                  color: context.accentColor,
-                ),
-              ),
-              const SizedBox(width: AppSizes.space),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // TODO(backend): Adayın `cvUrl`'i başvuru yanıtında yok;
-                    // uç geldiğinde dosya adı ve indirme buraya bağlanacak.
-                    Text(
-                      'Özgeçmiş',
-                      style: context.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: AppSizes.smallGap),
-                    Text(
-                      'Aday özgeçmişi henüz görüntülenemiyor',
-                      style: context.textTheme.labelMedium?.copyWith(
-                        color: context.textTertiary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              AppIcon(
-                AppIcons.download,
-                size: AppSizes.iconMedium,
-                color: context.accentColor,
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }
