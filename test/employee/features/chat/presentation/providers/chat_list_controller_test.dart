@@ -214,4 +214,21 @@ void main() {
       expect(controller.conversations.single.isOnline, isTrue);
     });
   });
+
+  group('dispose', () {
+    // Navbar'da sekmeler arasında hızlıca gezinirken sayfa, istek daha
+    // dönmeden atılıyor. Geç gelen yanıt "used after being disposed" ile
+    // uygulamayı düşürmemeli.
+    test('yükleme bitmeden atılırsa çökmez', () async {
+      final controller = build([conversationBody()]);
+
+      final pending = controller.load(currentUserId: _me);
+      controller.dispose();
+
+      await expectLater(pending, completes);
+      // Atılmış denetleyici artık soket açmamalı; aboneliğin iptali yok.
+      expect(realtime.connectCalled, isFalse);
+      expect(realtime.presenceStreams, isEmpty);
+    });
+  });
 }

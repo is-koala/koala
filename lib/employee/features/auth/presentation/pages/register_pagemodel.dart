@@ -27,16 +27,12 @@ abstract class RegisterPagemodel extends State<RegisterPage> {
     final email = emailController.text.trim();
 
     if (firstName.isEmpty || lastName.isEmpty || email.isEmpty) {
-      AuthSnackbar.show(context, 'Lütfen tüm alanları doldur.', isError: true);
+      AppToast.error(context, 'Lütfen tüm alanları doldur.');
       return;
     }
 
     if (!_emailPattern.hasMatch(email)) {
-      AuthSnackbar.show(
-        context,
-        'Geçerli bir e-posta adresi gir.',
-        isError: true,
-      );
+      AppToast.error(context, 'Geçerli bir e-posta adresi gir.');
       return;
     }
 
@@ -60,7 +56,7 @@ abstract class RegisterPagemodel extends State<RegisterPage> {
       );
     } on ApiException catch (error) {
       if (!mounted) return;
-      AuthSnackbar.show(context, error.message, isError: true);
+      AppToast.error(context, error.message);
     } finally {
       if (mounted) setState(() => isSubmitting = false);
     }

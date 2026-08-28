@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/presentation/widgets/auth_divider.dart';
 import 'package:koala/employee/features/auth/presentation/widgets/auth_legal_footer.dart';
-import 'package:koala/employee/features/auth/presentation/widgets/auth_snackbar.dart';
 import 'package:koala/employee/features/auth/presentation/widgets/google_auth_button.dart';
 import 'package:koala/employee/features/auth/services/auth_service.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -12,6 +11,7 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/app_icon.dart';
+import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_button.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
 

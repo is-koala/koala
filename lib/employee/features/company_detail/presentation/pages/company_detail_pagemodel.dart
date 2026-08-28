@@ -54,15 +54,11 @@ abstract class CompanyDetailPagemodel extends State<CompanyDetailPage> {
     });
 
     // TODO(backend): Takip bilgisi gerçek servise yazılacak.
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          isFollowing
-              ? '${widget.company.name} takip edildi'
-              : '${widget.company.name} takipten çıkarıldı',
-        ),
-        duration: const Duration(seconds: 2),
-      ),
+    AppToast.info(
+      context,
+      isFollowing
+          ? '${widget.company.name} takip edildi'
+          : '${widget.company.name} takipten çıkarıldı',
     );
   }
 
@@ -71,13 +67,10 @@ abstract class CompanyDetailPagemodel extends State<CompanyDetailPage> {
   /// arada başvuru şartı var; şirket düzeyinde ayrı bir konuşma türü gerekiyor.
   /// Buton yerinde duruyor, uç gelene kadar durumu açıklıyor.
   void openChat() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Şirketle doğrudan mesajlaşma henüz açık değil. '
-          'İlana başvurduğunda sohbet açılıyor.',
-        ),
-      ),
+    AppToast.info(
+      context,
+      'Şirketle doğrudan mesajlaşma henüz açık değil. '
+      'İlana başvurduğunda sohbet açılıyor.',
     );
   }
 }

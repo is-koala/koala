@@ -293,4 +293,18 @@ void main() {
       expect(await thread.send('   '), isFalse);
     });
   });
+
+  group('dispose', () {
+    // Sohbetten hızlıca çıkıldığında geç gelen yanıt "used after being
+    // disposed" ile uygulamayı düşürmemeli.
+    test('yükleme bitmeden atılırsa çökmez', () async {
+      final controller = build(apiWith([]));
+
+      final pending = controller.load(currentUserId: _me);
+      controller.dispose();
+
+      await expectLater(pending, completes);
+      expect(realtime.connectCalled, isFalse);
+    });
+  });
 }

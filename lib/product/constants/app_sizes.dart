@@ -59,8 +59,11 @@ class AppSizes {
   /// yanında etiket yok.
   static const double iconNav = 28.0;
 
-  /// Employee navbar'ının yüksekliği.
+  /// Employee navbar'ının yüksekliği ve yüzen hap (floating pill) genişliği.
+  /// Sabit genişlik verilerek ekran boyutundan bağımsız tutarlı bir ikon
+  /// aralığı ve görünüm sağlanır.
   static const double navBar = 64.0;
+  static const double navBarWidth = 250.0;
 
   /// Business navbar'ının yüksekliği; employee'ninkinden yüksek çünkü
   /// öğeleri ikon + etiket olarak iki satır taşıyor.

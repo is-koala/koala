@@ -14,6 +14,7 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
+import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:provider/provider.dart';
 
@@ -448,11 +449,7 @@ class BJobDetailPage extends StatelessWidget {
                 post.job.id,
                 applicant.id,
               );
-              _showResultSnack(
-                context,
-                '${applicant.fullName} reddedildi',
-                AppColors.danger,
-              );
+              AppToast.error(context, '${applicant.fullName} reddedildi');
             },
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.danger,
@@ -474,11 +471,7 @@ class BJobDetailPage extends StatelessWidget {
                 post.job.id,
                 applicant,
               );
-              _showResultSnack(
-                context,
-                '${applicant.fullName} onaylandı!',
-                context.accentColor,
-              );
+              AppToast.success(context, '${applicant.fullName} onaylandı!');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: context.accentColor,
@@ -494,20 +487,6 @@ class BJobDetailPage extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-
-  void _showResultSnack(BuildContext context, String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-        shape: const RoundedRectangleBorder(
-          borderRadius: AppRadius.smallCircular,
-        ),
-        duration: const Duration(seconds: 2),
-      ),
     );
   }
 

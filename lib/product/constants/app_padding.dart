@@ -48,6 +48,15 @@ final class AppPadding {
   /// Küçük durum rozeti; [chip]'ten dar, tek kelimelik metin taşıyor.
   static const badge = EdgeInsets.symmetric(horizontal: 8, vertical: 4);
 
+  // ----------------------------------------------------------------- Toast
+
+  /// Toast'un iç boşluğu. Yatayda geniş: kapsülün kavisi içeriği kenardan
+  /// ittiği için soldaki ikon dar boşlukta yaya değiyor.
+  static const toast = EdgeInsets.symmetric(horizontal: 20, vertical: 14);
+
+  /// Toast'un ekran kenarlarına payı; sayfa boşluğuyla ([primary]) hizalı.
+  static const toastMargin = EdgeInsets.all(primary);
+
   // ----------------------------------------------------------------- Buton
 
   /// Ana boşluktan dar yatay boşluk; buton çubuğunun içindeki butonun
@@ -62,17 +71,15 @@ final class AppPadding {
 
   // ---------------------------------------------------------------- Navbar
 
-  /// Employee tarafındaki yüzen navbar'ın ekran kenarlarına uzaklığı.
-  /// Yanlardaki 36, hap'ın ekran genişliğinden belirgin biçimde dar kalması
-  /// için ana boşluktan geniş.
-  static const EdgeInsets bottomNavBarPadding = EdgeInsets.only(
-    bottom: 30,
-    left: 36,
-    right: 36,
-  );
+  /// Employee tarafındaki yüzen navbar'ın alt kenar boşluğu.
+  /// Genişlik sabit ([AppSizes.navBarWidth]) tutulduğu için yatay boşluk
+  /// yerine sayfa ortalanır.
+  static const EdgeInsets bottomNavBarPadding = EdgeInsets.only(bottom: 30);
 
   /// Yüzen navbar'ın kendi iç boşluğu.
-  static const navBarContent = EdgeInsets.all(10);
+  /// Uçlardaki dairesel butonların kapsülün kavis yaylarıyla tam
+  /// eşmerkezli (concentric) oturması için dikey ve yatay boşluk eşittir.
+  static const navBarContent = EdgeInsets.all(8);
 
   /// Sayfanın altına sabitlenen buton çubuğunun boşluğu. Alt güvenli alan
   /// payını çubuk çalışma zamanında ekliyor, o yüzden burada alt değer

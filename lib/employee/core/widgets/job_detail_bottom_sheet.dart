@@ -1,10 +1,8 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
-import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/saved_jobs_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
@@ -13,8 +11,11 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/num_extensions.dart';
+import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/app_icon.dart';
+import 'package:koala/product/widgets/app_toast.dart';
 import 'package:provider/provider.dart';
+import 'dart:ui';
 
 class JobDetailBottomSheet extends StatefulWidget {
   final Job job;
@@ -430,9 +431,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     final succeeded = await provider.toggleSave(widget.job);
     if (succeeded || !mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(provider.errorMessage ?? 'İşlem tamamlanamadı.')),
-    );
+    AppToast.error(context, provider.errorMessage ?? 'İşlem tamamlanamadı.');
   }
 
   /// Konum satırı. Detay geldiyse açık adres, gelmediyse özetteki ilçe/il,

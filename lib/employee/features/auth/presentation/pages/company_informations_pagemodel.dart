@@ -47,7 +47,7 @@ abstract class CompanyInformationsPagemodel
 
   void saveCompanyInformation() {
     if (companyNameController.text.isEmpty) {
-      _showSnack('Lütfen firma adını giriniz', AppColors.danger);
+      AppToast.error(context, 'Lütfen firma adını giriniz');
       return;
     }
 
@@ -55,22 +55,9 @@ abstract class CompanyInformationsPagemodel
     // fazlasını istiyor: şirket tipi (`CompanyType` enum'u) ve serbest metin
     // yerine yapılandırılmış adres (ülke kodu, il, ilçe, enlem/boylam). Bu
     // alanlar forma eklenmeden çağrı yapılamıyor.
-    _showSnack(
-      'Şirket bilgileri başarıyla kaydedildi',
-      Theme.of(context).colorScheme.primary,
-    );
+    AppToast.success(context, 'Şirket bilgileri başarıyla kaydedildi');
 
     // Kayıt akışı burada bitiyor; oturum şifre adımında açılmıştı.
     context.go('/business/home');
-  }
-
-  void _showSnack(String message, Color background) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message, style: TextStyle(color: AppColors.onAccent)),
-        backgroundColor: background,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
   }
 }

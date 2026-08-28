@@ -8,6 +8,7 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
+import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/button_navbar.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:provider/provider.dart';
@@ -70,12 +71,7 @@ class _ApplyPageState extends State<ApplyPage> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(provider.errorMessage ?? 'Başvuru gönderilemedi.'),
-        backgroundColor: AppColors.danger,
-      ),
-    );
+    AppToast.error(context, provider.errorMessage ?? 'Başvuru gönderilemedi.');
   }
 
   @override

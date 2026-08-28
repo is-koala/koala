@@ -23,7 +23,7 @@ abstract class LoginPagemodel extends State<LoginPage> {
     final password = passwordController.text;
 
     if (email.isEmpty || password.isEmpty) {
-      AuthSnackbar.show(context, 'E-posta ve şifreni gir.', isError: true);
+      AppToast.error(context, 'E-posta ve şifreni gir.');
       return;
     }
 
@@ -36,7 +36,7 @@ abstract class LoginPagemodel extends State<LoginPage> {
       context.go(_destinationFor(user));
     } on ApiException catch (error) {
       if (!mounted) return;
-      AuthSnackbar.show(context, error.message, isError: true);
+      AppToast.error(context, error.message);
     } finally {
       if (mounted) setState(() => isSubmitting = false);
     }

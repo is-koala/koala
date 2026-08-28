@@ -7,6 +7,7 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
+import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 
 /// Bildirim türleri
@@ -141,17 +142,7 @@ class _BNotificationsPageState extends State<BNotificationsPage> {
           )
           .toList();
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Tüm bildirimler okundu olarak işaretlendi'),
-        backgroundColor: context.accentColor,
-        behavior: SnackBarBehavior.floating,
-        shape: const RoundedRectangleBorder(
-          borderRadius: AppRadius.smallCircular,
-        ),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    AppToast.success(context, 'Tüm bildirimler okundu olarak işaretlendi');
   }
 
   void _dismissNotification(String id) {

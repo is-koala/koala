@@ -8,6 +8,7 @@ import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/network/realtime_client.dart';
 import 'package:koala/product/theme/theme_provider.dart';
+import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:koala/product/widgets/my_list_tile.dart';
 import 'package:koala/product/widgets/theme_mode_sheet.dart';
@@ -47,12 +48,9 @@ class SettingsPage extends StatelessWidget {
             final user = provider.user;
             if (user == null) {
               if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      provider.errorMessage ?? "Profil bilgisi alınamadı.",
-                    ),
-                  ),
+                AppToast.error(
+                  context,
+                  provider.errorMessage ?? "Profil bilgisi alınamadı.",
                 );
               }
               return;

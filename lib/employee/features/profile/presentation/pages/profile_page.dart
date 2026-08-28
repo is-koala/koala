@@ -21,7 +21,8 @@ class ProfilePage extends StatefulWidget {
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage> {
+class _ProfilePageState extends State<ProfilePage>
+    with AutomaticKeepAliveClientMixin<ProfilePage> {
   /// Profil fotoğrafının kenar uzunluğu.
   static const double _avatarSize = 100;
 
@@ -56,6 +57,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final provider = context.watch<UserProvider>();
     final user = provider.user;
 
@@ -84,6 +86,11 @@ class _ProfilePageState extends State<ProfilePage> {
       },
     );
   }
+
+  /// Sekme değiştikçe sayfa yeniden kurulmasın: `initState`'teki tek seferlik
+  /// yükleme ancak böyle tek sefer kalıyor, kaydırma konumu da korunuyor.
+  @override
+  bool get wantKeepAlive => true;
 
   Widget _errorState(String message) {
     return Center(

@@ -28,6 +28,8 @@ class ChatListController extends ChangeNotifier {
 
   StreamSubscription<RealtimeEvent>? _messages;
 
+  bool _disposed = false;
+
   /// Karşı taraf kimliği → presence aboneliği. Liste değiştikçe eklenip
   /// çıkarılıyor; her abonelik sunucuda bir yetki sorgusu demek, boşuna
   /// açık tutulmamalı.
@@ -39,17 +41,28 @@ class ChatListController extends ChangeNotifier {
 
   String? get errorMessage => _errorMessage;
 
+  /// Sayfa atıldıktan sonra gelen geç yanıtlar dinleyicileri uyandırmamalı.
+  ///
+  /// Navbar'da sekmeler arasında hızlıca gezinirken `PageView` ekranı
+  /// `load()` daha bitmeden atabiliyor; süslenmemiş `notifyListeners()`
+  /// o noktada "used after being disposed" ile uygulamayı düşürüyor.
+  void _safeNotify() {
+    if (_disposed) return;
+    notifyListeners();
+  }
+
   /// Sohbetleri çeker, çevrimiçi bilgisini işler ve canlı akışa bağlanır.
   Future<void> load({required String currentUserId}) async {
     _currentUserId = currentUserId;
     _isLoading = _conversations.isEmpty;
     _errorMessage = null;
-    notifyListeners();
+    _safeNotify();
 
     try {
       final page = await _chatService.fetchConversations(
         currentUserId: currentUserId,
       );
+      if (_disposed) return;
       _conversations = await _withPresence(page.conversations);
       _listenToMessages();
       _syncPresenceSubscriptions();
@@ -57,7 +70,7 @@ class ChatListController extends ChangeNotifier {
       _errorMessage = error.message;
     } finally {
       _isLoading = false;
-      notifyListeners();
+      _safeNotify();
     }
   }
 
@@ -95,7 +108,7 @@ class ChatListController extends ChangeNotifier {
   /// düşüyor. Sunucu kopyayı iki tarafa da gönderiyor, yani kendi ikinci
   /// cihazından yazdığında bu liste de güncelleniyor.
   void _listenToMessages() {
-    if (_messages != null) return;
+    if (_disposed || _messages != null) return;
 
     unawaited(_realtimeClient.connect());
     _messages = _realtimeClient.userMessageEvents().listen(_onMessageEvent);
@@ -140,7 +153,7 @@ class ChatListController extends ChangeNotifier {
       updated,
       ..._conversations.where((c) => c.id != conversationId),
     ];
-    notifyListeners();
+    _safeNotify();
   }
 
   Future<void> _reloadQuietly() async {
@@ -149,9 +162,10 @@ class ChatListController extends ChangeNotifier {
 
     try {
       final page = await _chatService.fetchConversations(currentUserId: userId);
+      if (_disposed) return;
       _conversations = await _withPresence(page.conversations);
       _syncPresenceSubscriptions();
-      notifyListeners();
+      _safeNotify();
     } on ApiException {
       // Yut: eldeki liste duruyor, kullanıcı elle tazeleyebilir.
     }
@@ -163,6 +177,8 @@ class ChatListController extends ChangeNotifier {
   /// herkes bu şartı zaten sağlıyor. Listeden düşen kişinin aboneliği
   /// bırakılıyor.
   void _syncPresenceSubscriptions() {
+    if (_disposed) return;
+
     final wanted = _conversations
         .map((conversation) => conversation.counterpartId)
         .where((id) => id.isNotEmpty)
@@ -193,11 +209,12 @@ class ChatListController extends ChangeNotifier {
 
     _conversations = [..._conversations]
       ..[index] = _conversations[index].copyWith(isOnline: online);
-    notifyListeners();
+    _safeNotify();
   }
 
   @override
   void dispose() {
+    _disposed = true;
     unawaited(_messages?.cancel());
     for (final subscription in _presence.values) {
       unawaited(subscription.cancel());

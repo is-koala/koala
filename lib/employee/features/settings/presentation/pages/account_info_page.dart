@@ -8,6 +8,7 @@ import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/button_navbar.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
@@ -90,11 +91,14 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
     if (!mounted) return;
 
     if (pending == null) {
-      _showMessage(provider.errorMessage ?? "Profil güncellenemedi.");
+      AppToast.error(
+        context,
+        provider.errorMessage ?? "Profil güncellenemedi.",
+      );
       return;
     }
 
-    _showMessage(_successMessage(pending));
+    AppToast.success(context, _successMessage(pending));
     context.pop();
   }
 
@@ -113,12 +117,6 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
     if (message != null && message.isNotEmpty) return message;
 
     return "Profilin güncellendi. Doğrulama bekleyen alanlar var.";
-  }
-
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override

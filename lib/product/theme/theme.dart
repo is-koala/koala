@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_radius.dart';
 
 /// Zemin, metin ve ayraç renkleri buradaki [ColorScheme]'lerden gelir;
 /// widget'lar bunlara `context` üzerinden erişir (bkz. context_extensions).
@@ -161,10 +162,14 @@ ThemeData lightTheme = ThemeData(
     AppColors.lightTextPrimary,
     AppColors.lightTextSecondary,
   ),
+  // Biçim `AppToast` ile aynı: doğrudan `SnackBar` kullanan bir yer kalırsa
+  // da köşeler butonlarla ([AppRadius.primary]) hizalı kalsın.
   snackBarTheme: const SnackBarThemeData(
     backgroundColor: AppColors.lightTileHigh,
     contentTextStyle: TextStyle(color: AppColors.lightTextPrimary),
     actionTextColor: AppColors.primaryDeep,
+    behavior: SnackBarBehavior.floating,
+    shape: RoundedRectangleBorder(borderRadius: AppRadius.primaryCircular),
   ),
 );
 
@@ -219,5 +224,7 @@ ThemeData darkTheme = ThemeData(
     backgroundColor: AppColors.darkTileHigh,
     contentTextStyle: TextStyle(color: AppColors.darkTextPrimary),
     actionTextColor: AppColors.primaryColor,
+    behavior: SnackBarBehavior.floating,
+    shape: RoundedRectangleBorder(borderRadius: AppRadius.primaryCircular),
   ),
 );

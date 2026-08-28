@@ -10,6 +10,7 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/num_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
+import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/empty_state.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:provider/provider.dart';
@@ -124,14 +125,11 @@ class _SavedJobsPageState extends State<SavedJobsPage> {
       direction: DismissDirection.endToStart,
       onDismissed: (_) {
         provider.removeJob(job.id);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${job.title} kaldırıldı'),
-            action: SnackBarAction(
-              label: 'Geri Al',
-              onPressed: () => provider.toggleSave(job),
-            ),
-          ),
+        AppToast.info(
+          context,
+          '${job.title} kaldırıldı',
+          actionLabel: 'Geri Al',
+          onAction: () => provider.toggleSave(job),
         );
       },
       background: Container(

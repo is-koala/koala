@@ -8,6 +8,7 @@ import 'package:koala/employee/features/profile/presentation/providers/user_prov
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/widgets/app_toast.dart';
 import 'package:provider/provider.dart';
 
 class ChatPage extends StatefulWidget {
@@ -88,7 +89,7 @@ class _ChatPageState extends State<ChatPage> {
     if (error == null) return;
 
     // Metin alanı temizlenmiyor: kullanıcı yazdığını kaybetmesin.
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+    AppToast.error(context, error);
   }
 
   @override

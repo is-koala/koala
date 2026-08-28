@@ -42,6 +42,8 @@ class ChatThreadController extends ChangeNotifier {
   Timer? _typingReset;
   DateTime? _lastTypingSentAt;
 
+  bool _disposed = false;
+
   List<Message> get messages => List.unmodifiable(_messages);
 
   bool get isLoading => _isLoading;
@@ -53,18 +55,29 @@ class ChatThreadController extends ChangeNotifier {
 
   String? get errorMessage => _errorMessage;
 
+  /// Sayfa atıldıktan sonra gelen geç yanıtlar dinleyicileri uyandırmamalı.
+  ///
+  /// Navbar'da sekmeler arasında hızlıca gezinirken `PageView` ekranı
+  /// `load()` daha bitmeden atabiliyor; süslenmemiş `notifyListeners()`
+  /// o noktada "used after being disposed" ile uygulamayı düşürüyor.
+  void _safeNotify() {
+    if (_disposed) return;
+    notifyListeners();
+  }
+
   /// Mesajları çeker, sohbeti okundu işaretler ve canlı akışa bağlanır.
   Future<void> load({required String currentUserId}) async {
     _currentUserId = currentUserId;
     _isLoading = _messages.isEmpty;
     _errorMessage = null;
-    notifyListeners();
+    _safeNotify();
 
     try {
       final page = await _chatService.fetchMessages(
         conversationId: conversationId,
         currentUserId: currentUserId,
       );
+      if (_disposed) return;
       _messages = page.messages;
       _listenToRealtime();
 
@@ -79,7 +92,7 @@ class ChatThreadController extends ChangeNotifier {
       _errorMessage = error.message;
     } finally {
       _isLoading = false;
-      notifyListeners();
+      _safeNotify();
     }
   }
 
@@ -94,7 +107,7 @@ class ChatThreadController extends ChangeNotifier {
 
     _isSending = true;
     _errorMessage = null;
-    notifyListeners();
+    _safeNotify();
 
     try {
       final message = await _chatService.sendMessage(
@@ -109,7 +122,7 @@ class ChatThreadController extends ChangeNotifier {
       return false;
     } finally {
       _isSending = false;
-      notifyListeners();
+      _safeNotify();
     }
   }
 
@@ -126,7 +139,7 @@ class ChatThreadController extends ChangeNotifier {
   }
 
   void _listenToRealtime() {
-    if (_events != null) return;
+    if (_disposed || _events != null) return;
 
     // Bağlantı kurulamazsa akış hiç olay üretmiyor; ekran REST'ten gelen
     // mesajlarla çalışmaya devam ediyor.
@@ -178,17 +191,17 @@ class ChatThreadController extends ChangeNotifier {
     if (_messages.any((existing) => existing.id == message.id)) return;
 
     _messages = [..._messages, message];
-    notifyListeners();
+    _safeNotify();
   }
 
   void _setTyping() {
     _isCounterpartTyping = true;
-    notifyListeners();
+    _safeNotify();
 
     _typingReset?.cancel();
     _typingReset = Timer(_typingTimeout, () {
       _isCounterpartTyping = false;
-      notifyListeners();
+      _safeNotify();
     });
   }
 
@@ -201,7 +214,7 @@ class ChatThreadController extends ChangeNotifier {
       return message.copyWith(readAt: readAt, status: MessageStatus.read);
     }).toList();
 
-    if (changed) notifyListeners();
+    if (changed) _safeNotify();
   }
 
   Future<void> _markReadQuietly() async {
@@ -214,6 +227,7 @@ class ChatThreadController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _typingReset?.cancel();
     unawaited(_events?.cancel());
     super.dispose();

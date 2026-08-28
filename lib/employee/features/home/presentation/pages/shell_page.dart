@@ -163,73 +163,79 @@ class _ShellPageState extends State<ShellPage> {
       ),
       bottomNavigationBar: Padding(
         padding: AppPadding.bottomNavBarPadding,
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: AppRadius.primaryCircular,
-            color: context.accentColor,
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.navShadow,
-                blurRadius: 20,
-                offset: const Offset(0, 10),
+        child: Center(
+          heightFactor: 1.0,
+          child: SizedBox(
+            width: AppSizes.navBarWidth,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: AppRadius.stadiumCircular,
+                color: context.accentColor,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.navShadow,
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: Padding(
-            padding: AppPadding.navBarContent,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              mainAxisSize: MainAxisSize.max,
-              children: [
-                NavItem(
-                  index: 0,
-                  unSelectedIcon: _selectedIndex == 0
-                      ? (context.watch<PageProvider>().exploreViewType ==
-                                ExploreViewType.map
-                            ? AppIcons.navigation
-                            : AppIcons.menu)
-                      : AppIcons.navigation,
-                  selectedIcon: _selectedIndex == 0
-                      ? (context.watch<PageProvider>().exploreViewType ==
-                                ExploreViewType.map
-                            ? AppIcons.navigation
-                            : AppIcons.menu)
-                      : AppIcons.navigation,
-                  isSelected: _selectedIndex == 0,
-                  onTap: () => _onItemTapped(0, '/explore'),
+              child: Padding(
+                padding: AppPadding.navBarContent,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisSize: MainAxisSize.max,
+                  children: [
+                    NavItem(
+                      index: 0,
+                      unSelectedIcon: _selectedIndex == 0
+                          ? (context.watch<PageProvider>().exploreViewType ==
+                                    ExploreViewType.map
+                                ? AppIcons.navigation
+                                : AppIcons.menu)
+                          : AppIcons.navigation,
+                      selectedIcon: _selectedIndex == 0
+                          ? (context.watch<PageProvider>().exploreViewType ==
+                                    ExploreViewType.map
+                                ? AppIcons.navigation
+                                : AppIcons.menu)
+                          : AppIcons.navigation,
+                      isSelected: _selectedIndex == 0,
+                      onTap: () => _onItemTapped(0, '/explore'),
+                    ),
+                    NavItem(
+                      index: 1,
+                      unSelectedIcon: _selectedIndex == 1
+                          ? (context.watch<PageProvider>().jobsViewType ==
+                                    JobsViewType.home
+                                ? AppIcons.work
+                                : AppIcons.bookmark)
+                          : AppIcons.work,
+                      selectedIcon: _selectedIndex == 1
+                          ? (context.watch<PageProvider>().jobsViewType ==
+                                    JobsViewType.home
+                                ? AppIcons.work
+                                : AppIcons.bookmark)
+                          : AppIcons.work,
+                      isSelected: _selectedIndex == 1,
+                      onTap: () => _onItemTapped(1, '/jobs'),
+                    ),
+                    NavItem(
+                      index: 2,
+                      unSelectedIcon: AppIcons.chat,
+                      selectedIcon: AppIcons.chat,
+                      isSelected: _selectedIndex == 2,
+                      onTap: () => _onItemTapped(2, '/chat'),
+                    ),
+                    NavItem(
+                      index: 3,
+                      unSelectedIcon: AppIcons.user,
+                      selectedIcon: AppIcons.user,
+                      isSelected: _selectedIndex == 3,
+                      onTap: () => _onItemTapped(3, '/profile'),
+                    ),
+                  ],
                 ),
-                NavItem(
-                  index: 1,
-                  unSelectedIcon: _selectedIndex == 1
-                      ? (context.watch<PageProvider>().jobsViewType ==
-                                JobsViewType.home
-                            ? AppIcons.work
-                            : AppIcons.bookmark)
-                      : AppIcons.work,
-                  selectedIcon: _selectedIndex == 1
-                      ? (context.watch<PageProvider>().jobsViewType ==
-                                JobsViewType.home
-                            ? AppIcons.work
-                            : AppIcons.bookmark)
-                      : AppIcons.work,
-                  isSelected: _selectedIndex == 1,
-                  onTap: () => _onItemTapped(1, '/jobs'),
-                ),
-                NavItem(
-                  index: 2,
-                  unSelectedIcon: AppIcons.chat,
-                  selectedIcon: AppIcons.chat,
-                  isSelected: _selectedIndex == 2,
-                  onTap: () => _onItemTapped(2, '/chat'),
-                ),
-                NavItem(
-                  index: 3,
-                  unSelectedIcon: AppIcons.user,
-                  selectedIcon: AppIcons.user,
-                  isSelected: _selectedIndex == 3,
-                  onTap: () => _onItemTapped(3, '/profile'),
-                ),
-              ],
+              ),
             ),
           ),
         ),

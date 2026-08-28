@@ -7,9 +7,10 @@ import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
-import 'package:provider/provider.dart';
+import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/button_navbar.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
+import 'package:provider/provider.dart';
 
 class ReviewPage extends StatefulWidget {
   final MyJob job;
@@ -47,12 +48,7 @@ class _ReviewPageState extends State<ReviewPage> {
 
   Future<void> _submitReview() async {
     if (_rating == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Lütfen bir puan verin'),
-          backgroundColor: AppColors.danger,
-        ),
-      );
+      AppToast.error(context, 'Lütfen bir puan verin');
       return;
     }
 
@@ -74,14 +70,10 @@ class _ReviewPageState extends State<ReviewPage> {
     if (!mounted) return;
     setState(() => _isSubmitting = false);
 
-    final messenger = ScaffoldMessenger.of(context);
+    // Toast `ScaffoldMessenger`'a düşüyor, sayfanın kapanmasından
+    // etkilenmiyor; o yüzden önce gösterilip sonra kapatılıyor.
+    AppToast.success(context, 'Değerlendirmeniz gönderildi!');
     Navigator.pop(context, true);
-    messenger.showSnackBar(
-      SnackBar(
-        content: const Text('Değerlendirmeniz gönderildi!'),
-        backgroundColor: context.accentColor,
-      ),
-    );
   }
 
   @override

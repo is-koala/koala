@@ -135,10 +135,9 @@ abstract class CreatingPasswordPagemodel extends State<CreatingPasswordPage> {
 
     final setPasswordToken = _setPasswordToken;
     if (setPasswordToken == null) {
-      AuthSnackbar.show(
+      AppToast.error(
         context,
         'Doğrulama bağlantısı geçersiz. Lütfen kaydı yeniden başlat.',
-        isError: true,
       );
       return;
     }
@@ -167,14 +166,14 @@ abstract class CreatingPasswordPagemodel extends State<CreatingPasswordPage> {
       context.go(isBusiness ? '/company-informations' : '/explore');
     } on ApiException catch (error) {
       if (!mounted) return;
-      AuthSnackbar.show(context, error.message, isError: true);
+      AppToast.error(context, error.message);
     } finally {
       if (mounted) setState(() => isSubmitting = false);
     }
   }
 
   void _showValidationWarning() {
-    AuthSnackbar.show(
+    AppToast.error(
       context,
       !isPasswordStrong
           ? 'Lütfen güçlü bir şifre oluşturun'

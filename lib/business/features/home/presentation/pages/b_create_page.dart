@@ -12,6 +12,7 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
+import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/button_navbar.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
@@ -78,23 +79,13 @@ class _BCreatePageState extends State<BCreatePage> {
   void _createJob() {
     if (_titleController.text.trim().isEmpty ||
         _priceController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Lütfen başlık ve ücret alanlarını doldurun'),
-          backgroundColor: AppColors.danger,
-        ),
-      );
+      AppToast.error(context, 'Lütfen başlık ve ücret alanlarını doldurun');
       return;
     }
 
     final category = _selectedCategory;
     if (category == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Lütfen bir kategori seçin'),
-          backgroundColor: AppColors.danger,
-        ),
-      );
+      AppToast.error(context, 'Lütfen bir kategori seçin');
       return;
     }
 

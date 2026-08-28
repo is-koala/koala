@@ -17,7 +17,8 @@ class ChatListPage extends StatefulWidget {
   State<ChatListPage> createState() => _ChatListPageState();
 }
 
-class _ChatListPageState extends State<ChatListPage> {
+class _ChatListPageState extends State<ChatListPage>
+    with AutomaticKeepAliveClientMixin<ChatListPage> {
   late final ChatListController _controller = ChatListController();
 
   /// Oturum sahibi yüklenemediyse gösterilecek mesaj; sohbetlerin kendi
@@ -66,11 +67,17 @@ class _ChatListPageState extends State<ChatListPage> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Scaffold(
       appBar: MyAppbar(title: "Sohbetlerim", showBackButton: false),
       body: _body(),
     );
   }
+
+  /// Sekme değiştikçe sayfa atılmasın: denetleyici canlı kalınca hem sohbetler
+  /// yeniden çekilmiyor hem de canlı akış aboneliği kopmuyor.
+  @override
+  bool get wantKeepAlive => true;
 
   Widget _body() {
     if (_controller.isLoading && _controller.conversations.isEmpty) {
