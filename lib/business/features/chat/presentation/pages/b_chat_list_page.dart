@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:koala/business/features/chat/services/b_chat_service.dart';
+import 'package:koala/employee/features/chat/services/chat_service.dart';
+import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
+import 'package:koala/product/network/api_exception.dart';
+import 'package:provider/provider.dart';
 import 'package:koala/employee/features/chat/models/conversation.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/chat_avatar.dart';
 import 'package:koala/product/constants/app_colors.dart';
@@ -20,8 +23,11 @@ class BChatListPage extends StatefulWidget {
 }
 
 class _BChatListPageState extends State<BChatListPage> {
-  final BChatService _chatService = BChatService();
-  late List<Conversation> _chatList;
+  final ChatService _chatService = ChatService();
+
+  List<Conversation> _chatList = [];
+  bool _loading = true;
+  String? _errorMessage;
 
   /// Boş durum ikonunu taşıyan kutu.
   static const double _emptyIconBox = 80;
@@ -39,15 +45,43 @@ class _BChatListPageState extends State<BChatListPage> {
   @override
   void initState() {
     super.initState();
-    _chatList = _chatService.getChats();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _load();
+    });
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
+  /// Sohbetler çalışan tarafıyla aynı uçtan geliyor: `GET /conversations`
+  /// oturum sahibinin bütün sohbetlerini döndürüyor, rolüne bakmıyor.
+  Future<void> _load() async {
     setState(() {
-      _chatList = _chatService.getChats();
+      _loading = _chatList.isEmpty;
+      _errorMessage = null;
     });
+
+    try {
+      final userProvider = context.read<UserProvider>();
+      if (userProvider.user == null) await userProvider.load();
+      if (!mounted) return;
+
+      final userId = userProvider.user?.id;
+      if (userId == null) {
+        setState(() {
+          _errorMessage =
+              userProvider.errorMessage ?? 'Oturum bilgisi alınamadı.';
+        });
+        return;
+      }
+
+      final page = await _chatService.fetchConversations(currentUserId: userId);
+      if (!mounted) return;
+
+      setState(() => _chatList = page.conversations);
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() => _errorMessage = error.message);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override
@@ -59,7 +93,7 @@ class _BChatListPageState extends State<BChatListPage> {
         isLarge: true,
         showBackButton: false,
       ),
-      body: _chatList.isEmpty ? _emptyState() : _chatListView(),
+      body: _body(),
     );
   }
 
@@ -104,8 +138,45 @@ class _BChatListPageState extends State<BChatListPage> {
     );
   }
 
+  Widget _body() {
+    if (_loading && _chatList.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final error = _errorMessage;
+    if (error != null && _chatList.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: AppPadding.primaryAll,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                error,
+                textAlign: TextAlign.center,
+                style: context.textTheme.bodyMedium?.copyWith(
+                  color: context.textSecondary,
+                ),
+              ),
+              const SizedBox(height: AppSizes.spaceMedium),
+              OutlinedButton(
+                onPressed: _load,
+                child: const Text('Tekrar Dene'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_chatList.isEmpty) return _emptyState();
+
+    return RefreshIndicator(onRefresh: _load, child: _chatListView());
+  }
+
   Widget _chatListView() {
     return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.only(
         top: AppSizes.spaceSmall,
         bottom: AppSizes.navBarClearance,
@@ -121,12 +192,8 @@ class _BChatListPageState extends State<BChatListPage> {
     return InkWell(
       onTap: () async {
         await context.push('/business/chat-detail', extra: chat);
-        // Geri döndüğünde listeyi güncelle
-        if (mounted) {
-          setState(() {
-            _chatList = _chatService.getChats();
-          });
-        }
+        // Geri döndüğünde okunmamış sayacı ve son mesaj değişmiş olur.
+        if (mounted) await _load();
       },
       child: Container(
         padding: AppPadding.infoTile,

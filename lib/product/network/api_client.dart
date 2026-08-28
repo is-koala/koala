@@ -74,14 +74,27 @@ class ApiClient {
   Future<T> post<T>(
     String path, {
     Object? body,
+    Map<String, dynamic>? queryParameters,
     required T Function(Object? data) parse,
   }) {
-    return _send<T>(() => _dio.post<dynamic>(path, data: body), parse: parse);
+    return _send<T>(
+      () => _dio.post<dynamic>(
+        path,
+        data: body,
+        queryParameters: queryParameters,
+      ),
+      parse: parse,
+    );
   }
 
   /// Yalnızca başarı/başarısızlık dönen `POST` isteği (`SuccessResult`).
   Future<void> postWithoutData(String path, {Object? body}) {
     return _send<void>(() => _dio.post<dynamic>(path, data: body));
+  }
+
+  /// Yalnızca başarı/başarısızlık dönen `DELETE` isteği.
+  Future<void> deleteWithoutData(String path) {
+    return _send<void>(() => _dio.delete<dynamic>(path));
   }
 
   /// Gövdesinde veri dönen `PATCH` isteği.

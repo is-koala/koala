@@ -12,15 +12,30 @@ import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:provider/provider.dart';
 
-class SavedJobsPage extends StatelessWidget {
+class SavedJobsPage extends StatefulWidget {
   const SavedJobsPage({super.key});
 
+  @override
+  State<SavedJobsPage> createState() => _SavedJobsPageState();
+}
+
+class _SavedJobsPageState extends State<SavedJobsPage> {
   /// Boş durum ikonu; sayfanın tek görseli olduğu için normal ikonlardan
   /// belirgin biçimde büyük.
   static const double _emptyIconSize = 80;
 
   /// Kaydırıp silme sırasında açılan kırmızı zeminin sağ boşluğu.
   static const double _dismissPadding = 24;
+
+  @override
+  void initState() {
+    super.initState();
+    // Sayfa `ShellPage`'in `PageView`'ında canlı kaldığı için yükleme tek
+    // sefer burada tetikleniyor; provider ikinci kez ağa çıkmıyor.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<SavedJobsProvider>().load();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,19 +45,63 @@ class SavedJobsPage extends StatelessWidget {
         builder: (context, provider, child) {
           final savedJobs = provider.savedJobs;
 
+          if (provider.isLoading && savedJobs.isEmpty) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          // Elde kayıt yokken hata varsa "hiç kaydın yok" demek yanıltıcı.
+          final error = provider.errorMessage;
+          if (error != null && savedJobs.isEmpty) {
+            return _errorState(context, error, provider);
+          }
+
           if (savedJobs.isEmpty) {
             return _emptyState(context);
           }
 
-          return ListView.separated(
-            padding: AppPadding.primaryAll,
-            itemCount: savedJobs.length,
-            separatorBuilder: (context, index) =>
-                Divider(color: context.dividerColor, thickness: 1, height: 1),
-            itemBuilder: (context, index) =>
-                _savedJobTile(context, savedJobs[index], provider),
+          return RefreshIndicator(
+            onRefresh: () => provider.load(force: true),
+            child: ListView.separated(
+              padding: AppPadding.primaryAll,
+              physics: const AlwaysScrollableScrollPhysics(),
+              itemCount: savedJobs.length,
+              separatorBuilder: (context, index) =>
+                  Divider(color: context.dividerColor, thickness: 1, height: 1),
+              itemBuilder: (context, index) =>
+                  _savedJobTile(context, savedJobs[index], provider),
+            ),
           );
         },
+      ),
+    );
+  }
+
+  /// Kayıtlar çekilemediğinde.
+  Widget _errorState(
+    BuildContext context,
+    String message,
+    SavedJobsProvider provider,
+  ) {
+    return Center(
+      child: Padding(
+        padding: AppPadding.primaryAll,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: context.textSecondary,
+              ),
+            ),
+            const SizedBox(height: AppSizes.spaceMedium),
+            OutlinedButton(
+              onPressed: () => provider.load(force: true),
+              child: const Text('Tekrar Dene'),
+            ),
+          ],
+        ),
       ),
     );
   }

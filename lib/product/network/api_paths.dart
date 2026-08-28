@@ -38,6 +38,28 @@ class ApiPaths {
   /// Kabul edilmiş başvuruların dönüştüğü işler.
   static const String myAssignments = '/users/me/assignments';
 
+  /// Kaydedilen ilanlar.
+  static const String savedJobs = '/users/me/saved-jobs';
+
+  /// Tek bir ilanı kaydetme / kaydı kaldırma.
+  static String savedJob(String jobId) => '$savedJobs/$jobId';
+
+  // ---------------------------------------------------------------- Sohbet
+
+  static const String conversations = '/conversations';
+
+  /// Bir ilan üzerinden sohbet açar. Sohbet daima ilana bağlı.
+  static String jobConversation(String jobId) => '$jobs/$jobId/conversation';
+
+  static String conversationMessages(String conversationId) =>
+      '$conversations/$conversationId/messages';
+
+  static String conversationRead(String conversationId) =>
+      '$conversations/$conversationId/read';
+
+  /// Birden çok kullanıcının çevrimiçi durumu, tek istekte.
+  static const String presenceLookup = '/presence/lookup';
+
   // ---------------------------------------------------------- Reference data
 
   static const String jobCategories = '/reference/job-categories';

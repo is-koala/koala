@@ -11,7 +11,11 @@ import 'package:koala/product/extensions/context_extensions.dart';
 class ChatListTile extends StatelessWidget {
   final Conversation chat;
 
-  const ChatListTile({super.key, required this.chat});
+  /// Sohbetten dönüldüğünde çağrılıyor: okunmamış sayacı ve son mesaj
+  /// değişmiş olabilir, liste tazelenmeli.
+  final Future<void> Function()? onReturn;
+
+  const ChatListTile({super.key, required this.chat, this.onReturn});
 
   /// Satır yüksekliği avatardan büyük: avatarın altında ve üstünde eşit pay
   /// kalsın ve bütün satırlar aynı boyda dursun.
@@ -20,8 +24,9 @@ class ChatListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () {
-        context.push('/chat-detail', extra: chat);
+      onTap: () async {
+        await context.push('/chat-detail', extra: chat);
+        await onReturn?.call();
       },
       child: Container(
         height: _tileHeight,

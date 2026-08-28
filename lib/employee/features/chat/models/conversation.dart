@@ -40,26 +40,18 @@ class Conversation {
 
   final DateTime? lastMessageAt;
 
-  /// Son mesajın metni.
-  ///
-  /// ⚠️ `ConversationDto` bunu **taşımıyor**; sunucu yalnızca son mesajın
-  /// zamanını veriyor. Liste satırındaki önizleme bu yüzden yerel olarak
-  /// dolduruluyor.
-  /// TODO(backend): `ConversationDto`'ya son mesajın metni eklenmeli, aksi
-  /// halde sohbet listesi her satır için ayrı istek atmak zorunda kalır.
+  /// Son mesajın metni. Sunucu bunu `ConversationDto` üzerinde denormalize
+  /// tutuyor, yani liste satır başına ekstra istek atmıyor.
   final String? lastMessage;
 
-  /// Okunmamış mesaj sayısı.
-  ///
-  /// ⚠️ Bu da `ConversationDto`'da yok. `MessageDto.readAt` mesaj bazında
-  /// var ama sohbet başına sayaç dönmüyor.
-  /// TODO(backend): `ConversationDto`'ya okunmamış sayısı eklenmeli.
+  /// Okunmamış mesaj sayısı; sunucudan hazır geliyor.
   final int unreadCount;
 
   /// Karşı taraf çevrimiçi mi.
   ///
-  /// ⚠️ Sunucuda çevrimiçilik (presence) kavramı hiç yok; alan yalnızca
-  /// mevcut arayüzü ayakta tutuyor ve her zaman `false` geliyor.
+  /// `ConversationDto` bunu taşımıyor: presence ayrı bir uçtan
+  /// (`POST /presence/lookup`) toplu olarak çekilip [copyWith] ile
+  /// birleştiriliyor.
   final bool isOnline;
 
   /// Sohbet listesinde sağda görünen zaman etiketi.
@@ -98,16 +90,18 @@ class Conversation {
     final lastMessageAt = json['lastMessageAt'] as String?;
 
     return Conversation(
-      id: json['id'] as String,
+      id: '${json['id']}',
       jobId: json['jobId'] as String? ?? '',
       jobTitle: json['jobTitle'] as String? ?? '',
-      counterpartId: counterpart?['id'] as String? ?? '',
+      counterpartId: counterpart?['id'] == null ? '' : '${counterpart!['id']}',
       name: name,
       avatar: initialsOf(name),
       avatarUrl: counterpart?['profilePictureUrl'] as String?,
       lastMessageAt: lastMessageAt == null
           ? null
           : DateTime.tryParse(lastMessageAt),
+      lastMessage: json['lastMessageBody'] as String?,
+      unreadCount: (json['unreadCount'] as num?)?.toInt() ?? 0,
     );
   }
 

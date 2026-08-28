@@ -66,12 +66,18 @@ abstract class CompanyDetailPagemodel extends State<CompanyDetailPage> {
     );
   }
 
+  /// TODO(backend): Şirketle doğrudan sohbetin karşılığı yok. Sunucuda bir
+  /// konuşma daima bir ilana bağlı (`POST /jobs/{jobId}/conversation`) ve
+  /// arada başvuru şartı var; şirket düzeyinde ayrı bir konuşma türü gerekiyor.
+  /// Buton yerinde duruyor, uç gelene kadar durumu açıklıyor.
   void openChat() {
-    final chat = ChatService().getOrCreateChatByCompany(
-      companyId: widget.company.id,
-      companyName: widget.company.name,
-      avatarUrl: widget.company.logo?.url,
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Şirketle doğrudan mesajlaşma henüz açık değil. '
+          'İlana başvurduğunda sohbet açılıyor.',
+        ),
+      ),
     );
-    context.push('/chat-detail', extra: chat);
   }
 }

@@ -7,12 +7,17 @@ import 'package:koala/product/extensions/context_extensions.dart';
 class MessageTextField extends StatelessWidget {
   final TextEditingController controller;
   final VoidCallback onSendMessage;
+
+  /// Mesaj sunucuya giderken buton kilitleniyor; aynı mesajın iki kez
+  /// gönderilmesini engelliyor.
+  final bool isSending;
   final VoidCallback? onAddPressed;
 
   const MessageTextField({
     super.key,
     required this.controller,
     required this.onSendMessage,
+    this.isSending = false,
     this.onAddPressed,
   });
 
@@ -62,11 +67,11 @@ class MessageTextField extends StatelessWidget {
                           color: context.onAccentColor,
                           size: AppSizes.iconSmall,
                         ),
-                        onPressed: onSendMessage,
+                        onPressed: isSending ? null : onSendMessage,
                       ),
                     ),
                   ),
-                  onFieldSubmitted: (_) => onSendMessage(),
+                  onFieldSubmitted: (_) => isSending ? null : onSendMessage(),
                 ),
               ),
             ),

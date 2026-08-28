@@ -232,7 +232,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
                 ),
                 child: InkWell(
                   borderRadius: AppRadius.primaryCircular,
-                  onTap: () => provider.toggleSave(widget.job),
+                  onTap: () => _toggleSave(provider),
                   child: Center(
                     child: Icon(
                       isSaved ? Icons.bookmark : Icons.bookmark_border,
@@ -421,6 +421,17 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
           ),
         ],
       ),
+    );
+  }
+
+  /// Kaydet/kaldır. İkon iyimser olarak hemen değişiyor; sunucu reddederse
+  /// provider geri alıyor ve sebebi burada gösteriliyor.
+  Future<void> _toggleSave(SavedJobsProvider provider) async {
+    final succeeded = await provider.toggleSave(widget.job);
+    if (succeeded || !mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(provider.errorMessage ?? 'İşlem tamamlanamadı.')),
     );
   }
 

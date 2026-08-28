@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:koala/employee/features/chat/services/chat_service.dart';
 import 'package:koala/employee/features/company_detail/models/company.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
