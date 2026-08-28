@@ -96,6 +96,19 @@ void main() {
       expect(request.data, {'about': 'Merhaba'});
     });
 
+    test('jobTitle ve telefon gövdeye konur', () async {
+      final api = buildApi();
+
+      await UserService.withClient(
+        api.client,
+      ).updateProfile(jobTitle: 'Fotoğrafçı', phoneNumber: '5550000000');
+
+      expect(api.requests.single.data, {
+        'phoneNumber': '5550000000',
+        'jobTitle': 'Fotoğrafçı',
+      });
+    });
+
     test('hiçbir alan verilmezse gövde boş gider', () async {
       final api = buildApi();
 

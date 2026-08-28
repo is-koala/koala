@@ -52,6 +52,7 @@ class UserService {
     String? email,
     DateTime? birthDate,
     Gender? gender,
+    String? jobTitle,
     String? about,
     String? qualifications,
     String? interests,
@@ -65,6 +66,7 @@ class UserService {
       // `birthdate`, yanıt DTO'su `birthDate` kullanıyor.
       if (birthDate != null) 'birthdate': _asLocalDate(birthDate),
       'gender': ?gender?.code,
+      'jobTitle': ?jobTitle,
       'about': ?about,
       'qualifications': ?qualifications,
       'interests': ?interests,

@@ -43,9 +43,7 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
 
     _firstNameController = TextEditingController(text: user.firstName);
     _lastNameController = TextEditingController(text: user.lastName);
-    _occupationController = TextEditingController(
-      text: user.qualifications ?? '',
-    );
+    _occupationController = TextEditingController(text: user.jobTitle ?? '');
     _phoneController = TextEditingController(text: user.phoneNumber ?? '');
     _locationController = TextEditingController(
       text: user.address?.shortLabel ?? '',
@@ -78,16 +76,15 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
     final firstName = _changed(_firstNameController.text, user.firstName);
     final lastName = _changed(_lastNameController.text, user.lastName);
     final about = _changed(_aboutController.text, user.about);
-    final qualifications = _changed(
-      _occupationController.text,
-      user.qualifications,
-    );
+    final phoneNumber = _changed(_phoneController.text, user.phoneNumber);
+    final jobTitle = _changed(_occupationController.text, user.jobTitle);
 
     final pending = await provider.updateProfile(
       firstName: _canEditName ? firstName : null,
       lastName: _canEditName ? lastName : null,
       about: about,
-      qualifications: qualifications,
+      jobTitle: jobTitle,
+      phoneNumber: phoneNumber,
     );
 
     if (!mounted) return;
@@ -165,15 +162,10 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
                 controller: _occupationController,
               ),
               const SizedBox(height: AppSizes.spaceMedium),
-              // TODO(backend): `PATCH /users/me` telefon alanını okuyor ama
-              // hiçbir şey yapmadan 200 dönüyor (`UserManager.patchCurrentUser`
-              // içindeki blok boş). Açık bırakmak "kaydedildi" deyip değeri
-              // yutmak olurdu; uç gerçekten yazana kadar salt okunur.
               MyTextfield(
                 labelText: "Telefon",
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
-                enabled: false,
               ),
               const SizedBox(height: AppSizes.spaceMedium),
               // TODO(backend): Konum `PUT /users/me/address` ile yazılıyor ve

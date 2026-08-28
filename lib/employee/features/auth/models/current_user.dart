@@ -1,4 +1,7 @@
 import 'package:koala/employee/features/auth/models/company_membership.dart';
+import 'package:koala/employee/features/auth/models/education.dart';
+import 'package:koala/employee/features/auth/models/experience.dart';
+import 'package:koala/employee/features/auth/models/user_badge.dart';
 import 'package:koala/employee/features/auth/models/user_address.dart';
 
 /// Kullanıcının cinsiyeti. Backend `Gender` enum'ının birebir karşılığı.
@@ -40,9 +43,15 @@ class CurrentUser {
     this.birthDate,
     this.gender = Gender.notSpecified,
     this.tcIdentityNumber,
+    this.jobTitle,
     this.about,
     this.qualifications,
     this.interests,
+    this.maskedIban,
+    this.cvUrl,
+    this.experiences = const [],
+    this.educations = const [],
+    this.badges = const [],
     this.address,
     this.isEmployer = false,
     this.emailVerified = false,
@@ -65,6 +74,9 @@ class CurrentUser {
   /// TC kimlik numarası. Kimlik doğrulaması yapılana kadar `null`.
   final String? tcIdentityNumber;
 
+  /// Profil başlığında adın altında görünen ünvan.
+  final String? jobTitle;
+
   /// Profildeki "Hakkımda" metni.
   final String? about;
 
@@ -73,6 +85,21 @@ class CurrentUser {
 
   /// İlgi alanları; backend'de düz metin.
   final String? interests;
+
+  /// Maskelenmiş IBAN (`TR** **** 1234`). Banka hesabı tanımlı değilse null.
+  final String? maskedIban;
+
+  /// Yüklenmiş özgeçmişin bağlantısı; yoksa null.
+  final String? cvUrl;
+
+  /// İş deneyimleri, yeniden eskiye.
+  final List<Experience> experiences;
+
+  /// Öğrenim kayıtları.
+  final List<Education> educations;
+
+  /// Kazanılmış rozetler. Backend rozeti geri almıyor, liste yalnızca büyür.
+  final List<UserBadge> badges;
 
   /// Kayıtlı adres. Profil başlığındaki konum satırı buradan çiziliyor.
   final UserAddress? address;
@@ -111,9 +138,15 @@ class CurrentUser {
       birthDate: birthDate is String ? DateTime.tryParse(birthDate) : null,
       gender: Gender.fromCode(json['gender']),
       tcIdentityNumber: json['tcIdentityNumber'] as String?,
+      jobTitle: json['jobTitle'] as String?,
       about: json['about'] as String?,
       qualifications: json['qualifications'] as String?,
       interests: json['interests'] as String?,
+      maskedIban: json['maskedIban'] as String?,
+      cvUrl: json['cvUrl'] as String?,
+      experiences: _listOf(json['experiences'], Experience.fromJson),
+      educations: _listOf(json['educations'], Education.fromJson),
+      badges: _listOf(json['badges'], UserBadge.fromJson),
       address: address is Map<String, dynamic>
           ? UserAddress.fromJson(address)
           : null,
@@ -129,6 +162,17 @@ class CurrentUser {
                 .toList()
           : const [],
     );
+  }
+
+  /// Dizi alanlarını ayrıştırır. Alan hiç gelmezse ya da beklenmedik bir
+  /// tipteyse boş liste dönüyor; profil ekranı bölümü çizmiyor.
+  static List<T> _listOf<T>(
+    Object? value,
+    T Function(Map<String, dynamic>) fromJson,
+  ) {
+    return value is List
+        ? value.whereType<Map<String, dynamic>>().map(fromJson).toList()
+        : const [];
   }
 
   /// İş veren bayrağını okur.
@@ -152,9 +196,15 @@ class CurrentUser {
       'birthDate': birthDate?.toIso8601String(),
       'gender': gender.code,
       'tcIdentityNumber': tcIdentityNumber,
+      'jobTitle': jobTitle,
       'about': about,
       'qualifications': qualifications,
       'interests': interests,
+      'maskedIban': maskedIban,
+      'cvUrl': cvUrl,
+      'experiences': experiences.map((e) => e.toJson()).toList(),
+      'educations': educations.map((e) => e.toJson()).toList(),
+      'badges': badges.map((b) => b.toJson()).toList(),
       'address': address?.toJson(),
       'isEmployer': isEmployer,
       'emailVerified': emailVerified,

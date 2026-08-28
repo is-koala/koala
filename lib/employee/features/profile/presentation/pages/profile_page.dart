@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
+import 'package:koala/employee/features/auth/models/user_badge.dart';
+import 'package:koala/employee/features/profile/presentation/widgets/experience_card.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/profile_avatar.dart';
-import 'package:koala/product/constants/app_assets.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
@@ -129,9 +130,10 @@ class _ProfilePageState extends State<ProfilePage> {
               const SizedBox(height: AppSizes.spaceLarge),
               aboutProfile(user),
               const SizedBox(height: AppSizes.spaceLarge),
-              cvArea(),
+              cvArea(user),
               const SizedBox(height: AppSizes.spaceXLarge),
-              rosettes(),
+              rosettes(user),
+              experienceSection(user),
               const SizedBox(height: _bottomClearance),
             ],
           ),
@@ -162,22 +164,87 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  /// TODO(backend): Rozetlerin karşılığı henüz yok; görseller sabit.
-  Column rosettes() {
+  /// Kazanılan rozetler.
+  ///
+  /// Rozeti olmayan kullanıcıya boş bir şerit göstermek yerine bölüm hiç
+  /// çizilmiyor; rozet kazanmak bir başarı, yokluğu vurgulanmamalı.
+  Widget rosettes(CurrentUser user) {
+    if (user.badges.isEmpty) return const SizedBox.shrink();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionTitle("Rozetler"),
         SizedBox(
           height: _badgeStripHeight,
-          child: ListView(
+          child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            children: [
-              Image.asset(AppAssets.badgeGold),
-              Image.asset(AppAssets.badgeSilverAlt),
-            ],
+            itemCount: user.badges.length,
+            separatorBuilder: (_, _) =>
+                const SizedBox(width: AppSizes.spaceSmall),
+            itemBuilder: (context, index) => _badge(user.badges[index]),
           ),
         ),
+        const SizedBox(height: AppSizes.spaceXLarge),
+      ],
+    );
+  }
+
+  /// Tek rozet görseli.
+  ///
+  /// Uygulamada yalnızca Gezgin ailesinin altın ve gümüş görselleri var;
+  /// diğerleri sunucudaki ikona düşüyor. İkisi de yoksa rozet adı yazılıyor,
+  /// böylece kazanılmış bir rozet hiç görünmez olmuyor.
+  Widget _badge(UserBadge badge) {
+    final asset = badge.localAsset;
+    final url = badge.iconUrl;
+
+    final Widget visual;
+    if (asset != null) {
+      visual = Image.asset(asset);
+    } else if (url != null && url.isNotEmpty) {
+      visual = Image.network(
+        url,
+        errorBuilder: (_, _, _) => _badgeFallback(badge),
+      );
+    } else {
+      visual = _badgeFallback(badge);
+    }
+
+    return Tooltip(message: badge.description ?? badge.name, child: visual);
+  }
+
+  Widget _badgeFallback(UserBadge badge) {
+    return Center(
+      child: Text(
+        badge.name,
+        textAlign: TextAlign.center,
+        style: context.textTheme.bodySmall?.copyWith(
+          color: context.textSecondary,
+        ),
+      ),
+    );
+  }
+
+  /// Deneyim listesi. Boşsa bölüm çizilmiyor.
+  Widget experienceSection(CurrentUser user) {
+    if (user.experiences.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle("Tecrübe"),
+        const SizedBox(height: AppSizes.space),
+        ...user.experiences.asMap().entries.map((entry) {
+          final experience = entry.value;
+          return ExperienceCard(
+            title: experience.title,
+            company: experience.subtitle,
+            duration: experience.durationLabel,
+            description: experience.description ?? '',
+            isLast: entry.key == user.experiences.length - 1,
+          );
+        }),
       ],
     );
   }
@@ -201,8 +268,11 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  /// TODO(backend): Özgeçmiş yükleme ucu yok; kart sabit metinle çiziliyor.
-  Container cvArea() {
+  /// Özgeçmiş kartı.
+  ///
+  /// TODO(backend): `PUT /users/me/cv` multipart bekliyor; dosya seçme akışı
+  /// henüz yok, kart şimdilik yalnızca durumu gösteriyor.
+  Container cvArea(CurrentUser user) {
     return Container(
       padding: const EdgeInsets.symmetric(
         vertical: AppSizes.spaceSmall,
@@ -226,7 +296,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ),
               Text(
-                "Henüz yüklenmedi",
+                user.cvUrl == null || user.cvUrl!.isEmpty
+                    ? "Henüz yüklenmedi"
+                    : "Yüklendi",
                 style: context.textTheme.bodyMedium?.copyWith(
                   color: context.onAccentColor,
                 ),
@@ -241,9 +313,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Row profileHeader(CurrentUser user) {
     final location = user.address?.shortLabel;
-    // "Meslek" alanının backend'deki karşılığı `qualifications`; ayrı bir
-    // ünvan alanı yok.
-    final occupation = user.qualifications;
+    final occupation = user.jobTitle;
 
     return Row(
       children: [
