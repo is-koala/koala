@@ -139,12 +139,13 @@ class JobCategoryCodes {
   static const String barista = 'BARISTA';
 }
 
-/// Sahte servislerin ve testlerin kullandığı örnek kategoriler.
+/// Testlerin kullandığı örnek kategoriler.
 ///
 /// **Gerçek kayıt değil.** Backend `GET /reference/job-categories`'ten gelen
 /// kategorilerin `id`'si UUID; buradakiler bilerek `seed-` önekli, ki bir
-/// filtre yanlışlıkla gerçek bir kayda eşleşmesin. `JobService` gerçek uca
-/// bağlandığında bu sınıf da sahte verilerle birlikte silinecek.
+/// filtre yanlışlıkla gerçek bir kayda eşleşmesin. `lib/` altında okuyan
+/// kalmadı — yalnızca `test/support/fixtures.dart` ve kategori testleri
+/// kullanıyor, öyle kalmalı.
 class JobCategorySeeds {
   const JobCategorySeeds._();
 

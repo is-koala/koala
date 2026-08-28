@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:koala/business/features/home/models/b_applicant.dart';
+import 'package:koala/business/features/home/models/job_applicant.dart';
 import 'package:koala/business/features/home/models/b_job_post.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
-import 'package:koala/business/features/home/services/fake_business_company.dart';
 import 'package:koala/employee/features/home/models/job.dart';
-import 'package:koala/employee/features/home/models/job_detail.dart';
+import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
+import 'package:koala/employee/features/profile/presentation/widgets/profile_avatar.dart';
 import 'package:koala/product/constants/app_assets.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
@@ -17,9 +17,14 @@ import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:provider/provider.dart';
 
-class BHomePage extends StatelessWidget {
+class BHomePage extends StatefulWidget {
   const BHomePage({super.key});
 
+  @override
+  State<BHomePage> createState() => _BHomePageState();
+}
+
+class _BHomePageState extends State<BHomePage> {
   /// Appbar'ın yüksekliği; iki satırlık marka bloğunu taşıyor.
   static const double _appBarHeight = 70;
 
@@ -49,15 +54,24 @@ class BHomePage extends StatelessWidget {
   static const double _bottomClearance = 120;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<BJobsProvider>().load();
+      // Karşılama bloğundaki ad `/users/me`'den geliyor.
+      final userProvider = context.read<UserProvider>();
+      if (userProvider.user == null) userProvider.load(silent: true);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final company = FakeBusinessCompany.instance;
+    final user = context.watch<UserProvider>().user;
     final bJobsProvider = context.watch<BJobsProvider>();
     final activePosts = bJobsProvider.activePosts;
     final pastPosts = bJobsProvider.pastPosts;
-    final totalApplicants = activePosts.fold<int>(
-      0,
-      (sum, post) => sum + post.applicants.length,
-    );
+    final totalApplicants = bJobsProvider.pendingApplicantCount;
 
     return Scaffold(
       backgroundColor: context.backgroundColor,
@@ -71,7 +85,10 @@ class BHomePage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: AppSizes.spaceSmall),
-                  _welcomeBanner(context, company.name),
+                  _welcomeBanner(
+                    context,
+                    user?.activeCompany?.companyName ?? user?.fullName ?? '',
+                  ),
                   const SizedBox(height: AppSizes.spaceLarge),
                   _statsRow(
                     context,
@@ -498,16 +515,9 @@ class BHomePage extends StatelessWidget {
         decoration: _cardDecoration(context),
         child: Row(
           children: [
-            Container(
-              width: _rowIconBox,
-              height: _rowIconBox,
-              decoration: BoxDecoration(
-                borderRadius: AppRadius.innerCircular,
-                image: DecorationImage(
-                  fit: BoxFit.cover,
-                  image: AssetImage(ra.applicant.profileImage),
-                ),
-              ),
+            ProfileAvatar(
+              imageUrl: ra.applicant.profilePictureUrl,
+              size: _rowIconBox,
             ),
             const SizedBox(width: AppSizes.space),
             Expanded(
@@ -678,7 +688,7 @@ class BHomePage extends StatelessWidget {
         const SizedBox(width: AppSizes.spaceTiny),
         Expanded(
           child: Text(
-            job.addressLabel ?? 'Ankara',
+            job.locationLabel ?? '—',
             style: context.textTheme.labelMedium?.copyWith(
               color: context.textTertiary,
             ),
@@ -745,7 +755,7 @@ class BHomePage extends StatelessWidget {
 
   Widget _categoryBadge(
     BuildContext context,
-    JobDetail job, {
+    Job job, {
     bool withIcon = false,
   }) {
     return Container(
@@ -841,7 +851,7 @@ class BHomePage extends StatelessWidget {
 
 /// Başvuran + ait olduğu ilan çifti (dahili yardımcı sınıf)
 class _RecentApplicant {
-  final BApplicant applicant;
+  final JobApplicant applicant;
   final BJobPost post;
 
   const _RecentApplicant({required this.applicant, required this.post});

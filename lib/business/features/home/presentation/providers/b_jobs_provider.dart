@@ -1,268 +1,192 @@
 import 'package:flutter/material.dart';
-import 'package:koala/business/features/home/services/fake_business_company.dart';
-import 'package:koala/business/features/home/models/b_applicant.dart';
 import 'package:koala/business/features/home/models/b_job_post.dart';
-import 'package:koala/employee/features/auth/models/user_address.dart';
-import 'package:koala/employee/features/home/models/job.dart';
-import 'package:koala/product/extensions/date_extensions.dart';
-import 'package:koala/employee/features/home/models/job_detail.dart';
-import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
-import 'package:koala/employee/features/profile/services/fake_user.dart';
+import 'package:koala/business/features/home/models/create_job_request.dart';
+import 'package:koala/business/features/home/models/job_applicant.dart';
+import 'package:koala/business/features/home/services/employer_job_service.dart';
+import 'package:koala/product/network/api_exception.dart';
 
-/// İşveren tarafında iş ilanlarını yöneten provider.
-/// - Yeni ilan oluşturma
-/// - Aktif / Geçmiş ilanları listeleme
-/// - Çalışan tarafındaki ApplyProvider ile bağlantı (başvuranlar)
+/// İşverenin ilanları ve o ilanlara gelen başvurular.
+///
+/// Veri iki uçtan geliyor ve tek listede birleşiyor:
+/// - `GET /users/me/jobs` → ilanların özeti,
+/// - `GET /jobs/{jobId}/applications` → her ilanın başvuruları.
+///
+/// İkincisi ilan başına ayrı bir istek: liste ucu başvuru sayısını
+/// döndürmüyor. İstekler paralel gidiyor ama yine de N+1.
+/// TODO(backend): `JobSummaryDto`'ya `applicationCount` eklenirse liste tek
+/// istekle çizilebilir; başvuranların kendisi ancak detay ekranında gerekiyor.
 class BJobsProvider extends ChangeNotifier {
-  final List<BJobPost> _jobPosts = [];
+  BJobsProvider({EmployerJobService? service})
+    : _service = service ?? EmployerJobService();
 
-  BJobsProvider() {
-    _loadInitialJobs();
-  }
+  final EmployerJobService _service;
 
-  /// Fake başlangıç verileri
-  void _loadInitialJobs() {
-    final companyName = FakeBusinessCompany.instance.name;
+  List<BJobPost> _jobPosts = const [];
+  bool _isLoading = false;
+  bool _hasLoaded = false;
+  String? _errorMessage;
 
-    _jobPosts.addAll([
-      BJobPost(
-        job: JobDetail(
-          status: JobStatus.open,
-          id: 'b_1',
-          type: JobType.recurring,
-          category: JobCategorySeeds.waiter,
-          title: 'Part-time Garson',
-          price: 800,
-          company: JobCompany(id: 'b_company', name: companyName),
-          description:
-              'Kızılay merkezde bulunan cafe\'mizde hafta sonları çalışacak enerjik ve güler yüzlü garson arkadaşlar arıyoruz.',
-          sector: 'Restoran & Cafe',
-          position: 'Garson',
-          duties:
-              'Müşteri karşılama, sipariş alma, servis yapma, kasa işlemleri',
-          insuranceRequired: false,
-          startDateTime: DateTime(2026, 3, 10, 9, 0),
-          endDateTime: DateTime(2026, 3, 10, 18, 0),
-          salaryType: SalaryType.hourly,
-          minAge: 18,
-          maxAge: 35,
-          experienceRequired: false,
-          dressCode: 'Siyah pantolon, beyaz gömlek',
-          employerType: JobEmployerType.company,
-          address: const UserAddress(
-            id: 'b_address',
-            addressLine: 'Kızılay, Ankara',
-          ),
-        ),
-        isActive: true,
-        createdAt: DateTime(2026, 3, 1),
-        applicants: [
-          BApplicant(
-            id: 'applicant_1',
-            fullName: 'Yakup Demir',
-            jobTitle: 'Fotoğrafçı',
-            profileImage: 'assets/images/koala_profile_picture.png',
-            appliedDate: '05.03.2026',
-            coverLetter:
-                'Merhaba, cafe deneyimim var ve hafta sonları uygunumdur.',
-          ),
-        ],
-      ),
-      BJobPost(
-        job: JobDetail(
-          status: JobStatus.open,
-          id: 'b_2',
-          type: JobType.recurring,
-          category: JobCategorySeeds.barista,
-          title: 'Deneyimli Barista',
-          price: 15000,
-          company: JobCompany(id: 'b_company', name: companyName),
-          description:
-              'Specialty coffee alanında deneyimli, latte art yapabilen barista aranıyor. Tam zamanlı pozisyon.',
-          sector: 'Cafe & Coffee Shop',
-          position: 'Barista',
-          duties:
-              'Kahve hazırlama, latte art, müşteri iletişimi, stok kontrolü',
-          insuranceRequired: true,
-          startDateTime: DateTime(2026, 3, 15, 8, 0),
-          endDateTime: DateTime(2026, 3, 15, 17, 0),
-          salaryType: SalaryType.daily,
-          minAge: 20,
-          maxAge: 40,
-          experienceRequired: true,
-          dressCode: 'Cafe önlüğü sağlanacak',
-          employerType: JobEmployerType.company,
-          address: const UserAddress(
-            id: 'b_address',
-            addressLine: 'Kızılay, Ankara',
-          ),
-        ),
-        isActive: true,
-        createdAt: DateTime(2026, 3, 3),
-        applicants: [
-          BApplicant(
-            id: 'applicant_2',
-            fullName: 'Ayşe Yılmaz',
-            jobTitle: 'Barista',
-            profileImage: 'assets/images/koala_profile_picture.png',
-            appliedDate: '06.03.2026',
-            coverLetter: '3 yıldır specialty coffee alanında çalışıyorum.',
-          ),
-          BApplicant(
-            id: 'applicant_3',
-            fullName: 'Mehmet Kaya',
-            jobTitle: 'Barista / Garson',
-            profileImage: 'assets/images/koala_profile_picture.png',
-            appliedDate: '07.03.2026',
-          ),
-        ],
-      ),
-      // Geçmiş ilan
-      BJobPost(
-        job: JobDetail(
-          status: JobStatus.open,
-          id: 'b_3',
-          type: JobType.oneTime,
-          category: JobCategorySeeds.photography,
-          title: 'Mekan Fotoğrafçısı',
-          price: 2000,
-          company: JobCompany(id: 'b_company', name: companyName),
-          description:
-              'Cafe\'mizin sosyal medya hesapları ve web sitesi için profesyonel mekan fotoğrafları çekilecektir.',
-          sector: 'Fotoğrafçılık',
-          position: 'Mekan Fotoğrafçısı',
-          duties:
-              'İç mekan fotoğrafları, ürün fotoğrafları, sosyal medya görselleri',
-          insuranceRequired: false,
-          startDateTime: DateTime(2026, 2, 15, 10, 0),
-          endDateTime: DateTime(2026, 2, 15, 16, 0),
-          salaryType: SalaryType.daily,
-          minAge: 18,
-          maxAge: 50,
-          experienceRequired: true,
-          dressCode: 'Serbest',
-          employerType: JobEmployerType.company,
-          address: const UserAddress(
-            id: 'b_address',
-            addressLine: 'Kızılay, Ankara',
-          ),
-        ),
-        isActive: false,
-        createdAt: DateTime(2026, 2, 1),
-        worker: const BApplicant(
-          id: 'applicant_4',
-          fullName: 'Burak Şen',
-          jobTitle: 'Fotoğrafçı',
-          profileImage: 'assets/images/koala_profile_picture.png',
-          appliedDate: '03.02.2026',
-        ),
-      ),
-    ]);
-  }
-
-  /// Tüm ilanlar
   List<BJobPost> get allPosts => List.unmodifiable(_jobPosts);
 
-  /// Aktif ilanlar
-  List<BJobPost> get activePosts => _jobPosts.where((p) => p.isActive).toList();
+  /// Yürürlükteki ilanlar — "Aktif" sekmesi.
+  List<BJobPost> get activePosts =>
+      _jobPosts.where((post) => post.isActive).toList();
 
-  /// Geçmiş ilanlar
-  List<BJobPost> get pastPosts => _jobPosts.where((p) => !p.isActive).toList();
+  /// Kapanmış, tamamlanmış ya da iptal edilmiş ilanlar — "Geçmiş" sekmesi.
+  List<BJobPost> get pastPosts =>
+      _jobPosts.where((post) => !post.isActive).toList();
 
-  /// Yeni iş ilanı oluştur
-  void createJobPost(JobDetail job) {
-    final post = BJobPost(
-      job: job,
-      isActive: true,
-      applicants: [],
-      createdAt: DateTime.now(),
-    );
-    _jobPosts.insert(0, post);
-    notifyListeners();
-  }
+  bool get isLoading => _isLoading;
 
-  /// İlanı geçmişe taşı (pasif yap)
-  void deactivatePost(String jobId) {
-    final index = _jobPosts.indexWhere((p) => p.job.id == jobId);
-    if (index != -1) {
-      _jobPosts[index] = _jobPosts[index].copyWith(isActive: false);
-      notifyListeners();
-    }
-  }
+  /// Liste bir kez çekildi mi. Hata da olsa `true`; tekrar denemek çağıranın
+  /// açık kararı olmalı.
+  bool get hasLoaded => _hasLoaded;
 
-  /// İlanı sil
-  void deletePost(String jobId) {
-    _jobPosts.removeWhere((p) => p.job.id == jobId);
-    notifyListeners();
-  }
+  /// Son işlemin hata mesajı. Bir sonraki işlemde temizleniyor.
+  String? get errorMessage => _errorMessage;
 
-  /// Başvuranı onayla — ilanı geçmişe taşır ve worker olarak atar
-  void approveApplicant(String jobId, BApplicant applicant) {
-    final index = _jobPosts.indexWhere((p) => p.job.id == jobId);
-    if (index != -1) {
-      _jobPosts[index] = _jobPosts[index].copyWith(
-        isActive: false,
-        worker: applicant,
-        applicants: [],
-      );
-      notifyListeners();
-    }
-  }
+  /// Hiç ilan yok mu. Hata durumundan ayrı: boş liste bir arıza değil.
+  bool get isEmpty => _hasLoaded && _jobPosts.isEmpty && _errorMessage == null;
 
-  /// Başvuranı reddet — listeden çıkar
-  void rejectApplicant(String jobId, String applicantId) {
-    final index = _jobPosts.indexWhere((p) => p.job.id == jobId);
-    if (index != -1) {
-      final updated = _jobPosts[index].applicants
-          .where((a) => a.id != applicantId)
-          .toList();
-      _jobPosts[index] = _jobPosts[index].copyWith(applicants: updated);
-      notifyListeners();
-    }
-  }
+  /// Aktif ilanlara gelen, henüz yanıtlanmamış başvuruların toplamı.
+  int get pendingApplicantCount =>
+      activePosts.fold<int>(0, (sum, post) => sum + post.applicants.length);
 
-  /// Belirli bir ilanı getir
-  BJobPost? getPostByJobId(String jobId) {
-    try {
-      return _jobPosts.firstWhere((p) => p.job.id == jobId);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  /// Çalışan tarafında yapılan başvuruları işverenin aday listesine yansıtır.
+  /// İlanları ve başvurularını çeker.
   ///
-  /// TODO(backend): Bu bir demo köprüsü. İşverenin gerçek aday listesi
-  /// `GET /jobs/{jobId}/applications`'tan gelecek; o bağlandığında bu metot
-  /// tamamen kalkacak.
-  void syncApplicantsFromApplyProvider(ApplyProvider applyProvider) {
-    final fakeUser = FakeUser.instance;
+  /// Daha önce başarıyla çekildiyse ağa çıkmaz; [force] ile yenilenir.
+  Future<void> load({bool force = false}) async {
+    if (_isLoading) return;
+    if (_hasLoaded && !force && _errorMessage == null) return;
 
-    for (final application in applyProvider.applications) {
-      final postIndex = _jobPosts.indexWhere(
-        (p) => p.job.id == application.job.id,
-      );
-      if (postIndex == -1) continue;
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
 
-      final post = _jobPosts[postIndex];
-      final alreadyExists = post.applicants.any(
-        (a) => a.id == 'sync_${application.id}',
-      );
+    try {
+      final page = await _service.fetchMyJobs();
+      _jobPosts = [for (final job in page.jobs) BJobPost(job: job)];
 
-      if (!alreadyExists) {
-        final newApplicant = BApplicant(
-          id: 'sync_${application.id}',
-          fullName: fakeUser.fullName,
-          jobTitle: fakeUser.jobTitle,
-          profileImage: fakeUser.profileImage,
-          appliedDate: application.applicationDateTime?.asShortDate ?? '',
-        );
+      // İlanlar geldiği anda çizilebilsin; başvurular arkadan dolsun.
+      _isLoading = false;
+      _hasLoaded = true;
+      notifyListeners();
 
-        _jobPosts[postIndex] = post.copyWith(
-          applicants: [...post.applicants, newApplicant],
-        );
-      }
+      await _loadApplicants();
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+      _isLoading = false;
+      _hasLoaded = true;
+      notifyListeners();
     }
+  }
+
+  /// Her ilanın başvurularını paralel çeker.
+  ///
+  /// Tek bir ilanın başvuruları alınamazsa liste bütünüyle hataya düşmüyor:
+  /// o ilan başvurusuz görünüyor, diğerleri çiziliyor. Ekranı kaplayan bir
+  /// hata, elde duran ilanları da gizlerdi.
+  Future<void> _loadApplicants() async {
+    final posts = _jobPosts;
+    if (posts.isEmpty) return;
+
+    final results = await Future.wait([
+      for (final post in posts) _applicantsOf(post.job.id),
+    ]);
+
+    // Bu arada yenileme yapıldıysa eski sonuçlar yazılmamalı.
+    if (!identical(_jobPosts, posts)) return;
+
+    _jobPosts = [
+      for (var i = 0; i < posts.length; i++)
+        posts[i].copyWith(applications: results[i], applicantsLoaded: true),
+    ];
+    notifyListeners();
+  }
+
+  Future<List<JobApplicant>> _applicantsOf(String jobId) async {
+    try {
+      return await _service.fetchApplicants(jobId);
+    } on ApiException {
+      return const [];
+    }
+  }
+
+  /// Yeni ilan açar. Başarılıysa liste yenilenir ve `true` döner.
+  Future<bool> createJobPost(
+    CreateJobRequest request, {
+    String? companyId,
+  }) async {
+    _errorMessage = null;
+
+    try {
+      await _service.createJob(request, companyId: companyId);
+      await load(force: true);
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// İlanı başvuruya kapatır; ilan "Geçmiş" sekmesine geçer.
+  Future<bool> closePost(String jobId) async {
+    _errorMessage = null;
+
+    try {
+      await _service.closeJob(jobId);
+      await load(force: true);
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Başvuruyu kabul eder.
+  ///
+  /// Sunucuda bir atama oluşuyor ve çalışanın onayı bekleniyor; ilan
+  /// kendiliğinden kapanmıyor, o yüzden liste olduğu gibi yenileniyor.
+  Future<bool> approveApplicant(String applicationId) {
+    return _respond(() => _service.acceptApplication(applicationId));
+  }
+
+  /// Başvuruyu reddeder. [reason] çalışanın gördüğü gerekçe.
+  Future<bool> rejectApplicant(String applicationId, {String? reason}) {
+    return _respond(
+      () => _service.rejectApplication(applicationId, reason: reason),
+    );
+  }
+
+  Future<bool> _respond(Future<void> Function() call) async {
+    _errorMessage = null;
+
+    try {
+      await call();
+      await load(force: true);
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Kimliğine göre tek ilan; liste henüz gelmediyse `null`.
+  BJobPost? getPostByJobId(String jobId) {
+    for (final post in _jobPosts) {
+      if (post.job.id == jobId) return post;
+    }
+    return null;
+  }
+
+  /// Çıkışta önceki işverenin ilanları kalmasın.
+  void clear() {
+    _jobPosts = const [];
+    _errorMessage = null;
+    _hasLoaded = false;
     notifyListeners();
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:koala/business/core/b_shell_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_create_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_home_page.dart';
@@ -12,7 +13,8 @@ import 'package:koala/business/features/home/presentation/pages/b_user_profile_p
 import 'package:koala/business/features/home/presentation/pages/b_notifications_page.dart';
 import 'package:koala/business/features/chat/presentation/pages/b_chat_list_page.dart';
 import 'package:koala/business/features/chat/presentation/pages/b_chat_page.dart';
-import 'package:koala/business/features/home/models/b_applicant.dart';
+import 'package:koala/business/features/home/models/job_applicant.dart';
+import 'package:koala/business/features/home/presentation/pages/b_location_picker_page.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/presentation/pages/splash_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/auth_page.dart';
@@ -333,8 +335,23 @@ class RouterManager {
       GoRoute(
         path: '/business/user-profile',
         pageBuilder: (context, state) {
-          final applicant = state.extra as BApplicant;
+          final applicant = state.extra as JobApplicant;
           return _page(state, BUserProfilePage(applicant: applicant));
+        },
+      ),
+
+      // İlan oluşturma ekranından açılıyor ve seçilen `LatLng`'i geri
+      // döndürüyor; `context.push<LatLng>` ile çağrılmalı.
+      GoRoute(
+        path: '/business/pick-location',
+        pageBuilder: (context, state) {
+          final initial = state.extra;
+          return _page(
+            state,
+            BLocationPickerPage(
+              initialLocation: initial is LatLng ? initial : null,
+            ),
+          );
         },
       ),
 

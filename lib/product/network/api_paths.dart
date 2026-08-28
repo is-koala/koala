@@ -44,6 +44,25 @@ class ApiPaths {
   /// Tek bir ilanı kaydetme / kaydı kaldırma.
   static String savedJob(String jobId) => '$savedJobs/$jobId';
 
+  // ----------------------------------------------------------------- İşveren
+
+  /// Oturum sahibinin açtığı ilanlar. Bireysel ve kurumsal ilanların ikisi de
+  /// burada: backend `creatorId`'ye bakıyor, şirkete değil.
+  static const String myJobs = '/users/me/jobs';
+
+  /// Bireysel ilan açma. Kurumsal ilan [companyJobs] üzerinden gidiyor.
+  static const String createIndividualJob = myJobs;
+
+  /// Şirket adına ilan açma.
+  static String companyJobs(String companyId) => '/companies/$companyId/jobs';
+
+  /// İlanı başvuruya kapatma. Silme ucu yok — bkz. `b_posts_page`.
+  static String closeJob(String jobId) => '${job(jobId)}/close';
+
+  /// Bir başvuruyu kabul etme ya da reddetme.
+  static String respondToApplication(String applicationId) =>
+      '/job-applications/$applicationId/respond';
+
   // ---------------------------------------------------------------- Sohbet
 
   static const String conversations = '/conversations';
@@ -64,6 +83,17 @@ class ApiPaths {
 
   static const String jobCategories = '/reference/job-categories';
 
+  /// Ülkeler. İl/ilçe seçicisi buradan başlıyor.
+  static const String countries = '/reference/countries';
+
+  /// Bir ülkenin illeri.
+  static String cities(String countryId) => '$countries/$countryId/cities';
+
+  /// Bir ilin ilçeleri. Yol `/reference/cities/...` — [cities] ile
+  /// karıştırılmamalı, o ülke altında.
+  static String districts(String cityId) =>
+      '/reference/cities/$cityId/districts';
+
   // -------------------------------------------------------------------- Legal
 
   static const String agreements = '/legal/agreements';
@@ -83,7 +113,10 @@ class ApiPaths {
     forgotPassword,
     resetPassword,
     agreements,
-    // `/reference/**` GET'leri backend'de `permitAll`.
+    // `/reference/**` GET'leri backend'de `permitAll`. İl/ilçe uçlarının yolu
+    // değişken olduğu için bu kümeye giremiyor; token taşımaları zararsız,
+    // yalnızca oturum açmış işveren çağırıyor.
     jobCategories,
+    countries,
   };
 }

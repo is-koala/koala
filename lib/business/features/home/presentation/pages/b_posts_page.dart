@@ -3,8 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:koala/business/features/home/models/b_job_post.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
 import 'package:koala/employee/features/home/models/job.dart';
-import 'package:koala/employee/features/home/models/job_detail.dart';
-import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
+import 'package:koala/employee/features/profile/presentation/widgets/profile_avatar.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -12,6 +11,7 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
+import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:provider/provider.dart';
 
@@ -40,6 +40,9 @@ class _BPostsPageState extends State<BPostsPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<BJobsProvider>().load();
+    });
   }
 
   @override
@@ -50,16 +53,9 @@ class _BPostsPageState extends State<BPostsPage>
 
   @override
   Widget build(BuildContext context) {
-    final bJobsProvider = context.watch<BJobsProvider>();
-    final applyProvider = context.watch<ApplyProvider>();
-
-    // Çalışan tarafından gelen başvuruları senkronize et
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      bJobsProvider.syncApplicantsFromApplyProvider(applyProvider);
-    });
-
-    final activePosts = bJobsProvider.activePosts;
-    final pastPosts = bJobsProvider.pastPosts;
+    final provider = context.watch<BJobsProvider>();
+    final activePosts = provider.activePosts;
+    final pastPosts = provider.pastPosts;
 
     return Scaffold(
       backgroundColor: context.backgroundColor,
@@ -72,16 +68,63 @@ class _BPostsPageState extends State<BPostsPage>
         children: [
           _tabBar(activePosts.length, pastPosts.length),
           const SizedBox(height: AppSizes.spaceMedium),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildJobList(activePosts, isActive: true),
-                _buildJobList(pastPosts, isActive: false),
-              ],
-            ),
-          ),
+          Expanded(child: _content(provider, activePosts, pastPosts)),
         ],
+      ),
+    );
+  }
+
+  /// Üç durum ayrı çiziliyor: yükleniyor, hata (mesaj + Tekrar Dene) ve
+  /// gerçekten boş. İkincisiyle üçüncüsünü aynı göstermek, sunucuya
+  /// ulaşılamadığında kullanıcıya "hiç ilanın yok" demek olurdu.
+  Widget _content(
+    BJobsProvider provider,
+    List<BJobPost> activePosts,
+    List<BJobPost> pastPosts,
+  ) {
+    if (provider.isLoading && !provider.hasLoaded) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final message = provider.errorMessage;
+    if (message != null && !provider.hasLoaded) return _errorState(message);
+
+    return TabBarView(
+      controller: _tabController,
+      children: [
+        _buildJobList(activePosts, isActive: true),
+        _buildJobList(pastPosts, isActive: false),
+      ],
+    );
+  }
+
+  Widget _errorState(String message) {
+    return Center(
+      child: Padding(
+        padding: AppPadding.primaryAll,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AppIcon(
+              AppIcons.alert,
+              size: AppSizes.iconLarge,
+              color: context.textTertiary,
+            ),
+            const SizedBox(height: AppSizes.space),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: context.textSecondary,
+              ),
+            ),
+            const SizedBox(height: AppSizes.spaceMedium),
+            OutlinedButton(
+              onPressed: () => context.read<BJobsProvider>().load(force: true),
+              child: const Text('Tekrar Dene'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -116,51 +159,61 @@ class _BPostsPageState extends State<BPostsPage>
   }
 
   Widget _buildJobList(List<BJobPost> posts, {required bool isActive}) {
-    if (posts.isEmpty) return _emptyState(isActive: isActive);
-
-    return ListView.separated(
-      padding: AppPadding.primaryHorizontal,
-      itemCount: posts.length,
-      separatorBuilder: (_, _) => const SizedBox(height: AppSizes.space),
-      itemBuilder: (context, index) =>
-          _buildJobCard(posts[index], isActive: isActive),
+    return RefreshIndicator(
+      onRefresh: () => context.read<BJobsProvider>().load(force: true),
+      color: context.accentColor,
+      child: posts.isEmpty
+          ? _emptyState(isActive: isActive)
+          : ListView.separated(
+              padding: AppPadding.primaryHorizontal,
+              itemCount: posts.length,
+              separatorBuilder: (_, _) =>
+                  const SizedBox(height: AppSizes.space),
+              itemBuilder: (context, index) =>
+                  _buildJobCard(posts[index], isActive: isActive),
+            ),
     );
   }
 
+  /// Boş liste de aşağı çekilip yenilenebilsin diye kaydırılabilir bir
+  /// gövdenin içinde duruyor.
   Widget _emptyState({required bool isActive}) {
-    return Center(
-      child: Padding(
-        padding: AppPadding.primaryAll,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            AppIcon(
-              isActive ? AppIcons.work : AppIcons.clock,
-              size: AppSizes.iconHuge,
-              color: context.dividerColor,
-            ),
-            const SizedBox(height: AppSizes.spaceMedium),
-            Text(
-              isActive
-                  ? 'Henüz aktif ilanınız yok'
-                  : 'Geçmiş ilanınız bulunmuyor',
-              style: context.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w500,
-                color: context.textTertiary,
+    return ListView(
+      padding: AppPadding.primaryAll,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: AppSizes.navBarClearance),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AppIcon(
+                isActive ? AppIcons.work : AppIcons.clock,
+                size: AppSizes.iconHuge,
+                color: context.dividerColor,
               ),
-            ),
-            if (isActive) ...[
-              const SizedBox(height: AppSizes.spaceSmall),
+              const SizedBox(height: AppSizes.spaceMedium),
               Text(
-                'Yeni ilan oluşturmak için + butonuna basın',
-                style: context.textTheme.bodySmall?.copyWith(
+                isActive
+                    ? 'Henüz aktif ilanınız yok'
+                    : 'Geçmiş ilanınız bulunmuyor',
+                style: context.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w500,
                   color: context.textTertiary,
                 ),
               ),
+              if (isActive) ...[
+                const SizedBox(height: AppSizes.spaceSmall),
+                Text(
+                  'Yeni ilan oluşturmak için + butonuna basın',
+                  style: context.textTheme.bodySmall?.copyWith(
+                    color: context.textTertiary,
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
@@ -213,7 +266,7 @@ class _BPostsPageState extends State<BPostsPage>
     );
   }
 
-  Widget _cardHeader(JobDetail job, {required bool isActive}) {
+  Widget _cardHeader(Job job, {required bool isActive}) {
     return Row(
       children: [
         _categoryBadge(job),
@@ -225,7 +278,7 @@ class _BPostsPageState extends State<BPostsPage>
     );
   }
 
-  Widget _categoryBadge(JobDetail job) {
+  Widget _categoryBadge(Job job) {
     return Container(
       padding: AppPadding.badge,
       decoration: BoxDecoration(
@@ -272,19 +325,24 @@ class _BPostsPageState extends State<BPostsPage>
     );
   }
 
-  Widget _postMenu(JobDetail job) {
+  Widget _postMenu(Job job) {
     return PopupMenuButton<String>(
       onSelected: (value) {
-        final provider = context.read<BJobsProvider>();
-        if (value == 'deactivate') {
-          provider.deactivatePost(job.id);
+        if (value == 'close') {
+          _closePost(job.id);
         } else if (value == 'delete') {
-          provider.deletePost(job.id);
+          // TODO(backend): İlan silen bir uç yok; `POST /jobs/{id}/close`
+          // yalnızca ilanı başvuruya kapatıyor. Menü öğesi duruyor çünkü
+          // tasarımda var — uç geldiğinde buraya bağlanacak.
+          AppToast.error(
+            context,
+            'İlan silme henüz desteklenmiyor. İlanı kapatabilirsiniz.',
+          );
         }
       },
       itemBuilder: (context) => [
         PopupMenuItem(
-          value: 'deactivate',
+          value: 'close',
           child: Text('İlanı Kapat', style: context.textTheme.bodyMedium),
         ),
         PopupMenuItem(
@@ -305,7 +363,20 @@ class _BPostsPageState extends State<BPostsPage>
     );
   }
 
-  Widget _priceAndLocationRow(JobDetail job) {
+  /// İlanı kapatır ve sonucu bildirir.
+  Future<void> _closePost(String jobId) async {
+    final provider = context.read<BJobsProvider>();
+    final closed = await provider.closePost(jobId);
+
+    if (!mounted) return;
+    if (closed) {
+      AppToast.success(context, 'İlan kapatıldı');
+    } else {
+      AppToast.error(context, provider.errorMessage ?? 'İlan kapatılamadı');
+    }
+  }
+
+  Widget _priceAndLocationRow(Job job) {
     return Row(
       children: [
         Icon(
@@ -330,7 +401,7 @@ class _BPostsPageState extends State<BPostsPage>
         const SizedBox(width: AppSizes.spaceTiny),
         Expanded(
           child: Text(
-            job.addressLabel ?? 'Ankara',
+            job.locationLabel ?? '—',
             style: context.textTheme.bodySmall?.copyWith(
               color: context.textTertiary,
             ),
@@ -356,6 +427,8 @@ class _BPostsPageState extends State<BPostsPage>
     );
   }
 
+  /// Başvurular ilanlardan sonra ayrı bir istekle geliyor; gelmeden önce
+  /// "henüz başvuru yok" yazmak yanlış bilgi olurdu.
   Widget _applicantsRow(BJobPost post) {
     final hasApplicants = post.applicants.isNotEmpty;
     final color = hasApplicants ? context.accentColor : context.textTertiary;
@@ -366,7 +439,9 @@ class _BPostsPageState extends State<BPostsPage>
         AppIcon(AppIcons.userMultiple, size: AppSizes.iconSmall, color: color),
         const SizedBox(width: AppSizes.spaceSmall),
         Text(
-          hasApplicants
+          !post.applicantsLoaded
+              ? 'Başvurular yükleniyor...'
+              : hasApplicants
               ? '${post.applicants.length} başvuru'
               : 'Henüz başvuru yok',
           style: context.textTheme.bodySmall?.copyWith(
@@ -387,16 +462,9 @@ class _BPostsPageState extends State<BPostsPage>
       isFilled: worker != null,
       children: worker != null
           ? [
-              Container(
-                width: _workerAvatarSize,
-                height: _workerAvatarSize,
-                decoration: BoxDecoration(
-                  borderRadius: AppRadius.smallCircular,
-                  image: DecorationImage(
-                    fit: BoxFit.cover,
-                    image: AssetImage(worker.profileImage),
-                  ),
-                ),
+              ProfileAvatar(
+                imageUrl: worker.profilePictureUrl,
+                size: _workerAvatarSize,
               ),
               const SizedBox(width: AppSizes.spaceSmall),
               Expanded(
@@ -416,7 +484,7 @@ class _BPostsPageState extends State<BPostsPage>
                   borderRadius: AppRadius.smallCircular,
                 ),
                 child: Text(
-                  'Tamamlandı',
+                  'Kabul Edildi',
                   style: context.textTheme.labelSmall?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: AppColors.successStrong,

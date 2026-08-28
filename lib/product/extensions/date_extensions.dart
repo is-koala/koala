@@ -30,6 +30,17 @@ extension DateExtensions on DateTime {
     final m = month.toString().padLeft(2, '0');
     return '$d.$m.$year';
   }
+
+  /// `09:00`.
+  String get asShortTime {
+    final h = hour.toString().padLeft(2, '0');
+    final min = minute.toString().padLeft(2, '0');
+    return '$h:$min';
+  }
+
+  /// `15.02.2026 09:00`. İlanın başlangıç/bitiş anı gün ve saatin ikisini de
+  /// taşıdığı için tek başına tarih yetmiyor.
+  String get asShortDateTime => '$asShortDate $asShortTime';
 }
 
 /// Bir tarih aralığını okunur hâle getirir.

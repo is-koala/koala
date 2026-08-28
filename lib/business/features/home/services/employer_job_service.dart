@@ -1,0 +1,116 @@
+import 'package:flutter/foundation.dart';
+import 'package:koala/business/features/home/models/create_job_request.dart';
+import 'package:koala/business/features/home/models/job_applicant.dart';
+import 'package:koala/employee/features/home/models/job_detail.dart';
+import 'package:koala/employee/features/home/models/job_page.dart';
+import 'package:koala/employee/features/jobs/models/job_application.dart';
+import 'package:koala/product/network/api_client.dart';
+import 'package:koala/product/network/api_paths.dart';
+
+/// İşverenin ilan uçları.
+///
+/// Çalışan tarafındaki `JobService` ilan **arıyor**; burası ilan **açıyor,
+/// kapatıyor ve başvuruları yanıtlıyor**. İkisi ayrı duruyor çünkü yetki de
+/// ayrı: bu sınıfın çağırdığı her uç ilan sahipliğini doğruluyor.
+class EmployerJobService {
+  EmployerJobService._(this._apiClient);
+
+  static final EmployerJobService _instance = EmployerJobService._(ApiClient());
+
+  factory EmployerJobService() => _instance;
+
+  @visibleForTesting
+  factory EmployerJobService.withClient(ApiClient apiClient) {
+    return EmployerJobService._(apiClient);
+  }
+
+  final ApiClient _apiClient;
+
+  /// Varsayılan sayfa boyutu; bir işverenin ilan sayısı azdır, tek sayfa
+  /// çoğu durumda yetiyor.
+  static const int defaultPageSize = 50;
+
+  /// İşverenin açtığı ilanlar, yeniden eskiye.
+  ///
+  /// Bireysel ve kurumsal ilanların ikisi de burada: backend `creatorId`'ye
+  /// bakıyor, dolayısıyla şirket kimliği geçmeye gerek yok.
+  Future<JobPage> fetchMyJobs({int page = 0, int size = defaultPageSize}) {
+    return _apiClient.get<JobPage>(
+      ApiPaths.myJobs,
+      queryParameters: {'page': page, 'size': size},
+      parse: (data) => JobPage.fromJson(data! as Map<String, dynamic>),
+    );
+  }
+
+  /// Yeni ilan açar.
+  ///
+  /// [companyId] doluysa ilan şirket adına açılıyor, boşsa bireysel. Kullanıcı
+  /// onaylı bir şirkete bağlıysa kurumsal uç kullanılmalı; ilan o zaman şirket
+  /// adıyla listeleniyor.
+  Future<JobDetail> createJob(CreateJobRequest request, {String? companyId}) {
+    final forCompany = companyId != null;
+
+    return _apiClient.post<JobDetail>(
+      forCompany
+          ? ApiPaths.companyJobs(companyId)
+          : ApiPaths.createIndividualJob,
+      body: request.toJson(forCompany: forCompany),
+      parse: (data) => JobDetail.fromJson(data! as Map<String, dynamic>),
+    );
+  }
+
+  /// İlanı başvuruya kapatır.
+  ///
+  /// Silme değil: kayıt duruyor, yalnızca durumu değişiyor. Backend'de ilan
+  /// silen bir uç yok.
+  Future<void> closeJob(String jobId) {
+    return _apiClient.postWithoutData(ApiPaths.closeJob(jobId));
+  }
+
+  /// Bir ilana gelen başvurular.
+  ///
+  /// Yalnızca ilan sahibi çağırabiliyor; sayfalama yok, uç düz liste
+  /// döndürüyor.
+  Future<List<JobApplicant>> fetchApplicants(String jobId) {
+    return _apiClient.get<List<JobApplicant>>(
+      ApiPaths.jobApplications(jobId),
+      parse: (data) => data is List
+          ? data
+                .whereType<Map<String, dynamic>>()
+                .map(JobApplicant.fromJson)
+                .toList()
+          : const [],
+    );
+  }
+
+  /// Başvuruyu kabul eder.
+  ///
+  /// Kabul edilen başvuru sunucuda bir **atamaya** dönüşüyor ve atama
+  /// `PENDING_CONFIRMATION` ile başlıyor: iş, çalışan onaylayana kadar
+  /// başlamış sayılmıyor.
+  Future<void> acceptApplication(String applicationId) {
+    return _respond(applicationId, ApplicationStatus.accepted);
+  }
+
+  /// Başvuruyu reddeder. [reason] çalışanın gördüğü gerekçe.
+  Future<void> rejectApplication(String applicationId, {String? reason}) {
+    return _respond(
+      applicationId,
+      ApplicationStatus.rejected,
+      rejectionReason: reason,
+    );
+  }
+
+  /// Yanıtlanmış bir başvuru ikinci kez yanıtlanamıyor; uç 400 döndürüyor ve
+  /// mesajı doğrudan kullanıcıya gösterilebilir.
+  Future<void> _respond(
+    String applicationId,
+    ApplicationStatus status, {
+    String? rejectionReason,
+  }) {
+    return _apiClient.postWithoutData(
+      ApiPaths.respondToApplication(applicationId),
+      body: {'status': status.code, 'rejectionReason': ?rejectionReason},
+    );
+  }
+}

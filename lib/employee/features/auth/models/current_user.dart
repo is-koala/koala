@@ -122,6 +122,17 @@ class CurrentUser {
 
   String get fullName => '$firstName $lastName';
 
+  /// İlan açarken kullanılacak şirket.
+  ///
+  /// Onaysız üyelik sayılmıyor: backend onaysız şirket adına ilan açtırmıyor.
+  /// `null` dönmesi "bireysel ilan açılacak" demek, hata değil.
+  CompanyMembership? get activeCompany {
+    for (final company in companies) {
+      if (company.approved) return company;
+    }
+    return null;
+  }
+
   factory CurrentUser.fromJson(Map<String, dynamic> json) {
     final companies = json['companies'];
     final roles = json['roles'];

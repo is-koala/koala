@@ -96,7 +96,7 @@ lib/
 │   ├── core/widgets/             # shared across employee features only
 │   └── features/<name>/
 │       ├── models/               # plain data classes, no `Model` suffix
-│       ├── services/             # the fake data sources (see Backend)
+│       ├── services/             # where the data comes from (see Backend)
 │       └── presentation/{pages,widgets,providers}
 │                                 # pages come in `_page.dart` + `_pagemodel.dart`
 │                                 # pairs wherever the page carries state
@@ -105,7 +105,7 @@ lib/
     └── features/<name>/
         ├── models/
         ├── services/
-        └── presentation/{pages,providers}
+        └── presentation/{pages,widgets,providers}
 ```
 
 Employee features: `auth`, `home` (explore), `jobs`, `chat`, `profile`, `company_detail`, `settings`.
@@ -193,7 +193,7 @@ Two feature services are on real endpoints: `auth_service.dart` (registration in
 
 The icon, colour and map pin are *presentation*, resolved from `code` by the `JobCategoryStyle` extension, with a fallback for codes the app has no artwork for. **A code mismatch does not throw** — the category silently renders with the default icon, brand green and the waiter pin. That has already happened once, when the server migrated the codes from Turkish slugs to English, so `JobCategoryCodes` is guarded by a test in `test/employee/features/home/models/job_test.dart` that fails if any known code falls through to the fallback. The five seeded codes are `PHOTOGRAPHY`, `WAITER`, `PET_CARE`, `DESIGN`, `BARISTA` (`27-10-job-category-seed.xml`).
 
-`JobCategorySeeds` exists only so the remaining fake services and the tests can build a `Job`; its ids are deliberately `seed-` prefixed rather than UUIDs so they can never match a real record. It goes away with the fakes.
+`JobCategorySeeds` exists only so the tests can build a `Job` without a live category list; its ids are deliberately `seed-` prefixed rather than UUIDs so they can never match a real record. Nothing in `lib/` reads it — keep it that way.
 
 > There is no neutral map pin for an unknown category — the waiter pin is reused, recoloured. Marked `TODO(tasarım)` in `job.dart`.
 
@@ -201,7 +201,7 @@ The employer flag is spelled **`isEmployer`** everywhere — the server pins it 
 
 Refreshing works with an expired access token: the server skips its session filter on `/auth/refresh-token` and reads the session id out of the expired JWT's claims. The call still has to carry the `Authorization` header, which is why that path is deliberately not in `ApiPaths.publicPaths`.
 
-**Chat is on the real endpoints.** `employee/features/chat/services/chat_service.dart` wraps the whole surface and **both apps use it** — `GET /conversations` returns the session owner's conversations regardless of whether they are the employer or the worker, so `b_chat_list_page` and `b_chat_page` call the same service. `business/features/chat/services/b_chat_service.dart` is dead but not deleted.
+**Chat is on the real endpoints.** `employee/features/chat/services/chat_service.dart` wraps the whole surface and **both apps use it** — `GET /conversations` returns the session owner's conversations regardless of whether they are the employer or the worker, so `b_chat_list_page` and `b_chat_page` call the same service. The business side has no chat service of its own; `business/features/chat/` is `presentation/` only.
 
 Every call takes a `currentUserId`, because the server does not say who the counterpart is or who sent a message: both are derived by checking which of the two participants is the session owner. The pages read it from `UserProvider` and load the user first if it is not there yet.
 
@@ -238,7 +238,20 @@ The same message arrives on **two channels** — the conversation topic and `/us
 
 **Still fake:**
 
-**Still fake:** everything except auth, the employee profile, the jobs flow (explore, apply, İşlerim, saved jobs) and chat. Data comes from services that return hard-coded lists, one `services/` folder per feature: `employee/features/home/services/` (`job_service.dart` with Ankara coordinates, `location_service.dart`), `company_detail/services/company_service.dart`, `jobs/services/review_service.dart`, `business/features/home/services/fake_business_company.dart`. Avatars are generated URLs from `ui-avatars.com`. `profile/services/fake_user.dart` survives only because `BJobsProvider` builds fake applicants from it — nothing on the employee side reads it any more.
+**The employer's job flow is real too.** `business/features/home/services/employer_job_service.dart` owns it: `GET /users/me/jobs` (own posts, individual and company alike — the server filters by `creatorId`), `POST /users/me/jobs` / `POST /companies/{id}/jobs` (open a post), `POST /jobs/{jobId}/close`, `GET /jobs/{jobId}/applications` and `POST /job-applications/{id}/respond`. `BJobsProvider` merges the first and the fourth into one list; `b_job_detail_page` fetches the richer `GET /jobs/{id}` itself.
+
+Four things worth knowing:
+
+- **The list endpoint does not carry an applicant count**, so the provider fires one `GET /jobs/{id}/applications` per post in parallel — an N+1 it lives with. `BJobPost.applicantsLoaded` exists so the card says "Başvurular yükleniyor..." instead of "henüz başvuru yok" during that second pass. `TODO(backend)` asks for `applicationCount` on `JobSummaryDto`.
+- **Individual and company posts differ by one field.** `CreateIndividualJobDto` has no `insuranceRequired`; `CreateJobRequest.toJson(forCompany:)` drops it, and the create screen hides the switch. Which endpoint is used comes from `CurrentUser.activeCompany` — the first **approved** membership.
+- **There is no endpoint that deletes a job.** Close is all there is, so the "İlanı Sil" menu item explains that instead of acting (`TODO(backend)` in `b_posts_page.dart`).
+- **Accepting an application does not close the job.** The server opens an assignment in `PENDING_CONFIRMATION` and waits for the worker; the post stays in "Aktif" until its `JobStatus` says otherwise. Active vs. past is decided by `JobStatus` (`OPEN`/`IN_PROGRESS` → active), never by a local flag.
+
+> `JobApplicantDto` returns a `SafeUserDto`, which carries no `jobTitle` — the applicant's profession is parsed (`JobCreator.jobTitle`) but always `null` today, and every screen hides the line rather than fetching a profile per applicant. Same for the candidate profile screen's location and CV rows. Marked `TODO(backend)` at each site.
+
+**Still fake:** everything except auth, the employee profile, the jobs flow (explore, apply, İşlerim, saved jobs), chat and the employer's job flow. Data comes from services that return hard-coded lists, one `services/` folder per feature: `employee/features/home/services/location_service.dart`, `company_detail/services/company_service.dart`, `jobs/services/review_service.dart`, `business/features/home/services/fake_business_company.dart` (the business profile and company-info screens). Avatars are generated URLs from `ui-avatars.com`.
+
+> The orphaned fakes were deleted once the employer's job flow landed: `profile/services/fake_user.dart` and its `profile/models/user.dart`, `jobs/services/my_jobs_service.dart`, `business/features/chat/services/b_chat_service.dart`. `employee/features/profile/` and `business/features/chat/` are `presentation/` only now — a feature carries `models/` and `services/` only when it has data of its own.
 - `GET /jobs` is ready to be wired: `JobSummaryDto` carries `latitude`/`longitude`, `GET /jobs/{jobId}` returns the richer `JobDetailDto` (description, duties, dress code, age range, full address, creator, company) and the search takes a bounding box (`minLatitude`/`maxLatitude`/`minLongitude`/`maxLongitude`). Only the category mapping is missing.
 - Sessions are no longer faked: `SessionManager` writes `is_logged_in` / `user_type` **and** the tokens together. Do not write those prefs keys by hand; a flag without a token is a user who looks logged in and gets 401s.
 
@@ -314,6 +327,10 @@ Empty lists go through **`EmptyState`** (`product/widgets/`), which owns the ico
 
 Bottom sheets go through **`AppBottomSheet`** (`product/widgets/`), which owns the background, the top corners, the title row and the bottom safe-area inset. If the sheet has its own state, wrap `AppBottomSheet` in a `StatefulBuilder` inside the builder — the shell itself is stateless.
 
+> ⚠️ **Do not put a `ListTile` inside `AppBottomSheet`.** The shell's background is a `DecoratedBox` and `ListTile` paints its own background and ink splashes onto the nearest `Material` **above** that box, so both are hidden; Flutter reports it at runtime as *"ListTile background color or ink splashes may be invisible"*. Every tappable row in this codebase is `Material` + `InkWell` + `Padding` for exactly this reason — see `MyListTile`, `ThemeModeSheet._option` and `BOptionSheet._option`, and copy one of them. `test/business/.../b_option_sheet_test.dart` fails if a `ListTile` comes back.
+
+Single-choice lists on the business side go through **`BOptionSheet`** (`business/features/home/presentation/widgets/`): a generic sheet driven by a label getter, with optional per-item icon and colour. The matching field is **`BSelectionField`**, which wears `MyTextfield`'s frame so a "tap to choose" field and a typed field sit on the same grid. Job category, country, province and district all use the pair — the category used to be a chip row, but the list comes from the server and can grow.
+
 > ⚠️ **Two footguns that cost compile errors and silent bugs:**
 > - `context.size` is **not** the `SizeExtension` getter — `BuildContext` has its own nullable `size`, and the instance member wins. Use `MediaQuery.sizeOf(context)`. `context.width` / `context.height` are fine.
 > - Every `textTheme` slot carries a color. On a colored surface (a green button, a tinted card) you must pass the foreground explicitly with `copyWith(color: ...)`, or set `textStyle:` in the button's `styleFrom` and let `foregroundColor` win. `copyWith(color: null)` does **not** clear a color.
@@ -376,7 +393,6 @@ Every place that needs the real backend is marked with a `// TODO(backend):` com
 
 - `business/features/home/presentation/pages/b_home_page.dart` has a `_quickActionsSection` that nothing calls. It carries an `// ignore: unused_element` so analyze stays clean — it is a parked section, not dead code to delete without asking.
 - The stat numbers on the business profile, the applicant CV download and the "follow company" action all render but write nowhere.
-- **`jobs/services/my_jobs_service.dart` is dead but not deleted.** İşlerim now reads `GET /users/me/assignments` through `JobApplicationService`; nothing imports the fake service any more. Left in place deliberately — delete it only when asked.
 - **Two states the server has and the UI cannot express.** Not a backend gap — the data arrives, the design has nowhere to put it:
   - **Rejected application.** `ApplicationStatus.REJECTED` comes back with a `rejectionReason`, but `MyJobStatus` only knows pending / approved / awaiting-payment / done. A rejected application currently renders as **pending**, so the worker never learns they were turned down. Needs a new status in the design before it can be mapped.
   - **Cancelled assignment.** `AssignmentStatus.CANCELLED` (and `REJECTED`) have the same problem.
@@ -388,7 +404,7 @@ Every place that needs the real backend is marked with a `// TODO(backend):` com
   - **Experience editing** — the *Tecrübe* section is read-only. `/users/me/experiences` has full CRUD; adding one needs a form screen with an `EmploymentType` picker and a month/year range.
   - **`qualifications`** is parsed but no longer shown anywhere. "Meslek" moved to the real `jobTitle` field; `qualifications` ("yetkinlikler") is a separate thing with no UI yet.
   - **Presence** — `GET /users/{userId}/presence` and the batch `POST /presence/lookup` exist; the chat UI still hardcodes `isOnline: false`.
-- `business/features/home/presentation/pages/b_create_page.dart` hardcodes `latitude: 39.9208, longitude: 32.8541` for **every** job an employer posts, so they all land on the same map pin. The "Adres" field is free text and is never turned into coordinates. There is no `TODO(backend)` marker on it, so `grep` will not find it — it silently produces wrong data. Letting the employer drop a pin on a `google_maps_flutter` map is the obvious fix; the `geocoding` package is the other option but guesses at free-text addresses.
+- ~~`b_create_page.dart` hardcodes the coordinates of every job.~~ Fixed: `CreateAddressRequestDto` makes `countryCode`, `cityName`, `addressLine`, `latitude` and `longitude` all mandatory, and the server never geocodes free text — so the create screen now collects the province and district from `/reference/countries → cities → districts` and the coordinate from `BLocationPickerPage`, a `google_maps_flutter` screen where the employer slides the map under a fixed centre pin. No new dependency; `geocoding` was rejected because it guesses at free-text addresses.
 
 
 **Onboarding** is shown once — `seen_onboarding`, owned by `SessionManager` and read by the redirect guard. `SplashPage` (`/`) is the app's single startup point: it reads the session, and the guard sends the user on from there. There is no `AuthGate` any more.

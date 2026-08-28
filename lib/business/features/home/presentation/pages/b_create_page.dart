@@ -1,22 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:koala/business/features/home/models/create_job_request.dart';
+import 'package:koala/business/features/home/models/reference_location.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
-import 'package:koala/business/features/home/services/fake_business_company.dart';
-import 'package:koala/employee/features/auth/models/user_address.dart';
+import 'package:koala/business/features/home/presentation/widgets/b_option_sheet.dart';
+import 'package:koala/business/features/home/presentation/widgets/b_selection_field.dart';
+import 'package:koala/business/features/home/services/reference_location_service.dart';
 import 'package:koala/employee/features/home/models/job.dart';
-import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/home/presentation/providers/job_category_provider.dart';
+import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/extensions/date_extensions.dart';
+import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/button_navbar.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
 import 'package:provider/provider.dart';
+
+part 'b_create_pagemodel.dart';
 
 class BCreatePage extends StatefulWidget {
   const BCreatePage({super.key});
@@ -25,109 +34,261 @@ class BCreatePage extends StatefulWidget {
   State<BCreatePage> createState() => _BCreatePageState();
 }
 
-class _BCreatePageState extends State<BCreatePage> {
-  /// Açıklama alanının yüksekliği: yaklaşık dört satır.
-  static const double _descriptionHeight = 120;
-
-  /// Başarı diyaloğundaki tik dairesi.
-  static const double _successCircleSize = 72;
-  static const double _successIconSize = 48;
-
-  final _titleController = TextEditingController();
-  final _subtitleController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  final _priceController = TextEditingController();
-  final _addressController = TextEditingController();
-  final _sectorController = TextEditingController();
-  final _positionController = TextEditingController();
-  final _dutiesController = TextEditingController();
-  final _dressCodeController = TextEditingController();
-  final _minAgeController = TextEditingController();
-  final _maxAgeController = TextEditingController();
-
-  /// Kategoriler `/reference/job-categories`'ten geldiği için başlangıçta
-  /// seçili kategori yok; liste dolduğunda ilki seçiliyor.
-  JobCategory? _selectedCategory;
-  JobType _selectedType = JobType.oneTime;
-  bool _experienceRequired = false;
-  bool _insuranceRequired = false;
-
+class _BCreatePageState extends BCreatePageModel {
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<JobCategoryProvider>().load();
-    });
-  }
+  Widget build(BuildContext context) {
+    // İlan kurumsal mı bireysel mi açılacak: onaylı şirket üyeliği varsa
+    // kurumsal. Kullanıcının bunu seçmesi gerekmiyor ama görmesi gerekiyor.
+    final company = context.watch<UserProvider>().user?.activeCompany;
 
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _subtitleController.dispose();
-    _descriptionController.dispose();
-    _priceController.dispose();
-    _addressController.dispose();
-    _sectorController.dispose();
-    _positionController.dispose();
-    _dutiesController.dispose();
-    _dressCodeController.dispose();
-    _minAgeController.dispose();
-    _maxAgeController.dispose();
-    super.dispose();
-  }
+    return Scaffold(
+      backgroundColor: context.backgroundColor,
+      appBar: MyAppbar(title: "Yeni İlan Oluştur"),
+      bottomNavigationBar: ButtonNavbar(
+        onPressed: _isSubmitting ? null : _createJob,
+        title: "İlanı Yayınla",
+        isLoading: _isSubmitting,
+      ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: AppPadding.primaryAll,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _employerNotice(company?.companyName),
 
-  void _createJob() {
-    if (_titleController.text.trim().isEmpty ||
-        _priceController.text.trim().isEmpty) {
-      AppToast.error(context, 'Lütfen başlık ve ücret alanlarını doldurun');
-      return;
-    }
+              // Temel Bilgiler
+              _sectionLabel("Temel Bilgiler"),
+              const SizedBox(height: AppSizes.spaceMedium),
+              MyTextfield(
+                labelText: "İlan Başlığı *",
+                controller: _titleController,
+              ),
+              const SizedBox(height: AppSizes.spaceMedium),
+              MyTextfield(
+                labelText: "Pozisyon *",
+                controller: _positionController,
+              ),
+              const SizedBox(height: AppSizes.spaceMedium),
+              MyTextfield(labelText: "Sektör", controller: _sectorController),
+              const SizedBox(height: AppSizes.spaceMedium),
+              _descriptionTextField(),
 
-    final category = _selectedCategory;
-    if (category == null) {
-      AppToast.error(context, 'Lütfen bir kategori seçin');
-      return;
-    }
+              const SizedBox(height: AppSizes.spaceLarge),
 
-    final companyName = FakeBusinessCompany.instance.name;
-    final now = DateTime.now();
-    final jobId = 'b_${now.millisecondsSinceEpoch}';
+              // Kategori & Tip
+              _sectionLabel("Kategori ve Tip"),
+              const SizedBox(height: AppSizes.spaceMedium),
+              _categorySelector(),
+              const SizedBox(height: AppSizes.spaceMedium),
+              _typeSelector(),
 
-    final job = JobDetail(
-      id: jobId,
-      status: JobStatus.open,
-      type: _selectedType,
-      category: category,
-      title: _titleController.text.trim(),
-      price: double.tryParse(_priceController.text.trim()) ?? 0,
-      company: JobCompany(id: 'b_company', name: companyName),
-      description: _trimmedOrNull(_descriptionController),
-      sector: _trimmedOrNull(_sectorController),
-      position: _trimmedOrNull(_positionController),
-      duties: _trimmedOrNull(_dutiesController),
-      insuranceRequired: _insuranceRequired,
-      startDateTime: now,
-      salaryType: SalaryType.daily,
-      minAge: int.tryParse(_minAgeController.text.trim()),
-      maxAge: int.tryParse(_maxAgeController.text.trim()),
-      experienceRequired: _experienceRequired,
-      dressCode: _trimmedOrNull(_dressCodeController),
-      employerType: JobEmployerType.company,
-      // TODO(backend): İlan oluşturma `POST /companies/{id}/jobs` ile
-      // kaydedilecek. Adres o zaman ilçe/il kimliğine çevrilecek; şimdilik
-      // serbest metin olduğu gibi taşınıyor ve koordinat hiç üretilmiyor.
-      address: UserAddress(
-        id: 'b_address',
-        addressLine: _addressController.text.trim().isEmpty
-            ? 'Ankara'
-            : _addressController.text.trim(),
+              const SizedBox(height: AppSizes.spaceLarge),
+
+              // Ücret & Tarih
+              _sectionLabel("Ücret ve Tarih"),
+              const SizedBox(height: AppSizes.spaceMedium),
+              MyTextfield(
+                labelText: "Ücret (₺) *",
+                controller: _priceController,
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: AppSizes.spaceMedium),
+              _salaryTypeSelector(),
+              const SizedBox(height: AppSizes.spaceMedium),
+              BSelectionField(
+                label: "Başlangıç *",
+                value: _startDateTime?.asShortDateTime,
+                placeholder: "Tarih ve saat seçin",
+                onTap: _pickStartDateTime,
+              ),
+              const SizedBox(height: AppSizes.spaceMedium),
+              BSelectionField(
+                label: "Bitiş *",
+                value: _endDateTime?.asShortDateTime,
+                placeholder: "Tarih ve saat seçin",
+                onTap: _pickEndDateTime,
+              ),
+
+              const SizedBox(height: AppSizes.spaceLarge),
+
+              // Konum
+              _sectionLabel("Konum"),
+              const SizedBox(height: AppSizes.spaceMedium),
+              _locationSection(),
+
+              const SizedBox(height: AppSizes.spaceLarge),
+
+              // Detaylı Bilgiler
+              _sectionLabel("Detaylı Bilgiler"),
+              const SizedBox(height: AppSizes.spaceMedium),
+              MyTextfield(labelText: "Görevler", controller: _dutiesController),
+              const SizedBox(height: AppSizes.spaceMedium),
+              MyTextfield(
+                labelText: "Kıyafet Kuralı",
+                controller: _dressCodeController,
+              ),
+
+              const SizedBox(height: AppSizes.spaceLarge),
+
+              // Gereksinimler
+              _sectionLabel("Gereksinimler"),
+              const SizedBox(height: AppSizes.space),
+              Row(
+                children: [
+                  Expanded(
+                    child: MyTextfield(
+                      labelText: "Min Yaş *",
+                      controller: _minAgeController,
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                  const SizedBox(width: AppSizes.spaceMedium),
+                  Expanded(
+                    child: MyTextfield(
+                      labelText: "Max Yaş *",
+                      controller: _maxAgeController,
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSizes.space),
+              _switchTile(
+                title: "Deneyim Gerekli",
+                value: _experienceRequired,
+                onChanged: (v) => setState(() => _experienceRequired = v),
+              ),
+              // Sigorta yalnızca kurumsal ilanlarda sorulabiliyor: bireysel
+              // ilan ucu (`CreateIndividualJobDto`) bu alanı hiç taşımıyor.
+              if (company != null)
+                _switchTile(
+                  title: "Sigorta Gerekli",
+                  value: _insuranceRequired,
+                  onChanged: (v) => setState(() => _insuranceRequired = v),
+                ),
+
+              const SizedBox(height: AppSizes.navBarClearance),
+            ],
+          ),
+        ),
       ),
     );
-
-    context.read<BJobsProvider>().createJobPost(job);
-    _showSuccessDialog();
   }
 
+  // ---------------------------------------------------------------- Başlık
+
+  /// İlanın kimin adına açılacağını söyleyen bilgi satırı.
+  Widget _employerNotice(String? companyName) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSizes.spaceLarge),
+      child: Container(
+        width: double.infinity,
+        padding: AppPadding.chip,
+        decoration: BoxDecoration(
+          color: context.accentColor.withValues(alpha: _noticeAlpha),
+          borderRadius: AppRadius.innerCircular,
+        ),
+        child: Row(
+          children: [
+            AppIcon(
+              companyName != null ? AppIcons.building : AppIcons.user,
+              size: AppSizes.iconSmall,
+              color: context.accentColor,
+            ),
+            const SizedBox(width: AppSizes.spaceSmall),
+            Expanded(
+              child: Text(
+                companyName != null
+                    ? '$companyName adına yayınlanacak'
+                    : 'Bireysel ilan olarak yayınlanacak',
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: context.accentColor,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Bilgi kutularının zemin opaklığı.
+  static const double _noticeAlpha = 0.1;
+
+  // ----------------------------------------------------------------- Konum
+
+  /// Ülke / il / ilçe seçicileri, açık adres ve haritadan koordinat.
+  ///
+  /// Backend adresi metinden koordinata çevirmiyor; ikisi de zorunlu olduğu
+  /// için ikisi de burada toplanıyor.
+  Widget _locationSection() {
+    return Column(
+      children: [
+        BSelectionField(
+          label: "Ülke *",
+          value: _selectedCountry?.name,
+          placeholder: "Seçin",
+          isLoading: _loadingCountries,
+          onTap: () => _pickReference(
+            title: 'Ülke',
+            options: _countries,
+            selected: _selectedCountry,
+            onSelected: _selectCountry,
+          ),
+        ),
+        const SizedBox(height: AppSizes.spaceMedium),
+        BSelectionField(
+          label: "İl *",
+          value: _selectedCity?.name,
+          placeholder: _selectedCountry == null ? "Önce ülke seçin" : "Seçin",
+          enabled: _selectedCountry != null && _cities.isNotEmpty,
+          isLoading: _loadingCities,
+          onTap: () => _pickReference(
+            title: 'İl',
+            options: _cities,
+            selected: _selectedCity,
+            onSelected: _selectCity,
+          ),
+        ),
+        const SizedBox(height: AppSizes.spaceMedium),
+        BSelectionField(
+          label: "İlçe",
+          value: _selectedDistrict?.name,
+          placeholder: _selectedCity == null ? "Önce il seçin" : "Seçin",
+          enabled: _selectedCity != null && _districts.isNotEmpty,
+          isLoading: _loadingDistricts,
+          onTap: () => _pickReference(
+            title: 'İlçe',
+            options: _districts,
+            selected: _selectedDistrict,
+            onSelected: (district) =>
+                setState(() => _selectedDistrict = district),
+          ),
+        ),
+        const SizedBox(height: AppSizes.spaceMedium),
+        MyTextfield(
+          labelText: "Açık Adres *",
+          controller: _addressLineController,
+        ),
+        const SizedBox(height: AppSizes.spaceMedium),
+        BSelectionField(
+          label: "Haritadaki Konum *",
+          value: _pickedLocation == null
+              ? null
+              : '${_pickedLocation!.latitude.toStringAsFixed(5)}, '
+                    '${_pickedLocation!.longitude.toStringAsFixed(5)}',
+          placeholder: "Haritadan seçin",
+          onTap: _pickLocation,
+        ),
+      ],
+    );
+  }
+
+  // ------------------------------------------------------------ Başarı kutusu
+
+  @override
   void _showSuccessDialog() {
     showDialog(
       context: context,
@@ -142,8 +303,8 @@ class _BCreatePageState extends State<BCreatePage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: _successCircleSize,
-                height: _successCircleSize,
+                width: BCreatePageModel._successCircleSize,
+                height: BCreatePageModel._successCircleSize,
                 decoration: BoxDecoration(
                   color: AppColors.success.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
@@ -151,7 +312,7 @@ class _BCreatePageState extends State<BCreatePage> {
                 child: const Icon(
                   Icons.check_circle_outline,
                   color: AppColors.success,
-                  size: _successIconSize,
+                  size: BCreatePageModel._successIconSize,
                 ),
               ),
               const SizedBox(height: AppSizes.spaceMedium),
@@ -200,115 +361,7 @@ class _BCreatePageState extends State<BCreatePage> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: context.backgroundColor,
-      appBar: MyAppbar(title: "Yeni İlan Oluştur"),
-      bottomNavigationBar: ButtonNavbar(
-        onPressed: _createJob,
-        title: "İlanı Yayınla",
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: AppPadding.primaryAll,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Temel Bilgiler
-              _sectionLabel("Temel Bilgiler"),
-              const SizedBox(height: AppSizes.spaceMedium),
-              MyTextfield(
-                labelText: "İlan Başlığı *",
-                controller: _titleController,
-              ),
-              const SizedBox(height: AppSizes.spaceMedium),
-              MyTextfield(
-                labelText: "Kısa Açıklama",
-                controller: _subtitleController,
-              ),
-              const SizedBox(height: AppSizes.spaceMedium),
-              MyTextfield(
-                labelText: "Ücret (₺) *",
-                controller: _priceController,
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: AppSizes.spaceMedium),
-              MyTextfield(labelText: "Adres", controller: _addressController),
-
-              const SizedBox(height: AppSizes.spaceLarge),
-
-              // Kategori & Tip
-              _sectionLabel("Kategori ve Tip"),
-              const SizedBox(height: AppSizes.space),
-              _categorySelector(),
-              const SizedBox(height: AppSizes.spaceMedium),
-              _typeSelector(),
-
-              const SizedBox(height: AppSizes.spaceLarge),
-
-              // Detaylı Bilgiler
-              _sectionLabel("Detaylı Bilgiler"),
-              const SizedBox(height: AppSizes.space),
-              _descriptionTextField(),
-              const SizedBox(height: AppSizes.spaceMedium),
-              MyTextfield(labelText: "Sektör", controller: _sectorController),
-              const SizedBox(height: AppSizes.spaceMedium),
-              MyTextfield(
-                labelText: "Pozisyon",
-                controller: _positionController,
-              ),
-              const SizedBox(height: AppSizes.spaceMedium),
-              MyTextfield(labelText: "Görevler", controller: _dutiesController),
-
-              const SizedBox(height: AppSizes.spaceLarge),
-
-              // Gereksinimler
-              _sectionLabel("Gereksinimler"),
-              const SizedBox(height: AppSizes.space),
-              Row(
-                children: [
-                  Expanded(
-                    child: MyTextfield(
-                      labelText: "Min Yaş",
-                      controller: _minAgeController,
-                      keyboardType: TextInputType.number,
-                    ),
-                  ),
-                  const SizedBox(width: AppSizes.spaceMedium),
-                  Expanded(
-                    child: MyTextfield(
-                      labelText: "Max Yaş",
-                      controller: _maxAgeController,
-                      keyboardType: TextInputType.number,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSizes.spaceMedium),
-              MyTextfield(
-                labelText: "Kıyafet Kuralı",
-                controller: _dressCodeController,
-              ),
-              const SizedBox(height: AppSizes.space),
-              _switchTile(
-                title: "Deneyim Gerekli",
-                value: _experienceRequired,
-                onChanged: (v) => setState(() => _experienceRequired = v),
-              ),
-              _switchTile(
-                title: "Sigorta Gerekli",
-                value: _insuranceRequired,
-                onChanged: (v) => setState(() => _insuranceRequired = v),
-              ),
-
-              const SizedBox(height: AppSizes.navBarClearance),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  // -------------------------------------------------------------- Parçalar
 
   /// Kategori çipleri çizilemediğinde onların yerine geçen kutu.
   Widget _categoryNotice(String message, {required bool canRetry}) {
@@ -347,29 +400,17 @@ class _BCreatePageState extends State<BCreatePage> {
     );
   }
 
-  /// Boş bırakılmış alanı `null`'a çeviriyor; sunucu boş metni de değer
-  /// sayıyor, o yüzden hiç göndermemek gerekiyor.
-  static String? _trimmedOrNull(TextEditingController controller) {
-    final value = controller.text.trim();
-    return value.isEmpty ? null : value;
-  }
-
   Widget _sectionLabel(String title) =>
       Text(title, style: context.textTheme.titleMedium);
 
+  /// Kategori alanı.
+  ///
+  /// Liste sunucudan geliyor ve büyüyebilir; o yüzden çip dizisi değil, il
+  /// seçimiyle aynı açılır alan. Kategoriler hiç gelmediyse (hata ya da boş
+  /// tanım) alanın yerine açıklama kutusu çiziliyor — dokunulduğunda boş bir
+  /// sheet açan bir alan göstermenin anlamı yok.
   Widget _categorySelector() {
     final provider = context.watch<JobCategoryProvider>();
-
-    if (provider.isLoading && provider.categories.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: AppSizes.spaceSmall),
-        child: SizedBox(
-          height: AppSizes.icon,
-          width: AppSizes.icon,
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
-      );
-    }
 
     final message = provider.errorMessage;
     if (message != null) return _categoryNotice(message, canRetry: true);
@@ -382,97 +423,94 @@ class _BCreatePageState extends State<BCreatePage> {
       );
     }
 
-    return Wrap(
-      spacing: AppSizes.spaceSmall,
-      runSpacing: AppSizes.spaceSmall,
-      children: provider.categories.map((category) {
-        final isSelected = _selectedCategory == category;
-        return GestureDetector(
-          onTap: () => setState(() => _selectedCategory = category),
-          child: Container(
-            padding: AppPadding.chip,
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? category.color.withValues(alpha: 0.15)
-                  : context.tileColor,
-              borderRadius: AppRadius.innerCircular,
-              border: Border.all(
-                color: isSelected ? category.color : context.dividerColor,
-                width: isSelected ? 2 : 1,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AppIcon(
-                  category.icon,
-                  size: AppSizes.iconSmall,
-                  color: isSelected ? category.color : context.textSecondary,
-                ),
-                const SizedBox(width: AppSizes.spaceTiny),
-                Text(
-                  category.displayName,
-                  style: context.textTheme.bodySmall?.copyWith(
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                    color: isSelected ? category.color : context.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
+    final category = _selectedCategory;
+
+    return BSelectionField(
+      label: "Kategori *",
+      value: category?.displayName,
+      placeholder: "Seçin",
+      icon: category?.icon,
+      iconColor: category?.color,
+      enabled: provider.categories.isNotEmpty,
+      isLoading: provider.isLoading && provider.categories.isEmpty,
+      onTap: _pickCategory,
     );
   }
 
   Widget _typeSelector() {
+    return _segmentedSelector<JobType>(
+      options: JobType.values,
+      selected: _selectedType,
+      labelOf: (type) => type.displayName,
+      onSelected: (type) => setState(() => _selectedType = type),
+    );
+  }
+
+  Widget _salaryTypeSelector() {
+    return _segmentedSelector<SalaryType>(
+      options: SalaryType.values,
+      selected: _selectedSalaryType,
+      labelOf: (type) => '${type.displayName} ücret',
+      onSelected: (type) => setState(() => _selectedSalaryType = type),
+    );
+  }
+
+  /// Yan yana duran, tek seçimli kutucuklar. İş tipi ve ücret tipi aynı
+  /// görünümü paylaşıyor.
+  Widget _segmentedSelector<T>({
+    required List<T> options,
+    required T selected,
+    required String Function(T) labelOf,
+    required ValueChanged<T> onSelected,
+  }) {
     return Row(
-      children: JobType.values.map((type) {
-        final isSelected = _selectedType == type;
-        return Expanded(
-          child: GestureDetector(
-            onTap: () => setState(() => _selectedType = type),
-            child: Container(
-              margin: EdgeInsets.only(
-                right: type == JobType.oneTime ? AppSizes.spaceSmall : 0,
-                left: type == JobType.recurring ? AppSizes.spaceSmall : 0,
-              ),
-              padding: const EdgeInsets.symmetric(vertical: AppSizes.space),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? context.accentColor.withValues(alpha: 0.1)
-                    : context.tileColor,
-                borderRadius: AppRadius.innerCircular,
-                border: Border.all(
-                  color: isSelected
-                      ? context.accentColor
-                      : context.dividerColor,
-                  width: isSelected ? 2 : 1,
+      children: [
+        for (var i = 0; i < options.length; i++)
+          Expanded(
+            child: GestureDetector(
+              onTap: () => onSelected(options[i]),
+              child: Container(
+                margin: EdgeInsets.only(
+                  right: i == options.length - 1 ? 0 : AppSizes.spaceSmall,
                 ),
-              ),
-              child: Center(
-                child: Text(
-                  type.displayName,
-                  style: context.textTheme.bodyMedium?.copyWith(
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                    color: isSelected
+                padding: const EdgeInsets.symmetric(vertical: AppSizes.space),
+                decoration: BoxDecoration(
+                  color: options[i] == selected
+                      ? context.accentColor.withValues(alpha: _noticeAlpha)
+                      : context.tileColor,
+                  borderRadius: AppRadius.innerCircular,
+                  border: Border.all(
+                    color: options[i] == selected
                         ? context.accentColor
-                        : context.textSecondary,
+                        : context.dividerColor,
+                    width: options[i] == selected ? 2 : 1,
+                  ),
+                ),
+                child: Center(
+                  child: Text(
+                    labelOf(options[i]),
+                    style: context.textTheme.bodyMedium?.copyWith(
+                      fontWeight: options[i] == selected
+                          ? FontWeight.w600
+                          : FontWeight.w400,
+                      color: options[i] == selected
+                          ? context.accentColor
+                          : context.textSecondary,
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        );
-      }).toList(),
+      ],
     );
   }
 
   Widget _descriptionTextField() {
     return MyTextfield(
-      labelText: "Açıklama",
+      labelText: "Açıklama *",
       controller: _descriptionController,
-      height: _descriptionHeight,
+      height: BCreatePageModel._descriptionHeight,
       expands: true,
       // Tek satırlık alanların tam yuvarlak köşesi bu yükseklikte metni
       // sıkıştırıyor.

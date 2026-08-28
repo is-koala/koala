@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:koala/business/features/home/models/b_applicant.dart';
 import 'package:koala/business/features/home/models/b_job_post.dart';
+import 'package:koala/business/features/home/models/job_applicant.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
-import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
+import 'package:koala/employee/features/home/services/job_service.dart';
+import 'package:koala/employee/features/profile/presentation/widgets/profile_avatar.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -13,98 +14,147 @@ import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/extensions/date_extensions.dart';
+import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
+import 'package:koala/product/widgets/my_textfield.dart';
 import 'package:provider/provider.dart';
 
-class BJobDetailPage extends StatelessWidget {
-  final String jobId;
+part 'b_job_detail_pagemodel.dart';
 
+/// İşverenin kendi ilanının detayı ve o ilana gelen başvurular.
+///
+/// İki kaynaktan besleniyor: ilanın kendisi `GET /jobs/{id}`'den, başvurular
+/// [BJobsProvider] üzerinden `GET /jobs/{id}/applications`'tan.
+class BJobDetailPage extends StatefulWidget {
   const BJobDetailPage({super.key, required this.jobId});
 
-  /// Rozet zeminlerinin opaklığı.
-  static const double _tintAlpha = 0.12;
-
-  /// Detay satırındaki etiket sütununun genişliği; değerler hizalı dursun
-  /// diye sabit.
-  static const double _detailLabelWidth = 80;
-
-  /// Başvuran satırındaki avatar.
-  static const double _applicantAvatar = 48;
-
-  /// Geçmiş işi yapan kişinin avatarı; başvuranınkinden büyük çünkü tek
-  /// başına duruyor.
-  static const double _workerAvatar = 56;
+  final String jobId;
 
   @override
+  State<BJobDetailPage> createState() => _BJobDetailPageState();
+}
+
+class _BJobDetailPageState extends BJobDetailPageModel {
+  @override
   Widget build(BuildContext context) {
-    final bJobsProvider = context.watch<BJobsProvider>();
-    final applyProvider = context.watch<ApplyProvider>();
-
-    // Senkronize et
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      bJobsProvider.syncApplicantsFromApplyProvider(applyProvider);
-    });
-
-    final post = bJobsProvider.getPostByJobId(jobId);
-
-    if (post == null) {
-      return Scaffold(
-        appBar: MyAppbar(title: "İlan Detayı"),
-        body: Center(
-          child: Text('İlan bulunamadı', style: context.textTheme.titleSmall),
-        ),
-      );
-    }
-
-    final job = post.job;
+    final post = context.watch<BJobsProvider>().getPostByJobId(widget.jobId);
 
     return Scaffold(
       backgroundColor: context.backgroundColor,
       appBar: MyAppbar(title: "İlan Detayı"),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _jobInfoCard(context, post),
-            Padding(
-              padding: AppPadding.primaryHorizontal,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+      body: _body(post),
+    );
+  }
+
+  Widget _body(BJobPost? post) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final message = _errorMessage;
+    if (message != null) return _errorState(message);
+
+    final job = _detail;
+    if (job == null) {
+      return Center(
+        child: Text('İlan bulunamadı', style: context.textTheme.titleSmall),
+      );
+    }
+
+    // İlan yürürlükte mi: karar sunucudaki duruma ait. Provider'daki kayıt
+    // henüz gelmemiş olabilir, o yüzden detayın durumuna bakılıyor.
+    final isActive =
+        job.status == JobStatus.open || job.status == JobStatus.inProgress;
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _jobInfoCard(context, job, isActive: isActive),
+          Padding(
+            padding: AppPadding.primaryHorizontal,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: AppSizes.spaceLarge),
+                if (job.description != null) ...[
+                  _sectionTitle(context, "Açıklama"),
+                  const SizedBox(height: AppSizes.spaceSmall),
+                  Text(
+                    job.description!,
+                    style: context.textTheme.bodyMedium?.copyWith(height: 1.5),
+                  ),
                   const SizedBox(height: AppSizes.spaceLarge),
-                  if (job.description != null) ...[
-                    _sectionTitle(context, "Açıklama"),
-                    const SizedBox(height: AppSizes.spaceSmall),
-                    Text(
-                      job.description!,
-                      style: context.textTheme.bodyMedium?.copyWith(
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: AppSizes.spaceLarge),
-                  ],
-                  _sectionTitle(context, "Detaylar"),
-                  const SizedBox(height: AppSizes.space),
-                  _detailsCard(context, post),
-                  const SizedBox(height: AppSizes.spaceLarge),
-                  // Geçmiş iş → Yapan Kişi, Aktif iş → Başvuranlar
-                  if (!post.isActive) ...[
-                    _sectionTitle(context, "Yapan Kişi"),
-                    const SizedBox(height: AppSizes.space),
-                    _workerSection(context, post),
-                  ] else ...[
-                    _sectionTitle(
-                      context,
-                      "Başvuranlar (${post.applicants.length})",
-                    ),
-                    const SizedBox(height: AppSizes.space),
-                    _applicantsList(context, post),
-                  ],
-                  const SizedBox(height: AppSizes.navBarClearance),
                 ],
+                _sectionTitle(context, "Detaylar"),
+                const SizedBox(height: AppSizes.space),
+                _detailsCard(context, job),
+                const SizedBox(height: AppSizes.spaceLarge),
+                ..._peopleSection(post, isActive: isActive),
+                const SizedBox(height: AppSizes.navBarClearance),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Alt bölüm: aktif ilanda başvuranlar, kapanmış ilanda işi alan kişi.
+  ///
+  /// Başvurular ilan detayından ayrı geliyor; henüz gelmediyse boş liste
+  /// yerine yükleme gösteriliyor — "henüz başvuru yok" yanlış bilgi olurdu.
+  List<Widget> _peopleSection(BJobPost? post, {required bool isActive}) {
+    if (post == null || !post.applicantsLoaded) {
+      return [
+        _sectionTitle(context, isActive ? "Başvuranlar" : "Yapan Kişi"),
+        const SizedBox(height: AppSizes.space),
+        const Center(child: CircularProgressIndicator()),
+      ];
+    }
+
+    if (!isActive) {
+      return [
+        _sectionTitle(context, "Yapan Kişi"),
+        const SizedBox(height: AppSizes.space),
+        _workerSection(context, post.worker),
+      ];
+    }
+
+    return [
+      _sectionTitle(context, "Başvuranlar (${post.applicants.length})"),
+      const SizedBox(height: AppSizes.space),
+      _applicantsList(context, post.applicants),
+    ];
+  }
+
+  Widget _errorState(String message) {
+    return Center(
+      child: Padding(
+        padding: AppPadding.primaryAll,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AppIcon(
+              AppIcons.alert,
+              size: AppSizes.iconLarge,
+              color: context.textTertiary,
+            ),
+            const SizedBox(height: AppSizes.space),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: context.textSecondary,
               ),
+            ),
+            const SizedBox(height: AppSizes.spaceMedium),
+            OutlinedButton(
+              onPressed: _loadDetail,
+              child: const Text('Tekrar Dene'),
             ),
           ],
         ),
@@ -114,9 +164,11 @@ class BJobDetailPage extends StatelessWidget {
 
   // ------------------------------------------------------------- İlan kartı
 
-  Widget _jobInfoCard(BuildContext context, BJobPost post) {
-    final job = post.job;
-
+  Widget _jobInfoCard(
+    BuildContext context,
+    JobDetail job, {
+    required bool isActive,
+  }) {
     return Container(
       width: double.infinity,
       margin: AppPadding.primaryHorizontal,
@@ -129,12 +181,12 @@ class BJobDetailPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          Wrap(
+            spacing: AppSizes.spaceSmall,
+            runSpacing: AppSizes.spaceSmall,
             children: [
               _categoryBadge(context, job),
-              const SizedBox(width: AppSizes.spaceSmall),
-              _statusBadge(context, isActive: post.isActive),
-              const SizedBox(width: AppSizes.spaceSmall),
+              _statusBadge(context, job.status),
               _typeBadge(context, job),
             ],
           ),
@@ -162,7 +214,7 @@ class BJobDetailPage extends StatelessWidget {
     return Container(
       padding: AppPadding.badge,
       decoration: BoxDecoration(
-        color: color.withValues(alpha: _tintAlpha),
+        color: color.withValues(alpha: BJobDetailPageModel._tintAlpha),
         borderRadius: AppRadius.smallCircular,
       ),
       child: child,
@@ -194,15 +246,25 @@ class BJobDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _statusBadge(BuildContext context, {required bool isActive}) {
+  /// İlanın sunucudaki durumu. "Aktif / Geçmiş" yerine gerçek durum
+  /// yazılıyor: kapanmış bir ilanla iptal edilmiş bir ilan aynı şey değil.
+  Widget _statusBadge(BuildContext context, JobStatus status) {
+    final isLive = status == JobStatus.open || status == JobStatus.inProgress;
+    final color = switch (status) {
+      JobStatus.open => AppColors.success,
+      JobStatus.inProgress => AppColors.info,
+      JobStatus.cancelled => AppColors.danger,
+      _ => context.textTertiary,
+    };
+
     return _badge(
       context,
-      color: isActive ? AppColors.success : context.textTertiary,
+      color: color,
       child: Text(
-        isActive ? 'Aktif' : 'Geçmiş',
+        status.displayName,
         style: context.textTheme.labelMedium?.copyWith(
           fontWeight: FontWeight.w600,
-          color: isActive ? AppColors.successStrong : context.textSecondary,
+          color: isLive ? color : context.textSecondary,
         ),
       ),
     );
@@ -245,15 +307,23 @@ class BJobDetailPage extends StatelessWidget {
           color: context.textSecondary,
         ),
         const SizedBox(width: AppSizes.spaceTiny),
-        Text(job.addressLabel ?? 'Ankara', style: context.textTheme.bodyMedium),
+        Expanded(
+          child: Text(
+            job.addressLabel ?? '—',
+            style: context.textTheme.bodyMedium,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
       ],
     );
   }
 
   // ---------------------------------------------------------------- Detaylar
 
-  Widget _detailsCard(BuildContext context, BJobPost post) {
-    final job = post.job;
+  Widget _detailsCard(BuildContext context, JobDetail job) {
+    final start = job.startDateTime;
+    final end = job.endDateTime;
 
     return Container(
       width: double.infinity,
@@ -261,6 +331,21 @@ class BJobDetailPage extends StatelessWidget {
       decoration: _panelDecoration(context),
       child: Column(
         children: [
+          if (start != null)
+            _detailRow(
+              context,
+              AppIcons.calendar,
+              'Başlangıç',
+              start.asShortDateTime,
+            ),
+          if (end != null)
+            _detailRow(context, AppIcons.clock, 'Bitiş', end.asShortDateTime),
+          _detailRow(
+            context,
+            AppIcons.moneyBag,
+            'Ücret Tipi',
+            job.salaryType.displayName,
+          ),
           if (job.sector != null)
             _detailRow(context, AppIcons.building, 'Sektör', job.sector!),
           if (job.position != null)
@@ -280,13 +365,13 @@ class BJobDetailPage extends StatelessWidget {
             context,
             AppIcons.work,
             'Deneyim',
-            job.experienceRequired == true ? 'Gerekli' : 'Gerekli Değil',
+            job.experienceRequired ? 'Gerekli' : 'Gerekli Değil',
           ),
           _detailRow(
             context,
             AppIcons.shield,
             'Sigorta',
-            job.insuranceRequired == true ? 'Gerekli' : 'Gerekli Değil',
+            job.insuranceRequired ? 'Gerekli' : 'Gerekli Değil',
           ),
         ],
       ),
@@ -307,7 +392,7 @@ class BJobDetailPage extends StatelessWidget {
           AppIcon(icon, size: AppSizes.iconSmall, color: context.accentColor),
           const SizedBox(width: AppSizes.space),
           SizedBox(
-            width: _detailLabelWidth,
+            width: BJobDetailPageModel._detailLabelWidth,
             child: Text(
               label,
               style: context.textTheme.bodySmall?.copyWith(
@@ -331,8 +416,8 @@ class BJobDetailPage extends StatelessWidget {
 
   // ------------------------------------------------------------- Başvuranlar
 
-  Widget _applicantsList(BuildContext context, BJobPost post) {
-    if (post.applicants.isEmpty) {
+  Widget _applicantsList(BuildContext context, List<JobApplicant> applicants) {
+    if (applicants.isEmpty) {
       return _emptyPanel(
         context,
         icon: AppIcons.userMultiple,
@@ -343,17 +428,14 @@ class BJobDetailPage extends StatelessWidget {
 
     return Column(
       children: [
-        for (final applicant in post.applicants)
-          _applicantCard(context, post, applicant),
+        for (final applicant in applicants) _applicantCard(context, applicant),
       ],
     );
   }
 
-  Widget _applicantCard(
-    BuildContext context,
-    BJobPost post,
-    BApplicant applicant,
-  ) {
+  Widget _applicantCard(BuildContext context, JobApplicant applicant) {
+    final jobTitle = applicant.jobTitle;
+
     return Container(
       margin: const EdgeInsets.only(bottom: AppSizes.space),
       padding: AppPadding.primaryAll,
@@ -378,7 +460,10 @@ class BJobDetailPage extends StatelessWidget {
                 context.push('/business/user-profile', extra: applicant),
             child: Row(
               children: [
-                _avatar(applicant.profileImage, _applicantAvatar),
+                ProfileAvatar(
+                  imageUrl: applicant.profilePictureUrl,
+                  size: BJobDetailPageModel._applicantAvatar,
+                ),
                 const SizedBox(width: AppSizes.space),
                 Expanded(
                   child: Column(
@@ -390,15 +475,13 @@ class BJobDetailPage extends StatelessWidget {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      Text(
-                        applicant.jobTitle,
-                        style: context.textTheme.bodySmall,
-                      ),
+                      if (jobTitle != null)
+                        Text(jobTitle, style: context.textTheme.bodySmall),
                     ],
                   ),
                 ),
                 Text(
-                  applicant.appliedDate,
+                  applicant.applicationDateTime?.asShortDate ?? '',
                   style: context.textTheme.labelMedium?.copyWith(
                     color: context.textTertiary,
                   ),
@@ -406,7 +489,7 @@ class BJobDetailPage extends StatelessWidget {
               ],
             ),
           ),
-          if (applicant.coverLetter != null) ...[
+          if (applicant.notes != null && applicant.notes!.isNotEmpty) ...[
             const SizedBox(height: AppSizes.space),
             Container(
               width: double.infinity,
@@ -416,7 +499,7 @@ class BJobDetailPage extends StatelessWidget {
                 borderRadius: AppRadius.smallCircular,
               ),
               child: Text(
-                applicant.coverLetter!,
+                applicant.notes!,
                 style: context.textTheme.bodySmall?.copyWith(
                   color: context.textSecondary,
                   height: 1.4,
@@ -426,31 +509,25 @@ class BJobDetailPage extends StatelessWidget {
             ),
           ],
           const SizedBox(height: AppSizes.space),
-          _applicantActions(context, post, applicant),
+          _applicantActions(context, applicant),
         ],
       ),
     );
   }
 
-  Widget _applicantActions(
-    BuildContext context,
-    BJobPost post,
-    BApplicant applicant,
-  ) {
+  Widget _applicantActions(BuildContext context, JobApplicant applicant) {
     const padding = EdgeInsets.symmetric(vertical: AppSizes.spaceSmall);
     const shape = RoundedRectangleBorder(borderRadius: AppRadius.smallCircular);
+
+    // Yanıt beklenirken bütün butonlar kapanıyor: aynı başvuru iki kez
+    // yanıtlanırsa sunucu 400 döndürüyor.
+    final isBusy = _respondingApplicationId != null;
 
     return Row(
       children: [
         Expanded(
           child: OutlinedButton(
-            onPressed: () {
-              context.read<BJobsProvider>().rejectApplicant(
-                post.job.id,
-                applicant.id,
-              );
-              AppToast.error(context, '${applicant.fullName} reddedildi');
-            },
+            onPressed: isBusy ? null : () => _reject(applicant),
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.danger,
               side: const BorderSide(color: AppColors.danger),
@@ -466,13 +543,7 @@ class BJobDetailPage extends StatelessWidget {
         const SizedBox(width: AppSizes.space),
         Expanded(
           child: ElevatedButton(
-            onPressed: () {
-              context.read<BJobsProvider>().approveApplicant(
-                post.job.id,
-                applicant,
-              );
-              AppToast.success(context, '${applicant.fullName} onaylandı!');
-            },
+            onPressed: isBusy ? null : () => _approve(applicant),
             style: ElevatedButton.styleFrom(
               backgroundColor: context.accentColor,
               foregroundColor: context.onAccentColor,
@@ -490,11 +561,60 @@ class BJobDetailPage extends StatelessWidget {
     );
   }
 
+  /// Reddetme gerekçesini soran kutu.
+  ///
+  /// Gerekçe isteğe bağlı: backend `rejectionReason`'ı zorunlu tutmuyor ve
+  /// boş bırakan işvereni engellemenin bir karşılığı yok.
+  @override
+  Future<String?> _askRejectionReason(JobApplicant applicant) {
+    final controller = TextEditingController();
+
+    return showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: const RoundedRectangleBorder(
+          borderRadius: AppRadius.secondaryCircular,
+        ),
+        title: Text(
+          'Başvuruyu reddet',
+          style: dialogContext.textTheme.titleMedium,
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${applicant.fullName} adlı adayın başvurusu reddedilecek.',
+              style: dialogContext.textTheme.bodyMedium?.copyWith(
+                color: dialogContext.textSecondary,
+              ),
+            ),
+            const SizedBox(height: AppSizes.spaceMedium),
+            MyTextfield(
+              labelText: 'Gerekçe (isteğe bağlı)',
+              controller: controller,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Vazgeç'),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.pop(dialogContext, controller.text.trim()),
+            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+            child: const Text('Reddet'),
+          ),
+        ],
+      ),
+    );
+  }
+
   // --------------------------------------------- Geçmiş işler: yapan kişi
 
-  Widget _workerSection(BuildContext context, BJobPost post) {
-    final worker = post.worker;
-
+  Widget _workerSection(BuildContext context, JobApplicant? worker) {
     if (worker == null) {
       return _emptyPanel(
         context,
@@ -502,6 +622,8 @@ class BJobDetailPage extends StatelessWidget {
         title: 'Yapan kişi bilgisi yok',
       );
     }
+
+    final jobTitle = worker.jobTitle;
 
     return GestureDetector(
       onTap: () => context.push('/business/user-profile', extra: worker),
@@ -514,13 +636,9 @@ class BJobDetailPage extends StatelessWidget {
         ),
         child: Row(
           children: [
-            _avatar(
-              worker.profileImage,
-              _workerAvatar,
-              border: Border.all(
-                color: context.accentColor.withValues(alpha: 0.3),
-                width: 2,
-              ),
+            ProfileAvatar(
+              imageUrl: worker.profilePictureUrl,
+              size: BJobDetailPageModel._workerAvatar,
             ),
             const SizedBox(width: AppSizes.spaceMedium),
             Expanded(
@@ -528,14 +646,16 @@ class BJobDetailPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(worker.fullName, style: context.textTheme.titleSmall),
-                  const SizedBox(height: AppSizes.smallGap),
-                  Text(worker.jobTitle, style: context.textTheme.bodySmall),
+                  if (jobTitle != null) ...[
+                    const SizedBox(height: AppSizes.smallGap),
+                    Text(jobTitle, style: context.textTheme.bodySmall),
+                  ],
                   const SizedBox(height: AppSizes.spaceTiny),
                   _badge(
                     context,
                     color: AppColors.success,
                     child: Text(
-                      'İşi Tamamladı',
+                      'Başvurusu Kabul Edildi',
                       style: context.textTheme.labelSmall?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: AppColors.successStrong,
@@ -557,18 +677,6 @@ class BJobDetailPage extends StatelessWidget {
   }
 
   // --------------------------------------------------------- Ortak parçalar
-
-  Widget _avatar(String imagePath, double size, {BoxBorder? border}) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        borderRadius: AppRadius.innerCircular,
-        border: border,
-        image: DecorationImage(fit: BoxFit.cover, image: AssetImage(imagePath)),
-      ),
-    );
-  }
 
   BoxDecoration _panelDecoration(BuildContext context) => BoxDecoration(
     color: context.tileColor,

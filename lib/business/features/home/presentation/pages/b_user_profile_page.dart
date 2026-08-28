@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:koala/business/features/home/models/b_applicant.dart';
+import 'package:koala/business/features/home/models/job_applicant.dart';
+import 'package:koala/employee/features/profile/presentation/widgets/profile_avatar.dart';
+import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -10,8 +12,17 @@ import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 
+/// İşverenin bir adayın kartına dokununca açtığı profil.
+///
+/// Veri bugün yalnızca başvurunun kendisinden geliyor: ad, fotoğraf, ön yazı
+/// ve başvuru tarihi.
+///
+/// TODO(backend): Adayın herkese açık profili için bir uç yok.
+/// `SafeUserDto` meslek, konum ve özgeçmiş taşımıyor; `/users/{userId}` gibi
+/// bir uç ya da `JobApplicantDto`'nun genişletilmesi gerekiyor. O gelene
+/// kadar bu ekrandaki meslek, konum ve CV satırları veri bekliyor.
 class BUserProfilePage extends StatelessWidget {
-  final BApplicant applicant;
+  final JobApplicant applicant;
 
   const BUserProfilePage({super.key, required this.applicant});
 
@@ -22,6 +33,9 @@ class BUserProfilePage extends StatelessWidget {
   /// Bilgi satırındaki etiket sütununun genişliği; değerler hizalı dursun
   /// diye sabit.
   static const double _infoLabelWidth = 100;
+
+  /// Karşılığı henüz olmayan alanların yerine yazılan işaret.
+  static const String _missing = '—';
 
   /// Kapaktaki gradyanın koyu ucu.
   static const double _gradientEndAlpha = 0.8;
@@ -80,18 +94,16 @@ class BUserProfilePage extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            width: _avatarSize,
-            height: _avatarSize,
             decoration: BoxDecoration(
               borderRadius: AppRadius.secondaryCircular,
               border: Border.all(
                 color: AppColors.onAccent,
                 width: _avatarBorder,
               ),
-              image: DecorationImage(
-                fit: BoxFit.cover,
-                image: AssetImage(applicant.profileImage),
-              ),
+            ),
+            child: ProfileAvatar(
+              imageUrl: applicant.profilePictureUrl,
+              size: _avatarSize,
             ),
           ),
           const SizedBox(height: AppSizes.spaceMedium),
@@ -102,13 +114,15 @@ class BUserProfilePage extends StatelessWidget {
               color: AppColors.onAccent,
             ),
           ),
-          const SizedBox(height: AppSizes.spaceTiny),
-          Text(
-            applicant.jobTitle,
-            style: context.textTheme.bodyLarge?.copyWith(
-              color: AppColors.onAccent.withValues(alpha: _onCoverMuted),
+          if (applicant.jobTitle != null) ...[
+            const SizedBox(height: AppSizes.spaceTiny),
+            Text(
+              applicant.jobTitle!,
+              style: context.textTheme.bodyLarge?.copyWith(
+                color: AppColors.onAccent.withValues(alpha: _onCoverMuted),
+              ),
             ),
-          ),
+          ],
           const SizedBox(height: AppSizes.spaceSmall),
           _locationBadge(context),
         ],
@@ -163,11 +177,12 @@ class BUserProfilePage extends StatelessWidget {
           width: double.infinity,
           padding: AppPadding.primaryAll,
           decoration: _panelDecoration(context),
+          // Adayın kendi yazdığı ön yazı. Boşsa uydurulmuyor: işverenin
+          // adaya ait sandığı bir metin göstermek yanlış bilgi olur.
           child: Text(
-            applicant.coverLetter ??
-                'Merhaba! Deneyimli bir ${applicant.jobTitle} olarak farklı '
-                    'projelerde yer aldım. Ekip çalışmasına yatkın, sorumluluk '
-                    'sahibi ve enerjik biriyim.',
+            applicant.notes?.isNotEmpty == true
+                ? applicant.notes!
+                : 'Aday bir ön yazı bırakmamış.',
             style: context.textTheme.bodyMedium?.copyWith(
               color: context.textSecondary,
               height: 1.5,
@@ -191,14 +206,19 @@ class BUserProfilePage extends StatelessWidget {
           child: Column(
             children: [
               _infoRow(context, AppIcons.user, 'Ad Soyad', applicant.fullName),
-              _infoRow(context, AppIcons.work, 'Meslek', applicant.jobTitle),
+              _infoRow(
+                context,
+                AppIcons.work,
+                'Meslek',
+                applicant.jobTitle ?? _missing,
+              ),
               _infoRow(
                 context,
                 AppIcons.calendar,
                 'Başvuru Tarihi',
-                applicant.appliedDate,
+                applicant.applicationDateTime?.asShortDate ?? _missing,
               ),
-              _infoRow(context, AppIcons.location, 'Konum', 'Ankara, Türkiye'),
+              _infoRow(context, AppIcons.location, 'Konum', _missing),
             ],
           ),
         ),
@@ -277,17 +297,17 @@ class BUserProfilePage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // TODO(backend): Gerçek CV dosyası bağlanınca indirilebilir
-                    // olacak.
+                    // TODO(backend): Adayın `cvUrl`'i başvuru yanıtında yok;
+                    // uç geldiğinde dosya adı ve indirme buraya bağlanacak.
                     Text(
-                      '${applicant.fullName}_CV.pdf (Demoda indirilemez)',
+                      'Özgeçmiş',
                       style: context.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                     const SizedBox(height: AppSizes.smallGap),
                     Text(
-                      'PDF • 245 KB',
+                      'Aday özgeçmişi henüz görüntülenemiyor',
                       style: context.textTheme.labelMedium?.copyWith(
                         color: context.textTertiary,
                       ),
