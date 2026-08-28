@@ -1,13 +1,17 @@
 import 'package:flutter/foundation.dart';
+import 'package:koala/employee/features/jobs/models/assignment.dart';
 import 'package:koala/employee/features/jobs/models/job_application.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
-/// Başvuru uçları.
+/// Başvuru ve atama uçları.
 ///
 /// Gönderme ilan üzerinden (`POST /jobs/{jobId}/applications`), listeleme
 /// kullanıcı üzerinden (`GET /users/me/applications`) yapılıyor — backend'in
 /// böldüğü yer burası.
+///
+/// Atamalar da burada: başvuru kabul edildiğinde iş bir atamaya dönüşüyor ve
+/// "İşlerim" ekranı iki ucu birden okuyor.
 class JobApplicationService {
   JobApplicationService._(this._apiClient);
 
@@ -48,6 +52,15 @@ class JobApplicationService {
       queryParameters: {'status': ?status?.code, 'page': page, 'size': size},
       parse: (data) =>
           JobApplicationPage.fromJson(data! as Map<String, dynamic>),
+    );
+  }
+
+  /// Kabul edilmiş başvuruların dönüştüğü işler.
+  Future<AssignmentPage> fetchMyAssignments({int page = 0, int size = 20}) {
+    return _apiClient.get<AssignmentPage>(
+      ApiPaths.myAssignments,
+      queryParameters: {'page': page, 'size': size},
+      parse: (data) => AssignmentPage.fromJson(data! as Map<String, dynamic>),
     );
   }
 }

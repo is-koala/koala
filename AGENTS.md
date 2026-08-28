@@ -213,7 +213,7 @@ Badges are earned and never revoked (`BadgeManager.evaluate` only grants), so th
 
 **Still fake:**
 
-**Still fake:** everything except auth and the employee profile. Data comes from services that return hard-coded lists, one `services/` folder per feature: `employee/features/home/services/` (`job_service.dart` with Ankara coordinates, `location_service.dart`), `company_detail/services/company_service.dart`, `chat/services/chat_service.dart`, `jobs/services/` (`my_jobs_service.dart`, `review_service.dart`), `business/features/chat/services/b_chat_service.dart` and `business/features/home/services/fake_business_company.dart`. Avatars are generated URLs from `ui-avatars.com`. `profile/services/fake_user.dart` survives only because `BJobsProvider` builds fake applicants from it — nothing on the employee side reads it any more.
+**Still fake:** everything except auth, the employee profile, and the jobs flow (explore, apply, İşlerim). Data comes from services that return hard-coded lists, one `services/` folder per feature: `employee/features/home/services/` (`job_service.dart` with Ankara coordinates, `location_service.dart`), `company_detail/services/company_service.dart`, `chat/services/chat_service.dart`, `jobs/services/review_service.dart`, `business/features/chat/services/b_chat_service.dart` and `business/features/home/services/fake_business_company.dart`. Avatars are generated URLs from `ui-avatars.com`. `profile/services/fake_user.dart` survives only because `BJobsProvider` builds fake applicants from it — nothing on the employee side reads it any more.
 - `GET /jobs` is ready to be wired: `JobSummaryDto` carries `latitude`/`longitude`, `GET /jobs/{jobId}` returns the richer `JobDetailDto` (description, duties, dress code, age range, full address, creator, company) and the search takes a bounding box (`minLatitude`/`maxLatitude`/`minLongitude`/`maxLongitude`). Only the category mapping is missing.
 - Sessions are no longer faked: `SessionManager` writes `is_logged_in` / `user_type` **and** the tokens together. Do not write those prefs keys by hand; a flag without a token is a user who looks logged in and gets 401s.
 
@@ -347,6 +347,12 @@ Every place that needs the real backend is marked with a `// TODO(backend):` com
 
 - `business/features/home/presentation/pages/b_home_page.dart` has a `_quickActionsSection` that nothing calls. It carries an `// ignore: unused_element` so analyze stays clean — it is a parked section, not dead code to delete without asking.
 - The stat numbers on the business profile, the applicant CV download and the "follow company" action all render but write nowhere.
+- **`jobs/services/my_jobs_service.dart` is dead but not deleted.** İşlerim now reads `GET /users/me/assignments` through `JobApplicationService`; nothing imports the fake service any more. Left in place deliberately — delete it only when asked.
+- **Two states the server has and the UI cannot express.** Not a backend gap — the data arrives, the design has nowhere to put it:
+  - **Rejected application.** `ApplicationStatus.REJECTED` comes back with a `rejectionReason`, but `MyJobStatus` only knows pending / approved / awaiting-payment / done. A rejected application currently renders as **pending**, so the worker never learns they were turned down. Needs a new status in the design before it can be mapped.
+  - **Cancelled assignment.** `AssignmentStatus.CANCELLED` (and `REJECTED`) have the same problem.
+
+  Both are marked `TODO(backend)` at the mapping sites even though the fix is a design decision, so `grep -rn "TODO(backend)" lib` surfaces them together with the rest.
 - **Server endpoints the profile could use but does not.** These were deliberately left for later, not overlooked:
   - **Education** — `CurrentUser.educations` is parsed and carried, but no screen renders it. `/users/me/educations` has full CRUD (`UserProfileController`), and the university / faculty / department pickers would come from `/reference/universities`, `/reference/universities/{id}/faculties`, `/reference/faculties/{id}/departments`.
   - **CV upload** — the profile's *Özgeçmiş* card only reports whether `cvUrl` is set. `PUT /users/me/cv` takes multipart under the form field name **`file`** (not `image`), and `DELETE /users/me/cv` removes it. Needs a file picker, which means a new dependency — ask first.

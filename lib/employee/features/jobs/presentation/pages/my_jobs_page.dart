@@ -3,10 +3,11 @@ import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/company_detail/services/company_service.dart';
 import 'package:koala/employee/features/company_detail/models/company.dart';
 import 'package:koala/employee/features/jobs/models/my_job.dart';
-import 'package:koala/employee/features/jobs/services/my_jobs_service.dart';
+import 'package:koala/employee/features/jobs/services/job_application_service.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/review_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
@@ -43,6 +44,16 @@ class _MyJobsPageState extends MyJobsPagemodel {
       );
     }
 
+    // Elde hiç iş yokken hata varsa boş liste değil hata gösterilmeli;
+    // kullanıcı "hiç işim yok" ile "yüklenemedi"yi ayırt edebilmeli.
+    final error = errorMessage;
+    if (error != null && allJobs.isEmpty) {
+      return Scaffold(
+        appBar: MyAppbar(title: 'İşlerim', showBackButton: false),
+        body: _errorState(error),
+      );
+    }
+
     final appliedJobs = context.watch<ApplyProvider>().appliedJobs;
 
     final pendingJobs = jobsByStatus(
@@ -61,29 +72,56 @@ class _MyJobsPageState extends MyJobsPagemodel {
 
     return Scaffold(
       appBar: MyAppbar(title: 'İşlerim', showBackButton: false),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: AppPadding.primaryHorizontal,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Onaylanmış işler - en üstte ve belirgin
-              if (approvedJobs.isNotEmpty) ...[
-                _approvedSection(approvedJobs),
-                const SizedBox(height: AppSizes.spaceLarge),
+      body: RefreshIndicator(
+        onRefresh: reload,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Padding(
+            padding: AppPadding.primaryHorizontal,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Onaylanmış işler - en üstte ve belirgin
+                if (approvedJobs.isNotEmpty) ...[
+                  _approvedSection(approvedJobs),
+                  const SizedBox(height: AppSizes.spaceLarge),
+                ],
+                if (completedJobs.isNotEmpty) ...[
+                  _completedSection(completedJobs),
+                  const SizedBox(height: AppSizes.spaceLarge),
+                ],
+                if (pendingJobs.isNotEmpty) ...[
+                  _pendingSection(pendingJobs),
+                  const SizedBox(height: AppSizes.spaceLarge),
+                ],
+                if (pastJobs.isNotEmpty) _pastJobsSection(pastJobs),
+                const SizedBox(height: AppSizes.navBarClearance),
               ],
-              if (completedJobs.isNotEmpty) ...[
-                _completedSection(completedJobs),
-                const SizedBox(height: AppSizes.spaceLarge),
-              ],
-              if (pendingJobs.isNotEmpty) ...[
-                _pendingSection(pendingJobs),
-                const SizedBox(height: AppSizes.spaceLarge),
-              ],
-              if (pastJobs.isNotEmpty) _pastJobsSection(pastJobs),
-              const SizedBox(height: AppSizes.navBarClearance),
-            ],
+            ),
           ),
+        ),
+      ),
+    );
+  }
+
+  /// İşler çekilemediğinde: mesaj ve tekrar deneme.
+  Widget _errorState(String message) {
+    return Center(
+      child: Padding(
+        padding: AppPadding.primaryAll,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: context.textSecondary,
+              ),
+            ),
+            const SizedBox(height: AppSizes.spaceMedium),
+            OutlinedButton(onPressed: reload, child: const Text('Tekrar Dene')),
+          ],
         ),
       ),
     );

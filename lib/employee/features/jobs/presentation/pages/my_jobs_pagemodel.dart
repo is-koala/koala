@@ -1,7 +1,7 @@
 part of 'my_jobs_page.dart';
 
 abstract class MyJobsPagemodel extends State<MyJobsPage> {
-  final MyJobsService _repository = MyJobsService();
+  final JobApplicationService _service = JobApplicationService();
   final CompanyService _companyService = CompanyService();
 
   /// Geçmiş bölümü varsayılan olarak kısaltılmış; kullanıcı isterse açıyor.
@@ -9,6 +9,9 @@ abstract class MyJobsPagemodel extends State<MyJobsPage> {
 
   List<MyJob> allJobs = [];
   bool loading = true;
+
+  /// Atamalar çekilemediyse gösterilecek mesaj.
+  String? errorMessage;
 
   /// Geçmiş bölümünde kısaltılmışken gösterilen iş sayısı.
   static const int collapsedPastJobCount = 2;
@@ -24,21 +27,45 @@ abstract class MyJobsPagemodel extends State<MyJobsPage> {
     });
   }
 
+  /// Kabul edilmiş işleri çeker.
+  ///
+  /// Bekleyen başvurular buraya girmiyor; onlar ayrı bir uçtan gelip
+  /// [ApplyProvider] üzerinden [jobsByStatus]'a ekleniyor.
   Future<void> _loadJobs() async {
-    final jobs = await _repository.getMyJobs();
-    if (!mounted) return;
     setState(() {
-      allJobs = jobs;
-      loading = false;
+      loading = allJobs.isEmpty;
+      errorMessage = null;
     });
+
+    try {
+      final page = await _service.fetchMyAssignments();
+      if (!mounted) return;
+      setState(() {
+        allJobs = page.assignments
+            .map(MyJob.fromAssignment)
+            .whereType<MyJob>()
+            .toList(growable: false);
+      });
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() => errorMessage = error.message);
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  /// Sayfayı baştan yükler; hata ekranındaki "Tekrar Dene" buna bağlı.
+  Future<void> reload() async {
+    await _loadJobs();
+    if (mounted) await context.read<ApplyProvider>().load(force: true);
   }
 
   /// Bir duruma ait işleri döndürür.
   ///
-  /// [extraJobs] `GET /users/me/applications`'tan gelen başvurular. Onlar
-  /// gerçek uçtan, [allJobs] ise hâlâ sahte `MyJobsService`'ten geliyor —
-  /// TODO(backend): onaylanan işler `GET /users/me/assignments`'a bağlanınca
-  /// bu ayrım kalkacak.
+  /// İki kaynak birleşiyor: [extraJobs] bekleyen başvurular
+  /// (`GET /users/me/applications`), [allJobs] ise kabul edilmiş işler
+  /// (`GET /users/me/assignments`). Backend ikisini ayrı tuttuğu için
+  /// birleştirme burada yapılıyor.
   List<MyJob> jobsByStatus(
     MyJobStatus status, {
     List<MyJob> extraJobs = const [],

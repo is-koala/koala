@@ -3,6 +3,7 @@ import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/jobs/models/job_application.dart';
 import 'package:koala/employee/features/jobs/models/my_job.dart';
 import 'package:koala/employee/features/jobs/services/job_application_service.dart';
+import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/network/api_exception.dart';
 
 /// Kullanıcının başvuruları.
@@ -110,18 +111,12 @@ class ApplyProvider extends ChangeNotifier {
       company: job.company ?? 'Bireysel İlan',
       companyId: null,
       description: job.subtitle,
-      date: date == null ? '' : _formatDate(date),
+      date: date?.asShortDate ?? '',
       price: job.price,
       // TODO(backend): Reddedilen başvurunun arayüzde karşılığı yok;
       // `MyJobStatus` dört durum taşıyor ve hiçbiri "reddedildi" değil.
       // Şimdilik beklemede gösteriliyor — tasarıma yeni bir durum eklenmeli.
       status: MyJobStatus.pending,
     );
-  }
-
-  static String _formatDate(DateTime value) {
-    final day = value.day.toString().padLeft(2, '0');
-    final month = value.month.toString().padLeft(2, '0');
-    return '$day.$month.${value.year}';
   }
 }

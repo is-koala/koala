@@ -4,6 +4,7 @@ import 'package:koala/business/features/home/models/b_applicant.dart';
 import 'package:koala/business/features/home/models/b_job_post.dart';
 import 'package:koala/employee/features/auth/models/user_address.dart';
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
 import 'package:koala/employee/features/profile/services/fake_user.dart';
@@ -168,13 +169,6 @@ class BJobsProvider extends ChangeNotifier {
   /// Geçmiş ilanlar
   List<BJobPost> get pastPosts => _jobPosts.where((p) => !p.isActive).toList();
 
-  static String _formatApplicationDate(DateTime? value) {
-    if (value == null) return '';
-    final day = value.day.toString().padLeft(2, '0');
-    final month = value.month.toString().padLeft(2, '0');
-    return '$day.$month.${value.year}';
-  }
-
   /// Yeni iş ilanı oluştur
   void createJobPost(JobDetail job) {
     final post = BJobPost(
@@ -261,7 +255,7 @@ class BJobsProvider extends ChangeNotifier {
           fullName: fakeUser.fullName,
           jobTitle: fakeUser.jobTitle,
           profileImage: fakeUser.profileImage,
-          appliedDate: _formatApplicationDate(application.applicationDateTime),
+          appliedDate: application.applicationDateTime?.asShortDate ?? '',
         );
 
         _jobPosts[postIndex] = post.copyWith(

@@ -35,6 +35,9 @@ class ApiPaths {
   /// Oturum açmış kullanıcının başvuruları.
   static const String myApplications = '/users/me/applications';
 
+  /// Kabul edilmiş başvuruların dönüştüğü işler.
+  static const String myAssignments = '/users/me/assignments';
+
   // ---------------------------------------------------------- Reference data
 
   static const String jobCategories = '/reference/job-categories';
