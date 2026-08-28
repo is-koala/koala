@@ -22,6 +22,19 @@ class ApiPaths {
   static const String currentUserProfilePicture = '/users/me/profile-picture';
   static const String currentUserAddress = '/users/me/address';
 
+  // --------------------------------------------------------------------- Jobs
+
+  static const String jobs = '/jobs';
+
+  /// Tek ilanın detayı.
+  static String job(String jobId) => '$jobs/$jobId';
+
+  /// Bir ilana başvurma.
+  static String jobApplications(String jobId) => '$jobs/$jobId/applications';
+
+  /// Oturum açmış kullanıcının başvuruları.
+  static const String myApplications = '/users/me/applications';
+
   // ---------------------------------------------------------- Reference data
 
   static const String jobCategories = '/reference/job-categories';

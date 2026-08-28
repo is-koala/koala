@@ -45,7 +45,7 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
   Future<void> _loadJobsAndLocation() async {
     try {
       // İşleri yükle
-      final jobs = await _jobService.getJobs();
+      final jobs = (await _jobService.search()).jobs;
 
       // Konumu al
       Position? position;
@@ -56,21 +56,13 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
         position = null;
       }
 
-      // Konuma göre sırala
+      // Konuma göre sırala. Koordinatı olmayan ilanlar listenin sonuna
+      // düşüyor: uzaklıkları bilinmiyor, en yakın diye göstermek yanlış olur.
       if (position != null) {
+        final origin = position;
         jobs.sort((a, b) {
-          final distA = Geolocator.distanceBetween(
-            position!.latitude,
-            position.longitude,
-            a.latitude,
-            a.longitude,
-          );
-          final distB = Geolocator.distanceBetween(
-            position.latitude,
-            position.longitude,
-            b.latitude,
-            b.longitude,
-          );
+          final distA = _distanceFrom(origin, a);
+          final distB = _distanceFrom(origin, b);
           return distA.compareTo(distB);
         });
       }
@@ -90,13 +82,27 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
     }
   }
 
+  /// Sıralama için ham uzaklık, metre. Koordinatı olmayan ilan en sona
+  /// düşsün diye sonsuz dönüyor.
+  static double _distanceFrom(Position origin, Job job) {
+    if (!job.hasLocation) return double.infinity;
+    return Geolocator.distanceBetween(
+      origin.latitude,
+      origin.longitude,
+      job.latitude!,
+      job.longitude!,
+    );
+  }
+
+  /// İlana olan uzaklık, km. Konum izni yoksa ya da ilanın koordinatı
+  /// yoksa `null` — mesafe satırı o zaman hiç çizilmiyor.
   double? _getDistance(Job job) {
-    if (_currentPosition == null) return null;
+    if (_currentPosition == null || !job.hasLocation) return null;
     final distance = Geolocator.distanceBetween(
       _currentPosition!.latitude,
       _currentPosition!.longitude,
-      job.latitude,
-      job.longitude,
+      job.latitude!,
+      job.longitude!,
     );
     return distance / 1000; // km'ye çevir
   }
@@ -127,9 +133,9 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
             job.subtitle.toLowerCase().contains(lowerQuery) ||
             (job.company?.toLowerCase().contains(lowerQuery) ?? false) ||
             job.category.displayName.toLowerCase().contains(lowerQuery) ||
-            (job.address?.toLowerCase().contains(lowerQuery) ?? false) ||
+            (job.locationLabel?.toLowerCase().contains(lowerQuery) ?? false) ||
             (job.sector?.toLowerCase().contains(lowerQuery) ?? false) ||
-            (job.description?.toLowerCase().contains(lowerQuery) ?? false);
+            (job.position?.toLowerCase().contains(lowerQuery) ?? false);
       }).toList();
     }
 

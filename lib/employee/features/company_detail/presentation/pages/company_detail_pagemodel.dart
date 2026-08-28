@@ -29,7 +29,7 @@ abstract class CompanyDetailPagemodel extends State<CompanyDetailPage> {
   }
 
   Future<List<Job>> _loadCompanyJobs() async {
-    final allJobs = await _jobService.getJobs();
+    final allJobs = (await _jobService.search()).jobs;
     return allJobs.where((job) => job.company == widget.company.name).toList();
   }
 

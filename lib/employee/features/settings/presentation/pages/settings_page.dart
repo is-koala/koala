@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/services/auth_service.dart';
+import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -75,8 +76,9 @@ class SettingsPage extends StatelessWidget {
             await AuthService().logout();
 
             if (context.mounted) {
-              // Bir sonraki oturum, çıkan kullanıcının profilini görmesin.
+              // Bir sonraki oturum, çıkan kullanıcının verisini görmesin.
               context.read<UserProvider>().clear();
+              context.read<ApplyProvider>().clear();
               context.go('/authgate');
             }
           },

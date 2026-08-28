@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:koala/business/features/home/models/b_job_post.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -212,7 +213,7 @@ class _BPostsPageState extends State<BPostsPage>
     );
   }
 
-  Widget _cardHeader(Job job, {required bool isActive}) {
+  Widget _cardHeader(JobDetail job, {required bool isActive}) {
     return Row(
       children: [
         _categoryBadge(job),
@@ -224,7 +225,7 @@ class _BPostsPageState extends State<BPostsPage>
     );
   }
 
-  Widget _categoryBadge(Job job) {
+  Widget _categoryBadge(JobDetail job) {
     return Container(
       padding: AppPadding.badge,
       decoration: BoxDecoration(
@@ -271,7 +272,7 @@ class _BPostsPageState extends State<BPostsPage>
     );
   }
 
-  Widget _postMenu(Job job) {
+  Widget _postMenu(JobDetail job) {
     return PopupMenuButton<String>(
       onSelected: (value) {
         final provider = context.read<BJobsProvider>();
@@ -304,7 +305,7 @@ class _BPostsPageState extends State<BPostsPage>
     );
   }
 
-  Widget _priceAndLocationRow(Job job) {
+  Widget _priceAndLocationRow(JobDetail job) {
     return Row(
       children: [
         Icon(
@@ -329,7 +330,7 @@ class _BPostsPageState extends State<BPostsPage>
         const SizedBox(width: AppSizes.spaceTiny),
         Expanded(
           child: Text(
-            job.address ?? 'Ankara',
+            job.addressLabel ?? 'Ankara',
             style: context.textTheme.bodySmall?.copyWith(
               color: context.textTertiary,
             ),

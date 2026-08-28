@@ -51,7 +51,7 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
   /// İşleri yükle ve marker'ları oluştur
   Future<void> _loadJobs() async {
     try {
-      final jobs = await _jobService.getJobs();
+      final jobs = (await _jobService.search()).jobs;
       _allJobs = jobs;
 
       final markers = await JobMarkerGenerator.generateMarkers(
@@ -84,7 +84,7 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
             job.subtitle.toLowerCase().contains(lowerQuery) ||
             (job.company?.toLowerCase().contains(lowerQuery) ?? false) ||
             job.category.displayName.toLowerCase().contains(lowerQuery) ||
-            (job.address?.toLowerCase().contains(lowerQuery) ?? false) ||
+            (job.locationLabel?.toLowerCase().contains(lowerQuery) ?? false) ||
             (job.sector?.toLowerCase().contains(lowerQuery) ?? false);
       }).toList();
     });
@@ -102,12 +102,13 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
       _searchResults = [];
     });
 
-    // Haritayı o konuma taşı
-    if (_mapController != null) {
+    // Haritayı o konuma taşı. Koordinatı olmayan ilan haritada zaten
+    // görünmüyor, kamerayı da oynatmıyoruz.
+    if (_mapController != null && job.hasLocation) {
       _mapController!.animateCamera(
         CameraUpdate.newCameraPosition(
           CameraPosition(
-            target: LatLng(job.latitude, job.longitude),
+            target: LatLng(job.latitude!, job.longitude!),
             zoom: 17.0,
           ),
         ),

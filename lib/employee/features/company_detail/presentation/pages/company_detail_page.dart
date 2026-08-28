@@ -497,7 +497,7 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
         const SizedBox(width: AppSizes.spaceTiny),
         Expanded(
           child: Text(
-            job.address ?? 'Ankara',
+            job.locationLabel ?? '-',
             style: context.textTheme.bodySmall?.copyWith(
               fontWeight: FontWeight.w500,
             ),

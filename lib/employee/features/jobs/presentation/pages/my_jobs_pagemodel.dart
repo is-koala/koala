@@ -17,6 +17,11 @@ abstract class MyJobsPagemodel extends State<MyJobsPage> {
   void initState() {
     super.initState();
     _loadJobs();
+    // Başvurular ayrı bir uçtan geliyor; sekmeye her girişte tekrar
+    // çekilmesin diye provider ilk çağrıdan sonra ağa çıkmıyor.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<ApplyProvider>().load();
+    });
   }
 
   Future<void> _loadJobs() async {
@@ -30,8 +35,10 @@ abstract class MyJobsPagemodel extends State<MyJobsPage> {
 
   /// Bir duruma ait işleri döndürür.
   ///
-  /// [extraJobs] bu oturumda yapılan başvurular: henüz sahte repository'ye
-  /// yazılmadıkları için listeye ayrıca ekleniyorlar.
+  /// [extraJobs] `GET /users/me/applications`'tan gelen başvurular. Onlar
+  /// gerçek uçtan, [allJobs] ise hâlâ sahte `MyJobsService`'ten geliyor —
+  /// TODO(backend): onaylanan işler `GET /users/me/assignments`'a bağlanınca
+  /// bu ayrım kalkacak.
   List<MyJob> jobsByStatus(
     MyJobStatus status, {
     List<MyJob> extraJobs = const [],

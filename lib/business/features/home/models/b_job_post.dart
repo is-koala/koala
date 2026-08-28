@@ -1,9 +1,9 @@
-import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/business/features/home/models/b_applicant.dart';
 
 /// İşveren tarafında iş ilanı + başvuranlar modeli
 class BJobPost {
-  final Job job;
+  final JobDetail job;
   final bool isActive;
   final List<BApplicant> applicants;
   final BApplicant? worker;
@@ -18,7 +18,7 @@ class BJobPost {
   });
 
   BJobPost copyWith({
-    Job? job,
+    JobDetail? job,
     bool? isActive,
     List<BApplicant>? applicants,
     BApplicant? worker,

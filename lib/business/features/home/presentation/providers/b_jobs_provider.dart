@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:koala/business/features/home/services/fake_business_company.dart';
 import 'package:koala/business/features/home/models/b_applicant.dart';
 import 'package:koala/business/features/home/models/b_job_post.dart';
+import 'package:koala/employee/features/auth/models/user_address.dart';
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
 import 'package:koala/employee/features/profile/services/fake_user.dart';
 
@@ -23,17 +25,14 @@ class BJobsProvider extends ChangeNotifier {
 
     _jobPosts.addAll([
       BJobPost(
-        job: Job(
+        job: JobDetail(
+          status: JobStatus.open,
           id: 'b_1',
-          latitude: 39.9208,
-          longitude: 32.8541,
           type: JobType.recurring,
           category: JobCategorySeeds.waiter,
           title: 'Part-time Garson',
-          subtitle:
-              'Kızılay\'da cafe\'de hafta sonu çalışacak garson aranıyor.',
           price: 800,
-          company: companyName,
+          company: JobCompany(id: 'b_company', name: companyName),
           description:
               'Kızılay merkezde bulunan cafe\'mizde hafta sonları çalışacak enerjik ve güler yüzlü garson arkadaşlar arıyoruz.',
           sector: 'Restoran & Cafe',
@@ -43,13 +42,16 @@ class BJobsProvider extends ChangeNotifier {
           insuranceRequired: false,
           startDateTime: DateTime(2026, 3, 10, 9, 0),
           endDateTime: DateTime(2026, 3, 10, 18, 0),
-          salaryType: 'HOURLY',
+          salaryType: SalaryType.hourly,
           minAge: 18,
           maxAge: 35,
           experienceRequired: false,
           dressCode: 'Siyah pantolon, beyaz gömlek',
-          employerType: 'COMPANY',
-          address: 'Kızılay, Ankara',
+          employerType: JobEmployerType.company,
+          address: const UserAddress(
+            id: 'b_address',
+            addressLine: 'Kızılay, Ankara',
+          ),
         ),
         isActive: true,
         createdAt: DateTime(2026, 3, 1),
@@ -66,16 +68,14 @@ class BJobsProvider extends ChangeNotifier {
         ],
       ),
       BJobPost(
-        job: Job(
+        job: JobDetail(
+          status: JobStatus.open,
           id: 'b_2',
-          latitude: 39.9208,
-          longitude: 32.8541,
           type: JobType.recurring,
           category: JobCategorySeeds.barista,
           title: 'Deneyimli Barista',
-          subtitle: 'Specialty coffee deneyimi olan barista aranıyor.',
           price: 15000,
-          company: companyName,
+          company: JobCompany(id: 'b_company', name: companyName),
           description:
               'Specialty coffee alanında deneyimli, latte art yapabilen barista aranıyor. Tam zamanlı pozisyon.',
           sector: 'Cafe & Coffee Shop',
@@ -85,13 +85,16 @@ class BJobsProvider extends ChangeNotifier {
           insuranceRequired: true,
           startDateTime: DateTime(2026, 3, 15, 8, 0),
           endDateTime: DateTime(2026, 3, 15, 17, 0),
-          salaryType: 'FIXED',
+          salaryType: SalaryType.daily,
           minAge: 20,
           maxAge: 40,
           experienceRequired: true,
           dressCode: 'Cafe önlüğü sağlanacak',
-          employerType: 'COMPANY',
-          address: 'Kızılay, Ankara',
+          employerType: JobEmployerType.company,
+          address: const UserAddress(
+            id: 'b_address',
+            addressLine: 'Kızılay, Ankara',
+          ),
         ),
         isActive: true,
         createdAt: DateTime(2026, 3, 3),
@@ -115,16 +118,14 @@ class BJobsProvider extends ChangeNotifier {
       ),
       // Geçmiş ilan
       BJobPost(
-        job: Job(
+        job: JobDetail(
+          status: JobStatus.open,
           id: 'b_3',
-          latitude: 39.9208,
-          longitude: 32.8541,
           type: JobType.oneTime,
           category: JobCategorySeeds.photography,
           title: 'Mekan Fotoğrafçısı',
-          subtitle: 'Cafe\'nin profesyonel fotoğrafları çekilecek.',
           price: 2000,
-          company: companyName,
+          company: JobCompany(id: 'b_company', name: companyName),
           description:
               'Cafe\'mizin sosyal medya hesapları ve web sitesi için profesyonel mekan fotoğrafları çekilecektir.',
           sector: 'Fotoğrafçılık',
@@ -134,13 +135,16 @@ class BJobsProvider extends ChangeNotifier {
           insuranceRequired: false,
           startDateTime: DateTime(2026, 2, 15, 10, 0),
           endDateTime: DateTime(2026, 2, 15, 16, 0),
-          salaryType: 'FIXED',
+          salaryType: SalaryType.daily,
           minAge: 18,
           maxAge: 50,
           experienceRequired: true,
           dressCode: 'Serbest',
-          employerType: 'COMPANY',
-          address: 'Kızılay, Ankara',
+          employerType: JobEmployerType.company,
+          address: const UserAddress(
+            id: 'b_address',
+            addressLine: 'Kızılay, Ankara',
+          ),
         ),
         isActive: false,
         createdAt: DateTime(2026, 2, 1),
@@ -164,8 +168,15 @@ class BJobsProvider extends ChangeNotifier {
   /// Geçmiş ilanlar
   List<BJobPost> get pastPosts => _jobPosts.where((p) => !p.isActive).toList();
 
+  static String _formatApplicationDate(DateTime? value) {
+    if (value == null) return '';
+    final day = value.day.toString().padLeft(2, '0');
+    final month = value.month.toString().padLeft(2, '0');
+    return '$day.$month.${value.year}';
+  }
+
   /// Yeni iş ilanı oluştur
-  void createJobPost(Job job) {
+  void createJobPost(JobDetail job) {
     final post = BJobPost(
       job: job,
       isActive: true,
@@ -225,30 +236,32 @@ class BJobsProvider extends ChangeNotifier {
     }
   }
 
-  /// Çalışan tarafından gelen başvuruları kontrol et ve eşleştir
+  /// Çalışan tarafında yapılan başvuruları işverenin aday listesine yansıtır.
+  ///
+  /// TODO(backend): Bu bir demo köprüsü. İşverenin gerçek aday listesi
+  /// `GET /jobs/{jobId}/applications`'tan gelecek; o bağlandığında bu metot
+  /// tamamen kalkacak.
   void syncApplicantsFromApplyProvider(ApplyProvider applyProvider) {
-    final appliedJobs = applyProvider.appliedJobs;
     final fakeUser = FakeUser.instance;
 
-    for (final applied in appliedJobs) {
-      // "applied_" prefix'ini kaldırarak orijinal job id'yi bul
-      final originalJobId = applied.id.replaceFirst('applied_', '');
-
-      final postIndex = _jobPosts.indexWhere((p) => p.job.id == originalJobId);
+    for (final application in applyProvider.applications) {
+      final postIndex = _jobPosts.indexWhere(
+        (p) => p.job.id == application.job.id,
+      );
       if (postIndex == -1) continue;
 
       final post = _jobPosts[postIndex];
       final alreadyExists = post.applicants.any(
-        (a) => a.id == 'sync_${applied.id}',
+        (a) => a.id == 'sync_${application.id}',
       );
 
       if (!alreadyExists) {
         final newApplicant = BApplicant(
-          id: 'sync_${applied.id}',
+          id: 'sync_${application.id}',
           fullName: fakeUser.fullName,
           jobTitle: fakeUser.jobTitle,
           profileImage: fakeUser.profileImage,
-          appliedDate: applied.date,
+          appliedDate: _formatApplicationDate(application.applicationDateTime),
         );
 
         _jobPosts[postIndex] = post.copyWith(

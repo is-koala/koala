@@ -2,6 +2,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/home/models/job_detail.dart';
+import 'package:koala/employee/features/home/services/job_service.dart';
+import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/saved_jobs_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
@@ -68,6 +71,36 @@ class JobDetailBottomSheet extends StatefulWidget {
 class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
   double _sheetSize = 0.5;
 
+  /// `GET /jobs` yalnızca özet döndürüyor: açıklama, görevler, yaş aralığı ve
+  /// adres bu ekran açıldığında ayrı bir istekle geliyor. Başlık ve ücret
+  /// özetten geldiği için sheet anında dolu açılıyor, yalnızca alt bölümler
+  /// bekliyor.
+  JobDetail? _detail;
+  bool _detailLoading = true;
+  String? _detailError;
+
+  Future<void> _loadDetail() async {
+    setState(() {
+      _detailLoading = true;
+      _detailError = null;
+    });
+
+    try {
+      final detail = await JobService().getById(widget.job.id);
+      if (!mounted) return;
+      setState(() {
+        _detail = detail;
+        _detailLoading = false;
+      });
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _detailError = error.message;
+        _detailLoading = false;
+      });
+    }
+  }
+
   /// Genişleme oranının hangi eşikten sonra "açık" sayılacağı. Açıkken ek
   /// bölümler ve kaydet butonu görünür.
   static const double _expandedThreshold = 0.3;
@@ -95,6 +128,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
   void initState() {
     super.initState();
     widget.sheetController?.addListener(_onSheetChanged);
+    _loadDetail();
   }
 
   @override
@@ -274,12 +308,14 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
           _typeAndPriceRow(expandProgress),
           _sectionTitle('Açıklama', expandProgress),
           _description(expandProgress, isExpanded),
-          if (isExpanded && widget.job.duties != null) ...[
+          if (isExpanded && _detailLoading) _detailPlaceholder(),
+          if (isExpanded && _detailError != null) _detailErrorRow(),
+          if (isExpanded && _detail?.duties != null) ...[
             const SizedBox(height: AppSizes.spaceLarge),
             Text('Görevler', style: context.textTheme.titleSmall),
             const SizedBox(height: AppSizes.spaceSmall),
             Text(
-              widget.job.duties!,
+              _detail!.duties!,
               style: context.textTheme.bodyMedium?.copyWith(
                 color: context.textSecondary,
                 height: _descriptionHeightMin,
@@ -304,30 +340,24 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
             ]),
             const SizedBox(height: AppSizes.spaceMedium),
             _buildInfoCard('Gereksinimler', [
-              if (widget.job.minAge != null || widget.job.maxAge != null)
+              if (_detail?.minAge != null || _detail?.maxAge != null)
                 _buildInfoRow(
                   Icons.person,
                   'Yaş Aralığı',
-                  '${widget.job.minAge ?? ''}-${widget.job.maxAge ?? ''} yaş',
+                  '${_detail?.minAge ?? ''}-${_detail?.maxAge ?? ''} yaş',
                 ),
-              if (widget.job.experienceRequired != null)
-                _buildInfoRow(
-                  Icons.work,
-                  'Deneyim',
-                  widget.job.experienceRequired! ? 'Gerekli' : 'Gerekli Değil',
-                ),
-              if (widget.job.insuranceRequired != null)
-                _buildInfoRow(
-                  Icons.health_and_safety,
-                  'Sigorta',
-                  widget.job.insuranceRequired! ? 'Gerekli' : 'Gerekli Değil',
-                ),
-              if (widget.job.dressCode != null)
-                _buildInfoRow(
-                  Icons.checkroom,
-                  'Kıyafet',
-                  widget.job.dressCode!,
-                ),
+              _buildInfoRow(
+                Icons.work,
+                'Deneyim',
+                widget.job.experienceRequired ? 'Gerekli' : 'Gerekli Değil',
+              ),
+              _buildInfoRow(
+                Icons.health_and_safety,
+                'Sigorta',
+                widget.job.insuranceRequired ? 'Gerekli' : 'Gerekli Değil',
+              ),
+              if (_detail?.dressCode != null)
+                _buildInfoRow(Icons.checkroom, 'Kıyafet', _detail!.dressCode!),
             ]),
           ],
           if (isExpanded &&
@@ -345,6 +375,68 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
         ],
       ),
     );
+  }
+
+  /// Detay yüklenirken açıklamanın altında duran gösterge. Başlık, ücret ve
+  /// kategori özetten geldiği için sheet zaten dolu görünüyor; bekleyen
+  /// yalnızca alt bölümler.
+  Widget _detailPlaceholder() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: AppSizes.spaceLarge),
+      child: Center(
+        child: SizedBox(
+          width: AppSizes.icon,
+          height: AppSizes.icon,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      ),
+    );
+  }
+
+  /// Detay çekilemediğinde: özet bilgiler ekranda kalıyor, yalnızca eksik
+  /// bölümlerin yerine hata ve tekrar denemek için bir bağlantı geliyor.
+  Widget _detailErrorRow() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSizes.spaceMedium),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              _detailError!,
+              style: context.textTheme.bodySmall?.copyWith(
+                color: context.textSecondary,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSizes.spaceSmall),
+          GestureDetector(
+            onTap: _loadDetail,
+            child: Text(
+              'Tekrar dene',
+              style: context.textTheme.bodySmall?.copyWith(
+                color: context.accentColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Konum satırı. Detay geldiyse açık adres, gelmediyse özetteki ilçe/il,
+  /// o da yoksa ham koordinat yazılıyor.
+  String _locationLabel() {
+    final address = _detail?.addressLabel;
+    if (address != null && address.isNotEmpty) return address;
+
+    final summary = widget.job.locationLabel;
+    if (summary != null && summary.isNotEmpty) return summary;
+
+    if (!widget.job.hasLocation) return 'Konum belirtilmemiş';
+
+    return '${widget.job.latitude!.toStringAsFixed(4)}, '
+        '${widget.job.longitude!.toStringAsFixed(4)}';
   }
 
   String _formatDateTime(DateTime value) =>
@@ -374,31 +466,32 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
   }
 
   Widget _companyRow(double expandProgress) {
-    final hasDetails = widget.job.companyDetails != null;
+    // Bireysel ilanlarda şirket yok; o zaman ilanı açan kişinin adı, o da
+    // gelmediyse kategori adı yazılıyor — satır hiç boş kalmıyor.
+    final label =
+        widget.job.company ??
+        _detail?.employerName ??
+        widget.job.category.displayName;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Expanded(
-          child: GestureDetector(
-            onTap: hasDetails
-                ? () => context.push(
-                    '/company-detail',
-                    extra: widget.job.companyDetails,
-                  )
-                : null,
-            child: Text(
-              widget.job.company!,
-              overflow: TextOverflow.ellipsis,
-              style: context.textTheme.bodySmall?.copyWith(
-                fontSize: lerpDouble(
-                  _companyFontMin,
-                  _companyFontMax,
-                  expandProgress,
-                ),
-                fontWeight: FontWeight.w500,
-                color: hasDetails ? context.accentColor : context.textSecondary,
+          // TODO(backend): Şirket detayına gitmek `GET /companies/{id}` ile
+          // bağlanacak. `company_detail` hâlâ sahte servise bakıyor ve onun
+          // `Company` modeli `JobCompany` ile uyuşmuyor, o yüzden satır
+          // şimdilik tıklanabilir değil.
+          child: Text(
+            label,
+            overflow: TextOverflow.ellipsis,
+            style: context.textTheme.bodySmall?.copyWith(
+              fontSize: lerpDouble(
+                _companyFontMin,
+                _companyFontMax,
+                expandProgress,
               ),
+              fontWeight: FontWeight.w500,
+              color: context.textSecondary,
             ),
           ),
         ),
@@ -515,7 +608,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
 
   Widget _description(double expandProgress, bool isExpanded) {
     return Text(
-      widget.job.description ?? widget.job.subtitle,
+      _detail?.description ?? widget.job.subtitle,
       style: context.textTheme.bodyMedium?.copyWith(
         fontSize: lerpDouble(
           _descriptionFontMin,
@@ -564,9 +657,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
                   children: [
                     Text('Konum', style: context.textTheme.labelMedium),
                     Text(
-                      widget.job.address ??
-                          '${widget.job.latitude.toStringAsFixed(4)}, '
-                              '${widget.job.longitude.toStringAsFixed(4)}',
+                      _locationLabel(),
                       style: context.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w500,
                       ),

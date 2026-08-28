@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
 import 'package:koala/business/features/home/services/fake_business_company.dart';
+import 'package:koala/employee/features/auth/models/user_address.dart';
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/home/presentation/providers/job_category_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -100,43 +102,35 @@ class _BCreatePageState extends State<BCreatePage> {
     final now = DateTime.now();
     final jobId = 'b_${now.millisecondsSinceEpoch}';
 
-    final job = Job(
+    final job = JobDetail(
       id: jobId,
-      latitude: 39.9208,
-      longitude: 32.8541,
+      status: JobStatus.open,
       type: _selectedType,
       category: category,
       title: _titleController.text.trim(),
-      subtitle: _subtitleController.text.trim().isEmpty
-          ? _titleController.text.trim()
-          : _subtitleController.text.trim(),
       price: double.tryParse(_priceController.text.trim()) ?? 0,
-      company: companyName,
-      description: _descriptionController.text.trim().isEmpty
-          ? null
-          : _descriptionController.text.trim(),
-      sector: _sectorController.text.trim().isEmpty
-          ? null
-          : _sectorController.text.trim(),
-      position: _positionController.text.trim().isEmpty
-          ? null
-          : _positionController.text.trim(),
-      duties: _dutiesController.text.trim().isEmpty
-          ? null
-          : _dutiesController.text.trim(),
+      company: JobCompany(id: 'b_company', name: companyName),
+      description: _trimmedOrNull(_descriptionController),
+      sector: _trimmedOrNull(_sectorController),
+      position: _trimmedOrNull(_positionController),
+      duties: _trimmedOrNull(_dutiesController),
       insuranceRequired: _insuranceRequired,
       startDateTime: now,
-      salaryType: 'FIXED',
+      salaryType: SalaryType.daily,
       minAge: int.tryParse(_minAgeController.text.trim()),
       maxAge: int.tryParse(_maxAgeController.text.trim()),
       experienceRequired: _experienceRequired,
-      dressCode: _dressCodeController.text.trim().isEmpty
-          ? null
-          : _dressCodeController.text.trim(),
-      employerType: 'COMPANY',
-      address: _addressController.text.trim().isEmpty
-          ? 'Ankara'
-          : _addressController.text.trim(),
+      dressCode: _trimmedOrNull(_dressCodeController),
+      employerType: JobEmployerType.company,
+      // TODO(backend): İlan oluşturma `POST /companies/{id}/jobs` ile
+      // kaydedilecek. Adres o zaman ilçe/il kimliğine çevrilecek; şimdilik
+      // serbest metin olduğu gibi taşınıyor ve koordinat hiç üretilmiyor.
+      address: UserAddress(
+        id: 'b_address',
+        addressLine: _addressController.text.trim().isEmpty
+            ? 'Ankara'
+            : _addressController.text.trim(),
+      ),
     );
 
     context.read<BJobsProvider>().createJobPost(job);
@@ -361,6 +355,13 @@ class _BCreatePageState extends State<BCreatePage> {
         ],
       ),
     );
+  }
+
+  /// Boş bırakılmış alanı `null`'a çeviriyor; sunucu boş metni de değer
+  /// sayıyor, o yüzden hiç göndermemek gerekiyor.
+  static String? _trimmedOrNull(TextEditingController controller) {
+    final value = controller.text.trim();
+    return value.isEmpty ? null : value;
   }
 
   Widget _sectionLabel(String title) =>

@@ -124,7 +124,7 @@ class _MapExplorePageState extends MapExplorePageModel {
         overflow: TextOverflow.ellipsis,
       ),
       subtitle: Text(
-        '${job.company ?? ''} • ${job.address ?? ''}',
+        '${job.company ?? ''} • ${job.locationLabel ?? ''}',
         style: context.textTheme.labelMedium,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,

@@ -4,6 +4,7 @@ import 'package:koala/business/features/home/models/b_applicant.dart';
 import 'package:koala/business/features/home/models/b_job_post.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
@@ -167,7 +168,7 @@ class BJobDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _categoryBadge(BuildContext context, Job job) {
+  Widget _categoryBadge(BuildContext context, JobDetail job) {
     return _badge(
       context,
       color: job.category.color,
@@ -206,7 +207,7 @@ class BJobDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _typeBadge(BuildContext context, Job job) {
+  Widget _typeBadge(BuildContext context, JobDetail job) {
     return _badge(
       context,
       color: AppColors.info,
@@ -220,7 +221,7 @@ class BJobDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _priceAndLocationRow(BuildContext context, Job job) {
+  Widget _priceAndLocationRow(BuildContext context, JobDetail job) {
     return Row(
       children: [
         Icon(
@@ -243,7 +244,7 @@ class BJobDetailPage extends StatelessWidget {
           color: context.textSecondary,
         ),
         const SizedBox(width: AppSizes.spaceTiny),
-        Text(job.address ?? 'Ankara', style: context.textTheme.bodyMedium),
+        Text(job.addressLabel ?? 'Ankara', style: context.textTheme.bodyMedium),
       ],
     );
   }

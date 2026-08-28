@@ -347,6 +347,12 @@ Every place that needs the real backend is marked with a `// TODO(backend):` com
 
 - `business/features/home/presentation/pages/b_home_page.dart` has a `_quickActionsSection` that nothing calls. It carries an `// ignore: unused_element` so analyze stays clean — it is a parked section, not dead code to delete without asking.
 - The stat numbers on the business profile, the applicant CV download and the "follow company" action all render but write nowhere.
+- **Server endpoints the profile could use but does not.** These were deliberately left for later, not overlooked:
+  - **Education** — `CurrentUser.educations` is parsed and carried, but no screen renders it. `/users/me/educations` has full CRUD (`UserProfileController`), and the university / faculty / department pickers would come from `/reference/universities`, `/reference/universities/{id}/faculties`, `/reference/faculties/{id}/departments`.
+  - **CV upload** — the profile's *Özgeçmiş* card only reports whether `cvUrl` is set. `PUT /users/me/cv` takes multipart under the form field name **`file`** (not `image`), and `DELETE /users/me/cv` removes it. Needs a file picker, which means a new dependency — ask first.
+  - **Experience editing** — the *Tecrübe* section is read-only. `/users/me/experiences` has full CRUD; adding one needs a form screen with an `EmploymentType` picker and a month/year range.
+  - **`qualifications`** is parsed but no longer shown anywhere. "Meslek" moved to the real `jobTitle` field; `qualifications` ("yetkinlikler") is a separate thing with no UI yet.
+  - **Presence** — `GET /users/{userId}/presence` and the batch `POST /presence/lookup` exist; the chat UI still hardcodes `isOnline: false`.
 - `business/features/home/presentation/pages/b_create_page.dart` hardcodes `latitude: 39.9208, longitude: 32.8541` for **every** job an employer posts, so they all land on the same map pin. The "Adres" field is free text and is never turned into coordinates. There is no `TODO(backend)` marker on it, so `grep` will not find it — it silently produces wrong data. Letting the employer drop a pin on a `google_maps_flutter` map is the obvious fix; the `geocoding` package is the other option but guesses at free-text addresses.
 
 

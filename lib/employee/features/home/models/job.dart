@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:koala/employee/features/company_detail/models/company.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -189,144 +188,216 @@ class JobCategorySeeds {
   ];
 }
 
-/// İş tipini temsil eden enum (Günlük veya Tekrarlı)
-enum JobType { oneTime, recurring }
+/// İş tipi. Backend `JobType` karşılığı.
+///
+/// Sunucudaki değerler `ONE_TIME` / `RECURRING`; Dart tarafındaki adlarla
+/// aynı olmadığı için eşleşme [code] üzerinden yapılıyor.
+enum JobType {
+  oneTime('ONE_TIME', 'Günlük'),
+  recurring('RECURRING', 'Tekrarlı');
 
-/// JobType için extension - Türkçe isimler
-extension JobTypeExtension on JobType {
-  String get displayName {
-    switch (this) {
-      case JobType.oneTime:
-        return 'Günlük';
-      case JobType.recurring:
-        return 'Tekrarlı';
-    }
+  const JobType(this.code, this.displayName);
+
+  final String code;
+  final String displayName;
+
+  static JobType fromCode(Object? value) {
+    return JobType.values.firstWhere(
+      (type) => type.code == value,
+      orElse: () => JobType.oneTime,
+    );
   }
 }
 
-class Job {
-  final String id;
-  final double latitude;
-  final double longitude;
-  final JobType type;
-  final JobCategory category;
-  final String title;
-  final String subtitle;
-  final double price;
-  final String? imageUrl;
-  final String? company;
-  final Company? companyDetails;
-  final String? description;
-  final String? sector;
-  final String? position;
-  final String? duties;
-  final bool? insuranceRequired;
-  final DateTime? startDateTime;
-  final DateTime? endDateTime;
-  final String? salaryType;
-  final int? minAge;
-  final int? maxAge;
-  final bool? experienceRequired;
-  final String? dressCode;
-  final String? employerType;
-  final String? address;
+/// Ücretin hangi birim üzerinden verildiği. Backend `SalaryType` karşılığı.
+enum SalaryType {
+  hourly('HOURLY', 'Saatlik'),
+  daily('DAILY', 'Günlük');
 
+  const SalaryType(this.code, this.displayName);
+
+  final String code;
+  final String displayName;
+
+  static SalaryType fromCode(Object? value) {
+    return SalaryType.values.firstWhere(
+      (type) => type.code == value,
+      orElse: () => SalaryType.daily,
+    );
+  }
+}
+
+/// İlanı kimin açtığı. Backend `JobEmployerType` karşılığı.
+enum JobEmployerType {
+  company('COMPANY', 'Kurumsal'),
+  individual('INDIVIDUAL', 'Bireysel');
+
+  const JobEmployerType(this.code, this.displayName);
+
+  final String code;
+  final String displayName;
+
+  static JobEmployerType fromCode(Object? value) {
+    return JobEmployerType.values.firstWhere(
+      (type) => type.code == value,
+      orElse: () => JobEmployerType.company,
+    );
+  }
+}
+
+/// İlanın durumu. Backend `JobStatus` karşılığı.
+enum JobStatus {
+  open('OPEN', 'Açık'),
+  inProgress('IN_PROGRESS', 'Devam ediyor'),
+  closed('CLOSED', 'Kapalı'),
+  cancelled('CANCELLED', 'İptal edildi'),
+  completed('COMPLETED', 'Tamamlandı');
+
+  const JobStatus(this.code, this.displayName);
+
+  final String code;
+  final String displayName;
+
+  /// Başvuruya açık mı. Keşfette yalnızca bunlar gösteriliyor.
+  bool get isOpen => this == JobStatus.open;
+
+  static JobStatus fromCode(Object? value) {
+    return JobStatus.values.firstWhere(
+      (status) => status.code == value,
+      orElse: () => JobStatus.open,
+    );
+  }
+}
+
+/// Bir iş ilanının liste/harita görünümü.
+///
+/// `GET /jobs` yanıtındaki `JobSummaryDto`'nun karşılığı. Açıklama, görevler,
+/// yaş aralığı ve tam adres burada **yok** — onlar `GET /jobs/{id}` ile gelen
+/// [JobDetail]'de. Kart ya da pin çizmek için gereken her şey burada.
+class Job {
   const Job({
     required this.id,
-    required this.latitude,
-    required this.longitude,
-    required this.type,
-    required this.category,
     required this.title,
-    required this.subtitle,
+    required this.category,
+    required this.type,
+    required this.employerType,
+    required this.salaryType,
     required this.price,
-    this.imageUrl,
-    this.company,
-    this.companyDetails,
-    this.description,
-    this.sector,
+    required this.status,
     this.position,
-    this.duties,
-    this.insuranceRequired,
+    this.sector,
+    this.insuranceRequired = false,
+    this.experienceRequired = false,
     this.startDateTime,
     this.endDateTime,
-    this.salaryType,
-    this.minAge,
-    this.maxAge,
-    this.experienceRequired,
-    this.dressCode,
-    this.employerType,
-    this.address,
+    this.cityName,
+    this.districtName,
+    this.company,
+    this.latitude,
+    this.longitude,
   });
 
-  /// JSON'dan model oluşturma
+  final String id;
+  final String title;
+  final JobCategory category;
+  final JobType type;
+  final JobEmployerType employerType;
+  final SalaryType salaryType;
+
+  /// Ücret. Backend'de `salary`.
+  final double price;
+
+  final JobStatus status;
+
+  final String? position;
+  final String? sector;
+  final bool insuranceRequired;
+  final bool experienceRequired;
+  final DateTime? startDateTime;
+  final DateTime? endDateTime;
+  final String? cityName;
+  final String? districtName;
+
+  /// İlanı açan şirketin adı. Bireysel ilanlarda `null`.
+  final String? company;
+
+  /// Konum. Backend bu iki alanı **opsiyonel** döndürüyor; adresi
+  /// koordinata çevrilmemiş ilanlar haritada gösterilemiyor — bkz. [hasLocation].
+  final double? latitude;
+  final double? longitude;
+
+  /// Haritada pin çizilebilir mi.
+  bool get hasLocation => latitude != null && longitude != null;
+
+  /// Kartın ikinci satırı.
+  ///
+  /// Backend'de bunun doğrudan karşılığı yok; en açıklayıcıdan en genele
+  /// doğru düşülüyor: pozisyon → sektör → kategori adı.
+  String get subtitle {
+    if (position != null && position!.isNotEmpty) return position!;
+    if (sector != null && sector!.isNotEmpty) return sector!;
+    return category.displayName;
+  }
+
+  /// `Küçükçekmece/İstanbul`. İkisi de boşsa `null`.
+  String? get locationLabel {
+    final parts = [
+      if (districtName != null && districtName!.isNotEmpty) districtName!,
+      if (cityName != null && cityName!.isNotEmpty) cityName!,
+    ];
+    return parts.isEmpty ? null : parts.join('/');
+  }
+
   factory Job.fromJson(Map<String, dynamic> json) {
     return Job(
-      id: json['id'] as String,
-      latitude: (json['latitude'] as num).toDouble(),
-      longitude: (json['longitude'] as num).toDouble(),
-      type: JobType.values.firstWhere(
-        (e) => e.name == json['type'],
-        orElse: () => JobType.oneTime,
+      id: '${json['id']}',
+      title: json['title'] as String? ?? '',
+      category: JobCategory.fromJson(
+        (json['category'] as Map<String, dynamic>?) ?? const {},
       ),
-      category: JobCategory.fromJson(json['category']! as Map<String, dynamic>),
-      title: json['title'] as String,
-      subtitle: json['subtitle'] as String,
-      price: (json['price'] as num).toDouble(),
-      imageUrl: json['imageUrl'] as String?,
-      company: json['company'] as String?,
-      companyDetails: json['companyDetails'] != null
-          ? Company.fromJson(json['companyDetails'] as Map<String, dynamic>)
-          : null,
-      description: json['description'] as String?,
-      sector: json['sector'] as String?,
+      type: JobType.fromCode(json['type']),
+      employerType: JobEmployerType.fromCode(json['employerType']),
+      salaryType: SalaryType.fromCode(json['salaryType']),
+      price: (json['salary'] as num?)?.toDouble() ?? 0,
+      status: JobStatus.fromCode(json['status']),
       position: json['position'] as String?,
-      duties: json['duties'] as String?,
-      insuranceRequired: json['insuranceRequired'] as bool?,
-      startDateTime: json['startDateTime'] != null
-          ? DateTime.parse(json['startDateTime'] as String)
-          : null,
-      endDateTime: json['endDateTime'] != null
-          ? DateTime.parse(json['endDateTime'] as String)
-          : null,
-      salaryType: json['salaryType'] as String?,
-      minAge: json['minAge'] as int?,
-      maxAge: json['maxAge'] as int?,
-      experienceRequired: json['experienceRequired'] as bool?,
-      dressCode: json['dressCode'] as String?,
-      employerType: json['employerType'] as String?,
-      address: json['address'] as String?,
+      sector: json['sector'] as String?,
+      insuranceRequired: json['insuranceRequired'] as bool? ?? false,
+      experienceRequired: json['experienceRequired'] as bool? ?? false,
+      startDateTime: _parseDate(json['startDateTime']),
+      endDateTime: _parseDate(json['endDateTime']),
+      cityName: json['cityName'] as String?,
+      districtName: json['districtName'] as String?,
+      company: json['companyName'] as String?,
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
     );
   }
 
-  /// Model'den JSON oluşturma
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'latitude': latitude,
-      'longitude': longitude,
-      'type': type.name,
-      'category': category.toJson(),
       'title': title,
-      'subtitle': subtitle,
-      'price': price,
-      'imageUrl': imageUrl,
-      'company': company,
-      'companyDetails': companyDetails?.toJson(),
-      'description': description,
-      'sector': sector,
+      'category': category.toJson(),
+      'type': type.code,
+      'employerType': employerType.code,
+      'salaryType': salaryType.code,
+      'salary': price,
+      'status': status.code,
       'position': position,
-      'duties': duties,
+      'sector': sector,
       'insuranceRequired': insuranceRequired,
+      'experienceRequired': experienceRequired,
       'startDateTime': startDateTime?.toIso8601String(),
       'endDateTime': endDateTime?.toIso8601String(),
-      'salaryType': salaryType,
-      'minAge': minAge,
-      'maxAge': maxAge,
-      'experienceRequired': experienceRequired,
-      'dressCode': dressCode,
-      'employerType': employerType,
-      'address': address,
+      'cityName': cityName,
+      'districtName': districtName,
+      'companyName': company,
+      'latitude': latitude,
+      'longitude': longitude,
     };
   }
+
+  static DateTime? _parseDate(Object? value) =>
+      value is String ? DateTime.tryParse(value) : null;
 }

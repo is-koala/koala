@@ -5,6 +5,7 @@ import 'package:koala/business/features/home/models/b_job_post.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
 import 'package:koala/business/features/home/services/fake_business_company.dart';
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/product/constants/app_assets.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
@@ -677,7 +678,7 @@ class BHomePage extends StatelessWidget {
         const SizedBox(width: AppSizes.spaceTiny),
         Expanded(
           child: Text(
-            job.address ?? 'Ankara',
+            job.addressLabel ?? 'Ankara',
             style: context.textTheme.labelMedium?.copyWith(
               color: context.textTertiary,
             ),
@@ -744,7 +745,7 @@ class BHomePage extends StatelessWidget {
 
   Widget _categoryBadge(
     BuildContext context,
-    Job job, {
+    JobDetail job, {
     bool withIcon = false,
   }) {
     return Container(

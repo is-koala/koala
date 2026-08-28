@@ -50,6 +50,34 @@ class _ApplyPageState extends State<ApplyPage> {
     super.dispose();
   }
 
+  /// Başvuruyu gönderir.
+  ///
+  /// Başarı diyaloğu yalnızca sunucu kaydı oluşturduğunda açılıyor; hata
+  /// durumunda kullanıcı formda kalıyor ki yazdığı ön yazı kaybolmasın.
+  Future<void> _submit() async {
+    final provider = context.read<ApplyProvider>();
+    final coverLetter = _coverLetterController.text.trim();
+
+    final succeeded = await provider.applyToJob(
+      widget.job,
+      coverLetter: coverLetter.isEmpty ? null : coverLetter,
+    );
+
+    if (!mounted) return;
+
+    if (succeeded) {
+      _showSuccessDialog(context);
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(provider.errorMessage ?? 'Başvuru gönderilemedi.'),
+        backgroundColor: AppColors.danger,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final applyProvider = context.watch<ApplyProvider>();
@@ -82,26 +110,21 @@ class _ApplyPageState extends State<ApplyPage> {
         ),
       ),
       bottomNavigationBar: ButtonNavbar(
-        onPressed: (alreadyApplied || !_agreedToTerms)
+        onPressed:
+            (alreadyApplied || !_agreedToTerms || applyProvider.isLoading)
             ? null
-            : () {
-                applyProvider.applyToJob(
-                  widget.job,
-                  coverLetter: _coverLetterController.text.isNotEmpty
-                      ? _coverLetterController.text
-                      : null,
-                );
-                _showSuccessDialog(context);
-              },
+            : _submit,
+        isLoading: applyProvider.isLoading,
         title: alreadyApplied ? 'Zaten Başvurdunuz' : 'Başvuruyu Gönder',
       ),
     );
   }
 
-  bool get _hasRequirements =>
-      widget.job.experienceRequired != null ||
-      widget.job.dressCode != null ||
-      widget.job.minAge != null;
+  /// Başvuru ekranı yalnızca özet yanıttaki gereksinimleri gösteriyor.
+  /// Yaş aralığı, kıyafet ve açık adres `GET /jobs/{id}`'de; kullanıcı onları
+  /// başvurmadan önce detay ekranında görüyor, form için ikinci istek atmaya
+  /// değmiyor.
+  bool get _hasRequirements => true;
 
   Widget _sectionTitle(String title) =>
       Text(title, style: context.textTheme.titleSmall);
@@ -202,7 +225,7 @@ class _ApplyPageState extends State<ApplyPage> {
         const SizedBox(width: AppSizes.spaceTiny),
         Expanded(
           child: Text(
-            widget.job.address ?? 'Ankara',
+            widget.job.locationLabel ?? '-',
             style: context.textTheme.bodySmall?.copyWith(
               fontWeight: FontWeight.w500,
             ),
@@ -294,30 +317,17 @@ class _ApplyPageState extends State<ApplyPage> {
       ),
       child: Column(
         children: [
-          if (job.experienceRequired != null)
-            _requirementRow(
-              Icons.work_outline,
-              'Deneyim',
-              job.experienceRequired! ? 'Gerekli' : 'Gerekli Değil',
-            ),
-          if (job.minAge != null || job.maxAge != null)
-            _requirementRow(
-              Icons.person_outline,
-              'Yaş Aralığı',
-              '${job.minAge ?? ''}-${job.maxAge ?? ''} yaş',
-            ),
-          if (job.dressCode != null)
-            _requirementRow(
-              Icons.checkroom_outlined,
-              'Kıyafet',
-              job.dressCode!,
-            ),
-          if (job.insuranceRequired != null)
-            _requirementRow(
-              Icons.health_and_safety_outlined,
-              'Sigorta',
-              job.insuranceRequired! ? 'Gerekli' : 'Gerekli Değil',
-            ),
+          // İkisi de özet yanıtta zorunlu alan: her zaman çizilebiliyorlar.
+          _requirementRow(
+            Icons.work_outline,
+            'Deneyim',
+            job.experienceRequired ? 'Gerekli' : 'Gerekli Değil',
+          ),
+          _requirementRow(
+            Icons.health_and_safety_outlined,
+            'Sigorta',
+            job.insuranceRequired ? 'Gerekli' : 'Gerekli Değil',
+          ),
         ],
       ),
     );

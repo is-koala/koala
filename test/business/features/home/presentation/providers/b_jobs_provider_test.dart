@@ -2,7 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/business/features/home/models/b_applicant.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
+import 'package:koala/employee/features/jobs/services/job_application_service.dart';
 
+import '../../../../../support/fake_api.dart';
 import '../../../../../support/fixtures.dart';
 
 void main() {
@@ -35,7 +37,7 @@ void main() {
     test('yeni ilan aktif olarak listenin başına eklenir', () {
       final before = provider.allPosts.length;
 
-      provider.createJobPost(buildJob(id: 'yeni_1', title: 'Yeni İlan'));
+      provider.createJobPost(buildJobDetail(id: 'yeni_1', title: 'Yeni İlan'));
 
       expect(provider.allPosts, hasLength(before + 1));
       final created = provider.allPosts.first;
@@ -115,26 +117,66 @@ void main() {
   });
 
   group('syncApplicantsFromApplyProvider', () {
-    test('çalışan tarafındaki başvuru işveren listesine düşer', () {
+    /// Başvurusu sunucudan gelmiş gibi doldurulmuş bir sağlayıcı.
+    Future<ApplyProvider> applyProviderFor(String jobId) async {
+      final api = FakeApi(
+        handler: (_) => FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {
+              'content': [
+                {
+                  'id': 'app_$jobId',
+                  'status': 'APPLIED',
+                  'applicationDateTime': '2026-03-05T10:00:00Z',
+                  'job': {
+                    'id': jobId,
+                    'title': 'Başvurulan İlan',
+                    'category': {
+                      'id': 'c',
+                      'code': 'WAITER',
+                      'name': 'Garsonluk',
+                    },
+                    'salary': 500,
+                  },
+                },
+              ],
+            },
+          },
+        ),
+      );
+
+      final applyProvider = ApplyProvider(
+        service: JobApplicationService.withClient(api.client),
+      );
+      await applyProvider.load();
+      return applyProvider;
+    }
+
+    test('çalışan tarafındaki başvuru işveren listesine düşer', () async {
       final post = provider.activePosts.first;
-      final applyProvider = ApplyProvider();
       final oncekiAdaySayisi = post.applicants.length;
 
-      applyProvider.applyToJob(buildJob(id: post.job.id));
+      final applyProvider = await applyProviderFor(post.job.id);
       provider.syncApplicantsFromApplyProvider(applyProvider);
 
       final updated = provider.getPostByJobId(post.job.id)!;
       expect(updated.applicants, hasLength(oncekiAdaySayisi + 1));
       expect(
         updated.applicants.map((a) => a.id),
-        contains('sync_applied_${post.job.id}'),
+        contains('sync_app_${post.job.id}'),
+      );
+      expect(
+        updated.applicants.last.appliedDate,
+        '05.03.2026',
+        reason: 'başvuru tarihi sunucudan gelen değerden biçimlenmeli',
       );
     });
 
-    test('ikinci senkron kopya aday üretmez', () {
+    test('ikinci senkron kopya aday üretmez', () async {
       final post = provider.activePosts.first;
-      final applyProvider = ApplyProvider();
-      applyProvider.applyToJob(buildJob(id: post.job.id));
+      final applyProvider = await applyProviderFor(post.job.id);
 
       provider.syncApplicantsFromApplyProvider(applyProvider);
       final ilkSayi = provider.getPostByJobId(post.job.id)!.applicants.length;
@@ -146,11 +188,10 @@ void main() {
       );
     });
 
-    test('işverene ait olmayan ilana yapılan başvuru yok sayılır', () {
-      final applyProvider = ApplyProvider();
+    test('işverene ait olmayan ilana yapılan başvuru yok sayılır', () async {
       final before = provider.allPosts.map((p) => p.applicants.length).toList();
 
-      applyProvider.applyToJob(buildJob(id: 'baska_firmanin_ilani'));
+      final applyProvider = await applyProviderFor('baska_firmanin_ilani');
       provider.syncApplicantsFromApplyProvider(applyProvider);
 
       expect(

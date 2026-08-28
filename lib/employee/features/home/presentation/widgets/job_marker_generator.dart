@@ -15,6 +15,10 @@ class JobMarkerGenerator {
     final Set<Marker> markers = {};
 
     for (final job in jobs) {
+      // Backend enlem/boylamı opsiyonel döndürüyor: adresi koordinata
+      // çevrilmemiş ilan haritada gösterilemiyor, atlanıyor.
+      if (!job.hasLocation) continue;
+
       final marker = await _createMarker(job, onMarkerTap);
       markers.add(marker);
     }
@@ -30,7 +34,7 @@ class JobMarkerGenerator {
 
     return Marker(
       markerId: MarkerId(job.id),
-      position: LatLng(job.latitude, job.longitude),
+      position: LatLng(job.latitude!, job.longitude!),
       icon: icon,
       onTap: () => onMarkerTap(job),
       anchor: const Offset(0.5, 1.0), // Pin'in alt noktası konumu göstersin
