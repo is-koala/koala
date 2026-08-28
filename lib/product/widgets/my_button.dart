@@ -33,7 +33,9 @@ class MyButton extends StatelessWidget {
               borderRadius: AppRadius.primaryCircular,
             ),
             backgroundColor: isReversed!
-                ? context.onAccentColor
+                // Ters buton yeşilin üstünde değil, yeşilin yerine duruyor:
+                // zemini sayfanınkiyle aynı, ayıran şey yeşil kenarlığı.
+                ? context.backgroundColor
                 : context.accentColor,
             disabledBackgroundColor: context.accentColor.withValues(alpha: 0.7),
             overlayColor: !isReversed! ? AppColors.primarySoft : null,

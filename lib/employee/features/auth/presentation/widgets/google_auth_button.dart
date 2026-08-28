@@ -38,7 +38,9 @@ class GoogleAuthButton extends StatelessWidget {
               borderRadius: AppRadius.primaryCircular,
               side: BorderSide(color: context.accentColor, width: _borderWidth),
             ),
-            backgroundColor: context.onAccentColor,
+            // `MyButton`'ın ters hâliyle aynı: zemin sayfanın zemini,
+            // butonu ayıran şey yeşil kenarlık.
+            backgroundColor: context.backgroundColor,
             padding: AppPadding.button,
           ),
           child: Row(

@@ -182,9 +182,11 @@ ThemeData darkTheme = ThemeData(
   dividerColor: AppColors.darkDivider,
   colorScheme: const ColorScheme.dark(
     primary: AppColors.primaryColor,
-    // Vurgu zemini koyu temada da yeşil; üstündeki içerik beyaz yerine
-    // sayfa zeminine düşüyor, yoksa yeşil buton fazla parlıyor.
-    onPrimary: AppColors.darkBackground,
+    // Vurgu zemini koyu temada da yeşil, üstündeki içerik de açık temadaki
+    // gibi beyaz. Bir dönem sayfa zeminine (koyu) bağlıydı: yeşil butonun
+    // parlamasını azaltıyordu ama yeşilin üstündeki her şeyi -- buton yazısı,
+    // sohbet balonu, seçili filtre, onay kutusunun tiki -- siyaha çeviriyordu.
+    onPrimary: AppColors.onAccent,
     secondary: AppColors.primaryDeep,
     onSecondary: AppColors.onAccent,
     surface: AppColors.darkBackground,

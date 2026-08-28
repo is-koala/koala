@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:koala/product/theme/theme.dart';
 import 'package:koala/product/widgets/my_button.dart';
 
 import '../../support/pump.dart';
@@ -28,6 +29,31 @@ void main() {
 
     final button = tester.widget<ElevatedButton>(find.byType(ElevatedButton));
     expect(button.onPressed, isNull);
+  });
+
+  group('isReversed', () {
+    // Ters buton yeşilin üstünde değil yerinde duruyor: zemini sayfanınki,
+    // ayıran şey yeşil kenarlık. `onPrimary`'ye bağlıyken koyu temada yanlış
+    // renge düşüyordu.
+    for (final brightness in Brightness.values) {
+      testWidgets('${brightness.name} temada zemin sayfa zeminiyle aynı', (
+        tester,
+      ) async {
+        await pumpInApp(
+          tester,
+          MyButton(onPressed: () {}, title: 'Giriş', isReversed: true),
+          brightness: brightness,
+        );
+
+        final theme = brightness == Brightness.dark ? darkTheme : lightTheme;
+        final button = tester.widget<ElevatedButton>(
+          find.byType(ElevatedButton),
+        );
+        final background = button.style?.backgroundColor?.resolve({});
+
+        expect(background, theme.scaffoldBackgroundColor);
+      });
+    }
   });
 
   group('isLoading', () {

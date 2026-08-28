@@ -115,11 +115,16 @@ extension AppColorExtension on BuildContext {
   Color get payoutSurface =>
       isDarkTheme ? AppColors.surfacePayoutDark : AppColors.surfacePayout;
 
-  /// [accentColor] zemini üzerindeki metin ve ikon.
+  /// [accentColor] zemini üzerindeki metin ve ikon: iki temada da beyaz.
   ///
-  /// Açık temada beyaz, koyu temada sayfa zeminine düşer — yeşil buton koyu
-  /// temada beyaz metinle fazla parlıyor. Bu yüzden her iki temada beyaz
-  /// kalan [AppColors.onAccent] buranın yerine kullanılamaz.
+  /// Değer [AppColors.onAccent] ile aynı; ikisi arasındaki fark nereden
+  /// okunduğu. Yeşil bir zeminin üstüne çizen widget bunu kullanır, böylece
+  /// tema bir gün yön değiştirirse tek yerden döner. [AppColors.onAccent]
+  /// ise temadan bağımsız olduğu baştan belli olan yüzeyler için (business
+  /// navbar'ı, kapak görselinin üstü).
+  ///
+  /// Yeşilin **üstü** demek: yeşilin *yerine* duran ters butonun zemini
+  /// buradan değil [backgroundColor]'dan gelir.
   Color get onAccentColor => colorScheme.onPrimary;
 }
 
