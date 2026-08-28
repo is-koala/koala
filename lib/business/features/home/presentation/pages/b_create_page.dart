@@ -318,7 +318,6 @@ class _BCreatePageState extends State<BCreatePage> {
       decoration: BoxDecoration(
         color: context.tileColor,
         borderRadius: AppRadius.innerCircular,
-        border: Border.all(color: context.dividerColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

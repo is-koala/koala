@@ -41,6 +41,11 @@ class ThemeModeSheet extends StatelessWidget {
   /// Seçili satırın zemin opaklığı.
   static const double _selectedTintAlpha = 0.1;
 
+  /// Seçili satırın halkası. Zemin tonu tek başına seçimi anlatacak kadar
+  /// belirgin değil; kalınlığı normal bir çerçeveden fazla ki halka olduğu
+  /// anlaşılsın.
+  static const double _selectedBorderWidth = 2.0;
+
   static Future<void> show(BuildContext context) {
     return AppBottomSheet.show(
       context,
@@ -93,10 +98,11 @@ class ThemeModeSheet extends StatelessWidget {
           padding: AppPadding.tileTall,
           decoration: BoxDecoration(
             borderRadius: AppRadius.innerCircular,
-            border: Border.all(
-              color: isSelected ? accent : context.dividerColor,
-              width: isSelected ? 2 : 1,
-            ),
+            // Halka yalnızca seçili satırda: seçili olmayanı zaten zemin
+            // tonu ayırıyor.
+            border: isSelected
+                ? Border.all(color: accent, width: _selectedBorderWidth)
+                : null,
           ),
           child: Row(
             children: [

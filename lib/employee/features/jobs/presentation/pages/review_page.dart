@@ -117,7 +117,6 @@ class _ReviewPageState extends State<ReviewPage> {
   BoxDecoration get _panelDecoration => BoxDecoration(
     color: context.tileColor,
     borderRadius: AppRadius.secondaryCircular,
-    border: Border.all(color: context.dividerColor),
   );
 
   // ------------------------------------------------------------ İş kartı

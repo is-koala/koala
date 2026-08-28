@@ -365,7 +365,6 @@ class _BProfilePageState extends State<BProfilePage> {
   BoxDecoration get _panelDecoration => BoxDecoration(
     color: context.tileColor,
     borderRadius: AppRadius.innerCircular,
-    border: Border.all(color: context.dividerColor),
   );
 
   Widget _infoCard(List<Widget> children) {

@@ -53,7 +53,7 @@ class BSettingsPage extends StatelessWidget {
             await AuthService().logout();
 
             if (context.mounted) {
-              context.go('/authgate');
+              context.go('/auth');
             }
           },
         ),

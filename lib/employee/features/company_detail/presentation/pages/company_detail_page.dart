@@ -520,7 +520,6 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
       decoration: BoxDecoration(
         color: context.tileColor,
         borderRadius: AppRadius.innerCircular,
-        border: Border.all(color: context.dividerColor),
       ),
       child: Column(children: children),
     );

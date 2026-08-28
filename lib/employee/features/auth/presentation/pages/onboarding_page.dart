@@ -6,7 +6,7 @@ import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:koala/product/network/session_manager.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
 class OnboardingPage extends StatefulWidget {
@@ -125,8 +125,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
       return;
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('seen_onboarding', true);
+    await SessionManager().markOnboardingSeen();
     if (mounted) {
       context.go('/auth');
     }

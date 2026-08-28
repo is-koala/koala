@@ -573,7 +573,6 @@ class BJobDetailPage extends StatelessWidget {
   BoxDecoration _panelDecoration(BuildContext context) => BoxDecoration(
     color: context.tileColor,
     borderRadius: AppRadius.innerCircular,
-    border: Border.all(color: context.dividerColor),
   );
 
   Widget _emptyPanel(

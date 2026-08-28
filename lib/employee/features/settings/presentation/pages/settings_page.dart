@@ -83,7 +83,7 @@ class SettingsPage extends StatelessWidget {
               context.read<UserProvider>().clear();
               context.read<ApplyProvider>().clear();
               context.read<SavedJobsProvider>().clear();
-              context.go('/authgate');
+              context.go('/auth');
             }
           },
         ),

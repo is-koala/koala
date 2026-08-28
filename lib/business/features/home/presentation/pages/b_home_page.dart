@@ -807,7 +807,6 @@ class BHomePage extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.tileColor,
         borderRadius: AppRadius.innerCircular,
-        border: Border.all(color: context.dividerColor),
       ),
       child: Column(
         children: [

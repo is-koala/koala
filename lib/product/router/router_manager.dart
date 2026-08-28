@@ -1,4 +1,4 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/business/core/b_shell_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_create_page.dart';
@@ -14,7 +14,7 @@ import 'package:koala/business/features/chat/presentation/pages/b_chat_list_page
 import 'package:koala/business/features/chat/presentation/pages/b_chat_page.dart';
 import 'package:koala/business/features/home/models/b_applicant.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
-import 'package:koala/employee/features/auth/presentation/pages/auth_gate.dart';
+import 'package:koala/employee/features/auth/presentation/pages/splash_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/auth_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/company_informations_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/creating_password_page.dart';
@@ -32,7 +32,6 @@ import 'package:koala/employee/features/home/presentation/pages/shell_page.dart'
 import 'package:koala/employee/features/company_detail/presentation/pages/company_detail_page.dart';
 import 'package:koala/employee/features/company_detail/models/company.dart';
 import 'package:koala/employee/features/settings/presentation/pages/settings_page.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:koala/employee/features/auth/presentation/pages/login_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/register_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/email_verification_pending_page.dart';
@@ -42,42 +41,51 @@ import 'package:koala/employee/features/settings/presentation/pages/account_info
 import 'package:koala/product/network/session_manager.dart';
 
 class RouterManager {
-  static Future<bool> isUserLoggedIn() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(SessionManager.isLoggedInKey) ?? false;
-  }
-
-  static Future<String?> getUserType() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(SessionManager.userTypeKey);
-  }
+  /// Kullanıcı tipinin ana sayfası.
+  static String _homeFor(String? userType) =>
+      userType == SessionManager.businessType ? '/business/home' : '/explore';
 
   /// Yönlendirme kararını veren saf fonksiyon.
   ///
-  /// `SharedPreferences`'tan okuma [redirect] içinde kalıyor, karar mantığı
-  /// burada: girdileri parametre olduğu için testten doğrudan çağrılabiliyor.
+  /// Oturum durumunu okuma [SessionManager]'ın işi; karar mantığı burada:
+  /// girdileri parametre olduğu için testten doğrudan çağrılabiliyor.
   /// `null` dönmesi "olduğun yerde kal" demek.
   @visibleForTesting
   static String? resolveRedirect({
     required bool loggedIn,
     required String? userType,
     required String location,
+    bool initialized = true,
+    bool seenOnboarding = true,
   }) {
-    final authRoutes = ['/auth', '/authgate', '/onboarding'];
-    final isAuthRoute = authRoutes.any((route) => location.startsWith(route));
+    // Oturum durumu daha okunmadı: karar verilemez, splash'ta beklenir.
+    // "Okunmadı" ile "giriş yapmamış" aynı şey değil — ikisini karıştırmak
+    // açılışta giriş ekranını bir an gösterip sonra ana sayfaya atlamak
+    // demek.
+    if (!initialized) {
+      return location == splashLocation ? null : splashLocation;
+    }
 
-    // Giriş yapmamışsa auth'a yönlendir
+    // Splash geçici bir ekran: oturum okunduğuna göre kimse orada kalmaz.
+    // Bunu auth rotalarıyla aynı kümeye koymak, giriş yapmamış kullanıcıyı
+    // "zaten auth'ta" sayıp splash'ta kilitliyor.
+    if (location == splashLocation) {
+      return loggedIn
+          ? _homeFor(userType)
+          : (seenOnboarding ? '/auth' : '/onboarding');
+    }
+
+    final isAuthRoute =
+        location.startsWith('/auth') || location.startsWith('/onboarding');
+
+    // Giriş yapmamışsa: tanıtımı görmemişse önce o, görmüşse giriş ekranı.
     if (!loggedIn && !isAuthRoute) {
-      return '/authgate';
+      return seenOnboarding ? '/auth' : '/onboarding';
     }
 
     // Giriş yapmışsa ve auth sayfasındaysa kullanıcı tipine göre yönlendir
     if (loggedIn && isAuthRoute) {
-      if (userType == 'business') {
-        return '/business/home';
-      } else {
-        return '/explore';
-      }
+      return _homeFor(userType);
     }
 
     // Business kullanıcısı employee sayfalarına erişmeye çalışırsa
@@ -101,12 +109,35 @@ class RouterManager {
     return null;
   }
 
+  /// Shell dışındaki bir sayfanın `Page`'i.
+  ///
+  /// Rotalar `builder:` ile bırakıldığında sayfayı go_router uygulama tipine
+  /// bakarak kendi seçiyor; bu sürümde o tespit `MaterialApp` altında bile
+  /// başarısız olup `NoTransitionPage`'e düşüyor ve shell dışındaki bütün
+  /// sayfalar animasyonsuz açılıyordu. Sayfayı burada açıkça vermek
+  /// platformun kendi geçişini geri getiriyor: iOS'ta yandan kayma,
+  /// Android'de `FadeForwards`.
+  ///
+  /// Navbar sekmeleri bunu kullanmıyor; onların kendi `pageBuilder`'ları var.
+  static Page<void> _page(GoRouterState state, Widget child) =>
+      MaterialPage<void>(key: state.pageKey, child: child);
+
+  /// Açılış ekranının yolu. Uygulama buradan başlıyor ve oturum durumu
+  /// okunana kadar burada kalıyor.
+  static const String splashLocation = '/';
+
   static final GoRouter router = GoRouter(
-    initialLocation: '/explore',
-    redirect: (context, state) async {
+    initialLocation: splashLocation,
+    // Oturum açılıp kapandığında yönlendirme yeniden değerlendiriliyor;
+    // splash'ın okuması bittiğinde kullanıcıyı buradan yola çıkarıyor.
+    refreshListenable: SessionManager(),
+    redirect: (context, state) {
+      final session = SessionManager();
       return resolveRedirect(
-        loggedIn: await isUserLoggedIn(),
-        userType: await getUserType(),
+        initialized: session.isInitialized,
+        loggedIn: session.isLoggedIn,
+        userType: session.userType,
+        seenOnboarding: session.seenOnboarding,
         location: state.matchedLocation,
       );
     },
@@ -114,34 +145,45 @@ class RouterManager {
       // Auth Routes
       GoRoute(
         path: '/auth',
-        builder: (context, state) => const AuthPage(),
+        pageBuilder: (context, state) => _page(state, const AuthPage()),
         routes: [
           GoRoute(
             path: 'login',
-            builder: (context, state) => const LoginPage(),
+            pageBuilder: (context, state) => _page(state, const LoginPage()),
           ),
           GoRoute(
             path: 'register-type',
-            builder: (context, state) => const RegisterTypePage(),
+            pageBuilder: (context, state) =>
+                _page(state, const RegisterTypePage()),
             routes: [
               GoRoute(
                 path: 'register',
-                builder: (context, state) => RegisterPage(
-                  isBusiness: state.uri.queryParameters['isBusiness'] == 'true',
+                pageBuilder: (context, state) => _page(
+                  state,
+                  RegisterPage(
+                    isBusiness:
+                        state.uri.queryParameters['isBusiness'] == 'true',
+                  ),
                 ),
                 routes: [
                   GoRoute(
                     path: 'email-verification-pending',
-                    builder: (context, state) => EmailVerificationPendingPage(
-                      isBusiness:
-                          state.uri.queryParameters['isBusiness'] == 'true',
-                      email: state.uri.queryParameters['email'],
+                    pageBuilder: (context, state) => _page(
+                      state,
+                      EmailVerificationPendingPage(
+                        isBusiness:
+                            state.uri.queryParameters['isBusiness'] == 'true',
+                        email: state.uri.queryParameters['email'],
+                      ),
                     ),
                   ),
                   GoRoute(
                     path: 'creating-password',
-                    builder: (context, state) => CreatingPasswordPage(
-                      token: state.uri.queryParameters['token'],
+                    pageBuilder: (context, state) => _page(
+                      state,
+                      CreatingPasswordPage(
+                        token: state.uri.queryParameters['token'],
+                      ),
                     ),
                   ),
                 ],
@@ -157,57 +199,61 @@ class RouterManager {
       // kayıttan sonra açılabiliyor.
       GoRoute(
         path: '/company-informations',
-        builder: (context, state) => const CompanyInformationsPage(),
+        pageBuilder: (context, state) =>
+            _page(state, const CompanyInformationsPage()),
       ),
 
-      GoRoute(path: '/authgate', builder: (context, state) => const AuthGate()),
+      GoRoute(
+        path: splashLocation,
+        pageBuilder: (context, state) => _page(state, const SplashPage()),
+      ),
       GoRoute(
         path: '/onboarding',
-        builder: (context, state) => const OnboardingPage(),
+        pageBuilder: (context, state) => _page(state, const OnboardingPage()),
       ),
 
       GoRoute(
         path: '/chat-detail',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final chatData = state.extra as Conversation;
-          return ChatPage(chat: chatData);
+          return _page(state, ChatPage(chat: chatData));
         },
       ),
 
       GoRoute(
         path: '/company-detail',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final companyData = state.extra as Company;
-          return CompanyDetailPage(company: companyData);
+          return _page(state, CompanyDetailPage(company: companyData));
         },
       ),
 
       GoRoute(
         path: '/review',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final job = state.extra as MyJob;
-          return ReviewPage(job: job);
+          return _page(state, ReviewPage(job: job));
         },
       ),
 
       GoRoute(
         path: '/apply',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final job = state.extra as Job;
-          return ApplyPage(job: job);
+          return _page(state, ApplyPage(job: job));
         },
       ),
 
       GoRoute(
         path: '/settings',
-        builder: (context, state) => const SettingsPage(),
+        pageBuilder: (context, state) => _page(state, const SettingsPage()),
       ),
 
       GoRoute(
         path: '/account-info',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final user = state.extra as CurrentUser;
-          return AccountInfoPage(user: user);
+          return _page(state, AccountInfoPage(user: user));
         },
       ),
 
@@ -263,45 +309,46 @@ class RouterManager {
 
       GoRoute(
         path: '/business/create',
-        builder: (context, state) => const BCreatePage(),
+        pageBuilder: (context, state) => _page(state, const BCreatePage()),
       ),
 
       GoRoute(
         path: '/business/settings',
-        builder: (context, state) => const BSettingsPage(),
+        pageBuilder: (context, state) => _page(state, const BSettingsPage()),
       ),
 
       GoRoute(
         path: '/business/company-info',
-        builder: (context, state) => const BCompanyInfoPage(),
+        pageBuilder: (context, state) => _page(state, const BCompanyInfoPage()),
       ),
 
       GoRoute(
         path: '/business/job-detail',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final jobId = state.extra as String;
-          return BJobDetailPage(jobId: jobId);
+          return _page(state, BJobDetailPage(jobId: jobId));
         },
       ),
 
       GoRoute(
         path: '/business/user-profile',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final applicant = state.extra as BApplicant;
-          return BUserProfilePage(applicant: applicant);
+          return _page(state, BUserProfilePage(applicant: applicant));
         },
       ),
 
       GoRoute(
         path: '/business/notifications',
-        builder: (context, state) => const BNotificationsPage(),
+        pageBuilder: (context, state) =>
+            _page(state, const BNotificationsPage()),
       ),
 
       GoRoute(
         path: '/business/chat-detail',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final chat = state.extra as Conversation;
-          return BChatPage(chat: chat);
+          return _page(state, BChatPage(chat: chat));
         },
       ),
 

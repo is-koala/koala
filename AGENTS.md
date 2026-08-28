@@ -138,11 +138,15 @@ A feature has at most three top-level folders: **`models/`** (plain data classes
 
 ### Routing
 
-`go_router`. A single `GoRouter` inside `product/router/router_manager.dart`, `initialLocation: '/explore'`.
+`go_router`. A single `GoRouter` inside `product/router/router_manager.dart`, `initialLocation: '/'` — the splash screen.
 
-**The `redirect` guard** reads `is_logged_in` and `user_type` from `SharedPreferences` on **every** navigation and enforces four rules: not logged in → `/authgate`; logged in but on an auth route → the home of your type; business user on an employee route → `/business/home`; employee user on a business route → `/explore`.
+**The `redirect` guard** is **synchronous**. It reads the session off `SessionManager`, which caches the flags in memory once `SplashPage` has called `load()`, and enforces five rules: session not read yet → `/`; not logged in → `/onboarding` if the intro has not been seen, otherwise `/auth`; logged in but on an auth route (`/`, `/auth`, `/onboarding`) → the home of your type; business user on an employee route → `/business/home`; employee user on a business route → `/explore`.
 
-The decision itself lives in `RouterManager.resolveRedirect(loggedIn:, userType:, location:)`, a pure static function — only the `SharedPreferences` reads stay in the `redirect` callback. Change the rules there and cover them in `test/product/router/router_manager_test.dart`; this is the one piece of logic that keeps the two apps apart.
+> ⚠️ **Never make the guard `async` again.** An awaiting `redirect` makes go_router place the pushed page outside the frame, and every page transition outside the shell silently stops animating. That is also why `main()` stays synchronous and the session is read on the splash screen instead.
+
+> ⚠️ **Every route must declare its own `pageBuilder`.** Left on `builder:`, go_router picks the page type by sniffing the app and — in this go_router/Flutter pair — falls through to `NoTransitionPage`, so the page opens with no animation and nothing warns you. Top-level routes go through `RouterManager._page` (a `MaterialPage`, i.e. the platform's own transition); the shell tabs keep theirs. `test/product/router/router_pages_test.dart` guards this.
+
+The decision itself lives in `RouterManager.resolveRedirect(initialized:, loggedIn:, userType:, seenOnboarding:, location:)`, a pure static function — the `redirect` callback only feeds it what `SessionManager` already holds. Change the rules there and cover them in `test/product/router/router_manager_test.dart`; this is the one piece of logic that keeps the two apps apart.
 
 > The guard is `async` and hits `SharedPreferences` on every route change. It works, but it means the redirect is not synchronous — do not assume the first frame of a route is already the final destination.
 
@@ -387,7 +391,7 @@ Every place that needs the real backend is marked with a `// TODO(backend):` com
 - `business/features/home/presentation/pages/b_create_page.dart` hardcodes `latitude: 39.9208, longitude: 32.8541` for **every** job an employer posts, so they all land on the same map pin. The "Adres" field is free text and is never turned into coordinates. There is no `TODO(backend)` marker on it, so `grep` will not find it — it silently produces wrong data. Letting the employer drop a pin on a `google_maps_flutter` map is the obvious fix; the `geocoding` package is the other option but guesses at free-text addresses.
 
 
-**Onboarding** is shown once — `seen_onboarding` in `SharedPreferences`, checked by `AuthGate`.
+**Onboarding** is shown once — `seen_onboarding`, owned by `SessionManager` and read by the redirect guard. `SplashPage` (`/`) is the app's single startup point: it reads the session, and the guard sends the user on from there. There is no `AuthGate` any more.
 
 ---
 

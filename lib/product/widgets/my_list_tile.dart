@@ -33,12 +33,10 @@ class MyListTile extends StatelessWidget {
         child: InkWell(
           borderRadius: AppRadius.innerCircular,
           onTap: onTap,
-          child: Container(
+          // Zemini ve yarıçapı [Material] çiziyor; satırı sayfadan ayıran
+          // şey zemin tonu, çerçeve değil.
+          child: Padding(
             padding: AppPadding.tileTall,
-            decoration: BoxDecoration(
-              borderRadius: AppRadius.innerCircular,
-              border: Border.all(color: context.dividerColor),
-            ),
             child: Row(
               children: [
                 AppIcon(icon, color: context.textPrimary),

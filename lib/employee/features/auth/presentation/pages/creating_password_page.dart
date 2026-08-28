@@ -202,7 +202,6 @@ class _CreatingPasswordPageState extends CreatingPasswordPagemodel {
       decoration: BoxDecoration(
         color: context.tileColor,
         borderRadius: AppRadius.primaryCircular,
-        border: Border.all(color: context.dividerColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
