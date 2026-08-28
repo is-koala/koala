@@ -135,7 +135,9 @@ class _ListExplorePageState extends ListExplorePagemodel {
         Text(
           _searchQuery.isNotEmpty
               ? '"$_searchQuery" ile eşleşen iş bulunamadı'
-              : 'Bu filtreye uygun iş bulunamadı',
+              : hasActiveFilter
+              ? 'Bu filtreye uygun iş bulunamadı'
+              : 'Yakınında henüz ilan yok',
           textAlign: TextAlign.center,
           style: context.textTheme.bodyLarge?.copyWith(
             color: context.textSecondary,

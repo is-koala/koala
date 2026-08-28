@@ -3,12 +3,14 @@ import 'package:koala/employee/core/widgets/job_detail_bottom_sheet.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/saved_jobs_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/num_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
+import 'package:koala/product/widgets/empty_state.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:provider/provider.dart';
 
@@ -20,10 +22,6 @@ class SavedJobsPage extends StatefulWidget {
 }
 
 class _SavedJobsPageState extends State<SavedJobsPage> {
-  /// Boş durum ikonu; sayfanın tek görseli olduğu için normal ikonlardan
-  /// belirgin biçimde büyük.
-  static const double _emptyIconSize = 80;
-
   /// Kaydırıp silme sırasında açılan kırmızı zeminin sağ boşluğu.
   static const double _dismissPadding = 24;
 
@@ -107,35 +105,12 @@ class _SavedJobsPageState extends State<SavedJobsPage> {
   }
 
   Widget _emptyState(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: AppPadding.primaryAll,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.bookmark_border,
-              size: _emptyIconSize,
-              color: context.dividerColor,
-            ),
-            const SizedBox(height: AppSizes.spaceMedium),
-            Text(
-              'Henüz kaydedilmiş iş yok',
-              style: context.textTheme.titleMedium?.copyWith(
-                color: context.textSecondary,
-              ),
-            ),
-            const SizedBox(height: AppSizes.spaceSmall),
-            Text(
-              'İş detaylarında kaydet butonuna basarak\nişleri buraya ekleyebilirsiniz.',
-              textAlign: TextAlign.center,
-              style: context.textTheme.bodyMedium?.copyWith(
-                color: context.textTertiary,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return const EmptyState(
+      icon: AppIcons.bookmark,
+      title: 'Henüz kaydedilmiş iş yok',
+      description:
+          'İş detaylarında kaydet butonuna basarak işleri buraya '
+          'ekleyebilirsiniz.',
     );
   }
 

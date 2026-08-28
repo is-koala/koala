@@ -25,7 +25,10 @@ class FakeRealtimeClient implements RealtimeClient {
       _controller.stream;
 
   @override
-  Stream<RealtimeEvent> presenceEvents() => _controller.stream;
+  Stream<RealtimeEvent> presenceEventsFor(String userId) => _controller.stream;
+
+  @override
+  Stream<RealtimeEvent> userMessageEvents() => _controller.stream;
 
   @override
   Future<void> connect() async => connectCalled = true;

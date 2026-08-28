@@ -7,11 +7,13 @@ import 'package:koala/employee/features/jobs/services/job_application_service.da
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/review_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/widgets/empty_state.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:provider/provider.dart';
 
@@ -69,6 +71,30 @@ class _MyJobsPageState extends MyJobsPagemodel {
       extraJobs: appliedJobs,
     );
     final pastJobs = jobsByStatus(MyJobStatus.past, extraJobs: appliedJobs);
+
+    // Dört bölüm de boşsa sayfa yalnızca başlıktan ibaret kalırdı; kullanıcı
+    // "yüklenmedi mi" ile "hiç işim yok"u ayırt edemezdi.
+    final isEmpty =
+        pendingJobs.isEmpty &&
+        approvedJobs.isEmpty &&
+        completedJobs.isEmpty &&
+        pastJobs.isEmpty;
+
+    if (isEmpty) {
+      return Scaffold(
+        appBar: MyAppbar(title: 'İşlerim', showBackButton: false),
+        body: RefreshIndicator(
+          onRefresh: reload,
+          child: const EmptyState(
+            icon: AppIcons.work,
+            title: 'Henüz bir işin yok',
+            description:
+                'Bir ilana başvurduğunda başvurun ve işlerin burada '
+                'görünecek.',
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: MyAppbar(title: 'İşlerim', showBackButton: false),

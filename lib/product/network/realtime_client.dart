@@ -14,9 +14,17 @@ import 'package:stomp_dart_client/stomp_dart_client.dart';
 /// sıkışmasındaki başlıkla değil; `StompAuthChannelInterceptor` bu başlığı
 /// okuyor.
 ///
-/// Abone olunabilen iki kanal var:
+/// Üç kanal var:
 /// - `/topic/conversations/{id}` — yeni mesaj, "yazıyor", okundu
-/// - `/topic/presence` — çevrimiçi/çevrimdışı değişimleri
+/// - `/user/queue/messages` — kullanıcıya özel tek akış; bütün sohbetlerinin
+///   yeni mesajları buradan geliyor, liste 20 topic'e abone olmak zorunda
+///   kalmıyor
+/// - `/topic/presence/{userId}` — tek bir kullanıcının çevrimiçi değişimleri
+///
+/// ⚠️ Abonelikler sunucuda yetkilendiriliyor: katılımcısı olmadığın bir
+/// konuşmaya ya da konuşmadığın birinin presence'ına abone olmak `403`
+/// döndürüyor. STOMP'ta hata karesi **bağlantıyı düşürdüğü** için yalnızca
+/// gerçekten hakkın olan kanallara abone ol.
 ///
 /// Bağlantı **isteğe bağlı**: kurulamazsa uygulama REST üzerinden çalışmaya
 /// devam ediyor, yalnızca güncellemeler anlık gelmiyor.
@@ -96,8 +104,22 @@ class RealtimeClient {
     return _streamFor('/topic/conversations/$conversationId');
   }
 
-  /// Çevrimiçi durumu değişimleri. Herkese açık kanal.
-  Stream<RealtimeEvent> presenceEvents() => _streamFor('/topic/presence');
+  /// Kullanıcıya özel mesaj akışı.
+  ///
+  /// Sohbet listesi bunu dinliyor: hangi konuşmaya gelirse gelsin yeni mesaj
+  /// buradan da düşüyor. Sohbet ekranı açıkken aynı mesaj hem konuşma
+  /// topic'inden hem buradan gelir — tüketen taraf `message.id` ile
+  /// tekilleştirmeli.
+  Stream<RealtimeEvent> userMessageEvents() =>
+      _streamFor('/user/queue/messages');
+
+  /// Tek bir kullanıcının çevrimiçi durumu.
+  ///
+  /// Global presence kanalı kaldırıldı: yalnızca kendi durumunu ve paylaştığın
+  /// bir konuşması olan kişilerin durumunu izleyebiliyorsun. Yabancı bir
+  /// kimliğe abone olmak bağlantıyı düşürür.
+  Stream<RealtimeEvent> presenceEventsFor(String userId) =>
+      _streamFor('/topic/presence/$userId');
 
   Stream<RealtimeEvent> _streamFor(String destination) {
     final existing = _controllers[destination];

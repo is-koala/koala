@@ -94,6 +94,16 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
     );
   }
 
+  /// Kullanıcı herhangi bir süzgeç ya da arama uyguladı mı.
+  ///
+  /// Boş liste iki farklı sebepten olabiliyor: ya süzgece uyan iş yok, ya
+  /// da ortalıkta hiç ilan yok. İkisine aynı metni göstermek yanıltıcı.
+  bool get hasActiveFilter =>
+      _searchQuery.isNotEmpty ||
+      _selectedFilter != 'all' ||
+      _selectedPriceRange != 'all' ||
+      _selectedDistance != 'all';
+
   /// İlana olan uzaklık, km. Konum izni yoksa ya da ilanın koordinatı
   /// yoksa `null` — mesafe satırı o zaman hiç çizilmiyor.
   double? _getDistance(Job job) {

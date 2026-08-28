@@ -91,7 +91,7 @@ lib/
 │   ├── theme/                    # theme.dart (light/dark), theme_provider.dart
 │   └── widgets/                  # MyButton, MyTextfield, MyAppbar, MyListTile,
 │                                 # NavbarItem, ButtonNavbar, AppBottomSheet,
-│                                 # ThemeModeSheet
+│                                 # ThemeModeSheet, EmptyState
 ├── employee/
 │   ├── core/widgets/             # shared across employee features only
 │   └── features/<name>/
@@ -209,13 +209,28 @@ Three things worth knowing:
 
 **Live updates run over STOMP.** `product/network/realtime_client.dart` holds one shared connection to `/ws` (`stomp_dart_client`, plain WebSocket — the server does not enable SockJS). Authentication is the `Authorization: Bearer` **native STOMP header on the CONNECT frame**, not a handshake header; `StompAuthChannelInterceptor` reads it there. The client reconnects on its own and re-subscribes, because STOMP subscriptions die with the connection.
 
-Two destinations: `/topic/conversations/{id}` (message / typing / read) and `/topic/presence` (open to everyone). Typing is published back to `/app/conversations/{id}/typing`, throttled to one frame every two seconds.
+Three destinations, and **the server authorises every SUBSCRIBE**:
 
-`ChatThreadController` owns a single conversation — messages, sending, and the live events — and **both chat pages use it**, so that logic lives in one tested place. Two details it handles that are easy to get wrong: a message you send arrives twice (once from the `POST` response, once from the topic) and is deduped by id; and your own typing/read events echo back and must be ignored.
+| Destination | Who may subscribe |
+|---|---|
+| `/topic/conversations/{id}` | participants of that conversation |
+| `/user/queue/messages` | always — Spring routes it to the session owner |
+| `/topic/presence/{userId}` | yourself, or someone you share a conversation with |
+
+Anything else is `403`. **A STOMP error frame tears down the whole connection**, so never subscribe speculatively — only to conversations you are in and to counterparts already in your conversation list. There is no global presence topic; watching a stranger's online/offline transitions would be a behaviour-tracking channel, which is why it was removed.
+
+Typing is published back to `/app/conversations/{id}/typing`, throttled to one frame every two seconds.
+
+Two controllers own all of this, and **both apps share them**:
+
+- **`ChatThreadController`** — one conversation: messages, sending, typing, read receipts.
+- **`ChatListController`** — the list: conversations, the personal message queue, and one presence subscription per counterpart, kept in sync as the list changes.
+
+The same message arrives on **two channels** — the conversation topic and `/user/queue/messages` — and the server sends the copy to *both* participants, so your own message comes back to you too (that is deliberate: it keeps a second device's list current). Dedupe by `message.id`, and never count your own message as unread.
 
 > **The connection is optional.** If it cannot be established the app keeps working over REST — only updates stop being instant. Never let a realtime failure block a screen.
 
-> ⚠️ **The chat list cannot live-update on new messages.** `RealtimePublisher` only publishes to `/topic/conversations/{id}`, so the list would have to subscribe to every conversation separately. A per-user feed on `/user/queue/...` is what it needs — `TODO(backend)` in both chat list pages. Presence *is* live; the list still refreshes on open, pull-to-refresh and on return from a thread.
+> ⚠️ **Read receipts do not reach the personal queue.** `conversationRead` publishes only to the conversation topic, so reading a chat on your phone does not clear the unread badge in your tablet's list. The server side is a one-line change if we ask for it.
 
 **Still fake:**
 
@@ -288,6 +303,10 @@ Typography comes from the theme too: `fontFamily: 'Poppins'` is set **once** in 
 The typography scale is defined in `theme.dart` (`_textTheme`) from the sizes the app actually uses, not Material's defaults. Reach for a slot (`titleMedium`, `bodySmall` ...) instead of a `fontSize:`; the table in that file says which slot is which size.
 
 > The whole codebase has been converted to this system — there are no hard-coded colors, paddings, radii or font sizes left outside the constant files. A `Colors.white` or a bare `fontSize:` appearing in a diff is a regression, not the existing style.
+
+Empty lists go through **`EmptyState`** (`product/widgets/`), which owns the icon size and the vertical position. Each tab used to build its own, and they sat at visibly different heights — switching tabs made the content jump. It is a `ListView`, so a wrapping `RefreshIndicator` still works on an empty screen.
+
+> An empty list and a failed load must not look the same. Every list screen distinguishes three states: loading, error (message + *Tekrar Dene*), and genuinely empty. The explore list goes further and separates "no jobs at all" from "nothing matched this filter" — telling a user their filter is too narrow when the database is simply empty sends them chasing the wrong thing.
 
 Bottom sheets go through **`AppBottomSheet`** (`product/widgets/`), which owns the background, the top corners, the title row and the bottom safe-area inset. If the sheet has its own state, wrap `AppBottomSheet` in a `StatefulBuilder` inside the builder — the shell itself is stateless.
 

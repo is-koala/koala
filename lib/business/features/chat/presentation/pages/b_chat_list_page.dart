@@ -1,23 +1,18 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:koala/employee/features/chat/services/chat_service.dart';
-import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
-import 'package:koala/product/network/api_exception.dart';
-import 'package:koala/product/network/realtime_client.dart';
-import 'package:koala/product/network/realtime_event.dart';
-import 'package:provider/provider.dart';
 import 'package:koala/employee/features/chat/models/conversation.dart';
+import 'package:koala/employee/features/chat/presentation/providers/chat_list_controller.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/chat_avatar.dart';
+import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
-import 'package:koala/product/widgets/app_icon.dart';
+import 'package:koala/product/widgets/empty_state.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
+import 'package:provider/provider.dart';
 
 class BChatListPage extends StatefulWidget {
   const BChatListPage({super.key});
@@ -27,17 +22,11 @@ class BChatListPage extends StatefulWidget {
 }
 
 class _BChatListPageState extends State<BChatListPage> {
-  final ChatService _chatService = ChatService();
-  final RealtimeClient _realtimeClient = RealtimeClient();
+  late final ChatListController _controller = ChatListController();
 
-  StreamSubscription<RealtimeEvent>? _presence;
-
-  List<Conversation> _chatList = [];
-  bool _loading = true;
-  String? _errorMessage;
-
-  /// Boş durum ikonunu taşıyan kutu.
-  static const double _emptyIconBox = 80;
+  /// Oturum sahibi yüklenemediyse gösterilecek mesaj; sohbetlerin kendi
+  /// hataları [ChatListController] üzerinde.
+  String? _sessionError;
 
   /// Sohbet satırındaki avatarın ölçüleri; employee listesindekinden küçük,
   /// satır burada iki değil tek blok metin taşıyor.
@@ -52,76 +41,41 @@ class _BChatListPageState extends State<BChatListPage> {
   @override
   void initState() {
     super.initState();
+    _controller.addListener(_onChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _load();
     });
-    _listenToPresence();
   }
 
   @override
   void dispose() {
-    unawaited(_presence?.cancel());
+    _controller.removeListener(_onChanged);
+    _controller.dispose();
     super.dispose();
   }
 
-  /// Çevrimiçi değişimlerini canlı dinler.
-  ///
-  /// TODO(backend): Yeni mesajlar için kullanıcıya özel bir kanal yok.
-  /// `RealtimePublisher` yalnızca `/topic/conversations/{id}`'ye yayın
-  /// yapıyor; liste bütün sohbetlere tek tek abone olmadan yeni mesajı
-  /// öğrenemiyor. `/user/queue/...` üzerinden tek bir akış gerekiyor.
-  void _listenToPresence() {
-    unawaited(_realtimeClient.connect());
-
-    _presence = _realtimeClient.presenceEvents().listen((event) {
-      final userId = event.userId;
-      final online = event.online;
-      if (userId == null || online == null || !mounted) return;
-
-      final index = _chatList.indexWhere(
-        (conversation) => conversation.counterpartId == userId,
-      );
-      if (index == -1) return;
-
-      setState(() {
-        _chatList = [..._chatList]
-          ..[index] = _chatList[index].copyWith(isOnline: online);
-      });
-    });
+  void _onChanged() {
+    if (mounted) setState(() {});
   }
 
-  /// Sohbetler çalışan tarafıyla aynı uçtan geliyor: `GET /conversations`
-  /// oturum sahibinin bütün sohbetlerini döndürüyor, rolüne bakmıyor.
   Future<void> _load() async {
-    setState(() {
-      _loading = _chatList.isEmpty;
-      _errorMessage = null;
-    });
+    // Karşı tarafın kim olduğu oturum sahibine göre belirleniyor, o yüzden
+    // sohbetlerden önce kullanıcının yüklenmiş olması gerekiyor.
+    final userProvider = context.read<UserProvider>();
+    if (userProvider.user == null) await userProvider.load();
+    if (!mounted) return;
 
-    try {
-      final userProvider = context.read<UserProvider>();
-      if (userProvider.user == null) await userProvider.load();
-      if (!mounted) return;
-
-      final userId = userProvider.user?.id;
-      if (userId == null) {
-        setState(() {
-          _errorMessage =
-              userProvider.errorMessage ?? 'Oturum bilgisi alınamadı.';
-        });
-        return;
-      }
-
-      final page = await _chatService.fetchConversations(currentUserId: userId);
-      if (!mounted) return;
-
-      setState(() => _chatList = page.conversations);
-    } on ApiException catch (error) {
-      if (!mounted) return;
-      setState(() => _errorMessage = error.message);
-    } finally {
-      if (mounted) setState(() => _loading = false);
+    final userId = userProvider.user?.id;
+    if (userId == null) {
+      setState(() {
+        _sessionError =
+            userProvider.errorMessage ?? 'Oturum bilgisi alınamadı.';
+      });
+      return;
     }
+
+    setState(() => _sessionError = null);
+    await _controller.load(currentUserId: userId);
   }
 
   @override
@@ -138,53 +92,21 @@ class _BChatListPageState extends State<BChatListPage> {
   }
 
   Widget _emptyState() {
-    return Center(
-      child: Padding(
-        padding: AppPadding.primaryAll,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: _emptyIconBox,
-              height: _emptyIconBox,
-              decoration: BoxDecoration(
-                color: context.tileColor,
-                borderRadius: AppRadius.secondaryCircular,
-              ),
-              child: AppIcon(
-                AppIcons.chat,
-                size: AppSizes.iconLarge,
-                color: context.dividerColor,
-              ),
-            ),
-            const SizedBox(height: AppSizes.spaceLarge),
-            Text(
-              'Henüz sohbet yok',
-              style: context.textTheme.titleMedium?.copyWith(
-                color: context.textTertiary,
-              ),
-            ),
-            const SizedBox(height: AppSizes.spaceSmall),
-            Text(
-              'Başvuranlarla iletişime geçtiğinizde\nsohbetler burada görünecek.',
-              style: context.textTheme.bodyMedium?.copyWith(
-                color: context.textTertiary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
+    return const EmptyState(
+      icon: AppIcons.chat,
+      title: 'Henüz sohbet yok',
+      description:
+          'Başvuranlarla iletişime geçtiğinizde sohbetler burada görünecek.',
     );
   }
 
   Widget _body() {
-    if (_loading && _chatList.isEmpty) {
+    if (_controller.isLoading && _controller.conversations.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final error = _errorMessage;
-    if (error != null && _chatList.isEmpty) {
+    final error = _sessionError ?? _controller.errorMessage;
+    if (error != null && _controller.conversations.isEmpty) {
       return Center(
         child: Padding(
           padding: AppPadding.primaryAll,
@@ -209,7 +131,7 @@ class _BChatListPageState extends State<BChatListPage> {
       );
     }
 
-    if (_chatList.isEmpty) return _emptyState();
+    if (_controller.conversations.isEmpty) return _emptyState();
 
     return RefreshIndicator(onRefresh: _load, child: _chatListView());
   }
@@ -221,8 +143,9 @@ class _BChatListPageState extends State<BChatListPage> {
         top: AppSizes.spaceSmall,
         bottom: AppSizes.navBarClearance,
       ),
-      itemCount: _chatList.length,
-      itemBuilder: (context, index) => _chatTile(_chatList[index]),
+      itemCount: _controller.conversations.length,
+      itemBuilder: (context, index) =>
+          _chatTile(_controller.conversations[index]),
     );
   }
 
