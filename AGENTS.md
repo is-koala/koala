@@ -452,6 +452,46 @@ Both shells use `extendBody: true` and `extendBodyBehindAppBar: true`, so page c
 
 ---
 
+## The worker lifecycle (sign-up → first application)
+
+This is the product pipeline and how much of it the server actually enforces today. A ✗ marks something the server does **not** do yet; where a change has been requested from the backend developer, it says so — do not code against the requested shape until it lands.
+
+> **Read this first.** NVİ closed the KPS service. `KimlikPaylasimSistemiService` still posts to it, so `POST /users/me/identity-verification` cannot currently succeed for anybody, `identityVerified` never becomes `true`, and — because it is the first condition of the apply gate — **nobody can apply to any job.** Two request documents went to the backend developer: one moves verification to the client, the other adds the missing identity gate on the individual-employer side. Until the first lands, the apply flow is broken end to end, and that is not something the app can work around.
+
+1. **Sign-up is deliberately thin.** `POST /auth/start-registration` takes only `firstName`, `lastName`, `email`, `isEmployer`. The emailed token goes to `POST /auth/verify-registration-token`, then `POST /auth/complete-registration` sets the password and records the legal consents. No identity, no address, no IBAN. ✓
+2. **Browsing needs no account at all.** `GET /jobs`, `GET /jobs/{jobId}` and the job/company image endpoints are `permitAll` in `SecurityConfig`, so search works before login. Nothing about discovery has to sit behind sign-up. ✓
+3. **Completeness prompts are a client-side computation.** `GET /users/me` returns `jobTitle`, `about`, `qualifications`, `interests`, `experiences`, `educations`, `badges`, `address`, `maskedIban`, `cvUrl`, `phoneVerified` and `identityVerified` — everything a "complete your profile" meter needs. There is no server-side profile score and none is required. ✓ *(no UI for this yet)*
+4. **The gate is at apply time, not at sign-up.** `JobApplicationManager.assertReadyToWork` runs on every application and checks, in this order: identity → address → primary IBAN. It is modelled in `employee/features/jobs/models/application_readiness.dart`; each condition carries its own `errorCode`, so the app routes straight to the screen that fixes it instead of matching on message text. ✓ **This is deliberate and stays as it is** — identity is required for *every* application, insured or not. It was considered and rejected to tier the gate by `insuranceRequired`; do not "simplify" it back out.
+5. **The three requirements are filled from three different places.** Identity: `POST /users/me/identity-verification`. Address: `PUT /users/me/address`. IBAN: the `iban` field of `PATCH /users/me` — there is **no** separate bank-account endpoint, and `maskedIban` is the only way it comes back. ✓
+6. **Verification freezes the name.** After it succeeds, `PATCH /users/me` rejects `firstName`, `lastName` and `birthdate` with `IDENTITY_VERIFIED_CANNOT_CHANGE_*`. Gender is deliberately *not* frozen — that check is commented out server-side. ✓
+
+### Identity verification now happens on the device
+
+KPS is gone, so there is no server-side authority left to ask. Verification moves into the app as three layers, and the server's job shrinks to recording the result:
+
+1. **NFC + OCR** — the card's chip is read over ICAO 9303 (BAC/PACE secure channel, then DG1). This is what establishes that the card is genuine. Name, surname, birth date, TCKN and document number all come off the chip, so the user types nothing.
+2. **Face match** — the card belongs to the person holding it.
+3. **Liveness** — the person is live, not a photo or a video.
+
+This is *more* than KPS did: KPS only answered "are these five fields consistent", it never knew who was holding the card.
+
+The trust boundary moves with it, and that is the part to keep in mind while building. Layers 1–3 defend against a user cheating with someone else's card or a photo — the common case, and they defend it well. They do **not** defend against someone repackaging the app, because that attacker skips the checks entirely and posts the result straight to the endpoint; the server sees no evidence either way. The fix is not to move all three layers server-side: sending layer 1's evidence (`sod` + `dg1`) is enough, because producing that signature requires physically touching a real chip. Face match and liveness stay on device. This has been requested; see `KIMLIK_DOGRULAMA_RAPORU.md` at the repo root for the whole analysis.
+
+### Requested from the backend, not yet delivered
+
+Do not build against these until the backend developer confirms they shipped.
+
+- ✗ **Nothing forces an individual employer to verify.** Creating a *company* requires `identityVerified` (`CompanyManager`), creating an individual job does not, and the escrow call sends `buyer.identityNumber = job.getCreator().getTcIdentityNumber()` with no guard. An unverified individual employer therefore gets an opaque Iyzico failure at the worst possible moment — right after they accept an applicant, with a worker on the other side who thinks they got the job. The worker side handles this properly (`WORKER_IDENTITY_NOT_VERIFIED`); the employer side has no equivalent. Requested at both points — job creation and payment — with a new `INDIVIDUAL_EMPLOYER_IDENTITY_NOT_VERIFIED` code. The app should gate this itself too, at job creation, so the user never reaches the server call.
+- ✗ **`tc_identity_number` has no unique constraint.** Now that the server no longer verifies TCKNs itself, this is the cheapest backstop against a modified client until Passive Authentication lands. Requested.
+- ✗ **`/users/me` returns `tcIdentityNumber` unmasked** while the IBAN comes back as `maskedIban`. Masking has been requested; the app only ever needs to know whether it is set, so do not build anything that depends on the full value.
+
+### Things that are true regardless
+
+- **"SGK-required" is `insuranceRequired`**, derived from `JobCategory.requiresInsurance`. Individual employers are hard-blocked from those categories (`INDIVIDUAL_JOB_CANNOT_REQUIRE_INSURANCE`), so insurance jobs are company jobs by definition.
+- **Badges are not a ranking.** `BadgeRuleType` has only `COMPLETED_ASSIGNMENTS`, `AVERAGE_RATING_WITH_MINIMUM_REVIEWS` and `IDENTITY_VERIFIED`, and nothing sorts applicants by how full their profile is. "Adding experience improves your chances" is honest as *the employer sees more of you*, never as a percentage — do not write copy that implies an algorithm.
+
+---
+
 ## State of the world you should know
 
 **Demo shortcuts wired into the UI** — these fake a login and must come out when the backend lands:
