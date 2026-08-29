@@ -4,7 +4,7 @@ import 'package:koala/employee/features/jobs/services/job_application_service.da
 import '../../../../support/fake_api.dart';
 
 void main() {
-  group('JobApplicationService.fetchMyAssignments', () {
+  group('JobApplicationService.fetchMyApplications', () {
     test('sayfalı yanıt modele çevrilir', () async {
       final api = FakeApi(
         handler: (_) => const FakeApiResponse(
@@ -14,10 +14,8 @@ void main() {
             'data': {
               'content': [
                 {
-                  'id': 'asg_1',
-                  'status': 'CONFIRMED',
-                  'paymentStatus': 'HELD_IN_ESCROW',
-                  'workerPayout': 1350,
+                  'id': 'app_1',
+                  'status': 'PENDING',
                   'job': {
                     'id': 'job_1',
                     'title': 'Garson',
@@ -39,11 +37,10 @@ void main() {
 
       final page = await JobApplicationService.withClient(
         api.client,
-      ).fetchMyAssignments();
+      ).fetchMyApplications();
 
-      expect(api.requests.single.path, '/users/me/assignments');
-      expect(api.requests.single.queryParameters, {'page': 0, 'size': 20});
-      expect(page.assignments.single.workerPayout, 1350);
+      expect(api.requests.single.path, '/users/me/applications');
+      expect(page.applications.single.id, 'app_1');
     });
 
     test('boş sayfa hata değil', () async {
@@ -59,9 +56,9 @@ void main() {
 
       final page = await JobApplicationService.withClient(
         api.client,
-      ).fetchMyAssignments();
+      ).fetchMyApplications();
 
-      expect(page.assignments, isEmpty);
+      expect(page.applications, isEmpty);
     });
   });
 }

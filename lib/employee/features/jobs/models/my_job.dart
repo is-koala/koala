@@ -2,8 +2,9 @@ import 'package:koala/employee/features/jobs/models/assignment.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
 
 enum MyJobStatus {
-  pending, // Başvuruldu, onay bekleniyor
-  approved, // Onaylandı, gidilmesi bekleniyor
+  pending, // Başvuruldu, işverenin onayı bekleniyor
+  awaitingApproval, // İşveren kabul etti, çalışanın onayı bekleniyor
+  approved, // İki taraf da onayladı, gidilmesi bekleniyor
   completed, // İş bitti, ödeme bekleniyor
   past, // Ödeme alındı, geçmişe taşındı
 }
@@ -13,6 +14,8 @@ extension MyJobStatusExtension on MyJobStatus {
     switch (this) {
       case MyJobStatus.pending:
         return 'Başvuru Bekliyor';
+      case MyJobStatus.awaitingApproval:
+        return 'Onayın Bekleniyor';
       case MyJobStatus.approved:
         return 'Onaylandı';
       case MyJobStatus.completed:
@@ -26,6 +29,8 @@ extension MyJobStatusExtension on MyJobStatus {
     switch (this) {
       case MyJobStatus.pending:
         return 'Başvurunuz değerlendiriliyor';
+      case MyJobStatus.awaitingApproval:
+        return 'İşveren sizi seçti, işi onaylamanız bekleniyor';
       case MyJobStatus.approved:
         return 'İşe gitmeniz bekleniyor';
       case MyJobStatus.completed:
@@ -37,6 +42,8 @@ extension MyJobStatusExtension on MyJobStatus {
 }
 
 class MyJob {
+  /// Satırın kimliği: başvurudan gelen kayıtlarda başvurunun, atamadan
+  /// gelenlerde atamanın id'si. Atama uçlarına gidecek olan [assignmentId].
   final String id;
   final String title;
   final String company;
@@ -45,6 +52,13 @@ class MyJob {
   final String date;
   final double price;
   final MyJobStatus status;
+
+  /// Atamanın id'si; kayıt bir başvurudan geliyorsa `null`.
+  ///
+  /// Atama uçları (`/job-assignments/...`) bunu istiyor; [id] ile aynı değeri
+  /// taşıyor ama ayrı durması, hangi satırın atama olduğunu tip üzerinden
+  /// belli ediyor.
+  final String? assignmentId;
 
   const MyJob({
     required this.id,
@@ -55,6 +69,7 @@ class MyJob {
     required this.date,
     required this.price,
     required this.status,
+    this.assignmentId,
   });
 
   /// Bir atamayı ekranın bildiği [MyJob] durumlarına çevirir.
@@ -65,7 +80,8 @@ class MyJob {
   /// girmiyorlar — tasarıma yeni bir durum eklenmeli.
   static MyJob? fromAssignment(Assignment assignment) {
     final status = switch (assignment.status) {
-      AssignmentStatus.pendingConfirmation ||
+      // İşveren kabul etti ama iş henüz başlamadı: sıra çalışanda.
+      AssignmentStatus.pendingConfirmation => MyJobStatus.awaitingApproval,
       AssignmentStatus.confirmed ||
       AssignmentStatus.inProgress => MyJobStatus.approved,
       // İş bitti: para çalışana geçtiyse geçmiş, geçmediyse ödeme bekliyor.
@@ -91,6 +107,7 @@ class MyJob {
       // değil o gösterilmeli.
       price: assignment.workerPayout ?? job.price,
       status: status,
+      assignmentId: assignment.id,
     );
   }
 }

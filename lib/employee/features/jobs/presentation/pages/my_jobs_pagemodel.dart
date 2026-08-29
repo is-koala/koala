@@ -1,7 +1,7 @@
 part of 'my_jobs_page.dart';
 
 abstract class MyJobsPagemodel extends State<MyJobsPage> {
-  final JobApplicationService _service = JobApplicationService();
+  final AssignmentService _service = AssignmentService();
   final CompanyService _companyService = CompanyService();
 
   /// Geçmiş bölümü varsayılan olarak kısaltılmış; kullanıcı isterse açıyor.
@@ -15,6 +15,12 @@ abstract class MyJobsPagemodel extends State<MyJobsPage> {
 
   /// Geçmiş bölümünde kısaltılmışken gösterilen iş sayısı.
   static const int collapsedPastJobCount = 2;
+
+  /// Cevabı sunucuya gitmiş atamanın id'si; iki butonu da kilitliyor.
+  ///
+  /// Tek bir alan yetiyor çünkü kullanıcı aynı anda tek bir atamaya cevap
+  /// veriyor ve cevap dönene kadar liste tazelenmiyor.
+  String? respondingAssignmentId;
 
   @override
   void initState() {
@@ -58,6 +64,35 @@ abstract class MyJobsPagemodel extends State<MyJobsPage> {
   Future<void> reload() async {
     await _loadJobs();
     if (mounted) await context.read<ApplyProvider>().load(force: true);
+  }
+
+  /// Atamayı kabul eder ya da reddeder.
+  ///
+  /// Cevap `JobAssignmentDto` dönüyor; ödeme alanlarını taşımadığı için
+  /// listedeki kayıt cevaptan güncellenmiyor, atamalar yeniden çekiliyor.
+  /// Reddedilen atama listeden tamamen düşüyor: [MyJob.fromAssignment]
+  /// `REJECTED` için `null` döndürüyor.
+  Future<void> respondToAssignment(MyJob job, {required bool accepted}) async {
+    final assignmentId = job.assignmentId;
+    if (assignmentId == null || respondingAssignmentId != null) return;
+
+    setState(() => respondingAssignmentId = assignmentId);
+
+    try {
+      await _service.respond(assignmentId: assignmentId, accepted: accepted);
+      if (!mounted) return;
+      AppToast.success(context, accepted ? 'İşi kabul ettin' : 'İşi reddettin');
+      await _loadJobs();
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      // 409: atama bu durumdan çıkmış — başka bir cihazdan cevaplanmış ya da
+      // işveren iptal etmiş olabilir. Mesaj sunucudan Türkçe geliyor, ama
+      // liste eskimiş demektir; yenilemek doğru olanı gösteriyor.
+      AppToast.error(context, error.message);
+      if (error.type == ApiErrorType.conflict) await _loadJobs();
+    } finally {
+      if (mounted) setState(() => respondingAssignmentId = null);
+    }
   }
 
   /// Bir duruma ait işleri döndürür.

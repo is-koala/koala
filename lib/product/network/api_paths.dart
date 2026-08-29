@@ -44,6 +44,22 @@ class ApiPaths {
   /// Tek bir ilanı kaydetme / kaydı kaldırma.
   static String savedJob(String jobId) => '$savedJobs/$jobId';
 
+  // ----------------------------------------------------------------- Atama
+
+  static const String jobAssignments = '/job-assignments';
+
+  /// Tek bir atama.
+  static String jobAssignment(String assignmentId) =>
+      '$jobAssignments/$assignmentId';
+
+  /// Çalışanın atamayı kabul etmesi ya da reddetmesi.
+  ///
+  /// İşveren bir başvuruyu kabul ettiğinde atama `PENDING_CONFIRMATION`
+  /// durumunda açılıyor ve iş, çalışan buradan onay verene kadar başlamıyor.
+  /// Atama bu durumdan çıktıysa sunucu `409` döndürüyor.
+  static String respondToAssignment(String assignmentId) =>
+      '${jobAssignment(assignmentId)}/respond';
+
   // ----------------------------------------------------------------- İşveren
 
   /// Oturum sahibinin açtığı ilanlar. Bireysel ve kurumsal ilanların ikisi de

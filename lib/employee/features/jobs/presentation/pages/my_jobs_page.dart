@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/company_detail/services/company_service.dart';
 import 'package:koala/employee/features/company_detail/models/company.dart';
 import 'package:koala/employee/features/jobs/models/my_job.dart';
-import 'package:koala/employee/features/jobs/services/job_application_service.dart';
+import 'package:koala/employee/features/jobs/services/assignment_service.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/review_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
@@ -14,6 +14,7 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/empty_state.dart';
+import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:provider/provider.dart';
 
@@ -36,6 +37,13 @@ class _MyJobsPageState extends MyJobsPagemodel {
   static const double _dividerAlpha = 0.2;
   static const double _dateAlpha = 0.6;
   static const double _linkAlpha = 0.7;
+
+  /// Buton içindeki bekleme halkasının kalınlığı; varsayılan 4 bu boyutta
+  /// dolu bir daire gibi görünüyor.
+  static const double _spinnerStroke = 2;
+
+  /// Uyarı metninin satır aralığı; çok satırlı gövde sıkışık duruyordu.
+  static const double _dialogLineHeight = 1.4;
 
   @override
   Widget build(BuildContext context) {
@@ -62,6 +70,10 @@ class _MyJobsPageState extends MyJobsPagemodel {
       MyJobStatus.pending,
       extraJobs: appliedJobs,
     );
+    final awaitingJobs = jobsByStatus(
+      MyJobStatus.awaitingApproval,
+      extraJobs: appliedJobs,
+    );
     final approvedJobs = jobsByStatus(
       MyJobStatus.approved,
       extraJobs: appliedJobs,
@@ -72,10 +84,11 @@ class _MyJobsPageState extends MyJobsPagemodel {
     );
     final pastJobs = jobsByStatus(MyJobStatus.past, extraJobs: appliedJobs);
 
-    // Dört bölüm de boşsa sayfa yalnızca başlıktan ibaret kalırdı; kullanıcı
+    // Bölümlerin hepsi boşsa sayfa yalnızca başlıktan ibaret kalırdı; kullanıcı
     // "yüklenmedi mi" ile "hiç işim yok"u ayırt edemezdi.
     final isEmpty =
         pendingJobs.isEmpty &&
+        awaitingJobs.isEmpty &&
         approvedJobs.isEmpty &&
         completedJobs.isEmpty &&
         pastJobs.isEmpty;
@@ -107,6 +120,12 @@ class _MyJobsPageState extends MyJobsPagemodel {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Cevap bekleyen atamalar en üstte: kullanıcıdan bir eylem
+                // isteyen tek bölüm bu, iş onaylanmadan başlamıyor.
+                if (awaitingJobs.isNotEmpty) ...[
+                  _awaitingSection(awaitingJobs),
+                  const SizedBox(height: AppSizes.spaceLarge),
+                ],
                 // Onaylanmış işler - en üstte ve belirgin
                 if (approvedJobs.isNotEmpty) ...[
                   _approvedSection(approvedJobs),
@@ -172,6 +191,26 @@ class _MyJobsPageState extends MyJobsPagemodel {
         jobs: jobs,
         foreground: AppColors.onAccent,
         itemBuilder: (job) => _jobTile(job, AppColors.onAccent),
+      ),
+    );
+  }
+
+  Widget _awaitingSection(List<MyJob> jobs) {
+    return _sectionCard(
+      background: context.awaitingSurface,
+      foreground: context.textPrimary,
+      header: _sectionHeader(
+        icon: Icons.how_to_reg_rounded,
+        title: 'Onayını Bekleyen İşler',
+        count: jobs.length,
+        foreground: context.textPrimary,
+        chipColor: AppColors.info,
+        chipTextColor: AppColors.onAccent,
+      ),
+      child: _jobList(
+        jobs: jobs,
+        foreground: context.textPrimary,
+        itemBuilder: _awaitingTile,
       ),
     );
   }
@@ -434,6 +473,145 @@ class _MyJobsPageState extends MyJobsPagemodel {
         ],
       ),
     );
+  }
+
+  /// Cevap bekleyen atama: ücret, tarih ve iki karar butonu.
+  ///
+  /// Butonlar satırın altına alındı; `trailing`'e sığmıyorlar ve reddetme
+  /// geri alınamadığı için kabul butonuyla yan yana durmaları gerekiyor.
+  Widget _awaitingTile(MyJob job) {
+    final foreground = context.textPrimary;
+    final isResponding = respondingAssignmentId == job.assignmentId;
+    // Bir atama cevaplanırken diğerlerinin butonları da kapanıyor: liste
+    // cevaptan sonra baştan çekiliyor, arada ikinci bir cevap tutarsız olurdu.
+    final isLocked = respondingAssignmentId != null;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSizes.spaceSmall),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ListTile(
+            contentPadding: AppPadding.zero,
+            title: _tileTitle(job.title, foreground),
+            subtitle: _tileSubtitle(job, foreground, maxLines: 1),
+            trailing: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '₺${job.price.toStringAsFixed(0)}',
+                  style: context.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: foreground,
+                  ),
+                ),
+                Text(
+                  job.date,
+                  style: context.textTheme.labelMedium?.copyWith(
+                    color: foreground.withValues(alpha: _dateAlpha),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSizes.spaceSmall),
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: _inlineButtonHeight,
+                  child: OutlinedButton(
+                    onPressed: isLocked ? null : () => _confirmReject(job),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.danger,
+                      side: const BorderSide(color: AppColors.danger),
+                      padding: AppPadding.zero,
+                      textStyle: context.textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: AppRadius.smallCircular,
+                      ),
+                    ),
+                    child: const Text('Reddet'),
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSizes.spaceSmall),
+              Expanded(
+                child: SizedBox(
+                  height: _inlineButtonHeight,
+                  child: ElevatedButton(
+                    onPressed: isLocked
+                        ? null
+                        : () => respondToAssignment(job, accepted: true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: context.accentColor,
+                      foregroundColor: context.onAccentColor,
+                      elevation: 0,
+                      padding: AppPadding.zero,
+                      textStyle: context.textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: AppRadius.smallCircular,
+                      ),
+                    ),
+                    child: isResponding
+                        ? SizedBox(
+                            width: AppSizes.iconSmall,
+                            height: AppSizes.iconSmall,
+                            child: CircularProgressIndicator(
+                              strokeWidth: _spinnerStroke,
+                              color: context.onAccentColor,
+                            ),
+                          )
+                        : const Text('Kabul Et'),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Reddetme geri alınamıyor: atama kapanıyor ve iş başkasına gidiyor.
+  Future<void> _confirmReject(MyJob job) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: const RoundedRectangleBorder(
+          borderRadius: AppRadius.secondaryCircular,
+        ),
+        title: Text('İşi reddet', style: dialogContext.textTheme.titleMedium),
+        content: Text(
+          '"${job.title}" işini reddedersen bu iş sana kapanır ve geri '
+          'alamazsın. İşveren başka birini seçebilir.',
+          style: dialogContext.textTheme.bodyMedium?.copyWith(
+            color: dialogContext.textSecondary,
+            height: _dialogLineHeight,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Vazgeç'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+            child: const Text('Reddet'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+    await respondToAssignment(job, accepted: false);
   }
 
   Widget _completedTile(MyJob job, {required bool alreadyReviewed}) {

@@ -105,7 +105,7 @@ void main() {
     });
   });
 
-  // İşlerim ekranının dört durumu backend'in iki kavramına yayılıyor;
+  // İşlerim ekranının beş durumu backend'in iki kavramına yayılıyor;
   // eşleme yanlışsa kullanıcı bitmiş işi "devam ediyor" görür.
   group('MyJob.fromAssignment', () {
     MyJob? mapWith({
@@ -119,18 +119,28 @@ void main() {
       );
     }
 
-    test('onay bekleyen, onaylanmış ve süren işler "onaylandı" olur', () {
-      for (final status in [
-        'PENDING_CONFIRMATION',
-        'CONFIRMED',
-        'IN_PROGRESS',
-      ]) {
+    // Sıra çalışanda: iş, atama kabul edilene kadar başlamıyor. Bu yüzden
+    // "onaylandı" ile aynı kovaya giremez, ekranda ayrı bölümü var.
+    test('cevap bekleyen atama "onayın bekleniyor" olur', () {
+      expect(
+        mapWith(status: 'PENDING_CONFIRMATION')?.status,
+        MyJobStatus.awaitingApproval,
+      );
+    });
+
+    test('onaylanmış ve süren işler "onaylandı" olur', () {
+      for (final status in ['CONFIRMED', 'IN_PROGRESS']) {
         expect(
           mapWith(status: status)?.status,
           MyJobStatus.approved,
           reason: status,
         );
       }
+    });
+
+    // Atama uçları id'yi buradan okuyor; başvurudan gelen satırlarda `null`.
+    test('atamadan gelen kayıt assignmentId taşır', () {
+      expect(mapWith(status: 'CONFIRMED')?.assignmentId, isNotNull);
     });
 
     test('biten iş ödeme yapılmadıysa "ödeme bekleniyor"', () {

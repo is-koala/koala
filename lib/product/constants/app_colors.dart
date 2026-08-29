@@ -56,7 +56,7 @@ class AppColors {
 
   // ------------------------------------------------- Durum bölümü zeminleri
 
-  /// "Başvurularım" ve "Ödeme Bekleniyor" bölümlerinin renkli zeminleri.
+  /// Durum bölümlerinin renkli zeminleri.
   ///
   /// Bölümü sayfadan ayıran şey rengin tonu; bu yüzden ikisinin de koyu tema
   /// karşılığı var. Koyu tonlar [darkTile]'a yakın ama hafif renkli: aynı
@@ -67,6 +67,14 @@ class AppColors {
 
   static const Color surfacePayout = Color(0xFFFFF3E0);
   static const Color surfacePayoutDark = Color(0xFF302719);
+
+  /// "Onayını Bekleyen İşler" bölümünün zemini.
+  ///
+  /// [info] mavisinin soluk tonu: bölüm bir eylem bekliyor ama ne olumlu ne
+  /// olumsuz, o yüzden ne yeşil ne turuncu. `context.awaitingSurface`
+  /// üzerinden okunur.
+  static const Color surfaceAwaiting = Color(0xFFE8F0FE);
+  static const Color surfaceAwaitingDark = Color(0xFF1C2433);
 
   /// Temadan bağımsız **açık** zeminlerin üstündeki içerik.
   ///
