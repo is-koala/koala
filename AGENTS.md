@@ -276,7 +276,37 @@ Accepting an application does not start the job — the server opens the assignm
 
 > `MyJob.assignmentId` is `null` on rows that came from an application and carries the id on rows that came from an assignment. It duplicates `MyJob.id` on purpose — the assignment endpoints need an id that is definitely an assignment's.
 
-**Still fake:** everything except auth, the employee profile, the jobs flow (explore, apply, İşlerim, saved jobs, assignment response), chat, and the employer's job flow and profile. Data comes from services that return hard-coded lists, one `services/` folder per feature: `employee/features/home/services/location_service.dart`, `company_detail/services/company_service.dart`, `jobs/services/review_service.dart`. Avatars are generated URLs from `ui-avatars.com`.
+**The timesheet is wired on both sides.** `AssignmentService` gained `checkIn` / `checkOut` / `fetchWorkSessions`, and `EmployerJobService` gained `fetchMyAssignments` (with `asEmployer: true`) and `completeAssignment`.
+
+Four things worth knowing:
+
+- **Check-in and check-out are worker-only; complete is employer-only.** The server returns `403` for the wrong party, so the two live on opposite sides of the app on purpose. `fetchWorkSessions` is the exception — both parties may read it, so `b_job_detail_page` calls the employee-side `AssignmentService` for it, the same way both apps share `chat_service.dart`.
+- **The money gates the timesheet.** The server refuses a check-in unless `paymentStatus` is `HELD_IN_ESCROW`. `MyJob.isPaymentSecured` carries that, and the approved tile replaces the button with a line saying why rather than letting the user earn a `409`.
+- **`IN_PROGRESS` is now its own screen state.** `MyJobStatus.inProgress` sits at the very top of "İşlerim" in its own teal section (`AppColors.progress`, the only hue the other four sections had not taken), because a worker mid-shift wants the check-out button first. Open sessions are fetched **only** for in-progress assignments — nobody has two shifts running at once, so this is not the N+1 that applicant loading used to be.
+- **The elapsed time ticks.** `WorkSession.elapsed` computes from `DateTime.now()` on an open session, so `my_jobs_pagemodel` runs a one-minute `Timer` while any session is open and cancels it when none is. Without it the screen would show a frozen duration, which on a timesheet is worse than showing nothing.
+
+> There is no endpoint that returns the assignment for a given job — `JobDetailDto` does not carry one — so `b_job_detail_page` fetches the employer's assignment page and filters by `job.id`. If a per-job endpoint ever lands, that is the one call to replace.
+
+**Cancellation and disputes are wired on both sides.** `AssignmentService` owns `cancel`, `fetchCancellation`, `openDispute` and `fetchDisputes` — all four are open to **both** parties, so the business side calls the employee-side service for them, as it already does for work sessions.
+
+Four things worth knowing:
+
+- **There is no fee preview, and this is the one real gap.** `GET /{id}/cancellation` returns the record that cancelling *creates*; the rates live behind `/admin/settings`, which the app cannot read. So the confirmation dialog states the **rule** in words (worker cancels → no fee; employer cancels inside the free window → no fee, outside it → late fee, after the job starts → no refund) and the actual figure is reported afterwards from the returned `CancellationDto`. A preview endpoint would let us show the number before the decision — worth asking for.
+- **A reason is mandatory on both endpoints.** `ReasonDialog` (`product/widgets/`) keeps its confirm button disabled until the field is non-empty, so nobody spends a round trip to learn that. Both apps use it.
+- **Disputes need money in escrow.** The server refuses otherwise, and one open dispute blocks a second. `MyJob.isPaymentSecured` and the fetched dispute list gate the buttons on both sides. An open dispute freezes the escrow — it does **not** speed a payout up — and both dialogs say so, because a worker reading "bildir" could easily assume the opposite.
+- **Cancelled and rejected assignments are back in the list.** `MyJob.fromAssignment` used to return `null` for them and they vanished; now `MyJobStatus.cancelled` / `.rejected` put them in "Geçmiş" with a red marker and the status text in place of the amount — no money was earned, so showing the green figure would have been a lie. `fromAssignment` is non-nullable as a result.
+
+**Reviews are on the real endpoints.** `employee/features/jobs/services/review_service.dart` owns all three: `POST /job-assignments/{id}/reviews` (write), `GET /users/{id}/reviews` and `GET /users/{id}/rating-summary` (read). Writing goes through the **assignment**, reading through the **person** — a review is left on a job but written about the counterpart. `profile_page` shows both through `ProfileReviews`, which fetches its own data and fails on its own strip rather than blanking the profile.
+
+Three things worth knowing:
+
+- **There is no anonymous review, and the toggle came out.** `CreateReviewDto` carries `rating` and `comment` only, and `ReviewDto` always names its author — the screen used to offer "Anonim Yayınla", which the server would never have honoured. Do not put it back without an endpoint that supports it.
+- **Nothing on the server says "did I review this".** The second review is a `409`, and that is the whole API. `ReviewProvider` therefore keeps the reviewed assignment ids in `SharedPreferences` (`reviewed_assignments`) so the "Değerlendirildi" badge survives a restart, and marks an id on a `409` too — the cache is a convenience, not a source of truth, and it self-heals. It is cleared on logout alongside the other providers.
+- **A review is allowed the moment the assignment is `COMPLETED`,** not when the money moves. So "Değerlendir" sits in **both** the "Ödeme Bekleniyor" and the "Geçmiş" section; if it were only in the first, an employer who pays quickly could never be reviewed.
+
+> `RatingSummary` is `null`, not zeroed, for someone with no reviews — the endpoint returns `data: null` and `hasRating` keeps "no rating" apart from "rated 0.0", the same distinction `EmployerStats.hasRating` makes.
+
+**Still fake:** everything except auth, the employee profile, the jobs flow (explore, apply, İşlerim, saved jobs, assignment response, timesheet, cancellation, disputes, reviews), chat, and the employer's job flow, timesheet and profile. The whole assignment lifecycle is now on real endpoints; `company_detail` is the last fake service. Data comes from services that return hard-coded lists: `company_detail/services/company_service.dart` is the only one left. (`home/services/location_service.dart` is not a fake — it is the device's own location permission flow.) Avatars are generated URLs from `ui-avatars.com`.
 
 > The orphaned fakes were deleted once the employer's job flow landed: `profile/services/fake_user.dart` and its `profile/models/user.dart`, `jobs/services/my_jobs_service.dart`, `business/features/chat/services/b_chat_service.dart`. `employee/features/profile/` and `business/features/chat/` are `presentation/` only now — a feature carries `models/` and `services/` only when it has data of its own.
 - `GET /jobs` is ready to be wired: `JobSummaryDto` carries `latitude`/`longitude`, `GET /jobs/{jobId}` returns the richer `JobDetailDto` (description, duties, dress code, age range, full address, creator, company) and the search takes a bounding box (`minLatitude`/`maxLatitude`/`minLongitude`/`maxLongitude`). Only the category mapping is missing.

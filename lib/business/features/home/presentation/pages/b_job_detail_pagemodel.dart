@@ -15,7 +15,19 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
   /// başına duruyor.
   static const double _workerAvatar = 56;
 
+  /// Buton içindeki bekleme halkasının kalınlığı; varsayılan 4 bu boyutta
+  /// dolu bir daire gibi görünüyor.
+  static const double _spinnerStroke = 2;
+
+  /// Onay kutusundaki çok satırlı gövdenin satır aralığı.
+  static const double _dialogLineHeight = 1.4;
+
   final _jobService = JobService();
+  final _employerJobService = EmployerJobService();
+
+  /// Mesai oturumlarını iki taraf da okuyabiliyor; sohbette olduğu gibi tek
+  /// servis iki uygulamaya hizmet ediyor.
+  final _assignmentService = AssignmentService();
 
   /// İlanın tam hâli. Liste ucu açıklama/görev/adres döndürmediği için ekran
   /// açılırken `GET /jobs/{id}` ayrıca çağrılıyor.
@@ -26,6 +38,21 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
   /// Kabul/ret sırasında beklenen başvurunun kimliği; o kartın butonları
   /// kilitleniyor, diğerleri çalışmaya devam ediyor.
   String? _respondingApplicationId;
+
+  /// Bu ilanın ataması; başvuru kabul edilmemişse `null`.
+  Assignment? _assignment;
+
+  /// Atamanın mesai oturumları, girişten çıkışa.
+  List<WorkSession> _workSessions = const [];
+
+  /// "İşi Tamamla" isteği sunucuya gitti mi.
+  bool _isCompleting = false;
+
+  /// Atamanın uyuşmazlıkları; kart üzerinde açık olan gösteriliyor.
+  List<Dispute> _disputes = const [];
+
+  /// İptal ya da uyuşmazlık isteği sunucuya gitti mi.
+  bool _isRunningAssignmentAction = false;
 
   @override
   void initState() {
@@ -38,6 +65,7 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
       final provider = context.read<BJobsProvider>();
       await provider.load();
       await provider.ensureApplicants(widget.jobId);
+      await _loadAssignment();
     });
   }
 
@@ -62,6 +90,166 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
       });
     }
   }
+
+  /// İlanın atamasını ve mesai oturumlarını çeker.
+  ///
+  /// Bölüm ilanın ön koşulu değil: çekilemezse sessiz geçiliyor ve ekranın
+  /// geri kalanı yerinde kalıyor. Ataması olmayan ilanda zaten hiç
+  /// çizilmiyor.
+  Future<void> _loadAssignment() async {
+    try {
+      final page = await _employerJobService.fetchMyAssignments();
+      final match = page.assignments
+          .where((assignment) => assignment.job.id == widget.jobId)
+          .firstOrNull;
+
+      if (!mounted) return;
+      if (match == null) {
+        setState(() {
+          _assignment = null;
+          _workSessions = const [];
+          _disputes = const [];
+        });
+        return;
+      }
+
+      final sessions = await _assignmentService.fetchWorkSessions(match.id);
+      final disputes = await _assignmentService.fetchDisputes(match.id);
+      if (!mounted) return;
+      setState(() {
+        _assignment = match;
+        _workSessions = sessions;
+        _disputes = disputes;
+      });
+    } on ApiException {
+      if (!mounted) return;
+      setState(() {
+        _assignment = null;
+        _workSessions = const [];
+        _disputes = const [];
+      });
+    }
+  }
+
+  /// Atamayı iptal eder.
+  ///
+  /// İşverenin iptalinde kesinti kuralı çalışanınkinden farklı: işin
+  /// başlamasına cezasız pencereden az kaldıysa geç iptal ücreti kesiliyor,
+  /// iş başladıktan sonra iade hiç yapılmıyor. Oranı **önden** veren bir uç
+  /// yok, o yüzden kutuda tutar değil kural yazıyor; kesinti sonradan dönen
+  /// kayıttan bildiriliyor.
+  Future<void> _cancelAssignment() async {
+    final assignment = _assignment;
+    if (assignment == null) return;
+
+    final reason = await ReasonDialog.show(
+      context,
+      title: 'İşi iptal et',
+      description:
+          'İş iptal edilecek ve geri alınamayacak. İşin başlamasına yeterli '
+          'süre varsa kesinti uygulanmaz; süre daraldıysa geç iptal ücreti '
+          'kesilir, iş başladıysa iade yapılmaz. Uygulanan tutarı iptalden '
+          'sonra göreceksin.',
+      fieldLabel: 'İptal gerekçen',
+      confirmLabel: 'İptal Et',
+    );
+
+    if (reason == null || !mounted) return;
+
+    await _runAssignmentAction((id) async {
+      final cancellation = await _assignmentService.cancel(
+        assignmentId: id,
+        reason: reason,
+      );
+      return cancellation.hasFee
+          ? 'İş iptal edildi · %${cancellation.feePercent} kesinti uygulandı'
+          : 'İş iptal edildi, kesinti uygulanmadı';
+    });
+  }
+
+  /// Uyuşmazlık açar.
+  ///
+  /// Yalnızca para emanetteyken açılabiliyor ve emanetteki parayı donduruyor:
+  /// çalışana ödeme yapılmıyor, sunucunun kendiliğinden tamamlaması duruyor.
+  Future<void> _openDispute() async {
+    final assignment = _assignment;
+    if (assignment == null) return;
+
+    final reason = await ReasonDialog.show(
+      context,
+      title: 'Sorun bildir',
+      description:
+          'Bu işle ilgili bir sorun bildireceksin. Emanetteki ücret, Koala '
+          'konuyu inceleyip sonuçlandırana kadar dondurulur; çalışana ödeme '
+          'yapılmaz ve iş kendiliğinden tamamlanmaz.',
+      fieldLabel: 'Yaşadığın sorun',
+      confirmLabel: 'Bildir',
+      isDestructive: false,
+    );
+
+    if (reason == null || !mounted) return;
+
+    await _runAssignmentAction((id) async {
+      await _assignmentService.openDispute(assignmentId: id, reason: reason);
+      return 'Sorun bildirildi, Koala inceleyecek';
+    });
+  }
+
+  /// İptal ve uyuşmazlığın ortak gövdesi: kilit, hata ve tazeleme.
+  Future<void> _runAssignmentAction(
+    Future<String> Function(String assignmentId) action,
+  ) async {
+    final assignment = _assignment;
+    if (assignment == null || _isRunningAssignmentAction) return;
+
+    setState(() => _isRunningAssignmentAction = true);
+
+    try {
+      final message = await action(assignment.id);
+      if (!mounted) return;
+      AppToast.success(context, message);
+      await _loadDetail();
+      if (mounted) await _loadAssignment();
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      AppToast.error(context, error.message);
+      if (error.type == ApiErrorType.conflict) await _loadAssignment();
+    } finally {
+      if (mounted) setState(() => _isRunningAssignmentAction = false);
+    }
+  }
+
+  /// İşi tamamlanmış işaretler.
+  ///
+  /// Geri alınamıyor: emanetteki para çıkışa hazır hâle geliyor. Bu yüzden
+  /// önce onay soruluyor, hele ki çalışan hâlâ mesaideyken.
+  Future<void> _completeAssignment() async {
+    final assignment = _assignment;
+    if (assignment == null || _isCompleting) return;
+
+    final confirmed = await _confirmCompletion(assignment);
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isCompleting = true);
+
+    try {
+      await _employerJobService.completeAssignment(assignment.id);
+      if (!mounted) return;
+      AppToast.success(context, 'İş tamamlandı olarak işaretlendi');
+      // Tamamlama ilanın durumunu da değiştiriyor.
+      await _loadDetail();
+      if (mounted) await _loadAssignment();
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      AppToast.error(context, error.message);
+      if (error.type == ApiErrorType.conflict) await _loadAssignment();
+    } finally {
+      if (mounted) setState(() => _isCompleting = false);
+    }
+  }
+
+  /// Tamamlama onayı. Açık mesai varsa uyarı metni farklı.
+  Future<bool?> _confirmCompletion(Assignment assignment);
 
   /// Başvuruyu kabul eder.
   Future<void> _approve(JobApplicant applicant) async {

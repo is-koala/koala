@@ -108,10 +108,7 @@ void main() {
   // İşlerim ekranının beş durumu backend'in iki kavramına yayılıyor;
   // eşleme yanlışsa kullanıcı bitmiş işi "devam ediyor" görür.
   group('MyJob.fromAssignment', () {
-    MyJob? mapWith({
-      required String status,
-      String payment = 'HELD_IN_ESCROW',
-    }) {
+    MyJob mapWith({required String status, String payment = 'HELD_IN_ESCROW'}) {
       return MyJob.fromAssignment(
         Assignment.fromJson(
           assignmentBody(status: status, paymentStatus: payment),
@@ -123,48 +120,77 @@ void main() {
     // "onaylandı" ile aynı kovaya giremez, ekranda ayrı bölümü var.
     test('cevap bekleyen atama "onayın bekleniyor" olur', () {
       expect(
-        mapWith(status: 'PENDING_CONFIRMATION')?.status,
+        mapWith(status: 'PENDING_CONFIRMATION').status,
         MyJobStatus.awaitingApproval,
       );
     });
 
-    test('onaylanmış ve süren işler "onaylandı" olur', () {
-      for (final status in ['CONFIRMED', 'IN_PROGRESS']) {
-        expect(
-          mapWith(status: status)?.status,
-          MyJobStatus.approved,
-          reason: status,
-        );
-      }
+    test('onaylanmış iş "onaylandı" olur', () {
+      expect(mapWith(status: 'CONFIRMED').status, MyJobStatus.approved);
+    });
+
+    // Mesai başlamış: ekranda çıkış butonu çıkıyor, giriş butonu değil.
+    test('süren iş "devam ediyor" olur', () {
+      expect(mapWith(status: 'IN_PROGRESS').status, MyJobStatus.inProgress);
+    });
+
+    // Sunucu para emanete geçmeden mesai başlatmıyor; buton bu bilgiye
+    // bakarak kapanıyor, 409 beklemiyor.
+    test('ödeme emanetteyken mesai başlatılabilir işaretlenir', () {
+      expect(
+        mapWith(
+          status: 'CONFIRMED',
+          payment: 'HELD_IN_ESCROW',
+        ).isPaymentSecured,
+        isTrue,
+      );
+      expect(
+        mapWith(
+          status: 'CONFIRMED',
+          payment: 'PENDING_COLLECTION',
+        ).isPaymentSecured,
+        isFalse,
+      );
     });
 
     // Atama uçları id'yi buradan okuyor; başvurudan gelen satırlarda `null`.
     test('atamadan gelen kayıt assignmentId taşır', () {
-      expect(mapWith(status: 'CONFIRMED')?.assignmentId, isNotNull);
+      expect(mapWith(status: 'CONFIRMED').assignmentId, isNotNull);
     });
 
     test('biten iş ödeme yapılmadıysa "ödeme bekleniyor"', () {
       expect(
-        mapWith(status: 'COMPLETED', payment: 'HELD_IN_ESCROW')?.status,
+        mapWith(status: 'COMPLETED', payment: 'HELD_IN_ESCROW').status,
         MyJobStatus.completed,
       );
     });
 
     test('biten iş ödeme yapıldıysa "geçmiş"', () {
       expect(
-        mapWith(status: 'COMPLETED', payment: 'RELEASED_TO_WORKER')?.status,
+        mapWith(status: 'COMPLETED', payment: 'RELEASED_TO_WORKER').status,
         MyJobStatus.past,
       );
     });
 
-    // Arayüzde karşılığı olmadığı için listeye hiç girmiyorlar.
-    test('iptal ve red null döner', () {
-      expect(mapWith(status: 'CANCELLED'), isNull);
-      expect(mapWith(status: 'REJECTED'), isNull);
+    // Eskiden listeden düşüyorlardı; kullanıcı işin neden kaybolduğunu
+    // değil ne olduğunu görebilmeli.
+    test('iptal ve red kendi durumlarına düşer', () {
+      expect(mapWith(status: 'CANCELLED').status, MyJobStatus.cancelled);
+      expect(mapWith(status: 'REJECTED').status, MyJobStatus.rejected);
+    });
+
+    test('kapanmış işler isClosed', () {
+      expect(mapWith(status: 'CANCELLED').isClosed, isTrue);
+      expect(mapWith(status: 'REJECTED').isClosed, isTrue);
+      expect(
+        mapWith(status: 'COMPLETED', payment: 'RELEASED_TO_WORKER').isClosed,
+        isTrue,
+      );
+      expect(mapWith(status: 'CONFIRMED').isClosed, isFalse);
     });
 
     test('gösterilen ücret çalışanın kazancı, ilan ücreti değil', () {
-      final myJob = mapWith(status: 'CONFIRMED')!;
+      final myJob = mapWith(status: 'CONFIRMED');
 
       expect(myJob.price, 1350);
     });
@@ -172,7 +198,7 @@ void main() {
     test('kazanç gelmezse ilan ücretine düşülür', () {
       final myJob = MyJob.fromAssignment(
         Assignment.fromJson(assignmentBody(workerPayout: null)),
-      )!;
+      );
 
       expect(myJob.price, 1500);
     });
@@ -181,13 +207,13 @@ void main() {
       final body = assignmentBody();
       (body['job'] as Map<String, dynamic>).remove('companyName');
 
-      final myJob = MyJob.fromAssignment(Assignment.fromJson(body))!;
+      final myJob = MyJob.fromAssignment(Assignment.fromJson(body));
 
       expect(myJob.company, 'Bireysel İlan');
     });
 
     test('tarih gg.aa.yyyy biçiminde yazılır', () {
-      expect(mapWith(status: 'CONFIRMED')?.date, '10.03.2026');
+      expect(mapWith(status: 'CONFIRMED').date, '10.03.2026');
     });
   });
 }

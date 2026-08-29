@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/business/features/home/models/create_job_request.dart';
 import 'package:koala/business/features/home/services/employer_job_service.dart';
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/jobs/models/assignment.dart';
 import 'package:koala/employee/features/jobs/models/job_application.dart';
 import 'package:koala/product/network/api_exception.dart';
 
@@ -249,6 +250,96 @@ void main() {
 
       final body = api.requests.single.data as Map;
       expect(body.containsKey('rejectionReason'), isFalse);
+    });
+  });
+
+  group('EmployerJobService atama', () {
+    // Aynı uç iki tarafa hizmet ediyor; işveren tarafını ayıran bayrak bu.
+    test('atamalar asEmployer bayrağıyla çekilir', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {
+              'content': [
+                {
+                  'id': 'asg_1',
+                  'status': 'IN_PROGRESS',
+                  'paymentStatus': 'HELD_IN_ESCROW',
+                  'job': {
+                    'id': 'job_1',
+                    'title': 'Garson',
+                    'category': {'id': 'c', 'code': 'WAITER', 'name': 'Garson'},
+                    'salary': 1500,
+                  },
+                },
+              ],
+              'last': true,
+            },
+          },
+        ),
+      );
+
+      final page = await EmployerJobService.withClient(
+        api.client,
+      ).fetchMyAssignments();
+
+      final request = api.requests.single;
+      expect(request.path, '/users/me/assignments');
+      expect(request.queryParameters['asEmployer'], isTrue);
+      expect(page.assignments.single.job.id, 'job_1');
+    });
+
+    test('tamamlama doğru yola gider', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {
+              'id': 'asg_1',
+              'status': 'COMPLETED',
+              'paymentStatus': 'HELD_IN_ESCROW',
+              'job': {
+                'id': 'job_1',
+                'title': 'Garson',
+                'category': {'id': 'c', 'code': 'WAITER', 'name': 'Garson'},
+                'salary': 1500,
+              },
+            },
+          },
+        ),
+      );
+
+      final assignment = await EmployerJobService.withClient(
+        api.client,
+      ).completeAssignment('asg_1');
+
+      expect(api.requests.single.path, '/job-assignments/asg_1/complete');
+      expect(api.requests.single.method, 'POST');
+      expect(assignment.status, AssignmentStatus.completed);
+    });
+
+    // Sunucu yalnızca CONFIRMED ve IN_PROGRESS durumlarından tamamlatıyor.
+    test('tamamlanamayan durumda 409 yükselir', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 409,
+          body: {'success': false, 'message': 'Atama bu durumdan tamamlanamaz'},
+        ),
+      );
+
+      await expectLater(
+        EmployerJobService.withClient(api.client).completeAssignment('asg_1'),
+        throwsA(
+          isA<ApiException>().having(
+            (error) => error.type,
+            'type',
+            ApiErrorType.conflict,
+          ),
+        ),
+      );
     });
   });
 }

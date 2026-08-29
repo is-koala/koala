@@ -5,6 +5,7 @@ import 'package:koala/employee/features/auth/models/user_badge.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/experience_card.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/profile_avatar.dart';
+import 'package:koala/employee/features/profile/presentation/widgets/profile_reviews.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
@@ -141,6 +142,8 @@ class _ProfilePageState extends State<ProfilePage>
               const SizedBox(height: AppSizes.spaceXLarge),
               rosettes(user),
               experienceSection(user),
+              const SizedBox(height: AppSizes.spaceLarge),
+              ProfileReviews(userId: user.id),
               const SizedBox(height: _bottomClearance),
             ],
           ),

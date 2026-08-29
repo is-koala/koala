@@ -76,6 +76,16 @@ class AppColors {
   static const Color surfaceAwaiting = Color(0xFFE8F0FE);
   static const Color surfaceAwaitingDark = Color(0xFF1C2433);
 
+  /// "Devam Eden İş" bölümünün zemini ve rozeti.
+  ///
+  /// Turkuaz, çünkü diğer dört bölümün hepsi tutulmuş: yeşil onaylanan,
+  /// mor başvuru, turuncu ödeme, mavi onay bekleyen. Süren iş bunların
+  /// hiçbiriyle karışmamalı — kullanıcının o an ne yapması gerektiğini
+  /// söyleyen bölüm bu.
+  static const Color progress = Color(0xFF00897B);
+  static const Color surfaceProgress = Color(0xFFE0F2F1);
+  static const Color surfaceProgressDark = Color(0xFF16292A);
+
   /// Temadan bağımsız **açık** zeminlerin üstündeki içerik.
   ///
   /// Giriş ekranının tam ekran harita görseli iki temada da aynı açık

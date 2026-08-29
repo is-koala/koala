@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:koala/employee/features/jobs/models/my_job.dart';
-import 'package:koala/employee/features/jobs/models/review.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/review_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -24,7 +23,6 @@ class ReviewPage extends StatefulWidget {
 class _ReviewPageState extends State<ReviewPage> {
   int _rating = 0;
   final TextEditingController _commentController = TextEditingController();
-  bool _isAnonymous = false;
   bool _isSubmitting = false;
 
   static const int _maxRating = 5;
@@ -34,9 +32,6 @@ class _ReviewPageState extends State<ReviewPage> {
 
   /// İş bilgisi kartındaki ikon kutusu.
   static const double _jobIconBox = 52;
-
-  /// Seçim satırındaki tik dairesi.
-  static const double _radioSize = 24;
 
   static const Duration _animation = Duration(milliseconds: 200);
 
@@ -52,23 +47,36 @@ class _ReviewPageState extends State<ReviewPage> {
       return;
     }
 
+    // Değerlendirme atamaya bırakılıyor; başvurudan gelen bir satırın atama
+    // kimliği yok ve zaten "Değerlendir" butonu da o satırlarda çıkmıyor.
+    final assignmentId = widget.job.assignmentId;
+    if (assignmentId == null) {
+      AppToast.error(context, 'Bu iş henüz değerlendirilemez');
+      return;
+    }
+
     setState(() => _isSubmitting = true);
 
-    final review = Review(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      jobId: widget.job.id,
-      jobTitle: widget.job.title,
-      company: widget.job.company,
+    final provider = context.read<ReviewProvider>();
+    final comment = _commentController.text.trim();
+    final sent = await provider.submitReview(
+      assignmentId: assignmentId,
       rating: _rating,
-      comment: _commentController.text.trim(),
-      isAnonymous: _isAnonymous,
-      createdAt: DateTime.now(),
+      comment: comment.isEmpty ? null : comment,
     );
-
-    await context.read<ReviewProvider>().submitReview(review);
 
     if (!mounted) return;
     setState(() => _isSubmitting = false);
+
+    if (!sent) {
+      // 409 "zaten değerlendirilmiş" de buraya düşüyor; sunucunun mesajı
+      // Türkçe geliyor ve durumu kullanıcıya olduğu gibi anlatıyor.
+      AppToast.error(
+        context,
+        provider.errorMessage ?? 'Değerlendirme gönderilemedi',
+      );
+      return;
+    }
 
     // Toast `ScaffoldMessenger`'a düşüyor, sayfanın kapanmasından
     // etkilenmiyor; o yüzden önce gösterilip sonra kapatılıyor.
@@ -90,8 +98,6 @@ class _ReviewPageState extends State<ReviewPage> {
             _ratingSection(),
             const SizedBox(height: AppSizes.spaceXLarge),
             _commentSection(),
-            const SizedBox(height: AppSizes.spaceLarge),
-            _anonymousToggle(),
             const SizedBox(height: AppSizes.navBarClearance),
           ],
         ),
@@ -270,115 +276,4 @@ class _ReviewPageState extends State<ReviewPage> {
         borderRadius: AppRadius.innerCircular,
         borderSide: BorderSide(color: color, width: width),
       );
-
-  // ----------------------------------------------------- Yayınlama tercihi
-
-  Widget _anonymousToggle() {
-    return Container(
-      padding: AppPadding.primaryAll,
-      decoration: _panelDecoration,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _sectionTitle("Yayınlama Tercihi"),
-          const SizedBox(height: AppSizes.space),
-          _anonymousOption(
-            title: "İsmimle Yayınla",
-            subtitle: "Yorumunuz adınızla birlikte görünür",
-            icon: Icons.person_rounded,
-            isSelected: !_isAnonymous,
-            onTap: () => setState(() => _isAnonymous = false),
-          ),
-          const SizedBox(height: AppSizes.spaceSmall),
-          _anonymousOption(
-            title: "Anonim Yayınla",
-            subtitle: "Yorumunuz isimsiz olarak görünür",
-            icon: Icons.visibility_off_rounded,
-            isSelected: _isAnonymous,
-            onTap: () => setState(() => _isAnonymous = true),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _anonymousOption({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    final accent = context.accentColor;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: _animation,
-        padding: AppPadding.selectionCard,
-        decoration: BoxDecoration(
-          color: isSelected
-              ? accent.withValues(alpha: 0.1)
-              : context.backgroundColor,
-          borderRadius: AppRadius.innerCircular,
-          border: Border.all(
-            color: isSelected ? accent : context.dividerColor,
-            width: isSelected ? 2 : 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? accent : context.textTertiary,
-              size: AppSizes.icon,
-            ),
-            const SizedBox(width: AppSizes.space),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: context.textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: isSelected ? accent : context.textPrimary,
-                    ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: context.textTheme.labelMedium?.copyWith(
-                      color: isSelected
-                          ? accent.withValues(alpha: 0.7)
-                          : context.textTertiary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            AnimatedContainer(
-              duration: _animation,
-              width: _radioSize,
-              height: _radioSize,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isSelected ? accent : Colors.transparent,
-                border: Border.all(
-                  color: isSelected ? accent : context.textTertiary,
-                  width: 2,
-                ),
-              ),
-              child: isSelected
-                  ? Icon(
-                      Icons.check,
-                      color: context.onAccentColor,
-                      size: AppSizes.iconSmall,
-                    )
-                  : null,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

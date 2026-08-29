@@ -42,4 +42,23 @@ void main() {
       expect(formatDateRange(null, null), '');
     });
   });
+
+  group('DurationExtensions.asWorkDuration', () {
+    test('bir saatin altında yalnızca dakika yazılır', () {
+      expect(const Duration(minutes: 45).asWorkDuration, '45dk');
+    });
+
+    test('saat ve dakika birlikte yazılır', () {
+      expect(const Duration(hours: 2, minutes: 15).asWorkDuration, '2s 15dk');
+    });
+
+    // Saniye gösterilmiyor; mesai dakika hassasiyetinde tutuluyor.
+    test('saniyeler yok sayılır', () {
+      expect(const Duration(minutes: 5, seconds: 59).asWorkDuration, '5dk');
+    });
+
+    test('sıfır süre 0dk yazılır', () {
+      expect(Duration.zero.asWorkDuration, '0dk');
+    });
+  });
 }

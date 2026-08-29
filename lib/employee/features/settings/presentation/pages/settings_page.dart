@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/services/auth_service.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
+import 'package:koala/employee/features/jobs/presentation/providers/review_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/saved_jobs_provider.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -83,6 +84,9 @@ class SettingsPage extends StatelessWidget {
               context.read<UserProvider>().clear();
               context.read<ApplyProvider>().clear();
               context.read<SavedJobsProvider>().clear();
+              // Değerlendirme kaydı cihazda duruyor; yeni kullanıcı önceki
+              // kullanıcının işaretlerini görmemeli.
+              context.read<ReviewProvider>().clear();
               context.go('/auth');
             }
           },

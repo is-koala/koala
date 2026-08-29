@@ -53,3 +53,17 @@ String formatDateRange(DateTime? start, DateTime? end) {
   if (startLabel == null) return end == null ? '' : endLabel;
   return '$startLabel - $endLabel';
 }
+
+/// Süre biçimleri.
+extension DurationExtensions on Duration {
+  /// Mesai süresi: "2s 15dk", bir saatin altında yalnızca "45dk".
+  ///
+  /// Saniye gösterilmiyor; mesai dakika hassasiyetinde tutuluyor, sunucu da
+  /// oturumun süresini dakika olarak yazıyor.
+  String get asWorkDuration {
+    final hours = inHours;
+    final minutes = inMinutes.remainder(Duration.minutesPerHour);
+
+    return hours > 0 ? '${hours}s ${minutes}dk' : '${minutes}dk';
+  }
+}

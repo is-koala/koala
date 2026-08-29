@@ -3,6 +3,7 @@ import 'package:koala/business/features/home/models/create_job_request.dart';
 import 'package:koala/business/features/home/models/job_applicant.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/home/models/job_page.dart';
+import 'package:koala/employee/features/jobs/models/assignment.dart';
 import 'package:koala/employee/features/jobs/models/job_application.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
@@ -93,6 +94,41 @@ class EmployerJobService {
                 .map(JobApplicant.fromJson)
                 .toList()
           : const [],
+    );
+  }
+
+  /// İşverenin atamaları, yeniden eskiye.
+  ///
+  /// Aynı uç `asEmployer` bayrağıyla iki tarafa da hizmet ediyor: çalışan
+  /// tarafı `AssignmentService` üzerinden bayraksız çağırıyor, burası
+  /// `true` geçiyor ve sunucu `creatorId`'ye bakıyor.
+  ///
+  /// İlan başına atama döndüren bir uç yok — `GET /jobs/{id}` atamayı
+  /// taşımıyor — o yüzden tek ilanın ataması bu listeden süzülüyor.
+  Future<AssignmentPage> fetchMyAssignments({
+    int page = 0,
+    int size = defaultPageSize,
+  }) {
+    return _apiClient.get<AssignmentPage>(
+      ApiPaths.myAssignments,
+      queryParameters: {'asEmployer': true, 'page': page, 'size': size},
+      parse: (data) => AssignmentPage.fromJson(data! as Map<String, dynamic>),
+    );
+  }
+
+  /// İşi tamamlanmış işaretler.
+  ///
+  /// Yalnızca işveren çağırabiliyor. Tamamlanınca emanetteki para çıkışa
+  /// hazır hâle geliyor ve çalışanın rozetleri yeniden değerlendiriliyor;
+  /// yani geri alınabilir bir işlem değil. `CONFIRMED` ve `IN_PROGRESS`
+  /// dışından çağrılırsa `409`.
+  ///
+  /// İşveren hiç tamamlamazsa sunucu iş bitiminden belirli gün sonra
+  /// kendiliğinden tamamlıyor; bu buton o beklemeyi kısaltıyor.
+  Future<Assignment> completeAssignment(String assignmentId) {
+    return _apiClient.post<Assignment>(
+      ApiPaths.completeAssignment(assignmentId),
+      parse: (data) => Assignment.fromJson(data! as Map<String, dynamic>),
     );
   }
 

@@ -5,8 +5,11 @@ enum MyJobStatus {
   pending, // Başvuruldu, işverenin onayı bekleniyor
   awaitingApproval, // İşveren kabul etti, çalışanın onayı bekleniyor
   approved, // İki taraf da onayladı, gidilmesi bekleniyor
+  inProgress, // Mesai başladı, çıkış bekleniyor
   completed, // İş bitti, ödeme bekleniyor
   past, // Ödeme alındı, geçmişe taşındı
+  rejected, // Çalışan işi kabul etmedi
+  cancelled, // İki taraftan biri işi iptal etti
 }
 
 extension MyJobStatusExtension on MyJobStatus {
@@ -18,10 +21,16 @@ extension MyJobStatusExtension on MyJobStatus {
         return 'Onayın Bekleniyor';
       case MyJobStatus.approved:
         return 'Onaylandı';
+      case MyJobStatus.inProgress:
+        return 'Devam Ediyor';
       case MyJobStatus.completed:
         return 'Ödeme Bekleniyor';
       case MyJobStatus.past:
         return 'Tamamlandı';
+      case MyJobStatus.rejected:
+        return 'Reddedildi';
+      case MyJobStatus.cancelled:
+        return 'İptal Edildi';
     }
   }
 
@@ -33,10 +42,16 @@ extension MyJobStatusExtension on MyJobStatus {
         return 'İşveren sizi seçti, işi onaylamanız bekleniyor';
       case MyJobStatus.approved:
         return 'İşe gitmeniz bekleniyor';
+      case MyJobStatus.inProgress:
+        return 'Mesainiz sürüyor';
       case MyJobStatus.completed:
         return 'Ödemeniz işleniyor';
       case MyJobStatus.past:
         return 'Ödeme alındı';
+      case MyJobStatus.rejected:
+        return 'Bu işi kabul etmediniz';
+      case MyJobStatus.cancelled:
+        return 'İş iptal edildi';
     }
   }
 }
@@ -52,6 +67,13 @@ class MyJob {
   final String date;
   final double price;
   final MyJobStatus status;
+
+  /// Para emanete alınmış mı.
+  ///
+  /// Sunucu, ücret emanete (`HELD_IN_ESCROW`) geçmeden mesai başlatmıyor.
+  /// Butonu `409` alana kadar açık bırakmak yerine burada kapatılıyor ki
+  /// kullanıcı sebebini önden görsün. Başvurudan gelen satırlarda `false`.
+  final bool isPaymentSecured;
 
   /// Atamanın id'si; kayıt bir başvurudan geliyorsa `null`.
   ///
@@ -70,29 +92,39 @@ class MyJob {
     required this.price,
     required this.status,
     this.assignmentId,
+    this.isPaymentSecured = false,
   });
+
+  /// İş kapandı mı: geçmişe düşen, iptal edilen ve reddedilen işler.
+  ///
+  /// Bu üçünün ortak yanı üzerlerinde yapılacak bir şey kalmaması; ekranda
+  /// da aynı bölümde duruyorlar.
+  bool get isClosed =>
+      status == MyJobStatus.past ||
+      status == MyJobStatus.rejected ||
+      status == MyJobStatus.cancelled;
 
   /// Bir atamayı ekranın bildiği [MyJob] durumlarına çevirir.
   ///
-  /// İptal edilmiş ve reddedilmiş atamalar için `null` dönüyor.
-  /// TODO(backend): Bunların arayüzde karşılığı yok; "Tamamlandı" olarak
-  /// göstermek yanlış bilgi olurdu, o yüzden şimdilik listeye hiç
-  /// girmiyorlar — tasarıma yeni bir durum eklenmeli.
-  static MyJob? fromAssignment(Assignment assignment) {
+  /// Her atama durumunun artık bir karşılığı var; eskiden iptal ve red
+  /// listeden düşüyordu, o yüzden dönüş nullable'dı.
+  static MyJob fromAssignment(Assignment assignment) {
     final status = switch (assignment.status) {
       // İşveren kabul etti ama iş henüz başlamadı: sıra çalışanda.
       AssignmentStatus.pendingConfirmation => MyJobStatus.awaitingApproval,
-      AssignmentStatus.confirmed ||
-      AssignmentStatus.inProgress => MyJobStatus.approved,
+      AssignmentStatus.confirmed => MyJobStatus.approved,
+      // Mesai başlamış: giriş yapılmış ama iş henüz kapanmamış.
+      AssignmentStatus.inProgress => MyJobStatus.inProgress,
       // İş bitti: para çalışana geçtiyse geçmiş, geçmediyse ödeme bekliyor.
       AssignmentStatus.completed =>
         assignment.paymentStatus.isPaid
             ? MyJobStatus.past
             : MyJobStatus.completed,
-      AssignmentStatus.rejected || AssignmentStatus.cancelled => null,
+      // Kapanmış işler de listede duruyor: kullanıcı bir işin neden
+      // kaybolduğunu değil, ne olduğunu görebilmeli.
+      AssignmentStatus.rejected => MyJobStatus.rejected,
+      AssignmentStatus.cancelled => MyJobStatus.cancelled,
     };
-
-    if (status == null) return null;
 
     final job = assignment.job;
 
@@ -108,6 +140,7 @@ class MyJob {
       price: assignment.workerPayout ?? job.price,
       status: status,
       assignmentId: assignment.id,
+      isPaymentSecured: assignment.paymentStatus == PaymentStatus.heldInEscrow,
     );
   }
 }

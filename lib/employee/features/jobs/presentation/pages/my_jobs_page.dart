@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/company_detail/services/company_service.dart';
 import 'package:koala/employee/features/company_detail/models/company.dart';
 import 'package:koala/employee/features/jobs/models/my_job.dart';
+import 'package:koala/employee/features/jobs/models/work_session.dart';
 import 'package:koala/employee/features/jobs/services/assignment_service.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/review_provider.dart';
@@ -13,12 +17,17 @@ import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/widgets/empty_state.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
+import 'package:koala/product/widgets/reason_dialog.dart';
 import 'package:provider/provider.dart';
 
 part 'my_jobs_pagemodel.dart';
+
+/// Atama satırındaki menünün seçenekleri.
+enum _AssignmentAction { cancel, dispute }
 
 class MyJobsPage extends StatefulWidget {
   const MyJobsPage({super.key});
@@ -70,6 +79,10 @@ class _MyJobsPageState extends MyJobsPagemodel {
       MyJobStatus.pending,
       extraJobs: appliedJobs,
     );
+    final inProgressJobs = jobsByStatus(
+      MyJobStatus.inProgress,
+      extraJobs: appliedJobs,
+    );
     final awaitingJobs = jobsByStatus(
       MyJobStatus.awaitingApproval,
       extraJobs: appliedJobs,
@@ -82,16 +95,24 @@ class _MyJobsPageState extends MyJobsPagemodel {
       MyJobStatus.completed,
       extraJobs: appliedJobs,
     );
-    final pastJobs = jobsByStatus(MyJobStatus.past, extraJobs: appliedJobs);
+    // Geçmiş, kapanmış her işi topluyor: tamamlanan, iptal edilen ve
+    // reddedilen. Üçünde de yapılacak bir şey kalmadı, ayrı bölümler
+    // sayfayı gereksiz uzatırdı.
+    final closedJobs = [
+      ...jobsByStatus(MyJobStatus.past, extraJobs: appliedJobs),
+      ...jobsByStatus(MyJobStatus.cancelled, extraJobs: appliedJobs),
+      ...jobsByStatus(MyJobStatus.rejected, extraJobs: appliedJobs),
+    ];
 
     // Bölümlerin hepsi boşsa sayfa yalnızca başlıktan ibaret kalırdı; kullanıcı
     // "yüklenmedi mi" ile "hiç işim yok"u ayırt edemezdi.
     final isEmpty =
         pendingJobs.isEmpty &&
+        inProgressJobs.isEmpty &&
         awaitingJobs.isEmpty &&
         approvedJobs.isEmpty &&
         completedJobs.isEmpty &&
-        pastJobs.isEmpty;
+        closedJobs.isEmpty;
 
     if (isEmpty) {
       return Scaffold(
@@ -120,8 +141,13 @@ class _MyJobsPageState extends MyJobsPagemodel {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Cevap bekleyen atamalar en üstte: kullanıcıdan bir eylem
-                // isteyen tek bölüm bu, iş onaylanmadan başlamıyor.
+                // Süren iş en üstte: kullanıcı o an oradadır, çıkış butonu
+                // en kısa yoldan elinin altında olmalı.
+                if (inProgressJobs.isNotEmpty) ...[
+                  _inProgressSection(inProgressJobs),
+                  const SizedBox(height: AppSizes.spaceLarge),
+                ],
+                // Sonra cevap bekleyen atamalar: iş onaylanmadan başlamıyor.
                 if (awaitingJobs.isNotEmpty) ...[
                   _awaitingSection(awaitingJobs),
                   const SizedBox(height: AppSizes.spaceLarge),
@@ -139,7 +165,7 @@ class _MyJobsPageState extends MyJobsPagemodel {
                   _pendingSection(pendingJobs),
                   const SizedBox(height: AppSizes.spaceLarge),
                 ],
-                if (pastJobs.isNotEmpty) _pastJobsSection(pastJobs),
+                if (closedJobs.isNotEmpty) _pastJobsSection(closedJobs),
                 const SizedBox(height: AppSizes.navBarClearance),
               ],
             ),
@@ -190,7 +216,27 @@ class _MyJobsPageState extends MyJobsPagemodel {
       child: _jobList(
         jobs: jobs,
         foreground: AppColors.onAccent,
-        itemBuilder: (job) => _jobTile(job, AppColors.onAccent),
+        itemBuilder: _approvedTile,
+      ),
+    );
+  }
+
+  Widget _inProgressSection(List<MyJob> jobs) {
+    return _sectionCard(
+      background: context.progressSurface,
+      foreground: context.textPrimary,
+      header: _sectionHeader(
+        icon: Icons.timer_outlined,
+        title: 'Devam Eden İş',
+        count: jobs.length,
+        foreground: context.textPrimary,
+        chipColor: AppColors.progress,
+        chipTextColor: AppColors.onAccent,
+      ),
+      child: _jobList(
+        jobs: jobs,
+        foreground: context.textPrimary,
+        itemBuilder: _inProgressTile,
       ),
     );
   }
@@ -254,7 +300,7 @@ class _MyJobsPageState extends MyJobsPagemodel {
         foreground: context.textPrimary,
         itemBuilder: (job) => _completedTile(
           job,
-          alreadyReviewed: reviewProvider.hasReviewed(job.id),
+          alreadyReviewed: reviewProvider.hasReviewed(job.assignmentId),
         ),
       ),
     );
@@ -447,31 +493,83 @@ class _MyJobsPageState extends MyJobsPagemodel {
 
   // ------------------------------------------------------------- Satırlar
 
-  Widget _jobTile(MyJob job, Color foreground) {
+  Widget _jobTile(
+    MyJob job,
+    Color foreground, {
+    EdgeInsetsGeometry contentPadding = const EdgeInsets.symmetric(
+      vertical: AppSizes.spaceTiny,
+    ),
+    Widget? menu,
+  }) {
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(vertical: AppSizes.spaceTiny),
+      contentPadding: contentPadding,
       title: _tileTitle(job.title, foreground),
       subtitle: _tileSubtitle(job, foreground, maxLines: 1),
-      trailing: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      trailing: Row(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text(
-            '₺${job.price.toStringAsFixed(0)}',
-            style: context.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: foreground,
-            ),
-          ),
-          Text(
-            job.date,
-            style: context.textTheme.labelMedium?.copyWith(
-              color: foreground.withValues(alpha: _dateAlpha),
-            ),
-          ),
-        ],
+        children: [_priceAndDate(job, foreground), ?menu],
       ),
+    );
+  }
+
+  Widget _priceAndDate(MyJob job, Color foreground) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(
+          '₺${job.price.toStringAsFixed(0)}',
+          style: context.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: foreground,
+          ),
+        ),
+        Text(
+          job.date,
+          style: context.textTheme.labelMedium?.copyWith(
+            color: foreground.withValues(alpha: _dateAlpha),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Atamanın ikincil eylemleri: iptal ve sorun bildirme.
+  ///
+  /// İkisi de nadir ve geri dönüşü zor; birincil butonların yanında değil
+  /// menünün içinde duruyorlar. Kapanmış işlerde menü hiç çıkmıyor.
+  Widget? _assignmentMenu(MyJob job, Color foreground) {
+    final canCancel =
+        job.status == MyJobStatus.approved ||
+        job.status == MyJobStatus.inProgress;
+    // Uyuşmazlık yalnızca para emanetteyken açılabiliyor.
+    final canDispute =
+        job.isPaymentSecured &&
+        (job.status == MyJobStatus.inProgress ||
+            job.status == MyJobStatus.completed);
+
+    if (job.assignmentId == null || (!canCancel && !canDispute)) return null;
+
+    return PopupMenuButton<_AssignmentAction>(
+      enabled: assignmentActionId == null,
+      icon: Icon(Icons.more_vert, color: foreground),
+      onSelected: (action) => switch (action) {
+        _AssignmentAction.cancel => cancelAssignment(job),
+        _AssignmentAction.dispute => openDispute(job),
+      },
+      itemBuilder: (_) => [
+        if (canCancel)
+          const PopupMenuItem(
+            value: _AssignmentAction.cancel,
+            child: Text('İşi İptal Et'),
+          ),
+        if (canDispute)
+          const PopupMenuItem(
+            value: _AssignmentAction.dispute,
+            child: Text('Sorun Bildir'),
+          ),
+      ],
     );
   }
 
@@ -614,6 +712,172 @@ class _MyJobsPageState extends MyJobsPagemodel {
     await respondToAssignment(job, accepted: false);
   }
 
+  /// Onaylanmış iş: satırın altında mesai başlatma butonu.
+  ///
+  /// Buton yalnızca atamadan gelen satırlarda çıkıyor; başvurudan gelen bir
+  /// satırın atama kimliği yok ve mesaisi de olamaz.
+  Widget _approvedTile(MyJob job) {
+    if (job.assignmentId == null) return _jobTile(job, AppColors.onAccent);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSizes.spaceSmall),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _jobTile(
+            job,
+            AppColors.onAccent,
+            contentPadding: AppPadding.zero,
+            menu: _assignmentMenu(job, AppColors.onAccent),
+          ),
+          const SizedBox(height: AppSizes.spaceSmall),
+          // Sunucu, para emanete geçmeden mesai başlatmıyor. Butonu açık
+          // bırakıp 409 yedirmek yerine sebebi burada yazılıyor.
+          if (!job.isPaymentSecured)
+            Text(
+              'İşveren ücreti henüz güvenceye almadı; mesaiyi o zaman '
+              'başlatabilirsin.',
+              style: context.textTheme.labelMedium?.copyWith(
+                color: AppColors.onAccent.withValues(alpha: _dateAlpha),
+              ),
+            )
+          else
+            SizedBox(
+              width: double.infinity,
+              height: _inlineButtonHeight,
+              child: ElevatedButton.icon(
+                onPressed: timesheetBusyAssignmentId != null
+                    ? null
+                    : () => checkIn(job),
+                icon: _timesheetIcon(
+                  job,
+                  icon: Icons.play_arrow_rounded,
+                  color: context.accentColor,
+                ),
+                label: const Text('Mesaiyi Başlat'),
+                style: _timesheetButtonStyle(
+                  background: AppColors.onAccent,
+                  foreground: context.accentColor,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Süren iş: mesainin ne zaman başladığı ve çıkış butonu.
+  Widget _inProgressTile(MyJob job) {
+    final foreground = context.textPrimary;
+    final session = openSessions[job.assignmentId];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSizes.spaceSmall),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _jobTile(
+            job,
+            foreground,
+            contentPadding: AppPadding.zero,
+            menu: _assignmentMenu(job, foreground),
+          ),
+          if (session != null) ...[
+            const SizedBox(height: AppSizes.spaceSmall),
+            _sessionLine(session),
+          ],
+          const SizedBox(height: AppSizes.spaceSmall),
+          SizedBox(
+            width: double.infinity,
+            height: _inlineButtonHeight,
+            child: ElevatedButton.icon(
+              onPressed: timesheetBusyAssignmentId != null
+                  ? null
+                  : () => checkOut(job),
+              icon: _timesheetIcon(
+                job,
+                icon: Icons.stop_rounded,
+                color: AppColors.onAccent,
+              ),
+              label: const Text('Mesaiyi Bitir'),
+              style: _timesheetButtonStyle(
+                background: AppColors.progress,
+                foreground: AppColors.onAccent,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Açık oturumun başlangıcı ve o ana kadarki süresi.
+  ///
+  /// Başlangıç saati kesin; süre `DateTime.now()` ile hesaplandığı için
+  /// dakikada bir yeniden çiziliyor (`_syncElapsedTicker`).
+  Widget _sessionLine(WorkSession session) {
+    final startedAt = session.checkInAt;
+
+    return Row(
+      children: [
+        const Icon(
+          Icons.schedule_rounded,
+          size: AppSizes.iconSmall,
+          color: AppColors.progress,
+        ),
+        const SizedBox(width: AppSizes.spaceTiny),
+        Text(
+          startedAt == null
+              ? session.elapsed.asWorkDuration
+              : "${startedAt.asShortTime}'de başladın · "
+                    '${session.elapsed.asWorkDuration}',
+          style: context.textTheme.labelMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: AppColors.progress,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Mesai butonunun ikonu; istek sürerken yerini bekleme halkası alıyor.
+  Widget _timesheetIcon(
+    MyJob job, {
+    required IconData icon,
+    required Color color,
+  }) {
+    if (timesheetBusyAssignmentId != job.assignmentId) {
+      return Icon(icon, size: AppSizes.icon, color: color);
+    }
+
+    return SizedBox(
+      width: AppSizes.iconSmall,
+      height: AppSizes.iconSmall,
+      child: CircularProgressIndicator(
+        strokeWidth: _spinnerStroke,
+        color: color,
+      ),
+    );
+  }
+
+  ButtonStyle _timesheetButtonStyle({
+    required Color background,
+    required Color foreground,
+  }) {
+    return ElevatedButton.styleFrom(
+      backgroundColor: background,
+      foregroundColor: foreground,
+      elevation: 0,
+      padding: AppPadding.zero,
+      textStyle: context.textTheme.bodySmall?.copyWith(
+        fontWeight: FontWeight.w600,
+      ),
+      shape: const RoundedRectangleBorder(
+        borderRadius: AppRadius.smallCircular,
+      ),
+    );
+  }
+
   Widget _completedTile(MyJob job, {required bool alreadyReviewed}) {
     final foreground = context.textPrimary;
 
@@ -621,27 +885,41 @@ class _MyJobsPageState extends MyJobsPagemodel {
       contentPadding: const EdgeInsets.symmetric(vertical: AppSizes.spaceTiny),
       title: _tileTitle(job.title, foreground),
       subtitle: _tileSubtitle(job, foreground),
-      trailing: alreadyReviewed
-          ? _reviewedBadge()
-          : SizedBox(
-              height: _inlineButtonHeight,
-              child: ElevatedButton(
-                onPressed: () => context.push('/review', extra: job),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.warning,
-                  foregroundColor: AppColors.onAccent,
-                  elevation: 0,
-                  padding: AppPadding.primaryHorizontal,
-                  textStyle: context.textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: AppRadius.smallCircular,
-                  ),
-                ),
-                child: const Text('Değerlendir'),
-              ),
-            ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          alreadyReviewed
+              ? _reviewedBadge()
+              : _reviewButton(job, background: AppColors.warning),
+          ?_assignmentMenu(job, foreground),
+        ],
+      ),
+    );
+  }
+
+  /// "Değerlendir" butonu. Bir işi değerlendirmek sunucuda atama
+  /// tamamlandıktan sonra serbest, ödemenin serbest bırakılmasını
+  /// beklemiyor — bu yüzden hem "Ödeme Bekleniyor" hem "Geçmiş" satırında
+  /// çıkıyor. Zemini bölüme göre değişiyor.
+  Widget _reviewButton(MyJob job, {required Color background}) {
+    return SizedBox(
+      height: _inlineButtonHeight,
+      child: ElevatedButton(
+        onPressed: () => context.push('/review', extra: job),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: background,
+          foregroundColor: AppColors.onAccent,
+          elevation: 0,
+          padding: AppPadding.primaryHorizontal,
+          textStyle: context.textTheme.bodySmall?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+          shape: const RoundedRectangleBorder(
+            borderRadius: AppRadius.smallCircular,
+          ),
+        ),
+        child: const Text('Değerlendir'),
+      ),
     );
   }
 
@@ -678,6 +956,37 @@ class _MyJobsPageState extends MyJobsPagemodel {
 
   Widget _pastJobTile(MyJob job) {
     final foreground = context.textPrimary;
+    // Ödeme serbest bırakıldığında iş buraya taşınıyor; değerlendirme hakkı
+    // orada bitmiyor. Buton yalnızca burada olmasaydı, hızlı ödeyen bir
+    // işvereni değerlendirmek hiç mümkün olmazdı.
+    //
+    // İptal ve red edilen işler değerlendirilemiyor: sunucu yalnızca
+    // tamamlanmış atamaya değerlendirme kabul ediyor.
+    final canReview =
+        job.status == MyJobStatus.past &&
+        job.assignmentId != null &&
+        !context.watch<ReviewProvider>().hasReviewed(job.assignmentId);
+
+    if (canReview) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          _pastJobRow(job, foreground),
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSizes.spaceSmall),
+            child: _reviewButton(job, background: context.accentColor),
+          ),
+        ],
+      );
+    }
+
+    return _pastJobRow(job, foreground);
+  }
+
+  Widget _pastJobRow(MyJob job, Color foreground) {
+    // Tamamlanan işte para kazanıldı, iptal ve reddedilende kazanılmadı;
+    // ikisini aynı yeşil tutarla göstermek yanlış bilgi olurdu.
+    final isDone = job.status == MyJobStatus.past;
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(vertical: AppSizes.spaceTiny),
@@ -689,10 +998,12 @@ class _MyJobsPageState extends MyJobsPagemodel {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Text(
-            '₺${job.price.toStringAsFixed(0)}',
+            isDone
+                ? '₺${job.price.toStringAsFixed(0)}'
+                : job.status.displayName,
             style: context.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w700,
-              color: AppColors.successStrong,
+              color: isDone ? AppColors.successStrong : AppColors.danger,
             ),
           ),
           Row(
@@ -700,9 +1011,9 @@ class _MyJobsPageState extends MyJobsPagemodel {
             children: [
               Text(job.date, style: context.textTheme.labelMedium),
               const SizedBox(width: AppSizes.spaceTiny),
-              const Icon(
-                Icons.check_circle,
-                color: AppColors.success,
+              Icon(
+                isDone ? Icons.check_circle : Icons.cancel,
+                color: isDone ? AppColors.success : AppColors.danger,
                 size: AppSizes.iconSmall,
               ),
             ],

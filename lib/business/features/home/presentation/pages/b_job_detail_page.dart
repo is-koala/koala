@@ -3,9 +3,14 @@ import 'package:go_router/go_router.dart';
 import 'package:koala/business/features/home/models/b_job_post.dart';
 import 'package:koala/business/features/home/models/job_applicant.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
+import 'package:koala/business/features/home/services/employer_job_service.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
+import 'package:koala/employee/features/jobs/models/assignment.dart';
+import 'package:koala/employee/features/jobs/models/dispute.dart';
+import 'package:koala/employee/features/jobs/models/work_session.dart';
+import 'package:koala/employee/features/jobs/services/assignment_service.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/profile_avatar.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
@@ -20,6 +25,7 @@ import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
+import 'package:koala/product/widgets/reason_dialog.dart';
 import 'package:provider/provider.dart';
 
 part 'b_job_detail_pagemodel.dart';
@@ -93,10 +99,310 @@ class _BJobDetailPageState extends BJobDetailPageModel {
                 const SizedBox(height: AppSizes.space),
                 _detailsCard(context, job),
                 const SizedBox(height: AppSizes.spaceLarge),
+                ..._timesheetSection(),
                 ..._peopleSection(post, isActive: isActive),
                 const SizedBox(height: AppSizes.navBarClearance),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// İş takibi: atamanın durumu, mesai oturumları ve tamamlama butonu.
+  ///
+  /// Yalnızca ataması olan ilanda çiziliyor — başvuru kabul edilmeden ortada
+  /// takip edilecek bir iş yok.
+  List<Widget> _timesheetSection() {
+    final assignment = _assignment;
+    if (assignment == null) return const [];
+
+    return [
+      _sectionTitle(context, 'İş Takibi'),
+      const SizedBox(height: AppSizes.space),
+      Container(
+        width: double.infinity,
+        padding: AppPadding.primaryAll,
+        decoration: _panelDecoration(context),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _assignmentStatusRow(assignment),
+            if (_workSessions.isNotEmpty) ...[
+              const SizedBox(height: AppSizes.space),
+              ..._workSessions.map(_workSessionRow),
+              const SizedBox(height: AppSizes.spaceSmall),
+              _totalWorkedRow(),
+            ] else ...[
+              const SizedBox(height: AppSizes.spaceSmall),
+              Text(
+                'Çalışan henüz mesai başlatmadı.',
+                style: context.textTheme.bodyMedium?.copyWith(
+                  color: context.textSecondary,
+                ),
+              ),
+            ],
+            ?_openDisputeBanner(),
+            if (_canComplete(assignment)) ...[
+              const SizedBox(height: AppSizes.spaceMedium),
+              _completeButton(),
+            ],
+            ..._assignmentActions(assignment),
+          ],
+        ),
+      ),
+      const SizedBox(height: AppSizes.spaceLarge),
+    ];
+  }
+
+  /// Tamamlama yalnızca bu iki durumdan yapılabiliyor; sunucu da aynı
+  /// kapıyı tutuyor ve dışından `409` döndürüyor.
+  bool _canComplete(Assignment assignment) =>
+      assignment.status == AssignmentStatus.confirmed ||
+      assignment.status == AssignmentStatus.inProgress;
+
+  Widget _assignmentStatusRow(Assignment assignment) {
+    return Row(
+      children: [
+        Text('Durum', style: context.textTheme.bodyMedium),
+        const Spacer(),
+        _badge(
+          context,
+          color: assignment.status == AssignmentStatus.inProgress
+              ? AppColors.progress
+              : context.accentColor,
+          child: Text(
+            assignment.status.displayName,
+            style: context.textTheme.labelSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: assignment.status == AssignmentStatus.inProgress
+                  ? AppColors.progress
+                  : context.accentColor,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Tek mesai oturumu: giriş, çıkış ve süre. Açık oturumda çıkış yerine
+  /// "sürüyor" yazıyor.
+  Widget _workSessionRow(WorkSession session) {
+    final start = session.checkInAt;
+    final end = session.checkOutAt;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSizes.spaceSmall),
+      child: Row(
+        children: [
+          Icon(
+            session.isOpen
+                ? Icons.play_circle_outline_rounded
+                : Icons.check_circle_outline_rounded,
+            size: AppSizes.iconSmall,
+            color: session.isOpen ? AppColors.progress : context.textTertiary,
+          ),
+          const SizedBox(width: AppSizes.spaceSmall),
+          Expanded(
+            child: Text(
+              start == null
+                  ? '—'
+                  : '${start.asShortDate} · ${start.asShortTime}'
+                        ' - ${end?.asShortTime ?? 'sürüyor'}',
+              style: context.textTheme.bodyMedium,
+            ),
+          ),
+          Text(
+            session.elapsed.asWorkDuration,
+            style: context.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Toplam çalışılan süre.
+  ///
+  /// Açık oturumun süresi de sayılıyor ama sunucudaki `workHours` yalnızca
+  /// kapanmış oturumlardan türüyor; ikisi mesai sürerken farklı olabilir.
+  Widget _totalWorkedRow() {
+    final total = _workSessions.fold<Duration>(
+      Duration.zero,
+      (sum, session) => sum + session.elapsed,
+    );
+
+    return Row(
+      children: [
+        Text(
+          'Toplam',
+          style: context.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const Spacer(),
+        Text(
+          total.asWorkDuration,
+          style: context.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: context.accentColor,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Açık uyuşmazlık uyarısı.
+  ///
+  /// Açık uyuşmazlık emanetteki parayı donduruyor; tamamlama butonunun
+  /// neden beklediğini söylemek gerekiyor.
+  Widget? _openDisputeBanner() {
+    final open = _disputes.where((dispute) => dispute.isOpen).firstOrNull;
+    if (open == null) return null;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSizes.spaceMedium),
+      child: Container(
+        width: double.infinity,
+        padding: AppPadding.primaryAll,
+        decoration: BoxDecoration(
+          color: AppColors.warning.withValues(
+            alpha: BJobDetailPageModel._tintAlpha,
+          ),
+          borderRadius: AppRadius.innerCircular,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Açık sorun bildirimi · ${open.status.displayName}',
+              style: context.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (open.reason != null) ...[
+              const SizedBox(height: AppSizes.spaceTiny),
+              Text(
+                open.reason!,
+                style: context.textTheme.bodyMedium?.copyWith(
+                  color: context.textSecondary,
+                ),
+              ),
+            ],
+            const SizedBox(height: AppSizes.spaceTiny),
+            Text(
+              'Emanetteki ücret, Koala sonuçlandırana kadar dondurulur.',
+              style: context.textTheme.labelMedium?.copyWith(
+                color: context.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// İptal ve sorun bildirme.
+  ///
+  /// İptal yalnızca iş kapanmadan; sorun bildirme yalnızca para emanetteyken
+  /// ve ortada açık bir bildirim yokken. İkisi de sunucunun tuttuğu kapı.
+  List<Widget> _assignmentActions(Assignment assignment) {
+    final canCancel = _canComplete(assignment);
+    final canDispute =
+        assignment.paymentStatus == PaymentStatus.heldInEscrow &&
+        !_disputes.any((dispute) => dispute.isOpen);
+
+    if (!canCancel && !canDispute) return const [];
+
+    return [
+      const SizedBox(height: AppSizes.spaceSmall),
+      Row(
+        children: [
+          if (canDispute)
+            Expanded(
+              child: TextButton(
+                onPressed: _isRunningAssignmentAction ? null : _openDispute,
+                child: const Text('Sorun Bildir'),
+              ),
+            ),
+          if (canCancel)
+            Expanded(
+              child: TextButton(
+                onPressed: _isRunningAssignmentAction
+                    ? null
+                    : _cancelAssignment,
+                style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+                child: const Text('İşi İptal Et'),
+              ),
+            ),
+        ],
+      ),
+    ];
+  }
+
+  Widget _completeButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _isCompleting ? null : _completeAssignment,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: context.accentColor,
+          foregroundColor: context.onAccentColor,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: AppSizes.space),
+          shape: const RoundedRectangleBorder(
+            borderRadius: AppRadius.innerCircular,
+          ),
+          textStyle: context.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        child: _isCompleting
+            ? SizedBox(
+                width: AppSizes.icon,
+                height: AppSizes.icon,
+                child: CircularProgressIndicator(
+                  strokeWidth: BJobDetailPageModel._spinnerStroke,
+                  color: context.onAccentColor,
+                ),
+              )
+            : const Text('İşi Tamamla'),
+      ),
+    );
+  }
+
+  @override
+  Future<bool?> _confirmCompletion(Assignment assignment) {
+    final hasOpenSession = _workSessions.any((session) => session.isOpen);
+
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: const RoundedRectangleBorder(
+          borderRadius: AppRadius.secondaryCircular,
+        ),
+        title: Text('İşi tamamla', style: dialogContext.textTheme.titleMedium),
+        content: Text(
+          hasOpenSession
+              ? 'Çalışanın mesaisi hâlâ açık. İşi şimdi tamamlarsan '
+                    'emanetteki ücret ödemeye geçer ve bu geri alınamaz.'
+              : 'Emanetteki ücret ödemeye geçer ve bu geri alınamaz. '
+                    'İşin bittiğinden emin misin?',
+          style: dialogContext.textTheme.bodyMedium?.copyWith(
+            color: dialogContext.textSecondary,
+            height: BJobDetailPageModel._dialogLineHeight,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Vazgeç'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Tamamla'),
           ),
         ],
       ),

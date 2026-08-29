@@ -131,4 +131,286 @@ void main() {
       );
     });
   });
+
+  group('AssignmentService mesai', () {
+    FakeApi sessionApi({int statusCode = 201, String? checkOutAt}) {
+      return FakeApi(
+        handler: (_) => FakeApiResponse(
+          statusCode: statusCode,
+          body: {
+            'success': true,
+            'data': {
+              'id': 'ws_1',
+              'jobAssignmentId': 'asg_1',
+              'checkInAt': '2026-03-10T09:30:00Z',
+              'checkOutAt': checkOutAt,
+            },
+          },
+        ),
+      );
+    }
+
+    test('giriş konumla gönderilir', () async {
+      final api = sessionApi();
+
+      final session = await AssignmentService.withClient(
+        api.client,
+      ).checkIn(assignmentId: 'asg_1', latitude: 39.92, longitude: 32.85);
+
+      final request = api.requests.single;
+      expect(request.path, '/job-assignments/asg_1/check-in');
+      expect(request.data, {'latitude': 39.92, 'longitude': 32.85});
+      expect(session.isOpen, isTrue);
+    });
+
+    // Konum isteğe bağlı: alınamadığında giriş yine yapılabilmeli, gövdede
+    // boş koordinat gönderilmemeli.
+    test('konum alınamazsa gövde boş gider', () async {
+      final api = sessionApi();
+
+      await AssignmentService.withClient(
+        api.client,
+      ).checkIn(assignmentId: 'asg_1');
+
+      expect(api.requests.single.data, isEmpty);
+    });
+
+    test('çıkış doğru yola gider', () async {
+      final api = sessionApi(
+        statusCode: 200,
+        checkOutAt: '2026-03-10T17:30:00Z',
+      );
+
+      final session = await AssignmentService.withClient(
+        api.client,
+      ).checkOut(assignmentId: 'asg_1');
+
+      expect(api.requests.single.path, '/job-assignments/asg_1/check-out');
+      expect(session.isOpen, isFalse);
+    });
+
+    // Para emanete geçmeden giriş yapılamıyor; mesajı sunucu veriyor.
+    test('ödeme güvenceye alınmadan giriş 409 yükseltir', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 409,
+          body: {'success': false, 'message': 'Ücret henüz güvenceye alınmadı'},
+        ),
+      );
+
+      await expectLater(
+        AssignmentService.withClient(api.client).checkIn(assignmentId: 'asg_1'),
+        throwsA(
+          isA<ApiException>().having(
+            (error) => error.type,
+            'type',
+            ApiErrorType.conflict,
+          ),
+        ),
+      );
+    });
+
+    test('oturum listesi düz dizi olarak ayrıştırılır', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': [
+              {
+                'id': 'ws_1',
+                'jobAssignmentId': 'asg_1',
+                'checkInAt': '2026-03-10T09:30:00Z',
+                'checkOutAt': '2026-03-10T17:30:00Z',
+                'minutes': 480,
+              },
+            ],
+          },
+        ),
+      );
+
+      final sessions = await AssignmentService.withClient(
+        api.client,
+      ).fetchWorkSessions('asg_1');
+
+      expect(api.requests.single.path, '/job-assignments/asg_1/work-sessions');
+      expect(sessions.single.minutes, 480);
+    });
+
+    test('oturumu olmayan atamada boş liste', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 200,
+          body: {'success': true, 'data': []},
+        ),
+      );
+
+      final sessions = await AssignmentService.withClient(
+        api.client,
+      ).fetchWorkSessions('asg_1');
+
+      expect(sessions, isEmpty);
+    });
+  });
+
+  group('AssignmentService iptal ve uyuşmazlık', () {
+    test('iptal gerekçeyle doğru yola gider', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 201,
+          body: {
+            'success': true,
+            'data': {
+              'id': 'cnc_1',
+              'jobAssignmentId': 'asg_1',
+              'cancelledByParty': 'WORKER',
+              'feeRate': 0,
+              'feeAmount': 0,
+              'refundAmount': 1500,
+            },
+          },
+        ),
+      );
+
+      final cancellation = await AssignmentService.withClient(
+        api.client,
+      ).cancel(assignmentId: 'asg_1', reason: 'Hastalandım');
+
+      final request = api.requests.single;
+      expect(request.path, '/job-assignments/asg_1/cancel');
+      expect(request.data, {'reason': 'Hastalandım'});
+      expect(cancellation.hasFee, isFalse);
+    });
+
+    test('ikinci iptal 409 yükseltir', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 409,
+          body: {'success': false, 'message': 'Bu iş zaten iptal edilmiş'},
+        ),
+      );
+
+      await expectLater(
+        AssignmentService.withClient(
+          api.client,
+        ).cancel(assignmentId: 'asg_1', reason: 'Gerekçe'),
+        throwsA(
+          isA<ApiException>().having(
+            (error) => error.type,
+            'type',
+            ApiErrorType.conflict,
+          ),
+        ),
+      );
+    });
+
+    // İptal edilmemiş atamada uç `data: null` döndürüyor.
+    test('iptal kaydı yoksa null döner', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 200,
+          body: {'success': true, 'data': null},
+        ),
+      );
+
+      final cancellation = await AssignmentService.withClient(
+        api.client,
+      ).fetchCancellation('asg_1');
+
+      expect(api.requests.single.path, '/job-assignments/asg_1/cancellation');
+      expect(cancellation, isNull);
+    });
+
+    test('uyuşmazlık gerekçeyle açılır', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 201,
+          body: {
+            'success': true,
+            'data': {
+              'id': 'dsp_1',
+              'jobAssignmentId': 'asg_1',
+              'status': 'OPEN',
+              'reason': 'İş tarif edildiği gibi değildi',
+            },
+          },
+        ),
+      );
+
+      final dispute = await AssignmentService.withClient(api.client)
+          .openDispute(
+            assignmentId: 'asg_1',
+            reason: 'İş tarif edildiği gibi değildi',
+          );
+
+      final request = api.requests.single;
+      expect(request.path, '/job-assignments/asg_1/disputes');
+      expect(request.method, 'POST');
+      expect(dispute.isOpen, isTrue);
+    });
+
+    // Emanette para yoksa ya da zaten açık bir uyuşmazlık varsa.
+    test('uyuşmazlık açılamadığında 409 yükselir', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 409,
+          body: {'success': false, 'message': 'Emanette para yok'},
+        ),
+      );
+
+      await expectLater(
+        AssignmentService.withClient(
+          api.client,
+        ).openDispute(assignmentId: 'asg_1', reason: 'Sorun'),
+        throwsA(
+          isA<ApiException>().having(
+            (error) => error.type,
+            'type',
+            ApiErrorType.conflict,
+          ),
+        ),
+      );
+    });
+
+    test('uyuşmazlık listesi düz dizi olarak ayrıştırılır', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': [
+              {
+                'id': 'dsp_1',
+                'jobAssignmentId': 'asg_1',
+                'status': 'RESOLVED',
+                'resolution': 'RELEASE_TO_WORKER',
+              },
+            ],
+          },
+        ),
+      );
+
+      final disputes = await AssignmentService.withClient(
+        api.client,
+      ).fetchDisputes('asg_1');
+
+      expect(api.requests.single.method, 'GET');
+      expect(disputes.single.isOpen, isFalse);
+    });
+
+    test('uyuşmazlığı olmayan atamada boş liste', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 200,
+          body: {'success': true, 'data': []},
+        ),
+      );
+
+      final disputes = await AssignmentService.withClient(
+        api.client,
+      ).fetchDisputes('asg_1');
+
+      expect(disputes, isEmpty);
+    });
+  });
 }

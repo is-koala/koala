@@ -119,6 +119,10 @@ extension AppColorExtension on BuildContext {
   Color get awaitingSurface =>
       isDarkTheme ? AppColors.surfaceAwaitingDark : AppColors.surfaceAwaiting;
 
+  /// "Devam Eden İş" bölümünün renkli zemini.
+  Color get progressSurface =>
+      isDarkTheme ? AppColors.surfaceProgressDark : AppColors.surfaceProgress;
+
   /// [accentColor] zemini üzerindeki metin ve ikon: iki temada da beyaz.
   ///
   /// Değer [AppColors.onAccent] ile aynı; ikisi arasındaki fark nereden

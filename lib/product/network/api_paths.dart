@@ -60,6 +60,56 @@ class ApiPaths {
   static String respondToAssignment(String assignmentId) =>
       '${jobAssignment(assignmentId)}/respond';
 
+  /// Mesai başlatma ve bitirme. İkisini de yalnızca işi yapan kişi
+  /// çağırabiliyor; konum gövdesi isteğe bağlı.
+  ///
+  /// Giriş, atamayı `IN_PROGRESS`'e çeviriyor. Para emanete alınmadan
+  /// (`HELD_IN_ESCROW`) giriş yapılamıyor — sunucu `409` döndürüyor.
+  static String assignmentCheckIn(String assignmentId) =>
+      '${jobAssignment(assignmentId)}/check-in';
+
+  static String assignmentCheckOut(String assignmentId) =>
+      '${jobAssignment(assignmentId)}/check-out';
+
+  /// Atamanın mesai oturumları. İki taraf da okuyabiliyor.
+  static String assignmentWorkSessions(String assignmentId) =>
+      '${jobAssignment(assignmentId)}/work-sessions';
+
+  /// Atamayı iptal etme ve iptal kaydını okuma.
+  ///
+  /// İki taraf da iptal edebiliyor; kesinti oranı kimin iptal ettiğine ve
+  /// işin başlamasına kalan süreye göre sunucuda hesaplanıyor. Gerekçe
+  /// zorunlu. Atama başına tek kayıt: ikincisi `409`.
+  ///
+  /// Kesintiyi iptal **öncesi** hesaplayan bir uç yok; oranlar
+  /// `/admin/settings` altında ve uygulamaya kapalı.
+  static String cancelAssignment(String assignmentId) =>
+      '${jobAssignment(assignmentId)}/cancel';
+
+  static String assignmentCancellation(String assignmentId) =>
+      '${jobAssignment(assignmentId)}/cancellation';
+
+  /// Atamanın uyuşmazlıkları: açma (`POST`) ve listeleme (`GET`).
+  ///
+  /// Yalnızca para emanetteyken açılabiliyor ve aynı anda tek açık
+  /// uyuşmazlık olabiliyor; ikisi de `409`.
+  static String assignmentDisputes(String assignmentId) =>
+      '${jobAssignment(assignmentId)}/disputes';
+
+  /// İşi tamamlanmış işaretleme.
+  ///
+  /// Yalnızca **işveren** çağırabiliyor: ilan sahibi ya da şirket yetkilisi.
+  /// `CONFIRMED` ve `IN_PROGRESS` dışından çağrılırsa `409`.
+  static String completeAssignment(String assignmentId) =>
+      '${jobAssignment(assignmentId)}/complete';
+
+  /// Tamamlanmış bir işin değerlendirmesi.
+  ///
+  /// Değerlendirme atamaya bırakılıyor ama karşı tarafa yazılıyor; okuması
+  /// [userReviews] üzerinden. Her taraf bir kez yazabiliyor, ikincisi `409`.
+  static String assignmentReviews(String assignmentId) =>
+      '${jobAssignment(assignmentId)}/reviews';
+
   // ----------------------------------------------------------------- İşveren
 
   /// Oturum sahibinin açtığı ilanlar. Bireysel ve kurumsal ilanların ikisi de
@@ -113,6 +163,17 @@ class ApiPaths {
   /// Tam adres dönmüyor, yalnızca il ve ilçe. `cvUrl` yalnızca kişinin
   /// kendisine ya da o kişinin başvurduğu bir ilanın işverenine doluyor.
   static String publicProfile(String userId) => '/users/$userId';
+
+  /// Bir kullanıcı hakkında yazılmış değerlendirmeler. Sayfalı ve herkese
+  /// açık.
+  static String userReviews(String userId) =>
+      '${publicProfile(userId)}/reviews';
+
+  /// Bir kullanıcının puan özeti: ortalama ve değerlendirme sayısı.
+  ///
+  /// Hiç değerlendirilmemiş kullanıcı için `data: null` dönüyor.
+  static String userRatingSummary(String userId) =>
+      '${publicProfile(userId)}/rating-summary';
 
   /// Bir işverenin istatistikleri: açtığı ilan, tamamlanan iş, puan.
   ///
