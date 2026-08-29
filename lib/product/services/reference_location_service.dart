@@ -1,13 +1,16 @@
 import 'package:flutter/foundation.dart';
-import 'package:koala/business/features/home/models/reference_location.dart';
+import 'package:koala/product/models/reference_location.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
 /// Ülke / il / ilçe listelerinin kaynağı (`/reference/**`).
 ///
-/// İlan oluştururken adres `cityName` ve `districtName` alanlarını **ad**
-/// olarak istiyor, kimlik olarak değil; seçici yine de kimliklerle çalışıyor
-/// çünkü ilçe listesi ilin kimliğiyle isteniyor.
+/// **İki uygulama da kullanıyor:** işveren ilan açarken, çalışan adresini
+/// girerken. Tek tarafa ait olmadığı için `product/` altında duruyor.
+///
+/// Adres uçları `cityName` ve `districtName` alanlarını **ad** olarak
+/// istiyor, kimlik olarak değil; seçici yine de kimliklerle çalışıyor çünkü
+/// ilçe listesi ilin kimliğiyle isteniyor.
 ///
 /// Listeler nadiren değiştiği için bir kez çekilip bellekte tutuluyor.
 class ReferenceLocationService {

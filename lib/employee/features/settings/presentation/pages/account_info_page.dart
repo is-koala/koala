@@ -4,6 +4,7 @@ import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/models/pending_verification.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/profile_avatar.dart';
+import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
@@ -35,6 +36,7 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
   late TextEditingController _occupationController;
   late TextEditingController _phoneController;
   late TextEditingController _locationController;
+  late TextEditingController _ibanController;
   late TextEditingController _aboutController;
 
   @override
@@ -49,6 +51,10 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
     _locationController = TextEditingController(
       text: user.address?.shortLabel ?? '',
     );
+    // IBAN sunucudan maskeli geliyor; alan boş açılıyor ve maske ipucu
+    // olarak gösteriliyor. Maskeyi alana yazsaydık kullanıcı kaydettiğinde
+    // maskenin kendisi IBAN diye gönderilirdi.
+    _ibanController = TextEditingController();
     _aboutController = TextEditingController(text: user.about ?? '');
   }
 
@@ -59,6 +65,7 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
     _occupationController.dispose();
     _phoneController.dispose();
     _locationController.dispose();
+    _ibanController.dispose();
     _aboutController.dispose();
     super.dispose();
   }
@@ -80,12 +87,18 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
     final phoneNumber = _changed(_phoneController.text, user.phoneNumber);
     final jobTitle = _changed(_occupationController.text, user.jobTitle);
 
+    // IBAN alanı boş bırakıldıysa hiç gönderilmiyor: kayıtlı IBAN
+    // maskelendiği için "değişti mi" karşılaştırması yapılamıyor, boş metin
+    // göndermek de kayıtlıyı bozardı.
+    final iban = _ibanController.text.trim();
+
     final pending = await provider.updateProfile(
       firstName: _canEditName ? firstName : null,
       lastName: _canEditName ? lastName : null,
       about: about,
       jobTitle: jobTitle,
       phoneNumber: phoneNumber,
+      iban: iban.isEmpty ? null : iban,
     );
 
     if (!mounted) return;
@@ -166,20 +179,114 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
                 keyboardType: TextInputType.phone,
               ),
               const SizedBox(height: AppSizes.spaceMedium),
-              // TODO(backend): Konum `PUT /users/me/address` ile yazılıyor ve
-              // ülke/şehir/ilçe kimliği istiyor; `/reference` uçlarından
-              // beslenen bir seçici gerekiyor. O ekran gelene kadar salt
-              // okunur.
+              // Adres kendi ekranında düzenleniyor: uç toptan yazıyor ve
+              // ülke/il/ilçe seçicisiyle koordinat istiyor.
+              _addressRow(),
+              const SizedBox(height: AppSizes.spaceMedium),
+              _identityRow(),
+              const SizedBox(height: AppSizes.spaceMedium),
               MyTextfield(
-                labelText: "Konum",
-                controller: _locationController,
-                enabled: false,
+                labelText: "IBAN",
+                controller: _ibanController,
+                keyboardType: TextInputType.text,
+              ),
+              _hint(
+                widget.user.maskedIban == null
+                    ? "İşe başvurabilmen için ücretini alacağın IBAN'ı "
+                          "eklemen gerekiyor."
+                    : "Kayıtlı: ${widget.user.maskedIban}. Değiştirmek "
+                          "istemiyorsan boş bırak.",
               ),
               const SizedBox(height: AppSizes.spaceMedium),
               _aboutTextField(),
               const SizedBox(height: AppSizes.sectionSpace),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  /// Adres satırı: özet ve düzenleme ekranına geçiş.
+  Widget _addressRow() {
+    final label = _locationController.text;
+
+    return _linkRow(
+      label: "Adres",
+      value: label.isEmpty ? "Eklenmedi" : label,
+      isMissing: label.isEmpty,
+      onTap: () async {
+        await context.push('/address', extra: widget.user);
+        if (mounted) context.pop();
+      },
+    );
+  }
+
+  /// Kimlik doğrulama satırı. Doğrulanmışsa yalnızca durumu gösteriyor.
+  Widget _identityRow() {
+    if (widget.user.identityVerified) {
+      return _linkRow(
+        label: "Kimlik",
+        value: "Doğrulandı",
+        isMissing: false,
+        onTap: null,
+      );
+    }
+
+    return _linkRow(
+      label: "Kimlik",
+      value: "Doğrulanmadı",
+      isMissing: true,
+      onTap: () async {
+        await context.push('/identity-verification', extra: widget.user);
+        if (mounted) context.pop();
+      },
+    );
+  }
+
+  /// Başka bir ekrana götüren satır. Eksik bilgi vurgulu duruyor: üçü de
+  /// başvurunun ön koşulu.
+  Widget _linkRow({
+    required String label,
+    required String value,
+    required bool isMissing,
+    required VoidCallback? onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: AppRadius.innerCircular,
+      child: Container(
+        width: double.infinity,
+        padding: AppPadding.primaryAll,
+        decoration: BoxDecoration(
+          borderRadius: AppRadius.innerCircular,
+          border: Border.all(
+            color: isMissing ? AppColors.warning : context.dividerColor,
+          ),
+        ),
+        child: Row(
+          children: [
+            Text(
+              label,
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: context.textSecondary,
+              ),
+            ),
+            const Spacer(),
+            Expanded(
+              child: Text(
+                value,
+                textAlign: TextAlign.end,
+                overflow: TextOverflow.ellipsis,
+                style: context.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: isMissing ? AppColors.warning : context.textPrimary,
+                ),
+              ),
+            ),
+            if (onTap != null)
+              Icon(Icons.chevron_right, color: context.textTertiary),
+          ],
         ),
       ),
     );

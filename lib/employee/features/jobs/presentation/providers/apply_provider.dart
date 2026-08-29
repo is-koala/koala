@@ -23,6 +23,14 @@ class ApplyProvider extends ChangeNotifier {
   bool _hasLoaded = false;
   String? _errorMessage;
 
+  /// Son hatanın makine okunur kodu.
+  ///
+  /// Başvuru kapısının üç şartı (`APPLICANT_IDENTITY_NOT_VERIFIED`,
+  /// `APPLICANT_ADDRESS_REQUIRED`, `APPLICANT_BANK_ACCOUNT_REQUIRED`) ayrı
+  /// kodlarla geliyor; ekran doğru düzeltme adımına yönlendirmek için
+  /// mesaja değil buna bakıyor.
+  String? _errorCode;
+
   List<JobApplication> get applications => List.unmodifiable(_applications);
 
   bool get isLoading => _isLoading;
@@ -30,6 +38,8 @@ class ApplyProvider extends ChangeNotifier {
   bool get hasLoaded => _hasLoaded;
 
   String? get errorMessage => _errorMessage;
+
+  String? get errorCode => _errorCode;
 
   /// Başvuruların "İşlerim" ekranındaki karşılığı.
   ///
@@ -50,6 +60,7 @@ class ApplyProvider extends ChangeNotifier {
 
     _isLoading = true;
     _errorMessage = null;
+    _errorCode = null;
     notifyListeners();
 
     try {
@@ -59,6 +70,7 @@ class ApplyProvider extends ChangeNotifier {
         ..addAll(page.applications);
     } on ApiException catch (error) {
       _errorMessage = error.message;
+      _errorCode = error.errorCode;
     } finally {
       _isLoading = false;
       _hasLoaded = true;
@@ -75,6 +87,7 @@ class ApplyProvider extends ChangeNotifier {
 
     _isLoading = true;
     _errorMessage = null;
+    _errorCode = null;
     notifyListeners();
 
     try {
@@ -86,6 +99,7 @@ class ApplyProvider extends ChangeNotifier {
       return true;
     } on ApiException catch (error) {
       _errorMessage = error.message;
+      _errorCode = error.errorCode;
       return false;
     } finally {
       _isLoading = false;
@@ -97,6 +111,7 @@ class ApplyProvider extends ChangeNotifier {
   void clear() {
     _applications.clear();
     _errorMessage = null;
+    _errorCode = null;
     _hasLoaded = false;
     notifyListeners();
   }

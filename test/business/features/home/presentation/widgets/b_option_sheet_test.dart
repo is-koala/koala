@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:koala/business/features/home/models/reference_location.dart';
+import 'package:koala/product/models/reference_location.dart';
 import 'package:koala/business/features/home/presentation/widgets/b_option_sheet.dart';
 
 import '../../../../../support/pump.dart';

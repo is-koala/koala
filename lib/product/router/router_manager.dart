@@ -39,6 +39,8 @@ import 'package:koala/employee/features/auth/presentation/pages/email_verificati
 import 'package:koala/employee/features/jobs/presentation/pages/apply_page.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/settings/presentation/pages/account_info_page.dart';
+import 'package:koala/employee/features/settings/presentation/pages/address_page.dart';
+import 'package:koala/employee/features/settings/presentation/pages/identity_verification_page.dart';
 import 'package:koala/product/network/session_manager.dart';
 
 class RouterManager {
@@ -249,6 +251,40 @@ class RouterManager {
       GoRoute(
         path: '/settings',
         pageBuilder: (context, state) => _page(state, const SettingsPage()),
+      ),
+
+      // Kimlik doğrulama ve adres, başvuru kapısının iki şartı; ikisi de
+      // hesap bilgilerinden ve başvuru ekranından açılıyor.
+      GoRoute(
+        path: '/identity-verification',
+        pageBuilder: (context, state) {
+          final user = state.extra as CurrentUser;
+          return _page(state, IdentityVerificationPage(user: user));
+        },
+      ),
+
+      GoRoute(
+        path: '/address',
+        pageBuilder: (context, state) {
+          final user = state.extra as CurrentUser;
+          return _page(state, AddressPage(user: user));
+        },
+      ),
+
+      // Harita seçici iki uygulamanın da işine yarıyor: işveren ilanın
+      // yerini, çalışan adresini buradan seçiyor. Sayfa hâlâ business
+      // klasöründe; taşınana kadar iki yol aynı ekrana çıkıyor.
+      GoRoute(
+        path: '/pick-location',
+        pageBuilder: (context, state) {
+          final initial = state.extra;
+          return _page(
+            state,
+            BLocationPickerPage(
+              initialLocation: initial is LatLng ? initial : null,
+            ),
+          );
+        },
       ),
 
       GoRoute(

@@ -75,6 +75,7 @@ class UserProvider extends ChangeNotifier {
     String? about,
     String? qualifications,
     String? interests,
+    String? iban,
   }) async {
     _isRequestInFlight = true;
     _isLoading = true;
@@ -93,6 +94,7 @@ class UserProvider extends ChangeNotifier {
         about: about,
         qualifications: qualifications,
         interests: interests,
+        iban: iban,
       );
 
       _user = result.user;

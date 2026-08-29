@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
@@ -18,6 +19,7 @@ class MyTextfield extends StatelessWidget {
     this.expands = false,
     this.borderRadius = AppRadius.primaryCircular,
     this.enabled = true,
+    this.inputFormatters,
   });
 
   final String labelText;
@@ -45,6 +47,11 @@ class MyTextfield extends StatelessWidget {
   /// odaklanılamıyor: karşılığı henüz olmayan ya da başka bir ekrandan
   /// değiştirilen alanlar için.
   final bool enabled;
+
+  /// Girişi kısıtlayan biçimlendiriciler: yalnızca rakam, uzunluk sınırı vb.
+  /// Sunucunun deseni ayrıca doğruluyor; bu, kullanıcıya yanlış yazdırmamak
+  /// için.
+  final List<TextInputFormatter>? inputFormatters;
 
   @override
   Widget build(BuildContext context) {
@@ -75,6 +82,7 @@ class MyTextfield extends StatelessWidget {
         ),
         style: context.textTheme.bodyLarge,
         keyboardType: keyboardType,
+        inputFormatters: inputFormatters,
       ),
     );
   }

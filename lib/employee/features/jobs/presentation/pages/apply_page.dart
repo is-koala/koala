@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/jobs/models/application_readiness.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
+import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
@@ -71,13 +73,75 @@ class _ApplyPageState extends State<ApplyPage> {
       return;
     }
 
+    // Sunucu başvuru anında kimlik, adres ve IBAN'ı sırayla kontrol ediyor.
+    // Ekran bunları önden de gösteriyor ama kullanıcı arada başka bir
+    // cihazdan bilgisini silmiş olabilir; hata kodu son sözü söylüyor.
+    final requirement = ApplicationRequirement.fromErrorCode(
+      provider.errorCode,
+    );
+    if (requirement != null) {
+      await _showRequirementDialog(requirement);
+      return;
+    }
+
     AppToast.error(context, provider.errorMessage ?? 'Başvuru gönderilemedi.');
   }
+
+  /// Eksik şartı anlatıp ilgili ekrana götürür.
+  Future<void> _showRequirementDialog(
+    ApplicationRequirement requirement,
+  ) async {
+    final user = context.read<UserProvider>().user;
+
+    final goToScreen = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: const RoundedRectangleBorder(
+          borderRadius: AppRadius.secondaryCircular,
+        ),
+        title: Text(
+          requirement.title,
+          style: dialogContext.textTheme.titleMedium,
+        ),
+        content: Text(
+          requirement.description,
+          style: dialogContext.textTheme.bodyMedium?.copyWith(
+            color: dialogContext.textSecondary,
+            height: _dialogLineHeight,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Sonra'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(requirement.actionLabel),
+          ),
+        ],
+      ),
+    );
+
+    if (goToScreen != true || !mounted || user == null) return;
+
+    // Ekranlar `/users/me`'yi tazeliyor; dönüşte kullanıcı güncel oluyor ve
+    // uyarı şeridi kendiliğinden kayboluyor.
+    await context.push(requirement.route, extra: user);
+  }
+
+  /// Uyarı metinlerinin satır aralığı.
+  static const double _dialogLineHeight = 1.4;
 
   @override
   Widget build(BuildContext context) {
     final applyProvider = context.watch<ApplyProvider>();
     final alreadyApplied = applyProvider.hasApplied(widget.job.id);
+    // Üç şart da `/users/me`'de duruyor, o yüzden eksik olan başvuru
+    // gönderilmeden söylenebiliyor: kullanıcı ön yazıyı boşuna yazmıyor.
+    final readiness = ApplicationReadiness.of(
+      context.watch<UserProvider>().user,
+    );
 
     return Scaffold(
       backgroundColor: context.backgroundColor,
@@ -89,6 +153,10 @@ class _ApplyPageState extends State<ApplyPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: AppSizes.spaceSmall),
+              if (!readiness.isReady) ...[
+                _readinessCard(readiness),
+                const SizedBox(height: AppSizes.spaceMedium),
+              ],
               _jobCard(),
               const SizedBox(height: AppSizes.spaceLarge),
               _coverLetterSection(),
@@ -107,11 +175,83 @@ class _ApplyPageState extends State<ApplyPage> {
       ),
       bottomNavigationBar: ButtonNavbar(
         onPressed:
-            (alreadyApplied || !_agreedToTerms || applyProvider.isLoading)
+            (alreadyApplied ||
+                !_agreedToTerms ||
+                !readiness.isReady ||
+                applyProvider.isLoading)
             ? null
             : _submit,
         isLoading: applyProvider.isLoading,
-        title: alreadyApplied ? 'Zaten Başvurdunuz' : 'Başvuruyu Gönder',
+        title: _submitLabel(
+          alreadyApplied: alreadyApplied,
+          readiness: readiness,
+        ),
+      ),
+    );
+  }
+
+  String _submitLabel({
+    required bool alreadyApplied,
+    required ApplicationReadiness readiness,
+  }) {
+    if (alreadyApplied) return 'Zaten Başvurdunuz';
+    if (!readiness.isReady) return 'Önce Eksikleri Tamamla';
+    return 'Başvuruyu Gönder';
+  }
+
+  /// Eksik şartların listesi.
+  ///
+  /// Sunucu şartları sırayla kontrol edip ilk eksikte duruyor; burada hepsi
+  /// birden gösteriliyor ki kullanıcı kaç adım olduğunu baştan görsün.
+  Widget _readinessCard(ApplicationReadiness readiness) {
+    return Container(
+      width: double.infinity,
+      padding: AppPadding.primaryAll,
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: _jobCardFill),
+        borderRadius: AppRadius.secondaryCircular,
+        border: Border.all(
+          color: AppColors.warning.withValues(alpha: _jobCardBorder),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Başvurabilmen için eksiklerin var',
+            style: context.textTheme.titleSmall,
+          ),
+          const SizedBox(height: AppSizes.spaceSmall),
+          for (final requirement in readiness.missing)
+            _readinessRow(requirement),
+        ],
+      ),
+    );
+  }
+
+  Widget _readinessRow(ApplicationRequirement requirement) {
+    final user = context.read<UserProvider>().user;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSizes.spaceSmall),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.error_outline,
+            color: AppColors.warning,
+            size: AppSizes.iconSmall,
+          ),
+          const SizedBox(width: AppSizes.spaceSmall),
+          Expanded(
+            child: Text(requirement.title, style: context.textTheme.bodyMedium),
+          ),
+          TextButton(
+            onPressed: user == null
+                ? null
+                : () => context.push(requirement.route, extra: user),
+            child: Text(requirement.actionLabel),
+          ),
+        ],
       ),
     );
   }

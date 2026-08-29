@@ -1,4 +1,5 @@
 import 'package:koala/employee/features/auth/models/current_user.dart';
+import 'package:koala/employee/features/auth/models/user_address.dart';
 import 'package:koala/employee/features/auth/models/profile_update_result.dart';
 import 'package:koala/employee/features/auth/models/public_profile.dart';
 import 'package:koala/product/network/api_client.dart';
@@ -68,6 +69,7 @@ class UserService {
     String? about,
     String? qualifications,
     String? interests,
+    String? iban,
   }) {
     final body = <String, dynamic>{
       'firstName': ?firstName,
@@ -82,6 +84,9 @@ class UserService {
       'about': ?about,
       'qualifications': ?qualifications,
       'interests': ?interests,
+      // Sunucu IBAN'ı bu uçtan alıp birincil banka hesabına yazıyor; ayrı
+      // bir uç yok. Yanıt IBAN'ı maskeli döndürüyor.
+      'iban': ?iban,
     };
 
     return _apiClient.patch<ProfileUpdateResult>(
@@ -89,6 +94,62 @@ class UserService {
       body: body,
       parse: (data) =>
           ProfileUpdateResult.fromJson(data! as Map<String, dynamic>),
+    );
+  }
+
+  /// Kimliği doğrular.
+  ///
+  /// Sunucu bilgileri NVİ'ye soruyor; tutmazsa `400`, servise ulaşamazsa
+  /// `502` dönüyor. Başarılıysa `/users/me`'deki `identityVerified` `true`
+  /// oluyor — çağıran taraf kullanıcıyı tazelemeli.
+  ///
+  /// [tcIdentityNumber] 11 hane ve son hanesi çift olmak zorunda; sunucu
+  /// deseni doğruluyor. [tcDocumentNumber] kimlik kartının üstündeki seri
+  /// numarası.
+  Future<void> verifyIdentity({
+    required String firstName,
+    required String lastName,
+    required DateTime birthDate,
+    required String tcIdentityNumber,
+    required String tcDocumentNumber,
+  }) {
+    return _apiClient.postWithoutData(
+      ApiPaths.currentUserIdentityVerification,
+      body: {
+        'firstName': firstName,
+        'lastName': lastName,
+        'birthDate': _asLocalDate(birthDate),
+        'tcIdentityNumber': tcIdentityNumber,
+        'tcDocumentNumber': tcDocumentNumber,
+      },
+    );
+  }
+
+  /// Adresi toptan değiştirir.
+  ///
+  /// Kısmi güncelleme değil: gönderilmeyen alan siliniyor. Koordinat
+  /// **zorunlu** — sunucu `latitude`/`longitude` olmadan kabul etmiyor.
+  Future<UserAddress> updateAddress({
+    required String countryCode,
+    required String cityName,
+    required String addressLine,
+    required double latitude,
+    required double longitude,
+    String? districtName,
+    String? postalCode,
+  }) {
+    return _apiClient.put<UserAddress>(
+      ApiPaths.currentUserAddress,
+      body: {
+        'countryCode': countryCode,
+        'cityName': cityName,
+        'districtName': ?districtName,
+        'addressLine': addressLine,
+        'postalCode': ?postalCode,
+        'latitude': latitude,
+        'longitude': longitude,
+      },
+      parse: (data) => UserAddress.fromJson(data! as Map<String, dynamic>),
     );
   }
 

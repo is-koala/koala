@@ -193,4 +193,150 @@ void main() {
       );
     });
   });
+
+  group('UserService.verifyIdentity', () {
+    test('kimlik bilgileri doğru yola gider', () async {
+      final api = FakeApi(
+        handler: (_) =>
+            const FakeApiResponse(statusCode: 200, body: {'success': true}),
+      );
+
+      await UserService.withClient(api.client).verifyIdentity(
+        firstName: 'Ada',
+        lastName: 'Kaya',
+        birthDate: DateTime(1998, 4, 7),
+        tcIdentityNumber: '12345678950',
+        tcDocumentNumber: 'A01B23456',
+      );
+
+      final request = api.requests.single;
+      expect(request.path, '/users/me/identity-verification');
+      expect(request.method, 'POST');
+      // Sunucu `LocalDate` bekliyor; saatli gönderim reddedilirdi.
+      expect((request.data as Map<String, dynamic>)['birthDate'], '1998-04-07');
+    });
+
+    test('bilgiler doğrulanamazsa hata yükselir', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 400,
+          body: {'success': false, 'message': 'Bilgiler doğrulanamadı'},
+        ),
+      );
+
+      await expectLater(
+        UserService.withClient(api.client).verifyIdentity(
+          firstName: 'Ada',
+          lastName: 'Kaya',
+          birthDate: DateTime(1998, 4, 7),
+          tcIdentityNumber: '12345678950',
+          tcDocumentNumber: 'A01B23456',
+        ),
+        throwsA(isA<ApiException>()),
+      );
+    });
+  });
+
+  group('UserService.updateAddress', () {
+    test('adres PUT ile toptan yazılıyor', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {
+              'id': 'adr_1',
+              'cityName': 'Ankara',
+              'districtName': 'Çankaya',
+            },
+          },
+        ),
+      );
+
+      final address = await UserService.withClient(api.client).updateAddress(
+        countryCode: 'TR',
+        cityName: 'Ankara',
+        districtName: 'Çankaya',
+        addressLine: 'Kızılırmak Mah. 1443. Cad. No:12',
+        latitude: 39.9,
+        longitude: 32.85,
+      );
+
+      final request = api.requests.single;
+      expect(request.path, '/users/me/address');
+      expect(request.method, 'PUT');
+      expect(address.cityName, 'Ankara');
+    });
+
+    // Koordinat zorunlu; ilçe ve posta kodu değil.
+    test('verilmeyen isteğe bağlı alanlar gövdeye konmuyor', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {'id': 'adr_1'},
+          },
+        ),
+      );
+
+      await UserService.withClient(api.client).updateAddress(
+        countryCode: 'TR',
+        cityName: 'Ankara',
+        addressLine: 'Bir sokak',
+        latitude: 39.9,
+        longitude: 32.85,
+      );
+
+      final body = api.requests.single.data as Map<String, dynamic>;
+      expect(body.containsKey('districtName'), isFalse);
+      expect(body.containsKey('postalCode'), isFalse);
+      expect(body['latitude'], 39.9);
+    });
+  });
+
+  group('UserService.updateProfile IBAN', () {
+    // IBAN'ın ayrı bir ucu yok; sunucu bu uçtan alıp birincil hesaba yazıyor.
+    test('IBAN verilince gövdeye ekleniyor', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {
+              'pendingVerifications': [],
+              'user': {'id': 'user_1', 'firstName': 'Ada', 'lastName': 'Kaya'},
+            },
+          },
+        ),
+      );
+
+      await UserService.withClient(
+        api.client,
+      ).updateProfile(iban: 'TR330006100519786457841326');
+
+      final body = api.requests.single.data as Map<String, dynamic>;
+      expect(body['iban'], 'TR330006100519786457841326');
+    });
+
+    test('IBAN verilmezse gövdeye hiç konmuyor', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {
+              'pendingVerifications': [],
+              'user': {'id': 'user_1', 'firstName': 'Ada', 'lastName': 'Kaya'},
+            },
+          },
+        ),
+      );
+
+      await UserService.withClient(api.client).updateProfile(about: 'Merhaba');
+
+      final body = api.requests.single.data as Map<String, dynamic>;
+      expect(body.containsKey('iban'), isFalse);
+    });
+  });
 }

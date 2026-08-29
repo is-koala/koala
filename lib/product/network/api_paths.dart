@@ -22,6 +22,14 @@ class ApiPaths {
   static const String currentUserProfilePicture = '/users/me/profile-picture';
   static const String currentUserAddress = '/users/me/address';
 
+  /// Kimlik doğrulama. Ad, soyad, doğum tarihi, TC kimlik ve belge numarası
+  /// gönderiliyor; sunucu NVİ'ye soruyor.
+  ///
+  /// İlana başvurabilmenin ilk şartı bu — doğrulanmamış kullanıcının
+  /// başvurusu `APPLICANT_IDENTITY_NOT_VERIFIED` ile reddediliyor.
+  static const String currentUserIdentityVerification =
+      '/users/me/identity-verification';
+
   /// Oturum sahibinin iş deneyimleri.
   ///
   /// Liste `/users/me` yanıtında da geliyor; bu uçlar tek tek ekleme,
