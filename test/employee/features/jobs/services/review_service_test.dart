@@ -29,7 +29,11 @@ void main() {
       final request = api.requests.single;
       expect(request.path, '/job-assignments/asg_1/reviews');
       expect(request.method, 'POST');
-      expect(request.data, {'rating': 5, 'comment': 'Harikaydı'});
+      expect(request.data, {
+        'rating': 5,
+        'comment': 'Harikaydı',
+        'anonymous': false,
+      });
       expect(review.rating, 5);
     });
 
@@ -53,7 +57,30 @@ void main() {
         api.client,
       ).leaveReview(assignmentId: 'asg_1', rating: 3);
 
-      expect(api.requests.single.data, {'rating': 3});
+      expect(api.requests.single.data, {'rating': 3, 'anonymous': false});
+    });
+
+    // Anonim işareti gövdede her zaman gidiyor; sunucu alanı opsiyonel
+    // tanımlamış ama açıkça `false` göndermek niyeti belirsiz bırakmıyor.
+    test('anonim işaretlenince gövdeye true gider', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 201,
+          body: {
+            'success': true,
+            'data': {'id': 'rev_1', 'rating': 4, 'anonymous': true},
+          },
+        ),
+      );
+
+      final review = await ReviewService.withClient(
+        api.client,
+      ).leaveReview(assignmentId: 'asg_1', rating: 4, anonymous: true);
+
+      final body = api.requests.single.data as Map<String, dynamic>;
+      expect(body['anonymous'], isTrue);
+      expect(review.isAnonymous, isTrue);
+      expect(review.author, isNull);
     });
 
     test('ikinci değerlendirme 409 yükseltir', () async {

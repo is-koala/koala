@@ -23,6 +23,7 @@ class ReviewPage extends StatefulWidget {
 class _ReviewPageState extends State<ReviewPage> {
   int _rating = 0;
   final TextEditingController _commentController = TextEditingController();
+  bool _isAnonymous = false;
   bool _isSubmitting = false;
 
   static const int _maxRating = 5;
@@ -32,6 +33,9 @@ class _ReviewPageState extends State<ReviewPage> {
 
   /// İş bilgisi kartındaki ikon kutusu.
   static const double _jobIconBox = 52;
+
+  /// Seçim satırındaki tik dairesi.
+  static const double _radioSize = 24;
 
   static const Duration _animation = Duration(milliseconds: 200);
 
@@ -63,6 +67,7 @@ class _ReviewPageState extends State<ReviewPage> {
       assignmentId: assignmentId,
       rating: _rating,
       comment: comment.isEmpty ? null : comment,
+      anonymous: _isAnonymous,
     );
 
     if (!mounted) return;
@@ -98,6 +103,8 @@ class _ReviewPageState extends State<ReviewPage> {
             _ratingSection(),
             const SizedBox(height: AppSizes.spaceXLarge),
             _commentSection(),
+            const SizedBox(height: AppSizes.spaceLarge),
+            _anonymousToggle(),
             const SizedBox(height: AppSizes.navBarClearance),
           ],
         ),
@@ -276,4 +283,141 @@ class _ReviewPageState extends State<ReviewPage> {
         borderRadius: AppRadius.innerCircular,
         borderSide: BorderSide(color: color, width: width),
       );
+
+  // ----------------------------------------------------- Yayınlama tercihi
+
+  /// Anonim yayınlama seçimi.
+  ///
+  /// Sunucu yazarı yalnızca yanıt katmanında gizliyor: kayıt veritabanında
+  /// yazarına bağlı kalıyor, puan ortalamaya giriyor ve tek değerlendirme
+  /// sınırı işlemeye devam ediyor. Seçim sonradan değiştirilemiyor.
+  Widget _anonymousToggle() {
+    return Container(
+      padding: AppPadding.primaryAll,
+      decoration: _panelDecoration,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionTitle("Yayınlama Tercihi"),
+          const SizedBox(height: AppSizes.space),
+          _anonymousOption(
+            title: "İsmimle Yayınla",
+            subtitle: "Değerlendirmen adınla birlikte görünür",
+            icon: Icons.person_rounded,
+            isSelected: !_isAnonymous,
+            onTap: () => setState(() => _isAnonymous = false),
+          ),
+          const SizedBox(height: AppSizes.spaceSmall),
+          _anonymousOption(
+            title: "Anonim Yayınla",
+            subtitle: "Adın gizlenir, puanın yine sayılır",
+            icon: Icons.visibility_off_rounded,
+            isSelected: _isAnonymous,
+            onTap: () => setState(() => _isAnonymous = true),
+          ),
+          if (_isAnonymous) ...[
+            const SizedBox(height: AppSizes.spaceSmall),
+            // Bir işin yalnızca iki tarafı var: değerlendirilen kişi hangi
+            // işten geldiğini görünce kimin yazdığını çıkarabilir. Anonimlik
+            // profili gezen üçüncü kişilere karşı çalışıyor; sözü olduğundan
+            // büyük vermemek gerekiyor.
+            Text(
+              'Adın profilinde ve listelerde görünmez. İşveren, hangi işe ait '
+              'olduğundan yola çıkarak yine de tahmin edebilir.',
+              style: context.textTheme.labelMedium?.copyWith(
+                color: context.textSecondary,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _anonymousOption({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    final accent = context.accentColor;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: _animation,
+        padding: AppPadding.selectionCard,
+        decoration: BoxDecoration(
+          color: isSelected
+              ? accent.withValues(alpha: _selectedTint)
+              : context.backgroundColor,
+          borderRadius: AppRadius.innerCircular,
+          border: Border.all(
+            color: isSelected ? accent : context.dividerColor,
+            width: isSelected ? _selectedBorder : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? accent : context.textTertiary,
+              size: AppSizes.icon,
+            ),
+            const SizedBox(width: AppSizes.space),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: context.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: isSelected ? accent : context.textPrimary,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: context.textTheme.labelMedium?.copyWith(
+                      color: isSelected
+                          ? accent.withValues(alpha: _subtitleAlpha)
+                          : context.textTertiary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            AnimatedContainer(
+              duration: _animation,
+              width: _radioSize,
+              height: _radioSize,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isSelected ? accent : Colors.transparent,
+                border: Border.all(
+                  color: isSelected ? accent : context.textTertiary,
+                  width: _selectedBorder,
+                ),
+              ),
+              child: isSelected
+                  ? Icon(
+                      Icons.check,
+                      color: context.onAccentColor,
+                      size: AppSizes.iconSmall,
+                    )
+                  : null,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Seçili kartın zemin opaklığı ve kenarlık kalınlığı.
+  static const double _selectedTint = 0.1;
+  static const double _selectedBorder = 2;
+
+  /// Seçili kartın alt satırı; başlıktan bir tık soluk.
+  static const double _subtitleAlpha = 0.7;
 }

@@ -133,23 +133,41 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
 
   /// Atamayı iptal eder.
   ///
-  /// İşverenin iptalinde kesinti kuralı çalışanınkinden farklı: işin
-  /// başlamasına cezasız pencereden az kaldıysa geç iptal ücreti kesiliyor,
-  /// iş başladıktan sonra iade hiç yapılmıyor. Oranı **önden** veren bir uç
-  /// yok, o yüzden kutuda tutar değil kural yazıyor; kesinti sonradan dönen
-  /// kayıttan bildiriliyor.
+  /// Kutu açılmadan önce kesinti önizlemesi çekiliyor. İşverenin iptalinde
+  /// kesinti kuralı çalışanınkinden farklı: cezasız pencere içinde yok,
+  /// dışında geç iptal ücreti, iş başladıysa iade yok. Rakamı önden
+  /// göstermek bu ekranın asıl işi — para kaybettiren bir karar bilmeden
+  /// verilmemeli.
+  ///
+  /// Önizleme alınamazsa akış durmuyor; kutu kuralı kelimeyle anlatıyor.
   Future<void> _cancelAssignment() async {
     final assignment = _assignment;
-    if (assignment == null) return;
+    if (assignment == null || _isRunningAssignmentAction) return;
+
+    setState(() => _isRunningAssignmentAction = true);
+    CancellationPreview? preview;
+    try {
+      preview = await _assignmentService.fetchCancellationPreview(
+        assignment.id,
+      );
+    } on ApiException {
+      preview = null;
+    } finally {
+      if (mounted) setState(() => _isRunningAssignmentAction = false);
+    }
+
+    if (!mounted) return;
+
+    if (preview != null && !preview.cancellableNow) {
+      AppToast.error(context, 'Bu iş artık iptal edilemez');
+      await _loadAssignment();
+      return;
+    }
 
     final reason = await ReasonDialog.show(
       context,
       title: 'İşi iptal et',
-      description:
-          'İş iptal edilecek ve geri alınamayacak. İşin başlamasına yeterli '
-          'süre varsa kesinti uygulanmaz; süre daraldıysa geç iptal ücreti '
-          'kesilir, iş başladıysa iade yapılmaz. Uygulanan tutarı iptalden '
-          'sonra göreceksin.',
+      description: _cancellationDescription(preview),
       fieldLabel: 'İptal gerekçen',
       confirmLabel: 'İptal Et',
     );
@@ -165,6 +183,37 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
           ? 'İş iptal edildi · %${cancellation.feePercent} kesinti uygulandı'
           : 'İş iptal edildi, kesinti uygulanmadı';
     });
+  }
+
+  /// İptal kutusunun gövdesi.
+  ///
+  /// Tutar bağlayıcı değil: kesinti işin başlamasına kalan süreye bağlı ve
+  /// kutu açıkken cezasız pencere kapanabilir. Sunucu iptalde yeniden
+  /// hesaplıyor, metin de bunu söylüyor.
+  String _cancellationDescription(CancellationPreview? preview) {
+    const opening = 'İş iptal edilecek ve geri alınamayacak.';
+
+    if (preview == null) {
+      return '$opening\n\nİşin başlamasına yeterli süre varsa kesinti '
+          'uygulanmaz; süre daraldıysa geç iptal ücreti kesilir, iş '
+          'başladıysa iade yapılmaz. Uygulanan tutarı iptalden sonra '
+          'göreceksin.';
+    }
+
+    if (!preview.hasFee) {
+      return '$opening\n\nŞu an iptal edersen kesinti uygulanmaz, ücretin '
+          'tamamı (₺${preview.refundAmount.toStringAsFixed(0)}) iade edilir. '
+          'Tutar iptal anında yeniden hesaplanır.';
+    }
+
+    final started = preview.hasStarted
+        ? ' İş başladığı için iade yapılmıyor.'
+        : '';
+
+    return '$opening\n\nŞu an iptal edersen %${preview.feePercent} kesinti '
+        'uygulanır: ₺${preview.feeAmount.toStringAsFixed(0)} kesilir, '
+        '₺${preview.refundAmount.toStringAsFixed(0)} iade edilir.$started '
+        'Tutar iptal anında yeniden hesaplanır.';
   }
 
   /// Uyuşmazlık açar.

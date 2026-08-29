@@ -7,12 +7,16 @@ import 'package:koala/employee/features/home/models/job_detail.dart';
 /// yazılıyor; listeleme bu yüzden kişi üzerinden gidiyor
 /// (`GET /users/{userId}/reviews`).
 ///
-/// Sunucuda anonim değerlendirme yok: her kayıt yazarını taşıyor.
+/// Anonim değerlendirmede `author` **gelmiyor**: sunucu yazarı yalnızca
+/// yanıt katmanında gizliyor, veritabanında `author_id` dolu kalıyor. Yani
+/// tekillik kuralı, tek değerlendirme sınırı ve kötüye kullanım incelemesi
+/// anonim kayıtta da işliyor.
 class Review {
   const Review({
     required this.id,
-    required this.author,
     required this.rating,
+    this.author,
+    this.isAnonymous = false,
     this.comment,
     this.createdAt,
   });
@@ -21,7 +25,15 @@ class Review {
 
   /// Değerlendirmeyi yazan. Backend `SafeUserDto` döndürüyor; Dart karşılığı
   /// [JobCreator] olarak zaten var, ikinci bir kopya çıkarılmadı.
-  final JobCreator author;
+  ///
+  /// Anonim değerlendirmede `null` — sunucu alanı hiç doldurmuyor. Sahte bir
+  /// "Anonim Kullanıcı" kaydı üretilmedi; olmayan bir kişiyi var göstermek
+  /// her okuyan yerde ayıklanmak zorunda kalırdı.
+  final JobCreator? author;
+
+  /// Yazar gizli mi. [author] zaten `null` oluyor ama bayrak ayrıca
+  /// taşınıyor: "yazar gizlendi" ile "yazar gelmedi" farklı şeyler.
+  final bool isAnonymous;
 
   /// 1 ile 5 arası. Sunucu aralık dışını `400` ile reddediyor.
   final int rating;
@@ -34,12 +46,18 @@ class Review {
   /// Yorumu olan değerlendirme. Boş yorumlar listede satır kaplamamalı.
   bool get hasComment => comment != null && comment!.trim().isNotEmpty;
 
+  /// Listede gösterilecek yazar adı.
+  String get authorLabel => author?.fullName ?? 'Anonim';
+
   factory Review.fromJson(Map<String, dynamic> json) {
+    final author = json['author'];
+
     return Review(
       id: '${json['id']}',
-      author: JobCreator.fromJson(
-        (json['author'] as Map<String, dynamic>?) ?? const {},
-      ),
+      author: author is Map<String, dynamic>
+          ? JobCreator.fromJson(author)
+          : null,
+      isAnonymous: json['anonymous'] as bool? ?? false,
       rating: (json['rating'] as num?)?.toInt() ?? 0,
       comment: json['comment'] as String?,
       createdAt: switch (json['createdAt']) {

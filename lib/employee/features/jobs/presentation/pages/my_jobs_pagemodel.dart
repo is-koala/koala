@@ -147,20 +147,40 @@ abstract class MyJobsPagemodel extends State<MyJobsPage> {
 
   /// Atamayı iptal eder.
   ///
-  /// Çalışanın iptalinde kesinti yok ve işveren tam iade alıyor; yine de geri
-  /// alınamayan bir işlem, o yüzden gerekçe isteniyor. Gerekçeyi sunucu da
-  /// zorunlu tutuyor.
+  /// Kutu açılmadan önce kesinti önizlemesi çekiliyor: çalışanın iptalinde
+  /// kesinti çıkmıyor ama bunu kullanıcıya **tahmin ettirmek** yerine
+  /// sunucuya sormak doğrusu — oranlar sunucu ayarından geliyor ve
+  /// değişebilir.
   ///
-  /// Kesinti tutarını **önden** veren bir uç yok; dönen kayıt üzerinden
-  /// sonradan bildiriliyor.
+  /// Önizleme alınamazsa akış durmuyor: kutu kuralı kelimeyle anlatıyor.
+  /// Kesintiyi öğrenememek iptal hakkını kaldırmamalı.
   Future<void> cancelAssignment(MyJob job) async {
+    final assignmentId = job.assignmentId;
+    if (assignmentId == null || assignmentActionId != null) return;
+
+    setState(() => assignmentActionId = assignmentId);
+    CancellationPreview? preview;
+    try {
+      preview = await _service.fetchCancellationPreview(assignmentId);
+    } on ApiException {
+      preview = null;
+    } finally {
+      if (mounted) setState(() => assignmentActionId = null);
+    }
+
+    if (!mounted) return;
+
+    // Sunucu iptale kapalı atamada hata yerine bu bayrağı döndürüyor.
+    if (preview != null && !preview.cancellableNow) {
+      AppToast.error(context, 'Bu iş artık iptal edilemez');
+      await _loadJobs();
+      return;
+    }
+
     final reason = await ReasonDialog.show(
       context,
       title: 'İşi iptal et',
-      description:
-          '"${job.title}" işi iptal edilecek ve geri alınamayacak. '
-          'Senin iptalinde kesinti uygulanmıyor, ücret işverene iade '
-          'ediliyor. Sık iptal profilini etkileyebilir.',
+      description: _cancellationDescription(job, preview),
       fieldLabel: 'İptal gerekçen',
       confirmLabel: 'İptal Et',
     );
@@ -179,6 +199,30 @@ abstract class MyJobsPagemodel extends State<MyJobsPage> {
             : 'İş iptal edildi';
       },
     );
+  }
+
+  /// İptal kutusunun gövdesi.
+  ///
+  /// Önizleme geldiyse tutar yazılıyor, gelmediyse kural. Her iki durumda da
+  /// tutarın bağlayıcı olmadığı söyleniyor: kesinti işin başlamasına kalan
+  /// süreye bağlı ve sunucu iptal anında yeniden hesaplıyor.
+  String _cancellationDescription(MyJob job, CancellationPreview? preview) {
+    final opening =
+        '"${job.title}" işi iptal edilecek ve geri alınamayacak. '
+        'Sık iptal profilini etkileyebilir.';
+
+    if (preview == null) {
+      return '$opening\n\nSenin iptalinde kesinti uygulanmıyor, ücret '
+          'işverene iade ediliyor.';
+    }
+
+    if (!preview.hasFee) {
+      return '$opening\n\nBu iptalde senden kesinti yapılmayacak.';
+    }
+
+    return '$opening\n\nBu iptalde %${preview.feePercent} kesinti '
+        'uygulanacak (₺${preview.feeAmount.toStringAsFixed(0)}). Tutar iptal '
+        'anında yeniden hesaplanır.';
   }
 
   /// Uyuşmazlık açar.

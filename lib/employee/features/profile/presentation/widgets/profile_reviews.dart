@@ -197,8 +197,10 @@ class _ProfileReviewsState extends State<ProfileReviews> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Anonim değerlendirmede yazar hiç gelmiyor; varsayılan koala
+          // görseli zaten `ProfileAvatar`'ın boş durumu.
           ProfileAvatar(
-            imageUrl: review.author.profilePictureUrl,
+            imageUrl: review.author?.profilePictureUrl,
             size: _authorAvatarSize,
           ),
           const SizedBox(width: AppSizes.space),
@@ -210,9 +212,17 @@ class _ProfileReviewsState extends State<ProfileReviews> {
                   children: [
                     Expanded(
                       child: Text(
-                        review.author.fullName,
+                        review.authorLabel,
                         style: context.textTheme.bodyLarge?.copyWith(
                           fontWeight: FontWeight.w600,
+                          // Anonim satır bir kişiyi işaret etmiyor; adı
+                          // soluk yazmak bunu görsel olarak da söylüyor.
+                          color: review.isAnonymous
+                              ? context.textSecondary
+                              : null,
+                          fontStyle: review.isAnonymous
+                              ? FontStyle.italic
+                              : null,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

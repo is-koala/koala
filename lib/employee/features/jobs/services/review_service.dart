@@ -28,14 +28,19 @@ class ReviewService {
   /// [comment] isteğe bağlı, en fazla 2000 karakter. İş tamamlanmamışsa ya da
   /// kullanıcı bu işi zaten değerlendirmişse `409` geliyor — ikisi de
   /// çağıranın kullanıcıya göstermesi gereken durumlar.
+  ///
+  /// [anonymous] işaretlenirse yanıtlarda yazar gizleniyor; puan yine
+  /// ortalamaya giriyor ve kayıt veritabanında yazarına bağlı kalıyor.
+  /// Sonradan değiştirilemiyor, güncelleme ucu da yok.
   Future<Review> leaveReview({
     required String assignmentId,
     required int rating,
     String? comment,
+    bool anonymous = false,
   }) {
     return _apiClient.post<Review>(
       ApiPaths.assignmentReviews(assignmentId),
-      body: {'rating': rating, 'comment': ?comment},
+      body: {'rating': rating, 'comment': ?comment, 'anonymous': anonymous},
       parse: (data) => Review.fromJson(data! as Map<String, dynamic>),
     );
   }

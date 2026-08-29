@@ -51,6 +51,7 @@ class ReviewProvider extends ChangeNotifier {
     required String assignmentId,
     required int rating,
     String? comment,
+    bool anonymous = false,
   }) async {
     if (_isSubmitting) return false;
 
@@ -63,6 +64,7 @@ class ReviewProvider extends ChangeNotifier {
         assignmentId: assignmentId,
         rating: rating,
         comment: comment,
+        anonymous: anonymous,
       );
       await _markReviewed(assignmentId);
       return true;

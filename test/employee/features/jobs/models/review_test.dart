@@ -5,18 +5,22 @@ import 'package:koala/employee/features/jobs/models/review.dart';
 Map<String, dynamic> reviewBody({
   int rating = 4,
   String? comment = 'Çok iyiydi',
+  bool anonymous = false,
 }) {
   return {
     'id': 'rev_1',
     'rating': rating,
     'comment': comment,
+    'anonymous': anonymous,
     'createdAt': '2026-03-12T14:30:00Z',
-    'author': {
-      'id': 'usr_1',
-      'firstName': 'Deniz',
-      'lastName': 'Yıldız',
-      'profilePictureUrl': 'https://cdn.local/deniz.png',
-    },
+    // Anonim değerlendirmede sunucu yazarı hiç doldurmuyor.
+    if (!anonymous)
+      'author': {
+        'id': 'usr_1',
+        'firstName': 'Deniz',
+        'lastName': 'Yıldız',
+        'profilePictureUrl': 'https://cdn.local/deniz.png',
+      },
   };
 }
 
@@ -27,8 +31,29 @@ void main() {
 
       expect(review.id, 'rev_1');
       expect(review.rating, 4);
-      expect(review.author.fullName, 'Deniz Yıldız');
+      expect(review.author?.fullName, 'Deniz Yıldız');
+      expect(review.authorLabel, 'Deniz Yıldız');
+      expect(review.isAnonymous, isFalse);
       expect(review.createdAt, isNotNull);
+    });
+
+    // Sunucu yazarı yalnızca yanıt katmanında gizliyor; sahte bir kullanıcı
+    // uydurulmuyor, alan boş geliyor.
+    test('anonim değerlendirmede yazar gelmiyor', () {
+      final review = Review.fromJson(reviewBody(anonymous: true));
+
+      expect(review.isAnonymous, isTrue);
+      expect(review.author, isNull);
+      expect(review.authorLabel, 'Anonim');
+      // Puan yine sayılıyor: anonimlik yazarı gizlemek, puanı geçersiz
+      // kılmak değil.
+      expect(review.rating, 4);
+    });
+
+    test('anonim alanı hiç gelmezse false', () {
+      final body = reviewBody()..remove('anonymous');
+
+      expect(Review.fromJson(body).isAnonymous, isFalse);
     });
 
     // Yorum isteğe bağlı; yalnızca puan verilmiş olabilir.

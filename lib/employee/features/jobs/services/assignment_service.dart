@@ -39,16 +39,6 @@ class AssignmentService {
     );
   }
 
-  /// Atamayı kabul eder ya da reddeder ve atamanın yeni durumunu döndürür.
-  ///
-  /// İşveren başvuruyu kabul ettiğinde atama `PENDING_CONFIRMATION`'da
-  /// açılıyor; iş, çalışan buraya cevap verene kadar başlamıyor. Cevap
-  /// bir kez veriliyor: atama bu durumdan çıkmışsa sunucu `409`, kullanıcı
-  /// atamanın tarafı değilse `404` döndürüyor.
-  ///
-  /// Yanıt `MyAssignmentDto` değil `JobAssignmentDto` — ödeme ve ücret
-  /// alanlarını taşımıyor. Bu yüzden yalnızca durum okunuyor, listedeki
-  /// kayıt cevaptan değil yeniden çekmeyle tazeleniyor.
   /// Mesaiye başlar ve açılan oturumu döndürür.
   ///
   /// Konum isteğe bağlı: sunucu gövdesiz isteği de kabul ediyor, o yüzden
@@ -108,8 +98,8 @@ class AssignmentService {
   ///
   /// İki taraf da çağırabiliyor, ama sonucu aynı değil: çalışan iptal ederse
   /// kesinti yok, işveren iptal ederse işin başlamasına kalan süreye göre
-  /// kesinti uygulanabiliyor. Kesintiyi **önden** hesaplayan bir uç yok, o
-  /// yüzden tutar ancak dönen kayıttan öğreniliyor.
+  /// kesinti uygulanabiliyor. Tutarı önden öğrenmek için
+  /// [fetchCancellationPreview] var; sunucu iptalde yeniden hesaplıyor.
   ///
   /// [reason] zorunlu; sunucu boş gerekçeyi `400` ile reddediyor.
   /// `PENDING_CONFIRMATION`, `CONFIRMED` ve `IN_PROGRESS` dışından ya da
@@ -122,6 +112,22 @@ class AssignmentService {
       ApiPaths.cancelAssignment(assignmentId),
       body: {'reason': reason},
       parse: (data) => Cancellation.fromJson(data! as Map<String, dynamic>),
+    );
+  }
+
+  /// İptal edilse ne kesileceğini, iptal etmeden döndürür.
+  ///
+  /// Hiçbir kayıt oluşturmuyor; iptal kutusu açılırken çağrılıyor. Hesap
+  /// **çağıranın kendi tarafına** göre yapılıyor: çalışanda kesinti çıkmıyor,
+  /// işverende işin başlamasına kalan süreye göre çıkabiliyor.
+  ///
+  /// Atama iptale kapalıysa hata değil `cancellableNow: false` dönüyor.
+  /// Taraf olmayan `404` alıyor.
+  Future<CancellationPreview> fetchCancellationPreview(String assignmentId) {
+    return _apiClient.get<CancellationPreview>(
+      ApiPaths.assignmentCancellationPreview(assignmentId),
+      parse: (data) =>
+          CancellationPreview.fromJson(data! as Map<String, dynamic>),
     );
   }
 
@@ -165,6 +171,16 @@ class AssignmentService {
     );
   }
 
+  /// Atamayı kabul eder ya da reddeder ve atamanın yeni durumunu döndürür.
+  ///
+  /// İşveren başvuruyu kabul ettiğinde atama `PENDING_CONFIRMATION`'da
+  /// açılıyor; iş, çalışan buraya cevap verene kadar başlamıyor. Cevap
+  /// bir kez veriliyor: atama bu durumdan çıkmışsa sunucu `409`, kullanıcı
+  /// atamanın tarafı değilse `404` döndürüyor.
+  ///
+  /// Yanıt `MyAssignmentDto` değil `JobAssignmentDto` — ödeme ve ücret
+  /// alanlarını taşımıyor. Bu yüzden yalnızca durum okunuyor, listedeki
+  /// kayıt cevaptan değil yeniden çekmeyle tazeleniyor.
   Future<AssignmentStatus> respond({
     required String assignmentId,
     required bool accepted,

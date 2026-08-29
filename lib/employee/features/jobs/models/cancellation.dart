@@ -89,3 +89,60 @@ class Cancellation {
     );
   }
 }
+
+/// İptal edilmeden önce hesaplanan kesinti.
+///
+/// `GET /job-assignments/{id}/cancellation-preview` yanıtı. Hiçbir kayıt
+/// oluşturmuyor; iptal kutusu açılırken çağrılıyor ki kullanıcı ne
+/// kaybedeceğini bilerek karar versin.
+///
+/// **Bağlayıcı değil.** Kesinti işin başlamasına kalan süreye bağlı; kutu
+/// açık dururken cezasız pencere kapanırsa gerçek kesinti bundan yüksek
+/// çıkabilir. Sunucu iptalde yeniden hesaplıyor.
+class CancellationPreview {
+  const CancellationPreview({
+    this.feeRate = 0,
+    this.feeAmount = 0,
+    this.refundAmount = 0,
+    this.noticeMinutes = 0,
+    this.cancellableNow = false,
+  });
+
+  /// Uygulanacak kesinti oranı, 0 ile 1 arasında.
+  final double feeRate;
+
+  /// Kesilecek tutar.
+  final double feeAmount;
+
+  /// İşverene iade edilecek tutar.
+  final double refundAmount;
+
+  /// İşin başlamasına kalan süre, dakika. Negatif olabiliyor: iş başlamış.
+  final int noticeMinutes;
+
+  /// Şu an iptal edilebilir mi.
+  ///
+  /// Atama iptale kapalı bir durumdaysa ya da zaten iptal edilmişse `false`.
+  /// Sunucu burada `409` atmak yerine bunu döndürüyor; buton hata beklemeden
+  /// kapatılabiliyor.
+  final bool cancellableNow;
+
+  /// Kesinti uygulanacak mı.
+  bool get hasFee => feeAmount > 0;
+
+  /// Kesinti oranının yüzde karşılığı.
+  int get feePercent => (feeRate * 100).round();
+
+  /// İş başladı mı. Başlamışsa iade yapılmıyor.
+  bool get hasStarted => noticeMinutes <= 0;
+
+  factory CancellationPreview.fromJson(Map<String, dynamic> json) {
+    return CancellationPreview(
+      feeRate: (json['feeRate'] as num?)?.toDouble() ?? 0,
+      feeAmount: (json['feeAmount'] as num?)?.toDouble() ?? 0,
+      refundAmount: (json['refundAmount'] as num?)?.toDouble() ?? 0,
+      noticeMinutes: (json['noticeMinutes'] as num?)?.toInt() ?? 0,
+      cancellableNow: json['cancellableNow'] as bool? ?? false,
+    );
+  }
+}

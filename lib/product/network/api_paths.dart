@@ -98,13 +98,21 @@ class ApiPaths {
   /// işin başlamasına kalan süreye göre sunucuda hesaplanıyor. Gerekçe
   /// zorunlu. Atama başına tek kayıt: ikincisi `409`.
   ///
-  /// Kesintiyi iptal **öncesi** hesaplayan bir uç yok; oranlar
-  /// `/admin/settings` altında ve uygulamaya kapalı.
+  /// Kesintiyi iptal öncesi öğrenmek için [assignmentCancellationPreview]
+  /// kullanılıyor; oranların kendisi `/admin/settings` altında ve uygulamaya
+  /// kapalı.
   static String cancelAssignment(String assignmentId) =>
       '${jobAssignment(assignmentId)}/cancel';
 
   static String assignmentCancellation(String assignmentId) =>
       '${jobAssignment(assignmentId)}/cancellation';
+
+  /// İptal edilse ne kesileceğini, iptal **etmeden** döndürür.
+  ///
+  /// Kayıt oluşturmuyor. Uygun olmayan durumda hata değil
+  /// `cancellableNow: false` dönüyor; taraf olmayan `404` alıyor.
+  static String assignmentCancellationPreview(String assignmentId) =>
+      '${jobAssignment(assignmentId)}/cancellation-preview';
 
   /// Atamanın uyuşmazlıkları: açma (`POST`) ve listeleme (`GET`).
   ///

@@ -413,4 +413,75 @@ void main() {
       expect(disputes, isEmpty);
     });
   });
+
+  group('AssignmentService.fetchCancellationPreview', () {
+    test('önizleme doğru yola gider ve modele çevrilir', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {
+              'feeRate': 0.5,
+              'feeAmount': 750,
+              'refundAmount': 750,
+              'noticeMinutes': 300,
+              'cancellableNow': true,
+            },
+          },
+        ),
+      );
+
+      final preview = await AssignmentService.withClient(
+        api.client,
+      ).fetchCancellationPreview('asg_1');
+
+      final request = api.requests.single;
+      expect(request.path, '/job-assignments/asg_1/cancellation-preview');
+      expect(request.method, 'GET');
+      expect(preview.feePercent, 50);
+      expect(preview.cancellableNow, isTrue);
+    });
+
+    // Uygun olmayan durumda sunucu hata atmıyor; bayrak dönüyor.
+    test('iptal edilemeyen atamada hata değil bayrak döner', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {'cancellableNow': false},
+          },
+        ),
+      );
+
+      final preview = await AssignmentService.withClient(
+        api.client,
+      ).fetchCancellationPreview('asg_1');
+
+      expect(preview.cancellableNow, isFalse);
+    });
+
+    test('atamanın tarafı olmayan 404 alır', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 404,
+          body: {'success': false, 'message': 'Atama bulunamadı'},
+        ),
+      );
+
+      await expectLater(
+        AssignmentService.withClient(
+          api.client,
+        ).fetchCancellationPreview('asg_1'),
+        throwsA(
+          isA<ApiException>().having(
+            (error) => error.type,
+            'type',
+            ApiErrorType.notFound,
+          ),
+        ),
+      );
+    });
+  });
 }
