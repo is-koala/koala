@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/business/features/home/presentation/providers/b_company_provider.dart';
 import 'package:koala/business/features/home/services/b_company_service.dart';
+import 'package:koala/employee/features/company_detail/services/company_service.dart';
 import 'package:koala/employee/features/auth/models/company_membership.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 
@@ -57,8 +58,11 @@ FakeApi buildApi({
   );
 }
 
-BCompanyProvider providerFor(FakeApi api) =>
-    BCompanyProvider(service: BCompanyService.withClient(api.client));
+BCompanyProvider providerFor(FakeApi api) => BCompanyProvider(
+  service: BCompanyService.withClient(api.client),
+  // Şirketin okunması iki uygulamanın ortak servisinde.
+  companyService: CompanyService.withClient(api.client),
+);
 
 CurrentUser buildUser({List<CompanyMembership> companies = const []}) {
   return CurrentUser(

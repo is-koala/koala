@@ -2,7 +2,6 @@ part of 'my_jobs_page.dart';
 
 abstract class MyJobsPagemodel extends State<MyJobsPage> {
   final AssignmentService _service = AssignmentService();
-  final CompanyService _companyService = CompanyService();
 
   /// Geçmiş bölümü varsayılan olarak kısaltılmış; kullanıcı isterse açıyor.
   bool showAllPastJobs = false;
@@ -345,21 +344,15 @@ abstract class MyJobsPagemodel extends State<MyJobsPage> {
     });
   }
 
-  /// Şirket detayına gider. Önce id ile, bulunamazsa adla aranıyor —
-  /// sahte veride her işin şirket id'si yok.
-  Future<void> navigateToCompany(MyJob job) async {
-    Company? company;
+  /// Şirket detayına gider.
+  ///
+  /// TODO(backend): `MyAssignmentDto.job` şirket kimliği taşımıyor (yalnızca
+  /// `companyName`), o yüzden [MyJob.companyId] hep boş ve satır tıklanabilir
+  /// değil. `JobSummaryDto`'ya `companyId` eklenirse burası çalışır.
+  void navigateToCompany(MyJob job) {
+    final companyId = job.companyId;
+    if (companyId == null) return;
 
-    if (job.companyId != null) {
-      company = await _companyService.getCompanyById(job.companyId!);
-    }
-
-    if (!mounted) return;
-
-    company ??= await _companyService.getCompanyByName(job.company);
-
-    if (company != null && mounted) {
-      context.push('/company-detail', extra: company);
-    }
+    context.push('/company-detail', extra: companyId);
   }
 }

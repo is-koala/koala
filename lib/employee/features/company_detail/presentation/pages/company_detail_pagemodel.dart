@@ -1,18 +1,27 @@
 part of 'company_detail_page.dart';
 
 abstract class CompanyDetailPagemodel extends State<CompanyDetailPage> {
+  final CompanyService _companyService = CompanyService();
   final JobService _jobService = JobService();
   final ScrollController scrollController = ScrollController();
 
-  bool isFollowing = false;
+  /// Şirket. Yüklenene kadar `null`.
+  Company? company;
+
+  bool isLoading = true;
+  String? errorMessage;
+
+  /// Takip isteği sunucuya gitti mi; buton kilitleniyor.
+  bool isTogglingFollow = false;
+
   double _scrollOffset = 0.0;
-  late Future<List<Job>> companyJobsFuture;
+  Future<List<Job>>? companyJobsFuture;
 
   @override
   void initState() {
     super.initState();
     scrollController.addListener(_onScroll);
-    companyJobsFuture = _loadCompanyJobs();
+    load();
   }
 
   @override
@@ -28,9 +37,37 @@ abstract class CompanyDetailPagemodel extends State<CompanyDetailPage> {
     });
   }
 
-  Future<List<Job>> _loadCompanyJobs() async {
+  /// Şirketi çeker. Galeri, takipçi sayısı ve takip durumu aynı yanıtta
+  /// geldiği için tek istek yetiyor.
+  Future<void> load() async {
+    setState(() {
+      isLoading = company == null;
+      errorMessage = null;
+    });
+
+    try {
+      final fetched = await _companyService.fetchCompany(widget.companyId);
+      if (!mounted) return;
+      setState(() {
+        company = fetched;
+        companyJobsFuture = _loadCompanyJobs(fetched.name);
+      });
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() => errorMessage = error.message);
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
+
+  /// Şirketin ilanları.
+  ///
+  /// TODO(backend): Şirkete göre süzen bir uç yok — `GET /jobs` şirket
+  /// kimliği almıyor — o yüzden arama sonucu şirket **adına** göre eleniyor.
+  /// Aynı adı taşıyan iki şirket varsa ilanları karışır.
+  Future<List<Job>> _loadCompanyJobs(String companyName) async {
     final allJobs = (await _jobService.search()).jobs;
-    return allJobs.where((job) => job.company == widget.company.name).toList();
+    return allJobs.where((job) => job.company == companyName).toList();
   }
 
   /// Appbar toplanırken başlığın belirme oranı.
@@ -48,18 +85,44 @@ abstract class CompanyDetailPagemodel extends State<CompanyDetailPage> {
 
   static const double _titleFadeDistance = 40;
 
-  void toggleFollow() {
+  /// Takip eder ya da takibi bırakır.
+  ///
+  /// Buton hemen dönüyor, istek arkada gidiyor: iki uç da idempotent ve
+  /// sonucu tahmin edilebilir. İstek başarısız olursa eski hâle dönülüyor.
+  Future<void> toggleFollow() async {
+    final current = company;
+    if (current == null || isTogglingFollow) return;
+
+    final willFollow = !current.isFollowing;
+
     setState(() {
-      isFollowing = !isFollowing;
+      isTogglingFollow = true;
+      company = current.copyWith(
+        isFollowing: willFollow,
+        followerCount: current.followerCount + (willFollow ? 1 : -1),
+      );
     });
 
-    // TODO(backend): Takip bilgisi gerçek servise yazılacak.
-    AppToast.info(
-      context,
-      isFollowing
-          ? '${widget.company.name} takip edildi'
-          : '${widget.company.name} takipten çıkarıldı',
-    );
+    try {
+      willFollow
+          ? await _companyService.follow(current.id)
+          : await _companyService.unfollow(current.id);
+      if (!mounted) return;
+      AppToast.success(
+        context,
+        willFollow
+            ? '${current.name} takip ediliyor'
+            : '${current.name} takipten çıkarıldı',
+      );
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      // İstek düştü: iyimser güncelleme geri alınıyor, yoksa buton
+      // sunucudakinin tersini gösterir.
+      setState(() => company = current);
+      AppToast.error(context, error.message);
+    } finally {
+      if (mounted) setState(() => isTogglingFollow = false);
+    }
   }
 
   /// TODO(backend): Şirketle doğrudan sohbetin karşılığı yok. Sunucuda bir

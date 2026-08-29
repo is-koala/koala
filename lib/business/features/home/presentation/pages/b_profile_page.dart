@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:koala/business/features/home/models/b_company.dart';
+import 'package:koala/employee/features/company_detail/models/company.dart';
 import 'package:koala/business/features/home/models/employer_stats.dart';
 import 'package:koala/business/features/home/presentation/providers/b_company_provider.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
@@ -138,7 +138,7 @@ class _BProfilePageState extends BProfilePageModel {
   /// Kapak marka yeşili; üstündeki her şey temadan bağımsız beyaz.
   Widget _profileHeader(
     CurrentUser user,
-    BCompany? company,
+    Company? company,
     EmployerStats? stats,
   ) {
     final memberSince = stats?.memberSince;
@@ -230,7 +230,7 @@ class _BProfilePageState extends BProfilePageModel {
   }
 
   /// Şirketin hukuki türü; şirketi olmayan işverende "Bireysel İşveren".
-  Widget _typeBadge(BCompany? company) {
+  Widget _typeBadge(Company? company) {
     final label = company == null
         ? 'Bireysel İşveren'
         : company.type?.displayName ?? 'İşletme';
@@ -256,7 +256,7 @@ class _BProfilePageState extends BProfilePageModel {
   /// Şirketi olanda şirketin onayı, olmayanda kişinin kimlik doğrulaması.
   ///
   /// İkisi de aynı şeyi anlatıyor: bu hesap ilan yayınlayabilir mi.
-  Widget _statusRow(CurrentUser user, BCompany? company) {
+  Widget _statusRow(CurrentUser user, Company? company) {
     final isVerified = company?.isApproved ?? user.identityVerified;
     final label = company != null
         ? (isVerified ? 'Onaylı İşletme' : 'Onay Bekliyor')
@@ -285,7 +285,7 @@ class _BProfilePageState extends BProfilePageModel {
 
   // ------------------------------------------------------------- Bölümler
 
-  Widget _aboutSection(BCompany? company) {
+  Widget _aboutSection(Company? company) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -302,7 +302,7 @@ class _BProfilePageState extends BProfilePageModel {
   }
 
   /// İletişim bilgileri: şirket varsa şirketin, yoksa kişinin.
-  Widget _contactInfoSection(CurrentUser user, BCompany? company) {
+  Widget _contactInfoSection(CurrentUser user, Company? company) {
     final email = company?.email ?? user.email;
     final phone = company?.phoneNumber ?? user.phoneNumber;
     final website = company?.website;
@@ -328,7 +328,7 @@ class _BProfilePageState extends BProfilePageModel {
 
   /// Adres bölümü. Şirketin adresi yoksa kişininki gösteriliyor; ikisi de
   /// yoksa bölüm hiç çizilmiyor.
-  List<Widget> _addressSection(CurrentUser user, BCompany? company) {
+  List<Widget> _addressSection(CurrentUser user, Company? company) {
     final address = company?.address ?? user.address;
     if (address == null) return const [];
 

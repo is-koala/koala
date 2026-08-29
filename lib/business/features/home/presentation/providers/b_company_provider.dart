@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:koala/business/features/home/models/b_company.dart';
+import 'package:koala/employee/features/company_detail/models/company.dart';
 import 'package:koala/business/features/home/models/employer_stats.dart';
 import 'package:koala/business/features/home/services/b_company_service.dart';
+import 'package:koala/employee/features/company_detail/services/company_service.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/product/network/api_exception.dart';
 
@@ -15,12 +16,16 @@ import 'package:koala/product/network/api_exception.dart';
 /// kimliği `/users/me`'den geliyor ve çağıran taraf veriyor. İki provider'ı
 /// birbirine bağlamamak için bilerek böyle.
 class BCompanyProvider extends ChangeNotifier {
-  BCompanyProvider({BCompanyService? service})
-    : _service = service ?? BCompanyService();
+  BCompanyProvider({BCompanyService? service, CompanyService? companyService})
+    : _service = service ?? BCompanyService(),
+      _companyService = companyService ?? CompanyService();
 
   final BCompanyService _service;
 
-  BCompany? _company;
+  /// Şirketi okumak iki uygulamada da aynı uç; okuma oradan geliyor.
+  final CompanyService _companyService;
+
+  Company? _company;
   EmployerStats? _stats;
 
   bool _isLoading = false;
@@ -33,7 +38,7 @@ class BCompanyProvider extends ChangeNotifier {
 
   /// Şirket. İşveren bireyselse (şirket üyeliği yoksa) `null` — bu bir hata
   /// değil, profilin kişi olarak çizileceği anlamına geliyor.
-  BCompany? get company => _company;
+  Company? get company => _company;
 
   EmployerStats? get stats => _stats;
 
@@ -90,7 +95,7 @@ class BCompanyProvider extends ChangeNotifier {
     }
 
     try {
-      final company = await _service.fetchCompany(companyId);
+      final company = await _companyService.fetchCompany(companyId);
       _company = company.copyWith(isApproved: isApproved);
     } on ApiException catch (error) {
       _company = null;
@@ -171,7 +176,7 @@ class BCompanyProvider extends ChangeNotifier {
   /// Şirketin yeni hâlini döndüren isteklerin ortak sarmalayıcısı.
   ///
   /// Onay bilgisi yanıtlarda gelmeyebiliyor, eldeki değer korunuyor.
-  Future<bool> _replaceCompany(Future<BCompany> Function() call) async {
+  Future<bool> _replaceCompany(Future<Company> Function() call) async {
     final current = _company;
     if (current == null) return false;
 

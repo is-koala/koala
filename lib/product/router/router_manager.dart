@@ -32,7 +32,6 @@ import 'package:koala/employee/features/chat/models/conversation.dart';
 import 'package:koala/employee/features/profile/presentation/pages/profile_page.dart';
 import 'package:koala/employee/features/home/presentation/pages/shell_page.dart';
 import 'package:koala/employee/features/company_detail/presentation/pages/company_detail_page.dart';
-import 'package:koala/employee/features/company_detail/models/company.dart';
 import 'package:koala/employee/features/settings/presentation/pages/settings_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/login_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/register_page.dart';
@@ -225,8 +224,9 @@ class RouterManager {
       GoRoute(
         path: '/company-detail',
         pageBuilder: (context, state) {
-          final companyData = state.extra as Company;
-          return _page(state, CompanyDetailPage(company: companyData));
+          // Ekran şirketi kendisi çekiyor; buraya yalnızca kimlik geçiyor.
+          final companyId = state.extra as String;
+          return _page(state, CompanyDetailPage(companyId: companyId));
         },
       ),
 

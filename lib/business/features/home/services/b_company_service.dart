@@ -1,13 +1,15 @@
 import 'package:flutter/foundation.dart';
-import 'package:koala/business/features/home/models/b_company.dart';
+import 'package:koala/employee/features/company_detail/models/company.dart';
 import 'package:koala/business/features/home/models/employer_stats.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
-/// İşverenin şirketi ve istatistikleri.
+/// İşverenin şirketini **yazma** uçları ve istatistikleri.
 ///
-/// Adı `b_` önekli çünkü çalışan tarafında da bir `CompanyService` var; o
-/// sahte şirket detayını besliyor ve alan adları backend'inkiyle uyuşmuyor.
+/// Okuma burada değil: şirketi çekmek iki uygulamada da aynı uç ve
+/// `employee/features/company_detail/services/company_service.dart`'ta
+/// duruyor. Burada yalnızca işverene özel, yetki isteyen işlemler var —
+/// `b_` öneki de o ayrımı taşıyor.
 class BCompanyService {
   BCompanyService._(this._apiClient);
 
@@ -22,22 +24,13 @@ class BCompanyService {
 
   final ApiClient _apiClient;
 
-  /// Şirketin tam hâli. Uç herkese açık; takip sayısı ve oturum sahibinin
-  /// takip durumu da yanıtta.
-  Future<BCompany> fetchCompany(String companyId) {
-    return _apiClient.get<BCompany>(
-      ApiPaths.company(companyId),
-      parse: (data) => BCompany.fromJson(data! as Map<String, dynamic>),
-    );
-  }
-
   /// Şirketi günceller ve yeni hâlini döndürür.
   ///
   /// Sunucu yalnızca bu beş alanı kabul ediyor (`UpdateCompanyRequestDto`):
   /// vergi numarası, adres, tür ve logo kurulduktan sonra değiştirilemiyor.
   /// Verilmeyen alan gövdeye hiç konmuyor; boş metin göndermek alanı
   /// silmek anlamına gelirdi.
-  Future<BCompany> updateCompany(
+  Future<Company> updateCompany(
     String companyId, {
     String? name,
     String? email,
@@ -45,7 +38,7 @@ class BCompanyService {
     String? website,
     String? description,
   }) {
-    return _apiClient.patch<BCompany>(
+    return _apiClient.patch<Company>(
       ApiPaths.company(companyId),
       body: {
         'name': ?name,
@@ -54,7 +47,7 @@ class BCompanyService {
         'website': ?website,
         'description': ?description,
       },
-      parse: (data) => BCompany.fromJson(data! as Map<String, dynamic>),
+      parse: (data) => Company.fromJson(data! as Map<String, dynamic>),
     );
   }
 
@@ -63,22 +56,22 @@ class BCompanyService {
   /// Sunucu `multipart/form-data` bekliyor ve parçanın adı **`logo`**.
   /// Yalnızca şirketin `ADMIN` yetkilisi çağırabiliyor; görselin metadata'sı
   /// temizlenerek depoya yazılıyor. Yanıt şirketin yeni hâli.
-  Future<BCompany> updateLogo(String companyId, String filePath) {
-    return _apiClient.putFile<BCompany>(
+  Future<Company> updateLogo(String companyId, String filePath) {
+    return _apiClient.putFile<Company>(
       ApiPaths.companyLogo(companyId),
       fieldName: 'logo',
       filePath: filePath,
-      parse: (data) => BCompany.fromJson(data! as Map<String, dynamic>),
+      parse: (data) => Company.fromJson(data! as Map<String, dynamic>),
     );
   }
 
   /// Şirketin logosunu kaldırır.
   ///
   /// Yalnızca bağlantı düşüyor, depodaki nesne silinmiyor.
-  Future<BCompany> removeLogo(String companyId) {
-    return _apiClient.delete<BCompany>(
+  Future<Company> removeLogo(String companyId) {
+    return _apiClient.delete<Company>(
       ApiPaths.companyLogo(companyId),
-      parse: (data) => BCompany.fromJson(data! as Map<String, dynamic>),
+      parse: (data) => Company.fromJson(data! as Map<String, dynamic>),
     );
   }
 

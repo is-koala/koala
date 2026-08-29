@@ -3,8 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
-import 'package:koala/employee/features/company_detail/services/company_service.dart';
-import 'package:koala/employee/features/company_detail/models/company.dart';
 import 'package:koala/employee/features/jobs/models/my_job.dart';
 import 'package:koala/employee/features/jobs/models/work_session.dart';
 import 'package:koala/employee/features/jobs/services/assignment_service.dart';

@@ -22,6 +22,15 @@ class ApiPaths {
   static const String currentUserProfilePicture = '/users/me/profile-picture';
   static const String currentUserAddress = '/users/me/address';
 
+  /// Oturum sahibinin iş deneyimleri.
+  ///
+  /// Liste `/users/me` yanıtında da geliyor; bu uçlar tek tek ekleme,
+  /// güncelleme ve silme için. Başkasının kaydına dokunmak `404`.
+  static const String currentUserExperiences = '/users/me/experiences';
+
+  static String currentUserExperience(String experienceId) =>
+      '$currentUserExperiences/$experienceId';
+
   // --------------------------------------------------------------------- Jobs
 
   static const String jobs = '/jobs';
@@ -144,7 +153,17 @@ class ApiPaths {
   /// şirketin `ADMIN` yetkilisi yapabiliyor; üye olmayan 404 alıyor.
   static String company(String companyId) => '$companies/$companyId';
 
+  /// Şirketi takip etme (`POST`) ve takibi bırakma (`DELETE`).
+  ///
+  /// Takip durumu ayrıca sorulmuyor: `GET /companies/{id}` yanıtı `following`
+  /// alanını taşıyor.
+  static String companyFollow(String companyId) =>
+      '${company(companyId)}/follow';
+
   /// Şirketin galerisi.
+  ///
+  /// Şirket detayı görselleri zaten gövdesinde döndürüyor; bu uç yalnızca
+  /// galeriyi tek başına yönetmek için.
   static String companyImages(String companyId) =>
       '${company(companyId)}/images';
 

@@ -1,17 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
+import 'package:koala/employee/features/auth/models/experience.dart';
 import 'package:koala/employee/features/auth/models/user_badge.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/experience_card.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/profile_avatar.dart';
+import 'package:koala/employee/features/profile/presentation/widgets/experience_sheet.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/profile_reviews.dart';
+import 'package:koala/employee/features/profile/services/experience_service.dart';
+import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/app_icon.dart';
+import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:provider/provider.dart';
 
@@ -24,6 +30,8 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage>
     with AutomaticKeepAliveClientMixin<ProfilePage> {
+  final ExperienceService _experienceService = ExperienceService();
+
   /// Profil fotoğrafının kenar uzunluğu.
   static const double _avatarSize = 100;
 
@@ -236,27 +244,143 @@ class _ProfilePageState extends State<ProfilePage>
     );
   }
 
-  /// Deneyim listesi. Boşsa bölüm çizilmiyor.
+  /// Deneyim listesi.
+  ///
+  /// Boşken de çiziliyor: eskiden bölüm hiç görünmüyordu ve kullanıcı
+  /// deneyim ekleyebileceğini fark edemiyordu.
   Widget experienceSection(CurrentUser user) {
-    if (user.experiences.isEmpty) return const SizedBox.shrink();
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionTitle("Tecrübe"),
+        Row(
+          children: [
+            _sectionTitle("Tecrübe"),
+            const Spacer(),
+            IconButton(
+              onPressed: _addExperience,
+              icon: Icon(Icons.add, color: context.accentColor),
+              tooltip: 'Deneyim ekle',
+            ),
+          ],
+        ),
         const SizedBox(height: AppSizes.space),
-        ...user.experiences.asMap().entries.map((entry) {
-          final experience = entry.value;
-          return ExperienceCard(
-            title: experience.title,
-            company: experience.subtitle,
-            duration: experience.durationLabel,
-            description: experience.description ?? '',
-            isLast: entry.key == user.experiences.length - 1,
-          );
-        }),
+        if (user.experiences.isEmpty)
+          Text(
+            'Henüz bir deneyim eklemedin.',
+            style: context.textTheme.bodyMedium?.copyWith(
+              color: context.textTertiary,
+            ),
+          )
+        else
+          ...user.experiences.asMap().entries.map((entry) {
+            final experience = entry.value;
+            return ExperienceCard(
+              title: experience.title,
+              company: experience.subtitle,
+              duration: experience.durationLabel,
+              description: experience.description ?? '',
+              isLast: entry.key == user.experiences.length - 1,
+              onEdit: () => _editExperience(experience),
+              onDelete: () => _deleteExperience(experience),
+            );
+          }),
       ],
     );
+  }
+
+  /// Deneyim ekler.
+  Future<void> _addExperience() async {
+    final result = await ExperienceSheet.show(context);
+    if (result == null || !mounted) return;
+
+    await _saveExperience(
+      () => _experienceService.create(
+        title: result.title,
+        startDate: result.startDate,
+        companyName: result.companyName,
+        employmentType: result.employmentType,
+        cityName: result.cityName,
+        endDate: result.endDate,
+        description: result.description,
+      ),
+      successMessage: 'Deneyim eklendi',
+    );
+  }
+
+  /// Deneyimi düzenler.
+  Future<void> _editExperience(Experience experience) async {
+    final result = await ExperienceSheet.show(context, initial: experience);
+    if (result == null || !mounted) return;
+
+    await _saveExperience(
+      () => _experienceService.update(
+        experienceId: experience.id,
+        title: result.title,
+        startDate: result.startDate,
+        companyName: result.companyName,
+        employmentType: result.employmentType,
+        cityName: result.cityName,
+        endDate: result.endDate,
+        description: result.description,
+      ),
+      successMessage: 'Deneyim güncellendi',
+    );
+  }
+
+  /// Deneyimi siler. Geri alınamıyor, önce onay soruluyor.
+  Future<void> _deleteExperience(Experience experience) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: const RoundedRectangleBorder(
+          borderRadius: AppRadius.secondaryCircular,
+        ),
+        title: Text('Deneyimi sil', style: dialogContext.textTheme.titleMedium),
+        content: Text(
+          '"${experience.title}" kaydı silinecek ve geri alınamayacak.',
+          style: dialogContext.textTheme.bodyMedium?.copyWith(
+            color: dialogContext.textSecondary,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Vazgeç'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    await _saveExperience(
+      () => _experienceService.delete(experience.id),
+      successMessage: 'Deneyim silindi',
+    );
+  }
+
+  /// Ekleme, güncelleme ve silmenin ortak gövdesi.
+  ///
+  /// Deneyimler `/users/me` yanıtından okunuyor; her değişiklikten sonra
+  /// kullanıcı tazeleniyor, dönen kayıt tek başına listeye yamanmıyor.
+  Future<void> _saveExperience(
+    Future<void> Function() call, {
+    required String successMessage,
+  }) async {
+    try {
+      await call();
+      if (!mounted) return;
+      AppToast.success(context, successMessage);
+      await context.read<UserProvider>().load(silent: true);
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      AppToast.error(context, error.message);
+    }
   }
 
   Column aboutProfile(CurrentUser user) {

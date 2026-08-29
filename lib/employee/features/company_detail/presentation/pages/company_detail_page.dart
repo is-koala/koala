@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/company_detail/models/company.dart';
+import 'package:koala/employee/features/company_detail/services/company_service.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:koala/product/constants/app_colors.dart';
@@ -10,15 +11,20 @@ import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
+import 'package:koala/product/widgets/my_appbar.dart';
 
 part 'company_detail_pagemodel.dart';
 
 class CompanyDetailPage extends StatefulWidget {
-  final Company company;
+  /// Şirketin kimliği. Ekran kaydı kendisi çekiyor: bir ilandan, bir işten
+  /// ya da bir sohbetten gelinebiliyor ve hepsinin elinde şirketin tam hâli
+  /// olmuyor — yalnızca kimliği oluyor.
+  final String companyId;
 
-  const CompanyDetailPage({super.key, required this.company});
+  const CompanyDetailPage({super.key, required this.companyId});
 
   /// Kapak alanının açık yüksekliği. Logo, şirket adı ve tür rozetini
   /// birlikte taşıyacak kadar.
@@ -44,24 +50,60 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
 
   @override
   Widget build(BuildContext context) {
+    final loaded = company;
+
+    if (loaded == null) {
+      return Scaffold(
+        backgroundColor: context.backgroundColor,
+        appBar: MyAppbar(title: 'Şirket'),
+        body: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _errorState(errorMessage ?? 'Şirket bulunamadı'),
+      );
+    }
+
     return Scaffold(
       backgroundColor: context.backgroundColor,
-      body: CustomScrollView(
-        controller: scrollController,
-        slivers: [
-          appBar(context, titleOpacity),
-          actionButtons(context),
-          SliverToBoxAdapter(child: _content()),
-        ],
+      body: RefreshIndicator(
+        onRefresh: load,
+        child: CustomScrollView(
+          controller: scrollController,
+          slivers: [
+            appBar(context, titleOpacity, loaded),
+            actionButtons(context, loaded),
+            SliverToBoxAdapter(child: _content(loaded)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Şirket çekilemediğinde: mesaj ve tekrar deneme.
+  Widget _errorState(String message) {
+    return Center(
+      child: Padding(
+        padding: AppPadding.primaryAll,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: context.textSecondary,
+              ),
+            ),
+            const SizedBox(height: AppSizes.spaceMedium),
+            OutlinedButton(onPressed: load, child: const Text('Tekrar Dene')),
+          ],
+        ),
       ),
     );
   }
 
   // ------------------------------------------------------------------ İçerik
 
-  Widget _content() {
-    final company = widget.company;
-
+  Widget _content(Company company) {
     return Padding(
       padding: AppPadding.primaryAll,
       child: Column(
@@ -83,7 +125,8 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
           _buildSectionTitle('İletişim Bilgileri'),
           const SizedBox(height: AppSizes.space),
           _buildInfoCard([
-            _buildInfoRow(AppIcons.mail, 'E-posta', company.email),
+            if (company.email != null)
+              _buildInfoRow(AppIcons.mail, 'E-posta', company.email!),
             if (company.phoneNumber != null)
               _buildInfoRow(AppIcons.call, 'Telefon', company.phoneNumber!),
             if (company.website != null)
@@ -94,10 +137,14 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
             _buildSectionTitle('Adres'),
             const SizedBox(height: AppSizes.space),
             _buildInfoCard([
+              // Sunucu şirketin tam adresini döndürüyor; adres satırı
+              // yoksa il/ilçe yazılıyor.
               _buildInfoRow(
                 AppIcons.location,
                 'Adres',
-                company.address!.fullAddress,
+                company.address!.addressLine ??
+                    company.address!.shortLabel ??
+                    '—',
               ),
             ]),
           ],
@@ -144,44 +191,44 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
 
   // ---------------------------------------------------------- Eylem butonları
 
-  SliverToBoxAdapter actionButtons(BuildContext context) {
+  SliverToBoxAdapter actionButtons(BuildContext context, Company company) {
     return SliverToBoxAdapter(
       child: Container(
         padding: AppPadding.primaryAll,
         color: context.backgroundColor,
         child: Row(
           children: [
-            Expanded(child: _followButton()),
+            Expanded(child: _followButton(company)),
             const SizedBox(width: AppSizes.space),
-            Expanded(child: _messageButton()),
+            Expanded(child: _messageButton(company)),
           ],
         ),
       ),
     );
   }
 
-  Widget _followButton() {
+  Widget _followButton(Company company) {
     return SizedBox(
       height: _actionButtonHeight,
       child: ElevatedButton.icon(
-        onPressed: toggleFollow,
+        onPressed: isTogglingFollow ? null : toggleFollow,
         icon: AppIcon(
-          isFollowing ? AppIcons.userCheck : AppIcons.userAdd,
+          company.isFollowing ? AppIcons.userCheck : AppIcons.userAdd,
           size: AppSizes.iconSmall,
         ),
-        label: Text(isFollowing ? 'Takip Ediliyor' : 'Takip Et'),
+        label: Text(company.isFollowing ? 'Takip Ediliyor' : 'Takip Et'),
         style: ElevatedButton.styleFrom(
-          backgroundColor: isFollowing
+          backgroundColor: company.isFollowing
               ? context.tileColor
               : context.accentColor,
-          foregroundColor: isFollowing
+          foregroundColor: company.isFollowing
               ? context.textSecondary
               : context.onAccentColor,
           elevation: 0,
           textStyle: context.textTheme.labelLarge,
           shape: RoundedRectangleBorder(
             borderRadius: AppRadius.innerCircular,
-            side: isFollowing
+            side: company.isFollowing
                 ? BorderSide(color: context.dividerColor)
                 : BorderSide.none,
           ),
@@ -190,7 +237,7 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
     );
   }
 
-  Widget _messageButton() {
+  Widget _messageButton(Company company) {
     return SizedBox(
       height: _actionButtonHeight,
       child: OutlinedButton.icon(
@@ -211,7 +258,11 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
 
   // ------------------------------------------------------------------ Kapak
 
-  SliverAppBar appBar(BuildContext context, double clampedOpacity) {
+  SliverAppBar appBar(
+    BuildContext context,
+    double clampedOpacity,
+    Company company,
+  ) {
     return SliverAppBar(
       pinned: true,
       expandedHeight: CompanyDetailPage.appBarExpandedHeight,
@@ -225,7 +276,7 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
       title: Opacity(
         opacity: clampedOpacity,
         child: Text(
-          widget.company.name,
+          company.name,
           style: context.textTheme.titleMedium?.copyWith(
             color: AppColors.onAccent,
           ),
@@ -241,10 +292,10 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
               mainAxisAlignment: MainAxisAlignment.end,
               mainAxisSize: MainAxisSize.min,
               children: [
-                _logo(),
+                _logo(company),
                 const SizedBox(height: AppSizes.space),
                 Text(
-                  widget.company.name,
+                  company.name,
                   style: context.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                     color: AppColors.onAccent,
@@ -253,9 +304,9 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                if (widget.company.type != null) ...[
+                if (company.type != null) ...[
                   const SizedBox(height: AppSizes.spaceTiny),
-                  _typeBadge(),
+                  _typeBadge(company),
                 ],
               ],
             ),
@@ -265,7 +316,7 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
     );
   }
 
-  Widget _logo() {
+  Widget _logo(Company company) {
     final placeholder = Icon(
       Icons.business,
       size: AppSizes.iconLarge,
@@ -286,11 +337,11 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
           ),
         ],
       ),
-      child: widget.company.logo != null
+      child: company.logoUrl != null
           ? ClipRRect(
               borderRadius: AppRadius.secondaryCircular,
               child: Image.network(
-                widget.company.logo!.url,
+                company.logoUrl!,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) => placeholder,
               ),
@@ -299,7 +350,7 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
     );
   }
 
-  Widget _typeBadge() {
+  Widget _typeBadge(Company company) {
     return Container(
       padding: AppPadding.badge,
       decoration: BoxDecoration(
@@ -307,7 +358,7 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
         borderRadius: AppRadius.smallCircular,
       ),
       child: Text(
-        widget.company.type!.displayName,
+        company.type!.displayName,
         style: context.textTheme.labelMedium?.copyWith(
           fontWeight: FontWeight.w600,
           color: AppColors.onAccent,

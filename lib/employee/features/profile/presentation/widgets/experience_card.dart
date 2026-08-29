@@ -12,6 +12,11 @@ class ExperienceCard extends StatelessWidget {
   final String description;
   final bool isLast;
 
+  /// Düzenleme ve silme. `null` ise satırda menü çıkmıyor — başkasının
+  /// profilinde kayıt yalnızca okunuyor.
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+
   const ExperienceCard({
     super.key,
     required this.title,
@@ -19,6 +24,8 @@ class ExperienceCard extends StatelessWidget {
     required this.duration,
     required this.description,
     this.isLast = false,
+    this.onEdit,
+    this.onDelete,
   });
 
   /// Zaman çizelgesi sütununun genişliği; nokta ortalanacak kadar.
@@ -41,6 +48,27 @@ class ExperienceCard extends StatelessWidget {
           Expanded(child: _cardContent(context)),
         ],
       ),
+    );
+  }
+
+  /// Düzenle / sil menüsü. İki eylem de verilmemişse kart salt okunur.
+  Widget? _menu(BuildContext context) {
+    if (onEdit == null && onDelete == null) return null;
+
+    return PopupMenuButton<VoidCallback>(
+      padding: EdgeInsets.zero,
+      icon: Icon(
+        Icons.more_vert,
+        size: AppSizes.icon,
+        color: context.textTertiary,
+      ),
+      onSelected: (action) => action(),
+      itemBuilder: (_) => [
+        if (onEdit != null)
+          PopupMenuItem(value: onEdit, child: const Text('Düzenle')),
+        if (onDelete != null)
+          PopupMenuItem(value: onDelete, child: const Text('Sil')),
+      ],
     );
   }
 
@@ -80,7 +108,12 @@ class ExperienceCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: context.textTheme.titleSmall),
+          Row(
+            children: [
+              Expanded(child: Text(title, style: context.textTheme.titleSmall)),
+              ?_menu(context),
+            ],
+          ),
           const SizedBox(height: AppSizes.spaceTiny),
           _iconRow(
             context,

@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:koala/business/features/home/models/b_company.dart';
 import 'package:koala/business/features/home/services/b_company_service.dart';
 
 import '../../../../support/fake_api.dart';
@@ -33,77 +32,6 @@ const _companyBody = {
 };
 
 void main() {
-  group('fetchCompany', () {
-    test('şirket modele çevriliyor', () async {
-      final api = FakeApi(
-        handler: (_) =>
-            const FakeApiResponse(statusCode: 200, body: _companyBody),
-      );
-
-      final company = await BCompanyService.withClient(
-        api.client,
-      ).fetchCompany('comp_1');
-
-      expect(api.requests.single.path, '/companies/comp_1');
-      expect(company.name, 'Kahve Durağı');
-      expect(company.type, BCompanyType.limited);
-      expect(company.address?.cityName, 'Ankara');
-      expect(company.followerCount, 12);
-    });
-
-    test('tanınmayan şirket türü "Diğer"e düşüyor', () async {
-      final api = FakeApi(
-        handler: (_) => const FakeApiResponse(
-          statusCode: 200,
-          body: {
-            'success': true,
-            'data': {'id': 'c', 'name': 'X', 'type': 'KOOPERATIF'},
-          },
-        ),
-      );
-
-      final company = await BCompanyService.withClient(
-        api.client,
-      ).fetchCompany('c');
-
-      expect(company.type, BCompanyType.other);
-    });
-
-    test('onay bilgisi `approved` anahtarından okunuyor', () async {
-      final api = FakeApi(
-        handler: (_) =>
-            const FakeApiResponse(statusCode: 200, body: _companyBody),
-      );
-
-      final company = await BCompanyService.withClient(
-        api.client,
-      ).fetchCompany('comp_1');
-
-      // Sunucudaki alan adı `approved`; `isApproved` okunursa sessizce
-      // "onay bekliyor" görünürdü.
-      expect(company.isApproved, isTrue);
-    });
-
-    test('onay alanı hiç gelmezse false', () async {
-      final api = FakeApi(
-        handler: (_) => const FakeApiResponse(
-          statusCode: 200,
-          body: {
-            'success': true,
-            'data': {'id': 'c', 'name': 'X'},
-          },
-        ),
-      );
-
-      final company = await BCompanyService.withClient(
-        api.client,
-      ).fetchCompany('c');
-
-      expect(company.isApproved, isFalse);
-      expect(company.copyWith(isApproved: true).isApproved, isTrue);
-    });
-  });
-
   group('updateCompany', () {
     test('PATCH atılıyor ve yalnızca verilen alanlar gönderiliyor', () async {
       final api = FakeApi(

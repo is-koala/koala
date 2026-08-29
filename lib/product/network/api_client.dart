@@ -132,6 +132,18 @@ class ApiClient {
     );
   }
 
+  /// Gövdesinde veri dönen `PUT` isteği.
+  ///
+  /// [patch]'ten farkı, kaydın tamamının gönderilmesi: gövdeye konmayan alan
+  /// "değişmedi" değil "boş" anlamına geliyor.
+  Future<T> put<T>(
+    String path, {
+    Object? body,
+    required T Function(Object? data) parse,
+  }) {
+    return _send<T>(() => _dio.put<dynamic>(path, data: body), parse: parse);
+  }
+
   /// Gövdesinde veri dönen `PATCH` isteği.
   ///
   /// Backend kısmi güncellemede yalnızca gönderilen alanlara bakıyor, o yüzden

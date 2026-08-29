@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:koala/business/features/home/models/b_company.dart';
+import 'package:koala/employee/features/company_detail/models/company.dart';
 import 'package:koala/business/features/home/presentation/providers/b_company_provider.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
@@ -100,7 +100,7 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
   }
 
   /// Alanları şirketin son hâliyle doldurur.
-  void _fill(BCompany company) {
+  void _fill(Company company) {
     if (_filledFrom == company.id) return;
     _filledFrom = company.id;
 
@@ -236,7 +236,7 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
     );
   }
 
-  Widget _body(BCompanyProvider provider, BCompany? company) {
+  Widget _body(BCompanyProvider provider, Company? company) {
     if (provider.isLoading && company == null) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -332,7 +332,7 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
   }
 
   /// Logo önizlemesi ve değiştirme/kaldırma eylemleri.
-  Widget _logoSection(BCompany company) {
+  Widget _logoSection(Company company) {
     final hasLogo = company.logoUrl != null && company.logoUrl!.isNotEmpty;
 
     return Row(

@@ -483,25 +483,36 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
         _detail?.employerName ??
         widget.job.category.displayName;
 
+    // Şirket kimliği yalnızca ilan detayında var; liste ucu şirketin adını
+    // döndürüyor, kimliğini değil. Detay gelmediyse satır düz metin kalıyor.
+    final companyId = _detail?.company?.id;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Expanded(
-          // TODO(backend): Şirket detayına gitmek `GET /companies/{id}` ile
-          // bağlanacak. `company_detail` hâlâ sahte servise bakıyor ve onun
-          // `Company` modeli `JobCompany` ile uyuşmuyor, o yüzden satır
-          // şimdilik tıklanabilir değil.
-          child: Text(
-            label,
-            overflow: TextOverflow.ellipsis,
-            style: context.textTheme.bodySmall?.copyWith(
-              fontSize: lerpDouble(
-                _companyFontMin,
-                _companyFontMax,
-                expandProgress,
+          child: GestureDetector(
+            onTap: companyId == null
+                ? null
+                : () => context.push('/company-detail', extra: companyId),
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              style: context.textTheme.bodySmall?.copyWith(
+                fontSize: lerpDouble(
+                  _companyFontMin,
+                  _companyFontMax,
+                  expandProgress,
+                ),
+                fontWeight: FontWeight.w500,
+                color: companyId == null
+                    ? context.textSecondary
+                    : context.accentColor,
+                decoration: companyId == null
+                    ? TextDecoration.none
+                    : TextDecoration.underline,
+                decorationColor: context.accentColor,
               ),
-              fontWeight: FontWeight.w500,
-              color: context.textSecondary,
             ),
           ),
         ),
