@@ -30,6 +30,30 @@ class ApiPaths {
   static const String currentUserIdentityVerification =
       '/users/me/identity-verification';
 
+  /// Oturum sahibinin takip ettiği şirketler. Sayfalı.
+  static const String followedCompanies = '/users/me/followed-companies';
+
+  // ----------------------------------------------------------------- Eğitim
+
+  /// Oturum sahibinin öğrenim kayıtları.
+  ///
+  /// Liste `/users/me` yanıtında da geliyor; bu uçlar ekleme, güncelleme ve
+  /// silme için.
+  static const String currentUserEducations = '/users/me/educations';
+
+  static String currentUserEducation(String educationId) =>
+      '$currentUserEducations/$educationId';
+
+  /// Üniversite / fakülte / bölüm referans listeleri. Üçü de kimlik
+  /// doğrulama istemiyor.
+  static const String universities = '/reference/universities';
+
+  static String universityFaculties(String universityId) =>
+      '$universities/$universityId/faculties';
+
+  static String facultyDepartments(String facultyId) =>
+      '/reference/faculties/$facultyId/departments';
+
   // ---------------------------------------------------------------- Oturumlar
 
   /// Hesabın açık oturumları. `DELETE` isteği atan oturum hariç hepsini

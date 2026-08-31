@@ -405,6 +405,8 @@ Empty lists go through **`EmptyState`** (`product/widgets/`), which owns the ico
 Bottom sheets go through **`AppBottomSheet`** (`product/widgets/`), which owns the background, the top corners, the title row and the bottom safe-area inset. If the sheet has its own state, wrap `AppBottomSheet` in a `StatefulBuilder` inside the builder — the shell itself is stateless.
 
 > ⚠️ **Do not put a `ListTile` inside `AppBottomSheet`.** The shell's background is a `DecoratedBox` and `ListTile` paints its own background and ink splashes onto the nearest `Material` **above** that box, so both are hidden; Flutter reports it at runtime as *"ListTile background color or ink splashes may be invisible"*. Every tappable row in this codebase is `Material` + `InkWell` + `Padding` for exactly this reason — see `MyListTile`, `ThemeModeSheet._option` and `BOptionSheet._option`, and copy one of them. `test/business/.../b_option_sheet_test.dart` fails if a `ListTile` comes back.
+>
+> **This catches the widgets that build a `ListTile` for you, too** — and that is the version that actually shipped twice. `SwitchListTile`, `CheckboxListTile` and `RadioListTile` all construct a `ListTile` internally, so the assertion fires with no `ListTile` anywhere in the file and `grep ListTile` finds nothing. Use **`SheetSwitchRow`** (`employee/features/profile/presentation/widgets/`) for a switch in a sheet; it keeps the tap-the-label behaviour that `SwitchListTile` gave for free. And do not "fix" this by wrapping `AppBottomSheet`'s content in a transparent `Material` — that silences the assertion by overriding the convention this whole section exists to enforce.
 
 Single-choice lists on the business side go through **`BOptionSheet`** (`business/features/home/presentation/widgets/`): a generic sheet driven by a label getter, with optional per-item icon and colour. The matching field is **`BSelectionField`**, which wears `MyTextfield`'s frame so a "tap to choose" field and a typed field sit on the same grid. Job category, country, province and district all use the pair — the category used to be a chip row, but the list comes from the server and can grow.
 
@@ -530,6 +532,18 @@ Every place that needs the real backend is marked with a `// TODO(backend):` com
 
 The server marks the calling session with `current`. That row gets a "Bu cihaz" badge and **no close button** — closing your own session is logging out, and that already has a row in Settings which also clears the local providers and the realtime connection. Revoking never edits the list in place; it refetches, because closing one session can drop others.
 
+**The profile is fully wired except the CV.** Education is the newest piece: `/users/me/educations` CRUD through `profile/services/education_service.dart`, with the university → faculty → department chain coming from `product/services/academic_reference_service.dart` (`/reference/universities`, `.../{id}/faculties`, `/reference/faculties/{id}/departments`). Those three endpoints need no auth and their lists barely change, so the service caches them per parent id for the session. Two things worth knowing before editing that form:
+
+- **The three pickers are a chain, not three independent fields.** Changing the university clears the faculty *and* the department; changing the faculty clears the department. Leaving a stale child selected would post another school's faculty id.
+- **A long list needs search, not a dropdown.** There are 200+ universities, so `AcademicPickerSheet` is a searchable sheet whose filter folds Turkish characters — typing "bogazici" has to find "Boğaziçi".
+- `gpa` is a non-nullable `double` server-side, so "not given" travels as `0`, and the profile hides the figure when it is `0` — rendering "0.00" would read as a bad grade.
+
+`ExperienceCard` became **`TimelineCard`** when education reused it; the parameters are neutral now (`subtitle`, `subtitleIcon`) because the same row renders a company for experience and a school for education.
+
+`qualifications` and `interests` are editable in *Hesabı Düzenle* and shown on the profile — but only when filled, unlike *Hakkımda* which always draws with a placeholder. Three empty headings in a row read as an unfinished profile.
+
+**Followed companies** live at `/followed-companies` (paged), reached from the profile app bar. `FollowedCompanyDto` is a trimmed summary whose id field is `companyId`, not `id`, so it has its own model rather than reusing `Company`. You cannot unfollow from that list on purpose — unfollowing belongs to the company screen, and two sources of truth for one flag invites drift.
+
 **Client version gate.** Every request carries `X-App-Version` (`ApiConfig.appVersionHeader`) sourced from `AppInfo.version`. The server's `MinimumAppVersionFilter` compares it and answers `426` with `errorCode: UPGRADE_REQUIRED`, mapped to `ApiErrorType.upgradeRequired`. Two traps: the filter **passes any request that omits the header**, so dropping it silently disables forced updates entirely; and `AppInfo.version` is kept in sync with `pubspec.yaml` **by hand** — bump both together. Reading it from the package would need `package_info_plus` (present in `pubspec.lock` only via `geolocator_linux`, a platform we do not build), so it is a real new dependency and needs asking. There is no forced-update screen yet — the error is classified and surfaced, nothing blocks the app.
 
 **Not wired up:**
@@ -542,10 +556,9 @@ The server marks the calling session with `current`. That row gets a "Bu cihaz" 
 
   Both are marked `TODO(backend)` at the mapping sites even though the fix is a design decision, so `grep -rn "TODO(backend)" lib` surfaces them together with the rest.
 - **Server endpoints the profile could use but does not.** These were deliberately left for later, not overlooked:
-  - **Education** — `CurrentUser.educations` is parsed and carried, but no screen renders it. `/users/me/educations` has full CRUD (`UserProfileController`), and the university / faculty / department pickers would come from `/reference/universities`, `/reference/universities/{id}/faculties`, `/reference/faculties/{id}/departments`.
-  - **CV upload** — the profile's *Özgeçmiş* card only reports whether `cvUrl` is set. `PUT /users/me/cv` takes multipart under the form field name **`file`** (not `image`), and `DELETE /users/me/cv` removes it. Needs a file picker, which means a new dependency — ask first.
-  - **Experience editing** — the *Tecrübe* section is read-only. `/users/me/experiences` has full CRUD; adding one needs a form screen with an `EmploymentType` picker and a month/year range.
-  - **`qualifications`** is parsed but no longer shown anywhere. "Meslek" moved to the real `jobTitle` field; `qualifications` ("yetkinlikler") is a separate thing with no UI yet.
+    - **CV upload** — the profile's *Özgeçmiş* card only reports whether `cvUrl` is set. `PUT /users/me/cv` takes multipart under the form field name **`file`** (not `image`), and `DELETE /users/me/cv` removes it. This is the one profile feature still missing, and it is blocked on a dependency: `image_picker` cannot pick a PDF, so it needs `file_picker` — ask before adding.
+
+  - **Experience editing** is done; the *Tecrübe* section has add / edit / delete through `/users/me/experiences`.
   - **Presence** — `GET /users/{userId}/presence` and the batch `POST /presence/lookup` exist; the chat UI still hardcodes `isOnline: false`.
 - ~~`b_create_page.dart` hardcodes the coordinates of every job.~~ Fixed: `CreateAddressRequestDto` makes `countryCode`, `cityName`, `addressLine`, `latitude` and `longitude` all mandatory, and the server never geocodes free text — so the create screen now collects the province and district from `/reference/countries → cities → districts` and the coordinate from `BLocationPickerPage`, a `google_maps_flutter` screen where the employer slides the map under a fixed centre pin. No new dependency; `geocoding` was rejected because it guesses at free-text addresses.
 

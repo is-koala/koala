@@ -31,6 +31,10 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
   /// "Hakkımda" alanının yüksekliği: yaklaşık dört satır.
   static const double _aboutHeight = 120;
 
+  /// Yetkinlik ve ilgi alanı kutularının yüksekliği; tanıtım yazısından
+  /// kısa metinler bekleniyor.
+  static const double _multilineHeight = 90;
+
   late TextEditingController _firstNameController;
   late TextEditingController _lastNameController;
   late TextEditingController _occupationController;
@@ -38,6 +42,8 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
   late TextEditingController _locationController;
   late TextEditingController _ibanController;
   late TextEditingController _aboutController;
+  late TextEditingController _qualificationsController;
+  late TextEditingController _interestsController;
 
   @override
   void initState() {
@@ -56,6 +62,10 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
     // maskenin kendisi IBAN diye gönderilirdi.
     _ibanController = TextEditingController();
     _aboutController = TextEditingController(text: user.about ?? '');
+    _qualificationsController = TextEditingController(
+      text: user.qualifications ?? '',
+    );
+    _interestsController = TextEditingController(text: user.interests ?? '');
   }
 
   @override
@@ -67,6 +77,8 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
     _locationController.dispose();
     _ibanController.dispose();
     _aboutController.dispose();
+    _qualificationsController.dispose();
+    _interestsController.dispose();
     super.dispose();
   }
 
@@ -86,6 +98,11 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
     final about = _changed(_aboutController.text, user.about);
     final phoneNumber = _changed(_phoneController.text, user.phoneNumber);
     final jobTitle = _changed(_occupationController.text, user.jobTitle);
+    final qualifications = _changed(
+      _qualificationsController.text,
+      user.qualifications,
+    );
+    final interests = _changed(_interestsController.text, user.interests);
 
     // IBAN alanı boş bırakıldıysa hiç gönderilmiyor: kayıtlı IBAN
     // maskelendiği için "değişti mi" karşılaştırması yapılamıyor, boş metin
@@ -97,6 +114,8 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
       lastName: _canEditName ? lastName : null,
       about: about,
       jobTitle: jobTitle,
+      qualifications: qualifications,
+      interests: interests,
       phoneNumber: phoneNumber,
       iban: iban.isEmpty ? null : iban,
     );
@@ -199,6 +218,24 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
               ),
               const SizedBox(height: AppSizes.spaceMedium),
               _aboutTextField(),
+              const SizedBox(height: AppSizes.spaceMedium),
+              MyTextfield(
+                labelText: "Yetkinlikler",
+                controller: _qualificationsController,
+                expands: true,
+                height: _multilineHeight,
+              ),
+              _hint(
+                "Yaptığın işte öne çıkan tarafların. İşveren başvurunda "
+                "bunları görüyor.",
+              ),
+              const SizedBox(height: AppSizes.spaceMedium),
+              MyTextfield(
+                labelText: "İlgi alanları",
+                controller: _interestsController,
+                expands: true,
+                height: _multilineHeight,
+              ),
               const SizedBox(height: AppSizes.sectionSpace),
             ],
           ),

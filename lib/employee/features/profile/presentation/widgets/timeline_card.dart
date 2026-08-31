@@ -4,10 +4,19 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 
-/// Profildeki deneyim satırı: solda zaman çizelgesi noktası, sağda kart.
-class ExperienceCard extends StatelessWidget {
+/// Profildeki zaman çizelgesi satırı: solda nokta, sağda kart.
+///
+/// Hem deneyim hem eğitim bunu kullanıyor. Alan adları bu yüzden nötr:
+/// deneyimde [subtitle] şirket, eğitimde üniversite oluyor.
+class TimelineCard extends StatelessWidget {
   final String title;
-  final String company;
+
+  /// Başlığın altındaki vurgulu satır — deneyimde şirket, eğitimde okul.
+  final String subtitle;
+
+  /// [subtitle]'ın yanındaki ikon; çağıran alana göre veriyor.
+  final IconData subtitleIcon;
+
   final String duration;
   final String description;
   final bool isLast;
@@ -17,12 +26,13 @@ class ExperienceCard extends StatelessWidget {
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
-  const ExperienceCard({
+  const TimelineCard({
     super.key,
     required this.title,
-    required this.company,
+    required this.subtitle,
     required this.duration,
     required this.description,
+    this.subtitleIcon = Icons.business,
     this.isLast = false,
     this.onEdit,
     this.onDelete,
@@ -117,9 +127,9 @@ class ExperienceCard extends StatelessWidget {
           const SizedBox(height: AppSizes.spaceTiny),
           _iconRow(
             context,
-            icon: Icons.business,
+            icon: subtitleIcon,
             iconSize: AppSizes.iconSmall,
-            text: company,
+            text: subtitle,
             style: context.textTheme.bodyMedium?.copyWith(
               fontWeight: FontWeight.w500,
               color: context.accentColor,
@@ -134,8 +144,12 @@ class ExperienceCard extends StatelessWidget {
             text: duration,
             style: context.textTheme.labelMedium,
           ),
-          const SizedBox(height: AppSizes.spaceSmall),
-          Text(description, style: context.textTheme.bodySmall),
+          // Eğitim kaydında açıklama yok; boş satır kart yüksekliğini
+          // gereksiz büyütmesin.
+          if (description.isNotEmpty) ...[
+            const SizedBox(height: AppSizes.spaceSmall),
+            Text(description, style: context.textTheme.bodySmall),
+          ],
         ],
       ),
     );

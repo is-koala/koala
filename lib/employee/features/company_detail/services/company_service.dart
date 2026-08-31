@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:koala/employee/features/company_detail/models/company.dart';
+import 'package:koala/employee/features/profile/models/followed_company.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
@@ -44,5 +45,21 @@ class CompanyService {
   /// Şirket takibini bırakır. Takip edilmeyen şirkette sessizce geçiyor.
   Future<void> unfollow(String companyId) {
     return _apiClient.deleteWithoutData(ApiPaths.companyFollow(companyId));
+  }
+
+  /// Oturum sahibinin takip ettiği şirketler, yeniden eskiye.
+  ///
+  /// Kayıtlar şirketin tam hâli değil, liste için kırpılmış özetler —
+  /// ayrıntı için `fetchCompany` gerekiyor.
+  Future<FollowedCompanyPage> fetchFollowedCompanies({
+    int page = 0,
+    int size = 20,
+  }) {
+    return _apiClient.get<FollowedCompanyPage>(
+      ApiPaths.followedCompanies,
+      queryParameters: {'page': page, 'size': size},
+      parse: (data) =>
+          FollowedCompanyPage.fromJson(data! as Map<String, dynamic>),
+    );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:koala/employee/features/auth/models/experience.dart';
+import 'package:koala/employee/features/profile/presentation/widgets/sheet_switch_row.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
@@ -215,15 +216,14 @@ class _ExperienceSheetState extends State<ExperienceSheet> {
   }
 
   Widget _currentToggle() {
-    return SwitchListTile.adaptive(
-      contentPadding: AppPadding.zero,
+    return SheetSwitchRow(
+      title: 'Hâlâ çalışıyorum',
       value: _isCurrent,
       onChanged: (value) => setState(() {
         _isCurrent = value;
         // Sunucuda "sürüyor" demek bitiş tarihinin olmaması demek.
         if (value) _endDate = null;
       }),
-      title: Text('Hâlâ çalışıyorum', style: context.textTheme.bodyMedium),
     );
   }
 

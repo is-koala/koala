@@ -3,7 +3,10 @@ import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/models/experience.dart';
 import 'package:koala/employee/features/auth/models/user_badge.dart';
-import 'package:koala/employee/features/profile/presentation/widgets/experience_card.dart';
+import 'package:koala/employee/features/auth/models/education.dart';
+import 'package:koala/employee/features/profile/presentation/widgets/education_sheet.dart';
+import 'package:koala/employee/features/profile/services/education_service.dart';
+import 'package:koala/employee/features/profile/presentation/widgets/timeline_card.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/profile_avatar.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/experience_sheet.dart';
@@ -32,6 +35,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage>
     with AutomaticKeepAliveClientMixin<ProfilePage> {
   final ExperienceService _experienceService = ExperienceService();
+  final EducationService _educationService = EducationService();
 
   /// Profil fotoğrafının kenar uzunluğu.
   static const double _avatarSize = 100;
@@ -77,6 +81,11 @@ class _ProfilePageState extends State<ProfilePage>
         isLarge: true,
         showBackButton: false,
         actions: [
+          IconButton(
+            onPressed: () => context.push('/followed-companies'),
+            icon: AppIcon(AppIcons.building, color: context.textPrimary),
+            tooltip: 'Takip ettiklerim',
+          ),
           const NotificationBell(route: '/notifications'),
           IconButton(
             onPressed: () async {
@@ -152,6 +161,8 @@ class _ProfilePageState extends State<ProfilePage>
               const SizedBox(height: AppSizes.spaceXLarge),
               rosettes(user),
               experienceSection(user),
+              const SizedBox(height: AppSizes.spaceLarge),
+              educationSection(user),
               const SizedBox(height: AppSizes.spaceLarge),
               ProfileReviews(userId: user.id),
               const SizedBox(height: _bottomClearance),
@@ -276,9 +287,9 @@ class _ProfilePageState extends State<ProfilePage>
         else
           ...user.experiences.asMap().entries.map((entry) {
             final experience = entry.value;
-            return ExperienceCard(
+            return TimelineCard(
               title: experience.title,
-              company: experience.subtitle,
+              subtitle: experience.subtitle,
               duration: experience.durationLabel,
               description: experience.description ?? '',
               isLast: entry.key == user.experiences.length - 1,
@@ -288,6 +299,156 @@ class _ProfilePageState extends State<ProfilePage>
           }),
       ],
     );
+  }
+
+  /// Öğrenim kayıtları.
+  ///
+  /// Deneyim bölümüyle aynı kurgu: boşken de çiziliyor ki kullanıcı
+  /// ekleyebileceğini görsün.
+  Widget educationSection(CurrentUser user) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            _sectionTitle("Eğitim"),
+            const Spacer(),
+            IconButton(
+              onPressed: _addEducation,
+              icon: Icon(Icons.add, color: context.accentColor),
+              tooltip: 'Eğitim ekle',
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSizes.space),
+        if (user.educations.isEmpty)
+          Text(
+            'Henüz bir eğitim eklemedin.',
+            style: context.textTheme.bodyMedium?.copyWith(
+              color: context.textTertiary,
+            ),
+          )
+        else
+          ...user.educations.asMap().entries.map((entry) {
+            final education = entry.value;
+            return TimelineCard(
+              title: education.universityName ?? 'Üniversite',
+              subtitle: education.subtitle,
+              subtitleIcon: Icons.school,
+              duration: _educationDuration(education),
+              description: '',
+              isLast: entry.key == user.educations.length - 1,
+              onEdit: () => _editEducation(education),
+              onDelete: () => _deleteEducation(education),
+            );
+          }),
+      ],
+    );
+  }
+
+  /// Tarih aralığı ve kademe. Not ortalaması varsa o da ekleniyor —
+  /// girilmemişse hiç yazılmıyor, "0.0" kötü not gibi okunurdu.
+  String _educationDuration(Education education) {
+    final parts = <String>[
+      education.durationLabel,
+      education.type.displayName,
+      if (education.gpa != null) 'GNO ${education.gpa!.toStringAsFixed(2)}',
+    ];
+
+    return parts.where((part) => part.isNotEmpty).join(' · ');
+  }
+
+  Future<void> _addEducation() async {
+    final result = await EducationSheet.show(context);
+    if (result == null || !mounted) return;
+
+    await _saveEducation(
+      () => _educationService.create(
+        universityId: result.universityId,
+        facultyId: result.facultyId,
+        departmentId: result.departmentId,
+        type: result.type,
+        startDate: result.startDate,
+        gpa: result.gpa,
+        endDate: result.endDate,
+      ),
+      successMessage: 'Eğitim eklendi',
+    );
+  }
+
+  Future<void> _editEducation(Education education) async {
+    final result = await EducationSheet.show(context, initial: education);
+    if (result == null || !mounted) return;
+
+    await _saveEducation(
+      () => _educationService.update(
+        educationId: education.id,
+        universityId: result.universityId,
+        facultyId: result.facultyId,
+        departmentId: result.departmentId,
+        type: result.type,
+        startDate: result.startDate,
+        gpa: result.gpa,
+        endDate: result.endDate,
+      ),
+      successMessage: 'Eğitim güncellendi',
+    );
+  }
+
+  /// Kaydı siler. Geri alınamıyor, önce onay soruluyor.
+  Future<void> _deleteEducation(Education education) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: const RoundedRectangleBorder(
+          borderRadius: AppRadius.secondaryCircular,
+        ),
+        title: Text('Eğitimi sil', style: dialogContext.textTheme.titleMedium),
+        content: Text(
+          '"${education.universityName ?? 'Bu kayıt'}" silinecek ve geri '
+          'alınamayacak.',
+          style: dialogContext.textTheme.bodyMedium?.copyWith(
+            color: dialogContext.textSecondary,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Vazgeç'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    await _saveEducation(
+      () => _educationService.delete(education.id),
+      successMessage: 'Eğitim silindi',
+    );
+  }
+
+  /// Ekleme, güncelleme ve silmenin ortak gövdesi.
+  ///
+  /// Eğitimler `/users/me` yanıtından okunuyor; her değişiklikten sonra
+  /// kullanıcı tazeleniyor, dönen kayıt tek başına listeye yamanmıyor.
+  Future<void> _saveEducation(
+    Future<void> Function() call, {
+    required String successMessage,
+  }) async {
+    try {
+      await call();
+      if (!mounted) return;
+      await context.read<UserProvider>().load(silent: true);
+      if (mounted) AppToast.success(context, successMessage);
+    } on ApiException catch (error) {
+      if (mounted) AppToast.error(context, error.message);
+    }
   }
 
   /// Deneyim ekler.
@@ -400,7 +561,29 @@ class _ProfilePageState extends State<ProfilePage>
             color: isEmpty ? context.textTertiary : null,
           ),
         ),
+        // Yetkinlik ve ilgi alanı, tanıtım yazısının aksine **boşken hiç
+        // çizilmiyor**: ikisi de isteğe bağlı ve profili üç boş başlıkla
+        // karşılamak kullanıcıya eksik bırakmış hissi veriyor.
+        ?_textSection("Yetkinlikler", user.qualifications),
+        ?_textSection("İlgi Alanları", user.interests),
       ],
+    );
+  }
+
+  /// Doluysa başlık ve metni çizer, boşsa hiçbir şey döndürmez.
+  Widget? _textSection(String title, String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSizes.spaceMedium),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionTitle(title),
+          const SizedBox(height: AppSizes.spaceTiny),
+          Text(value, style: context.textTheme.bodyMedium),
+        ],
+      ),
     );
   }
 

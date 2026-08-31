@@ -12,6 +12,7 @@ import 'package:koala/business/features/home/presentation/pages/b_job_detail_pag
 import 'package:koala/business/features/home/presentation/pages/b_user_profile_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_notifications_page.dart';
 import 'package:koala/employee/features/notifications/presentation/pages/notifications_page.dart';
+import 'package:koala/employee/features/profile/presentation/pages/followed_companies_page.dart';
 import 'package:koala/employee/features/settings/presentation/pages/sessions_page.dart';
 import 'package:koala/business/features/chat/presentation/pages/b_chat_list_page.dart';
 import 'package:koala/business/features/chat/presentation/pages/b_chat_page.dart';
@@ -391,6 +392,12 @@ class RouterManager {
             ),
           );
         },
+      ),
+
+      GoRoute(
+        path: '/followed-companies',
+        pageBuilder: (context, state) =>
+            _page(state, const FollowedCompaniesPage()),
       ),
 
       GoRoute(
