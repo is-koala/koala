@@ -43,6 +43,11 @@ class BSettingsPage extends StatelessWidget {
           },
         ),
         MyListTile(
+          icon: AppIcons.mobile,
+          title: "Oturumlar",
+          onTap: () => context.push('/sessions'),
+        ),
+        MyListTile(
           icon: AppIcons.paint,
           title: "Görünüm",
           value: context.watch<ThemeProvider>().themeMode.label,

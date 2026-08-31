@@ -30,6 +30,15 @@ class ApiPaths {
   static const String currentUserIdentityVerification =
       '/users/me/identity-verification';
 
+  // ---------------------------------------------------------------- Oturumlar
+
+  /// Hesabın açık oturumları. `DELETE` isteği atan oturum hariç hepsini
+  /// kapatıyor.
+  static const String currentUserSessions = '/users/me/sessions';
+
+  static String currentUserSession(String sessionId) =>
+      '$currentUserSessions/$sessionId';
+
   // ------------------------------------------------------------- Bildirimler
 
   /// Oturum sahibinin bildirim akışı. Sayfalı; okunmamış sayısı da aynı
