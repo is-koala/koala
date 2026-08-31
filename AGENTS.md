@@ -456,7 +456,11 @@ Both shells use `extendBody: true` and `extendBodyBehindAppBar: true`, so page c
 
 This is the product pipeline and how much of it the server actually enforces today. A ✗ marks something the server does **not** do yet; where a change has been requested from the backend developer, it says so — do not code against the requested shape until it lands.
 
-> **Read this first.** NVİ closed the KPS service. `KimlikPaylasimSistemiService` still posts to it, so `POST /users/me/identity-verification` cannot currently succeed for anybody, `identityVerified` never becomes `true`, and — because it is the first condition of the apply gate — **nobody can apply to any job.** Two request documents went to the backend developer: one moves verification to the client, the other adds the missing identity gate on the individual-employer side. Until the first lands, the apply flow is broken end to end, and that is not something the app can work around.
+> **Read this first.** NVİ closed the KPS service, and the backend has since removed it entirely — `core/utilities/kps/` is gone and nothing references it (verified against commit `a10856c`). Verification succeeds again, so the apply chain is not broken.
+>
+> **What replaced it is built but not switched on yet, deliberately.** Chip verification shipped behind `IDENTITY_PASSIVE_AUTH_ENABLED`, which defaults to `false` — the backend developer left it off on purpose, because turning it on before any client sends chip evidence would lock everyone out. With the flag off, `verifyChipEvidence` returns immediately and the server writes what the request contains, so a hand-typed TCKN becomes `identityVerified`; uniqueness (`TC_IDENTITY_NUMBER_ALREADY_IN_USE`, `409`) is the only guard in the meantime. Both sides know this and the flag flips once the app sends `sod`/`dg1`.
+>
+> **The NFC work is deliberately deferred** — the user plans to pick it up later, so do not start it, and do not treat the current identity screen as a bug. It is the agreed interim state.
 
 1. **Sign-up is deliberately thin.** `POST /auth/start-registration` takes only `firstName`, `lastName`, `email`, `isEmployer`. The emailed token goes to `POST /auth/verify-registration-token`, then `POST /auth/complete-registration` sets the password and records the legal consents. No identity, no address, no IBAN. ✓
 2. **Browsing needs no account at all.** `GET /jobs`, `GET /jobs/{jobId}` and the job/company image endpoints are `permitAll` in `SecurityConfig`, so search works before login. Nothing about discovery has to sit behind sign-up. ✓
@@ -475,6 +479,15 @@ KPS is gone, so there is no server-side authority left to ask. Verification move
 
 This is *more* than KPS did: KPS only answered "are these five fields consistent", it never knew who was holding the card.
 
+**The server verifies layer 1's evidence.** It chains the SOD signature up to a CSCA root, compares DG hashes, and matches the TCKN, birth date and name against the MRZ. It also closes the replay hole, which is worth understanding: `sod` and `dg1` are *constant for a given card*, so anyone who reads them once could resend them forever. Active Authentication fixes that — the server issues a single-use challenge, the chip signs it with a private key that never leaves the chip. Two consequences for us:
+
+- **Order matters.** Fetch the challenge from `POST /users/me/identity-verification/challenge` *before* opening the card session — it is what gets signed. Valid for 10 minutes, single use.
+- **We must send `INTERNAL AUTHENTICATE`,** not just read data groups. Whichever NFC library we pick has to support it. If the card has no `DG15`, the step is skipped and the flow still works.
+
+Data groups: `SOD` and `DG1` are required; `DG15` (chip public key) and `DG11` should be sent when present; `DG2` is deliberately **not** sent — face matching stays on the device. `DG11` matters more than it looks: the MRZ is folded to ASCII, so a card reading **ÇAĞRI** carries **CAGRI** in `DG1`, truncated at 30 characters. Taking the name from `DG1` would corrupt it. `DG11` is hashed in the SOD too, so it is no less trustworthy — just correct.
+
+Everything new is optional and both flags are off, so a request without the evidence still behaves the old way. Error codes all return `400` except `TC_IDENTITY_NUMBER_ALREADY_IN_USE`, which is `409`; `IDENTITY_CHALLENGE_INVALID` means fetch a fresh challenge and start over.
+
 The trust boundary moves with it, and that is the part to keep in mind while building. Layers 1–3 defend against a user cheating with someone else's card or a photo — the common case, and they defend it well. They do **not** defend against someone repackaging the app, because that attacker skips the checks entirely and posts the result straight to the endpoint; the server sees no evidence either way. The fix is not to move all three layers server-side: sending layer 1's evidence (`sod` + `dg1`) is enough, because producing that signature requires physically touching a real chip. Face match and liveness stay on device. This has been requested; see `KIMLIK_DOGRULAMA_RAPORU.md` at the repo root for the whole analysis.
 
 ### Requested from the backend, not yet delivered
@@ -482,8 +495,9 @@ The trust boundary moves with it, and that is the part to keep in mind while bui
 Do not build against these until the backend developer confirms they shipped.
 
 - ✗ **Nothing forces an individual employer to verify.** Creating a *company* requires `identityVerified` (`CompanyManager`), creating an individual job does not, and the escrow call sends `buyer.identityNumber = job.getCreator().getTcIdentityNumber()` with no guard. An unverified individual employer therefore gets an opaque Iyzico failure at the worst possible moment — right after they accept an applicant, with a worker on the other side who thinks they got the job. The worker side handles this properly (`WORKER_IDENTITY_NOT_VERIFIED`); the employer side has no equivalent. Requested at both points — job creation and payment — with a new `INDIVIDUAL_EMPLOYER_IDENTITY_NOT_VERIFIED` code. The app should gate this itself too, at job creation, so the user never reaches the server call.
-- ✗ **`tc_identity_number` has no unique constraint.** Now that the server no longer verifies TCKNs itself, this is the cheapest backstop against a modified client until Passive Authentication lands. Requested.
 - ✗ **`/users/me` returns `tcIdentityNumber` unmasked** while the IBAN comes back as `maskedIban`. Masking has been requested; the app only ever needs to know whether it is set, so do not build anything that depends on the full value.
+
+> Delivered since: TCKN uniqueness now exists as `TC_IDENTITY_NUMBER_ALREADY_IN_USE` (`409`).
 
 ### Things that are true regardless
 

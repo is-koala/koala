@@ -8,7 +8,11 @@
 
 ## 1. Özet
 
-**NVİ KPS servisi kapandı.** Sunucudaki kimlik doğrulama buna dayanıyordu, dolayısıyla bugün çalışmıyor — ve o doğrulama başvuru kapısının ilk şartı olduğu için **şu an hiç kimse hiçbir işe başvuramıyor.** Bu, raporun ilk sürümündeki en büyük değişiklik.
+**NVİ KPS servisi kapandı.** Backend bunun üzerine KPS'yi tamamen kaldırdı ve yerine çip doğrulamasını koydu (`a10856c`). Doğrulama yeniden çalışıyor, başvuru zinciri kopuk değil.
+
+**Yerine gelen şey hazır ama henüz açılmadı — bilerek.** Çip doğrulaması `IDENTITY_PASSIVE_AUTH_ENABLED` bayrağının arkasında, varsayılanı `false`. Backend bunu kasten kapalı bıraktı: kanıt gönderen bir istemci yokken bayrağı açmak herkesi dışarıda bırakırdı. Bayrak kapalıyken sunucu gövdedeki bilgiyi olduğu gibi yazıyor, yani elle yazılmış bir TCKN doğrulanmış sayılıyor; bu arada elde kalan koruma TCKN'nin benzersizliği. İki taraf da bunu biliyor, bayrak uygulama `sod`/`dg1` göndermeye başlayınca açılacak.
+
+**Bu iş şimdilik ertelendi.** Kimlik doğrulama özelliği daha sonra ele alınacak; bu rapor o zamana kadar hazırlık notu olarak duruyor.
 
 Sonuç olarak NFC artık "elle girişi hızlandıran güzel bir ek" değil, **doğrulamanın kendisi**. Doğrulama tamamen cihaza taşınıyor ve üç katmandan oluşuyor:
 
@@ -19,8 +23,8 @@ Sonuç olarak NFC artık "elle girişi hızlandıran güzel bir ek" değil, **do
 Bu üçü birlikte, KPS'nin yaptığından **fazlasını** yapıyor: KPS yalnızca "bu beş alan tutarlı mı" diyordu, kartın kimin elinde olduğunu hiç bilmiyordu.
 
 Backend'den istediklerimiz iki metne bölündü:
-- `backend-istek-kimlik-dogrulama.md` — KPS çağrısı kalksın, kanıt (`sod` + `dg1`) sunucuda doğrulansın
-- `backend-istek-bireysel-isveren-kimlik.md` — bireysel işverene de ilan açma ve ödeme öncesi kimlik kontrolü
+- `backend-istek-kimlik-dogrulama.md` — KPS çağrısı kalksın, kanıt (`sod` + `dg1`) sunucuda doğrulansın → **karşılandı, üstüne çıkıldı** (bkz. §3.1)
+- `backend-istek-bireysel-isveren-kimlik.md` — bireysel işverene de ilan açma ve ödeme öncesi kimlik kontrolü → **henüz cevap yok**
 
 ---
 
@@ -30,7 +34,11 @@ Backend'den istediklerimiz iki metne bölündü:
 
 `POST /users/me/identity-verification` → `VerifyIdentityDto`: `firstName`, `lastName`, `birthDate`, `tcIdentityNumber`, `tcDocumentNumber` (kart seri no).
 
-`KimlikPaylasimSistemiService.kimlikDogrula` bu beş alanı NVİ'nin `kpspublicv2.asmx` ucuna `KisiVeCuzdanDogrula` çağrısıyla gönderiyordu ve tek bir `true`/`false` okuyordu. **Servis kapandı, bu çağrı artık sonuç üretmiyor.**
+Eskiden `KimlikPaylasimSistemiService` bu beş alanı NVİ'nin `kpspublicv2.asmx` ucuna gönderiyordu. **Servis kapandı, sınıf da kaldırıldı** — `core/utilities/kps/` klasörü artık yok, hiçbir yerden referans verilmiyor.
+
+Bugünkü davranış: `verifyChipEvidence` önce `identityVerificationProperties.isEnabled()` bakıyor; kapalıysa `null` dönüp çıkıyor. Ardından TCKN benzersizliği kontrol ediliyor (`existsByTcIdentityNumber` → `409`), sonra `identityVerified = true` yazılıyor. Yani bayrak kapalıyken **doğrulama diye bir şey yok**, yalnızca benzersizlik var.
+
+Yeni uç: `POST /users/me/identity-verification/challenge`. Yeni alan: `User.tcDocumentNumber`, ayrıca kanıt saklanıyor (`identityEvidenceDigest`, `identityDocumentSigner`).
 
 Doğrulama başarılı olduğunda yapılanlar (bunlar korunmalı): `identityVerified = true`, ad/soyad/doğum tarihi kilitleniyor, `badgeService.evaluate`, `activityNotificationService.identityVerified`, `userProducerService.publishUserProfileUpdated` → bu son event Iyzico alt üye işyeri senkronizasyonunu tetikliyor.
 
@@ -44,13 +52,40 @@ Sunucuda `IdentityVerification` ve `VerificationDocument` entity'leri duruyor am
 
 ## 3. Üç katman
 
-| Katman | Neyi kanıtlar | Nerede çalışır | Sunucu değişikliği |
+| Katman | Neyi kanıtlar | Nerede çalışır | Durum |
 |---|---|---|---|
-| **1. NFC + OCR** | Kart gerçek, veri değiştirilmemiş | Cihaz + (kanıt doğrulaması) sunucu | Gerekiyor — `sod`/`dg1` doğrulaması |
-| **2. Yüz eşleştirme** | Kart bu kişinin | Cihaz | Gerekmiyor |
-| **3. Liveness** | Karşıdaki canlı insan | Cihaz | Gerekmiyor |
+| **1a. Passive Authentication** | Kart gerçek, veri değiştirilmemiş | Cihaz okur, **sunucu doğrular** | Sunucu hazır, bayrak kapalı |
+| **1b. Active Authentication** | Kart **kopya değil**, o an fiziksel olarak orada | Cihaz imzalatır, sunucu doğrular | Sunucu hazır, bayrak kapalı |
+| **2. Yüz eşleştirme** | Kart bu kişinin | Cihaz | Planlandı |
+| **3. Liveness** | Karşıdaki canlı insan | Cihaz | Planlandı |
 
 Bu katmanlar bağımsız; sırayla eklenebilir. Ama 2 ve 3, 1 olmadan anlamsız — neyin neyle eşleştiğini bilmen gerekiyor.
+
+### 3.1 Sunucu ne yapıyor (backend'çinin çip entegrasyonu dokümanı)
+
+Backend istediğimizin ötesine geçti ve **tekrar oynatma (replay) açığını** da kapattı. Sebep doğru: `sod` ve `dg1` bir kart için **sabit** — bir kez okuyan onları sonsuza kadar tekrar gönderebilir. Passive Authentication tek başına bunu engellemiyor.
+
+Çözüm Active Authentication: sunucu tek kullanımlık bir sayı (challenge) üretiyor, çip onu **kendi özel anahtarıyla** imzalıyor. Anahtar çipten hiç çıkmadığı için kopyalanan veri bu imzayı üretemiyor.
+
+**Bunun bize maliyeti:** artık çipten sadece veri okumuyoruz, ona `INTERNAL AUTHENTICATE` komutu da göndermemiz gerekiyor. Kullanacağımız kütüphanenin bunu desteklediği doğrulanmalı — sadece DG okuyan bir kütüphane yetmez.
+
+**Akış sırası kritik:** challenge **önce** alınmalı, çünkü çipe imzalatılacak şey o. Yani ekran açılır açılmaz `POST /users/me/identity-verification/challenge` çağrılıyor, sonra kart okunuyor. Sayı 10 dakika geçerli ve tek kullanımlık.
+
+Gönderilecek gövde, bugünkü beş alanın üstüne: `sod`, `dg1`, `dg11`, `dg15`, `challenge`, `activeAuthenticationSignature`. Hepsi opsiyonel, bayraklar açılana kadar eksik gönderim eski gibi çalışıyor — yani sözleşme bozulmadı, kademeli geçebiliriz.
+
+Veri grupları:
+
+| Grup | Ne için |
+|---|---|
+| `SOD` | Doğrulamanın tamamı buna dayanıyor. **Zorunlu.** |
+| `DG1` | MRZ — TCKN, doğum tarihi, ad soyad. **Zorunlu.** |
+| `DG11` | Adın **Türkçe harfli** hâli. Varsa gönderilmeli. |
+| `DG15` | Çipin açık anahtarı — kopya kartı eleyen tek şey. Varsa gönderilmeli. |
+| `DG2` | Yüz fotoğrafı. **Sunucuya gönderilmiyor**, cihazda kalıyor. |
+
+`DG11` ayrıntısı önemli ve gözden kaçardı: MRZ ASCII'ye katlanmış, yani kartta **ÇAĞRI** yazsa bile `DG1`'de **CAGRI** duruyor, üstelik üçüncü satır 30 karakterde kırpılıyor. Adı `DG1`'den yazsaydık kullanıcının adını bozardık. `DG11`'in hash'i de SOD'da olduğu için güvenlik açısından farkı yok, sadece verisi doğru.
+
+Sunucu ayrıca gönderilen ad soyadı MRZ'yle karşılaştırıyor (Türkçe harfleri katlayarak, kırpılmış adlarda önek uyumuna izin vererek).
 
 ### Güven sınırı hakkında dürüst not
 
@@ -100,6 +135,8 @@ Bu ikisi büyük ihtimalle farklı uygulamalardan bahsediyor (ICAO tarafı vs. E
 
 **Test etmenin en ucuz yolu:** bir TCKK ile açık kaynak bir okuyucuyu deneyip DG2'nin gelip gelmediğine bakmak. Tahminle ilerlenmemeli.
 
+**Formatı hakkında yeni bilgi (backend'çiden):** çipteki fotoğraf büyük olasılıkla **JPEG değil JPEG2000**, ve **CBEFF sarmalı** içinde. Bu, ikinci katman için ciddi bir engel — Dart'ın `image` paketi JPEG2000 açamıyor, standart görüntü kütüphaneleri de açamıyor. Yani DG2'yi okusak bile **çözemeyiz**. Seçenekler: OpenJPEG'i FFI ile bağlamak (yeni native bağımlılık, iki platformda derleme derdi) ya da bunu zaten çözen ticari bir SDK kullanmak. Bu, §5'teki "ticari SDK gerekiyor" değerlendirmesini güçlendiriyor.
+
 ### Platform kısıtları
 
 **iOS** — Core NFC. `com.apple.developer.nfc.readersession.iso7816.select-identifiers` entitlement'ına eMRTD AID'i (`A0000002471001`), `Info.plist`'e `NFCReaderUsageDescription`. Ücretli geliştirici hesabı şart, App Store incelemesinde gerekçe sorulabiliyor. İkinci kısıt: iOS okuma sırasında **kendi sistem NFC sayfasını** gösteriyor, bizim tasarımımız altında kalıyor — iOS ve Android aynı ekranla çözülemez.
@@ -145,27 +182,39 @@ Koala'nın MASAK/BDDK uzaktan kimlik tespiti yükümlüsü **olmadığını** no
 
 ## 6. Yol haritası
 
-### Aşama 1 — NFC ile kimlik okuma *(zorunlu, en öncelikli)*
+Backend kendi tarafını hazır edip bayrakların ikisini de kapalı bıraktı, yani kademeli geçebiliyoruz. Sıra backend'çinin önerdiği gibi:
 
-KPS kapalı olduğu için bu artık iyileştirme değil, kırık zinciri onaran iş.
+> **Not:** Bu yol haritası ertelendi, sıradaki iş değil. Aşağısı, işe başlandığında hangi sırayla gidileceğinin notu.
 
-1. Kullanıcı "NFC ile doğrula"yı seçer.
-2. Kamerayla kartın **arka yüzü** okunur, MRZ'den anahtar türetilir. *(Alternatif: ön yüzdeki CAN'ı elle yazdırmak.)*
-3. Kart telefonun arkasına tutulur, çip okunur, DG1 alınır.
-4. Form **dolu ve salt okunur** açılır, kullanıcı yalnızca onaylar.
-5. `POST /users/me/identity-verification` çağrılır — mümkünse `sod` + `dg1` ile birlikte.
+### Aşama 0 — Gerçek kartla döküm *(başlandığında ilk iş)*
 
-Bağımlılık: NFC paketi + MRZ OCR paketi. İkisi de yeni, proje kuralı gereği sorulmadan eklenmez.
+Backend'in üç sorusu var ve üçünün de cevabı ancak gerçek bir karttan çıkıyor: kart hangi CSCA'ya zincirleniyor, `DG11` var mı, `DG15` var mı. Ellerindeki 12 Türkiye sertifikasının çoğunun adında "Passport" geçiyor — kimlik kartı bunlardan birine bağlanmıyorsa NVİ'den ayrı sertifika istenmesi gerekiyor, ki bu uzun sürebilir.
 
-### Aşama 2 — Passive Authentication *(sunucu tarafı)*
+**Bunun için tam özellikli akışı beklemeye gerek yok.** Tek seferlik, atılacak bir okuma yeterli: `sod.b64` ve `dg1.b64` dosyalarını çıkarıp göndermek. Backend'de tek komutla çalışan bir teşhis aracı hazır bekliyor. Aşama 1'in tasarımını beklerken bu paralel yürütülmeli.
 
-SOD imzasının DSC üzerinden CSCA'ya zincirlenerek doğrulanması, DG hash karşılaştırması. Uygulama kanıtı gönderir, sunucu doğrular. **Master list güncellendiği için telefona gömülemez**, ayrıca istemcide yapılan doğrulama zaten istemciye güvenmek demektir.
+### Aşama 1 — NFC ile kimlik okuma
 
-Backend'e iletildi.
+1. Ekran açılır açılmaz `POST /users/me/identity-verification/challenge` ile tek kullanımlık sayı alınır. **Önce bu** — çipe imzalatılacak şey o.
+2. Kamerayla kartın **arka yüzü** okunur, MRZ'den BAC anahtarı türetilir. *(Alternatif: ön yüzdeki CAN'ı elle yazdırmak.)*
+3. Kart telefonun arkasına tutulur, güvenli kanal açılır.
+4. `DG1`, `DG11`, `DG15`, `SOD` okunur.
+5. `INTERNAL AUTHENTICATE` ile challenge'ın **ham baytları** (base64 çözülmüş hâli) çipe imzalatılır. `DG15` yoksa bu adım atlanır, akış yine çalışır.
+6. Form **dolu ve salt okunur** açılır, kullanıcı yalnızca onaylar.
+7. Hepsi tek istekte `POST /users/me/identity-verification`'a gider.
+
+Bağımlılık: NFC paketi + MRZ OCR paketi. İkisi de yeni, proje kuralı gereği sorulmadan eklenmez. Seçilen NFC kütüphanesinin `INTERNAL AUTHENTICATE` desteklediği önceden doğrulanmalı.
+
+### Aşama 2 — Bayraklar açılıyor *(sunucu tarafı)*
+
+Passive Authentication zorunlu hâle geliyor (uydurma TCKN girilemez), ardından Active Authentication (kopya kart ve tekrar oynatma kapanıyor). Uygulama tarafında yeni iş yok — Aşama 1 doğru yapıldıysa bayrak açılınca çalışıyor. Staging'de uçtan uca denenmeli.
 
 ### Aşama 3 — Yüz eşleştirme + liveness
 
-Önkoşul: DG2 sorusunun cevabı (§4). Sonra vendor seçimi ve fiyat, KVKK açık rıza akışı, saklama/imha politikası.
+Önkoşullar: `DG2` gerçekten okunabiliyor mu (§4), JPEG2000/CBEFF çözümü ne olacak (§4), vendor ve fiyat, KVKK açık rıza akışı, saklama/imha politikası.
+
+### Aşama 4 — Cihaz bütünlüğü *(backend'çinin önerisi, isabetli)*
+
+Yüz eşleştirme ve liveness cihazda kaldığı için sunucu onların çalıştığına dair kanıt görmüyor — uygulamayı değiştiren biri o iki katmanı atlayabilir. Bunu biyometrik veri taşımadan kapatmanın yolu **Play Integrity (Android) / App Attest (iOS)**: "bu istek değiştirilmemiş uygulamadan geldi" diyen imzalı bir token. §3'teki güven sınırı sorusunun kalan yarısı bu. Konuşulmalı.
 
 ### Paralel — bireysel işveren kapısı
 
@@ -190,12 +239,15 @@ Bu karar, §3'te yazılan güven sınırı endişelerinin bir kısmını da kapa
 
 ## 8. Karar bekleyen maddeler
 
-1. **DG2 rol sertifikası olmadan okunuyor mu?** Aşama 3'ün önkoşulu. Sağlayıcıya sorulmalı ya da bir kartla test edilmeli. Doğrulanmadı.
-2. **Apple NFC entitlement başvurusu** — Aşama 1'in önündeki tek idari iş, erken başlatılmalı.
-3. **Yeni bağımlılık onayı** — NFC + MRZ OCR (Aşama 1), yüz/liveness SDK'sı (Aşama 3).
-4. **Liveness sağlayıcısı ve bütçe** — ücretsiz yolla "liveness" denemez.
-5. **Backend'e iletilenlerin durumu** — `sod`/`dg1` doğrulaması, bireysel işveren kimlik kontrolü, `tc_identity_number` unique kısıtı, TCKN'nin cevapta maskelenmesi.
-6. **NFC okuyamayan kullanıcı ne yapacak?** Doğrulama herkes için zorunlu olduğundan bu kullanıcı uygulamayı hiç kullanamıyor. Ürün kararı gerekiyor.
+1. ~~KPS çağrısı kaldırıldı mı?~~ **Cevaplandı:** kaldırılmış, doğrulama çalışıyor. Yerine geçen çip doğrulaması ise bayrak kapalı olduğu için devrede değil — bu, kapatılması gereken açık bir pencere (§1).
+2. **Gerçek kartla `sod.b64` + `dg1.b64` dökümü** — backend'in üç sorusunu ve CSCA sertifikası işini bekletiyor. Kritik yol.
+3. **DG2 okunabiliyor mu, okunuyorsa JPEG2000/CBEFF nasıl çözülecek?** Aşama 3'ün önkoşulu.
+4. **Apple NFC entitlement başvurusu** — Aşama 1'in önündeki tek idari iş, erken başlatılmalı.
+5. **Yeni bağımlılık onayı** — NFC + MRZ OCR (Aşama 1), yüz/liveness SDK'sı (Aşama 3). NFC kütüphanesi `INTERNAL AUTHENTICATE` desteklemeli.
+6. **Liveness sağlayıcısı ve bütçe** — ücretsiz yolla "liveness" denemez.
+7. **Bireysel işveren kimlik kontrolü** — ikinci istek metnine henüz cevap gelmedi.
+8. **Cihaz bütünlüğü (Play Integrity / App Attest)** — yüz ve liveness katmanlarının atlanmasını engellemenin yolu. Karar gerekiyor.
+9. **NFC okuyamayan kullanıcı ne yapacak?** Doğrulama herkes için zorunlu olduğundan bu kullanıcı uygulamayı hiç kullanamıyor. Ürün kararı gerekiyor.
 
 ---
 
