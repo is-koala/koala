@@ -56,6 +56,7 @@ class _BCreatePageState extends BCreatePageModel {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _employerNotice(company?.companyName),
+              ?_identityNotice(),
 
               // Temel Bilgiler
               _sectionLabel("Temel Bilgiler"),
@@ -219,6 +220,49 @@ class _BCreatePageState extends BCreatePageModel {
 
   /// Bilgi kutularının zemin opaklığı.
   static const double _noticeAlpha = 0.1;
+
+  /// Doğrulanmamış bireysel işverene gösterilen uyarı.
+  ///
+  /// Formu doldurup en sonda kapıya çarpmaktansa baştan söylemek daha iyi —
+  /// sigorta kategorilerini baştan elemekle aynı gerekçe.
+  Widget? _identityNotice() {
+    if (!_needsIdentityVerification) return null;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSizes.spaceLarge),
+      child: Container(
+        width: double.infinity,
+        padding: AppPadding.chip,
+        decoration: BoxDecoration(
+          color: AppColors.warning.withValues(alpha: _noticeAlpha),
+          borderRadius: AppRadius.innerCircular,
+        ),
+        child: Row(
+          children: [
+            const AppIcon(
+              AppIcons.shield,
+              size: AppSizes.iconSmall,
+              color: AppColors.warning,
+            ),
+            const SizedBox(width: AppSizes.spaceSmall),
+            Expanded(
+              child: Text(
+                'İlan yayınlamak için kimlik doğrulaması gerekiyor.',
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: AppColors.warning,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: _goToIdentityVerification,
+              child: const Text('Doğrula'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   /// Bireysel işverene sigorta anahtarı yerine gösterilen açıklama.
   ///

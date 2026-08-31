@@ -47,7 +47,7 @@ class ApplyProvider extends ChangeNotifier {
   /// atamaya dönüştüğü için buradaki karşılıkları yalnızca "başvuru bekliyor"
   /// ve "reddedildi" durumları.
   List<MyJob> get appliedJobs =>
-      _applications.map(_toMyJob).toList(growable: false);
+      _applications.map(_toMyJob).nonNulls.toList(growable: false);
 
   bool hasApplied(String jobId) {
     return _applications.any((application) => application.job.id == jobId);
@@ -116,7 +116,14 @@ class ApplyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  static MyJob _toMyJob(JobApplication application) {
+  /// Başvuruyu ekranın satırına çevirir; listede yeri yoksa `null` döner.
+  ///
+  /// **Kabul edilen başvuru atlanıyor.** O başvuru artık bir atama ve
+  /// atamalar uçtan ayrıca geliyor; ikisini birden çizmek aynı işi listede
+  /// iki kez gösterirdi.
+  static MyJob? _toMyJob(JobApplication application) {
+    if (application.status == ApplicationStatus.accepted) return null;
+
     final job = application.job;
     final date = application.applicationDateTime;
 
@@ -128,10 +135,12 @@ class ApplyProvider extends ChangeNotifier {
       description: job.subtitle,
       date: date?.asShortDate ?? '',
       price: job.price,
-      // TODO(backend): Reddedilen başvurunun arayüzde karşılığı yok;
-      // `MyJobStatus` dört durum taşıyor ve hiçbiri "reddedildi" değil.
-      // Şimdilik beklemede gösteriliyor — tasarıma yeni bir durum eklenmeli.
-      status: MyJobStatus.pending,
+      status: switch (application.status) {
+        ApplicationStatus.rejected => MyJobStatus.applicationRejected,
+        // `accepted` yukarıda eleniyor; kalan tek durum bekleyen başvuru.
+        _ => MyJobStatus.pending,
+      },
+      rejectionReason: application.rejectionReason,
     );
   }
 }

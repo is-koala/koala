@@ -6,6 +6,7 @@ import 'package:koala/product/constants/app_info.dart';
 import 'package:koala/product/network/api_config.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/network/api_response.dart';
+import 'package:koala/product/network/app_update_gate.dart';
 import 'package:koala/product/network/auth_interceptor.dart';
 import 'package:koala/product/network/device_identity.dart';
 import 'package:koala/product/network/device_interceptor.dart';
@@ -257,9 +258,17 @@ class ApiClient {
 
     final envelope = ApiResponse.fromJson<void>(body);
 
+    final type = _typeForStatus(statusCode);
+
+    // Sürüm kapısı her uçtan gelebiliyor; çağıranın karşılamasını beklemek
+    // yerine burada bir kez yakalanıyor.
+    if (type == ApiErrorType.upgradeRequired) {
+      AppUpdateGate().block(envelope.message);
+    }
+
     return ApiException(
       message: envelope.message ?? 'Beklenmeyen bir hata oluştu.',
-      type: _typeForStatus(statusCode),
+      type: type,
       statusCode: statusCode,
       errorCode: envelope.errorCode,
       fieldErrors: envelope.fieldErrors,

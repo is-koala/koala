@@ -101,6 +101,7 @@ class _MyJobsPageState extends MyJobsPagemodel {
       ...jobsByStatus(MyJobStatus.past, extraJobs: appliedJobs),
       ...jobsByStatus(MyJobStatus.cancelled, extraJobs: appliedJobs),
       ...jobsByStatus(MyJobStatus.rejected, extraJobs: appliedJobs),
+      ...jobsByStatus(MyJobStatus.applicationRejected, extraJobs: appliedJobs),
     ];
 
     // Bölümlerin hepsi boşsa sayfa yalnızca başlıktan ibaret kalırdı; kullanıcı
@@ -479,7 +480,7 @@ class _MyJobsPageState extends MyJobsPagemodel {
         _tappableCompanyName(job, foreground),
         const SizedBox(height: AppSizes.smallGap),
         Text(
-          job.description,
+          job.subtitle,
           style: context.textTheme.labelMedium?.copyWith(
             color: foreground.withValues(alpha: _mutedAlpha),
           ),

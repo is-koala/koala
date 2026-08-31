@@ -293,8 +293,40 @@ abstract class BCreatePageModel extends State<BCreatePage> {
   /// Doğrulama burada da yapılıyor çünkü backend'in reddi tek bir alan adı
   /// döndürüyor; kullanıcıya eksik alanı Türkçe ve sırayla söylemek daha
   /// anlaşılır.
+  /// Bireysel ilan açan işverenin kimliği doğrulanmış mı.
+  ///
+  /// Şirket adına açılan ilanda gerekmiyor: şirket kurmak zaten kimlik
+  /// doğrulaması istiyor ve ödemede alıcı kimliği şirketin VKN'si oluyor.
+  /// Bireysel ilanda ise alıcı kimliği işverenin TCKN'si ve o yalnızca
+  /// doğrulamayla dolduruluyor.
+  bool get _needsIdentityVerification {
+    if (_isCompanyJob) return false;
+
+    return context.read<UserProvider>().user?.identityVerified != true;
+  }
+
+  /// Kimlik doğrulama ekranına yönlendirir.
+  Future<void> _goToIdentityVerification() async {
+    final user = context.read<UserProvider>().user;
+    if (user == null) return;
+
+    await context.push('/identity-verification', extra: user);
+    // Doğrulama yapıldıysa uyarı kutusunun kalkması için kullanıcı
+    // tazeleniyor.
+    if (mounted) await context.read<UserProvider>().load(silent: true);
+  }
+
   Future<void> _createJob() async {
     if (_isSubmitting) return;
+
+    // Sunucuda bu kontrol yok: doğrulanmamış bireysel işverenin ilanı
+    // açılıyor, hata ancak bir adayı kabul ettiğinde İyzico'dan anlaşılmaz
+    // bir mesajla geliyor. Kapıyı burada tutmak, kullanıcıyı işin en kötü
+    // anında şaşırtmaktan iyi.
+    if (_needsIdentityVerification) {
+      await _showIdentityRequired();
+      return;
+    }
 
     final request = _buildRequest();
     if (request == null) return;
@@ -317,6 +349,43 @@ abstract class BCreatePageModel extends State<BCreatePage> {
     } else {
       AppToast.error(context, provider.errorMessage ?? 'İlan oluşturulamadı');
     }
+  }
+
+  Future<void> _showIdentityRequired() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: const RoundedRectangleBorder(
+          borderRadius: AppRadius.secondaryCircular,
+        ),
+        title: Text(
+          'Kimlik doğrulaması gerekli',
+          style: dialogContext.textTheme.titleMedium,
+        ),
+        content: Text(
+          'Bireysel ilan açabilmek ve çalışana ödeme yapabilmek için '
+          'kimliğinizi doğrulamanız gerekiyor. Doğrulama birkaç dakika '
+          'sürüyor ve bir kez yapılıyor.',
+          style: dialogContext.textTheme.bodyMedium?.copyWith(
+            color: dialogContext.textSecondary,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Vazgeç'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Doğrula'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    await _goToIdentityVerification();
   }
 
   /// Alanları doğrulayıp isteği kurar; eksik varsa uyarıp `null` döner.

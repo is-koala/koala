@@ -9,6 +9,7 @@ enum MyJobStatus {
   completed, // İş bitti, ödeme bekleniyor
   past, // Ödeme alındı, geçmişe taşındı
   rejected, // Çalışan işi kabul etmedi
+  applicationRejected, // İşveren başvuruyu reddetti
   cancelled, // İki taraftan biri işi iptal etti
 }
 
@@ -29,6 +30,8 @@ extension MyJobStatusExtension on MyJobStatus {
         return 'Tamamlandı';
       case MyJobStatus.rejected:
         return 'Reddedildi';
+      case MyJobStatus.applicationRejected:
+        return 'Başvuru Reddedildi';
       case MyJobStatus.cancelled:
         return 'İptal Edildi';
     }
@@ -50,6 +53,11 @@ extension MyJobStatusExtension on MyJobStatus {
         return 'Ödeme alındı';
       case MyJobStatus.rejected:
         return 'Bu işi kabul etmediniz';
+      // İki "reddedildi" birbirinin aynısı değil: bunu işveren yaptı,
+      // yukarıdakini çalışanın kendisi. Aynı metni vermek kimin karar
+      // verdiğini gizlerdi.
+      case MyJobStatus.applicationRejected:
+        return 'İşveren başka bir adayla devam etti';
       case MyJobStatus.cancelled:
         return 'İş iptal edildi';
     }
@@ -75,6 +83,11 @@ class MyJob {
   /// kullanıcı sebebini önden görsün. Başvurudan gelen satırlarda `false`.
   final bool isPaymentSecured;
 
+  /// İşverenin başvuruyu reddederken yazdığı gerekçe. Yalnızca
+  /// [MyJobStatus.applicationRejected] satırlarda dolu; işveren gerekçe
+  /// yazmak zorunda değil, o yüzden `null` olabilir.
+  final String? rejectionReason;
+
   /// Atamanın id'si; kayıt bir başvurudan geliyorsa `null`.
   ///
   /// Atama uçları (`/job-assignments/...`) bunu istiyor; [id] ile aynı değeri
@@ -93,6 +106,7 @@ class MyJob {
     required this.status,
     this.assignmentId,
     this.isPaymentSecured = false,
+    this.rejectionReason,
   });
 
   /// İş kapandı mı: geçmişe düşen, iptal edilen ve reddedilen işler.
@@ -102,7 +116,22 @@ class MyJob {
   bool get isClosed =>
       status == MyJobStatus.past ||
       status == MyJobStatus.rejected ||
+      status == MyJobStatus.applicationRejected ||
       status == MyJobStatus.cancelled;
+
+  /// Satırın alt satırında gösterilecek metin.
+  ///
+  /// Reddedilen başvuruda işverenin yazdığı gerekçe ilanın özetinden daha
+  /// değerli: kullanıcının öğrenmek istediği tek şey o.
+  String get subtitle {
+    final reason = rejectionReason;
+
+    return status == MyJobStatus.applicationRejected &&
+            reason != null &&
+            reason.trim().isNotEmpty
+        ? reason
+        : description;
+  }
 
   /// Bir atamayı ekranın bildiği [MyJob] durumlarına çevirir.
   ///

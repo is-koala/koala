@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/jobs/models/job_application.dart';
+import 'package:koala/employee/features/jobs/models/my_job.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
 import 'package:koala/employee/features/jobs/services/job_application_service.dart';
 
@@ -12,11 +13,13 @@ Map<String, dynamic> applicationBody({
   String status = 'APPLIED',
   String? notes,
   String company = 'Koala Cafe',
+  String? rejectionReason,
 }) {
   return {
     'id': id,
     'status': status,
     'notes': notes,
+    'rejectionReason': rejectionReason,
     'applicationDateTime': '2026-03-05T10:00:00Z',
     'job': {
       'id': jobId,
@@ -249,6 +252,66 @@ void main() {
         ApplicationStatus.fromCode('REJECTED'),
         ApplicationStatus.rejected,
       );
+    });
+  });
+
+  group('appliedJobs', () {
+    Future<ApplyProvider> loadWith(List<Map<String, dynamic>> content) async {
+      final api = FakeApi(
+        handler: (_) => FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {'content': content, 'last': true},
+          },
+        ),
+      );
+      final provider = buildProvider(api);
+      await provider.load();
+      return provider;
+    }
+
+    test('bekleyen başvuru beklemede görünür', () async {
+      final provider = await loadWith([applicationBody()]);
+
+      expect(provider.appliedJobs.single.status, MyJobStatus.pending);
+    });
+
+    // Kullanıcı reddedildiğini öğrenemiyordu: satır "beklemede" çiziliyordu.
+    test('reddedilen başvuru kendi durumunu taşır', () async {
+      final provider = await loadWith([
+        applicationBody(
+          status: 'REJECTED',
+          rejectionReason: 'Deneyim aradığımız alanda değil',
+        ),
+      ]);
+
+      final job = provider.appliedJobs.single;
+      expect(job.status, MyJobStatus.applicationRejected);
+      expect(job.isClosed, isTrue);
+      // Gerekçe ilanın özetinden değerli; alt satırda o gösteriliyor.
+      expect(job.subtitle, 'Deneyim aradığımız alanda değil');
+    });
+
+    test('gerekçe yoksa ilanın özeti gösterilir', () async {
+      final provider = await loadWith([applicationBody(status: 'REJECTED')]);
+
+      final job = provider.appliedJobs.single;
+      expect(job.status, MyJobStatus.applicationRejected);
+      expect(job.subtitle, job.description);
+    });
+
+    // Kabul edilen başvuru artık bir atama; atamalar ayrı uçtan geliyor ve
+    // ikisini birden çizmek aynı işi listede iki kez gösterirdi.
+    test('kabul edilen başvuru listeye girmez', () async {
+      final provider = await loadWith([
+        applicationBody(id: 'app_1', status: 'ACCEPTED'),
+        applicationBody(id: 'app_2'),
+      ]);
+
+      expect(provider.applications, hasLength(2));
+      expect(provider.appliedJobs, hasLength(1));
+      expect(provider.appliedJobs.single.id, 'app_2');
     });
   });
 }

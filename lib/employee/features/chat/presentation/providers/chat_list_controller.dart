@@ -111,12 +111,54 @@ class ChatListController extends ChangeNotifier {
     if (_disposed || _messages != null) return;
 
     unawaited(_realtimeClient.connect());
-    _messages = _realtimeClient.userMessageEvents().listen(_onMessageEvent);
+    _messages = _realtimeClient.userMessageEvents().listen(_onUserEvent);
+  }
+
+  /// Kişisel kuyruktan gelen olaylar. Kuyruk yalnızca mesaj taşımıyor:
+  /// okundu bilgisi de buradan geliyor.
+  void _onUserEvent(RealtimeEvent event) {
+    switch (event.type) {
+      case RealtimeEventType.message:
+        _onMessageEvent(event);
+      case RealtimeEventType.read:
+        _onReadEvent(event);
+      case RealtimeEventType.typing:
+      case RealtimeEventType.presence:
+      case RealtimeEventType.unknown:
+        // Yazıyor bilgisi ve varlık listede gösterilmiyor; varlık ayrıca
+        // kendi kanalından geliyor.
+        break;
+    }
+  }
+
+  /// Bir sohbetin okunduğu bilgisi.
+  ///
+  /// **Yalnızca okuyan kişi bizsek** rozet sıfırlanıyor: telefonda okunan
+  /// sohbetin tablette de okunmuş sayılması için. Karşı taraf okuduğunda
+  /// bizim okunmamışımız değişmiyor — o, bizim gönderdiğimiz mesajların
+  /// okundu bilgisi ve listede gösterilmiyor.
+  void _onReadEvent(RealtimeEvent event) {
+    final conversationId = event.conversationId;
+    if (conversationId == null || event.userId != _currentUserId) return;
+
+    final index = _conversations.indexWhere(
+      (conversation) => conversation.id == conversationId,
+    );
+    if (index == -1) return;
+
+    final existing = _conversations[index];
+    if (existing.unreadCount == 0) return;
+
+    _conversations = [
+      for (final conversation in _conversations)
+        conversation.id == conversationId
+            ? conversation.copyWith(unreadCount: 0)
+            : conversation,
+    ];
+    _safeNotify();
   }
 
   void _onMessageEvent(RealtimeEvent event) {
-    if (event.type != RealtimeEventType.message) return;
-
     final userId = _currentUserId;
     final conversationId = event.conversationId;
     final body = event.message;

@@ -195,6 +195,60 @@ void main() {
     });
   });
 
+  group('canlı okundu bilgisi', () {
+    // Telefonda okunan sohbetin rozeti tablette de inmeliydi; olay kişisel
+    // kuyruğa geliyordu ama liste mesaj olmayan her şeyi eliyordu.
+    test('kendi okumamız rozeti sıfırlar', () async {
+      final controller = build([conversationBody(unreadCount: 4)]);
+      await controller.load(currentUserId: _me);
+
+      realtime.emitMessage(
+        RealtimeEvent.fromJson({
+          'type': 'READ',
+          'conversationId': _conversationId,
+          'userId': _me,
+        }),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(controller.conversations.single.unreadCount, 0);
+    });
+
+    // Karşı tarafın okuması bizim okunmamışımızı değiştirmiyor: o, bizim
+    // gönderdiğimiz mesajların okundu bilgisi.
+    test('karşı tarafın okuması rozete dokunmaz', () async {
+      final controller = build([conversationBody(unreadCount: 4)]);
+      await controller.load(currentUserId: _me);
+
+      realtime.emitMessage(
+        RealtimeEvent.fromJson({
+          'type': 'READ',
+          'conversationId': _conversationId,
+          'userId': _other,
+        }),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(controller.conversations.single.unreadCount, 4);
+    });
+
+    test('tanınmayan sohbetin okundu bilgisi listeyi bozmaz', () async {
+      final controller = build([conversationBody(unreadCount: 2)]);
+      await controller.load(currentUserId: _me);
+
+      realtime.emitMessage(
+        RealtimeEvent.fromJson({
+          'type': 'READ',
+          'conversationId': 'baska_sohbet',
+          'userId': _me,
+        }),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(controller.conversations.single.unreadCount, 2);
+    });
+  });
+
   group('canlı presence', () {
     test('çevrimiçi bilgisi güncellenir', () async {
       final controller = build([conversationBody()]);

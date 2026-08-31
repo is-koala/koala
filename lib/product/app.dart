@@ -1,8 +1,10 @@
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
+import 'package:koala/product/network/app_update_gate.dart';
 import 'package:koala/product/router/router_manager.dart';
 import 'package:koala/product/theme/theme.dart';
 import 'package:koala/product/theme/theme_provider.dart';
+import 'package:koala/product/widgets/update_required_view.dart';
 import 'package:provider/provider.dart';
 
 class App extends StatefulWidget {
@@ -55,6 +57,15 @@ class _AppState extends State<App> {
       darkTheme: darkTheme,
       themeMode: context.watch<ThemeProvider>().themeMode,
       routerConfig: RouterManager.router,
+      // Sürüm kapısı her uçtan gelebildiği için yönlendirmeyle değil,
+      // uygulamanın üstünü kapatarak karşılanıyor: hangi ekranda olursa
+      // olsun sonuç aynı ve geri dönülecek bir yer yok.
+      builder: (context, child) => ValueListenableBuilder<String?>(
+        valueListenable: AppUpdateGate().message,
+        builder: (context, message, _) => message == null
+            ? (child ?? const SizedBox.shrink())
+            : UpdateRequiredView(message: message),
+      ),
     );
   }
 }
