@@ -107,6 +107,7 @@ class _MapExplorePageState extends MapExplorePageModel {
       leading: Container(
         width: AppSizes.iconCircle,
         height: AppSizes.iconCircle,
+        alignment: Alignment.center,
         decoration: BoxDecoration(
           color: job.category.color.withValues(alpha: 0.15),
           borderRadius: AppRadius.smallCircular,

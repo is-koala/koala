@@ -151,6 +151,7 @@ class _SavedJobsPageState extends State<SavedJobsPage> {
         leading: Container(
           width: AppSizes.avatar,
           height: AppSizes.avatar,
+          alignment: Alignment.center,
           decoration: BoxDecoration(
             color: job.category.color.withValues(alpha: 0.15),
             borderRadius: AppRadius.innerCircular,

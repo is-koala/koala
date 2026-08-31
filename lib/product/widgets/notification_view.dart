@@ -163,7 +163,7 @@ class _NotificationViewState extends State<NotificationView> {
               ),
               child: AppIcon(
                 style.icon,
-                size: AppSizes.iconMedium,
+                size: AppSizes.icon,
                 color: style.color,
               ),
             ),

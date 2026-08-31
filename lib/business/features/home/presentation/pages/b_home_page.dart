@@ -336,6 +336,7 @@ class _BHomePageState extends State<BHomePage> {
           Container(
             width: _statIconBox,
             height: _statIconBox,
+            alignment: Alignment.center,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.15),
               borderRadius: AppRadius.innerCircular,
@@ -435,11 +436,12 @@ class _BHomePageState extends State<BHomePage> {
             Container(
               width: _rowIconBox,
               height: _rowIconBox,
+              alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: color.withValues(alpha: _tintAlpha),
                 borderRadius: AppRadius.innerCircular,
               ),
-              child: AppIcon(icon, size: AppSizes.iconMedium, color: color),
+              child: AppIcon(icon, size: AppSizes.icon, color: color),
             ),
             const SizedBox(height: AppSizes.spaceSmall),
             Text(

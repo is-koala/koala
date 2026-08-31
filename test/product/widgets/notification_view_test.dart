@@ -62,10 +62,10 @@ void main() {
     await pumpFeed(tester);
 
     final icon = tester.widget<AppIcon>(find.byType(AppIcon));
-    expect(icon.size, 20);
+    expect(icon.size, 24);
 
     final rendered = tester.getSize(find.byType(AppIcon));
-    expect(rendered, const Size(20, 20));
+    expect(rendered, const Size(24, 24));
   });
 
   testWidgets('bildirim konusu ve alt satırı çizilir', (tester) async {
