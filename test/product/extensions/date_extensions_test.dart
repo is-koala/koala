@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
 
 void main() {
+  _relativeTests();
   group('asMonthYear', () {
     test('Türkçe ay adıyla yazılır', () {
       expect(DateTime(2023, 1, 15).asMonthYear, 'Ocak 2023');
@@ -59,6 +60,41 @@ void main() {
 
     test('sıfır süre 0dk yazılır', () {
       expect(Duration.zero.asWorkDuration, '0dk');
+    });
+  });
+}
+
+void _relativeTests() {
+  group('asRelative', () {
+    test('bir dakikanın altı az önce', () {
+      final now = DateTime.now();
+
+      expect(now.asRelative, 'az önce');
+      expect(now.subtract(const Duration(seconds: 30)).asRelative, 'az önce');
+    });
+
+    test('dakika, saat ve gün ayrı ayrı yazılır', () {
+      final now = DateTime.now();
+
+      expect(now.subtract(const Duration(minutes: 5)).asRelative, '5 dk önce');
+      expect(now.subtract(const Duration(hours: 2)).asRelative, '2 saat önce');
+      expect(now.subtract(const Duration(days: 3)).asRelative, '3 gün önce');
+    });
+
+    // "37 gün önce" kimsenin kafasında bir tarihe karşılık gelmiyor.
+    test('bir haftadan eskisi tarihe döner', () {
+      final old = DateTime(2026, 1, 15);
+
+      expect(old.asRelative, old.asShortDate);
+    });
+
+    // Cihaz saati geride kalmışsa gelecek bir tarih okunabiliyor; negatif
+    // süre "-3 dk önce" diye yazılmamalı.
+    test('gelecek tarih az önce olur', () {
+      expect(
+        DateTime.now().add(const Duration(hours: 1)).asRelative,
+        'az önce',
+      );
     });
   });
 }

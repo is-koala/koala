@@ -8,6 +8,10 @@
 /// flutter run --dart-define=API_BASE_URL=http://localhost:8080  # iOS simulator
 /// ```
 class ApiConfig {
+  /// İstemci sürümünün gittiği başlık. Sunucudaki
+  /// `MinimumAppVersionFilter` bu adı okuyor.
+  static const String appVersionHeader = 'X-App-Version';
+
   /// API'nin kök adresi. Sonunda `/` yok; yol sabitleri `/` ile başlıyor.
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',

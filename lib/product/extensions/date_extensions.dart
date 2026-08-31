@@ -41,6 +41,28 @@ extension DateExtensions on DateTime {
   /// `15.02.2026 09:00`. İlanın başlangıç/bitiş anı gün ve saatin ikisini de
   /// taşıdığı için tek başına tarih yetmiyor.
   String get asShortDateTime => '$asShortDate $asShortTime';
+
+  /// Bildirim listesindeki göreli zaman: "az önce", "5 dk önce",
+  /// "2 saat önce", "3 gün önce".
+  ///
+  /// Bir haftadan eskisinde tarihe düşüyor — "37 gün önce" kimsenin
+  /// kafasında bir tarihe karşılık gelmiyor.
+  String get asRelative {
+    final difference = DateTime.now().difference(this);
+
+    if (difference.isNegative) return 'az önce';
+    if (difference.inMinutes < 1) return 'az önce';
+    if (difference.inHours < 1) return '${difference.inMinutes} dk önce';
+    if (difference.inDays < 1) return '${difference.inHours} saat önce';
+    if (difference.inDays < _relativeDayLimit) {
+      return '${difference.inDays} gün önce';
+    }
+
+    return asShortDate;
+  }
+
+  /// Göreli zamanın tarihe döndüğü sınır, gün olarak.
+  static const int _relativeDayLimit = 7;
 }
 
 /// Bir tarih aralığını okunur hâle getirir.

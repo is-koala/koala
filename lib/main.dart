@@ -9,6 +9,7 @@ import 'package:koala/employee/features/profile/presentation/providers/user_prov
 import 'package:koala/employee/features/jobs/presentation/providers/review_provider.dart';
 import 'package:koala/business/features/home/presentation/providers/b_company_provider.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
+import 'package:koala/product/providers/notification_provider.dart';
 import 'package:koala/product/theme/theme_provider.dart';
 import 'package:koala/product/app.dart';
 import 'package:provider/provider.dart';
@@ -23,6 +24,7 @@ void main() {
         ChangeNotifierProvider(create: (_) => PageProvider()),
         ChangeNotifierProvider(create: (_) => SavedJobsProvider()),
         ChangeNotifierProvider(create: (_) => ReviewProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => ApplyProvider()),
         ChangeNotifierProvider(create: (_) => SearchProvider()),
         ChangeNotifierProvider(create: (_) => BPageProvider()),

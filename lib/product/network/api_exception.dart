@@ -20,6 +20,11 @@ enum ApiErrorType {
   /// 409 — çakışma (ör. e-posta zaten kayıtlı).
   conflict,
 
+  /// 426 — istemci sürümü sunucunun istediği en düşük sürümün altında.
+  /// Tekrar denemenin faydası yok; kullanıcının uygulamayı güncellemesi
+  /// gerekiyor.
+  upgradeRequired,
+
   /// 429 — istek sınırı aşıldı (backend'de `RateLimitFilter` var).
   tooManyRequests,
 

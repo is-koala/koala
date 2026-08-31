@@ -132,6 +132,29 @@ void main() {
       expect(error.message, 'Oturum bulunamadı');
     });
 
+    // Sunucudaki `MinimumAppVersionFilter` eski istemciyi böyle geri
+    // çeviriyor. Tekrar denemenin faydası yok, ayrı bir tür olmalı.
+    test('426 yanıtı upgradeRequired olur', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 426,
+          body: {
+            'success': false,
+            'errorCode': 'UPGRADE_REQUIRED',
+            'message': 'Lutfen uygulamayi guncelleyin.',
+          },
+        ),
+      );
+
+      final error = await _captureError(
+        () => api.client.postWithoutData('/users/me'),
+      );
+
+      expect(error.type, ApiErrorType.upgradeRequired);
+      expect(error.errorCode, 'UPGRADE_REQUIRED');
+      expect(error.message, 'Lutfen uygulamayi guncelleyin.');
+    });
+
     test('429 yanıtı tooManyRequests olur', () async {
       final api = FakeApi(
         handler: (_) => const FakeApiResponse(

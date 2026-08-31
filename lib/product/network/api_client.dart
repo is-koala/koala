@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:koala/product/constants/app_info.dart';
 import 'package:koala/product/network/api_config.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/network/api_response.dart';
@@ -45,6 +46,10 @@ class ApiClient {
         headers: {
           HttpHeaders.acceptLanguageHeader: ApiConfig.acceptLanguage,
           HttpHeaders.userAgentHeader: DeviceIdentity.userAgent,
+          // Sunucu bu başlığa bakarak eski istemciyi `426` ile geri
+          // çeviriyor. Başlık yoksa filtre isteği geçiriyor, yani
+          // göndermemek zorunlu güncellemeyi tamamen devre dışı bırakıyor.
+          ApiConfig.appVersionHeader: AppInfo.version,
         },
         contentType: Headers.jsonContentType,
         responseType: ResponseType.json,
@@ -270,6 +275,7 @@ class ApiClient {
     if (statusCode == 404) return ApiErrorType.notFound;
     if (statusCode == 409) return ApiErrorType.conflict;
     if (statusCode == 429) return ApiErrorType.tooManyRequests;
+    if (statusCode == 426) return ApiErrorType.upgradeRequired;
     if (statusCode >= 500) return ApiErrorType.server;
     return ApiErrorType.unknown;
   }

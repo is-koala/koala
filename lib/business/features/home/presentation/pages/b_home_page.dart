@@ -13,6 +13,7 @@ import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
+import 'package:koala/product/widgets/notification_bell.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:provider/provider.dart';
@@ -160,18 +161,7 @@ class _BHomePageState extends State<BHomePage> {
         ],
       ),
       actions: [
-        IconButton(
-          onPressed: () => context.push('/business/notifications'),
-          icon: Badge(
-            smallSize: AppSizes.badgeDot,
-            backgroundColor: AppColors.danger,
-            child: AppIcon(
-              AppIcons.notification,
-              color: context.textSecondary,
-              size: AppSizes.icon,
-            ),
-          ),
-        ),
+        const NotificationBell(route: '/business/notifications'),
         const SizedBox(width: AppSizes.spaceTiny),
       ],
     );

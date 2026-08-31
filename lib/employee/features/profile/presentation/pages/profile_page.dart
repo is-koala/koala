@@ -19,6 +19,7 @@ import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
+import 'package:koala/product/widgets/notification_bell.dart';
 import 'package:provider/provider.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -76,6 +77,7 @@ class _ProfilePageState extends State<ProfilePage>
         isLarge: true,
         showBackButton: false,
         actions: [
+          const NotificationBell(route: '/notifications'),
           IconButton(
             onPressed: () async {
               await context.push('/settings');

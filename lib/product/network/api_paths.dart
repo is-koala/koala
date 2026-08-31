@@ -30,6 +30,19 @@ class ApiPaths {
   static const String currentUserIdentityVerification =
       '/users/me/identity-verification';
 
+  // ------------------------------------------------------------- Bildirimler
+
+  /// Oturum sahibinin bildirim akışı. Sayfalı; okunmamış sayısı da aynı
+  /// yanıtta geliyor.
+  static const String currentUserNotifications = '/users/me/notifications';
+
+  /// Hepsini okundu işaretler ve kaç tanesinin işaretlendiğini döndürür.
+  /// Tek bir bildirimi işaretleyen uç yok.
+  static const String currentUserNotificationsRead =
+      '$currentUserNotifications/read';
+
+  // -------------------------------------------------------------------- Users
+
   /// Oturum sahibinin iş deneyimleri.
   ///
   /// Liste `/users/me` yanıtında da geliyor; bu uçlar tek tek ekleme,
