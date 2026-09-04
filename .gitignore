@@ -13,6 +13,8 @@
 migrate_working_dir/
 .env
 ios/Flutter/Secrets.xcconfig
+ios/Flutter/Secrets.*.xcconfig
+config/*.local.json
 .claude/settings.local.json
 graphify-out/
 

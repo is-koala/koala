@@ -24,7 +24,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// getter'lar paylaşılan örnekten canlı okuyor, `refreshListenable` yalnızca
 /// muhafızın **ne zaman** çalışacağını belirliyor.
 class SessionManager extends ChangeNotifier {
-  SessionManager._internal();
+  SessionManager._internal() : _tokenStorage = TokenStorage();
+
+  /// Farklı API oturumlarını gerçek saklama davranışıyla sınamak için.
+  @visibleForTesting
+  SessionManager.withTokenStorage(TokenStorage tokenStorage)
+    : _tokenStorage = tokenStorage;
 
   static final SessionManager _instance = SessionManager._internal();
 
@@ -45,19 +50,22 @@ class SessionManager extends ChangeNotifier {
   /// Onboarding'in bir kez gösterildiğini işaretleyen anahtar.
   static const String seenOnboardingKey = 'seen_onboarding';
 
-  final TokenStorage _tokenStorage = TokenStorage();
+  final TokenStorage _tokenStorage;
 
   SharedPreferences? _prefs;
+
+  String _key(String name) =>
+      '${Uri.encodeComponent(_tokenStorage.apiOrigin)}:$name';
 
   /// Oturum durumu diskten okundu mu. Okunmadan hiçbir yönlendirme kararı
   /// verilemez: okunmamış durum "giriş yapmamış"tan farklı bir şey.
   bool get isInitialized => _prefs != null;
 
   /// Kullanıcının oturumu açık mı.
-  bool get isLoggedIn => _prefs?.getBool(isLoggedInKey) ?? false;
+  bool get isLoggedIn => _prefs?.getBool(_key(isLoggedInKey)) ?? false;
 
   /// Hangi uygulamanın gösterileceği: [employeeType] ya da [businessType].
-  String? get userType => _prefs?.getString(userTypeKey);
+  String? get userType => _prefs?.getString(_key(userTypeKey));
 
   /// Onboarding daha önce gösterildi mi.
   bool get seenOnboarding => _prefs?.getBool(seenOnboardingKey) ?? false;
@@ -71,7 +79,11 @@ class SessionManager extends ChangeNotifier {
   /// -- yazan bütün akışlar da aynı örnekten geçiyor -- burada tutulan örnek
   /// bayatlamıyor.
   Future<void> load() async {
-    await _cached();
+    final prefs = await _cached();
+    if (isLoggedIn && await _tokenStorage.readAccessToken() == null) {
+      await prefs.remove(_key(isLoggedInKey));
+      await prefs.remove(_key(userTypeKey));
+    }
     notifyListeners();
   }
 
@@ -108,9 +120,9 @@ class SessionManager extends ChangeNotifier {
     );
 
     final prefs = await _cached();
-    await prefs.setBool(isLoggedInKey, true);
+    await prefs.setBool(_key(isLoggedInKey), true);
     await prefs.setString(
-      userTypeKey,
+      _key(userTypeKey),
       isEmployer ? businessType : employeeType,
     );
   }
@@ -122,7 +134,7 @@ class SessionManager extends ChangeNotifier {
   Future<void> updateUserType({required bool isEmployer}) async {
     final prefs = await _cached();
     await prefs.setString(
-      userTypeKey,
+      _key(userTypeKey),
       isEmployer ? businessType : employeeType,
     );
   }
@@ -136,8 +148,8 @@ class SessionManager extends ChangeNotifier {
     await _tokenStorage.clear();
 
     final prefs = await _cached();
-    await prefs.remove(isLoggedInKey);
-    await prefs.remove(userTypeKey);
+    await prefs.remove(_key(isLoggedInKey));
+    await prefs.remove(_key(userTypeKey));
     notifyListeners();
   }
 }

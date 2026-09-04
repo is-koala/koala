@@ -55,9 +55,12 @@ jobs:
       - name: Bağımlılıkları indir
         run: flutter pub get
 
-      # Testler birim ve widget seviyesinde; cihaz ya da emülatör gerekmiyor.
+      - name: Eksik ortamın sessiz API seçmediğini doğrula
+        run: flutter test test/product/network/api_config_test.dart --reporter expanded
+
+      # Staging testleri de gerçek runtime ortam seçimini kullanır.
       - name: Testleri çalıştır
-        run: flutter test --reporter expanded --coverage
+        run: flutter test --flavor staging --dart-define-from-file=config/staging.json --reporter expanded --coverage
 
       # PR'da bir testin neden düştüğü, hangi satırın kapsanmadığı
       # sorulduğunda ham lcov'a bakılabilsin.
@@ -90,17 +93,15 @@ jobs:
       - name: Bağımlılıkları indir
         run: flutter pub get
 
-      # MAPS_API_KEY gitignore'lu local.properties'ten okunuyor; yoksa
-      # build.gradle.kts boş string'e düşüyor, derleme geçiyor. Haritanın
-      # kendisi CI APK'sında çalışmaz — amaç derlemenin bozulmadığını görmek.
+      # Staging Maps anahtarı yoksa bu yalnız derleme kanıtıdır; harita kabulü değildir.
       - name: APK derle (debug)
-        run: flutter build apk --debug
+        run: flutter build apk --debug --flavor staging --dart-define-from-file=config/staging.json
 
       # Test edecek arkadaşlar APK'yı doğrudan PR sayfasından indirebilsin.
       - uses: actions/upload-artifact@v4
         with:
-          name: koala-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          name: koala-staging-debug-apk
+          path: build/app/outputs/flutter-apk/app-staging-debug.apk
           retention-days: 7
 
   build-ios:
@@ -122,16 +123,7 @@ jobs:
       - name: Bağımlılıkları indir
         run: flutter pub get
 
-      # Debug/Release.xcconfig, Secrets.xcconfig'i koşulsuz `#include`
-      # ediyor ama o dosya gitignore'lu. Dosya yoksa derleme daha başlamadan
-      # patlıyor, o yüzden boş bir tane üretiliyor.
-      - name: Secrets.xcconfig yer tutucusu
-        run: |
-          if [ ! -f ios/Flutter/Secrets.xcconfig ]; then
-            echo "MAPS_API_KEY=" > ios/Flutter/Secrets.xcconfig
-          fi
-
       # İmzalama sertifikası olmadığı için --no-codesign; amaç native tarafın
       # derlendiğini görmek.
       - name: iOS derle (imzasız)
-        run: flutter build ios --no-codesign
+        run: flutter build ios --no-codesign --flavor staging --dart-define-from-file=config/staging.json

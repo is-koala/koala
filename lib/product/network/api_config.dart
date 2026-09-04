@@ -1,22 +1,47 @@
-/// Backend'e bağlanırken kullanılan sabitler.
-///
-/// Adres koda gömülü değil: varsayılan yayın sunucusu, yerelde çalışırken
-/// `--dart-define` ile eziliyor.
-///
-/// ```bash
-/// flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080   # Android emulator
-/// flutter run --dart-define=API_BASE_URL=http://localhost:8080  # iOS simulator
-/// ```
+import 'package:flutter/services.dart';
+
+/// Ortam ve API hedefi açıkça seçilmeden ağ istemcisi kurulmaz.
 class ApiConfig {
+  /// Ortam seçimini ağ istemcisi kurulmadan önce doğrular.
+  static String resolveBaseUrl({
+    required String? flavor,
+    required String configuredUrl,
+  }) {
+    if (!const {'dev', 'staging', 'production'}.contains(flavor)) {
+      throw StateError('Uygulama ortamı seçilmedi. --flavor kullanmalısın.');
+    }
+    final uri = Uri.tryParse(configuredUrl);
+    if (uri == null ||
+        uri.host.isEmpty ||
+        uri.userInfo.isNotEmpty ||
+        uri.hasQuery ||
+        uri.hasFragment ||
+        (uri.path.isNotEmpty && uri.path != '/') ||
+        (uri.scheme != 'https' && !(flavor == 'dev' && uri.scheme == 'http'))) {
+      throw StateError(
+        'API_BASE_URL bu ortam için geçerli bir kök adres değil.',
+      );
+    }
+    return uri.replace(path: '').toString();
+  }
+
   /// İstemci sürümünün gittiği başlık. Sunucudaki
   /// `MinimumAppVersionFilter` bu adı okuyor.
   static const String appVersionHeader = 'X-App-Version';
 
   /// API'nin kök adresi. Sonunda `/` yok; yol sabitleri `/` ile başlıyor.
-  static const String baseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'https://api.iskoala.com',
+  static String get baseUrl => resolveBaseUrl(
+    flavor: appFlavor,
+    configuredUrl: const String.fromEnvironment('API_BASE_URL'),
   );
+
+  /// Yanlış yapılandırma ilk ağ isteğine veya oturum yüklemeye ertelenmez.
+  static void validateBuildConfiguration() {
+    resolveBaseUrl(
+      flavor: appFlavor,
+      configuredUrl: const String.fromEnvironment('API_BASE_URL'),
+    );
+  }
 
   /// STOMP/WebSocket adresi.
   ///

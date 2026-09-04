@@ -6,8 +6,6 @@ if (localPropertiesFile.exists()) {
     localPropertiesFile.inputStream().use { localProperties.load(it) }
 }
 
-val mapsApiKey: String = localProperties.getProperty("MAPS_API_KEY") ?: ""
-
 plugins {
     id("com.android.application")
     // Kotlin derlemesi AGP'nin built-in Kotlin'i üzerinden yürüyor; ayrı bir
@@ -29,15 +27,46 @@ android {
     }
 
     defaultConfig {
-        manifestPlaceholders += mapOf("mapsApiKey" to mapsApiKey)
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.koala"
+        applicationId = "com.iskoala.koala"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+    }
+
+    flavorDimensions += "environment"
+    productFlavors {
+        create("dev") {
+            dimension = "environment"
+            applicationIdSuffix = ".dev"
+            manifestPlaceholders += mapOf(
+                "appLabel" to "Koala Dev",
+                "appUrlScheme" to "koala-dev",
+                "usesCleartextTraffic" to "true",
+                "mapsApiKey" to (localProperties.getProperty("MAPS_API_KEY_DEV") ?: ""),
+            )
+        }
+        create("staging") {
+            dimension = "environment"
+            applicationIdSuffix = ".staging"
+            manifestPlaceholders += mapOf(
+                "appLabel" to "Koala Staging",
+                "appUrlScheme" to "koala-staging",
+                "usesCleartextTraffic" to "false",
+                "mapsApiKey" to (localProperties.getProperty("MAPS_API_KEY_STAGING") ?: ""),
+            )
+        }
+        create("production") {
+            dimension = "environment"
+            manifestPlaceholders += mapOf(
+                "appLabel" to "Koala",
+                "appUrlScheme" to "koala",
+                "usesCleartextTraffic" to "false",
+                "mapsApiKey" to (localProperties.getProperty("MAPS_API_KEY_PRODUCTION") ?: ""),
+            )
+        }
     }
 
     buildTypes {

@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:koala/product/constants/app_assets.dart';
-import 'package:koala/product/network/session_manager.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:lottie/lottie.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class EmailVerificationPendingPage extends StatelessWidget {
   const EmailVerificationPendingPage({
@@ -58,34 +55,6 @@ class EmailVerificationPendingPage extends StatelessWidget {
                     color: context.textSecondary,
                   ),
                   textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: AppSizes.sectionSpace),
-                // TODO(backend): Kayıt akışı artık gerçek uçlara bağlı; bu
-                // kısayol yalnızca sunucuya erişilemediğinde arayüzü gezmek
-                // için duruyor, sunucu ayağa kalkınca kaldırılacak.
-                TextButton(
-                  onPressed: () async {
-                    final prefs = await SharedPreferences.getInstance();
-                    await prefs.setBool(SessionManager.isLoggedInKey, true);
-                    await prefs.setString(
-                      SessionManager.userTypeKey,
-                      isBusiness
-                          ? SessionManager.businessType
-                          : SessionManager.employeeType,
-                    );
-
-                    if (context.mounted) {
-                      context.go(isBusiness ? '/business/home' : '/explore');
-                    }
-                  },
-                  child: Text(
-                    isBusiness
-                        ? 'İş Veren Arayüzünü Gör (Demo)'
-                        : 'Çalışan Arayüzünü Gör (Demo)',
-                    style: context.textTheme.labelLarge?.copyWith(
-                      color: context.accentColor,
-                    ),
-                  ),
                 ),
               ],
             ),

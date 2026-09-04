@@ -1,3 +1,4 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/product/network/session_manager.dart';
 import 'package:koala/product/router/router_manager.dart';
@@ -7,6 +8,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// arayüzlerini birbirinden ayıran tek yer burası. Sızdırırsa kullanıcı
 /// karşı tarafın ekranını görür.
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   String? redirect({
     required bool loggedIn,
     String? userType,
@@ -248,10 +251,15 @@ void main() {
 
     test('load sonrası bayraklar senkron okunuyor', () async {
       SharedPreferences.setMockInitialValues({
-        SessionManager.isLoggedInKey: true,
-        SessionManager.userTypeKey: SessionManager.businessType,
         SessionManager.seenOnboardingKey: true,
       });
+      FlutterSecureStorage.setMockInitialValues({});
+      await SessionManager().start(
+        accessToken: 'access',
+        refreshToken: 'refresh',
+        isEmployer: true,
+      );
+      SessionManager().resetForTest();
 
       await SessionManager().load();
 
@@ -287,14 +295,16 @@ void main() {
     // Yazan akışlar da aynı `getInstance()` örneğinden geçtiği için bellekteki
     // değer bayatlamıyor: çıkış aynı karede görülüyor.
     test('oturum kapanınca bayrak aynı anda düşüyor', () async {
-      SharedPreferences.setMockInitialValues({
-        SessionManager.isLoggedInKey: true,
-      });
+      FlutterSecureStorage.setMockInitialValues({});
+      await SessionManager().start(
+        accessToken: 'access',
+        refreshToken: 'refresh',
+        isEmployer: false,
+      );
       await SessionManager().load();
       expect(SessionManager().isLoggedIn, isTrue);
 
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(SessionManager.isLoggedInKey);
+      await SessionManager().end();
 
       expect(SessionManager().isLoggedIn, isFalse);
     });
