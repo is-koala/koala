@@ -9,9 +9,9 @@ import 'package:koala/product/network/api_paths.dart';
 /// da, işverene aday geldiğinde de kayıt aynı yere düşüyor. Bu yüzden
 /// servis `product/` altında.
 ///
-/// Push **bu servisin işi değil**: burada okunan, sunucunun tuttuğu gönderim
-/// kayıtları. Cihaza bildirim düşürmek ayrı bir iş ve bugün sunucuda da
-/// yapılandırılmamış durumda.
+/// Akış yalnızca `IN_APP` kanalını döndürüyor; e-posta ve push kayıtları
+/// sunucuda gönderim kaydı olarak duruyor ama listeye girmiyor. Push'u
+/// cihaza düşürmek ayrı bir iş ve bugün sunucuda da yapılandırılmamış.
 class NotificationService {
   NotificationService._(this._apiClient);
 
@@ -36,6 +36,16 @@ class NotificationService {
       ApiPaths.currentUserNotifications,
       queryParameters: {'page': page, 'size': size},
       parse: (data) => NotificationFeed.fromJson(data! as Map<String, dynamic>),
+    );
+  }
+
+  /// Tek bir bildirimi okundu işaretler.
+  ///
+  /// Zaten okunmuş ya da başkasına ait bir bildirimde sunucu sessizce
+  /// geçiyor — hata dönmüyor, yani çağıran ayrı bir durum ele almıyor.
+  Future<void> markRead(String notificationId) {
+    return _apiClient.postWithoutData(
+      ApiPaths.currentUserNotificationRead(notificationId),
     );
   }
 

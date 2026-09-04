@@ -10,6 +10,10 @@ enum NotificationChannel {
   sms('SMS'),
   push('PUSH'),
 
+  /// Uygulama içi bildirim. Akış **yalnızca bunu** döndürüyor; e-posta ve
+  /// push kayıtları gönderim kaydı olarak duruyor ama listeye girmiyor.
+  inApp('IN_APP'),
+
   /// Sunucu tanımadığımız bir kanal eklerse buraya düşüyor. Bilinmeyeni
   /// var olan bir kanala yamamak, akışı sessizce yanlış gösterirdi.
   unknown('');
@@ -82,16 +86,39 @@ enum NotificationStatus {
   }
 }
 
+/// Bildirime dokunulduğunda gidilecek kaydın türü. Backend
+/// `NotificationTargetType` karşılığı.
+enum NotificationTargetType {
+  job('JOB'),
+  jobApplication('JOB_APPLICATION'),
+  jobAssignment('JOB_ASSIGNMENT'),
+  conversation('CONVERSATION'),
+  user('USER'),
+
+  /// Hedefi olmayan ya da tanınmayan tür. Satır tıklanamaz kalıyor.
+  none('');
+
+  const NotificationTargetType(this.code);
+
+  final String code;
+
+  static NotificationTargetType fromCode(Object? value) {
+    return NotificationTargetType.values.firstWhere(
+      (type) => type.code == value,
+      orElse: () => NotificationTargetType.none,
+    );
+  }
+}
+
 /// Kullanıcıya gönderilmiş tek bir bildirim. Backend `NotificationDto`
 /// karşılığı.
 ///
 /// Sınıf adı `Notification` değil: Flutter'ın kendi `Notification` sınıfı
 /// (`NotificationListener`'ın taşıdığı) ile çakışırdı.
 ///
-/// Taşıdığı metin tek bir alan — [subject]. Gövde, hedef ya da bağlantı
-/// yok; sunucu bunları `templateParameters` içinde tutuyor ve yanıta
-/// çıkarmıyor. Yani bir bildirime tıklandığında nereye gidileceği bugün
-/// bilinemiyor.
+/// İki metin taşıyor: [subject] neyle ilgili olduğunu (ilanın başlığı),
+/// [body] ne olduğunu ("Başvurunuz kabul edildi") söylüyor. Nereye
+/// gidileceği [targetType] ve [targetId] ile geliyor.
 class AppNotification {
   const AppNotification({
     required this.id,
@@ -99,6 +126,9 @@ class AppNotification {
     required this.category,
     required this.status,
     this.subject,
+    this.body,
+    this.targetType = NotificationTargetType.none,
+    this.targetId,
     this.sentAt,
     this.readAt,
   });
@@ -108,10 +138,23 @@ class AppNotification {
   final NotificationCategory category;
   final NotificationStatus status;
 
-  /// Gösterilecek metin. Sunucuda kanala göre **farklı şey** yazıyor:
-  /// e-posta kaydında olayın kendisi ("Başvurunuz kabul edildi"), push
-  /// kaydında ilanın başlığı ("Garson aranıyor"). Boş gelebiliyor.
+  /// Başlık: bildirimin neyle ilgili olduğu, genelde ilanın adı. Hedefi
+  /// olmayan bildirimlerde (ör. kimlik doğrulandı) boş geliyor.
   final String? subject;
+
+  /// Olayın kendisi: "Başvurunuz kabul edildi" gibi.
+  final String? body;
+
+  /// Dokununca gidilecek kaydın türü; hedefi yoksa
+  /// [NotificationTargetType.none].
+  final NotificationTargetType targetType;
+
+  final String? targetId;
+
+  /// Dokunulabilir mi. Hedefi olmayan bildirim tıklanınca hiçbir yere
+  /// gitmemeli — basılıp da bir şey olmaması bozuk izlenimi veriyor.
+  bool get hasTarget =>
+      targetType != NotificationTargetType.none && targetId != null;
 
   final DateTime? sentAt;
 
@@ -121,8 +164,40 @@ class AppNotification {
 
   bool get isRead => readAt != null;
 
-  /// Gösterilecek bir metni var mı. Boş satır listede yer kaplamamalı.
+  /// Gösterilecek bir başlığı var mı. Boş satır listede yer kaplamamalı.
   bool get hasSubject => subject != null && subject!.trim().isNotEmpty;
+
+  bool get hasBody => body != null && body!.trim().isNotEmpty;
+
+  /// Listedeki başlık. Bildirimin başlığı boşsa olayın kendisi başlığa
+  /// çıkıyor; ikisi de boşsa kategori adı kalıyor.
+  String get title => hasSubject
+      ? subject!
+      : hasBody
+      ? body!
+      : category.displayName;
+
+  /// Başlığın altındaki satır. Başlık zaten olayın kendisiyse tekrar
+  /// yazılmıyor.
+  String? get detail => hasSubject && hasBody ? body : null;
+
+  /// Okunmuş kopyası. Tek bir alan değiştiği için tam bir `copyWith`
+  /// yazılmadı; modelin geri kalanı sunucudan geliyor ve elde
+  /// değiştirilmiyor.
+  AppNotification copyWithRead(DateTime readAt) {
+    return AppNotification(
+      id: id,
+      channel: channel,
+      category: category,
+      status: status,
+      subject: subject,
+      body: body,
+      targetType: targetType,
+      targetId: targetId,
+      sentAt: sentAt,
+      readAt: readAt,
+    );
+  }
 
   factory AppNotification.fromJson(Map<String, dynamic> json) {
     return AppNotification(
@@ -131,6 +206,9 @@ class AppNotification {
       category: NotificationCategory.fromCode(json['category']),
       status: NotificationStatus.fromCode(json['status']),
       subject: json['subject'] as String?,
+      body: json['body'] as String?,
+      targetType: NotificationTargetType.fromCode(json['targetType']),
+      targetId: json['targetId'] == null ? null : '${json['targetId']}',
       sentAt: _parseDate(json['sentAt']),
       readAt: _parseDate(json['readAt']),
     );

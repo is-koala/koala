@@ -68,6 +68,21 @@ void main() {
     });
   });
 
+  group('NotificationService.markRead', () {
+    test('bildirim kimliği yola eklenir', () async {
+      final api = FakeApi(
+        handler: (_) =>
+            const FakeApiResponse(statusCode: 200, body: {'success': true}),
+      );
+
+      await NotificationService.withClient(api.client).markRead('ntf_1');
+
+      final request = api.requests.single;
+      expect(request.path, '/users/me/notifications/ntf_1/read');
+      expect(request.method, 'POST');
+    });
+  });
+
   group('NotificationService.markAllRead', () {
     test('işaretlenen sayıyı döndürür', () async {
       final api = FakeApi(

@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -7,6 +10,7 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/models/app_notification.dart';
+import 'package:koala/product/network/session_manager.dart';
 import 'package:koala/product/providers/notification_provider.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/empty_state.dart';
@@ -18,12 +22,9 @@ import 'package:provider/provider.dart';
 /// Ekranın kendisi değil gövdesi: `Scaffold` ve başlık çubuğu çağırana ait,
 /// çünkü iki tarafın başlık çubuğu farklı kuruluyor.
 ///
-/// TODO(backend): Sunucu bir olay için hem push hem e-posta kaydı yazıyor
-/// ve akış ikisini de döndürüyor, yani bildirimler ileride çift görünecek.
-/// Bugün görünmüyor: push kaydı yalnızca kullanıcının push token'ı olan bir
-/// cihazı varsa yazılıyor, uygulama da henüz token göndermiyor. Kanal
-/// ayrımı sunucuda çözülecek — burada süzme yapılmadı, çünkü `IN_APP`
-/// kanalı eklenirse süzgeç yanlış tarafa düşerdi.
+/// Akış yalnızca `IN_APP` kanalını döndürüyor, yani bir olay listede bir
+/// kez görünüyor. Satıra dokunmak bildirimi okundu işaretliyor ve hedefine
+/// götürüyor.
 class NotificationView extends StatefulWidget {
   const NotificationView({super.key, this.bottomPadding = AppSizes.space});
 
@@ -134,9 +135,51 @@ class _NotificationViewState extends State<NotificationView> {
     );
   }
 
+  /// Bildirimin hedefine götürür.
+  ///
+  /// Sunucu kaydın kimliğini veriyor ama uygulamada kimlikle açılan ekran
+  /// yok — sohbet ekranı hazır bir `Conversation`, iş ekranı hazır bir
+  /// `Job` bekliyor. Bu yüzden kaydın **listesine** gidiliyor: listeler
+  /// kısa ve durumlarına göre gruplu, kullanıcı aradığını görüyor.
+  void _openTarget(AppNotification notification) {
+    final provider = context.read<NotificationProvider>();
+    unawaited(provider.markRead(notification.id));
+
+    final isEmployer = SessionManager().userType == SessionManager.businessType;
+
+    final route = switch (notification.targetType) {
+      NotificationTargetType.jobApplication ||
+      NotificationTargetType.jobAssignment ||
+      NotificationTargetType.job => isEmployer ? '/business/posts' : '/jobs',
+      NotificationTargetType.conversation =>
+        isEmployer ? '/business/chat' : '/chat',
+      NotificationTargetType.user =>
+        isEmployer ? '/business/profile' : '/profile',
+      NotificationTargetType.none => null,
+    };
+
+    if (route == null) return;
+
+    // Sekmeler `go` ile değişiyor: kabuk açık kalsın, üstüne yeni bir
+    // kopya yığılmasın.
+    context.go(route);
+  }
+
   Widget _tile(AppNotification notification) {
     final style = _categoryStyle(notification.category);
 
+    if (!notification.hasTarget) return _tileBody(notification, style);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _openTarget(notification),
+        child: _tileBody(notification, style),
+      ),
+    );
+  }
+
+  Widget _tileBody(AppNotification notification, _CategoryStyle style) {
     return Container(
       decoration: BoxDecoration(
         color: notification.isRead
@@ -177,6 +220,7 @@ class _NotificationViewState extends State<NotificationView> {
 
   Widget _tileContent(AppNotification notification) {
     final subtitle = _subtitle(notification);
+    final detail = notification.detail;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -185,11 +229,7 @@ class _NotificationViewState extends State<NotificationView> {
           children: [
             Expanded(
               child: Text(
-                // Konu boş gelebiliyor; o zaman hiç değilse neyle ilgili
-                // olduğu görünsün.
-                notification.hasSubject
-                    ? notification.subject!
-                    : notification.category.displayName,
+                notification.title,
                 style: context.textTheme.bodyMedium?.copyWith(
                   fontWeight: notification.isRead
                       ? FontWeight.w500
@@ -208,6 +248,17 @@ class _NotificationViewState extends State<NotificationView> {
               ),
           ],
         ),
+        // Olayın kendisi: "Başvurunuz kabul edildi". Başlık zaten bu
+        // metinse (ilan başlığı gelmemişse) burada tekrarlanmıyor.
+        if (detail != null) ...[
+          const SizedBox(height: AppSizes.spaceTiny),
+          Text(
+            detail,
+            style: context.textTheme.bodySmall?.copyWith(
+              color: context.textSecondary,
+            ),
+          ),
+        ],
         if (subtitle.isNotEmpty) ...[
           const SizedBox(height: AppSizes.spaceTiny),
           Text(
@@ -221,16 +272,15 @@ class _NotificationViewState extends State<NotificationView> {
     );
   }
 
-  /// Kategori adı ve zaman. Sunucu bildirimin gövdesini yanıta çıkarmıyor,
-  /// o yüzden satırın ikinci katı bağlamla dolduruluyor.
+  /// Kategori adı ve zaman.
   ///
-  /// Konu boşsa kategori zaten başlığa geçmiş oluyor; burada tekrarlanmıyor.
+  /// Başlık kategoriye düşmüşse (ne konu ne gövde var) burada
+  /// tekrarlanmıyor.
   String _subtitle(AppNotification notification) {
     final sentAt = notification.sentAt;
+    final hasText = notification.hasSubject || notification.hasBody;
 
-    if (!notification.hasSubject) {
-      return sentAt == null ? '' : sentAt.asRelative;
-    }
+    if (!hasText) return sentAt == null ? '' : sentAt.asRelative;
 
     final category = notification.category.displayName;
 

@@ -18,10 +18,13 @@ Map<String, dynamic> feedResponse({
           for (final id in ids)
             {
               'id': id,
-              'channel': 'EMAIL',
+              'channel': 'IN_APP',
               'category': 'APPLICATION_UPDATES',
               'status': 'SENT',
-              'subject': 'Başvurunuz kabul edildi',
+              'subject': 'Garson aranıyor',
+              'body': 'Başvurunuz kabul edildi',
+              'targetType': 'JOB_ASSIGNMENT',
+              'targetId': 'asg_1',
               'sentAt': '2026-08-30T09:15:00Z',
             },
         ],
@@ -250,6 +253,68 @@ void main() {
 
       expect(api.requests, hasLength(2));
       expect(provider.unreadCount, 2);
+    });
+  });
+
+  group('NotificationProvider.markRead', () {
+    // Liste elde güncelleniyor: kullanıcı satıra dokunup gidiyor, dönüşte
+    // listenin baştan kurulmasını beklemesin.
+    test('satırı okundu yapar ve rozeti azaltır', () async {
+      final api = FakeApi(
+        handler: (options) => options.path.endsWith('/read')
+            ? const FakeApiResponse(statusCode: 200, body: {'success': true})
+            : FakeApiResponse(
+                statusCode: 200,
+                body: feedResponse(page: 0, last: true),
+              ),
+      );
+
+      final provider = providerWith(api);
+      await provider.load();
+      await provider.markRead('ntf_1');
+
+      expect(provider.notifications.single.isRead, isTrue);
+      expect(provider.unreadCount, 1);
+      // Liste yeniden çekilmiyor: yükleme + işaretleme, iki istek.
+      expect(api.requests, hasLength(2));
+    });
+
+    // Okunmamışı okundu göstermek yanlış tarafa hata yapmak olurdu.
+    test('çağrı düşerse satır okunmamış kalır', () async {
+      final api = FakeApi(
+        handler: (options) => options.path.endsWith('/read')
+            ? const FakeApiResponse(
+                statusCode: 500,
+                body: {'success': false, 'message': 'Sunucu hatası'},
+              )
+            : FakeApiResponse(
+                statusCode: 200,
+                body: feedResponse(page: 0, last: true),
+              ),
+      );
+
+      final provider = providerWith(api);
+      await provider.load();
+      await provider.markRead('ntf_1');
+
+      expect(provider.notifications.single.isRead, isFalse);
+      expect(provider.unreadCount, 2);
+      expect(provider.errorMessage, 'Sunucu hatası');
+    });
+
+    test('zaten okunmuş bildirimde istek atmaz', () async {
+      final api = FakeApi(
+        handler: (_) => FakeApiResponse(
+          statusCode: 200,
+          body: feedResponse(page: 0, last: true),
+        ),
+      );
+
+      final provider = providerWith(api);
+      await provider.load();
+      await provider.markRead('bilinmeyen');
+
+      expect(api.requests, hasLength(1));
     });
   });
 }

@@ -70,9 +70,13 @@ class ApiPaths {
   static const String currentUserNotifications = '/users/me/notifications';
 
   /// Hepsini okundu işaretler ve kaç tanesinin işaretlendiğini döndürür.
-  /// Tek bir bildirimi işaretleyen uç yok.
   static const String currentUserNotificationsRead =
       '$currentUserNotifications/read';
+
+  /// Tek bir bildirimi okundu işaretler. Zaten okunmuşsa ya da başkasına
+  /// aitse sunucu sessizce geçiyor.
+  static String currentUserNotificationRead(String notificationId) =>
+      '$currentUserNotifications/$notificationId/read';
 
   // -------------------------------------------------------------------- Users
 

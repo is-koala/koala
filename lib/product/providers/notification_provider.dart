@@ -107,6 +107,31 @@ class NotificationProvider extends ChangeNotifier {
     }
   }
 
+  /// Tek bir bildirimi okundu işaretler.
+  ///
+  /// Liste **elde** güncelleniyor, yeniden çekilmiyor: kullanıcı satıra
+  /// dokunup gidiyor, dönüşte listenin baştan kurulması için beklemesin.
+  /// Çağrı düşerse rozet olduğu gibi kalıyor; okunmamışı okundu göstermek
+  /// yanlış tarafa hata yapmak olurdu.
+  Future<void> markRead(String notificationId) async {
+    final index = _notifications.indexWhere(
+      (notification) => notification.id == notificationId,
+    );
+    if (index == -1 || _notifications[index].isRead) return;
+
+    try {
+      await _service.markRead(notificationId);
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+      notifyListeners();
+      return;
+    }
+
+    _notifications[index] = _notifications[index].copyWithRead(DateTime.now());
+    if (_unreadCount > 0) _unreadCount--;
+    notifyListeners();
+  }
+
   /// Hepsini okundu işaretler. Başarılıysa `true` döner.
   ///
   /// Sunucuda tek bir bildirimi işaretleyen uç yok, yalnızca toptan
