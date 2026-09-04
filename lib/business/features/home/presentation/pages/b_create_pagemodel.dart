@@ -288,11 +288,6 @@ abstract class BCreatePageModel extends State<BCreatePage> {
 
   // -------------------------------------------------------------- Yayınlama
 
-  /// Formu doğrular ve ilanı açar.
-  ///
-  /// Doğrulama burada da yapılıyor çünkü backend'in reddi tek bir alan adı
-  /// döndürüyor; kullanıcıya eksik alanı Türkçe ve sırayla söylemek daha
-  /// anlaşılır.
   /// Bireysel ilan açan işverenin kimliği doğrulanmış mı.
   ///
   /// Şirket adına açılan ilanda gerekmiyor: şirket kurmak zaten kimlik
@@ -316,6 +311,11 @@ abstract class BCreatePageModel extends State<BCreatePage> {
     if (mounted) await context.read<UserProvider>().load(silent: true);
   }
 
+  /// Formu doğrular ve ilanı açar.
+  ///
+  /// Doğrulama burada da yapılıyor çünkü backend'in reddi tek bir alan adı
+  /// döndürüyor; kullanıcıya eksik alanı Türkçe ve sırayla söylemek daha
+  /// anlaşılır.
   Future<void> _createJob() async {
     if (_isSubmitting) return;
 
@@ -352,35 +352,16 @@ abstract class BCreatePageModel extends State<BCreatePage> {
   }
 
   Future<void> _showIdentityRequired() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: const RoundedRectangleBorder(
-          borderRadius: AppRadius.secondaryCircular,
-        ),
-        title: Text(
-          'Kimlik doğrulaması gerekli',
-          style: dialogContext.textTheme.titleMedium,
-        ),
-        content: Text(
+    final confirmed = await ConfirmDialog.show(
+      context,
+      title: 'Kimlik doğrulaması gerekli',
+      message:
           'Bireysel ilan açabilmek ve çalışana ödeme yapabilmek için '
           'kimliğinizi doğrulamanız gerekiyor. Doğrulama birkaç dakika '
           'sürüyor ve bir kez yapılıyor.',
-          style: dialogContext.textTheme.bodyMedium?.copyWith(
-            color: dialogContext.textSecondary,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Vazgeç'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Doğrula'),
-          ),
-        ],
-      ),
+      actionLabel: 'Doğrula',
+      // Yıkıcı bir işlem değil, yönlendirme: kırmızı düğme yanlış sinyal.
+      isDestructive: false,
     );
 
     if (confirmed != true || !mounted) return;

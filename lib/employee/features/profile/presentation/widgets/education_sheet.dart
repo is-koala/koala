@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:koala/employee/features/auth/models/education.dart';
+import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/academic_picker_sheet.dart';
-import 'package:koala/employee/features/profile/presentation/widgets/sheet_switch_row.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
@@ -12,6 +12,7 @@ import 'package:koala/product/models/academic_reference.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/services/academic_reference_service.dart';
 import 'package:koala/product/widgets/app_bottom_sheet.dart';
+import 'package:koala/product/widgets/sheet_switch_row.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_button.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
@@ -125,18 +126,25 @@ class _EducationSheetState extends State<EducationSheet> {
       _faculty != null &&
       _department != null &&
       _startDate != null &&
-      _parsedGpa != _invalidGpa;
+      _isGpaAcceptable;
 
-  /// Ayrıştırılamayan ya da aralık dışı not için kullanılan işaret.
-  static const double _invalidGpa = -1;
+  /// Not alanı boş ya da geçerli mi. Boş bırakmak serbest; girilen değer
+  /// aralık dışındaysa kaydettirmiyoruz.
+  bool get _isGpaAcceptable => _gpaText.isEmpty || _parsedGpa != null;
 
-  /// Girilen not. Boşsa `null`, hatalıysa [_invalidGpa].
+  String get _gpaText => _gpa.text.trim().replaceAll(',', '.');
+
+  /// Girilen not. Boşsa ya da okunamıyorsa `null`.
+  ///
+  /// "Girilmedi" ile "hatalı girildi" ayrımı [_isGpaAcceptable] üzerinden
+  /// yapılıyor; ikisini tek bir sayıya (ör. `-1`) sıkıştırmak, sayı gibi
+  /// davranmayan bir sayı üretiyordu.
   double? get _parsedGpa {
-    final text = _gpa.text.trim().replaceAll(',', '.');
+    final text = _gpaText;
     if (text.isEmpty) return null;
 
     final value = double.tryParse(text);
-    if (value == null || value < 0 || value > _maxGpa) return _invalidGpa;
+    if (value == null || value < 0 || value > _maxGpa) return null;
 
     return value;
   }
@@ -186,7 +194,7 @@ class _EducationSheetState extends State<EducationSheet> {
                 ],
                 onChanged: (_) => setState(() {}),
               ),
-              if (_parsedGpa == _invalidGpa) _gpaError(),
+              if (!_isGpaAcceptable) _gpaError(),
               const SizedBox(height: AppSizes.space),
               _dateField(
                 label: 'Başlangıç',
@@ -217,9 +225,7 @@ class _EducationSheetState extends State<EducationSheet> {
       padding: const EdgeInsets.only(top: AppSizes.spaceTiny),
       child: Text(
         'Not ortalaması 0 ile 4 arasında olmalı.',
-        style: context.textTheme.labelMedium?.copyWith(
-          color: Theme.of(context).colorScheme.error,
-        ),
+        style: context.textTheme.labelMedium?.copyWith(color: AppColors.danger),
       ),
     );
   }
@@ -462,8 +468,6 @@ class _EducationSheetState extends State<EducationSheet> {
   static const int _futureYears = 8;
 
   void _submit() {
-    final gpa = _parsedGpa;
-
     Navigator.pop(
       context,
       EducationFormResult(
@@ -472,7 +476,7 @@ class _EducationSheetState extends State<EducationSheet> {
         departmentId: _department!.id,
         type: _type,
         startDate: _startDate!,
-        gpa: gpa == _invalidGpa ? null : gpa,
+        gpa: _parsedGpa,
         endDate: _isContinuing ? null : _endDate,
       ),
     );

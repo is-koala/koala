@@ -11,6 +11,7 @@ import 'package:koala/business/features/home/presentation/pages/b_company_info_p
 import 'package:koala/business/features/home/presentation/pages/b_job_detail_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_user_profile_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_notifications_page.dart';
+import 'package:koala/business/features/home/presentation/pages/b_sessions_page.dart';
 import 'package:koala/employee/features/notifications/presentation/pages/notifications_page.dart';
 import 'package:koala/employee/features/profile/presentation/pages/followed_companies_page.dart';
 import 'package:koala/employee/features/settings/presentation/pages/sessions_page.dart';
@@ -403,6 +404,11 @@ class RouterManager {
       GoRoute(
         path: '/sessions',
         pageBuilder: (context, state) => _page(state, const SessionsPage()),
+      ),
+
+      GoRoute(
+        path: '/business/sessions',
+        pageBuilder: (context, state) => _page(state, const BSessionsPage()),
       ),
 
       GoRoute(

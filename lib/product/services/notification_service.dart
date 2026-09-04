@@ -52,8 +52,8 @@ class NotificationService {
   /// Bütün bildirimleri okundu işaretler ve kaç tanesinin işaretlendiğini
   /// döndürür.
   ///
-  /// Tek tek işaretleyen bir uç **yok**; sunucu yalnızca toptan işaretlemeyi
-  /// destekliyor. Zaten hepsi okunmuşsa `0` dönüyor, hata değil.
+  /// Tek tek işaretlemek için [markRead] var. Zaten hepsi okunmuşsa `0`
+  /// dönüyor, hata değil.
   Future<int> markAllRead() {
     return _apiClient.post<int>(
       ApiPaths.currentUserNotificationsRead,

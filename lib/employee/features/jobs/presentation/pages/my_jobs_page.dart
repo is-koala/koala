@@ -20,6 +20,7 @@ import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/widgets/empty_state.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
+import 'package:koala/product/widgets/notification_bell.dart';
 import 'package:koala/product/widgets/reason_dialog.dart';
 import 'package:provider/provider.dart';
 
@@ -57,7 +58,11 @@ class _MyJobsPageState extends MyJobsPagemodel {
   Widget build(BuildContext context) {
     if (loading) {
       return Scaffold(
-        appBar: MyAppbar(title: 'İşlerim', showBackButton: false),
+        appBar: MyAppbar(
+          title: 'İşlerim',
+          showBackButton: false,
+          actions: const [NotificationBell(route: '/notifications')],
+        ),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
@@ -67,7 +72,11 @@ class _MyJobsPageState extends MyJobsPagemodel {
     final error = errorMessage;
     if (error != null && allJobs.isEmpty) {
       return Scaffold(
-        appBar: MyAppbar(title: 'İşlerim', showBackButton: false),
+        appBar: MyAppbar(
+          title: 'İşlerim',
+          showBackButton: false,
+          actions: const [NotificationBell(route: '/notifications')],
+        ),
         body: _errorState(error),
       );
     }
@@ -116,7 +125,11 @@ class _MyJobsPageState extends MyJobsPagemodel {
 
     if (isEmpty) {
       return Scaffold(
-        appBar: MyAppbar(title: 'İşlerim', showBackButton: false),
+        appBar: MyAppbar(
+          title: 'İşlerim',
+          showBackButton: false,
+          actions: const [NotificationBell(route: '/notifications')],
+        ),
         body: RefreshIndicator(
           onRefresh: reload,
           child: const EmptyState(
@@ -131,7 +144,11 @@ class _MyJobsPageState extends MyJobsPagemodel {
     }
 
     return Scaffold(
-      appBar: MyAppbar(title: 'İşlerim', showBackButton: false),
+      appBar: MyAppbar(
+        title: 'İşlerim',
+        showBackButton: false,
+        actions: const [NotificationBell(route: '/notifications')],
+      ),
       body: RefreshIndicator(
         onRefresh: reload,
         child: SingleChildScrollView(

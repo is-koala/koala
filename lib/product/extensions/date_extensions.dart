@@ -42,6 +42,17 @@ extension DateExtensions on DateTime {
   /// taşıdığı için tek başına tarih yetmiyor.
   String get asShortDateTime => '$asShortDate $asShortTime';
 
+  /// Sunucunun `LocalDate` alanları için `yyyy-MM-dd`.
+  ///
+  /// `toIso8601String` saat kısmını da yazıyor ve backend'in çözümleyicisi
+  /// onu reddediyor — deneyim, eğitim ve profil uçlarının üçü de bunu
+  /// bekliyor.
+  String get asLocalDate {
+    final month = this.month.toString().padLeft(2, '0');
+    final day = this.day.toString().padLeft(2, '0');
+    return '$year-$month-$day';
+  }
+
   /// Bildirim listesindeki göreli zaman: "az önce", "5 dk önce",
   /// "2 saat önce", "3 gün önce".
   ///

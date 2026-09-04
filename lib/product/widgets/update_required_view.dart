@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:koala/product/constants/app_info.dart';
+import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
@@ -23,9 +24,6 @@ class UpdateRequiredView extends StatelessWidget {
 
   /// İkonu taşıyan kutunun kenar uzunluğu.
   static const double _iconBox = 96;
-
-  /// İkon kutusunun zemin tonu.
-  static const double _iconTintAlpha = 0.12;
 
   /// Mağaza bağlantısı biliniyor mu. Kimlikler doldurulmadan düğme
   /// çizilmiyor: hiçbir yere gitmeyen bir düğme, olmayan düğmeden kötü.
@@ -72,7 +70,7 @@ class UpdateRequiredView extends StatelessWidget {
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: context.accentColor.withValues(
-                      alpha: _iconTintAlpha,
+                      alpha: AppColors.surfaceTintAlpha,
                     ),
                     borderRadius: AppRadius.secondaryCircular,
                   ),

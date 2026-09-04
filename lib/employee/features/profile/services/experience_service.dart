@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:koala/employee/features/auth/models/experience.dart';
+import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
@@ -105,8 +106,8 @@ class ExperienceService {
       'companyName': _trimmed(companyName),
       'employmentType': employmentType?.code,
       'cityName': _trimmed(cityName),
-      'startDate': _asLocalDate(startDate),
-      'endDate': endDate == null ? null : _asLocalDate(endDate),
+      'startDate': startDate.asLocalDate,
+      'endDate': endDate?.asLocalDate,
       'description': _trimmed(description),
     };
   }
@@ -114,13 +115,5 @@ class ExperienceService {
   static String? _trimmed(String? value) {
     final trimmed = value?.trim();
     return trimmed == null || trimmed.isEmpty ? null : trimmed;
-  }
-
-  /// `yyyy-MM-dd`. `toIso8601String` saat de yazıyor ve sunucunun
-  /// `LocalDate` çözümleyicisi onu reddediyor.
-  static String _asLocalDate(DateTime date) {
-    final month = date.month.toString().padLeft(2, '0');
-    final day = date.day.toString().padLeft(2, '0');
-    return '${date.year}-$month-$day';
   }
 }

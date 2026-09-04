@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -42,16 +43,6 @@ class _NotificationViewState extends State<NotificationView> {
   /// Listenin sonuna bu kadar kala sonraki sayfa isteniyor; kullanıcı dibe
   /// değmeden yükleme başlasın.
   static const double _loadMoreThreshold = 240;
-
-  /// Okunmamış satırın zemin vurgusu; renk değil ton farkı olsun diye çok
-  /// düşük opaklık.
-  static const double _unreadTintAlpha = 0.04;
-
-  /// Kategori ikonunu taşıyan renkli kutu.
-  static const double _iconBox = 44;
-
-  /// İkon kutusunun zemin tonu.
-  static const double _iconTintAlpha = 0.12;
 
   @override
   void initState() {
@@ -184,7 +175,7 @@ class _NotificationViewState extends State<NotificationView> {
       decoration: BoxDecoration(
         color: notification.isRead
             ? context.backgroundColor
-            : context.accentColor.withValues(alpha: _unreadTintAlpha),
+            : context.accentColor.withValues(alpha: AppColors.rowTintAlpha),
         border: Border(
           bottom: BorderSide(color: context.dividerColor, width: 1),
         ),
@@ -195,13 +186,15 @@ class _NotificationViewState extends State<NotificationView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: _iconBox,
-              height: _iconBox,
+              width: AppSizes.iconTile,
+              height: AppSizes.iconTile,
               // Hizasız `Container` çocuğuna tight constraint geçiriyor ve
               // `AppIcon` kendi ölçüsünü isteyemeden kutuyu dolduruyor.
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: style.color.withValues(alpha: _iconTintAlpha),
+                color: style.color.withValues(
+                  alpha: AppColors.surfaceTintAlpha,
+                ),
                 borderRadius: AppRadius.innerCircular,
               ),
               child: AppIcon(
