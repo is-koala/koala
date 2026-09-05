@@ -13,7 +13,7 @@ Both files are the single source of truth; do not duplicate their content here.
 
 ## Non-negotiables
 
-- **Never run `git commit` or `git push`.** Summarize the changed files and stop; the user commits.
+- **Work through a feature branch and pull request.** Create focused commits and report their hashes. Never push directly to `main`, keep unrelated changes out of commits, and leave merging as a separate release decision.
 - **Write in Turkish.** Answers, in-code comments and user-facing strings are Turkish; identifiers stay English.
 - **Run `flutter analyze --no-pub` after every change** and leave it clean. A clean analyze means "the Dart typechecks", not "it builds" and not "it looks right" — see the *Commands* section for when to build as well.
 - **The user does the visual verification.** If you changed anything visual, say explicitly that you did not verify it on screen and point out what to look at — in **both** the light and the dark theme.
@@ -23,7 +23,7 @@ Both files are the single source of truth; do not duplicate their content here.
 
 ## Permissions
 
-`.claude/settings.json` is committed and shared by the team: it pre-approves the safe read-only commands and **denies** `git commit`, `git push`, `git reset`, `git checkout` and `pod install/update`. Personal overrides go in `.claude/settings.local.json`, which is gitignored. If a denied command is genuinely needed, ask the user to run it — do not work around the rule.
+`.claude/settings.json` is committed and shared by the team: it pre-approves routine development commands and permanently denies destructive `git reset` plus `pod install/update`.
 
 ## Commands
 

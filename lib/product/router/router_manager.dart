@@ -42,6 +42,7 @@ import 'package:koala/employee/features/auth/presentation/pages/login_page.dart'
 import 'package:koala/employee/features/auth/presentation/pages/register_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/reset_password_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/email_verification_pending_page.dart';
+import 'package:koala/employee/features/auth/presentation/pages/email_verification_link_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/employer_type_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/forgot_password_page.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/apply_page.dart';
@@ -88,7 +89,8 @@ class RouterManager {
 
     final isAuthRoute =
         location.startsWith('/auth') || location.startsWith('/onboarding');
-    final isPublicTokenRoute = location == '/reset-password';
+    final isPublicTokenRoute =
+        location == '/reset-password' || location == '/email-verification';
 
     // Giriş yapmamışsa: tanıtımı görmemişse önce o, görmüşse giriş ekranı.
     if (!loggedIn && !isAuthRoute && !isPublicTokenRoute) {
@@ -219,6 +221,16 @@ class RouterManager {
         pageBuilder: (context, state) => _page(
           state,
           ResetPasswordPage(token: state.uri.queryParameters['token'] ?? ''),
+        ),
+      ),
+
+      GoRoute(
+        path: '/email-verification',
+        pageBuilder: (context, state) => _page(
+          state,
+          EmailVerificationLinkPage(
+            token: state.uri.queryParameters['token'] ?? '',
+          ),
         ),
       ),
 

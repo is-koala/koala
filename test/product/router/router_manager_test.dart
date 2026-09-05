@@ -53,12 +53,14 @@ void main() {
       }
     });
 
-    test('yalnız tam şifre sıfırlama rotası public kabul edilir', () {
-      expect(redirect(loggedIn: false, location: '/reset-password'), isNull);
-      expect(
-        redirect(loggedIn: false, location: '/reset-password-attacker'),
-        '/auth',
-      );
+    test('yalnız tam token karşılama rotaları public kabul edilir', () {
+      for (final location in ['/reset-password', '/email-verification']) {
+        expect(redirect(loggedIn: false, location: location), isNull);
+        expect(
+          redirect(loggedIn: false, location: '$location-attacker'),
+          '/auth',
+        );
+      }
     });
   });
 

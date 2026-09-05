@@ -11,8 +11,10 @@ class AppLinkDestination {
       return null;
     }
 
-    if (uri.host == 'complete-registration') {
-      final token = _singleParameter(uri, 'token');
+    if (uri.host == 'hesap-dogrula' ||
+        uri.host == 'sifre-belirle' ||
+        uri.host == 'complete-registration') {
+      final token = _parameter(uri, 'token');
       if (token == null) return null;
       return Uri(
         path: '/auth/register-type/register/creating-password',
@@ -20,8 +22,8 @@ class AppLinkDestination {
       ).toString();
     }
 
-    if (uri.host == 'reset-password') {
-      final token = _singleParameter(uri, 'token');
+    if (uri.host == 'sifre-sifirla' || uri.host == 'reset-password') {
+      final token = _parameter(uri, 'token');
       if (token == null) return null;
       return Uri(
         path: '/reset-password',
@@ -29,8 +31,16 @@ class AppLinkDestination {
       ).toString();
     }
 
+    if (uri.host == 'eposta-onayla') {
+      final token = _parameter(uri, 'token');
+      if (token == null) return null;
+      return Uri(
+        path: '/email-verification',
+        queryParameters: {'token': token},
+      ).toString();
+    }
+
     if (uri.host == 'payment-result') {
-      if (uri.queryParametersAll.length != 2) return null;
       final status = _parameter(uri, 'status');
       final assignmentId = _parameter(uri, 'assignmentId');
       if (status == null || assignmentId == null) return null;
@@ -41,11 +51,6 @@ class AppLinkDestination {
     }
 
     return null;
-  }
-
-  static String? _singleParameter(Uri uri, String name) {
-    if (uri.queryParametersAll.length != 1) return null;
-    return _parameter(uri, name);
   }
 
   static String? _parameter(Uri uri, String name) {
