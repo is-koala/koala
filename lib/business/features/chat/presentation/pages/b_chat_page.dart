@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:koala/employee/features/chat/models/conversation.dart';
 import 'package:koala/employee/features/chat/presentation/providers/chat_thread_controller.dart';
+import 'package:koala/employee/features/chat/presentation/widgets/blocked_notice.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/chat_app_bar.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/message_bubble.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/message_textfield.dart';
@@ -105,18 +106,28 @@ class _BChatPageState extends State<BChatPage> {
         body: Column(
           children: [
             Expanded(child: _messageList()),
-            MessageTextField(
-              controller: _messageController,
-              onSendMessage: _sendMessage,
-              isSending: _thread.isSending,
-              onChanged: (_) => _thread.notifyTyping(),
-              onAddPressed: () {
-                // Ek menü işlemleri (dosya ekleme, galeri vb.)
-              },
-            ),
+            // Engelli sohbette mesaj kutusu yerine sebebini söyleyen şerit
+            // duruyor; engel iki yönlü, yazmayı denemenin anlamı yok.
+            _composer(),
           ],
         ),
       ),
+    );
+  }
+
+  /// Mesaj kutusu — sohbet engelliyse yerine [BlockedNotice].
+  Widget _composer() {
+    final blockedMessage = _thread.blockedMessage;
+    if (blockedMessage != null) return BlockedNotice(message: blockedMessage);
+
+    return MessageTextField(
+      controller: _messageController,
+      onSendMessage: _sendMessage,
+      isSending: _thread.isSending,
+      onChanged: (_) => _thread.notifyTyping(),
+      onAddPressed: () {
+        // Ek menü işlemleri (dosya ekleme, galeri vb.)
+      },
     );
   }
 
