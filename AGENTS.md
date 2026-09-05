@@ -48,7 +48,7 @@ flutter pub get
 
 `test/` mirrors `lib/`: a test for `lib/product/router/router_manager.dart` lives at `test/product/router/router_manager_test.dart`. Test names and `group` labels are Turkish like everything else.
 
-What is covered today: the router redirect guard, the `Job` model's JSON round-trip, `asPrice`, the `SavedJobs` / `Page` / `Search` / `Apply` / `Theme` / `BJobs` providers, and `MyButton` / `MyListTile` as widget tests. Most tests run headless. `integration_test/live_qa_login_test.dart` is the deliberate exception: it runs on a device or simulator against the configured real API and needs `QA_WORKER_EMAIL`, `QA_EMPLOYER_EMAIL` and `QA_ACCOUNT_PASSWORD` as compile-time defines. Never hard-code those credentials or replace this live check with fake data.
+What is covered today: the router redirect guard, the `Job` model's JSON round-trip, `asPrice`, the `SavedJobs` / `Page` / `Search` / `Apply` / `Theme` / `BJobs` providers, and `MyButton` / `MyListTile` as widget tests. Most tests run headless. `integration_test/live_qa_login_test.dart` is the deliberate exception: it runs on a device or simulator against the configured real API and needs `QA_WORKER_EMAIL`, `QA_WORKER_PASSWORD`, `QA_EMPLOYER_EMAIL` and `QA_EMPLOYER_PASSWORD` as compile-time defines. Supply those credentials only at invocation time; keep the live check connected to real data.
 
 Two shared helpers under `test/support/`, use them instead of rolling your own:
 
