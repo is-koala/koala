@@ -315,6 +315,18 @@ class ApiPaths {
   static const String reverseAddressCandidate =
       '/locations/address-candidates/reverse';
 
+  // ------------------------------------------------------------------ Şikayet
+
+  /// Kullanıcı ya da içerik şikayeti açma. Gövde dört hedef alanından
+  /// (`reportedUserId`, `jobId`, `messageId`, `imageId`) en az birini
+  /// taşımak zorunda; kendini şikayet etmek `400`.
+  static const String reports = '/reports';
+
+  /// Oturum sahibinin açtığı şikayetler. Sayfalı, varsayılan `size=20`.
+  ///
+  /// Moderasyonun gördüğü `/admin/reports` uygulamaya kapalı.
+  static const String myReports = '$reports/me';
+
   // -------------------------------------------------------------------- Legal
 
   static const String agreements = '/legal/agreements';
