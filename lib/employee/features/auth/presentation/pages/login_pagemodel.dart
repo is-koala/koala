@@ -43,10 +43,7 @@ abstract class LoginPagemodel extends State<LoginPage> {
   }
 
   /// Kullanıcı tipine göre açılacak arayüz.
-  ///
-  /// [AuthService.login] kullanıcı bilgisini alamazsa `null` dönüyor; o
-  /// durumda oturum açık kalıyor ama kullanıcı çalışan arayüzünde başlıyor.
-  String _destinationFor(CurrentUser? user) {
-    return user?.isEmployer == true ? '/business/home' : '/explore';
+  String _destinationFor(CurrentUser user) {
+    return user.isEmployer ? '/business/home' : '/explore';
   }
 }

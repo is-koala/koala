@@ -20,6 +20,7 @@ class ApiPaths {
   static const String currentUser = '/users/me';
   static const String currentUserPassword = '/users/me/password';
   static const String currentUserProfilePicture = '/users/me/profile-picture';
+  static const String currentUserCv = '/users/me/cv';
   static const String currentUserAddress = '/users/me/address';
 
   /// Kimlik doğrulama. Ad, soyad, doğum tarihi, TC kimlik ve belge numarası
@@ -126,6 +127,9 @@ class ApiPaths {
   /// Atama bu durumdan çıktıysa sunucu `409` döndürüyor.
   static String respondToAssignment(String assignmentId) =>
       '${jobAssignment(assignmentId)}/respond';
+
+  static String assignmentPaymentSession(String assignmentId) =>
+      '${jobAssignment(assignmentId)}/payment-session';
 
   /// Mesai başlatma ve bitirme. İkisini de yalnızca işi yapan kişi
   /// çağırabiliyor; konum gövdesi isteğe bağlı.

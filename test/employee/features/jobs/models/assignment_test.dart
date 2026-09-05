@@ -66,6 +66,34 @@ void main() {
       expect(assignment.isPaidOut, isTrue);
     });
 
+    test('işveren yalnız onaylanmış ve tahsil edilmemiş atamada öder', () {
+      expect(
+        Assignment.fromJson(
+          assignmentBody(paymentStatus: 'PENDING_COLLECTION'),
+        ).needsEmployerPayment,
+        isTrue,
+      );
+      expect(
+        Assignment.fromJson(
+          assignmentBody(paymentStatus: 'FAILED'),
+        ).needsEmployerPayment,
+        isTrue,
+      );
+      expect(
+        Assignment.fromJson(assignmentBody()).needsEmployerPayment,
+        isFalse,
+      );
+      expect(
+        Assignment.fromJson(
+          assignmentBody(
+            status: 'PENDING_CONFIRMATION',
+            paymentStatus: 'PENDING_COLLECTION',
+          ),
+        ).needsEmployerPayment,
+        isFalse,
+      );
+    });
+
     test('tanınmayan durumlar varsayılana düşer', () {
       final assignment = Assignment.fromJson(
         assignmentBody(status: 'UZAYLI', paymentStatus: 'UZAYLI'),
@@ -108,6 +136,12 @@ void main() {
   // İşlerim ekranının beş durumu backend'in iki kavramına yayılıyor;
   // eşleme yanlışsa kullanıcı bitmiş işi "devam ediyor" görür.
   group('MyJob.fromAssignment', () {
+    test('sohbet açmak için ilan kimliğini korur', () {
+      final myJob = MyJob.fromAssignment(Assignment.fromJson(assignmentBody()));
+
+      expect(myJob.jobId, 'job_1');
+    });
+
     MyJob mapWith({required String status, String payment = 'HELD_IN_ESCROW'}) {
       return MyJob.fromAssignment(
         Assignment.fromJson(

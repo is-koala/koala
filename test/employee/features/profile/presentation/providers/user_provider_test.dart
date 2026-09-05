@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
@@ -12,6 +14,7 @@ Map<String, dynamic> userBody({String firstName = 'Yakup', String? about}) {
     'lastName': 'Kahraman',
     'email': 'a@b.com',
     'about': about,
+    'isEmployer': false,
   };
 }
 
@@ -20,6 +23,84 @@ UserProvider buildProvider(FakeApi api) {
 }
 
 void main() {
+  group('Kullanıcı durumunda profil fotoğrafı yükleme', () {
+    test('yükleme sonrası kullanıcı görünür fotoğrafıyla tazelenir', () async {
+      final api = FakeApi(
+        handler: (options) => options.method == 'PUT'
+            ? const FakeApiResponse(statusCode: 200, body: {'success': true})
+            : FakeApiResponse(
+                statusCode: 200,
+                body: {
+                  'success': true,
+                  'data': {
+                    ...userBody(),
+                    'profilePictureUrl': 'https://cdn.test/avatar.jpg',
+                  },
+                },
+              ),
+      );
+      final provider = buildProvider(api);
+      final file = File(
+        '${Directory.systemTemp.path}/koala-provider-avatar.jpg',
+      )..writeAsBytesSync(const [1, 2, 3]);
+      addTearDown(() => file.deleteSync());
+
+      final uploaded = await provider.uploadProfilePicture(file.path);
+
+      expect(uploaded, isTrue);
+      expect(provider.user?.profilePictureUrl, 'https://cdn.test/avatar.jpg');
+      expect(api.requests.map((request) => request.method), ['PUT', 'GET']);
+    });
+  });
+
+  group('Kullanıcı durumunda özgeçmiş yükleme', () {
+    test('CV yüklendikten sonra profil durumu tazelenir', () async {
+      final api = FakeApi(
+        handler: (options) => options.method == 'PUT'
+            ? const FakeApiResponse(
+                statusCode: 200,
+                body: {'success': true, 'data': '/users/me/cv/file'},
+              )
+            : FakeApiResponse(
+                statusCode: 200,
+                body: {
+                  'success': true,
+                  'data': {...userBody(), 'cvUrl': '/users/me/cv/file'},
+                },
+              ),
+      );
+      final provider = buildProvider(api);
+      final file = File('${Directory.systemTemp.path}/koala-provider-cv.pdf')
+        ..writeAsBytesSync(const [1, 2, 3]);
+      addTearDown(() => file.deleteSync());
+
+      final uploaded = await provider.uploadCv(file.path);
+
+      expect(uploaded, isTrue);
+      expect(provider.user?.cvUrl, '/users/me/cv/file');
+    });
+  });
+
+  group('Kullanıcı durumunda özgeçmiş kaldırma', () {
+    test('CV silindikten sonra profil boş durumla tazelenir', () async {
+      final api = FakeApi(
+        handler: (options) => options.method == 'DELETE'
+            ? const FakeApiResponse(statusCode: 200, body: {'success': true})
+            : FakeApiResponse(
+                statusCode: 200,
+                body: {'success': true, 'data': userBody()},
+              ),
+      );
+      final provider = buildProvider(api);
+
+      final deleted = await provider.deleteCv();
+
+      expect(deleted, isTrue);
+      expect(provider.user?.cvUrl, isNull);
+      expect(api.requests.map((request) => request.method), ['DELETE', 'GET']);
+    });
+  });
+
   group('UserProvider.load', () {
     test('başlangıçta kullanıcı yok', () {
       final api = FakeApi(

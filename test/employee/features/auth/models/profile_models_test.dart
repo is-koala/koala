@@ -112,6 +112,7 @@ void main() {
         'lastName': 'Kahraman',
         'email': 'a@b.com',
         'jobTitle': 'Fotoğrafçı',
+        'isEmployer': false,
         'maskedIban': 'TR** **** 1234',
         'cvUrl': 'https://cdn/cv.pdf',
         'experiences': [
@@ -138,6 +139,7 @@ void main() {
 
     test('liste alanları hiç gelmezse boş kalır, çökmez', () {
       final user = CurrentUser.fromJson({
+        'isEmployer': false,
         'id': 'user-1',
         'firstName': 'Yakup',
         'lastName': 'Kahraman',
@@ -159,6 +161,7 @@ void main() {
         'lastName': 'Kahraman',
         'email': 'a@b.com',
         'experiences': 'eski düz metin',
+        'isEmployer': false,
       });
 
       expect(user.experiences, isEmpty);

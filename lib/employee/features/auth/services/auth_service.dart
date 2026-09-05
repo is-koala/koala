@@ -105,8 +105,9 @@ class AuthService {
   /// E-posta ve şifreyle giriş yapar, oturumu açar.
   ///
   /// Giriş yanıtı kullanıcının iş veren olup olmadığını taşımadığı için
-  /// hemen ardından `/users/me` çağrılıp tip güncelleniyor.
-  Future<CurrentUser?> login({
+  /// hemen ardından `/users/me` çağrılıp tip güncelleniyor. Profil alınamazsa
+  /// yarım oturum temizlenir ve giriş başarısız sayılır.
+  Future<CurrentUser> login({
     required String email,
     required String password,
   }) async {
@@ -116,16 +117,24 @@ class AuthService {
       parse: (data) => AuthTokens.fromJson(data! as Map<String, dynamic>),
     );
 
-    await _startSession(tokens, isEmployer: false);
-
-    // Kullanıcı bilgisi alınamazsa oturum yine de açık kalsın; kullanıcı
-    // çalışan arayüzünde başlar.
     try {
-      final user = await fetchCurrentUser();
-      await _sessionManager.updateUserType(isEmployer: user.isEmployer);
+      late CurrentUser user;
+      await _sessionManager.startWithVerifiedUserType(
+        accessToken: tokens.token,
+        refreshToken: tokens.refreshToken,
+        refreshExpiresAt: tokens.refreshExpiresAt,
+        verifyUserType: () async {
+          user = await fetchCurrentUser();
+          return user.isEmployer;
+        },
+      );
       return user;
-    } on ApiException {
-      return null;
+    } catch (error) {
+      if (error is ApiException) rethrow;
+      throw const ApiException(
+        message: 'Hesap bilgilerin doğrulanamadı. Lütfen yeniden giriş yap.',
+        type: ApiErrorType.unknown,
+      );
     }
   }
 

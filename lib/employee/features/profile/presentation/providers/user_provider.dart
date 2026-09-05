@@ -109,6 +109,68 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
+  /// Profil fotoğrafını yükleyip `/users/me` yanıtını yeniler.
+  Future<bool> uploadProfilePicture(String filePath) async {
+    _isRequestInFlight = true;
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _userService.uploadProfilePicture(filePath);
+      _user = await _userService.fetchCurrentUser();
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+      return false;
+    } finally {
+      _isRequestInFlight = false;
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Özgeçmişi yükleyip profil kartındaki durumu tazeler.
+  Future<bool> uploadCv(String filePath) async {
+    _isRequestInFlight = true;
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _userService.uploadCv(filePath);
+      _user = await _userService.fetchCurrentUser();
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+      return false;
+    } finally {
+      _isRequestInFlight = false;
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> deleteCv() async {
+    _isRequestInFlight = true;
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _userService.deleteCv();
+      _user = await _userService.fetchCurrentUser();
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+      return false;
+    } finally {
+      _isRequestInFlight = false;
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   /// Çıkış yapıldığında eldeki kullanıcıyı düşürür; bir sonraki oturum
   /// öncekinin profilini görmesin.
   void clear() {

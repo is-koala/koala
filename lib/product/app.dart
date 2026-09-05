@@ -1,6 +1,11 @@
+import 'dart:async';
+
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
+import 'package:koala/product/network/api_config.dart';
 import 'package:koala/product/network/app_update_gate.dart';
+import 'package:koala/product/network/session_manager.dart';
+import 'package:koala/product/router/app_link_coordinator.dart';
 import 'package:koala/product/router/router_manager.dart';
 import 'package:koala/product/theme/theme.dart';
 import 'package:koala/product/theme/theme_provider.dart';
@@ -15,37 +20,49 @@ class App extends StatefulWidget {
 }
 
 class _AppState extends State<App> {
+  late final SessionManager _sessionManager;
+  late final AppLinkCoordinator _appLinkCoordinator;
+  StreamSubscription<Uri>? _appLinkSubscription;
+
   @override
   void initState() {
     super.initState();
-
-    final appLinks = AppLinks();
-
-    appLinks.uriLinkStream.listen(_handleDeepLink);
+    _sessionManager = SessionManager();
+    _appLinkCoordinator = AppLinkCoordinator(appScheme: ApiConfig.appUrlScheme);
+    _sessionManager.addListener(_flushPendingDeepLink);
+    _appLinkSubscription = AppLinks().uriLinkStream.listen(_handleDeepLink);
   }
 
-  /// Backend `token` taşıyan iki farklı bağlantı üretiyor:
-  /// `/complete-registration?token=...` (kayıt doğrulama) ve
-  /// `/reset-password?token=...` (şifre sıfırlama). İkisi de aynı sorgu
-  /// parametresini kullandığı için hangi akış olduğuna yola bakarak karar
-  /// veriliyor; özel şemada (`koala://complete-registration?...`) yol boş
-  /// kalıp değer `host`'a düştüğü için ikisi birlikte kontrol ediliyor.
+  /// Backend'in ürettiği kayıt, şifre ve ödeme bağlantılarını çalışan
+  /// flavor'ın özel şemasıyla doğrulayıp oturum hazır olduğunda açar.
   void _handleDeepLink(Uri uri) {
-    final token = uri.queryParameters['token'];
-    if (token == null) return;
+    _appLinkCoordinator.handle(
+      uri,
+      sessionInitialized: _sessionManager.isInitialized,
+      navigate: _navigate,
+    );
+  }
 
-    final target = '${uri.host}${uri.path}';
+  void _flushPendingDeepLink() {
+    _appLinkCoordinator.flush(
+      sessionInitialized: _sessionManager.isInitialized,
+      navigate: _navigate,
+    );
+  }
 
-    if (target.contains('complete-registration')) {
-      RouterManager.router.go(
-        '/auth/register-type/register/creating-password'
-        '?token=${Uri.encodeQueryComponent(token)}',
-      );
-    }
+  void _navigate(String route) {
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) RouterManager.router.go(route);
+    });
+  }
 
-    // TODO(backend): `reset-password` bağlantısının açacağı ekran henüz yok.
-    // Eklenene kadar bu bağlantı yok sayılıyor; kayıt ekranına düşürmek
-    // yanlış akışı başlatırdı.
+  @override
+  void dispose() {
+    _sessionManager.removeListener(_flushPendingDeepLink);
+    final subscription = _appLinkSubscription;
+    if (subscription != null) unawaited(subscription.cancel());
+    super.dispose();
   }
 
   @override

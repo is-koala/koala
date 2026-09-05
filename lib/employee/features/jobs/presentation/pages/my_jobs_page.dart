@@ -3,12 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
+import 'package:koala/employee/features/chat/services/chat_service.dart';
 import 'package:koala/employee/features/jobs/models/cancellation.dart';
 import 'package:koala/employee/features/jobs/models/my_job.dart';
 import 'package:koala/employee/features/jobs/models/work_session.dart';
 import 'package:koala/employee/features/jobs/services/assignment_service.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/review_provider.dart';
+import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/network/api_exception.dart';
@@ -17,6 +19,7 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
+import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/empty_state.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
@@ -524,9 +527,42 @@ class _MyJobsPageState extends MyJobsPagemodel {
       subtitle: _tileSubtitle(job, foreground, maxLines: 1),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
-        children: [_priceAndDate(job, foreground), ?menu],
+        children: [
+          _priceAndDate(job, foreground),
+          if (_canChat(job))
+            IconButton(
+              key: ValueKey('job-chat-${job.jobId}'),
+              tooltip: 'İşverenle mesajlaş',
+              onPressed: openingChatJobId != null ? null : () => openChat(job),
+              icon: openingChatJobId == job.jobId
+                  ? const SizedBox.square(
+                      dimension: AppSizes.iconSmall,
+                      child: CircularProgressIndicator(
+                        strokeWidth: MyJobsPagemodel._spinnerStroke,
+                      ),
+                    )
+                  : AppIcon(
+                      AppIcons.chat,
+                      color: foreground,
+                      size: AppSizes.icon,
+                    ),
+            ),
+          ?menu,
+        ],
       ),
     );
+  }
+
+  bool _canChat(MyJob job) {
+    return job.jobId != null &&
+        switch (job.status) {
+          MyJobStatus.pending ||
+          MyJobStatus.awaitingApproval ||
+          MyJobStatus.approved ||
+          MyJobStatus.inProgress ||
+          MyJobStatus.completed => true,
+          _ => false,
+        };
   }
 
   Widget _priceAndDate(MyJob job, Color foreground) {

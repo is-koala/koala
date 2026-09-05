@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
@@ -6,6 +9,47 @@ import 'package:koala/product/network/api_exception.dart';
 import '../../../../support/fake_api.dart';
 
 void main() {
+  group('Kullanıcı servisinde profil fotoğrafı yükleme', () {
+    test('fotoğraf image parçasıyla multipart PUT gönderilir', () async {
+      final api = FakeApi(
+        handler: (_) =>
+            const FakeApiResponse(statusCode: 200, body: {'success': true}),
+      );
+      final file = File('${Directory.systemTemp.path}/koala-avatar.jpg')
+        ..writeAsBytesSync(const [1, 2, 3]);
+      addTearDown(() => file.deleteSync());
+
+      await UserService.withClient(api.client).uploadProfilePicture(file.path);
+
+      final request = api.requests.single;
+      expect(request.path, '/users/me/profile-picture');
+      expect(request.method, 'PUT');
+      expect((request.data as FormData).files.single.key, 'image');
+    });
+  });
+
+  group('Kullanıcı servisinde özgeçmiş yükleme', () {
+    test('CV file parçasıyla yüklenir ve özel dosya adresi döner', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 200,
+          body: {'success': true, 'data': '/users/me/cv/file'},
+        ),
+      );
+      final file = File('${Directory.systemTemp.path}/koala-cv.pdf')
+        ..writeAsBytesSync(const [1, 2, 3]);
+      addTearDown(() => file.deleteSync());
+
+      final url = await UserService.withClient(api.client).uploadCv(file.path);
+
+      final request = api.requests.single;
+      expect(request.path, '/users/me/cv');
+      expect(request.method, 'PUT');
+      expect((request.data as FormData).files.single.key, 'file');
+      expect(url, '/users/me/cv/file');
+    });
+  });
+
   group('UserService.fetchPublicProfile', () {
     test('başka bir kullanıcının profili çekiliyor', () async {
       final api = FakeApi(
@@ -103,6 +147,7 @@ void main() {
             'data': {
               'user': {
                 'id': 'user-1',
+                'isEmployer': false,
                 'firstName': 'Yakup',
                 'lastName': 'Kahraman',
                 'email': 'a@b.com',
@@ -305,7 +350,12 @@ void main() {
             'success': true,
             'data': {
               'pendingVerifications': [],
-              'user': {'id': 'user_1', 'firstName': 'Ada', 'lastName': 'Kaya'},
+              'user': {
+                'id': 'user_1',
+                'firstName': 'Ada',
+                'lastName': 'Kaya',
+                'isEmployer': false,
+              },
             },
           },
         ),
@@ -327,7 +377,12 @@ void main() {
             'success': true,
             'data': {
               'pendingVerifications': [],
-              'user': {'id': 'user_1', 'firstName': 'Ada', 'lastName': 'Kaya'},
+              'user': {
+                'id': 'user_1',
+                'firstName': 'Ada',
+                'lastName': 'Kaya',
+                'isEmployer': false,
+              },
             },
           },
         ),

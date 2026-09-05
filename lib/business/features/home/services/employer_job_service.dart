@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:koala/business/features/home/models/create_job_request.dart';
 import 'package:koala/business/features/home/models/job_applicant.dart';
+import 'package:koala/business/features/home/models/b_payment_session.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/home/models/job_page.dart';
 import 'package:koala/employee/features/jobs/models/assignment.dart';
@@ -26,6 +27,14 @@ class EmployerJobService {
   }
 
   final ApiClient _apiClient;
+
+  /// CONFIRMED atama için Iyzico Checkout Form oturumu başlatır.
+  Future<BPaymentSession> createPaymentSession(String assignmentId) {
+    return _apiClient.post<BPaymentSession>(
+      ApiPaths.assignmentPaymentSession(assignmentId),
+      parse: (data) => BPaymentSession.fromJson(data! as Map<String, dynamic>),
+    );
+  }
 
   /// Varsayılan sayfa boyutu; bir işverenin ilan sayısı azdır, tek sayfa
   /// çoğu durumda yetiyor.

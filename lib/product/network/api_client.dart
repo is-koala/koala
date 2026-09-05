@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -93,6 +94,41 @@ class ApiClient {
     );
   }
 
+  /// JSON bir parça ve isteğe bağlı tek dosya içeren multipart POST.
+  ///
+  /// Şirket oluşturma gibi Spring `@RequestPart` uçlarında JSON gövdesi
+  /// sıradan form alanı değil `application/json` içerik tipli ayrı bir parça
+  /// olmalı. Bu ayrıntıyı servislerin her birinde tekrar etmiyoruz.
+  Future<T> postMultipartJson<T>(
+    String path, {
+    required String jsonFieldName,
+    required Map<String, dynamic> jsonBody,
+    String? fileFieldName,
+    String? filePath,
+    required T Function(Object? data) parse,
+  }) async {
+    final parts = <String, Object>{
+      jsonFieldName: MultipartFile.fromString(
+        jsonEncode(jsonBody),
+        filename: '$jsonFieldName.json',
+        contentType: DioMediaType('application', 'json'),
+      ),
+    };
+
+    if (fileFieldName != null && filePath != null) {
+      parts[fileFieldName] = await MultipartFile.fromFile(filePath);
+    }
+
+    return _send<T>(
+      () => _dio.post<dynamic>(
+        path,
+        data: FormData.fromMap(parts),
+        options: Options(contentType: Headers.multipartFormDataContentType),
+      ),
+      parse: parse,
+    );
+  }
+
   /// Yalnızca başarı/başarısızlık dönen `POST` isteği (`SuccessResult`).
   Future<void> postWithoutData(String path, {Object? body}) {
     return _send<void>(() => _dio.post<dynamic>(path, data: body));
@@ -135,6 +171,24 @@ class ApiClient {
         options: Options(contentType: Headers.multipartFormDataContentType),
       ),
       parse: parse,
+    );
+  }
+
+  /// Veri gövdesi döndürmeyen tek dosyalı multipart PUT isteği.
+  Future<void> putFileWithoutData(
+    String path, {
+    required String fieldName,
+    required String filePath,
+  }) async {
+    final formData = FormData.fromMap({
+      fieldName: await MultipartFile.fromFile(filePath),
+    });
+    return _send<void>(
+      () => _dio.put<dynamic>(
+        path,
+        data: formData,
+        options: Options(contentType: Headers.multipartFormDataContentType),
+      ),
     );
   }
 
@@ -195,6 +249,14 @@ class ApiClient {
       return ApiResponse.fromJson<T>(body, parse: parse).data as T;
     } on DioException catch (error) {
       throw _toApiException(error);
+    } catch (error) {
+      if (error is FormatException || error is TypeError) {
+        throw const ApiException(
+          message: 'Sunucudan beklenmeyen bir yanıt geldi.',
+          type: ApiErrorType.unknown,
+        );
+      }
+      rethrow;
     }
   }
 

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/models/experience.dart';
 import 'package:koala/employee/features/auth/models/user_badge.dart';
 import 'package:koala/employee/features/auth/models/education.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/education_sheet.dart';
+import 'package:koala/employee/features/profile/presentation/widgets/cv_actions_sheet.dart';
 import 'package:koala/employee/features/profile/services/education_service.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/timeline_card.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
@@ -149,7 +151,7 @@ class _ProfilePageState extends ProfilePageModel {
       width: double.infinity,
       child: OutlinedButton.icon(
         onPressed: () => _navigateToAccountInfo(user),
-        icon: const Icon(Icons.edit, size: AppSizes.iconSmall),
+        icon: const AppIcon(AppIcons.edit, size: AppSizes.iconSmall),
         label: const Text("Profili Düzenle"),
         style: OutlinedButton.styleFrom(
           foregroundColor: context.accentColor,
@@ -358,45 +360,46 @@ class _ProfilePageState extends ProfilePageModel {
     );
   }
 
-  /// Özgeçmiş kartı.
-  ///
-  /// TODO(backend): `PUT /users/me/cv` multipart bekliyor; dosya seçme akışı
-  /// henüz yok, kart şimdilik yalnızca durumu gösteriyor.
-  Container cvArea(CurrentUser user) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        vertical: AppSizes.spaceSmall,
-        horizontal: AppSizes.spaceLarge,
-      ),
-      decoration: BoxDecoration(
-        color: context.accentColor,
-        borderRadius: AppRadius.smallCircular,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Özgeçmiş",
-                style: context.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: context.onAccentColor,
+  Widget cvArea(CurrentUser user) {
+    return InkWell(
+      key: const ValueKey('cv-actions'),
+      onTap: () => _showCvActions(user),
+      borderRadius: AppRadius.smallCircular,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          vertical: AppSizes.spaceSmall,
+          horizontal: AppSizes.spaceLarge,
+        ),
+        decoration: BoxDecoration(
+          color: context.accentColor,
+          borderRadius: AppRadius.smallCircular,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Özgeçmiş",
+                  style: context.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: context.onAccentColor,
+                  ),
                 ),
-              ),
-              Text(
-                user.cvUrl == null || user.cvUrl!.isEmpty
-                    ? "Henüz yüklenmedi"
-                    : "Yüklendi",
-                style: context.textTheme.bodyMedium?.copyWith(
-                  color: context.onAccentColor,
+                Text(
+                  user.cvUrl == null || user.cvUrl!.isEmpty
+                      ? "Henüz yüklenmedi"
+                      : "Yüklendi",
+                  style: context.textTheme.bodyMedium?.copyWith(
+                    color: context.onAccentColor,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          AppIcon(AppIcons.attachment, color: context.onAccentColor),
-        ],
+              ],
+            ),
+            AppIcon(AppIcons.attachment, color: context.onAccentColor),
+          ],
+        ),
       ),
     );
   }

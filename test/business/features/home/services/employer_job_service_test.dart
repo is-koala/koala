@@ -254,6 +254,35 @@ void main() {
   });
 
   group('EmployerJobService atama', () {
+    test(
+      'ödeme oturumu yalnız checkout adresini istemci modeline alır',
+      () async {
+        final api = FakeApi(
+          handler: (_) => const FakeApiResponse(
+            statusCode: 200,
+            body: {
+              'success': true,
+              'data': {
+                'paymentPageUrl':
+                    'https://sandbox-payment.iyzipay.com/checkout',
+                'token': 'iyzi-token',
+              },
+            },
+          ),
+        );
+
+        final session = await EmployerJobService.withClient(
+          api.client,
+        ).createPaymentSession('asg_1');
+
+        expect(
+          api.requests.single.path,
+          '/job-assignments/asg_1/payment-session',
+        );
+        expect(session.paymentPageUrl.host, 'sandbox-payment.iyzipay.com');
+      },
+    );
+
     // Aynı uç iki tarafa hizmet ediyor; işveren tarafını ayıran bayrak bu.
     test('atamalar asEmployer bayrağıyla çekilir', () async {
       final api = FakeApi(

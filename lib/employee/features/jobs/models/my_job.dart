@@ -68,6 +68,9 @@ class MyJob {
   /// Satırın kimliği: başvurudan gelen kayıtlarda başvurunun, atamadan
   /// gelenlerde atamanın id'si. Atama uçlarına gidecek olan [assignmentId].
   final String id;
+
+  /// Sohbetin ve ilan detayının bağlı olduğu asıl ilan kimliği.
+  final String? jobId;
   final String title;
   final String company;
   final String? companyId;
@@ -97,6 +100,7 @@ class MyJob {
 
   const MyJob({
     required this.id,
+    this.jobId,
     required this.title,
     required this.company,
     this.companyId,
@@ -159,6 +163,7 @@ class MyJob {
 
     return MyJob(
       id: assignment.id,
+      jobId: job.id,
       title: job.title,
       company: job.company ?? 'Bireysel İlan',
       companyId: null,

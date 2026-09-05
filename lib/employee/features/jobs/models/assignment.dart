@@ -38,6 +38,11 @@ enum PaymentStatus {
   /// Para çalışana geçti mi.
   bool get isPaid => this == PaymentStatus.releasedToWorker;
 
+  /// Tahsilat emanet hesaba geçti mi veya çalışana ödendi mi.
+  bool get isSecured =>
+      this == PaymentStatus.heldInEscrow ||
+      this == PaymentStatus.releasedToWorker;
+
   static PaymentStatus fromCode(Object? value) {
     return PaymentStatus.values.firstWhere(
       (status) => status.code == value,
@@ -87,6 +92,13 @@ class Assignment {
   /// İş bitti ve para çalışana geçti mi.
   bool get isPaidOut =>
       status == AssignmentStatus.completed && paymentStatus.isPaid;
+
+  /// Çalışan atamayı kabul etti ama ücret henüz emanete alınmadıysa işveren
+  /// checkout'u başlatabilir. Bekleyen çalışan cevabında ödeme alınmaz.
+  bool get needsEmployerPayment =>
+      status == AssignmentStatus.confirmed &&
+      (paymentStatus == PaymentStatus.pendingCollection ||
+          paymentStatus == PaymentStatus.failed);
 
   factory Assignment.fromJson(Map<String, dynamic> json) {
     return Assignment(

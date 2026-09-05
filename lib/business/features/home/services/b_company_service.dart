@@ -24,6 +24,37 @@ class BCompanyService {
 
   final ApiClient _apiClient;
 
+  /// Yeni şirket oluşturur; çağıran kullanıcı sunucuda ADMIN yetkilisi olur.
+  Future<Company> createCompany({
+    required String name,
+    required String email,
+    required String phoneNumber,
+    required String taxNumber,
+    required CompanyType type,
+    required Map<String, dynamic> address,
+    String? website,
+    String? description,
+    String? logoPath,
+  }) {
+    return _apiClient.postMultipartJson<Company>(
+      ApiPaths.companies,
+      jsonFieldName: 'company',
+      jsonBody: {
+        'name': name,
+        'email': email,
+        'phoneNumber': phoneNumber,
+        'taxNumber': taxNumber,
+        'type': type.code,
+        'address': address,
+        'website': ?website,
+        'description': ?description,
+      },
+      fileFieldName: logoPath == null ? null : 'logo',
+      filePath: logoPath,
+      parse: (data) => Company.fromJson(data! as Map<String, dynamic>),
+    );
+  }
+
   /// Şirketi günceller ve yeni hâlini döndürür.
   ///
   /// Sunucu yalnızca bu beş alanı kabul ediyor (`UpdateCompanyRequestDto`):

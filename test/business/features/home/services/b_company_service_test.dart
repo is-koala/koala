@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/business/features/home/services/b_company_service.dart';
+import 'package:koala/employee/features/company_detail/models/company.dart';
 
 import '../../../../support/fake_api.dart';
 
@@ -32,6 +34,55 @@ const _companyBody = {
 };
 
 void main() {
+  group('Şirket oluşturma', () {
+    test(
+      'şirket ve yapılandırılmış adres multipart POST ile gönderiliyor',
+      () async {
+        final api = FakeApi(
+          handler: (_) =>
+              const FakeApiResponse(statusCode: 201, body: _companyBody),
+        );
+
+        await BCompanyService.withClient(api.client).createCompany(
+          name: 'Moda Kahve Atölyesi',
+          email: 'merhaba@modakahve.test',
+          phoneNumber: '+905551112233',
+          taxNumber: '1234567890',
+          type: CompanyType.limited,
+          address: const {
+            'countryCode': 'TR',
+            'cityName': 'İSTANBUL',
+            'districtName': 'KADIKÖY',
+            'addressLine': 'Caferağa Mah. Moda Cad. No: 12',
+            'latitude': 40.9819,
+            'longitude': 29.0263,
+          },
+        );
+
+        final request = api.requests.single;
+        expect(request.method, 'POST');
+        expect(request.path, '/companies');
+        expect(request.contentType, startsWith('multipart/form-data'));
+
+        final formData = request.data as FormData;
+        final companyPart = formData.files.singleWhere(
+          (part) => part.key == 'company',
+        );
+        final bytes = await companyPart.value
+            .clone()
+            .finalize()
+            .fold<List<int>>(<int>[], (all, chunk) => all..addAll(chunk));
+        final company = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
+        expect(company['name'], 'Moda Kahve Atölyesi');
+        expect(company['type'], 'LIMITED');
+        expect(
+          (company['address'] as Map<String, dynamic>)['districtName'],
+          'KADIKÖY',
+        );
+      },
+    );
+  });
+
   group('updateCompany', () {
     test('PATCH atılıyor ve yalnızca verilen alanlar gönderiliyor', () async {
       final api = FakeApi(

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:geolocator/geolocator.dart';
@@ -8,6 +9,7 @@ class LocationService with WidgetsBindingObserver {
 
   bool _dialogShown = false; // Dialog tekrar açılmasın
   bool _requestedOnce = false; // Request bir kere atıldı mı?
+  bool _disposed = false;
 
   LocationService(this.context, {required this.onLocationReceived}) {
     WidgetsBinding.instance.addObserver(this);
@@ -15,7 +17,7 @@ class LocationService with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
+    if (!_disposed && state == AppLifecycleState.resumed) {
       _checkPermission();
     }
   }
@@ -26,10 +28,12 @@ class LocationService with WidgetsBindingObserver {
 
   Future<void> _checkPermission() async {
     PermissionStatus status = await Permission.location.status;
+    if (_disposed) return;
 
     if (status.isGranted) {
       // İzin var, doğruluk kontrolü
       final accuracy = await Geolocator.getLocationAccuracy();
+      if (_disposed) return;
       if (accuracy == LocationAccuracyStatus.reduced) {
         // Yaklaşık konum verilmiş → request atma, dialog göster
         if (!_dialogShown) {
@@ -53,6 +57,7 @@ class LocationService with WidgetsBindingObserver {
       if (!_requestedOnce) {
         _requestedOnce = true;
         status = await Permission.location.request();
+        if (_disposed) return;
       }
 
       if (status.isGranted) {
@@ -83,7 +88,7 @@ class LocationService with WidgetsBindingObserver {
   Future<void> _getLocation() async {
     try {
       final position = await Geolocator.getCurrentPosition(
-        locationSettings: Theme.of(context).platform == TargetPlatform.android
+        locationSettings: defaultTargetPlatform == TargetPlatform.android
             ? AndroidSettings(
                 accuracy: LocationAccuracy.best,
                 forceLocationManager: false,
@@ -93,13 +98,14 @@ class LocationService with WidgetsBindingObserver {
                 distanceFilter: 10,
               ),
       );
-      onLocationReceived(position);
+      if (!_disposed) onLocationReceived(position);
     } catch (e) {
       debugPrint("Konum alınamadı: $e");
     }
   }
 
   void _showPermissionDialog() {
+    if (_disposed || !context.mounted) return;
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -125,6 +131,7 @@ class LocationService with WidgetsBindingObserver {
   }
 
   void dispose() {
+    _disposed = true;
     WidgetsBinding.instance.removeObserver(this);
   }
 }

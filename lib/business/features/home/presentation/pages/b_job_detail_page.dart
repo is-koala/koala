@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:koala/employee/features/chat/services/chat_service.dart';
 import 'package:koala/business/features/home/models/b_job_post.dart';
 import 'package:koala/business/features/home/models/job_applicant.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
 import 'package:koala/business/features/home/services/employer_job_service.dart';
+import 'package:koala/business/features/home/services/b_payment_browser.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
@@ -12,6 +14,7 @@ import 'package:koala/employee/features/jobs/models/cancellation.dart';
 import 'package:koala/employee/features/jobs/models/dispute.dart';
 import 'package:koala/employee/features/jobs/models/work_session.dart';
 import 'package:koala/employee/features/jobs/services/assignment_service.dart';
+import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/profile_avatar.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
@@ -145,6 +148,10 @@ class _BJobDetailPageState extends BJobDetailPageModel {
               ),
             ],
             ?_openDisputeBanner(),
+            if (assignment.needsEmployerPayment) ...[
+              const SizedBox(height: AppSizes.spaceMedium),
+              _paymentButton(),
+            ],
             if (_canComplete(assignment)) ...[
               const SizedBox(height: AppSizes.spaceMedium),
               _completeButton(),
@@ -162,6 +169,25 @@ class _BJobDetailPageState extends BJobDetailPageModel {
   bool _canComplete(Assignment assignment) =>
       assignment.status == AssignmentStatus.confirmed ||
       assignment.status == AssignmentStatus.inProgress;
+
+  Widget _paymentButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        key: const ValueKey('start-payment'),
+        onPressed: _isStartingPayment ? null : _startPayment,
+        icon: _isStartingPayment
+            ? const SizedBox.square(
+                dimension: AppSizes.iconSmall,
+                child: CircularProgressIndicator(
+                  strokeWidth: BJobDetailPageModel._spinnerStroke,
+                ),
+              )
+            : const AppIcon(AppIcons.shield, size: AppSizes.iconSmall),
+        label: const Text('Güvenli Ödemeyi Tamamla'),
+      ),
+    );
+  }
 
   Widget _assignmentStatusRow(Assignment assignment) {
     return Row(
@@ -854,6 +880,25 @@ class _BJobDetailPageState extends BJobDetailPageModel {
             ),
           ],
           const SizedBox(height: AppSizes.space),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              key: ValueKey('applicant-chat-${applicant.user.id}'),
+              onPressed: _openingChatUserId != null
+                  ? null
+                  : () => _openChat(applicant),
+              icon: _openingChatUserId == applicant.user.id
+                  ? const SizedBox.square(
+                      dimension: AppSizes.iconSmall,
+                      child: CircularProgressIndicator(
+                        strokeWidth: BJobDetailPageModel._spinnerStroke,
+                      ),
+                    )
+                  : const AppIcon(AppIcons.chat, size: AppSizes.iconSmall),
+              label: const Text('Mesaj Gönder'),
+            ),
+          ),
+          const SizedBox(height: AppSizes.spaceSmall),
           if (isAccepted)
             _badge(
               context,

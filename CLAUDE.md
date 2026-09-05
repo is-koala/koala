@@ -37,3 +37,17 @@ flutter pub get
 flutter build apk --debug
 flutter build ios --no-codesign   # pod çözümlemesini tetikler, önce kullanıcıya sor
 ```
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specifications are tracked in GitHub Issues for `is-koala/koala`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five default triage labels are used. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+This is a single-context repository: `CONTEXT.md` lives at the root and decisions live under `docs/adr/`. See `docs/agents/domain.md`.

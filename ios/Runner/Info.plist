@@ -5,7 +5,22 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Koala</string>
+	<string>$(APP_DISPLAY_NAME)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>$(APP_URL_SCHEME)</string>
+			</array>
+		</dict>
+	</array>
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -51,6 +66,11 @@
 	<string>Bu uygulama yakınınızdaki koala işlerini göstermek için konumunuza erişim gerektirir.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Şirket logonuzu seçebilmeniz için fotoğraflarınıza erişim gerekiyor.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>MAPS_API_KEY</key>
 	<string>$(MAPS_API_KEY)</string>
 	<key>UIApplicationSceneManifest</key>

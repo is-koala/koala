@@ -161,9 +161,9 @@ abstract class CreatingPasswordPagemodel extends State<CreatingPasswordPage> {
 
       if (!mounted) return;
 
-      // Hesap bu noktada oluştu ve oturum açıldı. İş verenin şirketi ancak
-      // token varken yaratılabildiği için şirket adımı buradan sonra geliyor.
-      context.go(isBusiness ? '/company-informations' : '/explore');
+      // Hesap bu noktada oluştu ve oturum açıldı. İşveren bundan sonra
+      // bireysel ilan veya gerçek şirket profili arasında seçim yapar.
+      context.go(isBusiness ? '/employer-type' : '/explore');
     } on ApiException catch (error) {
       if (!mounted) return;
       AppToast.error(context, error.message);

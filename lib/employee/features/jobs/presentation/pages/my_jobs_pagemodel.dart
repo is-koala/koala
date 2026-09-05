@@ -1,7 +1,11 @@
 part of 'my_jobs_page.dart';
 
 abstract class MyJobsPagemodel extends State<MyJobsPage> {
+  /// Küçük buton göstergesi varsayılan kalınlıkta dolu görünmesin.
+  static const double _spinnerStroke = 2;
+
   final AssignmentService _service = AssignmentService();
+  final ChatService _chatService = ChatService();
 
   /// Geçmiş bölümü varsayılan olarak kısaltılmış; kullanıcı isterse açıyor.
   bool showAllPastJobs = false;
@@ -40,6 +44,9 @@ abstract class MyJobsPagemodel extends State<MyJobsPage> {
   /// Tek bir alan yetiyor çünkü kullanıcı aynı anda tek bir atamaya cevap
   /// veriyor ve cevap dönene kadar liste tazelenmiyor.
   String? respondingAssignmentId;
+
+  /// İlan sohbeti açılırken ikinci navigasyonu engeller.
+  String? openingChatJobId;
 
   @override
   void initState() {
@@ -83,6 +90,29 @@ abstract class MyJobsPagemodel extends State<MyJobsPage> {
   Future<void> reload() async {
     await _loadJobs();
     if (mounted) await context.read<ApplyProvider>().load(force: true);
+  }
+
+  /// Başvurunun veya atamanın bağlı olduğu ilan üzerinden işverenle konuşur.
+  Future<void> openChat(MyJob job) async {
+    final jobId = job.jobId;
+    final currentUser = context.read<UserProvider>().user;
+    if (jobId == null || currentUser == null || openingChatJobId != null) {
+      return;
+    }
+
+    setState(() => openingChatJobId = jobId);
+    try {
+      final conversation = await _chatService.openConversationForJob(
+        jobId: jobId,
+        currentUserId: currentUser.id,
+      );
+      if (!mounted) return;
+      await context.push('/chat-detail', extra: conversation);
+    } on ApiException catch (error) {
+      if (mounted) AppToast.error(context, error.message);
+    } finally {
+      if (mounted) setState(() => openingChatJobId = null);
+    }
   }
 
   /// Atamayı kabul eder ya da reddeder.
