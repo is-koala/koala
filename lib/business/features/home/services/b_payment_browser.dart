@@ -4,8 +4,8 @@ typedef PaymentLaunchModeSupport = Future<bool> Function(LaunchMode mode);
 typedef PaymentUrlLauncher = Future<bool> Function(Uri url, LaunchMode mode);
 
 /// Iyzico hosted ödeme sayfasını uygulamadan çıkmadan açan sınır.
-class PaymentBrowser {
-  PaymentBrowser({
+class BPaymentBrowser {
+  BPaymentBrowser({
     PaymentLaunchModeSupport? supportsMode,
     PaymentUrlLauncher? launch,
   }) : _supportsMode = supportsMode ?? supportsLaunchMode,

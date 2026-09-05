@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:koala/business/features/home/presentation/pages/payment_result_page.dart';
+import 'package:koala/business/features/home/presentation/pages/b_payment_result_page.dart';
 import 'package:koala/business/features/home/services/employer_job_service.dart';
 import 'package:koala/product/theme/theme.dart';
 
@@ -41,9 +41,8 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: lightTheme,
-        home: PaymentResultPage(
+        home: BPaymentResultPage(
           assignmentId: 'asg_1',
-          hintedStatus: 'failed',
           service: EmployerJobService.withClient(api.client),
         ),
       ),

@@ -24,7 +24,7 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
 
   final _jobService = JobService();
   final _employerJobService = EmployerJobService();
-  final _paymentBrowser = PaymentBrowser();
+  final _paymentBrowser = BPaymentBrowser();
   final _chatService = ChatService();
 
   /// Mesai oturumlarını iki taraf da okuyabiliyor; sohbette olduğu gibi tek

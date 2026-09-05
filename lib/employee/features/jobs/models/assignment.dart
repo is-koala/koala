@@ -38,6 +38,11 @@ enum PaymentStatus {
   /// Para çalışana geçti mi.
   bool get isPaid => this == PaymentStatus.releasedToWorker;
 
+  /// Tahsilat emanet hesaba geçti mi veya çalışana ödendi mi.
+  bool get isSecured =>
+      this == PaymentStatus.heldInEscrow ||
+      this == PaymentStatus.releasedToWorker;
+
   static PaymentStatus fromCode(Object? value) {
     return PaymentStatus.values.firstWhere(
       (status) => status.code == value,

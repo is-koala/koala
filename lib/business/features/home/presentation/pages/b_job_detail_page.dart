@@ -5,7 +5,7 @@ import 'package:koala/business/features/home/models/b_job_post.dart';
 import 'package:koala/business/features/home/models/job_applicant.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
 import 'package:koala/business/features/home/services/employer_job_service.dart';
-import 'package:koala/business/features/home/services/payment_browser.dart';
+import 'package:koala/business/features/home/services/b_payment_browser.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
@@ -181,7 +181,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
                 dimension: AppSizes.iconSmall,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
-            : const Icon(Icons.lock_outline),
+            : const AppIcon(AppIcons.shield, size: AppSizes.iconSmall),
         label: const Text('Güvenli Ödemeyi Tamamla'),
       ),
     );

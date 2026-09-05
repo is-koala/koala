@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:koala/business/features/home/services/payment_browser.dart';
+import 'package:koala/business/features/home/services/b_payment_browser.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 void main() {
@@ -7,7 +7,7 @@ void main() {
     LaunchMode? checkedMode;
     LaunchMode? launchedMode;
     Uri? launchedUrl;
-    final browser = PaymentBrowser(
+    final browser = BPaymentBrowser(
       supportsMode: (mode) async {
         checkedMode = mode;
         return true;
@@ -30,7 +30,7 @@ void main() {
 
   test('uygulama içi tarayıcı yoksa harici tarayıcıya düşmez', () async {
     var launchCount = 0;
-    final browser = PaymentBrowser(
+    final browser = BPaymentBrowser(
       supportsMode: (_) async => false,
       launch: (_, _) async {
         launchCount++;
@@ -49,7 +49,7 @@ void main() {
   test('HTTP ve benzer Iyzico hostları açılmadan reddedilir', () async {
     var supportCount = 0;
     var launchCount = 0;
-    final browser = PaymentBrowser(
+    final browser = BPaymentBrowser(
       supportsMode: (_) async {
         supportCount++;
         return true;
