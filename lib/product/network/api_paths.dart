@@ -315,6 +315,20 @@ class ApiPaths {
   static const String reverseAddressCandidate =
       '/locations/address-candidates/reverse';
 
+  // ------------------------------------------------------------- Doğrulamalar
+
+  /// E-posta ya da telefon değişikliğinin 6 haneli kodunu onaylar.
+  ///
+  /// Kayıt `PATCH /users/me` yanıtındaki `pendingVerifications` içinden
+  /// geliyor. Kodun ömrü 15 dakika; onaylanana kadar yeni değer
+  /// uygulanmıyor.
+  ///
+  /// **Tekrar gönderme ucu yok**: aynı yeni değerle `PATCH /users/me`
+  /// yeniden çağrıldığında sunucu doğrulanmamış eski kaydı silip yeni bir
+  /// kod üretiyor.
+  static String verificationConfirm(String verificationId) =>
+      '/verifications/$verificationId/confirm';
+
   // -------------------------------------------------------------------- Legal
 
   static const String agreements = '/legal/agreements';

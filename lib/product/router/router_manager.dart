@@ -49,7 +49,9 @@ import 'package:koala/employee/features/jobs/presentation/pages/apply_page.dart'
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/settings/presentation/pages/account_info_page.dart';
 import 'package:koala/employee/features/settings/presentation/pages/address_page.dart';
+import 'package:koala/employee/features/auth/models/pending_verification.dart';
 import 'package:koala/employee/features/settings/presentation/pages/change_password_page.dart';
+import 'package:koala/employee/features/settings/presentation/pages/verification_code_page.dart';
 import 'package:koala/employee/features/settings/presentation/pages/identity_verification_page.dart';
 import 'package:koala/product/network/session_manager.dart';
 
@@ -332,6 +334,18 @@ class RouterManager {
         pageBuilder: (context, state) {
           final user = state.extra as CurrentUser;
           return _page(state, AccountInfoPage(user: user));
+        },
+      ),
+
+      // Hesap ekranından açılıyor: e-posta ya da telefon değiştiğinde
+      // sunucu değeri yazmıyor, önce buradaki kodun girilmesini bekliyor.
+      // Sonucu `bool` olarak döndürüyor; çağıran sıradaki doğrulamaya
+      // geçip geçmeyeceğine buna bakarak karar veriyor.
+      GoRoute(
+        path: '/verification',
+        pageBuilder: (context, state) {
+          final verification = state.extra as PendingVerification;
+          return _page(state, VerificationCodePage(verification: verification));
         },
       ),
 

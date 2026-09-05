@@ -42,6 +42,7 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
   late TextEditingController _lastNameController;
   late TextEditingController _occupationController;
   late TextEditingController _phoneController;
+  late TextEditingController _emailController;
   late TextEditingController _locationController;
   late TextEditingController _ibanController;
   late TextEditingController _aboutController;
@@ -57,6 +58,7 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
     _lastNameController = TextEditingController(text: user.lastName);
     _occupationController = TextEditingController(text: user.jobTitle ?? '');
     _phoneController = TextEditingController(text: user.phoneNumber ?? '');
+    _emailController = TextEditingController(text: user.email);
     _locationController = TextEditingController(
       text: user.address?.shortLabel ?? '',
     );
@@ -77,6 +79,7 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
     _lastNameController.dispose();
     _occupationController.dispose();
     _phoneController.dispose();
+    _emailController.dispose();
     _locationController.dispose();
     _ibanController.dispose();
     _aboutController.dispose();
@@ -111,8 +114,13 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
   }
 
   Future<void> _save() async {
-    final user = widget.user;
     final provider = context.read<UserProvider>();
+    // Karşılaştırma tabanı sağlayıcıdaki güncel kullanıcı: doğrulama
+    // tamamlandıktan sonra alanlar tazeleniyor ve `widget.user` (ekrana
+    // girilirken alınan görüntü) bayatlıyor. Bayat tabanla ikinci kaydetme,
+    // hiçbir şey değişmemişken e-postayı yeniden gönderir ve gereksiz bir
+    // doğrulama daha başlatırdı.
+    final user = provider.user ?? widget.user;
 
     // PATCH kısmi: değişmeyen alan gövdeye hiç konmuyor. Aksi hâlde kimliği
     // doğrulanmış kullanıcı hiçbir şeyi değiştirmese bile ad alanını
@@ -127,6 +135,9 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
       user.qualifications,
     );
     final interests = _changed(_interestsController.text, user.interests);
+    // E-posta ve telefon değişikliği hemen yazılmıyor: sunucu yeni değere kod
+    // gönderip bekleyen doğrulamayı döndürüyor.
+    final email = _changed(_emailController.text, user.email);
 
     // IBAN alanı boş bırakıldıysa hiç gönderilmiyor: kayıtlı IBAN
     // maskelendiği için "değişti mi" karşılaştırması yapılamıyor, boş metin
@@ -141,12 +152,18 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
       qualifications: qualifications,
       interests: interests,
       phoneNumber: phoneNumber,
+      email: email,
       iban: iban.isEmpty ? null : iban,
     );
 
     if (!mounted) return;
 
     if (pending == null) {
+      // Backend başka hesapta kayıtlı e-postayı reddediyor. Durum koduna
+      // bakılmıyor, bakılmamalı da: `UsersController`'ın `@ApiResponse`'u bu
+      // durum için `409` belgeliyor ama `UserManager` `ValidationException`
+      // fırlattığı için gerçekte `400` dönüyor. Mesaj sunucudan Türkçe
+      // geldiği için olduğu gibi gösteriliyor.
       AppToast.error(
         context,
         provider.errorMessage ?? "Profil güncellenemedi.",
@@ -154,25 +171,56 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
       return;
     }
 
-    AppToast.success(context, _successMessage(pending));
-    context.pop();
+    if (pending.isEmpty) {
+      AppToast.success(context, "Profilin güncellendi.");
+      context.pop();
+      return;
+    }
+
+    await _collectVerifications(pending);
+  }
+
+  /// Bekleyen doğrulamaları sırayla kod ekranına götürür.
+  ///
+  /// Tek bir `PATCH` hem telefonu hem e-postayı değiştirebiliyor, o yüzden
+  /// liste birden fazla olabilir. Biri onaylanınca sıradaki açılıyor;
+  /// kullanıcı vazgeçerse ya da kayıt geçersizse sıra orada kesiliyor —
+  /// kalanları zorlamak, kullanıcının bıraktığı ekranı geri açmak olurdu.
+  ///
+  /// Hepsi bitince hesap ekranında kalınıyor ve alanlar tazelenen kullanıcıyla
+  /// güncelleniyor; yeni değerin yazıldığı böylece görülebiliyor.
+  Future<void> _collectVerifications(List<PendingVerification> pending) async {
+    for (final verification in pending) {
+      final verified = await context.push<bool>(
+        '/verification',
+        extra: verification,
+      );
+      if (!mounted) return;
+      if (verified != true) break;
+    }
+
+    if (!mounted) return;
+    _syncVerifiedFields();
+  }
+
+  /// Doğrulama sonrası sunucudaki güncel değerleri alanlara yazar.
+  ///
+  /// Kontrolcüler `initState`'te bir kez dolduruluyor; tazelenen kullanıcıyı
+  /// buraya yansıtmazsak ekran hâlâ eski e-postayı gösterirdi.
+  void _syncVerifiedFields() {
+    final refreshed = context.read<UserProvider>().user;
+    if (refreshed == null) return;
+
+    setState(() {
+      _emailController.text = refreshed.email;
+      _phoneController.text = refreshed.phoneNumber ?? '';
+    });
   }
 
   /// Yeni değer eskisinden farklıysa onu, aynıysa `null` döner.
   static String? _changed(String value, String? current) {
     final trimmed = value.trim();
     return trimmed == (current ?? '') ? null : trimmed;
-  }
-
-  /// Telefon değişikliği hemen yazılmıyor; kullanıcı doğrulamayı tamamlayana
-  /// kadar eski numara geçerli olduğu için mesaj buna göre kuruluyor.
-  static String _successMessage(List<PendingVerification> pending) {
-    if (pending.isEmpty) return "Profilin güncellendi.";
-
-    final message = pending.first.message;
-    if (message != null && message.isNotEmpty) return message;
-
-    return "Profilin güncellendi. Doğrulama bekleyen alanlar var.";
   }
 
   @override
@@ -220,6 +268,16 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
                 labelText: "Telefon",
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: AppSizes.spaceMedium),
+              MyTextfield(
+                labelText: "E-posta",
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+              ),
+              _hint(
+                "Telefonunu ya da e-postanı değiştirirsen yeni değere bir "
+                "kod gönderiyoruz; kodu girene kadar eskisi geçerli kalıyor.",
               ),
               const SizedBox(height: AppSizes.spaceMedium),
               // Adres kendi ekranında düzenleniyor: uç toptan yazıyor ve
