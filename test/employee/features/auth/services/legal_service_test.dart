@@ -79,4 +79,20 @@ void main() {
       ]);
     });
   });
+
+  group('LegalService.requestAccountDeletion', () {
+    test('isteğe kullanıcının isteğe bağlı gerekçesini ekler', () async {
+      final api = FakeApi(
+        handler: (_) =>
+            const FakeApiResponse(statusCode: 200, body: {'success': true}),
+      );
+
+      await LegalService.withClient(
+        api.client,
+      ).requestAccountDeletion(reason: 'Artık kullanmıyorum');
+
+      expect(api.requests.single.path, '/legal/account-deletion');
+      expect(api.requests.single.data, {'reason': 'Artık kullanmıyorum'});
+    });
+  });
 }

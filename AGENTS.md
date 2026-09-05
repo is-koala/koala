@@ -165,7 +165,7 @@ Everything else (`/apply`, `/review`, `/company-detail`, `/chat-detail`, `/setti
 
 ### Deep links
 
-`app_links` listens in `app.dart`; the subscription is cancelled in `dispose`. `AppLinkDestination` accepts only the running flavor's exact native scheme (`koala-dev`, `koala-staging`, `koala`), an exact known host and the required non-empty query values. The canonical host contract lives in `docs/deep-links.md`; unknown extra query parameters are ignored, while duplicate or missing required parameters remain invalid. Registration opens `/auth/register-type/register/creating-password`, password reset opens `/reset-password`, e-mail verification opens its token handoff page, and payment return opens `/payment-result`.
+`app_links` listens in `app.dart`; the subscription is cancelled in `dispose`. `AppLinkDestination` accepts the running flavor's exact native scheme (`koala-dev`, `koala-staging`, `koala`) and its verified HTTPS host: production owns `iskoala.com`/`www.iskoala.com`, staging owns `staging.iskoala.com`, development owns no public HTTPS host. The canonical host/path contract lives in `docs/deep-links.md`; unknown extra query parameters are ignored, while duplicate or missing required parameters remain invalid. Registration opens `/auth/register-type/register/creating-password`, password reset opens `/reset-password`, e-mail verification opens its token handoff page, and payment return opens `/payment-result`. Existing custom-scheme aliases remain accepted; HTTPS uses canonical paths only.
 
 Cold-start links can arrive before `SplashPage` finishes loading the session. `AppLinkCoordinator` holds the last valid link until `SessionManager.isInitialized`, then opens it once; navigating earlier makes the synchronous router guard send it back to splash.
 
@@ -520,7 +520,7 @@ Do not build against these until the backend developer confirms they shipped.
 
 **Wired and working:**
 
-- Both settings pages carry three real rows: edit account / company info, **Görünüm** and logout (which just clears `is_logged_in` / `user_type`). Nothing there is a placeholder.
+- Both settings pages expose account/company editing, sessions, **Görünüm**, **Hesabı Sil** and logout. Account deletion asks for explicit destructive confirmation, posts the optional reason through `LegalService`, and shows the queued state without pretending anonymization is immediate. Read `docs/release.md` when changing version/tag, signing, store upload or `APP_MINIMUM_VERSION`; read `docs/store-privacy-inventory.md` when a data flow or SDK changes.
 - The theme picker: Settings → **Görünüm** opens `ThemeModeSheet` (system / light / dark), applied immediately and persisted. The default is `ThemeMode.system`, so the app follows the device.
 
 **Notifications are live in both apps.** `GET /users/me/notifications` returns a page plus an `unreadCount`, and `POST /users/me/notifications/read` marks everything read. The whole thing is shared: `product/models/app_notification.dart`, `product/services/notification_service.dart`, `product/providers/notification_provider.dart`, and `product/widgets/notification_view.dart` — the two pages are just a `Scaffold` and an app bar around the same body. `NotificationBell` (also shared) is the entry point, and there is **one per app**: the worker's *İşlerim* app bar and the employer's home header. It briefly sat on the worker profile as well — two bells for one screen is clutter, and the profile app bar already carries two other actions. Five things to know before touching it:

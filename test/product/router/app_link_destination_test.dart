@@ -83,21 +83,74 @@ void main() {
     );
   });
 
-  test(
-    'HTTPS ve benzer host taşıyan bağlantılar uygulama rotasına dönüşmez',
-    () {
-      for (final link in [
-        'https://api.iskoala.com/reset-password?token=reset-123',
-        'koala://evil-reset-password?token=reset-123',
-        'koala://reset-password.attacker.example?token=reset-123',
-      ]) {
-        expect(
-          AppLinkDestination.routeFor(Uri.parse(link), appScheme: 'koala'),
-          isNull,
-        );
-      }
-    },
-  );
+  test('production HTTPS bağlantıları aynı uygulama rotalarına dönüşür', () {
+    expect(
+      AppLinkDestination.routeFor(
+        Uri.parse('https://iskoala.com/sifre-belirle?token=set-password-123'),
+        appScheme: 'koala',
+      ),
+      '/auth/register-type/register/creating-password'
+      '?token=set-password-123',
+    );
+    expect(
+      AppLinkDestination.routeFor(
+        Uri.parse('https://www.iskoala.com/sifre-sifirla?token=reset-123'),
+        appScheme: 'koala',
+      ),
+      '/reset-password?token=reset-123',
+    );
+    expect(
+      AppLinkDestination.routeFor(
+        Uri.parse(
+          'https://iskoala.com/payment/result?status=success'
+          '&assignmentId=assignment-1',
+        ),
+        appScheme: 'koala',
+      ),
+      '/payment-result?status=success&assignmentId=assignment-1',
+    );
+  });
+
+  test('staging yalnız staging HTTPS hostunu kabul eder', () {
+    expect(
+      AppLinkDestination.routeFor(
+        Uri.parse('https://staging.iskoala.com/eposta-onayla?token=email-123'),
+        appScheme: 'koala-staging',
+      ),
+      '/email-verification?token=email-123',
+    );
+    expect(
+      AppLinkDestination.routeFor(
+        Uri.parse('https://iskoala.com/eposta-onayla?token=email-123'),
+        appScheme: 'koala-staging',
+      ),
+      isNull,
+    );
+    expect(
+      AppLinkDestination.routeFor(
+        Uri.parse('https://staging.iskoala.com/eposta-onayla?token=email-123'),
+        appScheme: 'koala',
+      ),
+      isNull,
+    );
+  });
+
+  test('HTTPS sözleşmesi bilinmeyen host ve yolları reddeder', () {
+    for (final link in [
+      'https://api.iskoala.com/reset-password?token=reset-123',
+      'https://iskoala.com/reset-password?token=reset-123',
+      'https://iskoala.com/sifre-sifirla/ek?token=reset-123',
+      'https://iskoala.com/payment-result?status=success&assignmentId=1',
+      'http://iskoala.com/sifre-sifirla?token=reset-123',
+      'koala://evil-reset-password?token=reset-123',
+      'koala://reset-password.attacker.example?token=reset-123',
+    ]) {
+      expect(
+        AppLinkDestination.routeFor(Uri.parse(link), appScheme: 'koala'),
+        isNull,
+      );
+    }
+  });
 
   test('user-info, port, path ve fragment taşıyan linkler reddedilir', () {
     for (final link in [
