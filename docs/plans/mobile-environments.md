@@ -16,8 +16,10 @@ Staging bugün mevcut `https://api.iskoala.com` test amaçlı sunucusunu kullan�
 flutter run --flavor staging --dart-define-from-file=config/staging.json
 flutter test --flavor staging --dart-define-from-file=config/staging.json
 flutter build apk --debug --flavor staging --dart-define-from-file=config/staging.json
-flutter build ios --simulator --debug --no-codesign --flavor staging --dart-define-from-file=config/staging.json
+flutter build ios --simulator --debug --flavor staging --dart-define-from-file=config/staging.json
 ```
+
+Simülatör build'i `--no-codesign` ile alınmaz. İmzasız uygulama Keychain'e erişemiyor; `flutter_secure_storage` `-34018 errSecMissingEntitlement` veriyor ve token yazılamadığı için giriş "Hesap bilgilerin doğrulanamadı" hatasıyla düşüyor. `--no-codesign` yalnız CI'daki derleme kontrolü içindir; orada uygulama kurulmuyor.
 
 Flavor veya API hedefi eksikse uygulama ilk ağ isteğinden önce yapılandırma hatası verir. Dev dışında HTTP kabul edilmez. JSON dosyaları sır içermez; kişisel hedef değişikliği gerekiyorsa Git dışındaki `config/*.local.json` kullanılabilir. `FLUTTER_APP_FLAVOR` elle verilmez.
 
