@@ -48,7 +48,7 @@ flutter pub get
 
 `test/` mirrors `lib/`: a test for `lib/product/router/router_manager.dart` lives at `test/product/router/router_manager_test.dart`. Test names and `group` labels are Turkish like everything else.
 
-What is covered today: the router redirect guard, the `Job` model's JSON round-trip, `asPrice`, the `SavedJobs` / `Page` / `Search` / `Apply` / `Theme` / `BJobs` providers, and `MyButton` / `MyListTile` as widget tests. There are **no integration tests** — everything runs headless, no device or emulator.
+What is covered today: the router redirect guard, the `Job` model's JSON round-trip, `asPrice`, the `SavedJobs` / `Page` / `Search` / `Apply` / `Theme` / `BJobs` providers, and `MyButton` / `MyListTile` as widget tests. Most tests run headless. `integration_test/live_qa_login_test.dart` is the deliberate exception: it runs on a device or simulator against the configured real API and needs `QA_WORKER_EMAIL`, `QA_EMPLOYER_EMAIL` and `QA_ACCOUNT_PASSWORD` as compile-time defines. Never hard-code those credentials or replace this live check with fake data.
 
 Two shared helpers under `test/support/`, use them instead of rolling your own:
 
@@ -537,7 +537,7 @@ Do not build against these until the backend developer confirms they shipped.
 
 The server marks the calling session with `current`. That row gets a "Bu cihaz" badge and **no close button** — closing your own session is logging out, and that already has a row in Settings which also clears the local providers and the realtime connection. Revoking never edits the list in place; it refetches, because closing one session can drop others.
 
-**The profile is fully wired except the CV.** Education is the newest piece: `/users/me/educations` CRUD through `profile/services/education_service.dart`, with the university → faculty → department chain coming from `product/services/academic_reference_service.dart` (`/reference/universities`, `.../{id}/faculties`, `/reference/faculties/{id}/departments`). Those three endpoints need no auth and their lists barely change, so the service caches them per parent id for the session. Two things worth knowing before editing that form:
+**The profile is fully wired, including the CV.** Education is the newest piece: `/users/me/educations` CRUD through `profile/services/education_service.dart`, with the university → faculty → department chain coming from `product/services/academic_reference_service.dart` (`/reference/universities`, `.../{id}/faculties`, `/reference/faculties/{id}/departments`). Those three endpoints need no auth and their lists barely change, so the service caches them per parent id for the session. Two things worth knowing before editing that form:
 
 - **The three pickers are a chain, not three independent fields.** Changing the university clears the faculty *and* the department; changing the faculty clears the department. Leaving a stale child selected would post another school's faculty id.
 - **A long list needs search, not a dropdown.** There are 200+ universities, so `AcademicPickerSheet` is a searchable sheet whose filter folds Turkish characters — typing "bogazici" has to find "Boğaziçi".
@@ -558,11 +558,9 @@ A `426` is handled **once, globally**: `ApiClient` closes `AppUpdateGate` and `M
 - `business/features/home/presentation/pages/b_home_page.dart` has a `_quickActionsSection` that nothing calls. It carries an `// ignore: unused_element` so analyze stays clean — it is a parked section, not dead code to delete without asking.
 - The applicant CV download and the "follow company" action render but write nowhere. (The business profile's stat numbers are real now — `GET /users/{id}/employer-stats`.)
 - ~~Rejected applications and cancelled assignments had no UI state.~~ Both are mapped now. `MyJobStatus.applicationRejected` is separate from `MyJobStatus.rejected` on purpose: one is the employer turning the worker down, the other is the worker declining the assignment, and giving them the same wording would hide who decided. The employer's `rejectionReason` replaces the job summary on that row (`MyJob.subtitle`) — it is the only thing the worker wants to read. **An accepted application is skipped entirely** in `ApplyProvider._toMyJob`: it is an assignment now, and the assignments endpoint already returns it, so mapping both drew the same job twice.
-- **Server endpoints the profile could use but does not.** These were deliberately left for later, not overlooked:
-    - **CV upload** — the profile's *Özgeçmiş* card only reports whether `cvUrl` is set. `PUT /users/me/cv` takes multipart under the form field name **`file`** (not `image`), and `DELETE /users/me/cv` removes it. This is the one profile feature still missing, and it is blocked on a dependency: `image_picker` cannot pick a PDF, so it needs `file_picker` — ask before adding.
-
-  - **Experience editing** is done; the *Tecrübe* section has add / edit / delete through `/users/me/experiences`.
-  - **Presence** — `GET /users/{userId}/presence` and the batch `POST /presence/lookup` exist; the chat UI still hardcodes `isOnline: false`.
+- **CV upload** uses `file_picker` for PDF selection. `PUT /users/me/cv` sends multipart with the form field name **`file`** (not `image`), and `DELETE /users/me/cv` removes it. Keep upload and removal state in `UserProvider` so the card always reflects the server response.
+- **Experience editing** is done; the *Tecrübe* section has add / edit / delete through `/users/me/experiences`.
+- **Presence is not wired yet.** `GET /users/{userId}/presence` and the batch `POST /presence/lookup` exist; the chat UI still hardcodes `isOnline: false`.
 - ~~`b_create_page.dart` hardcodes the coordinates of every job.~~ Fixed: `CreateAddressRequestDto` makes `countryCode`, `cityName`, `addressLine`, `latitude` and `longitude` all mandatory, and the server never geocodes free text — so the create screen now collects the province and district from `/reference/countries → cities → districts` and the coordinate from `BLocationPickerPage`, a `google_maps_flutter` screen where the employer slides the map under a fixed centre pin. No new dependency; `geocoding` was rejected because it guesses at free-text addresses.
 
 
@@ -577,4 +575,4 @@ A `426` is handled **once, globally**: `ApiClient` closes `AppUpdateGate` and `M
 - When adding values to the constant files, give them meaningful names and a `///` comment saying *why* that value, not what it is.
 - Before deleting anything, verify it is committed, and report what was deleted along with the command to undo it.
 - When the user sends a screenshot, do not guess the problem; trace it from the code and explain the cause. Most layout problems come from constraints — a missing `Center`/`Expanded`/`stretch` and the like.
-- When the task is done, give a summary and stop. Do not commit.
+- When the task is done, give a summary and stop. Commit, push, open a PR or merge only when the user has explicitly authorized that action; keep every commit focused and report its hash.
