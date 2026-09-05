@@ -233,6 +233,40 @@ void main() {
     expect(api.requests, hasLength(1));
   });
 
+  // Soğuma başarısız denemede de kurulmalı: istemcide zaman aşımına uğrayan
+  // ya da `500` dönen bir `PATCH` sunucuda işlenmiş ve kod gönderilmiş
+  // olabilir. Düğme aynı karede yeniden açılırsa kullanıcı arka arkaya basıp
+  // pes peşe SMS ürettirebilir — soğumanın var olma sebebi tam olarak bu.
+  testWidgets('tekrar gönderme başarısız olsa da düğme soğumaya giriyor', (
+    tester,
+  ) async {
+    final api = FakeApi(
+      handler: (_) => const FakeApiResponse(
+        statusCode: 500,
+        body: {'success': false, 'message': 'Sunucu hatası'},
+      ),
+    );
+
+    await pumpPage(tester, api);
+    await tester.pump(const Duration(seconds: 61));
+
+    await tester.tap(find.text('Kodu tekrar gönder'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(api.requests, hasLength(1));
+
+    await tester.tap(find.text('Kodu tekrar gönder'), warnIfMissed: false);
+    await tester.pump();
+    expect(api.requests, hasLength(1));
+
+    // Soğuma dolunca tekrar denenebiliyor: kilit kalıcı değil.
+    await tester.pump(const Duration(seconds: 61));
+    await tester.tap(find.text('Kodu tekrar gönder'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(api.requests, hasLength(2));
+  });
+
   // Soğuma süresi ancak istek dönünce kuruluyor; istek havadayken düğme
   // açık kalırsa iki `PATCH` gider, yani kullanıcıya iki SMS.
   testWidgets('istek havadayken ikinci kez basılamıyor', (tester) async {
@@ -249,7 +283,7 @@ void main() {
       ),
     );
 
-    await pumpPage(tester, api);
+    await pumpPage(tester, api, onFinished: (_) {});
     await tester.pump(const Duration(seconds: 61));
 
     // İki dokunuş arada kare çizilmeden: ilkinin isteği daha dönmemişken
@@ -260,6 +294,41 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
 
     expect(api.requests, hasLength(1));
+  });
+
+  // Sunucu aynı değere ikinci bir kod üretmiyor: gönderilen değer
+  // kullanıcının mevcut değerine eşitse `pendingVerifications` boş dönüyor
+  // (`UserManager.patchCurrentUser`). Elde yeni bir kimlik yokken "yeni kod
+  // gönderildi" demek, kullanıcıyı hiç gelmeyecek bir kod için bekletir.
+  testWidgets('yeni doğrulama dönmezse başarı bildirilmiyor, ekran kapanıyor', (
+    tester,
+  ) async {
+    final api = FakeApi(
+      handler: (_) => FakeApiResponse(
+        statusCode: 200,
+        body: {
+          'success': true,
+          'data': {
+            'user': _userBody(),
+            'pendingVerifications': const <Map<String, dynamic>>[],
+          },
+        },
+      ),
+    );
+    bool? finished;
+
+    await pumpPage(tester, api, onFinished: (value) => finished = value);
+    await tester.pump(const Duration(seconds: 61));
+    await tester.tap(find.text('Kodu tekrar gönder'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.text('Yeni kod gönderildi.'), findsNothing);
+    expect(
+      find.text('Bu doğrulama artık geçerli değil. Değişikliği baştan yap.'),
+      findsOneWidget,
+    );
+    expect(finished, isFalse);
   });
 
   testWidgets('tekrar gönderilen kod eskisinin yerine geçiyor', (tester) async {

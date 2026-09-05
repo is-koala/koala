@@ -158,26 +158,55 @@ abstract class VerificationCodePagemodel extends State<VerificationCodePage> {
       if (!mounted) return;
 
       if (pending == null) {
+        // Soğuma hata yolunda da kuruluyor. İstemcide zaman aşımına uğrayan
+        // ya da `500` dönen bir `PATCH` sunucuda işlenmiş ve kod gönderilmiş
+        // olabilir; düğmeyi aynı karede yeniden açmak, kullanıcının arka
+        // arkaya basıp pes peşe SMS ürettirmesine izin verirdi. Soğumanın
+        // varlık sebebi zaten tam olarak bu.
+        _armResendCooldown();
         AppToast.error(context, provider.errorMessage ?? 'Kod gönderilemedi.');
         return;
       }
 
       final refreshed = pending.where((item) => item.type == verification.type);
+      if (refreshed.isEmpty) {
+        // Sunucu yeni bir kod üretmedi: gönderilen değer kullanıcının mevcut
+        // değerine eşitse `UserManager.patchCurrentUser` doğrulama açmadan
+        // `200` dönüyor, yani bekleyen kayıt bu arada (örneğin başka bir
+        // cihazda) kapanmış. Elimizde artık kodu kabul edecek bir kimlik yok;
+        // eskisini saklayıp "yeni kod gönderildi" demek, kullanıcıyı hiç
+        // gelmeyecek bir kod için bekletirdi. Sayaçlar da bilerek
+        // sıfırlanmıyor — yenilenen bir şey yok. `403`/`404` ile aynı çıkış:
+        // ekran kapanıyor ve değişiklik baştan isteniyor.
+        AppToast.error(
+          context,
+          'Bu doğrulama artık geçerli değil. Değişikliği baştan yap.',
+        );
+        _finish(false);
+        return;
+      }
 
       setState(() {
-        if (refreshed.isNotEmpty) verification = refreshed.first;
+        verification = refreshed.first;
         _codeSecondsLeft = codeLifetime.inSeconds;
-        _resendSecondsLeft = resendCooldown.inSeconds;
         code.clear();
       });
-      // Sayaç bitmişse durmuş olabilir; yeni kodun süresi için tekrar
-      // kuruluyor.
-      _startTicker();
+      _armResendCooldown();
 
       AppToast.success(context, 'Yeni kod gönderildi.');
     } finally {
       if (mounted) setState(() => _isResending = false);
     }
+  }
+
+  /// Soğuma süresini baştan kurar.
+  ///
+  /// Sayaç sıfıra inince kendini durduruyor; süre yeniden kurulduğunda
+  /// tıklama da yeniden başlatılmalı, yoksa kalan saniye hiç azalmaz ve
+  /// düğme bir daha açılmaz.
+  void _armResendCooldown() {
+    setState(() => _resendSecondsLeft = resendCooldown.inSeconds);
+    _startTicker();
   }
 
   void _finish(bool verified) {
