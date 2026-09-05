@@ -9,6 +9,7 @@ import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:koala/employee/features/home/services/location_service.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
+import 'package:koala/product/constants/app_map.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
@@ -227,7 +228,7 @@ class _MapExplorePageState extends MapExplorePageModel {
   GoogleMap map() {
     return GoogleMap(
       initialCameraPosition: CameraPosition(
-        target: _currentLatLng ?? _defaultLatLng,
+        target: _currentLatLng ?? AppMap.istanbulCenter,
         zoom: 15.0,
       ),
       mapType: MapType.normal,

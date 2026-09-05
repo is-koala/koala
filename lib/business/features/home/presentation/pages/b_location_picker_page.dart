@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
+import 'package:koala/product/constants/app_map.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
@@ -33,21 +34,11 @@ class BLocationPickerPage extends StatefulWidget {
 }
 
 class _BLocationPickerPageState extends State<BLocationPickerPage> {
-  static const LatLng _defaultTarget = LatLng(41.008238, 28.978359);
-  static final LatLngBounds _serviceBounds = LatLngBounds(
-    southwest: LatLng(40.80, 28.55),
-    northeast: LatLng(41.35, 29.50),
-  );
-
-  /// Şehir ölçeğinde bir başlangıç; pin bırakmak için sokak seviyesine
-  /// yakınlaşmak kullanıcıya bırakılıyor.
-  static const double _initialZoom = 15;
-
   /// Sabit pinin ucu haritanın tam merkezine denk gelsin diye ikon kendi
   /// boyunun yarısı kadar yukarı kaydırılıyor.
   static const double _pinSize = 48;
 
-  late LatLng _target = widget.initialLocation ?? _defaultTarget;
+  late LatLng _target = widget.initialLocation ?? AppMap.istanbulCenter;
   GoogleMapController? _mapController;
   bool _locating = false;
   bool _locationGranted = false;
@@ -73,12 +64,12 @@ class _BLocationPickerPageState extends State<BLocationPickerPage> {
           GoogleMap(
             initialCameraPosition: CameraPosition(
               target: _target,
-              zoom: _initialZoom,
+              zoom: AppMap.initialZoom,
             ),
             zoomControlsEnabled: false,
             myLocationEnabled: _locationGranted,
             myLocationButtonEnabled: false,
-            cameraTargetBounds: CameraTargetBounds(_serviceBounds),
+            cameraTargetBounds: CameraTargetBounds(AppMap.istanbulBounds),
             minMaxZoomPreference: const MinMaxZoomPreference(10, 20),
             onMapCreated: (controller) => _mapController = controller,
             onCameraMove: (position) => _target = position.target,
@@ -164,10 +155,10 @@ class _BLocationPickerPageState extends State<BLocationPickerPage> {
   }
 
   bool _insideServiceArea(LatLng point) {
-    return point.latitude >= _serviceBounds.southwest.latitude &&
-        point.latitude <= _serviceBounds.northeast.latitude &&
-        point.longitude >= _serviceBounds.southwest.longitude &&
-        point.longitude <= _serviceBounds.northeast.longitude;
+    return point.latitude >= AppMap.istanbulBounds.southwest.latitude &&
+        point.latitude <= AppMap.istanbulBounds.northeast.latitude &&
+        point.longitude >= AppMap.istanbulBounds.southwest.longitude &&
+        point.longitude <= AppMap.istanbulBounds.northeast.longitude;
   }
 
   void _showLocationMessage(String message) {
