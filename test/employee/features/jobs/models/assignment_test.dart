@@ -66,6 +66,34 @@ void main() {
       expect(assignment.isPaidOut, isTrue);
     });
 
+    test('işveren yalnız onaylanmış ve tahsil edilmemiş atamada öder', () {
+      expect(
+        Assignment.fromJson(
+          assignmentBody(paymentStatus: 'PENDING_COLLECTION'),
+        ).needsEmployerPayment,
+        isTrue,
+      );
+      expect(
+        Assignment.fromJson(
+          assignmentBody(paymentStatus: 'FAILED'),
+        ).needsEmployerPayment,
+        isTrue,
+      );
+      expect(
+        Assignment.fromJson(assignmentBody()).needsEmployerPayment,
+        isFalse,
+      );
+      expect(
+        Assignment.fromJson(
+          assignmentBody(
+            status: 'PENDING_CONFIRMATION',
+            paymentStatus: 'PENDING_COLLECTION',
+          ),
+        ).needsEmployerPayment,
+        isFalse,
+      );
+    });
+
     test('tanınmayan durumlar varsayılana düşer', () {
       final assignment = Assignment.fromJson(
         assignmentBody(status: 'UZAYLI', paymentStatus: 'UZAYLI'),

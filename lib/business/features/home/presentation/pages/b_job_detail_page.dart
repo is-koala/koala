@@ -4,6 +4,7 @@ import 'package:koala/business/features/home/models/b_job_post.dart';
 import 'package:koala/business/features/home/models/job_applicant.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
 import 'package:koala/business/features/home/services/employer_job_service.dart';
+import 'package:koala/business/features/home/services/payment_browser.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
@@ -145,6 +146,10 @@ class _BJobDetailPageState extends BJobDetailPageModel {
               ),
             ],
             ?_openDisputeBanner(),
+            if (assignment.needsEmployerPayment) ...[
+              const SizedBox(height: AppSizes.spaceMedium),
+              _paymentButton(),
+            ],
             if (_canComplete(assignment)) ...[
               const SizedBox(height: AppSizes.spaceMedium),
               _completeButton(),
@@ -162,6 +167,23 @@ class _BJobDetailPageState extends BJobDetailPageModel {
   bool _canComplete(Assignment assignment) =>
       assignment.status == AssignmentStatus.confirmed ||
       assignment.status == AssignmentStatus.inProgress;
+
+  Widget _paymentButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        key: const ValueKey('start-payment'),
+        onPressed: _isStartingPayment ? null : _startPayment,
+        icon: _isStartingPayment
+            ? const SizedBox.square(
+                dimension: AppSizes.iconSmall,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.lock_outline),
+        label: const Text('Güvenli Ödemeyi Tamamla'),
+      ),
+    );
+  }
 
   Widget _assignmentStatusRow(Assignment assignment) {
     return Row(

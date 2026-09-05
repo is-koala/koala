@@ -128,6 +128,9 @@ class ApiPaths {
   static String respondToAssignment(String assignmentId) =>
       '${jobAssignment(assignmentId)}/respond';
 
+  static String assignmentPaymentSession(String assignmentId) =>
+      '${jobAssignment(assignmentId)}/payment-session';
+
   /// Mesai başlatma ve bitirme. İkisini de yalnızca işi yapan kişi
   /// çağırabiliyor; konum gövdesi isteğe bağlı.
   ///

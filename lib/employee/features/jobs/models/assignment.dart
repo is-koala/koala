@@ -88,6 +88,13 @@ class Assignment {
   bool get isPaidOut =>
       status == AssignmentStatus.completed && paymentStatus.isPaid;
 
+  /// Çalışan atamayı kabul etti ama ücret henüz emanete alınmadıysa işveren
+  /// checkout'u başlatabilir. Bekleyen çalışan cevabında ödeme alınmaz.
+  bool get needsEmployerPayment =>
+      status == AssignmentStatus.confirmed &&
+      (paymentStatus == PaymentStatus.pendingCollection ||
+          paymentStatus == PaymentStatus.failed);
+
   factory Assignment.fromJson(Map<String, dynamic> json) {
     return Assignment(
       id: '${json['id']}',

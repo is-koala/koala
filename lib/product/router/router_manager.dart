@@ -11,6 +11,7 @@ import 'package:koala/business/features/home/presentation/pages/b_company_info_p
 import 'package:koala/business/features/home/presentation/pages/b_job_detail_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_user_profile_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_notifications_page.dart';
+import 'package:koala/business/features/home/presentation/pages/payment_result_page.dart';
 import 'package:koala/employee/features/notifications/presentation/pages/notifications_page.dart';
 import 'package:koala/employee/features/profile/presentation/pages/followed_companies_page.dart';
 import 'package:koala/employee/features/settings/presentation/pages/sessions_page.dart';
@@ -368,6 +369,17 @@ class RouterManager {
             ),
           ),
         ],
+      ),
+
+      GoRoute(
+        path: '/payment-result',
+        pageBuilder: (context, state) => _page(
+          state,
+          PaymentResultPage(
+            assignmentId: state.uri.queryParameters['assignmentId'] ?? '',
+            hintedStatus: state.uri.queryParameters['status'] ?? '',
+          ),
+        ),
       ),
 
       GoRoute(

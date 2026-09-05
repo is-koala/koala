@@ -24,6 +24,7 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
 
   final _jobService = JobService();
   final _employerJobService = EmployerJobService();
+  final _paymentBrowser = PaymentBrowser();
 
   /// Mesai oturumlarını iki taraf da okuyabiliyor; sohbette olduğu gibi tek
   /// servis iki uygulamaya hizmet ediyor.
@@ -47,6 +48,8 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
 
   /// "İşi Tamamla" isteği sunucuya gitti mi.
   bool _isCompleting = false;
+
+  bool _isStartingPayment = false;
 
   /// Atamanın uyuşmazlıkları; kart üzerinde açık olan gösteriliyor.
   List<Dispute> _disputes = const [];
@@ -128,6 +131,35 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
         _workSessions = const [];
         _disputes = const [];
       });
+    }
+  }
+
+  Future<void> _startPayment() async {
+    final assignment = _assignment;
+    if (assignment == null || _isStartingPayment) return;
+
+    setState(() => _isStartingPayment = true);
+    try {
+      final session = await _employerJobService.createPaymentSession(
+        assignment.id,
+      );
+      final opened = await _paymentBrowser.open(session.paymentPageUrl);
+      if (!opened) {
+        throw const ApiException(
+          message: 'Ödeme sayfası açılamadı.',
+          type: ApiErrorType.unknown,
+        );
+      }
+      if (mounted) {
+        AppToast.success(
+          context,
+          'Ödemeyi tamamladıktan sonra Koala uygulamasına döneceksin.',
+        );
+      }
+    } on ApiException catch (error) {
+      if (mounted) AppToast.error(context, error.message);
+    } finally {
+      if (mounted) setState(() => _isStartingPayment = false);
     }
   }
 
