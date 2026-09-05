@@ -30,6 +30,48 @@ abstract class ProfilePageModel extends State<ProfilePage>
     if (mounted) await context.read<UserProvider>().load(silent: true);
   }
 
+  Future<void> _uploadCv() async {
+    final selection = await FilePicker.pickFile(
+      type: FileType.custom,
+      allowedExtensions: const ['pdf', 'doc', 'docx'],
+    );
+    final path = selection?.path;
+    if (path == null || !mounted) return;
+
+    final provider = context.read<UserProvider>();
+    final uploaded = await provider.uploadCv(path);
+    if (!mounted) return;
+    if (uploaded) {
+      AppToast.success(context, 'Özgeçmişin yüklendi.');
+    } else {
+      AppToast.error(context, provider.errorMessage ?? 'Özgeçmiş yüklenemedi.');
+    }
+  }
+
+  Future<void> _deleteCv() async {
+    final provider = context.read<UserProvider>();
+    final deleted = await provider.deleteCv();
+    if (!mounted) return;
+    if (deleted) {
+      AppToast.success(context, 'Özgeçmişin kaldırıldı.');
+    } else {
+      AppToast.error(
+        context,
+        provider.errorMessage ?? 'Özgeçmiş kaldırılamadı.',
+      );
+    }
+  }
+
+  Future<void> _showCvActions(CurrentUser user) {
+    final hasCv = user.cvUrl?.isNotEmpty ?? false;
+    return CvActionsSheet.show(
+      context,
+      hasCv: hasCv,
+      onUpload: _uploadCv,
+      onDelete: _deleteCv,
+    );
+  }
+
   /// Sekme değiştikçe sayfa yeniden kurulmasın: `initState`'teki tek seferlik
   /// yükleme ancak böyle tek sefer kalıyor, kaydırma konumu da korunuyor.
   @override

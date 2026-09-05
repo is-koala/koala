@@ -6,6 +6,7 @@ import 'package:koala/employee/features/auth/models/experience.dart';
 import 'package:koala/employee/features/auth/models/user_badge.dart';
 import 'package:koala/employee/features/auth/models/education.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/education_sheet.dart';
+import 'package:koala/employee/features/profile/presentation/widgets/cv_actions_sheet.dart';
 import 'package:koala/employee/features/profile/services/education_service.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/timeline_card.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
@@ -145,75 +146,12 @@ class _ProfilePageState extends ProfilePageModel {
     );
   }
 
-  Future<void> _uploadCv() async {
-    final selection = await FilePicker.pickFile(
-      type: FileType.custom,
-      allowedExtensions: const ['pdf', 'doc', 'docx'],
-    );
-    final path = selection?.path;
-    if (path == null || !mounted) return;
-
-    final provider = context.read<UserProvider>();
-    final uploaded = await provider.uploadCv(path);
-    if (!mounted) return;
-    if (uploaded) {
-      AppToast.success(context, 'Özgeçmişin yüklendi.');
-    } else {
-      AppToast.error(context, provider.errorMessage ?? 'Özgeçmiş yüklenemedi.');
-    }
-  }
-
-  Future<void> _deleteCv() async {
-    final provider = context.read<UserProvider>();
-    final deleted = await provider.deleteCv();
-    if (!mounted) return;
-    if (deleted) {
-      AppToast.success(context, 'Özgeçmişin kaldırıldı.');
-    } else {
-      AppToast.error(
-        context,
-        provider.errorMessage ?? 'Özgeçmiş kaldırılamadı.',
-      );
-    }
-  }
-
-  Future<void> _showCvActions(CurrentUser user) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.upload_file),
-              title: Text(
-                user.cvUrl == null ? 'Özgeçmiş Yükle' : 'Özgeçmişi Değiştir',
-              ),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                _uploadCv();
-              },
-            ),
-            if (user.cvUrl != null && user.cvUrl!.isNotEmpty)
-              ListTile(
-                leading: const Icon(Icons.delete_outline),
-                title: const Text('Özgeçmişi Kaldır'),
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  _deleteCv();
-                },
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget editProfileButton(CurrentUser user) {
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton.icon(
         onPressed: () => _navigateToAccountInfo(user),
-        icon: const Icon(Icons.edit, size: AppSizes.iconSmall),
+        icon: const AppIcon(AppIcons.edit, size: AppSizes.iconSmall),
         label: const Text("Profili Düzenle"),
         style: OutlinedButton.styleFrom(
           foregroundColor: context.accentColor,
