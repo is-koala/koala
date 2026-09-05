@@ -61,6 +61,7 @@ class ApiException implements Exception {
     this.statusCode,
     this.errorCode,
     this.fieldErrors = const [],
+    this.cause,
   });
 
   /// Kullanıcıya gösterilebilecek mesaj. Backend `Accept-Language: tr` ile
@@ -76,6 +77,13 @@ class ApiException implements Exception {
 
   final List<ApiFieldError> fieldErrors;
 
+  /// Bu hatayı doğuran özgün hata.
+  ///
+  /// Kullanıcıya gösterilmiyor; beklenmeyen bir hata sade bir mesaja
+  /// sarıldığında nedeni kaybolmasın diye taşınıyor. Cihazda çıkan hatayı
+  /// teşhis edebilmenin tek yolu bu.
+  final Object? cause;
+
   /// Verilen alan için doğrulama mesajı; yoksa `null`.
   String? messageForField(String field) {
     for (final error in fieldErrors) {
@@ -85,5 +93,7 @@ class ApiException implements Exception {
   }
 
   @override
-  String toString() => 'ApiException($type, $statusCode): $message';
+  String toString() => cause == null
+      ? 'ApiException($type, $statusCode): $message'
+      : 'ApiException($type, $statusCode): $message (cause: $cause)';
 }
