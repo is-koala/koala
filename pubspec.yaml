@@ -46,12 +46,15 @@ dependencies:
   dio: ^5.11.0
   flutter_secure_storage: ^11.0.0
   stomp_dart_client: ^3.0.1
+  file_picker: ^12.2.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
   flutter_lints: ^6.0.0
+  integration_test:
+    sdk: flutter
 
 flutter:
   uses-material-design: true

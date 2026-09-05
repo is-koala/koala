@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/models/experience.dart';
@@ -168,6 +169,69 @@ class _ProfilePageState extends State<ProfilePage>
               const SizedBox(height: _bottomClearance),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _uploadCv() async {
+    final selection = await FilePicker.pickFile(
+      type: FileType.custom,
+      allowedExtensions: const ['pdf', 'doc', 'docx'],
+    );
+    final path = selection?.path;
+    if (path == null || !mounted) return;
+
+    final provider = context.read<UserProvider>();
+    final uploaded = await provider.uploadCv(path);
+    if (!mounted) return;
+    if (uploaded) {
+      AppToast.success(context, 'Özgeçmişin yüklendi.');
+    } else {
+      AppToast.error(context, provider.errorMessage ?? 'Özgeçmiş yüklenemedi.');
+    }
+  }
+
+  Future<void> _deleteCv() async {
+    final provider = context.read<UserProvider>();
+    final deleted = await provider.deleteCv();
+    if (!mounted) return;
+    if (deleted) {
+      AppToast.success(context, 'Özgeçmişin kaldırıldı.');
+    } else {
+      AppToast.error(
+        context,
+        provider.errorMessage ?? 'Özgeçmiş kaldırılamadı.',
+      );
+    }
+  }
+
+  Future<void> _showCvActions(CurrentUser user) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.upload_file),
+              title: Text(
+                user.cvUrl == null ? 'Özgeçmiş Yükle' : 'Özgeçmişi Değiştir',
+              ),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _uploadCv();
+              },
+            ),
+            if (user.cvUrl != null && user.cvUrl!.isNotEmpty)
+              ListTile(
+                leading: const Icon(Icons.delete_outline),
+                title: const Text('Özgeçmişi Kaldır'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _deleteCv();
+                },
+              ),
+          ],
         ),
       ),
     );
@@ -587,45 +651,46 @@ class _ProfilePageState extends State<ProfilePage>
     );
   }
 
-  /// Özgeçmiş kartı.
-  ///
-  /// TODO(backend): `PUT /users/me/cv` multipart bekliyor; dosya seçme akışı
-  /// henüz yok, kart şimdilik yalnızca durumu gösteriyor.
-  Container cvArea(CurrentUser user) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        vertical: AppSizes.spaceSmall,
-        horizontal: AppSizes.spaceLarge,
-      ),
-      decoration: BoxDecoration(
-        color: context.accentColor,
-        borderRadius: AppRadius.smallCircular,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Özgeçmiş",
-                style: context.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: context.onAccentColor,
+  Widget cvArea(CurrentUser user) {
+    return InkWell(
+      key: const ValueKey('cv-actions'),
+      onTap: () => _showCvActions(user),
+      borderRadius: AppRadius.smallCircular,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          vertical: AppSizes.spaceSmall,
+          horizontal: AppSizes.spaceLarge,
+        ),
+        decoration: BoxDecoration(
+          color: context.accentColor,
+          borderRadius: AppRadius.smallCircular,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Özgeçmiş",
+                  style: context.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: context.onAccentColor,
+                  ),
                 ),
-              ),
-              Text(
-                user.cvUrl == null || user.cvUrl!.isEmpty
-                    ? "Henüz yüklenmedi"
-                    : "Yüklendi",
-                style: context.textTheme.bodyMedium?.copyWith(
-                  color: context.onAccentColor,
+                Text(
+                  user.cvUrl == null || user.cvUrl!.isEmpty
+                      ? "Henüz yüklenmedi"
+                      : "Yüklendi",
+                  style: context.textTheme.bodyMedium?.copyWith(
+                    color: context.onAccentColor,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          AppIcon(AppIcons.attachment, color: context.onAccentColor),
-        ],
+              ],
+            ),
+            AppIcon(AppIcons.attachment, color: context.onAccentColor),
+          ],
+        ),
       ),
     );
   }

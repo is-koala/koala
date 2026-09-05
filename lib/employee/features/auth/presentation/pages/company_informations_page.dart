@@ -1,10 +1,17 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:koala/business/features/home/services/b_company_service.dart';
+import 'package:koala/employee/features/company_detail/models/company.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_button.dart';
@@ -13,7 +20,16 @@ import 'package:koala/product/widgets/my_textfield.dart';
 part 'company_informations_pagemodel.dart';
 
 class CompanyInformationsPage extends StatefulWidget {
-  const CompanyInformationsPage({super.key});
+  const CompanyInformationsPage({
+    super.key,
+    this.service,
+    this.initialLocation,
+    this.onSaved,
+  });
+
+  final BCompanyService? service;
+  final LatLng? initialLocation;
+  final VoidCallback? onSaved;
 
   @override
   State<CompanyInformationsPage> createState() =>
@@ -48,7 +64,12 @@ class _CompanyInformationsPageState extends CompanyInformationsPagemodel {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _formSection(),
-                MyButton(onPressed: saveCompanyInformation, title: "KAYDET"),
+                MyButton(
+                  key: const ValueKey('company-save'),
+                  onPressed: saveCompanyInformation,
+                  title: "KAYDET",
+                  isLoading: isSaving,
+                ),
                 const SizedBox(height: AppSizes.spaceLarge),
               ],
             ),
@@ -83,25 +104,27 @@ class _CompanyInformationsPageState extends CompanyInformationsPagemodel {
           ),
           const SizedBox(height: AppSizes.spaceMedium),
           MyTextfield(
+            labelText: "İlçe*",
+            controller: districtController,
+            keyboardType: TextInputType.streetAddress,
+          ),
+          const SizedBox(height: AppSizes.spaceMedium),
+          MyTextfield(
             labelText: "Vergi Numarası*",
             controller: taxNumberController,
             keyboardType: TextInputType.number,
           ),
           const SizedBox(height: AppSizes.spaceMedium),
-          MyTextfield(
-            labelText: "Sektör*",
-            controller: sectorController,
-            keyboardType: TextInputType.text,
-          ),
+          _companyTypePicker(),
           const SizedBox(height: AppSizes.spaceMedium),
           MyTextfield(
-            labelText: "Şirket Numarası",
+            labelText: "Şirket Numarası*",
             controller: companyPhoneController,
             keyboardType: TextInputType.phone,
           ),
           const SizedBox(height: AppSizes.spaceMedium),
           MyTextfield(
-            labelText: "Şirket E-posta",
+            labelText: "Şirket E-posta*",
             controller: companyEmailController,
             keyboardType: TextInputType.emailAddress,
           ),
@@ -112,10 +135,51 @@ class _CompanyInformationsPageState extends CompanyInformationsPagemodel {
             keyboardType: TextInputType.url,
           ),
           const SizedBox(height: AppSizes.spaceMedium),
+          _locationField(),
+          const SizedBox(height: AppSizes.spaceMedium),
           _descriptionRow(),
           const SizedBox(height: AppSizes.spaceXLarge),
         ],
       ),
+    );
+  }
+
+  Widget _companyTypePicker() {
+    return DropdownButtonFormField<CompanyType>(
+      initialValue: companyType,
+      decoration: const InputDecoration(
+        labelText: 'Şirket Türü*',
+        border: OutlineInputBorder(),
+      ),
+      items: CompanyType.values
+          .map(
+            (type) =>
+                DropdownMenuItem(value: type, child: Text(type.displayName)),
+          )
+          .toList(),
+      onChanged: (type) {
+        if (type != null) setState(() => companyType = type);
+      },
+    );
+  }
+
+  Widget _locationField() {
+    final location = selectedLocation;
+    return ListTile(
+      key: const ValueKey('company-location'),
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: context.dividerColor),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      title: const Text('Şirket Konumu*'),
+      subtitle: Text(
+        location == null
+            ? 'Haritadan konum seç'
+            : '${location.latitude.toStringAsFixed(5)}, '
+                  '${location.longitude.toStringAsFixed(5)}',
+      ),
+      trailing: const Icon(Icons.location_on_outlined),
+      onTap: pickLocation,
     );
   }
 
@@ -140,9 +204,7 @@ class _CompanyInformationsPageState extends CompanyInformationsPagemodel {
     final avatar = AppColors.avatarColorFor(companyNameController.text.trim());
 
     return GestureDetector(
-      onTap: () {
-        // TODO(backend): Logo seçme ve yükleme akışı bağlanacak.
-      },
+      onTap: pickLogo,
       child: SizedBox(
         width: _logoBoxWidth,
         height: _descriptionHeight,
@@ -152,13 +214,18 @@ class _CompanyInformationsPageState extends CompanyInformationsPagemodel {
             CircleAvatar(
               radius: _avatarRadius,
               backgroundColor: avatar.background,
-              child: Text(
-                companyInitials,
-                style: context.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: avatar.foreground,
-                ),
-              ),
+              backgroundImage: logoPath == null
+                  ? null
+                  : FileImage(File(logoPath!)),
+              child: logoPath == null
+                  ? Text(
+                      companyInitials,
+                      style: context.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: avatar.foreground,
+                      ),
+                    )
+                  : null,
             ),
             // Düzenle rozeti köşede
             Positioned(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/models/pending_verification.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
@@ -85,6 +86,27 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
   /// Kimliği doğrulanmış kullanıcı ad ve soyadını değiştiremiyor; backend
   /// isteği reddettiği için alanlar en baştan kapalı açılıyor.
   bool get _canEditName => !widget.user.identityVerified;
+
+  Future<void> _pickProfilePicture() async {
+    final image = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 88,
+      maxWidth: 1600,
+    );
+    if (image == null || !mounted) return;
+
+    final provider = context.read<UserProvider>();
+    final uploaded = await provider.uploadProfilePicture(image.path);
+    if (!mounted) return;
+    if (uploaded) {
+      AppToast.success(context, 'Profil fotoğrafın güncellendi.');
+    } else {
+      AppToast.error(
+        context,
+        provider.errorMessage ?? 'Profil fotoğrafı yüklenemedi.',
+      );
+    }
+  }
 
   Future<void> _save() async {
     final user = widget.user;
@@ -344,34 +366,35 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
     );
   }
 
-  /// Profil fotoğrafı ve üstündeki değiştirme rozeti.
-  ///
-  /// TODO(backend): `PUT /users/me/profile-picture` multipart bekliyor; görsel
-  /// seçmek için henüz bir yol yok, rozet şimdilik sadece duruyor.
   Widget _avatar() {
-    return Stack(
-      children: [
-        ProfileAvatar(
-          imageUrl: widget.user.profilePictureUrl,
-          size: _avatarSize,
-        ),
-        Positioned(
-          bottom: 0,
-          right: 0,
-          child: Container(
-            padding: const EdgeInsets.all(AppSizes.spaceTiny),
-            decoration: BoxDecoration(
-              color: context.accentColor,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.camera_alt,
-              color: context.onAccentColor,
-              size: AppSizes.iconSmall,
+    final visibleUser = context.watch<UserProvider>().user ?? widget.user;
+    return GestureDetector(
+      key: const ValueKey('profile-picture-picker'),
+      onTap: _pickProfilePicture,
+      child: Stack(
+        children: [
+          ProfileAvatar(
+            imageUrl: visibleUser.profilePictureUrl,
+            size: _avatarSize,
+          ),
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.all(AppSizes.spaceTiny),
+              decoration: BoxDecoration(
+                color: context.accentColor,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.camera_alt,
+                color: context.onAccentColor,
+                size: AppSizes.iconSmall,
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

@@ -27,6 +27,30 @@ class UserService {
 
   final ApiClient _apiClient;
 
+  /// Profil fotoğrafını yükler. Başarılı çağrıdan sonra kullanıcı yeniden
+  /// çekilmelidir; backend bu uçta yalnızca başarı zarfı döndürüyor.
+  Future<void> uploadProfilePicture(String filePath) {
+    return _apiClient.putFileWithoutData(
+      ApiPaths.currentUserProfilePicture,
+      fieldName: 'image',
+      filePath: filePath,
+    );
+  }
+
+  /// PDF/DOC/DOCX özgeçmişi özel depoya yükler.
+  Future<String> uploadCv(String filePath) {
+    return _apiClient.putFile<String>(
+      ApiPaths.currentUserCv,
+      fieldName: 'file',
+      filePath: filePath,
+      parse: (data) => data! as String,
+    );
+  }
+
+  Future<void> deleteCv() {
+    return _apiClient.deleteWithoutData(ApiPaths.currentUserCv);
+  }
+
   /// Oturum açmış kullanıcının bilgileri.
   Future<CurrentUser> fetchCurrentUser() {
     return _apiClient.get<CurrentUser>(

@@ -20,6 +20,7 @@ class ApiPaths {
   static const String currentUser = '/users/me';
   static const String currentUserPassword = '/users/me/password';
   static const String currentUserProfilePicture = '/users/me/profile-picture';
+  static const String currentUserCv = '/users/me/cv';
   static const String currentUserAddress = '/users/me/address';
 
   /// Kimlik doğrulama. Ad, soyad, doğum tarihi, TC kimlik ve belge numarası
