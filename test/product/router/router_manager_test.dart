@@ -167,6 +167,23 @@ void main() {
         isNull,
       );
     });
+
+    // Parola ekranı iki uygulamanın da ayarlarından açılıyor ve tek bir
+    // rotası var. `/business` önekini taşımadığı için işverenin, employee
+    // rota listesinde olmadığı için çalışanın önü kesilmemeli.
+    test('parola değiştirme her iki tarafa da açık', () {
+      for (final userType in ['employee', 'business']) {
+        expect(
+          redirect(
+            loggedIn: true,
+            userType: userType,
+            location: '/change-password',
+          ),
+          isNull,
+          reason: '$userType parola ekranına ulaşamıyor',
+        );
+      }
+    });
   });
 
   // Açılışta oturum durumu okunana kadar hiçbir karar verilemez: "okunmadı"

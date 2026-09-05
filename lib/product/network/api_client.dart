@@ -134,6 +134,15 @@ class ApiClient {
     return _send<void>(() => _dio.post<dynamic>(path, data: body));
   }
 
+  /// Yalnızca başarı/başarısızlık dönen `PUT` isteği (`SuccessResult`).
+  ///
+  /// [put]'tan farkı `parse` istememesi: parola değiştirme gibi uçlar
+  /// gövdesinde veri döndürmüyor, zorunlu bir `parse` orada yazılacak hiçbir
+  /// şeyi olmayan bir dönüştürücü uydurmayı gerektirirdi.
+  Future<void> putWithoutData(String path, {Object? body}) {
+    return _send<void>(() => _dio.put<dynamic>(path, data: body));
+  }
+
   /// Yalnızca başarı/başarısızlık dönen `DELETE` isteği.
   Future<void> deleteWithoutData(String path) {
     return _send<void>(() => _dio.delete<dynamic>(path));

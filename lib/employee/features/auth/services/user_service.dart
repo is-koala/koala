@@ -122,6 +122,33 @@ class UserService {
     );
   }
 
+  /// Parolayı değiştirir.
+  ///
+  /// Sunucu üç şeyi de kendisi doğruluyor ve hepsinde `400` dönüyor: yeni
+  /// parola mevcut parolayla aynıysa, tekrarıyla tutmuyorsa ve mevcut parola
+  /// yanlışsa. Sonuncusu `UsersController`'ın `@ApiResponse`'unda `401`
+  /// yazıyor ama `UserManager` `ValidationException` fırlattığı için gerçekte
+  /// `400`; çağıran taraf ikisini de karşılamalı ve `401`'i oturum sonu
+  /// sanmamalı.
+  ///
+  /// **Başarıdan sonra bu cihaz dışındaki bütün oturumlar kapanıyor**
+  /// (`invalidateActiveSessionsForUserIdExcludingSessionId`). İsteği atan
+  /// cihaz açık kalıyor, yani kullanıcıdan yeniden giriş istenmemeli.
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmNewPassword,
+  }) {
+    return _apiClient.putWithoutData(
+      ApiPaths.currentUserPassword,
+      body: {
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+        'confirmNewPassword': confirmNewPassword,
+      },
+    );
+  }
+
   /// Kimliği doğrular.
   ///
   /// Sunucu bilgileri NVİ'ye soruyor; tutmazsa `400`, servise ulaşamazsa
