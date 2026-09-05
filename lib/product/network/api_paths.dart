@@ -301,6 +301,20 @@ class ApiPaths {
   static String districts(String cityId) =>
       '/reference/cities/$cityId/districts';
 
+  // -------------------------------------------------------------- Adres arama
+
+  static const String addressSearchSessions =
+      '/locations/address-search-sessions';
+
+  static String addressSuggestions(String sessionId) =>
+      '$addressSearchSessions/$sessionId/suggestions';
+
+  static String resolveAddressCandidate(String sessionId, String candidateId) =>
+      '$addressSearchSessions/$sessionId/candidates/$candidateId/resolve';
+
+  static const String reverseAddressCandidate =
+      '/locations/address-candidates/reverse';
+
   // -------------------------------------------------------------------- Legal
 
   static const String agreements = '/legal/agreements';

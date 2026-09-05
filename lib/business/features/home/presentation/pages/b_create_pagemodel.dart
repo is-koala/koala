@@ -23,7 +23,6 @@ abstract class BCreatePageModel extends State<BCreatePage> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _priceController = TextEditingController();
-  final _addressLineController = TextEditingController();
   final _sectorController = TextEditingController();
   final _positionController = TextEditingController();
   final _dutiesController = TextEditingController();
@@ -31,7 +30,7 @@ abstract class BCreatePageModel extends State<BCreatePage> {
   final _minAgeController = TextEditingController();
   final _maxAgeController = TextEditingController();
 
-  final _referenceService = ReferenceLocationService();
+  final _addressController = CanonicalAddressFormController();
 
   /// Kategoriler `/reference/job-categories`'ten geldiği için başlangıçta
   /// seçili kategori yok; kullanıcı listeden seçiyor.
@@ -43,22 +42,6 @@ abstract class BCreatePageModel extends State<BCreatePage> {
 
   DateTime? _startDateTime;
   DateTime? _endDateTime;
-
-  List<ReferenceLocation> _countries = const [];
-  List<ReferenceLocation> _cities = const [];
-  List<ReferenceLocation> _districts = const [];
-
-  ReferenceLocation? _selectedCountry;
-  ReferenceLocation? _selectedCity;
-  ReferenceLocation? _selectedDistrict;
-
-  bool _loadingCountries = false;
-  bool _loadingCities = false;
-  bool _loadingDistricts = false;
-
-  /// Haritadan seçilen koordinat. Backend bunu zorunlu tuttuğu için ilan
-  /// bu değer olmadan yayınlanamıyor.
-  LatLng? _pickedLocation;
 
   bool _isSubmitting = false;
 
@@ -75,7 +58,6 @@ abstract class BCreatePageModel extends State<BCreatePage> {
       // mi açılacağını o belirliyor; ekran açılırken elde olmalı.
       final userProvider = context.read<UserProvider>();
       if (userProvider.user == null) userProvider.load(silent: true);
-      _loadCountries();
     });
   }
 
@@ -84,7 +66,7 @@ abstract class BCreatePageModel extends State<BCreatePage> {
     _titleController.dispose();
     _descriptionController.dispose();
     _priceController.dispose();
-    _addressLineController.dispose();
+    _addressController.dispose();
     _sectorController.dispose();
     _positionController.dispose();
     _dutiesController.dispose();
@@ -92,99 +74,6 @@ abstract class BCreatePageModel extends State<BCreatePage> {
     _minAgeController.dispose();
     _maxAgeController.dispose();
     super.dispose();
-  }
-
-  // --------------------------------------------------------- Referans veriler
-
-  /// Ülkeleri çeker ve tek ülke varsa onu seçip illerini de yükler.
-  ///
-  /// Bugün sunucuda yalnızca Türkiye tanımlı; kullanıcıyı tek seçenekli bir
-  /// listeye sokmamak için o durumda seçim kendiliğinden yapılıyor.
-  Future<void> _loadCountries() async {
-    setState(() => _loadingCountries = true);
-
-    try {
-      final countries = await _referenceService.fetchCountries();
-      if (!mounted) return;
-
-      setState(() {
-        _countries = countries;
-        _loadingCountries = false;
-      });
-
-      if (countries.length == 1) await _selectCountry(countries.first);
-    } on ApiException catch (error) {
-      if (!mounted) return;
-      setState(() => _loadingCountries = false);
-      AppToast.error(context, error.message);
-    }
-  }
-
-  Future<void> _selectCountry(ReferenceLocation country) async {
-    setState(() {
-      _selectedCountry = country;
-      // Ülke değişti: altındaki seçimler artık geçerli değil.
-      _selectedCity = null;
-      _selectedDistrict = null;
-      _cities = const [];
-      _districts = const [];
-      _loadingCities = true;
-    });
-
-    try {
-      final cities = await _referenceService.fetchCities(country.id);
-      if (!mounted) return;
-      setState(() {
-        _cities = cities;
-        _loadingCities = false;
-      });
-    } on ApiException catch (error) {
-      if (!mounted) return;
-      setState(() => _loadingCities = false);
-      AppToast.error(context, error.message);
-    }
-  }
-
-  Future<void> _selectCity(ReferenceLocation city) async {
-    setState(() {
-      _selectedCity = city;
-      _selectedDistrict = null;
-      _districts = const [];
-      _loadingDistricts = true;
-    });
-
-    try {
-      final districts = await _referenceService.fetchDistricts(city.id);
-      if (!mounted) return;
-      setState(() {
-        _districts = districts;
-        _loadingDistricts = false;
-      });
-    } on ApiException catch (error) {
-      if (!mounted) return;
-      setState(() => _loadingDistricts = false);
-      AppToast.error(context, error.message);
-    }
-  }
-
-  // ------------------------------------------------------------------ Seçimler
-
-  /// Ülke / il / ilçe listesinden tek seçim yaptırır.
-  Future<void> _pickReference({
-    required String title,
-    required List<ReferenceLocation> options,
-    required ReferenceLocation? selected,
-    required ValueChanged<ReferenceLocation> onSelected,
-  }) async {
-    final picked = await BOptionSheet.show<ReferenceLocation>(
-      context,
-      title: title,
-      options: options,
-      selected: selected,
-      labelOf: (option) => option.name,
-    );
-
-    if (picked != null) onSelected(picked);
   }
 
   /// İlanın şirket adına mı açılacağı.
@@ -230,15 +119,11 @@ abstract class BCreatePageModel extends State<BCreatePage> {
   }
 
   /// Haritadan koordinat seçtirir.
-  Future<void> _pickLocation() async {
-    final picked = await context.push<LatLng>(
+  Future<LatLng?> _pickAddressPosition(LatLng? initialPosition) {
+    return context.push<LatLng>(
       '/business/pick-location',
-      extra: _pickedLocation,
+      extra: initialPosition,
     );
-
-    if (picked != null && mounted) {
-      setState(() => _pickedLocation = picked);
-    }
   }
 
   /// Tarih ve saati birlikte seçtirir; ikisinden biri iptal edilirse hiçbir
@@ -413,17 +298,11 @@ abstract class BCreatePageModel extends State<BCreatePage> {
       return _warn('Üst yaş sınırı alt sınırdan küçük olamaz');
     }
 
-    final country = _selectedCountry;
-    final city = _selectedCity;
-    if (country == null) return _warn('Ülke seçin');
-    if (city == null) return _warn('İl seçin');
-
-    final addressLine = _addressLineController.text.trim();
-    if (addressLine.isEmpty) return _warn('Açık adres zorunlu');
-
-    final location = _pickedLocation;
-    if (location == null) {
-      return _warn('İlanın konumunu haritadan seçin');
+    final address = _addressController.value;
+    if (address == null) {
+      return _warn(
+        _addressController.validationMessage ?? 'Adres bilgilerini tamamlayın',
+      );
     }
 
     return CreateJobRequest(
@@ -443,14 +322,7 @@ abstract class BCreatePageModel extends State<BCreatePage> {
       maxAge: maxAge,
       experienceRequired: _experienceRequired,
       insuranceRequired: _insuranceRequired,
-      address: CreateJobAddress(
-        countryCode: country.code ?? '',
-        cityName: city.name,
-        districtName: _selectedDistrict?.name,
-        addressLine: addressLine,
-        latitude: location.latitude,
-        longitude: location.longitude,
-      ),
+      address: address,
     );
   }
 

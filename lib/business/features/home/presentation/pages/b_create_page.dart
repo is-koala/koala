@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:koala/business/features/home/models/create_job_request.dart';
-import 'package:koala/product/models/reference_location.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
 import 'package:koala/business/features/home/presentation/widgets/b_option_sheet.dart';
 import 'package:koala/business/features/home/presentation/widgets/b_selection_field.dart';
-import 'package:koala/product/services/reference_location_service.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/presentation/providers/job_category_provider.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
@@ -17,9 +15,9 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
-import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/confirm_dialog.dart';
+import 'package:koala/product/widgets/canonical_address_form.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/button_navbar.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
@@ -304,70 +302,10 @@ class _BCreatePageState extends BCreatePageModel {
 
   // ----------------------------------------------------------------- Konum
 
-  /// Ülke / il / ilçe seçicileri, açık adres ve haritadan koordinat.
-  ///
-  /// Backend adresi metinden koordinata çevirmiyor; ikisi de zorunlu olduğu
-  /// için ikisi de burada toplanıyor.
   Widget _locationSection() {
-    return Column(
-      children: [
-        BSelectionField(
-          label: "Ülke *",
-          value: _selectedCountry?.name,
-          placeholder: "Seçin",
-          isLoading: _loadingCountries,
-          onTap: () => _pickReference(
-            title: 'Ülke',
-            options: _countries,
-            selected: _selectedCountry,
-            onSelected: _selectCountry,
-          ),
-        ),
-        const SizedBox(height: AppSizes.spaceMedium),
-        BSelectionField(
-          label: "İl *",
-          value: _selectedCity?.name,
-          placeholder: _selectedCountry == null ? "Önce ülke seçin" : "Seçin",
-          enabled: _selectedCountry != null && _cities.isNotEmpty,
-          isLoading: _loadingCities,
-          onTap: () => _pickReference(
-            title: 'İl',
-            options: _cities,
-            selected: _selectedCity,
-            onSelected: _selectCity,
-          ),
-        ),
-        const SizedBox(height: AppSizes.spaceMedium),
-        BSelectionField(
-          label: "İlçe",
-          value: _selectedDistrict?.name,
-          placeholder: _selectedCity == null ? "Önce il seçin" : "Seçin",
-          enabled: _selectedCity != null && _districts.isNotEmpty,
-          isLoading: _loadingDistricts,
-          onTap: () => _pickReference(
-            title: 'İlçe',
-            options: _districts,
-            selected: _selectedDistrict,
-            onSelected: (district) =>
-                setState(() => _selectedDistrict = district),
-          ),
-        ),
-        const SizedBox(height: AppSizes.spaceMedium),
-        MyTextfield(
-          labelText: "Açık Adres *",
-          controller: _addressLineController,
-        ),
-        const SizedBox(height: AppSizes.spaceMedium),
-        BSelectionField(
-          label: "Haritadaki Konum *",
-          value: _pickedLocation == null
-              ? null
-              : '${_pickedLocation!.latitude.toStringAsFixed(5)}, '
-                    '${_pickedLocation!.longitude.toStringAsFixed(5)}',
-          placeholder: "Haritadan seçin",
-          onTap: _pickLocation,
-        ),
-      ],
+    return CanonicalAddressForm(
+      controller: _addressController,
+      pickPosition: _pickAddressPosition,
     );
   }
 

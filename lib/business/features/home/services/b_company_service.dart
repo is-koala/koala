@@ -3,6 +3,7 @@ import 'package:koala/employee/features/company_detail/models/company.dart';
 import 'package:koala/business/features/home/models/employer_stats.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
+import 'package:koala/product/models/canonical_address.dart';
 
 /// İşverenin şirketini **yazma** uçları ve istatistikleri.
 ///
@@ -31,7 +32,7 @@ class BCompanyService {
     required String phoneNumber,
     required String taxNumber,
     required CompanyType type,
-    required Map<String, dynamic> address,
+    required AddressWrite address,
     String? website,
     String? description,
     String? logoPath,
@@ -45,7 +46,7 @@ class BCompanyService {
         'phoneNumber': phoneNumber,
         'taxNumber': taxNumber,
         'type': type.code,
-        'address': address,
+        'address': address.toJson(),
         'website': ?website,
         'description': ?description,
       },

@@ -1,39 +1,5 @@
 import 'package:koala/employee/features/home/models/job.dart';
-
-/// İlan açarken gönderilen adres.
-///
-/// Backend `CreateAddressRequestDto`'nun **beş** alanını zorunlu tutuyor:
-/// `countryCode`, `cityName`, `addressLine`, `latitude`, `longitude`. Yani
-/// koordinatsız ilan açılamıyor — ilçe ve posta kodu isteğe bağlı.
-class CreateJobAddress {
-  const CreateJobAddress({
-    required this.countryCode,
-    required this.cityName,
-    required this.addressLine,
-    required this.latitude,
-    required this.longitude,
-    this.districtName,
-    this.postalCode,
-  });
-
-  final String countryCode;
-  final String cityName;
-  final String addressLine;
-  final double latitude;
-  final double longitude;
-  final String? districtName;
-  final String? postalCode;
-
-  Map<String, dynamic> toJson() => {
-    'countryCode': countryCode,
-    'cityName': cityName,
-    'districtName': ?districtName,
-    'addressLine': addressLine,
-    'postalCode': ?postalCode,
-    'latitude': latitude,
-    'longitude': longitude,
-  };
-}
+import 'package:koala/product/models/canonical_address.dart';
 
 /// Yeni ilan isteğinin gövdesi.
 ///
@@ -66,7 +32,7 @@ class CreateJobRequest {
   final String title;
   final String description;
   final String position;
-  final CreateJobAddress address;
+  final AddressWrite address;
   final JobType type;
   final SalaryType salaryType;
   final double salary;

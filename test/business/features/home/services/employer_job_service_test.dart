@@ -5,6 +5,7 @@ import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/jobs/models/assignment.dart';
 import 'package:koala/employee/features/jobs/models/job_application.dart';
 import 'package:koala/product/network/api_exception.dart';
+import 'package:koala/product/models/canonical_address.dart';
 
 import '../../../../support/fake_api.dart';
 
@@ -24,13 +25,21 @@ CreateJobRequest buildRequest() {
     maxAge: 40,
     experienceRequired: false,
     insuranceRequired: true,
-    address: const CreateJobAddress(
-      countryCode: 'TR',
-      cityName: 'Ankara',
-      districtName: 'Çankaya',
-      addressLine: 'Kızılay Meydanı 1',
-      latitude: 39.92,
-      longitude: 32.85,
+    address: const AddressWrite(
+      countryId: 'country-1',
+      cityId: 'city-1',
+      districtId: 'district-1',
+      components: AddressComponents(
+        neighborhood: 'Kızılay Mahallesi',
+        thoroughfare: 'Atatürk Bulvarı',
+        buildingNumber: '1',
+        postalCode: '06420',
+      ),
+      position: AddressPosition(
+        latitude: 39.92,
+        longitude: 32.85,
+        source: AddressPositionSource.userConfirmedPin,
+      ),
     ),
   );
 }

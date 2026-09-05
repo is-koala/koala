@@ -2,7 +2,7 @@ import 'package:koala/employee/features/auth/models/company_membership.dart';
 import 'package:koala/employee/features/auth/models/education.dart';
 import 'package:koala/employee/features/auth/models/experience.dart';
 import 'package:koala/employee/features/auth/models/user_badge.dart';
-import 'package:koala/employee/features/auth/models/user_address.dart';
+import 'package:koala/product/models/canonical_address.dart';
 
 /// Kullanıcının cinsiyeti. Backend `Gender` enum'ının birebir karşılığı.
 enum Gender {
@@ -102,7 +102,7 @@ class CurrentUser {
   final List<UserBadge> badges;
 
   /// Kayıtlı adres. Profil başlığındaki konum satırı buradan çiziliyor.
-  final UserAddress? address;
+  final CanonicalAddress? address;
 
   /// Kullanıcının iş veren olup olmadığı. Router hangi arayüzün açılacağına
   /// buna bakarak karar veriyor.
@@ -167,7 +167,7 @@ class CurrentUser {
       educations: _listOf(json['educations'], Education.fromJson),
       badges: _listOf(json['badges'], UserBadge.fromJson),
       address: address is Map<String, dynamic>
-          ? UserAddress.fromJson(address)
+          ? CanonicalAddress.fromJson(address)
           : null,
       isEmployer: readEmployerFlag(json),
       emailVerified: json['emailVerified'] as bool? ?? false,

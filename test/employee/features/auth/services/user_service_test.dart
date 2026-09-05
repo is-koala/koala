@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
 import 'package:koala/product/network/api_exception.dart';
+import 'package:koala/product/models/canonical_address.dart';
 
 import '../../../../support/fake_api.dart';
 
@@ -98,8 +99,15 @@ void main() {
               'isEmployer': true,
               'address': {
                 'id': 'address-1',
+                'countryId': 'country-1',
+                'countryName': 'TÜRKİYE',
+                'countryCode': 'TR',
+                'cityId': 'city-1',
                 'cityName': 'İstanbul',
+                'districtId': 'district-1',
                 'districtName': 'Küçükçekmece',
+                'canonicalVersion': 1,
+                'needsReview': false,
               },
             },
           },
@@ -291,20 +299,37 @@ void main() {
             'success': true,
             'data': {
               'id': 'adr_1',
+              'countryId': 'country-1',
+              'countryName': 'TÜRKİYE',
+              'countryCode': 'TR',
+              'cityId': 'city-1',
               'cityName': 'Ankara',
+              'districtId': 'district-1',
               'districtName': 'Çankaya',
+              'canonicalVersion': 1,
+              'needsReview': false,
             },
           },
         ),
       );
 
       final address = await UserService.withClient(api.client).updateAddress(
-        countryCode: 'TR',
-        cityName: 'Ankara',
-        districtName: 'Çankaya',
-        addressLine: 'Kızılırmak Mah. 1443. Cad. No:12',
-        latitude: 39.9,
-        longitude: 32.85,
+        const AddressWrite(
+          countryId: 'country-1',
+          cityId: 'city-1',
+          districtId: 'district-1',
+          components: AddressComponents(
+            neighborhood: 'Kızılırmak Mahallesi',
+            thoroughfare: '1443. Cadde',
+            buildingNumber: '12',
+            postalCode: '06510',
+          ),
+          position: AddressPosition(
+            latitude: 39.9,
+            longitude: 32.85,
+            source: AddressPositionSource.userConfirmedPin,
+          ),
+        ),
       );
 
       final request = api.requests.single;
@@ -313,30 +338,57 @@ void main() {
       expect(address.cityName, 'Ankara');
     });
 
-    // Koordinat zorunlu; ilçe ve posta kodu değil.
-    test('verilmeyen isteğe bağlı alanlar gövdeye konmuyor', () async {
+    test('adres yalnız V2 alanlarıyla gönderiliyor', () async {
       final api = FakeApi(
         handler: (_) => const FakeApiResponse(
           statusCode: 200,
           body: {
             'success': true,
-            'data': {'id': 'adr_1'},
+            'data': {
+              'id': 'adr_1',
+              'countryId': 'country-1',
+              'countryName': 'TÜRKİYE',
+              'countryCode': 'TR',
+              'cityId': 'city-1',
+              'cityName': 'İSTANBUL',
+              'districtId': 'district-1',
+              'districtName': 'KADIKÖY',
+              'canonicalVersion': 1,
+              'needsReview': false,
+            },
           },
         ),
       );
 
       await UserService.withClient(api.client).updateAddress(
-        countryCode: 'TR',
-        cityName: 'Ankara',
-        addressLine: 'Bir sokak',
-        latitude: 39.9,
-        longitude: 32.85,
+        const AddressWrite(
+          countryId: 'country-1',
+          cityId: 'city-1',
+          districtId: 'district-1',
+          components: AddressComponents(
+            neighborhood: 'Caferağa Mahallesi',
+            thoroughfare: 'Moda Caddesi',
+            buildingNumber: '12',
+            postalCode: '34710',
+          ),
+          position: AddressPosition(
+            latitude: 40.982512,
+            longitude: 29.025411,
+            source: AddressPositionSource.userConfirmedPin,
+          ),
+        ),
       );
 
       final body = api.requests.single.data as Map<String, dynamic>;
-      expect(body.containsKey('districtName'), isFalse);
-      expect(body.containsKey('postalCode'), isFalse);
-      expect(body['latitude'], 39.9);
+      expect(body.keys, {
+        'countryId',
+        'cityId',
+        'districtId',
+        'components',
+        'position',
+      });
+      expect((body['position'] as Map)['source'], 'USER_CONFIRMED_PIN');
+      expect(body.containsKey('addressLine'), isFalse);
     });
   });
 

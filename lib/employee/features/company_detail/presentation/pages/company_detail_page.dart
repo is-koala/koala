@@ -142,7 +142,7 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
               _buildInfoRow(
                 AppIcons.location,
                 'Adres',
-                company.address!.addressLine ??
+                company.address!.displayAddress ??
                     company.address!.shortLabel ??
                     '—',
               ),

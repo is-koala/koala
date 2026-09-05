@@ -1,4 +1,4 @@
-import 'package:koala/employee/features/auth/models/user_address.dart';
+import 'package:koala/product/models/canonical_address.dart';
 import 'package:koala/employee/features/company_detail/models/company_image.dart';
 
 /// Şirketin hukuki türü. Backend `CompanyType` enum'ının birebir karşılığı.
@@ -67,7 +67,7 @@ class Company {
   final String? taxNumber;
 
   final CompanyType? type;
-  final UserAddress? address;
+  final CanonicalAddress? address;
 
   /// Şirketin galerisi.
   ///
@@ -131,7 +131,7 @@ class Company {
       taxNumber: json['taxNumber'] as String?,
       type: json['type'] == null ? null : CompanyType.fromCode(json['type']),
       address: address is Map<String, dynamic>
-          ? UserAddress.fromJson(address)
+          ? CanonicalAddress.fromJson(address)
           : null,
       images: images is List
           ? images

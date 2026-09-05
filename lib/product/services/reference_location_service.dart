@@ -8,9 +8,8 @@ import 'package:koala/product/network/api_paths.dart';
 /// **İki uygulama da kullanıyor:** işveren ilan açarken, çalışan adresini
 /// girerken. Tek tarafa ait olmadığı için `product/` altında duruyor.
 ///
-/// Adres uçları `cityName` ve `districtName` alanlarını **ad** olarak
-/// istiyor, kimlik olarak değil; seçici yine de kimliklerle çalışıyor çünkü
-/// ilçe listesi ilin kimliğiyle isteniyor.
+/// Adres yazma sözleşmesi bu kayıtların değişmeyen kimliklerini kullanıyor;
+/// görünen adlar yalnızca arayüzde gösteriliyor.
 ///
 /// Listeler nadiren değiştiği için bir kez çekilip bellekte tutuluyor.
 class ReferenceLocationService {
