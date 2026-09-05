@@ -10,7 +10,8 @@ void main() {
 
   const workerEmail = String.fromEnvironment('QA_WORKER_EMAIL');
   const employerEmail = String.fromEnvironment('QA_EMPLOYER_EMAIL');
-  const accountPassword = String.fromEnvironment('QA_ACCOUNT_PASSWORD');
+  const workerPassword = String.fromEnvironment('QA_WORKER_PASSWORD');
+  const employerPassword = String.fromEnvironment('QA_EMPLOYER_PASSWORD');
   const finalRole = String.fromEnvironment(
     'QA_FINAL_ROLE',
     defaultValue: 'employer',
@@ -21,10 +22,11 @@ void main() {
   ) async {
     if (workerEmail.isEmpty ||
         employerEmail.isEmpty ||
-        accountPassword.isEmpty) {
+        workerPassword.isEmpty ||
+        employerPassword.isEmpty) {
       throw StateError(
-        'Canlı test için QA_WORKER_EMAIL, QA_EMPLOYER_EMAIL ve '
-        'QA_ACCOUNT_PASSWORD zorunludur.',
+        'Canlı test için QA_WORKER_EMAIL, QA_WORKER_PASSWORD, '
+        'QA_EMPLOYER_EMAIL ve QA_EMPLOYER_PASSWORD zorunludur.',
       );
     }
 
@@ -36,7 +38,7 @@ void main() {
     await _login(
       tester,
       email: workerEmail,
-      password: accountPassword,
+      password: workerPassword,
       expectedPath: '/explore',
     );
 
@@ -47,7 +49,7 @@ void main() {
     await _login(
       tester,
       email: employerEmail,
-      password: accountPassword,
+      password: employerPassword,
       expectedPath: '/business/home',
     );
 
@@ -58,7 +60,7 @@ void main() {
       await _login(
         tester,
         email: workerEmail,
-        password: accountPassword,
+        password: workerPassword,
         expectedPath: '/explore',
       );
     }
