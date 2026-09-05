@@ -14,6 +14,7 @@ import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/models/report.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/app_icon.dart';
+import 'package:koala/product/widgets/block_user_action.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:koala/product/widgets/report_sheet.dart';
@@ -43,7 +44,10 @@ class _BUserProfilePageState extends BUserProfilePageModel {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.backgroundColor,
-      appBar: MyAppbar(title: "Profil", actions: [?_reportAction()]),
+      appBar: MyAppbar(
+        title: "Profil",
+        actions: [?_reportAction(), ?_blockAction()],
+      ),
       body: SingleChildScrollView(
         child: Column(
           children: [

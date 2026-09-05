@@ -80,6 +80,11 @@ abstract final class AppIcons {
   /// [shield] güvenlik bölümünün kendisini, bu ise tek bir şikayeti
   /// anlatıyor.
   static const String flag = 'flag';
+
+  /// Kullanıcı engelleme. Sette yalın bir yasak işareti (`ban`) da var ama
+  /// üstünde insan silüeti olan bu ad, engellenenin bir kişi olduğunu
+  /// söylüyor.
+  static const String userBlock = 'userBlock';
   static const String building = 'building';
   static const String paint = 'palette';
   static const String task = 'task';

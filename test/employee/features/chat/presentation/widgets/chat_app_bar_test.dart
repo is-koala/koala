@@ -29,6 +29,17 @@ void main() {
       expect(find.text('Şikayet Et'), findsOneWidget);
     });
 
+    testWidgets('menü açılınca engelleme eylemi görünür', (tester) async {
+      await pumpInApp(tester, const ChatAppBar(chat: _chat));
+
+      await tester.tap(
+        find.byWidgetPredicate((widget) => widget is PopupMenuButton),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Engelle'), findsOneWidget);
+    });
+
     testWidgets('her iki temada da hatasız çizilir', (tester) async {
       for (final brightness in Brightness.values) {
         await pumpInApp(

@@ -117,4 +117,27 @@ abstract class BUserProfilePageModel extends State<BUserProfilePage> {
       ),
     );
   }
+
+  /// Başlık çubuğundaki engelleme düğmesi.
+  ///
+  /// Şikayet düğmesiyle aynı sebeple kimliksiz başvuruda çizilmiyor. İşveren
+  /// burada hep bir **adayı** görüyor, kendini değil: kendini engelleme yolu
+  /// açılmıyor.
+  ///
+  /// Şikayetten farklı olarak ekran kapanmıyor — sohbet değil profil, iş
+  /// başvurusu duruyor ve işveren başvuruyu görmeye devam edebilmeli.
+  Widget? _blockAction() {
+    final userId = widget.applicant.user.id;
+    if (userId.isEmpty) return null;
+
+    return IconButton(
+      tooltip: 'Engelle',
+      icon: const AppIcon(AppIcons.userBlock, color: AppColors.danger),
+      onPressed: () => BlockUserAction.confirmAndBlock(
+        context,
+        userId: userId,
+        name: widget.applicant.fullName,
+      ),
+    );
+  }
 }
