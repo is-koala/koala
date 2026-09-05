@@ -103,6 +103,7 @@ class AddressWrite {
     required this.districtId,
     required this.components,
     required this.position,
+    this.candidateToken,
   });
 
   final String countryId;
@@ -110,6 +111,7 @@ class AddressWrite {
   final String districtId;
   final AddressComponents components;
   final AddressPosition position;
+  final String? candidateToken;
 
   Map<String, dynamic> toJson() => {
     'countryId': countryId,
@@ -117,7 +119,102 @@ class AddressWrite {
     'districtId': districtId,
     'components': components.toJson(),
     'position': position.toJson(),
+    'candidateToken': ?_trimmed(candidateToken),
   };
+}
+
+class AddressSearchSession {
+  const AddressSearchSession({required this.id, required this.expiresAt});
+
+  final String id;
+  final DateTime expiresAt;
+
+  factory AddressSearchSession.fromJson(Map<String, dynamic> json) {
+    return AddressSearchSession(
+      id: '${json['id']}',
+      expiresAt: DateTime.parse(json['expiresAt'] as String),
+    );
+  }
+}
+
+class AddressSuggestion {
+  const AddressSuggestion({
+    required this.id,
+    required this.mainText,
+    required this.secondaryText,
+  });
+
+  final String id;
+  final String mainText;
+  final String secondaryText;
+
+  factory AddressSuggestion.fromJson(Map<String, dynamic> json) {
+    return AddressSuggestion(
+      id: '${json['id']}',
+      mainText: json['mainText'] as String? ?? '',
+      secondaryText: json['secondaryText'] as String? ?? '',
+    );
+  }
+}
+
+class AddressCandidate {
+  const AddressCandidate({
+    required this.countryId,
+    required this.countryName,
+    required this.countryCode,
+    required this.cityId,
+    required this.cityName,
+    required this.districtId,
+    required this.districtName,
+    required this.components,
+    required this.position,
+    required this.candidateToken,
+    required this.needsUserReview,
+    required this.attribution,
+  });
+
+  final String countryId;
+  final String countryName;
+  final String countryCode;
+  final String cityId;
+  final String cityName;
+  final String districtId;
+  final String districtName;
+  final AddressComponents components;
+  final AddressPosition position;
+  final String candidateToken;
+  final bool needsUserReview;
+  final String attribution;
+
+  factory AddressCandidate.fromJson(Map<String, dynamic> json) {
+    return AddressCandidate(
+      countryId: '${json['countryId']}',
+      countryName: json['countryName'] as String? ?? '',
+      countryCode: json['countryCode'] as String? ?? '',
+      cityId: '${json['cityId']}',
+      cityName: json['cityName'] as String? ?? '',
+      districtId: '${json['districtId']}',
+      districtName: json['districtName'] as String? ?? '',
+      components: AddressComponents.fromJson(
+        json['components'] as Map<String, dynamic>,
+      ),
+      position: AddressPosition.fromJson(
+        json['position'] as Map<String, dynamic>,
+      ),
+      candidateToken: json['candidateToken'] as String,
+      needsUserReview: json['needsUserReview'] as bool? ?? true,
+      attribution: json['attribution'] as String? ?? '',
+    );
+  }
+
+  AddressWrite toWrite() => AddressWrite(
+    countryId: countryId,
+    cityId: cityId,
+    districtId: districtId,
+    components: components,
+    position: position,
+    candidateToken: candidateToken,
+  );
 }
 
 class CanonicalAddress {

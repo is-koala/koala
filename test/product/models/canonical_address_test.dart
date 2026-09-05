@@ -67,7 +67,63 @@ void main() {
       final components = address.toJson()['components'] as Map;
       expect(components.containsKey('siteName'), isFalse);
       expect(components.containsKey('floor'), isFalse);
+      expect(address.toJson().containsKey('candidateToken'), isFalse);
     });
+
+    test('sağlayıcı adayının tek kullanımlık kanıtını gönderir', () {
+      const address = AddressWrite(
+        countryId: 'country-1',
+        cityId: 'city-1',
+        districtId: 'district-1',
+        components: AddressComponents(
+          neighborhood: 'Caferağa Mahallesi',
+          thoroughfare: 'Moda Caddesi',
+          buildingNumber: '12',
+          postalCode: '34710',
+        ),
+        position: AddressPosition(
+          latitude: 40.982512,
+          longitude: 29.025411,
+          source: AddressPositionSource.autocompleteConfirmed,
+        ),
+        candidateToken: 'opaque-candidate-token',
+      );
+
+      expect(address.toJson()['candidateToken'], 'opaque-candidate-token');
+    });
+  });
+
+  test('adres adayı iç referansları ve yapılandırılmış bileşenleri okur', () {
+    final candidate = AddressCandidate.fromJson({
+      'countryId': 'country-1',
+      'countryName': 'TÜRKİYE',
+      'countryCode': 'TR',
+      'cityId': 'city-1',
+      'cityName': 'İSTANBUL',
+      'districtId': 'district-1',
+      'districtName': 'KADIKÖY',
+      'components': {
+        'neighborhood': 'Caferağa Mahallesi',
+        'thoroughfare': 'Moda Caddesi',
+        'buildingNumber': '12',
+        'postalCode': '34710',
+      },
+      'position': {
+        'latitude': 40.982512,
+        'longitude': 29.025411,
+        'source': 'AUTOCOMPLETE_CONFIRMED',
+      },
+      'candidateToken': 'opaque-token',
+      'needsUserReview': false,
+      'attribution': 'Google Maps',
+    });
+
+    expect(candidate.districtName, 'KADIKÖY');
+    expect(candidate.toWrite().candidateToken, 'opaque-token');
+    expect(
+      candidate.toWrite().position.source,
+      AddressPositionSource.autocompleteConfirmed,
+    );
   });
 
   group('CanonicalAddress', () {
