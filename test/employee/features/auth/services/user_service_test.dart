@@ -290,6 +290,78 @@ void main() {
     });
   });
 
+  group('UserService.changePassword', () {
+    test('üç alan da PUT gövdesiyle parola ucuna gider', () async {
+      final api = FakeApi(
+        handler: (_) =>
+            const FakeApiResponse(statusCode: 200, body: {'success': true}),
+      );
+
+      await UserService.withClient(api.client).changePassword(
+        currentPassword: 'EskiSifre1',
+        newPassword: 'YeniSifre1',
+        confirmNewPassword: 'YeniSifre1',
+      );
+
+      final request = api.requests.single;
+      expect(request.path, '/users/me/password');
+      expect(request.method, 'PUT');
+      expect(request.data, {
+        'currentPassword': 'EskiSifre1',
+        'newPassword': 'YeniSifre1',
+        'confirmNewPassword': 'YeniSifre1',
+      });
+    });
+
+    // Sunucu mevcut parola yanlışken `ValidationException` fırlatıyor, yani
+    // `400`. Controller'daki `@ApiResponse` `401` yazsa da davranış bu.
+    test('mevcut parola yanlışsa sunucunun mesajıyla hata yükselir', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 400,
+          body: {'success': false, 'message': 'Mevcut parola hatalı'},
+        ),
+      );
+
+      await expectLater(
+        UserService.withClient(api.client).changePassword(
+          currentPassword: 'YanlisSifre1',
+          newPassword: 'YeniSifre1',
+          confirmNewPassword: 'YeniSifre1',
+        ),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.message, 'message', 'Mevcut parola hatalı')
+              .having((e) => e.statusCode, 'statusCode', 400),
+        ),
+      );
+    });
+
+    // Belgelenen ama gerçekleşmeyen durum: `401` gelse bile bu uç için
+    // "oturum düştü" demek değil, `statusCode` ile ayırt edilebilmeli.
+    test('401 gelirse de mesaj ve durum kodu çağırana ulaşıyor', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 401,
+          body: {'success': false, 'message': 'Mevcut parola hatalı'},
+        ),
+      );
+
+      await expectLater(
+        UserService.withClient(api.client).changePassword(
+          currentPassword: 'YanlisSifre1',
+          newPassword: 'YeniSifre1',
+          confirmNewPassword: 'YeniSifre1',
+        ),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.message, 'message', 'Mevcut parola hatalı')
+              .having((e) => e.statusCode, 'statusCode', 401),
+        ),
+      );
+    });
+  });
+
   group('UserService.updateAddress', () {
     test('adres PUT ile toptan yazılıyor', () async {
       final api = FakeApi(

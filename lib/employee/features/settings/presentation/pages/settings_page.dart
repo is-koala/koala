@@ -63,6 +63,11 @@ class SettingsPage extends StatelessWidget {
           },
         ),
         MyListTile(
+          icon: AppIcons.shield,
+          title: "Şifreyi Değiştir",
+          onTap: () => context.push('/change-password'),
+        ),
+        MyListTile(
           icon: AppIcons.mobile,
           title: "Oturumlar",
           onTap: () => context.push('/sessions'),

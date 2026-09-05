@@ -16,16 +16,8 @@ abstract class ResetPasswordPagemodel extends State<ResetPasswordPage> {
 
   Future<void> _submit() async {
     final password = _password.text;
-    final isStrong =
-        password.length >= 8 &&
-        password.contains(RegExp(r'[A-Z]')) &&
-        password.contains(RegExp(r'[a-z]')) &&
-        password.contains(RegExp(r'[0-9]'));
-    if (!isStrong) {
-      AppToast.error(
-        context,
-        'Şifre en az 8 karakter, büyük/küçük harf ve rakam içermeli.',
-      );
+    if (!PasswordRule.isSatisfiedBy(password)) {
+      AppToast.error(context, PasswordRule.requirement);
       return;
     }
     if (password != _confirmation.text) {
