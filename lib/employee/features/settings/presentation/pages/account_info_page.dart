@@ -5,6 +5,7 @@ import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/models/pending_verification.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/profile_avatar.dart';
+import 'package:koala/employee/features/settings/presentation/widgets/settings_hint.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -18,6 +19,8 @@ import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
 import 'package:provider/provider.dart';
 
+part 'account_info_pagemodel.dart';
+
 class AccountInfoPage extends StatefulWidget {
   final CurrentUser user;
 
@@ -27,7 +30,7 @@ class AccountInfoPage extends StatefulWidget {
   State<AccountInfoPage> createState() => _AccountInfoPageState();
 }
 
-class _AccountInfoPageState extends State<AccountInfoPage> {
+class _AccountInfoPageState extends AccountInfoPagemodel {
   /// Profil fotoğrafının kenar uzunluğu.
   static const double _avatarSize = 100;
 
@@ -38,191 +41,6 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
   /// kısa metinler bekleniyor.
   static const double _multilineHeight = 90;
 
-  late TextEditingController _firstNameController;
-  late TextEditingController _lastNameController;
-  late TextEditingController _occupationController;
-  late TextEditingController _phoneController;
-  late TextEditingController _emailController;
-  late TextEditingController _locationController;
-  late TextEditingController _ibanController;
-  late TextEditingController _aboutController;
-  late TextEditingController _qualificationsController;
-  late TextEditingController _interestsController;
-
-  @override
-  void initState() {
-    super.initState();
-    final user = widget.user;
-
-    _firstNameController = TextEditingController(text: user.firstName);
-    _lastNameController = TextEditingController(text: user.lastName);
-    _occupationController = TextEditingController(text: user.jobTitle ?? '');
-    _phoneController = TextEditingController(text: user.phoneNumber ?? '');
-    _emailController = TextEditingController(text: user.email);
-    _locationController = TextEditingController(
-      text: user.address?.shortLabel ?? '',
-    );
-    // IBAN sunucudan maskeli geliyor; alan boş açılıyor ve maske ipucu
-    // olarak gösteriliyor. Maskeyi alana yazsaydık kullanıcı kaydettiğinde
-    // maskenin kendisi IBAN diye gönderilirdi.
-    _ibanController = TextEditingController();
-    _aboutController = TextEditingController(text: user.about ?? '');
-    _qualificationsController = TextEditingController(
-      text: user.qualifications ?? '',
-    );
-    _interestsController = TextEditingController(text: user.interests ?? '');
-  }
-
-  @override
-  void dispose() {
-    _firstNameController.dispose();
-    _lastNameController.dispose();
-    _occupationController.dispose();
-    _phoneController.dispose();
-    _emailController.dispose();
-    _locationController.dispose();
-    _ibanController.dispose();
-    _aboutController.dispose();
-    _qualificationsController.dispose();
-    _interestsController.dispose();
-    super.dispose();
-  }
-
-  /// Kimliği doğrulanmış kullanıcı ad ve soyadını değiştiremiyor; backend
-  /// isteği reddettiği için alanlar en baştan kapalı açılıyor.
-  bool get _canEditName => !widget.user.identityVerified;
-
-  Future<void> _pickProfilePicture() async {
-    final image = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 88,
-      maxWidth: 1600,
-    );
-    if (image == null || !mounted) return;
-
-    final provider = context.read<UserProvider>();
-    final uploaded = await provider.uploadProfilePicture(image.path);
-    if (!mounted) return;
-    if (uploaded) {
-      AppToast.success(context, 'Profil fotoğrafın güncellendi.');
-    } else {
-      AppToast.error(
-        context,
-        provider.errorMessage ?? 'Profil fotoğrafı yüklenemedi.',
-      );
-    }
-  }
-
-  Future<void> _save() async {
-    final provider = context.read<UserProvider>();
-    // Karşılaştırma tabanı sağlayıcıdaki güncel kullanıcı: doğrulama
-    // tamamlandıktan sonra alanlar tazeleniyor ve `widget.user` (ekrana
-    // girilirken alınan görüntü) bayatlıyor. Bayat tabanla ikinci kaydetme,
-    // hiçbir şey değişmemişken e-postayı yeniden gönderir ve gereksiz bir
-    // doğrulama daha başlatırdı.
-    final user = provider.user ?? widget.user;
-
-    // PATCH kısmi: değişmeyen alan gövdeye hiç konmuyor. Aksi hâlde kimliği
-    // doğrulanmış kullanıcı hiçbir şeyi değiştirmese bile ad alanını
-    // gönderdiği için hata alırdı.
-    final firstName = _changed(_firstNameController.text, user.firstName);
-    final lastName = _changed(_lastNameController.text, user.lastName);
-    final about = _changed(_aboutController.text, user.about);
-    final phoneNumber = _changed(_phoneController.text, user.phoneNumber);
-    final jobTitle = _changed(_occupationController.text, user.jobTitle);
-    final qualifications = _changed(
-      _qualificationsController.text,
-      user.qualifications,
-    );
-    final interests = _changed(_interestsController.text, user.interests);
-    // E-posta ve telefon değişikliği hemen yazılmıyor: sunucu yeni değere kod
-    // gönderip bekleyen doğrulamayı döndürüyor.
-    final email = _changed(_emailController.text, user.email);
-
-    // IBAN alanı boş bırakıldıysa hiç gönderilmiyor: kayıtlı IBAN
-    // maskelendiği için "değişti mi" karşılaştırması yapılamıyor, boş metin
-    // göndermek de kayıtlıyı bozardı.
-    final iban = _ibanController.text.trim();
-
-    final pending = await provider.updateProfile(
-      firstName: _canEditName ? firstName : null,
-      lastName: _canEditName ? lastName : null,
-      about: about,
-      jobTitle: jobTitle,
-      qualifications: qualifications,
-      interests: interests,
-      phoneNumber: phoneNumber,
-      email: email,
-      iban: iban.isEmpty ? null : iban,
-    );
-
-    if (!mounted) return;
-
-    if (pending == null) {
-      // Backend başka hesapta kayıtlı e-postayı reddediyor. Durum koduna
-      // bakılmıyor, bakılmamalı da: `UsersController`'ın `@ApiResponse`'u bu
-      // durum için `409` belgeliyor ama `UserManager` `ValidationException`
-      // fırlattığı için gerçekte `400` dönüyor. Mesaj sunucudan Türkçe
-      // geldiği için olduğu gibi gösteriliyor.
-      AppToast.error(
-        context,
-        provider.errorMessage ?? "Profil güncellenemedi.",
-      );
-      return;
-    }
-
-    if (pending.isEmpty) {
-      AppToast.success(context, "Profilin güncellendi.");
-      context.pop();
-      return;
-    }
-
-    await _collectVerifications(pending);
-  }
-
-  /// Bekleyen doğrulamaları sırayla kod ekranına götürür.
-  ///
-  /// Tek bir `PATCH` hem telefonu hem e-postayı değiştirebiliyor, o yüzden
-  /// liste birden fazla olabilir. Biri onaylanınca sıradaki açılıyor;
-  /// kullanıcı vazgeçerse ya da kayıt geçersizse sıra orada kesiliyor —
-  /// kalanları zorlamak, kullanıcının bıraktığı ekranı geri açmak olurdu.
-  ///
-  /// Hepsi bitince hesap ekranında kalınıyor ve alanlar tazelenen kullanıcıyla
-  /// güncelleniyor; yeni değerin yazıldığı böylece görülebiliyor.
-  Future<void> _collectVerifications(List<PendingVerification> pending) async {
-    for (final verification in pending) {
-      final verified = await context.push<bool>(
-        '/verification',
-        extra: verification,
-      );
-      if (!mounted) return;
-      if (verified != true) break;
-    }
-
-    if (!mounted) return;
-    _syncVerifiedFields();
-  }
-
-  /// Doğrulama sonrası sunucudaki güncel değerleri alanlara yazar.
-  ///
-  /// Kontrolcüler `initState`'te bir kez dolduruluyor; tazelenen kullanıcıyı
-  /// buraya yansıtmazsak ekran hâlâ eski e-postayı gösterirdi.
-  void _syncVerifiedFields() {
-    final refreshed = context.read<UserProvider>().user;
-    if (refreshed == null) return;
-
-    setState(() {
-      _emailController.text = refreshed.email;
-      _phoneController.text = refreshed.phoneNumber ?? '';
-    });
-  }
-
-  /// Yeni değer eskisinden farklıysa onu, aynıysa `null` döner.
-  static String? _changed(String value, String? current) {
-    final trimmed = value.trim();
-    return trimmed == (current ?? '') ? null : trimmed;
-  }
-
   @override
   Widget build(BuildContext context) {
     final isSaving = context.watch<UserProvider>().isLoading;
@@ -230,7 +48,7 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
     return Scaffold(
       appBar: MyAppbar(title: "Hesabı Düzenle"),
       bottomNavigationBar: ButtonNavbar(
-        onPressed: isSaving ? null : _save,
+        onPressed: isSaving ? null : save,
         title: "Kaydet",
         isLoading: isSaving,
       ),
@@ -244,38 +62,38 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
               const SizedBox(height: AppSizes.sectionSpace),
               MyTextfield(
                 labelText: "Ad",
-                controller: _firstNameController,
-                enabled: _canEditName,
+                controller: firstNameController,
+                enabled: canEditName,
               ),
               const SizedBox(height: AppSizes.spaceMedium),
               MyTextfield(
                 labelText: "Soyad",
-                controller: _lastNameController,
-                enabled: _canEditName,
+                controller: lastNameController,
+                enabled: canEditName,
               ),
-              if (!_canEditName)
-                _hint(
+              if (!canEditName)
+                SettingsHint(
                   "Kimliğin doğrulandığı için ad ve soyad "
                   "değiştirilemiyor.",
                 ),
               const SizedBox(height: AppSizes.spaceMedium),
               MyTextfield(
                 labelText: "Meslek",
-                controller: _occupationController,
+                controller: occupationController,
               ),
               const SizedBox(height: AppSizes.spaceMedium),
               MyTextfield(
                 labelText: "Telefon",
-                controller: _phoneController,
+                controller: phoneController,
                 keyboardType: TextInputType.phone,
               ),
               const SizedBox(height: AppSizes.spaceMedium),
               MyTextfield(
                 labelText: "E-posta",
-                controller: _emailController,
+                controller: emailController,
                 keyboardType: TextInputType.emailAddress,
               ),
-              _hint(
+              SettingsHint(
                 "Telefonunu ya da e-postanı değiştirirsen yeni değere bir "
                 "kod gönderiyoruz; kodu girene kadar eskisi geçerli kalıyor.",
               ),
@@ -288,10 +106,10 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
               const SizedBox(height: AppSizes.spaceMedium),
               MyTextfield(
                 labelText: "IBAN",
-                controller: _ibanController,
+                controller: ibanController,
                 keyboardType: TextInputType.text,
               ),
-              _hint(
+              SettingsHint(
                 widget.user.maskedIban == null
                     ? "İşe başvurabilmen için ücretini alacağın IBAN'ı "
                           "eklemen gerekiyor."
@@ -303,18 +121,18 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
               const SizedBox(height: AppSizes.spaceMedium),
               MyTextfield(
                 labelText: "Yetkinlikler",
-                controller: _qualificationsController,
+                controller: qualificationsController,
                 expands: true,
                 height: _multilineHeight,
               ),
-              _hint(
+              SettingsHint(
                 "Yaptığın işte öne çıkan tarafların. İşveren başvurunda "
                 "bunları görüyor.",
               ),
               const SizedBox(height: AppSizes.spaceMedium),
               MyTextfield(
                 labelText: "İlgi alanları",
-                controller: _interestsController,
+                controller: interestsController,
                 expands: true,
                 height: _multilineHeight,
               ),
@@ -328,7 +146,7 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
 
   /// Adres satırı: özet ve düzenleme ekranına geçiş.
   Widget _addressRow() {
-    final label = _locationController.text;
+    final label = locationController.text;
 
     return _linkRow(
       label: "Adres",
@@ -411,26 +229,11 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
     );
   }
 
-  Widget _hint(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(
-        top: AppSizes.spaceTiny,
-        left: AppSizes.space,
-      ),
-      child: Text(
-        text,
-        style: context.textTheme.bodySmall?.copyWith(
-          color: context.textTertiary,
-        ),
-      ),
-    );
-  }
-
   Widget _avatar() {
     final visibleUser = context.watch<UserProvider>().user ?? widget.user;
     return GestureDetector(
       key: const ValueKey('profile-picture-picker'),
-      onTap: _pickProfilePicture,
+      onTap: pickProfilePicture,
       child: Stack(
         children: [
           ProfileAvatar(
@@ -461,7 +264,7 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
   Widget _aboutTextField() {
     return MyTextfield(
       labelText: "Hakkımda",
-      controller: _aboutController,
+      controller: aboutController,
       height: _aboutHeight,
       expands: true,
       // Tek satırlık alanların tam yuvarlak köşesi bu yükseklikte metni
