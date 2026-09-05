@@ -129,6 +129,7 @@ class ApplyProvider extends ChangeNotifier {
 
     return MyJob(
       id: application.id,
+      jobId: job.id,
       title: job.title,
       company: job.company ?? 'Bireysel İlan',
       companyId: null,

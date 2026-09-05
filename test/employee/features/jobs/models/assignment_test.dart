@@ -136,6 +136,12 @@ void main() {
   // İşlerim ekranının beş durumu backend'in iki kavramına yayılıyor;
   // eşleme yanlışsa kullanıcı bitmiş işi "devam ediyor" görür.
   group('MyJob.fromAssignment', () {
+    test('sohbet açmak için ilan kimliğini korur', () {
+      final myJob = MyJob.fromAssignment(Assignment.fromJson(assignmentBody()));
+
+      expect(myJob.jobId, 'job_1');
+    });
+
     MyJob mapWith({required String status, String payment = 'HELD_IN_ESCROW'}) {
       return MyJob.fromAssignment(
         Assignment.fromJson(

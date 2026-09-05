@@ -25,6 +25,7 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
   final _jobService = JobService();
   final _employerJobService = EmployerJobService();
   final _paymentBrowser = PaymentBrowser();
+  final _chatService = ChatService();
 
   /// Mesai oturumlarını iki taraf da okuyabiliyor; sohbette olduğu gibi tek
   /// servis iki uygulamaya hizmet ediyor.
@@ -39,6 +40,9 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
   /// Kabul/ret sırasında beklenen başvurunun kimliği; o kartın butonları
   /// kilitleniyor, diğerleri çalışmaya devam ediyor.
   String? _respondingApplicationId;
+
+  /// Sohbet açılırken seçilen aday; aynı anda iki konuşma açılmasını önler.
+  String? _openingChatUserId;
 
   /// Bu ilanın ataması; başvuru kabul edilmemişse `null`.
   Assignment? _assignment;
@@ -331,6 +335,30 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
 
   /// Tamamlama onayı. Açık mesai varsa uyarı metni farklı.
   Future<bool?> _confirmCompletion(Assignment assignment);
+
+  /// Başvuru kartından, seçilen adayla bu ilana bağlı sohbeti açar.
+  ///
+  /// Sunucu aynı ilan/çalışan çifti için mevcut konuşmayı döndürdüğünden bu
+  /// buton güvenle tekrar kullanılabilir; kopya sohbet oluşmaz.
+  Future<void> _openChat(JobApplicant applicant) async {
+    final currentUser = context.read<UserProvider>().user;
+    if (currentUser == null || _openingChatUserId != null) return;
+
+    setState(() => _openingChatUserId = applicant.user.id);
+    try {
+      final conversation = await _chatService.openConversationForJob(
+        jobId: widget.jobId,
+        currentUserId: currentUser.id,
+        workerId: applicant.user.id,
+      );
+      if (!mounted) return;
+      await context.push('/business/chat-detail', extra: conversation);
+    } on ApiException catch (error) {
+      if (mounted) AppToast.error(context, error.message);
+    } finally {
+      if (mounted) setState(() => _openingChatUserId = null);
+    }
+  }
 
   /// Başvuruyu kabul eder.
   Future<void> _approve(JobApplicant applicant) async {
