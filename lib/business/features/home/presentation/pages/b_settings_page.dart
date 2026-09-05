@@ -53,6 +53,11 @@ class BSettingsPage extends StatelessWidget {
           onTap: () => context.push('/business/reports'),
         ),
         MyListTile(
+          icon: AppIcons.userBlock,
+          title: "Engellediklerim",
+          onTap: () => context.push('/business/blocked-users'),
+        ),
+        MyListTile(
           icon: AppIcons.paint,
           title: "Görünüm",
           value: context.watch<ThemeProvider>().themeMode.label,
