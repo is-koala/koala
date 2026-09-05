@@ -65,7 +65,7 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
   final _websiteController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _taxNumberController = TextEditingController();
-  final _addressLineController = TextEditingController();
+  final _displayAddressController = TextEditingController();
   final _districtController = TextEditingController();
   final _cityController = TextEditingController();
 
@@ -93,7 +93,7 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
     _websiteController.dispose();
     _descriptionController.dispose();
     _taxNumberController.dispose();
-    _addressLineController.dispose();
+    _displayAddressController.dispose();
     _districtController.dispose();
     _cityController.dispose();
     super.dispose();
@@ -110,7 +110,7 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
     _websiteController.text = company.website ?? '';
     _descriptionController.text = company.description ?? '';
     _taxNumberController.text = company.taxNumber ?? '';
-    _addressLineController.text = company.address?.addressLine ?? '';
+    _displayAddressController.text = company.address?.displayAddress ?? '';
     _districtController.text = company.address?.districtName ?? '';
     _cityController.text = company.address?.cityName ?? '';
   }
@@ -309,7 +309,7 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
             const SizedBox(height: AppSizes.spaceMedium),
             MyTextfield(
               labelText: "Açık Adres",
-              controller: _addressLineController,
+              controller: _displayAddressController,
               enabled: false,
             ),
             const SizedBox(height: AppSizes.spaceMedium),

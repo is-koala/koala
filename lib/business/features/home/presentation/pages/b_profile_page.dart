@@ -333,9 +333,9 @@ class _BProfilePageState extends BProfilePageModel {
     if (address == null) return const [];
 
     final locality = [
-      ?address.districtName,
-      ?address.cityName,
-      ?address.countryName,
+      address.districtName,
+      address.cityName,
+      address.countryName,
     ].where((part) => part.isNotEmpty).join(', ');
 
     return [
@@ -358,9 +358,9 @@ class _BProfilePageState extends BProfilePageModel {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (address.addressLine?.isNotEmpty == true)
+                  if (address.displayAddress?.isNotEmpty == true)
                     Text(
-                      address.addressLine!,
+                      address.displayAddress!,
                       style: context.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w500,
                       ),

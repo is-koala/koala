@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
-import 'package:koala/employee/features/auth/models/user_address.dart';
 import 'package:koala/employee/features/jobs/models/application_readiness.dart';
+import 'package:koala/product/models/canonical_address.dart';
 
 CurrentUser buildUser({
   bool identityVerified = true,
@@ -16,7 +16,20 @@ CurrentUser buildUser({
     isEmployer: false,
     identityVerified: identityVerified,
     maskedIban: maskedIban,
-    address: hasAddress ? const UserAddress(id: 'adr_1') : null,
+    address: hasAddress
+        ? const CanonicalAddress(
+            id: 'adr_1',
+            countryId: 'country-1',
+            countryName: 'TÜRKİYE',
+            countryCode: 'TR',
+            cityId: 'city-1',
+            cityName: 'İSTANBUL',
+            districtId: 'district-1',
+            districtName: 'KADIKÖY',
+            canonicalVersion: 1,
+            needsReview: false,
+          )
+        : null,
   );
 }
 

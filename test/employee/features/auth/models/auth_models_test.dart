@@ -3,7 +3,7 @@ import 'package:koala/employee/features/auth/models/agreement_version.dart';
 import 'package:koala/employee/features/auth/models/auth_tokens.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/models/registration_verification.dart';
-import 'package:koala/employee/features/auth/models/user_address.dart';
+import 'package:koala/product/models/canonical_address.dart';
 
 void main() {
   group('AuthTokens', () {
@@ -129,10 +129,26 @@ void main() {
         'interests': 'Doğa',
         'address': {
           'id': 'address-1',
+          'countryId': 'country-1',
+          'countryName': 'TÜRKİYE',
+          'countryCode': 'TR',
+          'cityId': 'city-1',
           'cityName': 'İstanbul',
+          'districtId': 'district-1',
           'districtName': 'Küçükçekmece',
-          'latitude': 41.0,
-          'longitude': 28.8,
+          'components': {
+            'neighborhood': 'Atakent Mahallesi',
+            'thoroughfare': '221. Sokak',
+            'buildingNumber': '4',
+            'postalCode': '34307',
+          },
+          'position': {
+            'latitude': 41.0,
+            'longitude': 28.8,
+            'source': 'USER_CONFIRMED_PIN',
+          },
+          'canonicalVersion': 1,
+          'needsReview': false,
         },
       };
 
@@ -177,31 +193,53 @@ void main() {
     });
   });
 
-  group('UserAddress', () {
+  group('CanonicalAddress', () {
     test('kısa etiket ilçe/il olarak kurulur', () {
-      final address = UserAddress.fromJson({
+      final address = CanonicalAddress.fromJson({
         'id': 'address-1',
+        'countryId': 'country-1',
+        'countryName': 'TÜRKİYE',
+        'countryCode': 'TR',
+        'cityId': 'city-1',
         'cityName': 'İstanbul',
+        'districtId': 'district-1',
         'districtName': 'Küçükçekmece',
+        'canonicalVersion': 1,
+        'needsReview': false,
       });
 
       expect(address.shortLabel, 'Küçükçekmece/İstanbul');
     });
 
     test('yalnız biri doluysa tek başına döner', () {
-      final address = UserAddress.fromJson({
+      final address = CanonicalAddress.fromJson({
         'id': 'address-1',
+        'countryId': 'country-1',
+        'countryName': 'TÜRKİYE',
+        'countryCode': 'TR',
+        'cityId': 'city-1',
         'cityName': 'İstanbul',
+        'districtId': 'district-1',
+        'districtName': '',
+        'canonicalVersion': 1,
+        'needsReview': false,
       });
 
       expect(address.shortLabel, 'İstanbul');
     });
 
     test('ikisi de boşsa null döner; satır hiç çizilmemeli', () {
-      final address = UserAddress.fromJson({
+      final address = CanonicalAddress.fromJson({
         'id': 'address-1',
+        'countryId': 'country-1',
+        'countryName': '',
+        'countryCode': 'TR',
+        'cityId': 'city-1',
         'cityName': '',
-        'districtName': null,
+        'districtId': 'district-1',
+        'districtName': '',
+        'canonicalVersion': 1,
+        'needsReview': false,
       });
 
       expect(address.shortLabel, isNull);

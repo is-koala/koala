@@ -1,10 +1,10 @@
 import 'package:koala/employee/features/auth/models/current_user.dart';
-import 'package:koala/employee/features/auth/models/user_address.dart';
 import 'package:koala/employee/features/auth/models/profile_update_result.dart';
 import 'package:koala/employee/features/auth/models/public_profile.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
+import 'package:koala/product/models/canonical_address.dart';
 
 /// `/users/me` uçlarının sarmalayıcısı.
 ///
@@ -154,27 +154,11 @@ class UserService {
   ///
   /// Kısmi güncelleme değil: gönderilmeyen alan siliniyor. Koordinat
   /// **zorunlu** — sunucu `latitude`/`longitude` olmadan kabul etmiyor.
-  Future<UserAddress> updateAddress({
-    required String countryCode,
-    required String cityName,
-    required String addressLine,
-    required double latitude,
-    required double longitude,
-    String? districtName,
-    String? postalCode,
-  }) {
-    return _apiClient.put<UserAddress>(
+  Future<CanonicalAddress> updateAddress(AddressWrite address) {
+    return _apiClient.put<CanonicalAddress>(
       ApiPaths.currentUserAddress,
-      body: {
-        'countryCode': countryCode,
-        'cityName': cityName,
-        'districtName': ?districtName,
-        'addressLine': addressLine,
-        'postalCode': ?postalCode,
-        'latitude': latitude,
-        'longitude': longitude,
-      },
-      parse: (data) => UserAddress.fromJson(data! as Map<String, dynamic>),
+      body: address.toJson(),
+      parse: (data) => CanonicalAddress.fromJson(data! as Map<String, dynamic>),
     );
   }
 }

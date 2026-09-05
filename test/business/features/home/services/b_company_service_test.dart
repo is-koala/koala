@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/business/features/home/services/b_company_service.dart';
 import 'package:koala/employee/features/company_detail/models/company.dart';
+import 'package:koala/product/models/canonical_address.dart';
 
 import '../../../../support/fake_api.dart';
 
@@ -23,10 +24,27 @@ const _companyBody = {
     'type': 'LIMITED',
     'address': {
       'id': 'addr_1',
+      'countryId': 'country-1',
       'cityName': 'Ankara',
+      'cityId': 'city-1',
       'districtName': 'Çankaya',
-      'addressLine': 'Ziya Gökalp Cd. 45/A',
+      'districtId': 'district-1',
       'countryName': 'Türkiye',
+      'countryCode': 'TR',
+      'components': {
+        'neighborhood': 'Kızılay Mahallesi',
+        'thoroughfare': 'Ziya Gökalp Caddesi',
+        'buildingNumber': '45/A',
+        'postalCode': '06420',
+      },
+      'position': {
+        'latitude': 39.9200,
+        'longitude': 32.8500,
+        'source': 'USER_CONFIRMED_PIN',
+      },
+      'displayAddress': 'Kızılay Mahallesi, Ziya Gökalp Caddesi No:45/A',
+      'canonicalVersion': 1,
+      'needsReview': false,
     },
     'followerCount': 12,
     'approved': true,
@@ -49,14 +67,22 @@ void main() {
           phoneNumber: '+905551112233',
           taxNumber: '1234567890',
           type: CompanyType.limited,
-          address: const {
-            'countryCode': 'TR',
-            'cityName': 'İSTANBUL',
-            'districtName': 'KADIKÖY',
-            'addressLine': 'Caferağa Mah. Moda Cad. No: 12',
-            'latitude': 40.9819,
-            'longitude': 29.0263,
-          },
+          address: const AddressWrite(
+            countryId: 'country-1',
+            cityId: 'city-1',
+            districtId: 'district-1',
+            components: AddressComponents(
+              neighborhood: 'Caferağa Mahallesi',
+              thoroughfare: 'Moda Caddesi',
+              buildingNumber: '12',
+              postalCode: '34710',
+            ),
+            position: AddressPosition(
+              latitude: 40.9819,
+              longitude: 29.0263,
+              source: AddressPositionSource.userConfirmedPin,
+            ),
+          ),
         );
 
         final request = api.requests.single;
@@ -76,8 +102,8 @@ void main() {
         expect(company['name'], 'Moda Kahve Atölyesi');
         expect(company['type'], 'LIMITED');
         expect(
-          (company['address'] as Map<String, dynamic>)['districtName'],
-          'KADIKÖY',
+          (company['address'] as Map<String, dynamic>)['districtId'],
+          'district-1',
         );
       },
     );

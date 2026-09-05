@@ -9,12 +9,14 @@ import 'package:koala/employee/features/company_detail/models/company.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
-import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/network/api_exception.dart';
+import 'package:koala/product/models/canonical_address.dart';
+import 'package:koala/product/services/reference_location_service.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
+import 'package:koala/product/widgets/canonical_address_form.dart';
 import 'package:koala/product/widgets/my_button.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
 
@@ -25,11 +27,15 @@ class CompanyInformationsPage extends StatefulWidget {
     super.key,
     this.service,
     this.initialLocation,
+    this.initialAddress,
+    this.referenceService,
     this.onSaved,
   });
 
   final BCompanyService? service;
   final LatLng? initialLocation;
+  final CanonicalAddress? initialAddress;
+  final ReferenceLocationService? referenceService;
   final VoidCallback? onSaved;
 
   @override
@@ -98,16 +104,10 @@ class _CompanyInformationsPageState extends CompanyInformationsPagemodel {
             keyboardType: TextInputType.text,
           ),
           const SizedBox(height: AppSizes.spaceMedium),
-          MyTextfield(
-            labelText: "Firma Adresi*",
-            controller: companyAddressController,
-            keyboardType: TextInputType.streetAddress,
-          ),
-          const SizedBox(height: AppSizes.spaceMedium),
-          MyTextfield(
-            labelText: "İlçe*",
-            controller: districtController,
-            keyboardType: TextInputType.streetAddress,
+          CanonicalAddressForm(
+            controller: addressController,
+            referenceService: widget.referenceService,
+            pickPosition: pickPosition,
           ),
           const SizedBox(height: AppSizes.spaceMedium),
           MyTextfield(
@@ -136,8 +136,6 @@ class _CompanyInformationsPageState extends CompanyInformationsPagemodel {
             keyboardType: TextInputType.url,
           ),
           const SizedBox(height: AppSizes.spaceMedium),
-          _locationField(),
-          const SizedBox(height: AppSizes.spaceMedium),
           _descriptionRow(),
           const SizedBox(height: AppSizes.spaceXLarge),
         ],
@@ -161,26 +159,6 @@ class _CompanyInformationsPageState extends CompanyInformationsPagemodel {
       onChanged: (type) {
         if (type != null) setState(() => companyType = type);
       },
-    );
-  }
-
-  Widget _locationField() {
-    final location = selectedLocation;
-    return ListTile(
-      key: const ValueKey('company-location'),
-      shape: RoundedRectangleBorder(
-        side: BorderSide(color: context.dividerColor),
-        borderRadius: AppRadius.smallCircular,
-      ),
-      title: const Text('Şirket Konumu*'),
-      subtitle: Text(
-        location == null
-            ? 'Haritadan konum seç'
-            : '${location.latitude.toStringAsFixed(5)}, '
-                  '${location.longitude.toStringAsFixed(5)}',
-      ),
-      trailing: const AppIcon(AppIcons.location),
-      onTap: pickLocation,
     );
   }
 

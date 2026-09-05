@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/business/features/home/models/create_job_request.dart';
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/product/models/canonical_address.dart';
 
 void main() {
   CreateJobRequest build() => CreateJobRequest(
@@ -17,12 +18,21 @@ void main() {
     maxAge: 40,
     experienceRequired: true,
     insuranceRequired: true,
-    address: const CreateJobAddress(
-      countryCode: 'TR',
-      cityName: 'Ankara',
-      addressLine: 'Kızılay 1',
-      latitude: 39.92,
-      longitude: 32.85,
+    address: const AddressWrite(
+      countryId: 'country-1',
+      cityId: 'city-1',
+      districtId: 'district-1',
+      components: AddressComponents(
+        neighborhood: 'Kızılay Mahallesi',
+        thoroughfare: 'Atatürk Bulvarı',
+        buildingNumber: '1',
+        postalCode: '06420',
+      ),
+      position: AddressPosition(
+        latitude: 39.92,
+        longitude: 32.85,
+        source: AddressPositionSource.userConfirmedPin,
+      ),
     ),
   );
 
@@ -56,17 +66,20 @@ void main() {
     expect(json.containsKey('sector'), isFalse);
     expect(json.containsKey('duties'), isFalse);
     expect(json.containsKey('dressCode'), isFalse);
-    // İlçe de isteğe bağlı; verilmediğinde adres gövdesinde yer almıyor.
-    expect((json['address'] as Map).containsKey('districtName'), isFalse);
+    expect(
+      ((json['address'] as Map)['components'] as Map).containsKey('siteName'),
+      isFalse,
+    );
   });
 
   test('adres zorunlu alanları taşıyor', () {
     final address = build().toJson(forCompany: true)['address'] as Map;
 
-    expect(address['countryCode'], 'TR');
-    expect(address['cityName'], 'Ankara');
-    expect(address['addressLine'], 'Kızılay 1');
-    expect(address['latitude'], 39.92);
-    expect(address['longitude'], 32.85);
+    expect(address['countryId'], 'country-1');
+    expect(address['cityId'], 'city-1');
+    expect(address['districtId'], 'district-1');
+    expect((address['components'] as Map)['postalCode'], '06420');
+    expect((address['position'] as Map)['latitude'], 39.92);
+    expect((address['position'] as Map)['source'], 'USER_CONFIRMED_PIN');
   });
 }

@@ -1,5 +1,5 @@
-import 'package:koala/employee/features/auth/models/user_address.dart';
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/product/models/canonical_address.dart';
 
 /// İlanı açan kişi. Backend `SafeUserDto` karşılığı.
 class JobCreator {
@@ -62,7 +62,7 @@ class JobCompany {
   final String? phoneNumber;
   final String? website;
   final String? description;
-  final UserAddress? address;
+  final CanonicalAddress? address;
 
   factory JobCompany.fromJson(Map<String, dynamic> json) {
     final address = json['address'];
@@ -76,7 +76,7 @@ class JobCompany {
       website: json['website'] as String?,
       description: json['description'] as String?,
       address: address is Map<String, dynamic>
-          ? UserAddress.fromJson(address)
+          ? CanonicalAddress.fromJson(address)
           : null,
     );
   }
@@ -149,7 +149,7 @@ class JobDetail {
   final bool experienceRequired;
   final DateTime? startDateTime;
   final DateTime? endDateTime;
-  final UserAddress? address;
+  final CanonicalAddress? address;
   final JobCreator? creator;
   final JobCompany? company;
   final DateTime? createdAt;
@@ -166,7 +166,7 @@ class JobDetail {
 
   /// Adresin tek satırlık hâli: açık adres varsa o, yoksa ilçe/il.
   String? get addressLabel {
-    final line = address?.addressLine;
+    final line = address?.displayAddress;
     if (line != null && line.isNotEmpty) return line;
     return address?.shortLabel;
   }
@@ -199,7 +199,7 @@ class JobDetail {
       startDateTime: _parseDate(json['startDateTime']),
       endDateTime: _parseDate(json['endDateTime']),
       address: address is Map<String, dynamic>
-          ? UserAddress.fromJson(address)
+          ? CanonicalAddress.fromJson(address)
           : null,
       creator: creator is Map<String, dynamic>
           ? JobCreator.fromJson(creator)
