@@ -12,6 +12,7 @@ Map<String, dynamic> userBody({String firstName = 'Yakup', String? about}) {
     'lastName': 'Kahraman',
     'email': 'a@b.com',
     'about': about,
+    'isEmployer': false,
   };
 }
 

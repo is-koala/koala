@@ -103,6 +103,7 @@ void main() {
             'data': {
               'user': {
                 'id': 'user-1',
+                'isEmployer': false,
                 'firstName': 'Yakup',
                 'lastName': 'Kahraman',
                 'email': 'a@b.com',
@@ -305,7 +306,12 @@ void main() {
             'success': true,
             'data': {
               'pendingVerifications': [],
-              'user': {'id': 'user_1', 'firstName': 'Ada', 'lastName': 'Kaya'},
+              'user': {
+                'id': 'user_1',
+                'firstName': 'Ada',
+                'lastName': 'Kaya',
+                'isEmployer': false,
+              },
             },
           },
         ),
@@ -327,7 +333,12 @@ void main() {
             'success': true,
             'data': {
               'pendingVerifications': [],
-              'user': {'id': 'user_1', 'firstName': 'Ada', 'lastName': 'Kaya'},
+              'user': {
+                'id': 'user_1',
+                'firstName': 'Ada',
+                'lastName': 'Kaya',
+                'isEmployer': false,
+              },
             },
           },
         ),

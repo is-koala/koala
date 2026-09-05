@@ -195,6 +195,14 @@ class ApiClient {
       return ApiResponse.fromJson<T>(body, parse: parse).data as T;
     } on DioException catch (error) {
       throw _toApiException(error);
+    } catch (error) {
+      if (error is FormatException || error is TypeError) {
+        throw const ApiException(
+          message: 'Sunucudan beklenmeyen bir yanıt geldi.',
+          type: ApiErrorType.unknown,
+        );
+      }
+      rethrow;
     }
   }
 

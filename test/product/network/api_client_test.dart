@@ -5,6 +5,31 @@ import '../../support/fake_api.dart';
 
 void main() {
   group('ApiClient zarfı', () {
+    for (final payload in [null, 'sayı değil']) {
+      test('bozuk veri $payload anlaşılır API hatası olur', () async {
+        final api = FakeApi(
+          handler: (_) => FakeApiResponse(
+            statusCode: 200,
+            body: {'success': true, 'data': payload},
+          ),
+        );
+
+        await expectLater(
+          api.client.get<int>(
+            '/reference/value',
+            parse: (data) => int.parse(data as String),
+          ),
+          throwsA(
+            isA<ApiException>().having(
+              (error) => error.message,
+              'message',
+              'Sunucudan beklenmeyen bir yanıt geldi.',
+            ),
+          ),
+        );
+      });
+    }
+
     test('başarılı yanıtta yalnızca data alanı döner', () async {
       final api = FakeApi(
         handler: (_) => const FakeApiResponse(

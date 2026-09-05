@@ -127,6 +127,32 @@ class SessionManager extends ChangeNotifier {
     );
   }
 
+  /// Token'ları profil isteğine hazırlar; rol doğrulanana kadar oturumu açmaz.
+  /// Doğrulama veya saklama başarısız olursa yarım oturum temizlenir.
+  Future<void> startWithVerifiedUserType({
+    required String accessToken,
+    required String refreshToken,
+    DateTime? refreshExpiresAt,
+    required Future<bool> Function() verifyUserType,
+  }) async {
+    final prefs = await _cached();
+    try {
+      await prefs.remove(_key(isLoggedInKey));
+      await prefs.remove(_key(userTypeKey));
+      await _tokenStorage.save(
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+        refreshExpiresAt: refreshExpiresAt,
+      );
+      final isEmployer = await verifyUserType();
+      await updateUserType(isEmployer: isEmployer);
+      await prefs.setBool(_key(isLoggedInKey), true);
+    } catch (_) {
+      await end();
+      rethrow;
+    }
+  }
+
   /// Kullanıcı tipini tek başına günceller.
   ///
   /// Giriş yanıtı bu bilgiyi taşımadığı için `/users/me` çağrısı döndükten

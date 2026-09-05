@@ -201,7 +201,10 @@ class CurrentUser {
   /// için iki model de buradan okuyor.
   static bool readEmployerFlag(Map<String, dynamic> json) {
     final value = json['isEmployer'];
-    return value is bool ? value : false;
+    if (value is! bool) {
+      throw const FormatException('Hesap türü boolean olarak gelmelidir.');
+    }
+    return value;
   }
 
   Map<String, dynamic> toJson() {

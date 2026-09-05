@@ -53,12 +53,11 @@ void main() {
       expect(verification.isEmployer, isTrue);
     });
 
-    test('alan hiç gelmezse çalışan varsayılır', () {
-      final verification = RegistrationVerification.fromJson({
-        'setPasswordToken': 'jwt',
-      });
-
-      expect(verification.isEmployer, isFalse);
+    test('alan hiç gelmezse doğrulama yanıtı reddedilir', () {
+      expect(
+        () => RegistrationVerification.fromJson({'setPasswordToken': 'jwt'}),
+        throwsFormatException,
+      );
     });
   });
 
@@ -98,18 +97,22 @@ void main() {
       expect(CurrentUser.fromJson(user.toJson()).toJson(), user.toJson());
     });
 
-    test('bayrak hiç gelmezse çalışan varsayılır', () {
-      final user = CurrentUser.fromJson({
-        'id': 'user-1',
-        'firstName': 'Yakup',
-        'lastName': 'Kahraman',
-        'email': 'a@b.com',
-      });
+    test(
+      'iş arayan bayrağı açıkça false gelir, isteğe bağlı listeler boş kalır',
+      () {
+        final user = CurrentUser.fromJson({
+          'isEmployer': false,
+          'id': 'user-1',
+          'firstName': 'Yakup',
+          'lastName': 'Kahraman',
+          'email': 'a@b.com',
+        });
 
-      expect(user.isEmployer, isFalse);
-      expect(user.companies, isEmpty);
-      expect(user.roles, isEmpty);
-    });
+        expect(user.isEmployer, isFalse);
+        expect(user.companies, isEmpty);
+        expect(user.roles, isEmpty);
+      },
+    );
 
     test('profil alanları JSON gidiş dönüşünde korunur', () {
       final json = {
@@ -118,6 +121,7 @@ void main() {
         'lastName': 'Kahraman',
         'email': 'a@b.com',
         'birthDate': '1998-05-12',
+        'isEmployer': false,
         'gender': 'FEMALE',
         'tcIdentityNumber': '11111111110',
         'about': 'Merhaba',
@@ -145,6 +149,7 @@ void main() {
 
     test('cinsiyet gelmezse ya da tanınmazsa belirtilmemiş sayılır', () {
       final base = {
+        'isEmployer': false,
         'id': 'user-1',
         'firstName': 'Yakup',
         'lastName': 'Kahraman',
@@ -165,6 +170,7 @@ void main() {
         'lastName': 'Kahraman',
         'email': 'a@b.com',
         'birthDate': 'tarih değil',
+        'isEmployer': false,
       });
 
       expect(user.birthDate, isNull);
