@@ -79,6 +79,10 @@ void main() {
   });
 
   group('ApplicationRequirement.fromErrorCode', () {
+    test('IBAN eylemi kayıtlı hesap bilgileri rotasına gider', () {
+      expect(ApplicationRequirement.bankAccount.route, '/account-info');
+    });
+
     test('sunucunun kodları şartlara eşlenir', () {
       expect(
         ApplicationRequirement.fromErrorCode('APPLICANT_IDENTITY_NOT_VERIFIED'),

@@ -33,7 +33,7 @@ enum ApplicationRequirement {
     description:
         'Çalıştığın işin ücretini alabilmen için IBAN bilgin gerekiyor.',
     actionLabel: 'IBAN Ekle',
-    route: '/settings/account-info',
+    route: '/account-info',
   );
 
   const ApplicationRequirement({
