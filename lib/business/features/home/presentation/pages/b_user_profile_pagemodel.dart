@@ -98,4 +98,23 @@ abstract class BUserProfilePageModel extends State<BUserProfilePage> {
 
   /// Meslek: profil geldiyse oradan, gelmediyse başvurudakinden.
   String? get _jobTitle => _profile?.jobTitle ?? widget.applicant.jobTitle;
+
+  /// Başlık çubuğundaki şikayet düğmesi.
+  ///
+  /// Kullanıcı kimliği gelmemiş bir başvuruda çizilmiyor: hedefsiz şikayet
+  /// sunucudan `400` alırdı, basıldığında hata veren bir düğme göstermek
+  /// yerine düğme hiç olmuyor.
+  Widget? _reportAction() {
+    final userId = widget.applicant.user.id;
+    if (userId.isEmpty) return null;
+
+    return IconButton(
+      tooltip: 'Şikayet Et',
+      icon: AppIcon(AppIcons.flag, color: context.textPrimary),
+      onPressed: () => ReportSheet.show(
+        context,
+        ReportTarget.user(userId: userId, name: widget.applicant.fullName),
+      ),
+    );
+  }
 }

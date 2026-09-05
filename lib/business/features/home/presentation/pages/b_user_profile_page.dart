@@ -11,10 +11,12 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
+import 'package:koala/product/models/report.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
+import 'package:koala/product/widgets/report_sheet.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 part 'b_user_profile_pagemodel.dart';
@@ -41,7 +43,7 @@ class _BUserProfilePageState extends BUserProfilePageModel {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.backgroundColor,
-      appBar: MyAppbar(title: "Profil"),
+      appBar: MyAppbar(title: "Profil", actions: [?_reportAction()]),
       body: SingleChildScrollView(
         child: Column(
           children: [
