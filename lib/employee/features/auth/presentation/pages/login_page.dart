@@ -66,12 +66,14 @@ class _LoginPageState extends LoginPagemodel {
           ),
           const SizedBox(height: AppSizes.sectionSpace),
           MyTextfield(
+            key: const ValueKey('login-email'),
             labelText: 'E-posta',
             controller: emailController,
             keyboardType: TextInputType.emailAddress,
           ),
           const SizedBox(height: AppSizes.space),
           MyTextfield(
+            key: const ValueKey('login-password'),
             labelText: 'Şifre',
             controller: passwordController,
             isObscureText: isPasswordHidden,
@@ -90,10 +92,7 @@ class _LoginPageState extends LoginPagemodel {
           Padding(
             padding: AppPadding.primaryLeft,
             child: GestureDetector(
-              // TODO(backend): Şifre sıfırlama `/auth/forgot-password` ile
-              // başlıyor ama sıfırlama bağlantısının açacağı ekran henüz yok;
-              // o ekran eklenince burası bağlanacak.
-              onTap: () {},
+              onTap: () => context.push('/auth/forgot-password'),
               child: Text(
                 'Şifrenizi mi unuttunuz?',
                 style: context.textTheme.bodyMedium?.copyWith(
@@ -116,6 +115,7 @@ class _LoginPageState extends LoginPagemodel {
           width: double.infinity,
           height: AppSizes.buttonHeight,
           child: MyButton(
+            key: const ValueKey('login-submit'),
             onPressed: onLogin,
             title: 'GİRİŞ YAP',
             isLoading: isSubmitting,

@@ -1,7 +1,14 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 /// Ortam ve API hedefi açıkça seçilmeden ağ istemcisi kurulmaz.
 class ApiConfig {
+  static const Map<String, String> _appUrlSchemes = {
+    'dev': 'koala-dev',
+    'staging': 'koala-staging',
+    'production': 'koala',
+  };
+
   /// Ortam seçimini ağ istemcisi kurulmadan önce doğrular.
   static String resolveBaseUrl({
     required String? flavor,
@@ -35,12 +42,30 @@ class ApiConfig {
     configuredUrl: const String.fromEnvironment('API_BASE_URL'),
   );
 
+  /// Çalışan flavor'ın native uygulama bağlantısı şeması.
+  ///
+  /// Android manifest ve iOS xcconfig değerleriyle aynı eşlemeyi kullanır;
+  /// böylece staging'e gönderilen bir production bağlantısı yanlışlıkla
+  /// kabul edilmez.
+  static String get appUrlScheme => resolveAppUrlScheme(flavor: appFlavor);
+
+  /// Flavor'ı native uygulama bağlantısı şemasına çevirir.
+  @visibleForTesting
+  static String resolveAppUrlScheme({required String? flavor}) {
+    final scheme = _appUrlSchemes[flavor];
+    if (scheme == null) {
+      throw StateError('Uygulama ortamı seçilmedi. --flavor kullanmalısın.');
+    }
+    return scheme;
+  }
+
   /// Yanlış yapılandırma ilk ağ isteğine veya oturum yüklemeye ertelenmez.
   static void validateBuildConfiguration() {
     resolveBaseUrl(
       flavor: appFlavor,
       configuredUrl: const String.fromEnvironment('API_BASE_URL'),
     );
+    resolveAppUrlScheme(flavor: appFlavor);
   }
 
   /// STOMP/WebSocket adresi.

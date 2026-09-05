@@ -38,7 +38,10 @@ import 'package:koala/employee/features/company_detail/presentation/pages/compan
 import 'package:koala/employee/features/settings/presentation/pages/settings_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/login_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/register_page.dart';
+import 'package:koala/employee/features/auth/presentation/pages/reset_password_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/email_verification_pending_page.dart';
+import 'package:koala/employee/features/auth/presentation/pages/employer_type_page.dart';
+import 'package:koala/employee/features/auth/presentation/pages/forgot_password_page.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/apply_page.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/settings/presentation/pages/account_info_page.dart';
@@ -83,9 +86,10 @@ class RouterManager {
 
     final isAuthRoute =
         location.startsWith('/auth') || location.startsWith('/onboarding');
+    final isPublicTokenRoute = location == '/reset-password';
 
     // Giriş yapmamışsa: tanıtımı görmemişse önce o, görmüşse giriş ekranı.
-    if (!loggedIn && !isAuthRoute) {
+    if (!loggedIn && !isAuthRoute && !isPublicTokenRoute) {
       return seenOnboarding ? '/auth' : '/onboarding';
     }
 
@@ -158,6 +162,11 @@ class RouterManager {
             pageBuilder: (context, state) => _page(state, const LoginPage()),
           ),
           GoRoute(
+            path: 'forgot-password',
+            pageBuilder: (context, state) =>
+                _page(state, const ForgotPasswordPage()),
+          ),
+          GoRoute(
             path: 'register-type',
             pageBuilder: (context, state) =>
                 _page(state, const RegisterTypePage()),
@@ -203,6 +212,19 @@ class RouterManager {
       // oturum açılmış oluyor ve `redirect` giriş yapmış kullanıcıyı auth
       // rotalarından kendi ana sayfasına atıyor. Üst seviyede durunca adım
       // kayıttan sonra açılabiliyor.
+      GoRoute(
+        path: '/reset-password',
+        pageBuilder: (context, state) => _page(
+          state,
+          ResetPasswordPage(token: state.uri.queryParameters['token'] ?? ''),
+        ),
+      ),
+
+      GoRoute(
+        path: '/employer-type',
+        pageBuilder: (context, state) => _page(state, const EmployerTypePage()),
+      ),
+
       GoRoute(
         path: '/company-informations',
         pageBuilder: (context, state) =>

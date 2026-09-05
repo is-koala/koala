@@ -52,6 +52,14 @@ void main() {
         expect(redirect(loggedIn: false, location: location), isNull);
       }
     });
+
+    test('yalnız tam şifre sıfırlama rotası public kabul edilir', () {
+      expect(redirect(loggedIn: false, location: '/reset-password'), isNull);
+      expect(
+        redirect(loggedIn: false, location: '/reset-password-attacker'),
+        '/auth',
+      );
+    });
   });
 
   group('giriş yapmış employee', () {

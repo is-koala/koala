@@ -83,4 +83,11 @@ void main() {
       throwsStateError,
     );
   });
+
+  test('her flavor yalnız kendi native bağlantı şemasını kullanır', () {
+    expect(ApiConfig.resolveAppUrlScheme(flavor: 'dev'), 'koala-dev');
+    expect(ApiConfig.resolveAppUrlScheme(flavor: 'staging'), 'koala-staging');
+    expect(ApiConfig.resolveAppUrlScheme(flavor: 'production'), 'koala');
+    expect(() => ApiConfig.resolveAppUrlScheme(flavor: null), throwsStateError);
+  });
 }
