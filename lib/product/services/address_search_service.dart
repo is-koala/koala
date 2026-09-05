@@ -9,6 +9,8 @@ abstract interface class AddressSearchGateway {
   Future<List<AddressSuggestion>> search(String sessionId, String query);
 
   Future<AddressCandidate> resolve(String sessionId, String candidateId);
+
+  Future<AddressCandidate> reverse(double latitude, double longitude);
 }
 
 class AddressSearchService implements AddressSearchGateway {
@@ -54,6 +56,15 @@ class AddressSearchService implements AddressSearchGateway {
   Future<AddressCandidate> resolve(String sessionId, String candidateId) {
     return _apiClient.post<AddressCandidate>(
       ApiPaths.resolveAddressCandidate(sessionId, candidateId),
+      parse: (data) => AddressCandidate.fromJson(data as Map<String, dynamic>),
+    );
+  }
+
+  @override
+  Future<AddressCandidate> reverse(double latitude, double longitude) {
+    return _apiClient.post<AddressCandidate>(
+      ApiPaths.reverseAddressCandidate,
+      body: {'latitude': latitude, 'longitude': longitude},
       parse: (data) => AddressCandidate.fromJson(data as Map<String, dynamic>),
     );
   }

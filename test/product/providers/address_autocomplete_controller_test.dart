@@ -29,6 +29,11 @@ class _Gateway implements AddressSearchGateway {
   Future<AddressCandidate> resolve(String sessionId, String candidateId) {
     throw UnimplementedError();
   }
+
+  @override
+  Future<AddressCandidate> reverse(double latitude, double longitude) {
+    throw UnimplementedError();
+  }
 }
 
 void main() {

@@ -312,6 +312,9 @@ class ApiPaths {
   static String resolveAddressCandidate(String sessionId, String candidateId) =>
       '$addressSearchSessions/$sessionId/candidates/$candidateId/resolve';
 
+  static const String reverseAddressCandidate =
+      '/locations/address-candidates/reverse';
+
   // -------------------------------------------------------------------- Legal
 
   static const String agreements = '/legal/agreements';

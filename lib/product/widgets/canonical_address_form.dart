@@ -240,6 +240,7 @@ class CanonicalAddressForm extends StatefulWidget {
 
 class _CanonicalAddressFormState extends State<CanonicalAddressForm> {
   late final ReferenceLocationService _referenceService;
+  late final AddressSearchGateway _addressSearchGateway;
   late final TextEditingController _searchTextController;
   late final AddressAutocompleteController _autocompleteController;
   List<ReferenceLocation> _countries = const [];
@@ -248,15 +249,20 @@ class _CanonicalAddressFormState extends State<CanonicalAddressForm> {
   bool _loading = true;
   bool _loadingCities = false;
   bool _loadingDistricts = false;
+  bool _reverseGeocoding = false;
+  int _reverseRevision = 0;
   String? _errorMessage;
+  String? _reverseError;
 
   @override
   void initState() {
     super.initState();
     _referenceService = widget.referenceService ?? ReferenceLocationService();
+    _addressSearchGateway =
+        widget.addressSearchGateway ?? AddressSearchService();
     _searchTextController = TextEditingController();
     _autocompleteController = AddressAutocompleteController(
-      gateway: widget.addressSearchGateway ?? AddressSearchService(),
+      gateway: _addressSearchGateway,
       debounce: widget.autocompleteDebounce,
     )..addListener(_refresh);
     widget.controller.addListener(_refresh);
@@ -575,6 +581,14 @@ class _CanonicalAddressFormState extends State<CanonicalAddressForm> {
       suggestion.mainText,
       suggestion.secondaryText,
     ].where((value) => value.isNotEmpty).join(', ');
+    await _applyCandidate(candidate);
+  }
+
+  Future<void> _applyCandidate(
+    AddressCandidate candidate, {
+    String? searchLabel,
+  }) async {
+    if (searchLabel != null) _searchTextController.text = searchLabel;
     widget.controller.applyCandidate(candidate);
 
     try {
@@ -585,6 +599,100 @@ class _CanonicalAddressFormState extends State<CanonicalAddressForm> {
     } on ApiException catch (error) {
       if (mounted) setState(() => _errorMessage = error.message);
     }
+  }
+
+  Future<void> _suggestAddressForPosition(LatLng position) async {
+    final revision = ++_reverseRevision;
+    setState(() {
+      _reverseGeocoding = true;
+      _reverseError = null;
+    });
+
+    try {
+      final candidate = await _addressSearchGateway.reverse(
+        position.latitude,
+        position.longitude,
+      );
+      if (!mounted || revision != _reverseRevision) return;
+      setState(() => _reverseGeocoding = false);
+
+      final useCandidate = await _confirmReverseCandidate(candidate);
+      if (!mounted || revision != _reverseRevision || useCandidate != true) {
+        return;
+      }
+      await _applyCandidate(
+        candidate,
+        searchLabel: _candidateSummary(candidate),
+      );
+    } on ApiException {
+      if (!mounted || revision != _reverseRevision) return;
+      setState(() {
+        _reverseGeocoding = false;
+        _reverseError =
+            'Bu konum için adres önerisi alınamadı. Pini koruduk; adresi elle doldurabilirsiniz.';
+      });
+    }
+  }
+
+  Future<bool?> _confirmReverseCandidate(AddressCandidate candidate) {
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: const RoundedRectangleBorder(
+          borderRadius: AppRadius.secondaryCircular,
+        ),
+        title: Text(
+          'Bu adresi kullanmak ister misiniz?',
+          style: context.textTheme.titleMedium,
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _candidateSummary(candidate),
+              style: context.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: AppSizes.spaceMedium),
+            Row(
+              children: [
+                Image.asset(AppAssets.googleLogo, width: 16, height: 16),
+                const SizedBox(width: AppSizes.spaceSmall),
+                Text(
+                  candidate.attribution,
+                  style: context.textTheme.bodySmall?.copyWith(
+                    color: context.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Sadece pini kullan'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Adresi kullan'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _candidateSummary(AddressCandidate candidate) {
+    final street = [
+      candidate.components.thoroughfare,
+      candidate.components.buildingNumber,
+    ].where((part) => part != null && part.trim().isNotEmpty).join(' ');
+    return [
+      street,
+      candidate.components.neighborhood,
+      '${candidate.districtName}/${candidate.cityName}',
+      candidate.components.postalCode,
+    ].where((part) => part.trim().isNotEmpty).join(', ');
   }
 
   Widget _errorStrip(String message, FutureOr<void> Function() onRetry) {
@@ -675,40 +783,73 @@ class _CanonicalAddressFormState extends State<CanonicalAddressForm> {
 
   Widget _positionField() {
     final position = widget.controller.position;
-    return InkWell(
-      onTap: () async {
-        final picked = await widget.pickPosition(position);
-        if (picked != null) widget.controller.selectPosition(picked);
-      },
-      borderRadius: AppRadius.primaryCircular,
-      child: Container(
-        width: double.infinity,
-        constraints: const BoxConstraints(minHeight: AppSizes.fieldHeight),
-        padding: AppPadding.primaryHorizontal,
-        decoration: BoxDecoration(
-          border: Border.all(
-            color: position == null
-                ? context.accentColor
-                : context.dividerColor,
-          ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: _reverseGeocoding
+              ? null
+              : () async {
+                  final picked = await widget.pickPosition(position);
+                  if (picked == null || !mounted) return;
+                  widget.controller.selectPosition(picked);
+                  await _suggestAddressForPosition(picked);
+                },
           borderRadius: AppRadius.primaryCircular,
-        ),
-        child: Row(
-          children: [
-            AppIcon(AppIcons.location, color: context.accentColor),
-            const SizedBox(width: AppSizes.spaceSmall),
-            Expanded(
-              child: Text(
-                position == null
-                    ? 'Konumu haritada onayla *'
-                    : 'Konum onaylandı',
-                style: context.textTheme.bodyLarge,
+          child: Container(
+            width: double.infinity,
+            constraints: const BoxConstraints(minHeight: AppSizes.fieldHeight),
+            padding: AppPadding.primaryHorizontal,
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: position == null
+                    ? context.accentColor
+                    : context.dividerColor,
               ),
+              borderRadius: AppRadius.primaryCircular,
             ),
-            AppIcon(AppIcons.arrowRight, color: context.textTertiary),
-          ],
+            child: Row(
+              children: [
+                AppIcon(AppIcons.location, color: context.accentColor),
+                const SizedBox(width: AppSizes.spaceSmall),
+                Expanded(
+                  child: Text(
+                    position == null
+                        ? 'Konumu haritada onayla *'
+                        : 'Konum onaylandı',
+                    style: context.textTheme.bodyLarge,
+                  ),
+                ),
+                if (_reverseGeocoding)
+                  const SizedBox.square(
+                    dimension: AppSizes.iconMedium,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else
+                  AppIcon(AppIcons.arrowRight, color: context.textTertiary),
+              ],
+            ),
+          ),
         ),
-      ),
+        if (_reverseGeocoding) ...[
+          const SizedBox(height: AppSizes.spaceSmall),
+          Text(
+            'Seçtiğiniz pin için adres önerisi hazırlanıyor…',
+            style: context.textTheme.bodySmall?.copyWith(
+              color: context.textSecondary,
+            ),
+          ),
+        ],
+        if (_reverseError != null) ...[
+          const SizedBox(height: AppSizes.spaceSmall),
+          _errorStrip(_reverseError!, () async {
+            final currentPosition = widget.controller.position;
+            if (currentPosition != null) {
+              await _suggestAddressForPosition(currentPosition);
+            }
+          }),
+        ],
+      ],
     );
   }
 }
