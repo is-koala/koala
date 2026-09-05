@@ -19,6 +19,7 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
+import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/empty_state.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
@@ -536,10 +537,12 @@ class _MyJobsPageState extends MyJobsPagemodel {
               icon: openingChatJobId == job.jobId
                   ? const SizedBox.square(
                       dimension: AppSizes.iconSmall,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                        strokeWidth: MyJobsPagemodel._spinnerStroke,
+                      ),
                     )
-                  : Icon(
-                      Icons.chat_bubble_outline_rounded,
+                  : AppIcon(
+                      AppIcons.chat,
                       color: foreground,
                       size: AppSizes.icon,
                     ),

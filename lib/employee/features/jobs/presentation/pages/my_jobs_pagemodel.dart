@@ -1,6 +1,9 @@
 part of 'my_jobs_page.dart';
 
 abstract class MyJobsPagemodel extends State<MyJobsPage> {
+  /// Küçük buton göstergesi varsayılan kalınlıkta dolu görünmesin.
+  static const double _spinnerStroke = 2;
+
   final AssignmentService _service = AssignmentService();
   final ChatService _chatService = ChatService();
 

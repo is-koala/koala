@@ -9,6 +9,7 @@ import 'package:koala/employee/features/company_detail/models/company.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
+import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/network/api_exception.dart';
@@ -169,7 +170,7 @@ class _CompanyInformationsPageState extends CompanyInformationsPagemodel {
       key: const ValueKey('company-location'),
       shape: RoundedRectangleBorder(
         side: BorderSide(color: context.dividerColor),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadius.smallCircular,
       ),
       title: const Text('Şirket Konumu*'),
       subtitle: Text(
@@ -178,7 +179,7 @@ class _CompanyInformationsPageState extends CompanyInformationsPagemodel {
             : '${location.latitude.toStringAsFixed(5)}, '
                   '${location.longitude.toStringAsFixed(5)}',
       ),
-      trailing: const Icon(Icons.location_on_outlined),
+      trailing: const AppIcon(AppIcons.location),
       onTap: pickLocation,
     );
   }

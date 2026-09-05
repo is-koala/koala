@@ -179,7 +179,9 @@ class _BJobDetailPageState extends BJobDetailPageModel {
         icon: _isStartingPayment
             ? const SizedBox.square(
                 dimension: AppSizes.iconSmall,
-                child: CircularProgressIndicator(strokeWidth: 2),
+                child: CircularProgressIndicator(
+                  strokeWidth: BJobDetailPageModel._spinnerStroke,
+                ),
               )
             : const AppIcon(AppIcons.shield, size: AppSizes.iconSmall),
         label: const Text('Güvenli Ödemeyi Tamamla'),

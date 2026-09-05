@@ -6,10 +6,12 @@ import 'package:koala/employee/features/auth/models/pending_verification.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/profile_avatar.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/button_navbar.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
@@ -386,8 +388,8 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
                 color: context.accentColor,
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                Icons.camera_alt,
+              child: AppIcon(
+                AppIcons.camera,
                 color: context.onAccentColor,
                 size: AppSizes.iconSmall,
               ),
