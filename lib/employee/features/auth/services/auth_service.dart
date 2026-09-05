@@ -129,11 +129,14 @@ class AuthService {
         },
       );
       return user;
-    } catch (error) {
+    } catch (error, stackTrace) {
       if (error is ApiException) rethrow;
-      throw const ApiException(
+      debugPrint('Giriş sonrası profil doğrulaması başarısız: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      throw ApiException(
         message: 'Hesap bilgilerin doğrulanamadı. Lütfen yeniden giriş yap.',
         type: ApiErrorType.unknown,
+        cause: error,
       );
     }
   }
