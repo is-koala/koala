@@ -25,7 +25,7 @@ Flutter 3.47.1 (stable), Dart SDK `^3.8.1`. The font is Poppins.
 
 **Write in Turkish.** The user writes in Turkish and expects Turkish answers. In-code comments, `///` doc comments and all user-facing strings are Turkish. Variable and class names stay English — that is the pattern of the existing codebase.
 
-**Never commit.** Do not run `git commit` or `git push`. When a task is done, summarize the changed files and stop; the user commits themselves. This is an absolute rule.
+**Commit only with explicit user authorization.** By default, summarize the changed files and let the user commit. When the user explicitly authorizes it, the agent may create focused commits, push a feature branch, open a pull request and merge that pull request. Never push directly to `main`; keep unrelated changes out of each commit and report every commit hash.
 
 **Visual verification is done by the user.** They are the one who runs the app, sends screenshots and asks for fixes. A green `flutter analyze` plus a green `flutter build` mean "it compiles", never "it looks right" — do not conflate the two. If you made a visual change, say explicitly that you did not verify it on screen and point out what to look at.
 
@@ -165,19 +165,21 @@ Everything else (`/apply`, `/review`, `/company-detail`, `/chat-detail`, `/setti
 
 ### Deep links
 
-`app_links` listens in `app.dart`. A link carrying a `token` query parameter is routed to `/auth/register-type/register/creating-password?token=...` — this is the e-mail verification flow. The listener is registered in `initState` and is never cancelled.
+`app_links` listens in `app.dart`; the subscription is cancelled in `dispose`. `AppLinkDestination` accepts only the running flavor's exact native scheme (`koala-dev`, `koala-staging`, `koala`), an exact known host and the expected single non-empty query values. Registration opens `/auth/register-type/register/creating-password`, password reset opens `/reset-password`, and payment return opens `/payment-result`.
+
+Cold-start links can arrive before `SplashPage` finishes loading the session. `AppLinkCoordinator` holds the last valid link until `SessionManager.isInitialized`, then opens it once; navigating earlier makes the synchronous router guard send it back to splash.
 
 ### Backend
 
-**Auth is wired to a real backend; everything else is still fake.** This is the single most important thing to know about this codebase.
+**All runtime data services are wired to the real backend.** Fakes live only in tests; production pages must not invent sessions or domain data locally.
 
-The API is a Spring Boot service in a separate repository (`github.com/yustyy/koala`): layered `webAPI → business → dataAccess`, Postgres + Liquibase, RabbitMQ for mail/SMS/push, R2 for files, Iyzico for payments. Every response comes wrapped in the same envelope — `{success, message, httpStatus, path, timeStamp, correlationId, data}` — and errors add `errorCode` plus a `details` array of field errors. Messages are localized; the app sends `Accept-Language: tr`.
+The API is a Spring Boot service in the private `is-koala/koala-backend` repository: layered `webAPI → business → dataAccess`, Postgres + Liquibase, RabbitMQ for mail/SMS/push, S3-compatible storage for files, and Iyzico for payments. Every response comes wrapped in the same envelope — `{success, message, httpStatus, path, timeStamp, correlationId, data}` — and errors add `errorCode` plus a `details` array of field errors. Messages are localized; the app sends `Accept-Language: tr`.
 
 **The network layer lives in `lib/product/network/`** and is shared by both apps:
 
 | File | Responsibility |
 |---|---|
-| `api_config.dart` | Base URL and timeouts. The URL defaults to `https://api.iskoala.com` and is overridden with `--dart-define=API_BASE_URL=...` (`http://10.0.2.2:8080` on the Android emulator). |
+| `api_config.dart` | Flavor, base URL, app-link scheme and timeouts. Both `--flavor` and `--dart-define=API_BASE_URL=...` are mandatory; an invalid or missing environment fails closed before networking starts. |
 | `api_paths.dart` | Endpoint paths, plus the set of paths that need no token. |
 | `api_client.dart` | The only place `dio` is touched: unwraps the envelope, turns `DioException` into `ApiException`. `putFile` is the multipart upload path — it builds the `FormData` and forces the content type, because the base options say `application/json`. |
 | `api_exception.dart` | `ApiException` / `ApiErrorType` — the single error type services and pages see. |
@@ -326,7 +328,9 @@ Three things worth knowing:
 
 **There are no fake services left.** Every `services/` class in the app talks to the real API. (`home/services/location_service.dart` is not a data service — it is the device's own location permission flow.)
 
-Endpoints that exist on the server and have no app surface yet: payments (`POST /job-assignments/{id}/payment-session`, `GET /users/me/payouts`) — **this blocks the timesheet, since check-in needs escrow**; notifications and push tokens (`/users/me/notifications`, `/users/me/devices/push-token`); sessions (`/users/me/sessions`); education CRUD (`/users/me/educations`, needs the university/faculty/department pickers off `/reference/**`); availability and job alerts (`/users/me/availability`, `/users/me/job-alerts`); blocks and reports (`/users/me/blocks`, `/reports`); company creation (`POST /companies` plus identity verification); employer tools (`/users/me/talent-pool`, `/users/me/job-templates`).
+Employer payment is wired through `POST /job-assignments/{id}/payment-session`. The hosted Iyzico checkout opens in the platform's in-app browser (`SFSafariViewController` on iOS, Custom Tabs on Android), never as an unrestricted embedded WebView. The return link only triggers a refresh; the app shows success from the backend assignment/payment state, not from query parameters.
+
+Endpoints that exist on the server and have no app surface yet: payouts (`GET /users/me/payouts`); push-token registration (`/users/me/devices/push-token`); availability and job alerts (`/users/me/availability`, `/users/me/job-alerts`); blocks and reports (`/users/me/blocks`, `/reports`); employer tools (`/users/me/talent-pool`, `/users/me/job-templates`).
 
 > The orphaned fakes were deleted once the employer's job flow landed: `profile/services/fake_user.dart` and its `profile/models/user.dart`, `jobs/services/my_jobs_service.dart`, `business/features/chat/services/b_chat_service.dart`. `employee/features/profile/` and `business/features/chat/` are `presentation/` only now — a feature carries `models/` and `services/` only when it has data of its own.
 - `GET /jobs` is ready to be wired: `JobSummaryDto` carries `latitude`/`longitude`, `GET /jobs/{jobId}` returns the richer `JobDetailDto` (description, duties, dress code, age range, full address, creator, company) and the search takes a bounding box (`minLatitude`/`maxLatitude`/`minLongitude`/`maxLongitude`). Only the category mapping is missing.
@@ -510,12 +514,7 @@ Do not build against these until the backend developer confirms they shipped.
 
 ## State of the world you should know
 
-**Demo shortcuts wired into the UI** — these fake a login and must come out when the backend lands:
-
-- `login_page.dart` has an "İş Veren Arayüzünü Gör (Demo)" text button that writes `user_type: business` and jumps to `/business/home`.
-- `email_verification_pending_page.dart` has the same shortcut for both types.
-
-Every place that needs the real backend is marked with a `// TODO(backend):` comment — `grep -rn "TODO(backend)" lib` is the shortest route to the list.
+**There are no demo-login shortcuts in the runtime UI.** A logged-in state is created only from backend-issued access and refresh tokens; role selection alone never opens a session.
 
 **Wired and working:**
 
