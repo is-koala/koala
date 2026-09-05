@@ -18,6 +18,10 @@ abstract final class AppIcons {
   static const String notification = 'bell';
   static const String plus = 'plus';
 
+  /// Taşma menüsü (üç nokta). Başlık çubuğunda tek başına duran eylemler
+  /// yerine birden fazla eylemi bir menüde toplayan düğme.
+  static const String more = 'more';
+
   // ────────────────────────────────────── Genel Eylemler & Yönler
   static const String arrowLeft = 'arrowLeft';
   static const String arrowRight = 'arrowRight';
@@ -71,6 +75,11 @@ abstract final class AppIcons {
   static const String alert = 'alertCircle';
   static const String info = 'infoCircle';
   static const String shield = 'shield';
+
+  /// Şikayet eylemi. "İhbar et / işaretle" anlamı ikon setinde bu adla;
+  /// [shield] güvenlik bölümünün kendisini, bu ise tek bir şikayeti
+  /// anlatıyor.
+  static const String flag = 'flag';
   static const String building = 'building';
   static const String paint = 'palette';
   static const String task = 'task';
