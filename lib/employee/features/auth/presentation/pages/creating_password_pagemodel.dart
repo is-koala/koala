@@ -39,13 +39,8 @@ abstract class CreatingPasswordPagemodel extends State<CreatingPasswordPage> {
       passwordController.text == confirmPasswordController.text &&
       passwordController.text.isNotEmpty;
 
-  bool get isPasswordStrong {
-    final password = passwordController.text;
-    return password.length >= 8 &&
-        password.contains(RegExp(r'[A-Z]')) &&
-        password.contains(RegExp(r'[a-z]')) &&
-        password.contains(RegExp(r'[0-9]'));
-  }
+  bool get isPasswordStrong =>
+      PasswordRule.isSatisfiedBy(passwordController.text);
 
   /// Zorunlu sözleşmelerin hepsi işaretlendi mi. Backend eksik onayla kaydı
   /// reddettiği için buton bu sağlanana kadar pasif duruyor.

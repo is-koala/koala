@@ -49,6 +49,7 @@ import 'package:koala/employee/features/jobs/presentation/pages/apply_page.dart'
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/settings/presentation/pages/account_info_page.dart';
 import 'package:koala/employee/features/settings/presentation/pages/address_page.dart';
+import 'package:koala/employee/features/settings/presentation/pages/change_password_page.dart';
 import 'package:koala/employee/features/settings/presentation/pages/identity_verification_page.dart';
 import 'package:koala/product/network/session_manager.dart';
 
@@ -454,6 +455,14 @@ class RouterManager {
       GoRoute(
         path: '/business/sessions',
         pageBuilder: (context, state) => _page(state, const BSessionsPage()),
+      ),
+
+      // Parola kullanıcıya ait, tarafına değil: iki uygulamanın ayarları da
+      // aynı ekrana çıkıyor.
+      GoRoute(
+        path: '/change-password',
+        pageBuilder: (context, state) =>
+            _page(state, const ChangePasswordPage()),
       ),
 
       GoRoute(
