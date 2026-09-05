@@ -13,7 +13,6 @@ import 'package:koala/employee/features/profile/presentation/widgets/profile_ava
 import 'package:koala/employee/features/profile/presentation/widgets/experience_sheet.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/profile_reviews.dart';
 import 'package:koala/employee/features/profile/services/experience_service.dart';
-import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
@@ -21,10 +20,12 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/app_icon.dart';
+import 'package:koala/product/widgets/confirm_dialog.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
-import 'package:koala/product/widgets/notification_bell.dart';
 import 'package:provider/provider.dart';
+
+part 'profile_pagemodel.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -33,42 +34,18 @@ class ProfilePage extends StatefulWidget {
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage>
-    with AutomaticKeepAliveClientMixin<ProfilePage> {
-  final ExperienceService _experienceService = ExperienceService();
-  final EducationService _educationService = EducationService();
-
+class _ProfilePageState extends ProfilePageModel {
   /// Profil fotoğrafının kenar uzunluğu.
   static const double _avatarSize = 100;
 
   /// Rozet şeridinin yüksekliği; rozetler kare görseller.
   static const double _badgeStripHeight = 150;
 
-  /// Navbar'ın altında kalmasın diye sayfanın sonuna eklenen pay. Profilde
-  /// liste değil tek sütun var, o yüzden standart paydan geniş.
-  static const double _bottomClearance = 120;
+  /// Navbar'ın altında kalmasın diye sayfanın sonuna eklenen pay.
+  static const double _bottomClearance = AppSizes.navBarClearance;
 
   /// Hata durumundaki ikon; boş durum ekranlarındaki ölçüyle aynı.
   static const double _errorIconSize = 64;
-
-  @override
-  void initState() {
-    super.initState();
-    // Sayfa `ShellPage`'in `PageView`'ında bir kez kurulup canlı kaldığı için
-    // ilk kare çizildikten sonra tek seferlik yükleme yapılıyor; sekmeye her
-    // dönüşte `initState` çalışmıyor.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<UserProvider>().load();
-    });
-  }
-
-  Future<void> _navigateToAccountInfo(CurrentUser user) async {
-    await context.push('/account-info', extra: user);
-    // Düzenleme ekranı kaydı doğrudan provider üzerinden güncelliyor; burada
-    // yalnızca ekranın açık kaldığı sürede sunucuda değişen bir şey varsa
-    // yakalamak için sessiz tazeleme yapılıyor.
-    if (mounted) await context.read<UserProvider>().load(silent: true);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -87,7 +64,6 @@ class _ProfilePageState extends State<ProfilePage>
             icon: AppIcon(AppIcons.building, color: context.textPrimary),
             tooltip: 'Takip ettiklerim',
           ),
-          const NotificationBell(route: '/notifications'),
           IconButton(
             onPressed: () async {
               await context.push('/settings');
@@ -107,11 +83,6 @@ class _ProfilePageState extends State<ProfilePage>
       },
     );
   }
-
-  /// Sekme değiştikçe sayfa yeniden kurulmasın: `initState`'teki tek seferlik
-  /// yükleme ancak böyle tek sefer kalıyor, kaydırma konumu da korunuyor.
-  @override
-  bool get wantKeepAlive => true;
 
   Widget _errorState(String message) {
     return Center(
@@ -159,12 +130,12 @@ class _ProfilePageState extends State<ProfilePage>
               aboutProfile(user),
               const SizedBox(height: AppSizes.spaceLarge),
               cvArea(user),
-              const SizedBox(height: AppSizes.spaceXLarge),
+              const SizedBox(height: AppSizes.spaceLarge),
               rosettes(user),
               experienceSection(user),
-              const SizedBox(height: AppSizes.spaceLarge),
+              const SizedBox(height: AppSizes.spaceMedium),
               educationSection(user),
-              const SizedBox(height: AppSizes.spaceLarge),
+              const SizedBox(height: AppSizes.spaceMedium),
               ProfileReviews(userId: user.id),
               const SizedBox(height: _bottomClearance),
             ],
@@ -280,7 +251,7 @@ class _ProfilePageState extends State<ProfilePage>
             itemBuilder: (context, index) => _badge(user.badges[index]),
           ),
         ),
-        const SizedBox(height: AppSizes.spaceXLarge),
+        const SizedBox(height: AppSizes.spaceLarge),
       ],
     );
   }
@@ -340,7 +311,7 @@ class _ProfilePageState extends State<ProfilePage>
             ),
           ],
         ),
-        const SizedBox(height: AppSizes.space),
+        const SizedBox(height: AppSizes.spaceTiny),
         if (user.experiences.isEmpty)
           Text(
             'Henüz bir deneyim eklemedin.',
@@ -384,7 +355,7 @@ class _ProfilePageState extends State<ProfilePage>
             ),
           ],
         ),
-        const SizedBox(height: AppSizes.space),
+        const SizedBox(height: AppSizes.spaceTiny),
         if (user.educations.isEmpty)
           Text(
             'Henüz bir eğitim eklemedin.',
@@ -408,206 +379,6 @@ class _ProfilePageState extends State<ProfilePage>
           }),
       ],
     );
-  }
-
-  /// Tarih aralığı ve kademe. Not ortalaması varsa o da ekleniyor —
-  /// girilmemişse hiç yazılmıyor, "0.0" kötü not gibi okunurdu.
-  String _educationDuration(Education education) {
-    final parts = <String>[
-      education.durationLabel,
-      education.type.displayName,
-      if (education.gpa != null) 'GNO ${education.gpa!.toStringAsFixed(2)}',
-    ];
-
-    return parts.where((part) => part.isNotEmpty).join(' · ');
-  }
-
-  Future<void> _addEducation() async {
-    final result = await EducationSheet.show(context);
-    if (result == null || !mounted) return;
-
-    await _saveEducation(
-      () => _educationService.create(
-        universityId: result.universityId,
-        facultyId: result.facultyId,
-        departmentId: result.departmentId,
-        type: result.type,
-        startDate: result.startDate,
-        gpa: result.gpa,
-        endDate: result.endDate,
-      ),
-      successMessage: 'Eğitim eklendi',
-    );
-  }
-
-  Future<void> _editEducation(Education education) async {
-    final result = await EducationSheet.show(context, initial: education);
-    if (result == null || !mounted) return;
-
-    await _saveEducation(
-      () => _educationService.update(
-        educationId: education.id,
-        universityId: result.universityId,
-        facultyId: result.facultyId,
-        departmentId: result.departmentId,
-        type: result.type,
-        startDate: result.startDate,
-        gpa: result.gpa,
-        endDate: result.endDate,
-      ),
-      successMessage: 'Eğitim güncellendi',
-    );
-  }
-
-  /// Kaydı siler. Geri alınamıyor, önce onay soruluyor.
-  Future<void> _deleteEducation(Education education) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: const RoundedRectangleBorder(
-          borderRadius: AppRadius.secondaryCircular,
-        ),
-        title: Text('Eğitimi sil', style: dialogContext.textTheme.titleMedium),
-        content: Text(
-          '"${education.universityName ?? 'Bu kayıt'}" silinecek ve geri '
-          'alınamayacak.',
-          style: dialogContext.textTheme.bodyMedium?.copyWith(
-            color: dialogContext.textSecondary,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Vazgeç'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-            child: const Text('Sil'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true || !mounted) return;
-
-    await _saveEducation(
-      () => _educationService.delete(education.id),
-      successMessage: 'Eğitim silindi',
-    );
-  }
-
-  /// Ekleme, güncelleme ve silmenin ortak gövdesi.
-  ///
-  /// Eğitimler `/users/me` yanıtından okunuyor; her değişiklikten sonra
-  /// kullanıcı tazeleniyor, dönen kayıt tek başına listeye yamanmıyor.
-  Future<void> _saveEducation(
-    Future<void> Function() call, {
-    required String successMessage,
-  }) async {
-    try {
-      await call();
-      if (!mounted) return;
-      await context.read<UserProvider>().load(silent: true);
-      if (mounted) AppToast.success(context, successMessage);
-    } on ApiException catch (error) {
-      if (mounted) AppToast.error(context, error.message);
-    }
-  }
-
-  /// Deneyim ekler.
-  Future<void> _addExperience() async {
-    final result = await ExperienceSheet.show(context);
-    if (result == null || !mounted) return;
-
-    await _saveExperience(
-      () => _experienceService.create(
-        title: result.title,
-        startDate: result.startDate,
-        companyName: result.companyName,
-        employmentType: result.employmentType,
-        cityName: result.cityName,
-        endDate: result.endDate,
-        description: result.description,
-      ),
-      successMessage: 'Deneyim eklendi',
-    );
-  }
-
-  /// Deneyimi düzenler.
-  Future<void> _editExperience(Experience experience) async {
-    final result = await ExperienceSheet.show(context, initial: experience);
-    if (result == null || !mounted) return;
-
-    await _saveExperience(
-      () => _experienceService.update(
-        experienceId: experience.id,
-        title: result.title,
-        startDate: result.startDate,
-        companyName: result.companyName,
-        employmentType: result.employmentType,
-        cityName: result.cityName,
-        endDate: result.endDate,
-        description: result.description,
-      ),
-      successMessage: 'Deneyim güncellendi',
-    );
-  }
-
-  /// Deneyimi siler. Geri alınamıyor, önce onay soruluyor.
-  Future<void> _deleteExperience(Experience experience) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: const RoundedRectangleBorder(
-          borderRadius: AppRadius.secondaryCircular,
-        ),
-        title: Text('Deneyimi sil', style: dialogContext.textTheme.titleMedium),
-        content: Text(
-          '"${experience.title}" kaydı silinecek ve geri alınamayacak.',
-          style: dialogContext.textTheme.bodyMedium?.copyWith(
-            color: dialogContext.textSecondary,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Vazgeç'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-            child: const Text('Sil'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true || !mounted) return;
-
-    await _saveExperience(
-      () => _experienceService.delete(experience.id),
-      successMessage: 'Deneyim silindi',
-    );
-  }
-
-  /// Ekleme, güncelleme ve silmenin ortak gövdesi.
-  ///
-  /// Deneyimler `/users/me` yanıtından okunuyor; her değişiklikten sonra
-  /// kullanıcı tazeleniyor, dönen kayıt tek başına listeye yamanmıyor.
-  Future<void> _saveExperience(
-    Future<void> Function() call, {
-    required String successMessage,
-  }) async {
-    try {
-      await call();
-      if (!mounted) return;
-      AppToast.success(context, successMessage);
-      await context.read<UserProvider>().load(silent: true);
-    } on ApiException catch (error) {
-      if (!mounted) return;
-      AppToast.error(context, error.message);
-    }
   }
 
   Column aboutProfile(CurrentUser user) {

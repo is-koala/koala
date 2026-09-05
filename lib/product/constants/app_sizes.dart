@@ -40,6 +40,10 @@ class AppSizes {
   /// Ayar ve bilgi satırlarındaki dolu renkli ikon dairesi.
   static const double iconCircle = 40.0;
 
+  /// Liste satırlarındaki renkli ikon kutusu. [iconCircle]'dan büyük:
+  /// içinde `icon` boyunda bir ikon var ve iki yanında nefes payı kalıyor.
+  static const double iconTile = 44.0;
+
   /// Harita üzerindeki iş pininin kenar uzunluğu.
   static const double mapPin = 48.0;
 

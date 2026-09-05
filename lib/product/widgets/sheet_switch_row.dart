@@ -6,6 +6,8 @@ import 'package:koala/product/extensions/context_extensions.dart';
 
 /// Bottom sheet içindeki açma/kapama satırı.
 ///
+/// İki uygulamanın sheet'leri de kullanabilsin diye `product/` altında.
+///
 /// `SwitchListTile` **kullanılamıyor**: içeride bir `ListTile` kuruyor ve
 /// `AppBottomSheet`'in renkli kabuğu araya girdiği için Flutter
 /// "background color or ink splashes may be invisible" assert'ini düşürüyor.

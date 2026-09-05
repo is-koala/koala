@@ -45,7 +45,7 @@ class BSettingsPage extends StatelessWidget {
         MyListTile(
           icon: AppIcons.mobile,
           title: "Oturumlar",
-          onTap: () => context.push('/sessions'),
+          onTap: () => context.push('/business/sessions'),
         ),
         MyListTile(
           icon: AppIcons.paint,

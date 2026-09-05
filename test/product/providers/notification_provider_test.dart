@@ -317,4 +317,41 @@ void main() {
       expect(api.requests, hasLength(1));
     });
   });
+
+  group('NotificationProvider eşzamanlılık', () {
+    // Sessiz yükleme göstergeyi açmıyor ama yine de tek başına uçmalı:
+    // bayrak tek olduğunda zilin ensureLoaded'ı ile ekranın load'u aynı
+    // anda listeyi yeniden kuruyordu.
+    test('sessiz yükleme ikinci yüklemeyi engeller', () async {
+      final api = FakeApi(
+        handler: (_) => FakeApiResponse(
+          statusCode: 200,
+          body: feedResponse(page: 0, last: true),
+        ),
+      );
+
+      final provider = providerWith(api);
+      final silent = provider.load(silent: true);
+      final loud = provider.load();
+      await Future.wait([silent, loud]);
+
+      expect(api.requests, hasLength(1));
+      expect(provider.notifications, hasLength(1));
+    });
+
+    test('yükleme bitince kapı yeniden açılır', () async {
+      final api = FakeApi(
+        handler: (_) => FakeApiResponse(
+          statusCode: 200,
+          body: feedResponse(page: 0, last: true),
+        ),
+      );
+
+      final provider = providerWith(api);
+      await provider.load(silent: true);
+      await provider.load();
+
+      expect(api.requests, hasLength(2));
+    });
+  });
 }

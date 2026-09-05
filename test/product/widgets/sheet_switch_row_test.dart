@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:koala/employee/features/profile/presentation/widgets/sheet_switch_row.dart';
+import 'package:koala/product/widgets/sheet_switch_row.dart';
 import 'package:koala/product/widgets/app_bottom_sheet.dart';
 
-import '../../../../../support/pump.dart';
+import '../../support/pump.dart';
 
 Future<void> pumpInSheet(
   WidgetTester tester, {

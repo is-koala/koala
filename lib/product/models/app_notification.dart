@@ -158,8 +158,8 @@ class AppNotification {
 
   final DateTime? sentAt;
 
-  /// Okunma anı. Tek tek okundu işaretleme ucu yok — yalnızca hepsini
-  /// birden işaretleyen `POST /users/me/notifications/read` var.
+  /// Okunma anı. Tek tek (`POST .../{id}/read`) ya da toptan
+  /// (`POST .../read`) işaretlenebiliyor.
   final DateTime? readAt;
 
   bool get isRead => readAt != null;

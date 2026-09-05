@@ -22,6 +22,12 @@ class NotificationProvider extends ChangeNotifier {
   int _unreadCount = 0;
   int _page = 0;
   bool _isLast = true;
+
+  /// Bir ilk-sayfa isteği uçuyor mu. [_isLoading]'den ayrı tutuluyor:
+  /// sessiz yükleme göstergeyi açmıyor ama yine de tek başına uçmalı.
+  /// İkisini tek bayrakta toplayınca sessiz yol korumasız kalıyor ve iki
+  /// yükleme listeyi birlikte yeniden kuruyordu.
+  bool _isFetching = false;
   bool _isLoading = false;
   bool _isLoadingMore = false;
   bool _isMarkingRead = false;
@@ -50,7 +56,7 @@ class NotificationProvider extends ChangeNotifier {
   /// zil her ekran çiziminde istek atmamalı — okunmamış sayısı bildirim
   /// ekranı açılıp kapandığında zaten tazeleniyor.
   Future<void> ensureLoaded() async {
-    if (_hasLoaded || _isLoading) return;
+    if (_hasLoaded || _isFetching) return;
     await load(silent: true);
   }
 
@@ -59,8 +65,9 @@ class NotificationProvider extends ChangeNotifier {
   /// [silent] verildiğinde yükleniyor göstergesi açılmıyor — ekrana her
   /// dönüşte listenin boşalıp yeniden dolması göz yoruyor.
   Future<void> load({bool silent = false}) async {
-    if (_isLoading) return;
+    if (_isFetching) return;
 
+    _isFetching = true;
     _isLoading = !silent;
     _errorMessage = null;
     if (!silent) notifyListeners();
@@ -78,6 +85,7 @@ class NotificationProvider extends ChangeNotifier {
     } on ApiException catch (error) {
       _errorMessage = error.message;
     } finally {
+      _isFetching = false;
       _isLoading = false;
       notifyListeners();
     }
@@ -85,7 +93,7 @@ class NotificationProvider extends ChangeNotifier {
 
   /// Sonraki sayfayı listenin sonuna ekler.
   Future<void> loadMore() async {
-    if (_isLoadingMore || _isLoading || _isLast) return;
+    if (_isLoadingMore || _isFetching || _isLast) return;
 
     _isLoadingMore = true;
     notifyListeners();
@@ -134,8 +142,8 @@ class NotificationProvider extends ChangeNotifier {
 
   /// Hepsini okundu işaretler. Başarılıysa `true` döner.
   ///
-  /// Sunucuda tek bir bildirimi işaretleyen uç yok, yalnızca toptan
-  /// işaretleme var. Yanıt kaç kaydın işaretlendiğini söylüyor; sıfır
+  /// Tek tek işaretlemek için [markRead] var; bu, listedeki her şeyi
+  /// birden kapatıyor. Yanıt kaç kaydın işaretlendiğini söylüyor; sıfır
   /// dönmesi hata değil, "zaten hepsi okunmuştu" demek.
   Future<bool> markAllRead() async {
     if (_isMarkingRead || !hasUnread) return false;

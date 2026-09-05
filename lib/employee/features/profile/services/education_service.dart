@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:koala/employee/features/auth/models/education.dart';
+import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
@@ -107,16 +108,8 @@ class EducationService {
       'departmentId': departmentId,
       'type': type.code,
       'gpa': gpa ?? 0,
-      'startDate': _asLocalDate(startDate),
-      'endDate': endDate == null ? null : _asLocalDate(endDate),
+      'startDate': startDate.asLocalDate,
+      'endDate': endDate?.asLocalDate,
     };
-  }
-
-  /// `yyyy-MM-dd`. `toIso8601String` saat de yazıyor ve sunucunun
-  /// `LocalDate` çözümleyicisi onu reddediyor.
-  static String _asLocalDate(DateTime date) {
-    final month = date.month.toString().padLeft(2, '0');
-    final day = date.day.toString().padLeft(2, '0');
-    return '${date.year}-$month-$day';
   }
 }

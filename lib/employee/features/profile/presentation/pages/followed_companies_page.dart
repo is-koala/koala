@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/company_detail/services/company_service.dart';
 import 'package:koala/employee/features/profile/models/followed_company.dart';
+import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
@@ -33,9 +34,6 @@ class _FollowedCompaniesPageState extends State<FollowedCompaniesPage> {
 
   /// Logo kutusunun kenar uzunluğu.
   static const double _logoBox = 48;
-
-  /// Logosu olmayan şirketin zemin tonu.
-  static const double _logoTintAlpha = 0.12;
 
   final List<FollowedCompany> _companies = [];
   int _page = 0;
@@ -210,7 +208,9 @@ class _FollowedCompaniesPageState extends State<FollowedCompaniesPage> {
       height: _logoBox,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: context.accentColor.withValues(alpha: _logoTintAlpha),
+        color: context.accentColor.withValues(
+          alpha: AppColors.surfaceTintAlpha,
+        ),
         borderRadius: AppRadius.innerCircular,
       ),
       child: AppIcon(

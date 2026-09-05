@@ -2,6 +2,7 @@ import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/models/user_address.dart';
 import 'package:koala/employee/features/auth/models/profile_update_result.dart';
 import 'package:koala/employee/features/auth/models/public_profile.dart';
+import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
@@ -102,7 +103,7 @@ class UserService {
       'email': ?email,
       // Backend'deki alan adı bilerek küçük `d` ile: istek DTO'su
       // `birthdate`, yanıt DTO'su `birthDate` kullanıyor.
-      if (birthDate != null) 'birthdate': _asLocalDate(birthDate),
+      if (birthDate != null) 'birthdate': birthDate.asLocalDate,
       'gender': ?gender?.code,
       'jobTitle': ?jobTitle,
       'about': ?about,
@@ -142,7 +143,7 @@ class UserService {
       body: {
         'firstName': firstName,
         'lastName': lastName,
-        'birthDate': _asLocalDate(birthDate),
+        'birthDate': birthDate.asLocalDate,
         'tcIdentityNumber': tcIdentityNumber,
         'tcDocumentNumber': tcDocumentNumber,
       },
@@ -175,12 +176,5 @@ class UserService {
       },
       parse: (data) => UserAddress.fromJson(data! as Map<String, dynamic>),
     );
-  }
-
-  /// `LocalDate` beklendiği için saat kısmı olmadan `yyyy-MM-dd`.
-  static String _asLocalDate(DateTime date) {
-    final month = date.month.toString().padLeft(2, '0');
-    final day = date.day.toString().padLeft(2, '0');
-    return '${date.year}-$month-$day';
   }
 }

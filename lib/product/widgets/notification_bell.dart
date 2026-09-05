@@ -10,9 +10,9 @@ import 'package:provider/provider.dart';
 
 /// Bildirim ekranını açan zil. Rozet yalnızca okunmamış varken çiziliyor.
 ///
-/// Sayı yazılmıyor, nokta gösteriliyor: sunucu bugün bir olay için birden
-/// fazla kayıt üretebildiğinden sayı olduğundan büyük çıkabilir. Nokta
-/// "yeni bir şey var" demeye yetiyor ve yanlış sayı göstermiyor.
+/// Sayı gösteriliyor: akış `IN_APP` kanalına süzüldüğünden bir olay bir
+/// kayıt, yani sayı gerçek. (Kanal ayrımı gelmeden önce sunucu olay başına
+/// birden fazla kayıt yazdığı için burada yalnızca nokta vardı.)
 class NotificationBell extends StatefulWidget {
   const NotificationBell({super.key, required this.route, this.color});
 
@@ -27,6 +27,9 @@ class NotificationBell extends StatefulWidget {
 }
 
 class _NotificationBellState extends State<NotificationBell> {
+  /// Rozette yazılabilecek en büyük sayı; üstü "99+" oluyor.
+  static const int _maxBadgeCount = 99;
+
   @override
   void initState() {
     super.initState();
@@ -37,8 +40,8 @@ class _NotificationBellState extends State<NotificationBell> {
 
   @override
   Widget build(BuildContext context) {
-    final hasUnread = context.select<NotificationProvider, bool>(
-      (provider) => provider.hasUnread,
+    final unreadCount = context.select<NotificationProvider, int>(
+      (provider) => provider.unreadCount,
     );
 
     final icon = AppIcon(
@@ -49,13 +52,19 @@ class _NotificationBellState extends State<NotificationBell> {
 
     return IconButton(
       onPressed: () => context.push(widget.route),
-      icon: hasUnread
-          ? Badge(
-              smallSize: AppSizes.badgeDot,
+      icon: unreadCount == 0
+          ? icon
+          : Badge(
+              // Üç haneli sayı rozeti taşırıyor; okunmamışın kaç tane
+              // olduğu değil, çok olduğu bilgisi yetiyor.
+              label: Text(
+                unreadCount > _maxBadgeCount
+                    ? '$_maxBadgeCount+'
+                    : '$unreadCount',
+              ),
               backgroundColor: AppColors.danger,
               child: icon,
-            )
-          : icon,
+            ),
     );
   }
 }

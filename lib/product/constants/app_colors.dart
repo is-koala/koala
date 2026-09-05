@@ -7,6 +7,14 @@ import 'package:flutter/material.dart';
 /// erişilir (`context.tileColor`, `context.textPrimary` ...).
 /// Bkz. `product/extensions/context_extensions.dart`.
 class AppColors {
+  /// Renkli ikon kutularının ve rozetlerin zemin opaklığı. Renk değil ton
+  /// farkı yaratacak kadar düşük: ikon önde kalmalı, kutu geride.
+  static const double surfaceTintAlpha = 0.12;
+
+  /// Okunmamış / seçili satırın zemin vurgusu. Kutu tonundan daha da
+  /// düşük, çünkü bütün satırı kaplıyor.
+  static const double rowTintAlpha = 0.04;
+
   // ---------------------------------------------------------------- Marka
 
   /// Koala yeşili. Butonlar, seçili durumlar ve business navbar'ı.
