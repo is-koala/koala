@@ -11,7 +11,7 @@ import '../../../../support/fake_api.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('AuthService.login', () {
+  group('Giriş servisi', () {
     late TokenStorage storage;
     late SessionManager session;
 

@@ -34,7 +34,7 @@ const _companyBody = {
 };
 
 void main() {
-  group('createCompany', () {
+  group('Şirket oluşturma', () {
     test(
       'şirket ve yapılandırılmış adres multipart POST ile gönderiliyor',
       () async {

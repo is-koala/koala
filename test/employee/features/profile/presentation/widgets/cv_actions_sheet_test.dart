@@ -6,7 +6,7 @@ import 'package:koala/product/widgets/app_icon.dart';
 import '../../../../../support/pump.dart';
 
 void main() {
-  group('CvActionsSheet', () {
+  group('Özgeçmiş eylem sayfası', () {
     testWidgets('özgeçmiş yokken yalnız yükleme eylemini gösterir', (
       tester,
     ) async {

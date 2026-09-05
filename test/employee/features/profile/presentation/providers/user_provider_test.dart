@@ -23,7 +23,7 @@ UserProvider buildProvider(FakeApi api) {
 }
 
 void main() {
-  group('UserProvider.uploadProfilePicture', () {
+  group('Kullanıcı durumunda profil fotoğrafı yükleme', () {
     test('yükleme sonrası kullanıcı görünür fotoğrafıyla tazelenir', () async {
       final api = FakeApi(
         handler: (options) => options.method == 'PUT'
@@ -53,7 +53,7 @@ void main() {
     });
   });
 
-  group('UserProvider.uploadCv', () {
+  group('Kullanıcı durumunda özgeçmiş yükleme', () {
     test('CV yüklendikten sonra profil durumu tazelenir', () async {
       final api = FakeApi(
         handler: (options) => options.method == 'PUT'
@@ -81,7 +81,7 @@ void main() {
     });
   });
 
-  group('UserProvider.deleteCv', () {
+  group('Kullanıcı durumunda özgeçmiş kaldırma', () {
     test('CV silindikten sonra profil boş durumla tazelenir', () async {
       final api = FakeApi(
         handler: (options) => options.method == 'DELETE'

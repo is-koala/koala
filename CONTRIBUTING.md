@@ -53,7 +53,7 @@ Bir feature en fazla **üç** üst klasör taşır:
 | Klasör | İçerik |
 |---|---|
 | `models/` | Düz veri sınıfları. `fromJson` / `toJson` burada. |
-| `services/` | Verinin geldiği yer. Şu an sahte (fake) sınıflar; gerçek API buraya bağlanacak. |
+| `services/` | Gerçek API çağrılarını `ApiClient` üzerinden yapan servis sınıfları. |
 | `presentation/` | `pages/`, `widgets/`, `providers/` |
 
 `data/` ya da `domain/` diye bir ara katman **yok**; model doğrudan `models/` altında durur. Veri katmanı olmayan feature'lar (`auth`, `settings`) yalnızca `presentation/` taşır.
@@ -353,10 +353,10 @@ Yalnızca o widget'a özgü, paylaşılmayan ölçüler (bir sayfanın kapak yü
 
 ## İkonlar
 
-UI ikonları `hugeicons` paketinden gelir:
+UI ikonları `AppIcons` kataloğundan seçilir ve `AppIcon` ile çizilir:
 
 ```dart
-Icon(HugeIcons.strokeRoundedArrowLeft01, color: context.textPrimary)
+AppIcon(AppIcons.arrowLeft, color: context.textPrimary)
 ```
 
 Eski dosyalarda hâlâ Material `Icons.*` var; yenisini ekleme. Harita pinleri `assets/map_pins/` altındaki SVG'lerden `flutter_svg` ile çizilir (`job_marker_generator.dart`).
@@ -365,11 +365,11 @@ Eski dosyalarda hâlâ Material `Icons.*` var; yenisini ekleme. Harita pinleri `
 
 ## Veri Katmanı
 
-Auth dışındaki her şey hâlâ sahte: veri, feature'ların `services/` klasöründeki fake sınıflardan geliyor. Gerçek API çağrıları `lib/product/network/` altındaki `ApiClient` üzerinden yapılıyor ve hata olarak yalnızca `ApiException` yükseliyor — servisler `dio`'yu görmüyor. Yeni veri eklerken:
+Çalışma zamanı verisinin tamamı feature'ların `services/` sınıfları üzerinden gerçek backend'den gelir. Servisler `lib/product/network/` altındaki `ApiClient`'ı kullanır ve hata olarak yalnızca `ApiException` yükseltir; sayfalar `dio`'yu doğrudan görmez. Fake istemciler yalnız `test/support/` altında, birim ve widget testlerinde kullanılabilir. Yeni veri eklerken:
 
 - Sayfanın içine liste gömme; ilgili repository/service sınıfına koy.
-- Sayfa her zaman `Future` döndüren bir metot üzerinden okusun — gerçek API geldiğinde değişen tek dosya o servis olsun.
-- Model sınıflarına `fromJson` yaz; şimdi kullanılmasa bile geçişi ucuzlatıyor.
+- Sayfa her zaman `Future` döndüren bir servis metodu üzerinden okusun; liste veya örnek yanıt gömme.
+- Model sınıflarına backend sözleşmesiyle uyumlu `fromJson` yaz.
 
 ---
 

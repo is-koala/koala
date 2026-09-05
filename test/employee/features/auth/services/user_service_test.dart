@@ -9,7 +9,7 @@ import 'package:koala/product/network/api_exception.dart';
 import '../../../../support/fake_api.dart';
 
 void main() {
-  group('UserService.uploadProfilePicture', () {
+  group('Kullanıcı servisinde profil fotoğrafı yükleme', () {
     test('fotoğraf image parçasıyla multipart PUT gönderilir', () async {
       final api = FakeApi(
         handler: (_) =>
@@ -28,7 +28,7 @@ void main() {
     });
   });
 
-  group('UserService.uploadCv', () {
+  group('Kullanıcı servisinde özgeçmiş yükleme', () {
     test('CV file parçasıyla yüklenir ve özel dosya adresi döner', () async {
       final api = FakeApi(
         handler: (_) => const FakeApiResponse(
