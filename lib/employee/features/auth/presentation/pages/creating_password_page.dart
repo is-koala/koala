@@ -17,7 +17,7 @@ import 'package:koala/product/network/session_manager.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_button.dart';
-import 'package:koala/product/widgets/my_textfield.dart';
+import 'package:koala/product/widgets/password_field.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 part 'creating_password_pagemodel.dart';
@@ -150,52 +150,29 @@ class _CreatingPasswordPageState extends CreatingPasswordPagemodel {
             ),
           ),
           const SizedBox(height: AppSizes.sectionSpace),
-          MyTextfield(
+          PasswordField(
             labelText: "Şifre",
             controller: passwordController,
-            isObscureText: isVisiblePassword,
-            showSuffixIcon: true,
-            keyboardType: TextInputType.visiblePassword,
+            isHidden: isPasswordHidden,
+            onToggle: () =>
+                setState(() => isPasswordHidden = !isPasswordHidden),
             onChanged: (value) => setState(() {}),
-            suffixIcon: _visibilityToggle(
-              isVisible: isVisiblePassword,
-              onPressed: () =>
-                  setState(() => isVisiblePassword = !isVisiblePassword),
-            ),
           ),
           const SizedBox(height: AppSizes.space),
-          MyTextfield(
+          PasswordField(
             labelText: "Şifre Tekrar",
             controller: confirmPasswordController,
-            isObscureText: isVisibleConfirmPassword,
-            showSuffixIcon: true,
-            keyboardType: TextInputType.visiblePassword,
-            onChanged: (value) => setState(() {}),
-            suffixIcon: _visibilityToggle(
-              isVisible: isVisibleConfirmPassword,
-              onPressed: () => setState(
-                () => isVisibleConfirmPassword = !isVisibleConfirmPassword,
-              ),
+            isHidden: isConfirmPasswordHidden,
+            onToggle: () => setState(
+              () => isConfirmPasswordHidden = !isConfirmPasswordHidden,
             ),
+            onChanged: (value) => setState(() {}),
           ),
           const SizedBox(height: AppSizes.spaceMedium),
           if (passwordController.text.isNotEmpty) _passwordHints(),
           const SizedBox(height: AppSizes.space),
         ],
       ),
-    );
-  }
-
-  Widget _visibilityToggle({
-    required bool isVisible,
-    required VoidCallback onPressed,
-  }) {
-    return IconButton(
-      icon: AppIcon(
-        isVisible ? AppIcons.eyeClosed : AppIcons.eyeOpen,
-        color: context.textSecondary,
-      ),
-      onPressed: onPressed,
     );
   }
 

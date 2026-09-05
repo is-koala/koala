@@ -14,6 +14,7 @@ import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_button.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
+import 'package:koala/product/widgets/password_field.dart';
 
 part 'login_pagemodel.dart';
 
@@ -72,21 +73,13 @@ class _LoginPageState extends LoginPagemodel {
             keyboardType: TextInputType.emailAddress,
           ),
           const SizedBox(height: AppSizes.space),
-          MyTextfield(
+          PasswordField(
             key: const ValueKey('login-password'),
             labelText: 'Şifre',
             controller: passwordController,
-            isObscureText: isPasswordHidden,
-            showSuffixIcon: true,
-            keyboardType: TextInputType.visiblePassword,
-            suffixIcon: IconButton(
-              icon: AppIcon(
-                isPasswordHidden ? AppIcons.eyeClosed : AppIcons.eyeOpen,
-                color: context.textSecondary,
-              ),
-              onPressed: () =>
-                  setState(() => isPasswordHidden = !isPasswordHidden),
-            ),
+            isHidden: isPasswordHidden,
+            onToggle: () =>
+                setState(() => isPasswordHidden = !isPasswordHidden),
           ),
           const SizedBox(height: AppSizes.spaceSmall),
           Padding(
