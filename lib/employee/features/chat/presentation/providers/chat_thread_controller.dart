@@ -36,6 +36,7 @@ class ChatThreadController extends ChangeNotifier {
   bool _isSending = false;
   bool _isCounterpartTyping = false;
   String? _errorMessage;
+  String? _blockedMessage;
   String? _currentUserId;
 
   StreamSubscription<RealtimeEvent>? _events;
@@ -54,6 +55,18 @@ class ChatThreadController extends ChangeNotifier {
   bool get isCounterpartTyping => _isCounterpartTyping;
 
   String? get errorMessage => _errorMessage;
+
+  /// Sohbet engelli olduğu için kapandıysa sunucunun kendi açıklaması,
+  /// değilse `null`.
+  ///
+  /// Engel iki yönlü: iki taraftan biri diğerini engellediyse ikisi de
+  /// yazamıyor. Sunucu kuralı iki yerde uyguluyor — sohbeti açarken ve mesaj
+  /// gönderirken — ve ikisinde de `403` döndürüyor.
+  ///
+  /// Ekranlar bunu görünce mesaj kutusunu kilitliyor. Metni yeniden
+  /// yazmıyoruz: sunucu `Accept-Language: tr` ile zaten "Bu kullanıcıyla
+  /// mesajlaşamazsınız." diyor ve sebebini bilen taraf o.
+  String? get blockedMessage => _blockedMessage;
 
   /// Sayfa atıldıktan sonra gelen geç yanıtlar dinleyicileri uyandırmamalı.
   ///
@@ -90,10 +103,23 @@ class ChatThreadController extends ChangeNotifier {
       }
     } on ApiException catch (error) {
       _errorMessage = error.message;
+      _captureBlock(error);
     } finally {
       _isLoading = false;
       _safeNotify();
     }
+  }
+
+  /// Engel kaynaklı `403`'ü yakalar.
+  ///
+  /// `ApiClient` `401` ile `403`'ü aynı [ApiErrorType.unauthorized] tipine
+  /// indiriyor (`api_client.dart:343`), ayrım yalnızca [ApiException.statusCode]
+  /// ile yapılabiliyor. Bu ayrım önemli: `401` oturumun bitmesi,
+  /// `AuthInterceptor` onu yenilemeye çalışıyor; `403` ise engel ve
+  /// kullanıcı oturumdan atılmamalı.
+  void _captureBlock(ApiException error) {
+    if (error.statusCode != 403) return;
+    _blockedMessage = error.message;
   }
 
   /// Mesaj gönderir. Başarılıysa `true` döner.
@@ -119,6 +145,7 @@ class ChatThreadController extends ChangeNotifier {
       return true;
     } on ApiException catch (error) {
       _errorMessage = error.message;
+      _captureBlock(error);
       return false;
     } finally {
       _isSending = false;

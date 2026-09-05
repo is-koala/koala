@@ -6,14 +6,17 @@ import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/saved_jobs_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/num_extensions.dart';
+import 'package:koala/product/models/report.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
+import 'package:koala/product/widgets/report_sheet.dart';
 import 'package:provider/provider.dart';
 import 'dart:ui';
 
@@ -718,10 +721,27 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
                       style: context.textTheme.titleMedium,
                     ),
                   ),
+                  const Spacer(),
+                  Opacity(opacity: expandProgress, child: _reportButton()),
                 ],
               ),
             )
           : const SizedBox.shrink(),
+    );
+  }
+
+  /// İlanı şikayet eder.
+  ///
+  /// Yalnızca sheet açıkken görünüyor: kapalı hâlde başlıkta yer yok ve
+  /// kullanıcı ilanı henüz okumamış oluyor.
+  Widget _reportButton() {
+    return IconButton(
+      tooltip: 'İlanı Şikayet Et',
+      icon: AppIcon(AppIcons.flag, color: context.textSecondary),
+      onPressed: () => ReportSheet.show(
+        context,
+        ReportTarget.job(jobId: widget.job.id, title: widget.job.title),
+      ),
     );
   }
 

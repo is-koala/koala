@@ -294,6 +294,65 @@ void main() {
     });
   });
 
+  group('engelli sohbet', () {
+    /// Sunucu engelli sohbette `403` ve kendi Türkçe mesajını döndürüyor
+    /// (`messages_tr.properties:319`).
+    const blocked = FakeApiResponse(
+      statusCode: 403,
+      body: {'success': false, 'message': 'Bu kullanıcıyla mesajlaşamazsınız.'},
+    );
+
+    test('mesaj gönderirken gelen 403 sohbeti kilitliyor', () async {
+      final api = FakeApi(
+        handler: (options) => options.method == 'GET'
+            ? const FakeApiResponse(
+                statusCode: 200,
+                body: {
+                  'success': true,
+                  'data': {'content': []},
+                },
+              )
+            : blocked,
+      );
+      final thread = build(api);
+      await thread.load(currentUserId: _me);
+
+      final sent = await thread.send('Merhaba');
+
+      expect(sent, isFalse);
+      // Sunucunun kendi metni gösterilmeli; "yetkin yok" gibi genel bir
+      // metne çevrilmemeli.
+      expect(thread.blockedMessage, 'Bu kullanıcıyla mesajlaşamazsınız.');
+    });
+
+    test('sohbeti açarken gelen 403 de kilitliyor', () async {
+      final thread = build(FakeApi(handler: (_) => blocked));
+
+      await thread.load(currentUserId: _me);
+
+      expect(thread.blockedMessage, 'Bu kullanıcıyla mesajlaşamazsınız.');
+    });
+
+    test('401 engel sayılmıyor', () async {
+      // `ApiErrorType` 401 ile 403'ü aynı tipe indiriyor; ayrım
+      // `statusCode` ile yapılıyor. Süresi dolmuş oturum mesaj kutusunu
+      // kilitlememeli.
+      final thread = build(
+        FakeApi(
+          handler: (_) => const FakeApiResponse(
+            statusCode: 401,
+            body: {'success': false, 'message': 'Oturum süresi doldu.'},
+          ),
+        ),
+      );
+
+      await thread.load(currentUserId: _me);
+
+      expect(thread.blockedMessage, isNull);
+      expect(thread.errorMessage, 'Oturum süresi doldu.');
+    });
+  });
+
   group('dispose', () {
     // Sohbetten hızlıca çıkıldığında geç gelen yanıt "used after being
     // disposed" ile uygulamayı düşürmemeli.

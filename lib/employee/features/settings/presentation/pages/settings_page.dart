@@ -73,6 +73,16 @@ class SettingsPage extends StatelessWidget {
           onTap: () => context.push('/sessions'),
         ),
         MyListTile(
+          icon: AppIcons.shield,
+          title: "Şikayetlerim",
+          onTap: () => context.push('/reports'),
+        ),
+        MyListTile(
+          icon: AppIcons.userBlock,
+          title: "Engellediklerim",
+          onTap: () => context.push('/blocked-users'),
+        ),
+        MyListTile(
           icon: AppIcons.paint,
           title: "Görünüm",
           value: context.watch<ThemeProvider>().themeMode.label,

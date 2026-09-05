@@ -315,6 +315,32 @@ class ApiPaths {
   static const String reverseAddressCandidate =
       '/locations/address-candidates/reverse';
 
+  // ------------------------------------------------------------------ Şikayet
+
+  /// Kullanıcı ya da içerik şikayeti açma. Gövde dört hedef alanından
+  /// (`reportedUserId`, `jobId`, `messageId`, `imageId`) en az birini
+  /// taşımak zorunda; kendini şikayet etmek `400`.
+  static const String reports = '/reports';
+
+  /// Oturum sahibinin açtığı şikayetler. Sayfalı, varsayılan `size=20`.
+  ///
+  /// Moderasyonun gördüğü `/admin/reports` uygulamaya kapalı.
+  static const String myReports = '$reports/me';
+
+  // ---------------------------------------------------------------- Engelleme
+
+  /// Oturum sahibinin engellediği kullanıcılar. **Sayfalı değil**; düz bir
+  /// liste dönüyor.
+  static const String userBlocks = '/users/me/blocks';
+
+  /// Tek bir kullanıcıyı engelleme (`POST`) ve engeli kaldırma (`DELETE`).
+  ///
+  /// `POST` gövdeyi zorunlu tutuyor (`@RequestBody @Valid`): gerekçe boş olsa
+  /// bile en azından `{}` gönderilmeli. İkisi de idempotent — aynı kişiyi
+  /// yeniden engellemek ya da engellenmemiş birinin engelini kaldırmak hata
+  /// üretmiyor.
+  static String userBlock(String userId) => '$userBlocks/$userId';
+
   // ------------------------------------------------------------- Doğrulamalar
 
   /// E-posta ya da telefon değişikliğinin 6 haneli kodunu onaylar.

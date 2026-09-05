@@ -98,4 +98,46 @@ abstract class BUserProfilePageModel extends State<BUserProfilePage> {
 
   /// Meslek: profil geldiyse oradan, gelmediyse başvurudakinden.
   String? get _jobTitle => _profile?.jobTitle ?? widget.applicant.jobTitle;
+
+  /// Başlık çubuğundaki şikayet düğmesi.
+  ///
+  /// Kullanıcı kimliği gelmemiş bir başvuruda çizilmiyor: hedefsiz şikayet
+  /// sunucudan `400` alırdı, basıldığında hata veren bir düğme göstermek
+  /// yerine düğme hiç olmuyor.
+  Widget? _reportAction() {
+    final userId = widget.applicant.user.id;
+    if (userId.isEmpty) return null;
+
+    return IconButton(
+      tooltip: 'Şikayet Et',
+      icon: AppIcon(AppIcons.flag, color: context.textPrimary),
+      onPressed: () => ReportSheet.show(
+        context,
+        ReportTarget.user(userId: userId, name: widget.applicant.fullName),
+      ),
+    );
+  }
+
+  /// Başlık çubuğundaki engelleme düğmesi.
+  ///
+  /// Şikayet düğmesiyle aynı sebeple kimliksiz başvuruda çizilmiyor. İşveren
+  /// burada hep bir **adayı** görüyor, kendini değil: kendini engelleme yolu
+  /// açılmıyor.
+  ///
+  /// Şikayetten farklı olarak ekran kapanmıyor — sohbet değil profil, iş
+  /// başvurusu duruyor ve işveren başvuruyu görmeye devam edebilmeli.
+  Widget? _blockAction() {
+    final userId = widget.applicant.user.id;
+    if (userId.isEmpty) return null;
+
+    return IconButton(
+      tooltip: 'Engelle',
+      icon: const AppIcon(AppIcons.userBlock, color: AppColors.danger),
+      onPressed: () => BlockUserAction.confirmAndBlock(
+        context,
+        userId: userId,
+        name: widget.applicant.fullName,
+      ),
+    );
+  }
 }
