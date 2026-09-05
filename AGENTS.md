@@ -25,7 +25,7 @@ Flutter 3.47.1 (stable), Dart SDK `^3.8.1`. The font is Poppins.
 
 **Write in Turkish.** The user writes in Turkish and expects Turkish answers. In-code comments, `///` doc comments and all user-facing strings are Turkish. Variable and class names stay English — that is the pattern of the existing codebase.
 
-**Commit only with explicit user authorization.** By default, summarize the changed files and let the user commit. When the user explicitly authorizes it, the agent may create focused commits, push a feature branch, open a pull request and merge that pull request. Never push directly to `main`; keep unrelated changes out of each commit and report every commit hash.
+**Work through feature branches and pull requests.** Create focused commits, push the feature branch and open a pull request. Never push directly to `main`; keep unrelated changes out of each commit and report every commit hash. Merging remains a separate release decision.
 
 **Visual verification is done by the user.** They are the one who runs the app, sends screenshots and asks for fixes. A green `flutter analyze` plus a green `flutter build` mean "it compiles", never "it looks right" — do not conflate the two. If you made a visual change, say explicitly that you did not verify it on screen and point out what to look at.
 
@@ -165,7 +165,7 @@ Everything else (`/apply`, `/review`, `/company-detail`, `/chat-detail`, `/setti
 
 ### Deep links
 
-`app_links` listens in `app.dart`; the subscription is cancelled in `dispose`. `AppLinkDestination` accepts only the running flavor's exact native scheme (`koala-dev`, `koala-staging`, `koala`), an exact known host and the expected single non-empty query values. Registration opens `/auth/register-type/register/creating-password`, password reset opens `/reset-password`, and payment return opens `/payment-result`.
+`app_links` listens in `app.dart`; the subscription is cancelled in `dispose`. `AppLinkDestination` accepts only the running flavor's exact native scheme (`koala-dev`, `koala-staging`, `koala`), an exact known host and the required non-empty query values. The canonical host contract lives in `docs/deep-links.md`; unknown extra query parameters are ignored, while duplicate or missing required parameters remain invalid. Registration opens `/auth/register-type/register/creating-password`, password reset opens `/reset-password`, e-mail verification opens its token handoff page, and payment return opens `/payment-result`.
 
 Cold-start links can arrive before `SplashPage` finishes loading the session. `AppLinkCoordinator` holds the last valid link until `SessionManager.isInitialized`, then opens it once; navigating earlier makes the synchronous router guard send it back to splash.
 
@@ -575,4 +575,4 @@ A `426` is handled **once, globally**: `ApiClient` closes `AppUpdateGate` and `M
 - When adding values to the constant files, give them meaningful names and a `///` comment saying *why* that value, not what it is.
 - Before deleting anything, verify it is committed, and report what was deleted along with the command to undo it.
 - When the user sends a screenshot, do not guess the problem; trace it from the code and explain the cause. Most layout problems come from constraints — a missing `Center`/`Expanded`/`stretch` and the like.
-- When the task is done, give a summary and stop. Commit, push, open a PR or merge only when the user has explicitly authorized that action; keep every commit focused and report its hash.
+- When the task is done, give a summary and stop. Keep every commit focused, report its hash and leave merging as a separate release decision.

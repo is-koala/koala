@@ -26,8 +26,8 @@ class AgreementVersion {
   /// Onaylanması zorunlu mu.
   final bool mandatory;
 
-  /// Sözleşme metninin adresi. Seed verisinde boş; doldurulunca başlık
-  /// tıklanabilir hâle getirilecek.
+  /// Sözleşme metninin public HTTPS adresi. Dolu ve geçerliyse başlık
+  /// harici tarayıcıda açılabilir.
   final String? contentUrl;
 
   final DateTime? effectiveFrom;

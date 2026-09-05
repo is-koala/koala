@@ -125,6 +125,8 @@ class _CreatingPasswordPageState extends CreatingPasswordPagemodel {
           for (final agreement in agreements)
             ConsentCheckbox(
               label: agreement.type.consentLabel,
+              linkText: agreement.type.displayName,
+              contentUrl: agreement.contentUrl,
               isMandatory: agreement.mandatory,
               value: consents[agreement.id] ?? false,
               onChanged: (value) => toggleConsent(agreement.id, value),
