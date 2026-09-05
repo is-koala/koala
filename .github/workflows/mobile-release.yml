@@ -25,7 +25,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
@@ -50,13 +50,6 @@ jobs:
     needs: validate
     runs-on: ubuntu-latest
     environment: production
-    env:
-      KOALA_ANDROID_KEYSTORE_BASE64: ${{ secrets.KOALA_ANDROID_KEYSTORE_BASE64 }}
-      KOALA_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.KOALA_ANDROID_KEYSTORE_PASSWORD }}
-      KOALA_ANDROID_KEY_ALIAS: ${{ secrets.KOALA_ANDROID_KEY_ALIAS }}
-      KOALA_ANDROID_KEY_PASSWORD: ${{ secrets.KOALA_ANDROID_KEY_PASSWORD }}
-      KOALA_ANDROID_MAPS_API_KEY_PRODUCTION: ${{ secrets.KOALA_ANDROID_MAPS_API_KEY_PRODUCTION }}
-      PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
     steps:
       - uses: actions/checkout@v4
 
@@ -66,7 +59,7 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
           cache: gradle
 
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
@@ -74,19 +67,28 @@ jobs:
 
       - name: İmzalama sırlarını doğrula
         shell: bash
+        env:
+          KOALA_ANDROID_KEYSTORE_BASE64: ${{ secrets.KOALA_ANDROID_KEYSTORE_BASE64 }}
+          KOALA_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.KOALA_ANDROID_KEYSTORE_PASSWORD }}
+          KOALA_ANDROID_KEY_ALIAS: ${{ secrets.KOALA_ANDROID_KEY_ALIAS }}
+          KOALA_ANDROID_KEY_PASSWORD: ${{ secrets.KOALA_ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
           test -n "$KOALA_ANDROID_KEYSTORE_BASE64"
           test -n "$KOALA_ANDROID_KEYSTORE_PASSWORD"
           test -n "$KOALA_ANDROID_KEY_ALIAS"
           test -n "$KOALA_ANDROID_KEY_PASSWORD"
-          test -n "$KOALA_ANDROID_MAPS_API_KEY_PRODUCTION"
-          test -n "$PLAY_SERVICE_ACCOUNT_JSON"
           printf '%s' "$KOALA_ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/koala-upload.jks"
           echo "KOALA_ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/koala-upload.jks" >> "$GITHUB_ENV"
 
       - name: Production AAB derle
+        env:
+          KOALA_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.KOALA_ANDROID_KEYSTORE_PASSWORD }}
+          KOALA_ANDROID_KEY_ALIAS: ${{ secrets.KOALA_ANDROID_KEY_ALIAS }}
+          KOALA_ANDROID_KEY_PASSWORD: ${{ secrets.KOALA_ANDROID_KEY_PASSWORD }}
+          KOALA_ANDROID_MAPS_API_KEY_PRODUCTION: ${{ secrets.KOALA_ANDROID_MAPS_API_KEY_PRODUCTION }}
         run: |
+          test -n "$KOALA_ANDROID_MAPS_API_KEY_PRODUCTION"
           flutter pub get
           flutter build appbundle --release --flavor production \
             --dart-define-from-file=config/production.json \
@@ -100,7 +102,7 @@ jobs:
           retention-days: 30
 
       - name: Play internal kanalına yükle
-        uses: r0adkll/upload-google-play@v1
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.iskoala.koala
@@ -113,19 +115,10 @@ jobs:
     needs: validate
     runs-on: macos-latest
     environment: production
-    env:
-      APPLE_DISTRIBUTION_CERTIFICATE_BASE64: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_BASE64 }}
-      APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD }}
-      APPLE_PROVISIONING_PROFILE_BASE64: ${{ secrets.APPLE_PROVISIONING_PROFILE_BASE64 }}
-      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-      APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
-      APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
-      APP_STORE_CONNECT_API_KEY_P8_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8_BASE64 }}
-      KOALA_IOS_MAPS_API_KEY_PRODUCTION: ${{ secrets.KOALA_IOS_MAPS_API_KEY_PRODUCTION }}
     steps:
       - uses: actions/checkout@v4
 
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
@@ -133,6 +126,15 @@ jobs:
 
       - name: Apple imzalama materyalini geçici anahtarlığa kur
         shell: bash
+        env:
+          APPLE_DISTRIBUTION_CERTIFICATE_BASE64: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_BASE64 }}
+          APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+          APPLE_PROVISIONING_PROFILE_BASE64: ${{ secrets.APPLE_PROVISIONING_PROFILE_BASE64 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_P8_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8_BASE64 }}
+          KOALA_IOS_MAPS_API_KEY_PRODUCTION: ${{ secrets.KOALA_IOS_MAPS_API_KEY_PRODUCTION }}
         run: |
           set -euo pipefail
           test -n "$APPLE_DISTRIBUTION_CERTIFICATE_BASE64"
@@ -177,6 +179,9 @@ jobs:
 
       - name: TestFlight'a yükle
         shell: bash
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
         run: |
           set -euo pipefail
           IPA_PATH="$(find build/ios/ipa -maxdepth 1 -name '*.ipa' -print -quit)"
@@ -188,6 +193,8 @@ jobs:
       - name: Geçici imzalama materyalini temizle
         if: always()
         shell: bash
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
         run: |
           security delete-keychain "$KOALA_RELEASE_KEYCHAIN" 2>/dev/null || true
           rm -f "$HOME/Library/MobileDevice/Provisioning Profiles/koala-production.mobileprovision"

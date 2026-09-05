@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:koala/product/models/account_deletion.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/account_deletion_view.dart';
 
@@ -12,7 +13,7 @@ void main() {
     tester,
   ) async {
     String? sentReason;
-    final requestCompleter = Completer<void>();
+    final requestCompleter = Completer<AccountDeletion>();
 
     await pumpInApp(
       tester,
@@ -40,11 +41,37 @@ void main() {
     expect(sentReason, 'Artık kullanmıyorum');
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
-    requestCompleter.complete();
+    requestCompleter.complete(
+      const AccountDeletion(status: AccountDeletionStatus.requested),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Talebin alındı'), findsOneWidget);
     expect(find.text('Silme Talebi Oluştur'), findsNothing);
+  });
+
+  testWidgets('açık iş engelini talep sonucunda görünür kılar', (tester) async {
+    await pumpInApp(
+      tester,
+      AccountDeletionView(
+        requestDeletion: ({reason}) async => const AccountDeletion(
+          status: AccountDeletionStatus.requested,
+          blockedReason: 'Devam eden işinizin tamamlanması bekleniyor.',
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Silme Talebi Oluştur'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Hesabımı Sil'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Talebin alındı'), findsOneWidget);
+    expect(
+      find.text('Devam eden işinizin tamamlanması bekleniyor.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('engel kalktığında'), findsOneWidget);
   });
 
   testWidgets('sunucu engelini kullanıcıya gösterir ve yeniden denetir', (
@@ -82,7 +109,10 @@ void main() {
     for (final brightness in Brightness.values) {
       await pumpInApp(
         tester,
-        AccountDeletionView(requestDeletion: ({reason}) async {}),
+        AccountDeletionView(
+          requestDeletion: ({reason}) async =>
+              const AccountDeletion(status: AccountDeletionStatus.requested),
+        ),
         brightness: brightness,
       );
 

@@ -21,6 +21,7 @@ void main() {
       expect(manifest, contains('android:autoVerify="true"'));
       expect(manifest, contains('android:scheme="https"'));
       expect(manifest, contains('android:host="iskoala.com"'));
+      expect(manifest, contains('android:host="www.iskoala.com"'));
       for (final path in canonicalPaths) {
         expect(manifest, contains('android:pathPrefix="$path"'));
       }
@@ -36,6 +37,7 @@ void main() {
     expect(manifest, contains('android:scheme="https"'));
     expect(manifest, contains('android:host="staging.iskoala.com"'));
     expect(manifest, isNot(contains('android:host="iskoala.com"')));
+    expect(manifest, isNot(contains('android:host="www.iskoala.com"')));
     for (final path in canonicalPaths) {
       expect(manifest, contains('android:pathPrefix="$path"'));
     }

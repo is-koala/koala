@@ -6,13 +6,15 @@ import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/models/account_deletion.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/confirm_dialog.dart';
 import 'package:koala/product/widgets/my_button.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
 
-typedef AccountDeletionRequest = Future<void> Function({String? reason});
+typedef AccountDeletionRequest =
+    Future<AccountDeletion> Function({String? reason});
 
 /// Hesap silme talebini iki uygulama için aynı davranışla başlatır.
 ///
@@ -36,7 +38,7 @@ class _AccountDeletionViewState extends State<AccountDeletionView> {
 
   final TextEditingController _reasonController = TextEditingController();
   bool _isLoading = false;
-  bool _isRequested = false;
+  AccountDeletion? _deletion;
   String? _errorMessage;
 
   @override
@@ -65,11 +67,11 @@ class _AccountDeletionViewState extends State<AccountDeletionView> {
     final trimmedReason = _reasonController.text.trim();
 
     try {
-      await widget.requestDeletion(
+      final deletion = await widget.requestDeletion(
         reason: trimmedReason.isEmpty ? null : trimmedReason,
       );
       if (!mounted) return;
-      setState(() => _isRequested = true);
+      setState(() => _deletion = deletion);
     } on ApiException catch (error) {
       if (!mounted) return;
       setState(() => _errorMessage = error.message);
@@ -80,7 +82,8 @@ class _AccountDeletionViewState extends State<AccountDeletionView> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isRequested) return _success();
+    final deletion = _deletion;
+    if (deletion != null) return _success(deletion);
 
     return ListView(
       padding: AppPadding.primaryAll,
@@ -156,7 +159,7 @@ class _AccountDeletionViewState extends State<AccountDeletionView> {
     );
   }
 
-  Widget _success() {
+  Widget _success(AccountDeletion deletion) {
     return Center(
       child: SingleChildScrollView(
         padding: AppPadding.primaryAll,
@@ -173,14 +176,44 @@ class _AccountDeletionViewState extends State<AccountDeletionView> {
             Text('Talebin alındı', style: context.textTheme.titleLarge),
             const SizedBox(height: AppSizes.spaceSmall),
             Text(
-              'Hesabın uygunluk kontrollerinden sonra anonimleştirilecek. '
-              'Devam eden iş, uyuşmazlık veya ödeme varsa işlem bunlar '
-              'sonuçlanana kadar bekleyebilir.',
+              deletion.isBlocked
+                  ? 'Aşağıdaki engel kalktığında bekleme süresi ve uygunluk '
+                        'kontrolleri tamamlanarak hesabın anonimleştirilecek.'
+                  : 'Hesabın bekleme süresi ve uygunluk kontrollerinden sonra '
+                        'anonimleştirilecek.',
               textAlign: TextAlign.center,
               style: context.textTheme.bodyMedium?.copyWith(
                 color: context.textSecondary,
               ),
             ),
+            if (deletion.isBlocked) ...[
+              const SizedBox(height: AppSizes.spaceMedium),
+              Container(
+                padding: AppPadding.card,
+                decoration: BoxDecoration(
+                  color: context.elevatedColor,
+                  borderRadius: AppRadius.secondaryCircular,
+                  border: Border.all(color: AppColors.warning),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const AppIcon(
+                      AppIcons.info,
+                      size: AppSizes.iconMedium,
+                      color: AppColors.warning,
+                    ),
+                    const SizedBox(width: AppSizes.spaceSmall),
+                    Expanded(
+                      child: Text(
+                        deletion.blockedReason!,
+                        style: context.textTheme.bodyMedium,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),

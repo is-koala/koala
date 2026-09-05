@@ -51,8 +51,9 @@ void main() {
       'mobile-v*',
       'git merge-base --is-ancestor',
       'tool/validate_release_tag.dart',
+      'subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2',
       'flutter build appbundle',
-      'r0adkll/upload-google-play',
+      'r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5',
       'track: internal',
       'flutter build ipa',
       'xcrun altool',
@@ -66,6 +67,26 @@ void main() {
     ]) {
       expect(workflow, contains(contract), reason: '$contract eksik');
     }
+    expect(
+      workflow,
+      isNot(contains('r0adkll/upload-google-play@v1')),
+      reason: 'Play yükleme aksiyonu değişebilir bir etikete bağlı olmamalı',
+    );
+    expect(
+      workflow,
+      isNot(contains('subosito/flutter-action@v2')),
+      reason: 'Flutter kurulum aksiyonu değişebilir bir etikete bağlı olmamalı',
+    );
+    expect(
+      workflow,
+      isNot(contains('    env:\n      KOALA_ANDROID_KEYSTORE_BASE64')),
+      reason: 'Android sırları job genelindeki tüm adımlara yayılmamalı',
+    );
+    expect(
+      workflow,
+      isNot(contains('    env:\n      APPLE_DISTRIBUTION_CERTIFICATE_BASE64')),
+      reason: 'Apple sırları job genelindeki tüm adımlara yayılmamalı',
+    );
   });
 
   test('yayın ve gizlilik belgeleri insan kapılarını açıkça ayırır', () {
