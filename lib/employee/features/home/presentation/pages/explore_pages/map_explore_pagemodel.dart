@@ -8,7 +8,6 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
 
   bool _loading = true;
   LatLng? _currentLatLng;
-  final LatLng _defaultLatLng = const LatLng(39.925533, 32.866287);
 
   String _loadingMessage = 'Harita Yükleniyor...';
 
