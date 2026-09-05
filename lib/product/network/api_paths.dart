@@ -327,6 +327,20 @@ class ApiPaths {
   /// Moderasyonun gördüğü `/admin/reports` uygulamaya kapalı.
   static const String myReports = '$reports/me';
 
+  // ---------------------------------------------------------------- Engelleme
+
+  /// Oturum sahibinin engellediği kullanıcılar. **Sayfalı değil**; düz bir
+  /// liste dönüyor.
+  static const String userBlocks = '/users/me/blocks';
+
+  /// Tek bir kullanıcıyı engelleme (`POST`) ve engeli kaldırma (`DELETE`).
+  ///
+  /// `POST` gövdeyi zorunlu tutuyor (`@RequestBody @Valid`): gerekçe boş olsa
+  /// bile en azından `{}` gönderilmeli. İkisi de idempotent — aynı kişiyi
+  /// yeniden engellemek ya da engellenmemiş birinin engelini kaldırmak hata
+  /// üretmiyor.
+  static String userBlock(String userId) => '$userBlocks/$userId';
+
   // -------------------------------------------------------------------- Legal
 
   static const String agreements = '/legal/agreements';
