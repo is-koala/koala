@@ -148,7 +148,13 @@ class SessionManager extends ChangeNotifier {
       await updateUserType(isEmployer: isEmployer);
       await prefs.setBool(_key(isLoggedInKey), true);
     } catch (_) {
-      await end();
+      // Temizlik de başarısız olabilir: imzasız bir iOS build'inde anahtarlık
+      // silme `-34018` veriyordu ve bu ikincil hata, oturumun neden
+      // açılamadığını anlatan asıl hatanın yerine geçip teşhisi imkânsız
+      // kılıyordu. Yutuluyor ki `rethrow` asıl hatayı yükseltsin.
+      try {
+        await end();
+      } catch (_) {}
       rethrow;
     }
   }

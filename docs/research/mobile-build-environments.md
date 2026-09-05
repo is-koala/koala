@@ -76,7 +76,7 @@ Yukarıdakiler uygulama planıdır; aşağıdaki native komutlar bu araştırma 
 /private/tmp/flutter-3.47.1/bin/flutter analyze --no-pub
 /private/tmp/flutter-3.47.1/bin/flutter test --flavor staging --dart-define=API_BASE_URL=https://api.iskoala.com
 /private/tmp/flutter-3.47.1/bin/flutter build apk --debug --flavor staging --dart-define=API_BASE_URL=https://api.iskoala.com
-/private/tmp/flutter-3.47.1/bin/flutter build ios --simulator --debug --no-codesign --flavor staging --dart-define=API_BASE_URL=https://api.iskoala.com
+/private/tmp/flutter-3.47.1/bin/flutter build ios --simulator --debug --flavor staging --dart-define=API_BASE_URL=https://api.iskoala.com
 xcodebuild -list -project ios/Runner.xcodeproj
 ```
 

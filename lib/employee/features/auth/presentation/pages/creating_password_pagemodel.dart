@@ -166,6 +166,16 @@ abstract class CreatingPasswordPagemodel extends State<CreatingPasswordPage> {
       context.go(isBusiness ? '/employer-type' : '/explore');
     } on ApiException catch (error) {
       if (!mounted) return;
+
+      // Kayıt ilk çağrıda tamamlanmış olabilir: bekleyen kayıt tüketildiği
+      // için ikinci çağrı `404` döner. Oturum açıksa hesap gerçekten
+      // oluşmuştur; kullanıcıya hata göstermek başarılı kaydı başarısız
+      // gibi sunar.
+      if (SessionManager().isLoggedIn) {
+        context.go(isBusiness ? '/employer-type' : '/explore');
+        return;
+      }
+
       AppToast.error(context, error.message);
     } finally {
       if (mounted) setState(() => isSubmitting = false);
