@@ -76,7 +76,10 @@ class UserBlockService {
     return _apiClient.get<List<UserBlock>>(
       ApiPaths.userBlocks,
       parse: (data) => data is List
-          ? data.whereType<Map<String, dynamic>>().map(UserBlock.fromJson).toList()
+          ? data
+                .whereType<Map<String, dynamic>>()
+                .map(UserBlock.fromJson)
+                .toList()
           : const [],
     );
   }

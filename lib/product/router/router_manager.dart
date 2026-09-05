@@ -472,8 +472,7 @@ class RouterManager {
 
       GoRoute(
         path: '/blocked-users',
-        pageBuilder: (context, state) =>
-            _page(state, const BlockedUsersPage()),
+        pageBuilder: (context, state) => _page(state, const BlockedUsersPage()),
       ),
 
       GoRoute(
