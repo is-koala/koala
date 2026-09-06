@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
 import 'package:koala/business/features/home/models/b_job_post.dart';
 import 'package:koala/business/features/home/models/job_applicant.dart';
+import 'package:koala/business/features/home/presentation/providers/b_job_templates_provider.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
 import 'package:koala/business/features/home/services/employer_job_service.dart';
 import 'package:koala/business/features/home/services/b_payment_browser.dart';
@@ -55,7 +56,10 @@ class _BJobDetailPageState extends BJobDetailPageModel {
 
     return Scaffold(
       backgroundColor: context.backgroundColor,
-      appBar: MyAppbar(title: "İlan Detayı"),
+      appBar: MyAppbar(
+        title: "İlan Detayı",
+        actions: [?_saveAsTemplateAction()],
+      ),
       body: _body(post),
     );
   }

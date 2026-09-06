@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:koala/business/features/home/models/create_job_request.dart';
+import 'package:koala/business/features/home/models/job_template.dart';
+import 'package:koala/business/features/home/presentation/providers/b_job_templates_provider.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
+import 'package:koala/business/features/home/presentation/widgets/b_info_notice.dart';
 import 'package:koala/business/features/home/presentation/widgets/b_option_sheet.dart';
 import 'package:koala/business/features/home/presentation/widgets/b_selection_field.dart';
 import 'package:koala/employee/features/home/models/job.dart';
@@ -56,6 +59,7 @@ class _BCreatePageState extends BCreatePageModel {
             children: [
               _employerNotice(company?.companyName),
               ?_identityNotice(),
+              _templateSection(),
 
               // Temel Bilgiler
               _sectionLabel("Temel Bilgiler"),
@@ -219,6 +223,43 @@ class _BCreatePageState extends BCreatePageModel {
 
   /// Bilgi kutularının zemin opaklığı.
   static const double _noticeAlpha = 0.1;
+
+  /// "Şablondan doldur" düğmesi ve uygulandıktan sonraki bilgi satırı.
+  ///
+  /// Formun en üstünde ama kimlik uyarısının altında: uyarı ilanın hiç
+  /// açılamayacağını söylüyor, şablon yalnızca yazma emeğini azaltıyor.
+  Widget _templateSection() {
+    final appliedName = _appliedTemplateName;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSizes.spaceLarge),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _isLoadingTemplates ? null : _pickTemplate,
+              icon: const AppIcon(AppIcons.fileText, size: AppSizes.iconSmall),
+              label: Text(
+                appliedName == null
+                    ? 'Şablondan Doldur'
+                    : 'Şablon: $appliedName',
+              ),
+            ),
+          ),
+          if (appliedName != null) ...[
+            const SizedBox(height: AppSizes.spaceSmall),
+            const BInfoNotice(
+              message:
+                  'Şablon uygulandı. Adres ve tarih şablona dahil değil; '
+                  'bu ikisini bu ilan için kendiniz girin.',
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 
   /// Doğrulanmamış bireysel işverene gösterilen uyarı.
   ///

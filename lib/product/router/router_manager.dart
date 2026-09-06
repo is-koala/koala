@@ -10,6 +10,7 @@ import 'package:koala/business/features/home/presentation/pages/b_profile_page.d
 import 'package:koala/business/features/home/presentation/pages/b_settings_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_company_info_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_job_detail_page.dart';
+import 'package:koala/business/features/home/presentation/pages/b_job_templates_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_user_profile_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_notifications_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_payment_result_page.dart';
@@ -471,6 +472,12 @@ class RouterManager {
       GoRoute(
         path: '/business/company-info',
         pageBuilder: (context, state) => _page(state, const BCompanyInfoPage()),
+      ),
+
+      GoRoute(
+        path: '/business/job-templates',
+        pageBuilder: (context, state) =>
+            _page(state, const BJobTemplatesPage()),
       ),
 
       GoRoute(

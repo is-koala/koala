@@ -45,6 +45,13 @@ abstract class BCreatePageModel extends State<BCreatePage> {
 
   bool _isSubmitting = false;
 
+  /// Uygulanan şablonun adı; hiç uygulanmadıysa `null`. Düğmenin metnini ve
+  /// "adres ile tarih dahil değil" bilgisini bu belirliyor.
+  String? _appliedTemplateName;
+
+  /// Şablon listesi çekiliyor mu; düğme o sırada kilitli.
+  bool _isLoadingTemplates = false;
+
   /// Başarı kutusunu açar. Gövdesi arayüz tarafında ([BCreatePage]).
   void _showSuccessDialog();
 
@@ -116,6 +123,96 @@ abstract class BCreatePageModel extends State<BCreatePage> {
     if (picked != null && mounted) {
       setState(() => _selectedCategory = picked);
     }
+  }
+
+  // --------------------------------------------------------------- Şablon
+
+  /// Şablon listesini açar ve seçileni forma uygular.
+  ///
+  /// Liste sunucudan bir kez çekiliyor. Boşken sheet açmak yerine nasıl
+  /// şablon oluşturulacağını söylemek gerekiyor: şablon bu formdan değil,
+  /// yayınlanmış bir ilanın detayından çıkarılıyor.
+  Future<void> _pickTemplate() async {
+    if (_isLoadingTemplates) return;
+
+    final provider = context.read<BJobTemplatesProvider>();
+
+    setState(() => _isLoadingTemplates = true);
+    await provider.load();
+    if (!mounted) return;
+    setState(() => _isLoadingTemplates = false);
+
+    final error = provider.errorMessage;
+    if (error != null) {
+      AppToast.error(context, error);
+      return;
+    }
+
+    if (provider.templates.isEmpty) {
+      AppToast.info(
+        context,
+        'Henüz şablonunuz yok. Yayınladığınız bir ilanın detayından '
+        '"Şablon olarak kaydet" ile oluşturabilirsiniz.',
+      );
+      return;
+    }
+
+    final picked = await BOptionSheet.show<JobTemplate>(
+      context,
+      title: 'Şablondan doldur',
+      options: provider.templates,
+      labelOf: (template) => template.templateName,
+    );
+
+    if (picked == null || !mounted) return;
+
+    _applyTemplate(picked);
+  }
+
+  /// Şablonu form alanlarına yazar.
+  ///
+  /// **Adres ve tarih alanlarına dokunulmuyor** — sunucu da taşımıyor, çünkü
+  /// aynı ilan bir sonraki hafta başka güne ve çoğu zaman başka adrese
+  /// açılıyor. Kategori ile sigortanın bu işverende ne olacağına
+  /// [JobTemplate.applyFor] karar veriyor; düşen bir alan varsa uyarı
+  /// yazılıyor, sessizce değiştirilmiyor.
+  void _applyTemplate(JobTemplate template) {
+    final applied = template.applyFor(isCompanyJob: _isCompanyJob);
+
+    setState(() {
+      _titleController.text = template.title ?? '';
+      _descriptionController.text = template.description ?? '';
+      _sectorController.text = template.sector ?? '';
+      _positionController.text = template.position ?? '';
+      _dutiesController.text = template.duties ?? '';
+      _dressCodeController.text = template.dressCode ?? '';
+      _priceController.text = _salaryText(template.salary);
+      _minAgeController.text = template.minAge?.toString() ?? '';
+      _maxAgeController.text = template.maxAge?.toString() ?? '';
+
+      _selectedCategory = applied.category;
+      _selectedType = template.type;
+      _selectedSalaryType = template.salaryType;
+      _experienceRequired = template.experienceRequired;
+      _insuranceRequired = applied.insuranceRequired;
+
+      _appliedTemplateName = template.templateName;
+    });
+
+    final warning = applied.warning;
+    if (warning != null) {
+      AppToast.info(context, warning);
+    }
+  }
+
+  /// Ücreti alana yazılabilir metne çeviriyor.
+  ///
+  /// Tam sayı ücrette ondalık gösterme: `1500.0` yerine `1500`. Küsuratlı
+  /// ücret olduğu gibi kalıyor, alan onu `double.tryParse` ile geri okuyor.
+  static String _salaryText(double? salary) {
+    if (salary == null) return '';
+    if (salary == salary.roundToDouble()) return salary.toStringAsFixed(0);
+    return '$salary';
   }
 
   /// Haritadan koordinat seçtirir.
