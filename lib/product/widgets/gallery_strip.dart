@@ -1,32 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:koala/employee/features/company_detail/models/company_image.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/models/gallery_image.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// Şirket galerisinin yatay kaydırmalı şeridi.
+/// Sıralı bir galerinin yatay şeridi.
 ///
-/// Sunucu galeriyi sıralı döndürüyor ve kapağı kendisi belirliyor; şerit
-/// listeyi olduğu gibi çiziyor. Görsele dokununca tam ekran görüntüleyici
-/// açılıyor.
-class CompanyGalleryStrip extends StatelessWidget {
-  const CompanyGalleryStrip({super.key, required this.images});
+/// Şirket ve ilan galerileri aynı backend modelini taşır. Şerit listeyi
+/// yeniden sıralamaz; sunucunun döndürdüğü sırayı olduğu gibi gösterir.
+class GalleryStrip extends StatelessWidget {
+  const GalleryStrip({super.key, required this.images});
 
-  final List<CompanyImage> images;
+  final List<GalleryImage> images;
 
-  /// Şeridin yüksekliği. Kartın en-boy oranı yaklaşık 4:3 duruyor ve iki
-  /// kart yan yana ekrana sığıyor.
   static const double _stripHeight = 140;
-
-  /// Tek bir kartın genişliği.
   static const double _cardWidth = 180;
-
-  /// Başlık şeridindeki karartmanın opaklığı: fotoğraf seçilsin ama yazı
-  /// okunabilsin.
   static const double _captionScrimAlpha = 0.45;
 
   @override
@@ -46,7 +38,7 @@ class CompanyGalleryStrip extends StatelessWidget {
     final image = images[index];
 
     return GestureDetector(
-      onTap: () => CompanyGalleryViewer.open(context, images, index),
+      onTap: () => GalleryViewer.open(context, images, index),
       child: ClipRRect(
         borderRadius: AppRadius.innerCircular,
         child: SizedBox(
@@ -86,8 +78,6 @@ class CompanyGalleryStrip extends StatelessWidget {
     );
   }
 
-  /// Başlık şeridi. Zemin karartması temadan bağımsız: metin fotoğrafın
-  /// üstünde duruyor, iki temada da aynı fotoğraf.
   Widget _caption(BuildContext context, String caption) {
     return Container(
       padding: AppPadding.badge,
@@ -104,39 +94,36 @@ class CompanyGalleryStrip extends StatelessWidget {
   }
 }
 
-/// Galeriyi tam ekran gösteren sayfa.
-///
-/// Zemin ve üstündeki her şey temadan bağımsız: fotoğraf iki temada da aynı,
-/// o yüzden arka plan her zaman koyu ve ikonlar beyaz.
-class CompanyGalleryViewer extends StatefulWidget {
-  const CompanyGalleryViewer({
+/// Galeriyi yakınlaştırma desteğiyle tam ekran gösteren sayfa.
+class GalleryViewer extends StatefulWidget {
+  const GalleryViewer({
     super.key,
     required this.images,
     required this.initialIndex,
   });
 
-  final List<CompanyImage> images;
+  final List<GalleryImage> images;
   final int initialIndex;
 
   static Future<void> open(
     BuildContext context,
-    List<CompanyImage> images,
+    List<GalleryImage> images,
     int initialIndex,
   ) {
     return Navigator.of(context).push(
       MaterialPageRoute<void>(
         fullscreenDialog: true,
         builder: (_) =>
-            CompanyGalleryViewer(images: images, initialIndex: initialIndex),
+            GalleryViewer(images: images, initialIndex: initialIndex),
       ),
     );
   }
 
   @override
-  State<CompanyGalleryViewer> createState() => _CompanyGalleryViewerState();
+  State<GalleryViewer> createState() => _GalleryViewerState();
 }
 
-class _CompanyGalleryViewerState extends State<CompanyGalleryViewer> {
+class _GalleryViewerState extends State<GalleryViewer> {
   late final PageController _controller = PageController(
     initialPage: widget.initialIndex,
   );
@@ -167,7 +154,7 @@ class _CompanyGalleryViewerState extends State<CompanyGalleryViewer> {
     );
   }
 
-  Widget _page(BuildContext context, CompanyImage image) {
+  Widget _page(BuildContext context, GalleryImage image) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [

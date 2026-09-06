@@ -14,8 +14,11 @@ import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/num_extensions.dart';
 import 'package:koala/product/models/report.dart';
 import 'package:koala/product/network/api_exception.dart';
+import 'package:koala/product/providers/job_gallery_provider.dart';
+import 'package:koala/product/services/job_gallery_service.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
+import 'package:koala/product/widgets/job_gallery_view.dart';
 import 'package:koala/product/widgets/report_sheet.dart';
 import 'package:provider/provider.dart';
 import 'dart:ui';
@@ -26,6 +29,7 @@ class JobDetailBottomSheet extends StatefulWidget {
   final VoidCallback? onClose;
   final ScrollController? scrollController;
   final DraggableScrollableController? sheetController;
+  final JobGalleryService? galleryService;
 
   const JobDetailBottomSheet({
     super.key,
@@ -34,6 +38,7 @@ class JobDetailBottomSheet extends StatefulWidget {
     this.onClose,
     this.scrollController,
     this.sheetController,
+    this.galleryService,
   });
 
   /// Sheet'in kapalı ve tam açık yükseklikleri. Genişleme oranı bu ikisi
@@ -74,6 +79,7 @@ class JobDetailBottomSheet extends StatefulWidget {
 
 class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
   double _sheetSize = 0.5;
+  late final JobGalleryProvider _galleryProvider;
 
   /// `GET /jobs` yalnızca özet döndürüyor: açıklama, görevler, yaş aralığı ve
   /// adres bu ekran açıldığında ayrı bir istekle geliyor. Başlık ve ücret
@@ -131,14 +137,24 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
   @override
   void initState() {
     super.initState();
+    _galleryProvider = JobGalleryProvider(service: widget.galleryService)
+      ..addListener(_onGalleryChanged)
+      ..load(widget.job.id);
     widget.sheetController?.addListener(_onSheetChanged);
     _loadDetail();
   }
 
   @override
   void dispose() {
+    _galleryProvider
+      ..removeListener(_onGalleryChanged)
+      ..dispose();
     widget.sheetController?.removeListener(_onSheetChanged);
     super.dispose();
+  }
+
+  void _onGalleryChanged() {
+    if (mounted) setState(() {});
   }
 
   void _onSheetChanged() {
@@ -312,6 +328,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
           _typeAndPriceRow(expandProgress),
           _sectionTitle('Açıklama', expandProgress),
           _description(expandProgress, isExpanded),
+          if (isExpanded) ..._gallerySection(),
           if (isExpanded && _detailLoading) _detailPlaceholder(),
           if (isExpanded && _detailError != null) _detailErrorRow(),
           if (isExpanded && _detail?.duties != null) ...[
@@ -379,6 +396,20 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
         ],
       ),
     );
+  }
+
+  List<Widget> _gallerySection() {
+    if (_galleryProvider.isEmpty) return const [];
+
+    return [
+      const SizedBox(height: AppSizes.spaceLarge),
+      JobGalleryView(
+        images: _galleryProvider.images,
+        isLoading: _galleryProvider.isLoading,
+        errorMessage: _galleryProvider.errorMessage,
+        onRetry: () => _galleryProvider.load(widget.job.id, force: true),
+      ),
+    ];
   }
 
   /// Detay yüklenirken açıklamanın altında duran gösterge. Başlık, ücret ve

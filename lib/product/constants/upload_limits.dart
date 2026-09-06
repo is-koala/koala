@@ -10,9 +10,12 @@ abstract final class UploadLimits {
   /// Kabul edilen uzantılar (`upload.image-extensions`).
   static const Set<String> imageExtensions = {'png', 'jpg', 'jpeg', 'webp'};
 
-  /// Bir şirket galerisindeki en fazla görsel (`upload.max-company-images`).
+  /// Bir şirket ya da ilan galerisindeki en fazla görsel.
+  ///
+  /// Backend'in `upload.max-company-images` ve `upload.max-job-images`
+  /// değerleri aynı ürün sınırını taşır.
   /// Aşılırsa sunucu `409` döndürüyor.
-  static const int maxCompanyImages = 10;
+  static const int maxGalleryImages = 10;
 
   /// Yükleme kurallarını kullanıcıya anlatan tek satır; ekleme düğmesinin
   /// altında ve logo alanında aynı cümle görünsün diye burada.

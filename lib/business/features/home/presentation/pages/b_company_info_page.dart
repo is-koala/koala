@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:koala/employee/features/company_detail/models/company.dart';
-import 'package:koala/employee/features/company_detail/models/company_image.dart';
+import 'package:koala/product/models/gallery_image.dart';
 import 'package:koala/business/features/home/presentation/providers/b_company_provider.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
@@ -418,7 +418,7 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
                       count == 0
                           ? 'Henüz görsel yok'
                           : '$count görsel · en fazla '
-                                '${UploadLimits.maxCompanyImages}',
+                                '${UploadLimits.maxGalleryImages}',
                       style: context.textTheme.bodySmall?.copyWith(
                         color: context.textTertiary,
                       ),
@@ -438,7 +438,7 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
     );
   }
 
-  Widget _galleryCover(CompanyImage? cover) {
+  Widget _galleryCover(GalleryImage? cover) {
     final placeholder = AppIcon(
       AppIcons.gallery,
       size: AppSizes.iconMedium,

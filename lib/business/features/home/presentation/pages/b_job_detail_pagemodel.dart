@@ -73,7 +73,14 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
       // İlan listesi bu ekrana doğrudan bağlantıyla gelinmişse henüz
       // çekilmemiş olabilir; başvuranlar da yalnızca istendiğinde geliyor.
       final provider = context.read<BJobsProvider>();
+      final companyProvider = context.read<BCompanyProvider>();
+      final user = context.read<UserProvider>().user;
       await provider.load();
+      if (!mounted) return;
+      if (user != null) {
+        await companyProvider.loadFor(user);
+      }
+      if (!mounted) return;
       await provider.ensureApplicants(widget.jobId);
       await _loadAssignment();
     });
