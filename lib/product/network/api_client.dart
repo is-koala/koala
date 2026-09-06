@@ -20,12 +20,11 @@ import 'package:koala/product/network/token_storage.dart';
 /// çevirmek. Servisler dio'yu hiç görmüyor.
 class ApiClient {
   ApiClient._internal() : _dio = _buildDio() {
-    _dio.interceptors.add(
-      AuthInterceptor(
-        tokenStorage: TokenStorage(),
-        tokenDio: _buildDio(),
-        onSessionExpired: SessionManager().end,
-      ),
+    _attachInterceptors(
+      deviceIdentity: DeviceIdentity(),
+      tokenStorage: TokenStorage(),
+      tokenDio: _buildDio(),
+      onSessionExpired: SessionManager().end,
     );
   }
 
@@ -34,10 +33,58 @@ class ApiClient {
   factory ApiClient() => _instance;
 
   /// Testlerde sahte bir `HttpClientAdapter` takılı dio geçilebilsin diye.
+  ///
+  /// Zinciri **üretimdekiyle aynı** kuruyor. Eskiden hiçbir interceptor
+  /// takmıyordu; 630 testin hiçbiri `Authorization` başlığını, `X-Device-Id`'yi
+  /// ya da `401` sonrası yenilemeyi çalıştırmıyordu, yani bir interceptor
+  /// bozulsa hiçbir test kırmızıya dönmüyordu (is-koala/koala#21).
+  ///
+  /// Keychain ve `SharedPreferences` testte yok, o yüzden [tokenStorage] ile
+  /// [deviceIdentity] dışarıdan veriliyor — üretim tekilleri varsayılan
+  /// yapılsaydı testler platform kanalına gitmeye çalışırdı.
   @visibleForTesting
-  ApiClient.withDio(this._dio);
+  ApiClient.withDio(
+    this._dio, {
+    required TokenStorage tokenStorage,
+    required DeviceIdentity deviceIdentity,
+    required Future<void> Function() onSessionExpired,
+  }) {
+    _attachInterceptors(
+      deviceIdentity: deviceIdentity,
+      tokenStorage: tokenStorage,
+      // Yenileme ve tekrar deneme ayrı bir dio'dan gidiyor; testte o da aynı
+      // sahte katmandan geçmeli, yoksa gerçek ağa çıkmaya çalışırdı.
+      tokenDio: Dio(_dio.options)..httpClientAdapter = _dio.httpClientAdapter,
+      onSessionExpired: onSessionExpired,
+    );
+  }
 
   final Dio _dio;
+
+  /// İstek hattının tamamı: cihaz başlığı, sonra oturum.
+  ///
+  /// İki kurucu da buradan geçiyor — zincirin şekli tek yerde durmazsa
+  /// testlerdeki istemci üretimdekinden sessizce ayrılıyor.
+  void _attachInterceptors({
+    required DeviceIdentity deviceIdentity,
+    required TokenStorage tokenStorage,
+    required Dio tokenDio,
+    required Future<void> Function() onSessionExpired,
+  }) {
+    // Cihaz başlığı hem ana istemciye hem yenileme istemcisine gerekiyor:
+    // backend oturumu yenilerken de cihazı doğruluyor.
+    tokenDio.interceptors.add(DeviceInterceptor(deviceIdentity));
+
+    _dio.interceptors
+      ..add(DeviceInterceptor(deviceIdentity))
+      ..add(
+        AuthInterceptor(
+          tokenStorage: tokenStorage,
+          tokenDio: tokenDio,
+          onSessionExpired: onSessionExpired,
+        ),
+      );
+  }
 
   static Dio _buildDio() {
     final dio = Dio(
@@ -57,10 +104,6 @@ class ApiClient {
         responseType: ResponseType.json,
       ),
     );
-
-    // Cihaz başlığı hem ana istemciye hem yenileme istemcisine gerekiyor:
-    // backend oturumu yenilerken de cihazı doğruluyor.
-    dio.interceptors.add(DeviceInterceptor(DeviceIdentity()));
 
     return dio;
   }

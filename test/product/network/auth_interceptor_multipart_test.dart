@@ -7,8 +7,9 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
-import 'package:koala/product/network/auth_interceptor.dart';
 import 'package:koala/product/network/token_storage.dart';
+
+import '../../support/fake_api.dart';
 
 /// Yüklenen dosyanın içeriği. Gövdenin içinde aranabilsin diye okunur bir
 /// metin; testin tamamı bu dizginin tekrar denenen isteğe de ulaşmasına bakıyor.
@@ -17,9 +18,9 @@ const String _fileContent = 'koala-galeri-gorseli';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  // `FakeApi` bu testte kullanılamıyor: `ApiClient.withDio` hiçbir interceptor
-  // bağlamıyor (is-koala/koala#21), yani tekrar deneme yolu oradan hiç
-  // geçmiyor. `AuthInterceptor` burada elle takılıyor.
+  // `FakeApi` istek akışını hiç okumadığı için burada kendi kaydeden sahte
+  // katmanı kullanılıyor; interceptor zincirini artık `ApiClient.withDio`
+  // kendisi kuruyor (is-koala/koala#21).
   group('AuthInterceptor multipart tekrar denemesi', () {
     late Directory tempDir;
     late File uploadedFile;
@@ -184,27 +185,22 @@ _FakeResponse Function(RequestOptions options) _refreshOnceHandler() {
   };
 }
 
-/// Üretimdeki hattın aynısı: `AuthInterceptor` takılı bir dio ve yenilemeyi
-/// kendi interceptor'ına takılmadan yapan ayrı bir `tokenDio`.
+/// Zinciri `ApiClient.withDio` kuruyor; yenileme istemcisi de aynı sahte
+/// katmandan geçtiği için tekrar denenen istek de kaydediliyor.
 ApiClient _clientWithAuthInterceptor({
   required _RecordingAdapter adapter,
   required TokenStorage tokenStorage,
   required Future<void> Function() onSessionExpired,
 }) {
-  Dio buildDio() =>
-      Dio(BaseOptions(baseUrl: 'https://test.local'))
-        ..httpClientAdapter = adapter;
+  final dio = Dio(BaseOptions(baseUrl: 'https://test.local'))
+    ..httpClientAdapter = adapter;
 
-  final dio = buildDio()
-    ..interceptors.add(
-      AuthInterceptor(
-        tokenStorage: tokenStorage,
-        tokenDio: buildDio(),
-        onSessionExpired: onSessionExpired,
-      ),
-    );
-
-  return ApiClient.withDio(dio);
+  return ApiClient.withDio(
+    dio,
+    tokenStorage: tokenStorage,
+    deviceIdentity: FakeDeviceIdentity(),
+    onSessionExpired: onSessionExpired,
+  );
 }
 
 class _MultipartCall {
