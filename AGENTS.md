@@ -184,7 +184,7 @@ Cold-start links can arrive before `SplashPage` finishes loading the session. `A
 
 **All runtime data services are wired to the real backend.** Fakes live only in tests; production pages must not invent sessions or domain data locally.
 
-The API is a Spring Boot service in the private `is-koala/koala-backend` repository: layered `webAPI → business → dataAccess`, Postgres + Liquibase, RabbitMQ for mail/SMS/push, S3-compatible storage for files, and Iyzico for payments. Every response comes wrapped in the same envelope — `{success, message, httpStatus, path, timeStamp, correlationId, data}` — and errors add `errorCode` plus a `details` array of field errors. Messages are localized; the app sends `Accept-Language: tr`.
+The API is a Spring Boot service in the private `is-koala/koala-backend` repository: layered `webAPI → business → dataAccess`, Postgres + Liquibase, RabbitMQ for mail/SMS/push, S3-compatible storage for files, and Iyzico for payments. Every response comes wrapped in the same envelope — `{success, message, httpStatus, path, timeStamp, requestId, data}` — and errors add `errorCode` plus a `details` array of field errors. Messages are localized; the app sends `Accept-Language: tr`.
 
 **The network layer lives in `lib/product/network/`** and is shared by both apps:
 
