@@ -158,26 +158,60 @@ abstract class VerificationCodePagemodel extends State<VerificationCodePage> {
       if (!mounted) return;
 
       if (pending == null) {
+        // Soğuma hata yolunda da kuruluyor. İstemcide zaman aşımına uğrayan
+        // ya da `500` dönen bir `PATCH` sunucuda işlenmiş ve kod gönderilmiş
+        // olabilir; düğmeyi aynı karede yeniden açmak, kullanıcının arka
+        // arkaya basıp pes peşe SMS ürettirmesine izin verirdi. Soğumanın
+        // varlık sebebi zaten tam olarak bu.
+        _armResendCooldown();
         AppToast.error(context, provider.errorMessage ?? 'Kod gönderilemedi.');
         return;
       }
 
       final refreshed = pending.where((item) => item.type == verification.type);
+      if (refreshed.isEmpty) {
+        // Boş liste tek bir anlama geliyor: `UserManager.patchCurrentUser`
+        // gönderilen değer kullanıcının mevcut değerine eşitse doğrulama
+        // açmadan `200` dönüyor. Yani bekleyen doğrulama bu arada (örneğin
+        // başka bir cihazda) tamamlanmış ve değer uygulanmış. Kod istemenin
+        // anlamı kalmadı; "yeni kod gönderildi" demek kullanıcıyı hiç
+        // gelmeyecek bir kod için bekletirdi.
+        //
+        // Çıkış `true` ile: değer gerçekten yazıldı ve `updateProfile`
+        // sağlayıcıdaki kullanıcıyı zaten tazeledi. `false` dönmek çağıranın
+        // doğrulama zincirini keserdi (`verified != true` → `break`), yani
+        // aynı kaydetmede bekleyen ikinci doğrulama hiç sorulmazdı.
+        AppToast.success(
+          context,
+          verification.isEmail
+              ? 'E-posta adresin zaten doğrulanmış.'
+              : 'Telefon numaran zaten doğrulanmış.',
+        );
+        _finish(true);
+        return;
+      }
 
       setState(() {
-        if (refreshed.isNotEmpty) verification = refreshed.first;
+        verification = refreshed.first;
         _codeSecondsLeft = codeLifetime.inSeconds;
-        _resendSecondsLeft = resendCooldown.inSeconds;
         code.clear();
       });
-      // Sayaç bitmişse durmuş olabilir; yeni kodun süresi için tekrar
-      // kuruluyor.
-      _startTicker();
+      _armResendCooldown();
 
       AppToast.success(context, 'Yeni kod gönderildi.');
     } finally {
       if (mounted) setState(() => _isResending = false);
     }
+  }
+
+  /// Soğuma süresini baştan kurar.
+  ///
+  /// Sayaç sıfıra inince kendini durduruyor; süre yeniden kurulduğunda
+  /// tıklama da yeniden başlatılmalı, yoksa kalan saniye hiç azalmaz ve
+  /// düğme bir daha açılmaz.
+  void _armResendCooldown() {
+    setState(() => _resendSecondsLeft = resendCooldown.inSeconds);
+    _startTicker();
   }
 
   void _finish(bool verified) {

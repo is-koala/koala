@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
+import 'package:koala/employee/features/settings/presentation/widgets/settings_hint.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -13,7 +14,7 @@ import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/button_navbar.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
-import 'package:koala/product/widgets/my_textfield.dart';
+import 'package:koala/product/widgets/password_field.dart';
 
 part 'change_password_pagemodel.dart';
 
@@ -53,24 +54,24 @@ class _ChangePasswordPageState extends ChangePasswordPagemodel {
             children: [
               _sessionWarning(),
               const SizedBox(height: AppSizes.spaceLarge),
-              _passwordField(
-                label: 'Mevcut Şifre',
+              PasswordField(
+                labelText: 'Mevcut Şifre',
                 controller: currentPassword,
                 isHidden: isCurrentHidden,
                 onToggle: () =>
                     setState(() => isCurrentHidden = !isCurrentHidden),
               ),
               const SizedBox(height: AppSizes.spaceMedium),
-              _passwordField(
-                label: 'Yeni Şifre',
+              PasswordField(
+                labelText: 'Yeni Şifre',
                 controller: newPassword,
                 isHidden: isNewHidden,
                 onToggle: () => setState(() => isNewHidden = !isNewHidden),
               ),
-              _hint(PasswordRule.requirement),
+              SettingsHint(PasswordRule.requirement),
               const SizedBox(height: AppSizes.spaceMedium),
-              _passwordField(
-                label: 'Yeni Şifre Tekrar',
+              PasswordField(
+                labelText: 'Yeni Şifre Tekrar',
                 controller: confirmation,
                 isHidden: isConfirmationHidden,
                 onToggle: () => setState(
@@ -116,43 +117,6 @@ class _ChangePasswordPageState extends ChangePasswordPagemodel {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _passwordField({
-    required String label,
-    required TextEditingController controller,
-    required bool isHidden,
-    required VoidCallback onToggle,
-  }) {
-    return MyTextfield(
-      labelText: label,
-      controller: controller,
-      isObscureText: isHidden,
-      showSuffixIcon: true,
-      keyboardType: TextInputType.visiblePassword,
-      suffixIcon: IconButton(
-        icon: AppIcon(
-          isHidden ? AppIcons.eyeClosed : AppIcons.eyeOpen,
-          color: context.textSecondary,
-        ),
-        onPressed: onToggle,
-      ),
-    );
-  }
-
-  Widget _hint(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(
-        top: AppSizes.spaceTiny,
-        left: AppSizes.space,
-      ),
-      child: Text(
-        text,
-        style: context.textTheme.bodySmall?.copyWith(
-          color: context.textTertiary,
-        ),
       ),
     );
   }

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
+import 'package:koala/employee/features/settings/presentation/widgets/settings_hint.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
@@ -128,7 +129,7 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
               controller: _tcDocument,
               onChanged: (_) => setState(() {}),
             ),
-            _hint('Kimlik kartının ön yüzündeki seri numarası.'),
+            SettingsHint('Kimlik kartının ön yüzündeki seri numarası.'),
             const SizedBox(height: AppSizes.spaceMedium),
             _birthDateField(),
             const SizedBox(height: AppSizes.navBarClearance),
@@ -160,21 +161,6 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
 
   /// Bilgilendirme metinlerinin satır aralığı.
   static const double _lineHeight = 1.4;
-
-  Widget _hint(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(
-        top: AppSizes.spaceTiny,
-        left: AppSizes.space,
-      ),
-      child: Text(
-        text,
-        style: context.textTheme.bodySmall?.copyWith(
-          color: context.textTertiary,
-        ),
-      ),
-    );
-  }
 
   Widget _birthDateField() {
     final birthDate = _birthDate;

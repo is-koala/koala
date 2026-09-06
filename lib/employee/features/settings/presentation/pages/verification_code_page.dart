@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/models/pending_verification.dart';
 import 'package:koala/employee/features/auth/services/verification_service.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
+import 'package:koala/employee/features/settings/presentation/widgets/settings_hint.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
@@ -93,23 +94,11 @@ class _VerificationCodePageState extends VerificationCodePagemodel {
   /// sayaç ekranın açıldığı andan sayıyor, o yüzden süre bittiğinde kod
   /// girişi kapatılmıyor — geçerliliğe sunucu karar veriyor.
   Widget _remainingLine() {
-    return _note(
+    return SettingsHint(
       hasTimeLeft
           ? 'Kodun geçerlilik süresi: $remainingLabel'
           : 'Kodun süresi dolmuş olabilir. Geçmediyse yeni bir kod iste.',
-    );
-  }
-
-  /// Alanın altındaki soluk açıklama satırı.
-  Widget _note(String text) {
-    return Padding(
       padding: AppPadding.primaryLeft,
-      child: Text(
-        text,
-        style: context.textTheme.bodySmall?.copyWith(
-          color: context.textTertiary,
-        ),
-      ),
     );
   }
 
@@ -145,7 +134,10 @@ class _VerificationCodePageState extends VerificationCodePagemodel {
             ),
           ),
           if (resendCooldownSeconds > 0)
-            _note('$resendCooldownSeconds saniye sonra tekrar isteyebilirsin.'),
+            SettingsHint(
+              '$resendCooldownSeconds saniye sonra tekrar isteyebilirsin.',
+              padding: AppPadding.primaryLeft,
+            ),
         ],
       ),
     );
