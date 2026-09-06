@@ -84,7 +84,7 @@ pumpPage(WidgetTester tester, {bool progressiveAttempt = false}) async {
             'success': true,
             'data': {
               'paymentPageUrl':
-                  'https://sandbox-payment.iyzipay.com/checkoutform/token',
+                  'https://sandbox-cpp.iyzipay.com?token=token&lang=tr',
             },
           },
         );

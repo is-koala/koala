@@ -273,7 +273,7 @@ void main() {
               'success': true,
               'data': {
                 'paymentPageUrl':
-                    'https://sandbox-payment.iyzipay.com/checkout',
+                    'https://sandbox-cpp.iyzipay.com?token=token&lang=tr',
                 'token': 'iyzi-token',
               },
             },
@@ -288,7 +288,7 @@ void main() {
           api.requests.single.path,
           '/job-assignments/asg_1/payment-session',
         );
-        expect(session.paymentPageUrl.host, 'sandbox-payment.iyzipay.com');
+        expect(session.paymentPageUrl.host, 'sandbox-cpp.iyzipay.com');
       },
     );
 
