@@ -96,7 +96,9 @@ abstract class JobAlertFormPageModel extends State<JobAlertFormPage> {
     setState(() => isLoadingDistricts = true);
     try {
       final loaded = await locationService.fetchDistricts(city.id);
-      final existingDistrictName = widget.alert?.districtName;
+      final existingDistrictName = cityWasChanged
+          ? null
+          : widget.alert?.districtName;
       ReferenceLocation? existingDistrict;
       for (final district in loaded) {
         if (district.name == existingDistrictName) {
@@ -130,7 +132,9 @@ abstract class JobAlertFormPageModel extends State<JobAlertFormPage> {
     final draft = JobAlertDraft(
       name: nameController.text,
       category: selectedCategory,
-      cityName: selectedCity?.name ?? widget.alert?.cityName,
+      cityName:
+          selectedCity?.name ??
+          (cityWasChanged ? null : widget.alert?.cityName),
       districtName:
           selectedDistrict?.name ??
           (cityWasChanged ? null : widget.alert?.districtName),

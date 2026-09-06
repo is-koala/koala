@@ -14,7 +14,7 @@ import 'package:provider/provider.dart';
 import '../../../../../support/fake_api.dart';
 
 void main() {
-  testWidgets('düzenleme formu referans listesindeki il ve ilçeyi gösterir', (
+  testWidgets('düzenleme formu opsiyonel ölçütleri temizleyebilir', (
     tester,
   ) async {
     final api = FakeApi(
@@ -55,6 +55,18 @@ void main() {
             ],
           },
         ),
+        '/users/me/job-alerts/alert-1' => const FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {
+              'id': 'alert-1',
+              'alertName': 'Hafta içi alarmı',
+              'minSalary': 100,
+              'active': true,
+            },
+          },
+        ),
         _ => const FakeApiResponse(statusCode: 200, body: {'success': true}),
       },
     );
@@ -87,6 +99,7 @@ void main() {
               category: category,
               cityName: 'Ankara',
               districtName: 'Çankaya',
+              minimumSalary: 100,
               isActive: true,
             ),
             locationService: ReferenceLocationService.withClient(api.client),
@@ -100,5 +113,18 @@ void main() {
     expect(find.text('Barista'), findsOneWidget);
     expect(find.text('Ankara'), findsOneWidget);
     expect(find.text('Çankaya'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Kategori seçimini temizle'));
+    await tester.tap(find.byTooltip('İl seçimini temizle'));
+    final saveButton = find.text('Kaydet');
+    await tester.ensureVisible(saveButton);
+    await tester.tap(saveButton);
+    await tester.pumpAndSettle();
+
+    final updateRequest = api.requests.last;
+    expect(updateRequest.path, '/users/me/job-alerts/alert-1');
+    expect(updateRequest.data, containsPair('categoryId', null));
+    expect(updateRequest.data, containsPair('cityName', null));
+    expect(updateRequest.data, containsPair('districtName', null));
   });
 }

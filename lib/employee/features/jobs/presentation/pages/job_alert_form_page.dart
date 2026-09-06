@@ -55,6 +55,7 @@ class _JobAlertFormPageState extends JobAlertFormPageModel {
                 items: categories,
                 labelOf: (category) => category.name,
                 onChanged: (value) => setState(() => selectedCategory = value),
+                onClear: () => setState(() => selectedCategory = null),
               ),
               const SizedBox(height: AppSizes.spaceMedium),
               _dropdown<ReferenceLocation>(
@@ -63,6 +64,7 @@ class _JobAlertFormPageState extends JobAlertFormPageModel {
                 items: cities,
                 labelOf: (city) => city.name,
                 onChanged: isLoadingLocations ? null : selectCity,
+                onClear: () => selectCity(null),
               ),
               const SizedBox(height: AppSizes.spaceMedium),
               _dropdown<ReferenceLocation>(
@@ -73,6 +75,7 @@ class _JobAlertFormPageState extends JobAlertFormPageModel {
                 onChanged: selectedCity == null || isLoadingDistricts
                     ? null
                     : (value) => setState(() => selectedDistrict = value),
+                onClear: () => setState(() => selectedDistrict = null),
               ),
               const SizedBox(height: AppSizes.spaceMedium),
               MyTextfield(
@@ -92,6 +95,7 @@ class _JobAlertFormPageState extends JobAlertFormPageModel {
                 items: JobType.values,
                 labelOf: (type) => type.displayName,
                 onChanged: (value) => setState(() => selectedType = value),
+                onClear: () => setState(() => selectedType = null),
               ),
               const SizedBox(height: AppSizes.spaceMedium),
               Row(
@@ -149,10 +153,21 @@ class _JobAlertFormPageState extends JobAlertFormPageModel {
     required List<T> items,
     required String Function(T) labelOf,
     required ValueChanged<T?>? onChanged,
+    required VoidCallback onClear,
   }) {
     return DropdownButtonFormField<T>(
+      key: ValueKey('$label-${value?.hashCode ?? 'empty'}'),
       initialValue: value,
-      decoration: InputDecoration(labelText: label),
+      decoration: InputDecoration(
+        labelText: label,
+        suffixIcon: value == null || onChanged == null
+            ? null
+            : IconButton(
+                tooltip: '$label seçimini temizle',
+                onPressed: onClear,
+                icon: const Icon(Icons.clear),
+              ),
+      ),
       isExpanded: true,
       items: items
           .map(
