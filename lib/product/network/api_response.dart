@@ -4,7 +4,7 @@ import 'package:koala/product/network/api_exception.dart';
 ///
 /// ```json
 /// { "success": true, "message": "...", "httpStatus": "OK", "path": "/auth/login",
-///   "timeStamp": "...", "correlationId": "...", "data": { } }
+///   "timeStamp": "...", "requestId": "...", "data": { } }
 /// ```
 ///
 /// `data` yalnızca `SuccessDataResult` dönen uçlarda var; `SuccessResult`
