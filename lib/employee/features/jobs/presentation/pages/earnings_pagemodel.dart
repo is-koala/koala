@@ -98,17 +98,6 @@ abstract class EarningsPagemodel extends State<EarningsPage> {
   }
 
   static BigInt _powerOfTen(int exponent) => BigInt.from(10).pow(exponent);
-
-  static String _money(String amount, String currency) {
-    final decimal = _FixedDecimal.parse(amount).toPlainString();
-    final parts = decimal.split('.');
-    final whole = parts.first.replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (match) => '${match[1]}.',
-    );
-    final localized = parts.length == 1 ? whole : '$whole,${parts.last}';
-    return currency == 'TRY' ? '$localized ₺' : '$localized $currency';
-  }
 }
 
 class _CurrencyTotal {

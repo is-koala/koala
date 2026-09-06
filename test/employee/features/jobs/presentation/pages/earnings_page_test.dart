@@ -77,9 +77,9 @@ void main() {
     expect(find.text('Henüz bir ödeme almadın.'), findsNothing);
   });
 
-  testWidgets('durumları, başarısızlık sebebini ve kesin toplamları gösterir', (
-    tester,
-  ) async {
+  testWidgets('güvenli hata açıklaması ham nedeni gizler', (tester) async {
+    final semantics = tester.ensureSemantics();
+    const rawFailureReason = 'bank_account_validation: IBAN checksum mismatch';
     final api = FakeApi(
       handler: (_) => const FakeApiResponse(
         statusCode: 200,
@@ -126,7 +126,7 @@ void main() {
               'amount': '99.99',
               'currency': 'TRY',
               'status': 'FAILED',
-              'failureReason': 'Banka hesabı doğrulanamadı.',
+              'failureReason': rawFailureReason,
               'createdAt': '2026-09-02T12:00:00Z',
             },
           ],
@@ -145,7 +145,16 @@ void main() {
     expect(find.text('İşleniyor'), findsOneWidget);
     expect(find.text('Bekliyor'), findsOneWidget);
     expect(find.text('Başarısız'), findsOneWidget);
-    expect(find.text('Banka hesabı doğrulanamadı.'), findsOneWidget);
+    expect(
+      find.text('Kazanç ödemesi tamamlanamadı. Lütfen destekle iletişime geç.'),
+      findsOneWidget,
+    );
+    expect(find.text(rawFailureReason), findsNothing);
+    expect(
+      find.bySemanticsLabel(RegExp(RegExp.escape(rawFailureReason))),
+      findsNothing,
+    );
     expect(find.text('99,99 ₺'), findsOneWidget);
+    semantics.dispose();
   });
 }

@@ -4,6 +4,7 @@ import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/formatters/turkish_money_formatter.dart';
 
 /// Backend fiyat snapshot'ını hesap yapmadan gösteren ortak kutu.
 class BPricingBreakdownCard extends StatelessWidget {
@@ -26,7 +27,7 @@ class BPricingBreakdownCard extends StatelessWidget {
           const SizedBox(height: AppSizes.spaceSmall),
           _row(
             context,
-            'Hizmet Bedeli',
+            'Koala Hizmet Bedeli',
             breakdown.serviceFeeAmount,
             detail: '(%${_percent(breakdown.serviceFeeRate)})',
           ),
@@ -74,10 +75,8 @@ class BPricingBreakdownCard extends StatelessWidget {
           ),
         ),
         const SizedBox(width: AppSizes.spaceSmall),
-        Text(amount, style: style),
-        const SizedBox(width: AppSizes.spaceTiny),
         Text(
-          breakdown.currency == 'TRY' ? '₺' : breakdown.currency,
+          TurkishMoneyFormatter.format(amount, breakdown.currency),
           style: style,
         ),
       ],

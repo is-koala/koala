@@ -210,15 +210,25 @@ pumpPage(WidgetTester tester, {bool progressiveAttempt = false}) async {
 }
 
 void main() {
-  testWidgets('başarısız ödeme denemesini sebebi ve tutarıyla gösterir', (
+  testWidgets('başarısız ödeme denemesini güvenli açıklamayla gösterir', (
     tester,
   ) async {
+    final semantics = tester.ensureSemantics();
     await pumpPage(tester);
 
     expect(find.text('Ödeme Denemeleri'), findsOneWidget);
     expect(find.text('Başarısız'), findsOneWidget);
-    expect(find.text('1050.11'), findsOneWidget);
-    expect(find.text('Kart reddedildi.'), findsOneWidget);
+    expect(find.text('1.050,11 ₺'), findsOneWidget);
+    expect(
+      find.text('Ödeme tamamlanamadı. Lütfen tekrar dene.'),
+      findsOneWidget,
+    );
+    expect(find.text('Kart reddedildi.'), findsNothing);
+    expect(
+      find.bySemanticsLabel(RegExp(RegExp.escape('Kart reddedildi.'))),
+      findsNothing,
+    );
+    semantics.dispose();
   });
 
   testWidgets('Iyzico yalnız backend dökümü açıkça onaylanınca açılır', (
@@ -233,12 +243,12 @@ void main() {
 
     expect(find.text('Ödemeyi Onayla'), findsOneWidget);
     expect(find.text('Çalışan Ücreti'), findsOneWidget);
-    expect(find.text('Hizmet Bedeli'), findsOneWidget);
+    expect(find.text('Koala Hizmet Bedeli'), findsOneWidget);
     expect(find.text('(%5)'), findsOneWidget);
     expect(find.text('İşveren Toplamı'), findsOneWidget);
-    expect(find.text('1000.10'), findsOneWidget);
-    expect(find.text('50.01'), findsOneWidget);
-    expect(find.text('1050.11'), findsWidgets);
+    expect(find.text('1.000,10 ₺'), findsOneWidget);
+    expect(find.text('50,01 ₺'), findsOneWidget);
+    expect(find.text('1.050,11 ₺'), findsWidgets);
     expect(
       harness.paymentApi.requests.where(
         (request) => request.path == '/payment-quotes',
@@ -271,9 +281,7 @@ void main() {
     expect(harness.launches(), 1);
   });
 
-  testWidgets('checkout dönüşünde deneme durumunu ve hata sebebini yeniler', (
-    tester,
-  ) async {
+  testWidgets('checkout dönüşünde güvenli hata gösterilir', (tester) async {
     final harness = await pumpPage(tester, progressiveAttempt: true);
 
     expect(find.text('Başlatıldı'), findsOneWidget);
@@ -295,6 +303,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Başarısız'), findsOneWidget);
-    expect(find.text('Kart reddedildi.'), findsOneWidget);
+    expect(
+      find.text('Ödeme tamamlanamadı. Lütfen tekrar dene.'),
+      findsOneWidget,
+    );
+    expect(find.text('Kart reddedildi.'), findsNothing);
   });
 }

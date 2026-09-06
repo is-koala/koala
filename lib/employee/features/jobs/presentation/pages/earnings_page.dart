@@ -12,6 +12,7 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
+import 'package:koala/product/formatters/turkish_money_formatter.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/empty_state.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
@@ -30,6 +31,9 @@ class EarningsPage extends StatefulWidget {
 }
 
 class _EarningsPageState extends EarningsPagemodel {
+  static const _failedPayoutMessage =
+      'Kazanç ödemesi tamamlanamadı. Lütfen destekle iletişime geç.';
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -131,8 +135,10 @@ class _EarningsPageState extends EarningsPagemodel {
           child: Text(
             totals
                 .map(
-                  (total) =>
-                      EarningsPagemodel._money(total.amount, total.currency),
+                  (total) => TurkishMoneyFormatter.format(
+                    total.amount,
+                    total.currency,
+                  ),
                 )
                 .join(' + '),
             textAlign: TextAlign.end,
@@ -147,7 +153,6 @@ class _EarningsPageState extends EarningsPagemodel {
 
   Widget _payoutCard(Payout payout) {
     final assignment = _assignments[payout.jobAssignmentId];
-    final failureReason = payout.failureReason;
 
     return Material(
       color: context.tileColor,
@@ -161,7 +166,10 @@ class _EarningsPageState extends EarningsPagemodel {
               children: [
                 Expanded(
                   child: Text(
-                    EarningsPagemodel._money(payout.amount, payout.currency),
+                    TurkishMoneyFormatter.format(
+                      payout.amount,
+                      payout.currency,
+                    ),
                     style: context.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -181,12 +189,10 @@ class _EarningsPageState extends EarningsPagemodel {
                 color: context.textTertiary,
               ),
             ),
-            if (payout.status == PayoutStatus.failed &&
-                failureReason != null &&
-                failureReason.isNotEmpty) ...[
+            if (payout.status == PayoutStatus.failed) ...[
               const SizedBox(height: AppSizes.spaceSmall),
               Text(
-                failureReason,
+                _failedPayoutMessage,
                 style: context.textTheme.bodySmall?.copyWith(
                   color: AppColors.danger,
                 ),

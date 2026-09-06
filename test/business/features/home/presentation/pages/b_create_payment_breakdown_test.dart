@@ -113,15 +113,15 @@ void main() {
     expect(
       find.descendant(
         of: find.byType(BPricingBreakdownCard),
-        matching: find.text('1000.10'),
+        matching: find.text('1.000,10 ₺'),
       ),
       findsOneWidget,
     );
-    expect(find.text('Hizmet Bedeli'), findsOneWidget);
+    expect(find.text('Koala Hizmet Bedeli'), findsOneWidget);
     expect(find.text('(%7,5)'), findsOneWidget);
-    expect(find.text('75.01'), findsOneWidget);
+    expect(find.text('75,01 ₺'), findsOneWidget);
     expect(find.text('İşveren Toplamı'), findsOneWidget);
-    expect(find.text('1075.11'), findsOneWidget);
+    expect(find.text('1.075,11 ₺'), findsOneWidget);
   });
 
   testWidgets('döküm alınamazsa not gösterir ve yayınlama açık kalır', (

@@ -6,6 +6,7 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
+import 'package:koala/product/formatters/turkish_money_formatter.dart';
 
 /// Bir atamanın ödeme denemelerini kendi yükleme, hata ve boş durumlarıyla
 /// gösteren salt-okunur bölüm.
@@ -22,6 +23,9 @@ class BPaymentAttemptsSection extends StatelessWidget {
   final bool isLoading;
   final String? errorMessage;
   final VoidCallback onRetry;
+
+  static const _failedPaymentMessage =
+      'Ödeme tamamlanamadı. Lütfen tekrar dene.';
 
   @override
   Widget build(BuildContext context) {
@@ -73,7 +77,6 @@ class BPaymentAttemptsSection extends StatelessWidget {
   }
 
   Widget _attemptCard(BuildContext context, BPaymentAttempt attempt) {
-    final failureReason = attempt.failureReason;
     final total = attempt.pricing?.employerTotal ?? attempt.totalCharged;
 
     return _panel(
@@ -87,14 +90,7 @@ class BPaymentAttemptsSection extends StatelessWidget {
               _statusBadge(context, attempt.status),
               const Spacer(),
               Text(
-                total,
-                style: context.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(width: AppSizes.spaceTiny),
-              Text(
-                attempt.currency == 'TRY' ? '₺' : attempt.currency,
+                TurkishMoneyFormatter.format(total, attempt.currency),
                 style: context.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
@@ -108,12 +104,10 @@ class BPaymentAttemptsSection extends StatelessWidget {
               color: context.textTertiary,
             ),
           ),
-          if (attempt.status == BPaymentAttemptStatus.failed &&
-              failureReason != null &&
-              failureReason.isNotEmpty) ...[
+          if (attempt.status == BPaymentAttemptStatus.failed) ...[
             const SizedBox(height: AppSizes.spaceSmall),
             Text(
-              failureReason,
+              _failedPaymentMessage,
               style: context.textTheme.bodySmall?.copyWith(
                 color: AppColors.danger,
               ),

@@ -1,7 +1,7 @@
-/// Strict readers for values crossing the JSON boundary.
+/// JSON sınırından geçen değerler için katı okuyucular.
 ///
-/// They deliberately do not coerce numbers to strings. Financial DTOs use
-/// JSON strings so the backend's decimal representation survives unchanged.
+/// Sayıları bilerek dizeye dönüştürmez. Finansal DTO'lar JSON dizeleri
+/// kullandığı için backend'in ondalık gösterimi değişmeden korunur.
 abstract final class JsonField {
   static String requiredString(Object? value, String field) {
     if (value is String && value.isNotEmpty) return value;
