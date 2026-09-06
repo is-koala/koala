@@ -25,6 +25,10 @@ doğrulandıktan sonra hesap sahibi tarafından mağaza konsollarında yayımlan
 - `image_picker` ve `file_picker`: seçilen logo, profil görseli, kimlik/CV dosyası;
   bütün galeriye sürekli erişim varsayılmaz.
 - `flutter_secure_storage`: tokenları Keychain/Keystore'da yerel saklar.
+- `sqflite`: gönderilemeyen mesai olaylarını kullanıcıya göre bölümlenmiş yerel
+  kuyrukta saklar; kayıtlar başarılı sunucu onayından sonra silinir.
+- `connectivity_plus`: yalnız yeniden denemeyi tetikleyen bağlantı türü sinyalini
+  üretir; bağlantı bilgisi Koala backend'ine veya tanılama loglarına gönderilmez.
 - Iyzico ödeme sayfası platformun güvenli tarayıcı yüzeyinde açılır; ödeme sonucu
   backend'den doğrulanır.
 - E-posta, SMS, dosya depolama, gözlemleme ve push sağlayıcılarının production

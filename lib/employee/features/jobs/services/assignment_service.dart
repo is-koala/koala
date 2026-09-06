@@ -52,10 +52,17 @@ class AssignmentService {
     required String assignmentId,
     double? latitude,
     double? longitude,
+    String? clientEventId,
+    DateTime? capturedAt,
   }) {
     return _apiClient.post<WorkSession>(
       ApiPaths.assignmentCheckIn(assignmentId),
-      body: {'latitude': ?latitude, 'longitude': ?longitude},
+      body: _checkPointBody(
+        latitude: latitude,
+        longitude: longitude,
+        clientEventId: clientEventId,
+        capturedAt: capturedAt,
+      ),
       parse: (data) => WorkSession.fromJson(data! as Map<String, dynamic>),
     );
   }
@@ -69,12 +76,37 @@ class AssignmentService {
     required String assignmentId,
     double? latitude,
     double? longitude,
+    String? clientEventId,
+    DateTime? capturedAt,
   }) {
     return _apiClient.post<WorkSession>(
       ApiPaths.assignmentCheckOut(assignmentId),
-      body: {'latitude': ?latitude, 'longitude': ?longitude},
+      body: _checkPointBody(
+        latitude: latitude,
+        longitude: longitude,
+        clientEventId: clientEventId,
+        capturedAt: capturedAt,
+      ),
       parse: (data) => WorkSession.fromJson(data! as Map<String, dynamic>),
     );
+  }
+
+  Map<String, dynamic> _checkPointBody({
+    required double? latitude,
+    required double? longitude,
+    required String? clientEventId,
+    required DateTime? capturedAt,
+  }) {
+    if ((clientEventId == null) != (capturedAt == null)) {
+      throw ArgumentError('clientEventId ve capturedAt birlikte verilmelidir.');
+    }
+
+    return {
+      'latitude': ?latitude,
+      'longitude': ?longitude,
+      'clientEventId': ?clientEventId,
+      'capturedAt': ?capturedAt?.toUtc().toIso8601String(),
+    };
   }
 
   /// Atamanın mesai oturumları, girişten çıkışa.
