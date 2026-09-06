@@ -271,8 +271,12 @@ abstract class BCreatePageModel extends State<BCreatePage> {
 
   String? get _normalizedWorkerPayout {
     final value = _priceController.text.trim().replaceAll(',', '.');
-    final parsed = double.tryParse(value);
-    return parsed != null && parsed >= 1 ? value : null;
+    final match = RegExp(r'^(\d+)(?:\.\d+)?$').firstMatch(value);
+    if (match == null) return null;
+
+    final wholePart = match.group(1)!;
+    final isAtLeastOne = wholePart.contains(RegExp(r'[1-9]'));
+    return isAtLeastOne ? value : null;
   }
 
   Future<void> _loadPricing(String workerPayout, int generation) async {

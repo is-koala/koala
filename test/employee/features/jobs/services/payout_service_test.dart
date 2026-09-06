@@ -62,32 +62,35 @@ void main() {
       expect(payouts, isEmpty);
     });
 
-    test('rolling deploy sırasında eski JSON sayı tutarını geçici kabul eder', () async {
-      final api = FakeApi(
-        handler: (_) => const FakeApiResponse(
-          statusCode: 200,
-          body: {
-            'success': true,
-            'data': [
-              {
-                'id': 'payout-1',
-                'jobAssignmentId': 'assignment-1',
-                'amount': 1000.10,
-                'currency': 'TRY',
-                'status': 'PROCESSING',
-                'createdAt': '2026-09-06T12:00:00Z',
-              },
-            ],
-          },
-        ),
-      );
+    test(
+      'rolling deploy sırasında eski JSON sayı tutarını geçici kabul eder',
+      () async {
+        final api = FakeApi(
+          handler: (_) => const FakeApiResponse(
+            statusCode: 200,
+            body: {
+              'success': true,
+              'data': [
+                {
+                  'id': 'payout-1',
+                  'jobAssignmentId': 'assignment-1',
+                  'amount': 1000.10,
+                  'currency': 'TRY',
+                  'status': 'PROCESSING',
+                  'createdAt': '2026-09-06T12:00:00Z',
+                },
+              ],
+            },
+          ),
+        );
 
-      final payouts = await PayoutService.withClient(
-        api.client,
-      ).fetchMyPayouts();
+        final payouts = await PayoutService.withClient(
+          api.client,
+        ).fetchMyPayouts();
 
-      expect(payouts.single.amount, '1000.1');
-    });
+        expect(payouts.single.amount, '1000.1');
+      },
+    );
 
     for (final statusCode in [401, 500]) {
       test('$statusCode yanıtı ApiException yükseltir', () async {

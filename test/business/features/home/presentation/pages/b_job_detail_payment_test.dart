@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/business/features/home/presentation/pages/b_job_detail_page.dart';
@@ -54,6 +56,9 @@ pumpPage(
   bool progressiveAttempt = false,
   String? activeAttemptStatus,
   bool openDispute = false,
+  int disputeStatusCode = 200,
+  Completer<FakeApiResponse>? disputeResponse,
+  bool settle = true,
   List<Map<String, Object?>> assignments = const [assignmentJson],
   String failureReason = 'Kart reddedildi.',
 }) async {
@@ -107,6 +112,15 @@ pumpPage(
   );
   final assignmentApi = FakeApi(
     handler: (request) {
+      if (request.path.endsWith('/disputes') && disputeResponse != null) {
+        return disputeResponse.future;
+      }
+      if (request.path.endsWith('/disputes') && disputeStatusCode != 200) {
+        return FakeApiResponse(
+          statusCode: disputeStatusCode,
+          body: const {'success': false, 'message': 'Uyuşmazlıklar alınamadı.'},
+        );
+      }
       if (request.path.endsWith('/disputes') && openDispute) {
         return const FakeApiResponse(
           statusCode: 200,
@@ -224,7 +238,13 @@ pumpPage(
       ),
     ),
   );
-  await tester.pumpAndSettle();
+  if (settle) {
+    await tester.pumpAndSettle();
+  } else {
+    for (var index = 0; index < 20; index++) {
+      await tester.pump(const Duration(milliseconds: 10));
+    }
+  }
 
   return (
     employerApi: employerApi,
@@ -369,6 +389,40 @@ void main() {
     expect(find.textContaining('Emanetteki ücret'), findsOneWidget);
     expect(find.text('İşi Tamamla'), findsNothing);
     expect(find.text('İşi İptal Et'), findsNothing);
+  });
+
+  testWidgets('uyuşmazlık durumu alınamazsa finansal eylemler kapalı kalır', (
+    tester,
+  ) async {
+    await pumpPage(tester, disputeStatusCode: 500);
+
+    expect(find.text('Uyuşmazlık durumu doğrulanamadı.'), findsOneWidget);
+    expect(find.text('İşi Tamamla'), findsNothing);
+    expect(find.text('İşi İptal Et'), findsNothing);
+    expect(find.text('Sorun Bildir'), findsNothing);
+  });
+
+  testWidgets('uyuşmazlık kontrolü sürerken finansal eylemler kapalı kalır', (
+    tester,
+  ) async {
+    final response = Completer<FakeApiResponse>();
+    await pumpPage(tester, disputeResponse: response, settle: false);
+
+    expect(find.text('Uyuşmazlık durumu kontrol ediliyor.'), findsOneWidget);
+    expect(find.text('İşi Tamamla'), findsNothing);
+    expect(find.text('İşi İptal Et'), findsNothing);
+
+    response.complete(
+      const FakeApiResponse(
+        statusCode: 200,
+        body: {'success': true, 'data': []},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Uyuşmazlık durumu kontrol ediliyor.'), findsNothing);
+    expect(find.text('İşi Tamamla'), findsOneWidget);
+    expect(find.text('İşi İptal Et'), findsOneWidget);
   });
 
   testWidgets('çoklu ilanda çalışan açıkça seçilir ve ödeme hedefi değişir', (

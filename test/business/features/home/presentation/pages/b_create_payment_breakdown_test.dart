@@ -148,4 +148,20 @@ void main() {
     );
     expect(publish.onPressed, isNotNull);
   });
+
+  testWidgets('bir liranın altındaki hassas ondalığı teklif ucuna göndermez', (
+    tester,
+  ) async {
+    final api = FakeApi(
+      handler: (_) => const FakeApiResponse(
+        statusCode: 200,
+        body: {'success': true, 'data': {}},
+      ),
+    );
+    await pumpPage(tester, api);
+
+    await enterPriceAndBlur(tester, '0.99999999999999999');
+
+    expect(api.requests, isEmpty);
+  });
 }

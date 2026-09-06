@@ -84,6 +84,11 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
 
   /// Atamanın uyuşmazlıkları; kart üzerinde açık olan gösteriliyor.
   List<Dispute> _disputes = const [];
+  bool _areDisputesLoading = true;
+  String? _disputesError;
+
+  bool get _isDisputeStateVerified =>
+      !_areDisputesLoading && _disputesError == null;
 
   /// İptal ya da uyuşmazlık isteği sunucuya gitti mi.
   bool _isRunningAssignmentAction = false;
@@ -176,6 +181,8 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
           _assignments = const [];
           _workSessions = const [];
           _disputes = const [];
+          _areDisputesLoading = false;
+          _disputesError = null;
           _paymentAttempts = const [];
           _paymentAttemptsError = null;
           _arePaymentAttemptsLoading = false;
@@ -189,6 +196,8 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
         _assignment = match;
         _workSessions = const [];
         _disputes = const [];
+        _areDisputesLoading = true;
+        _disputesError = null;
         _paymentAttempts = const [];
         _paymentAttemptsError = null;
         _arePaymentAttemptsLoading = false;
@@ -206,6 +215,8 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
         _assignments = const [];
         _workSessions = const [];
         _disputes = const [];
+        _areDisputesLoading = false;
+        _disputesError = null;
         _paymentAttempts = const [];
         _paymentAttemptsError = null;
         _arePaymentAttemptsLoading = false;
@@ -223,6 +234,8 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
       _assignment = match;
       _workSessions = const [];
       _disputes = const [];
+      _areDisputesLoading = true;
+      _disputesError = null;
       _paymentAttempts = const [];
       _paymentAttemptsError = null;
     });
@@ -246,13 +259,32 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
   }
 
   Future<void> _loadDisputes(String assignmentId) async {
+    if (mounted && _assignment?.id == assignmentId) {
+      setState(() {
+        _areDisputesLoading = true;
+        _disputesError = null;
+      });
+    }
+
     try {
       final disputes = await _assignmentService.fetchDisputes(assignmentId);
       if (mounted && _assignment?.id == assignmentId) {
-        setState(() => _disputes = disputes);
+        setState(() {
+          _disputes = disputes;
+          _disputesError = null;
+        });
       }
-    } on ApiException {
-      // Uyuşmazlık listesi yardımcı bölümdür; ilanın kalanını kapatmaz.
+    } on ApiException catch (error) {
+      if (mounted && _assignment?.id == assignmentId) {
+        setState(() {
+          _disputes = const [];
+          _disputesError = error.message;
+        });
+      }
+    } finally {
+      if (mounted && _assignment?.id == assignmentId) {
+        setState(() => _areDisputesLoading = false);
+      }
     }
   }
 

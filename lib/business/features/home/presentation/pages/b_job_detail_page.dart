@@ -214,6 +214,10 @@ class _BJobDetailPageState extends BJobDetailPageModel {
               ),
             ],
             ?_openDisputeBanner(),
+            if (!_isDisputeStateVerified) ...[
+              const SizedBox(height: AppSizes.spaceMedium),
+              _disputeStatePanel(assignment),
+            ],
             if (assignment.needsEmployerPayment) ...[
               const SizedBox(height: AppSizes.spaceMedium),
               if (_canStartPayment)
@@ -245,9 +249,34 @@ class _BJobDetailPageState extends BJobDetailPageModel {
   /// Tamamlama yalnızca bu iki durumdan yapılabiliyor; sunucu da aynı
   /// kapıyı tutuyor ve dışından `409` döndürüyor.
   bool _canComplete(Assignment assignment) =>
+      _isDisputeStateVerified &&
       !_hasOpenDispute &&
       (assignment.status == AssignmentStatus.confirmed ||
           assignment.status == AssignmentStatus.inProgress);
+
+  Widget _disputeStatePanel(Assignment assignment) {
+    return Container(
+      width: double.infinity,
+      padding: AppPadding.card,
+      decoration: _panelDecoration(context),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              _areDisputesLoading
+                  ? 'Uyuşmazlık durumu kontrol ediliyor.'
+                  : 'Uyuşmazlık durumu doğrulanamadı.',
+            ),
+          ),
+          if (!_areDisputesLoading)
+            TextButton(
+              onPressed: () => _loadDisputes(assignment.id),
+              child: const Text('Yenile'),
+            ),
+        ],
+      ),
+    );
+  }
 
   Widget _paymentPendingPanel() {
     final message = _arePaymentAttemptsLoading
@@ -470,6 +499,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
   List<Widget> _assignmentActions(Assignment assignment) {
     final canCancel = _canComplete(assignment);
     final canDispute =
+        _isDisputeStateVerified &&
         assignment.paymentStatus == PaymentStatus.heldInEscrow &&
         !_hasOpenDispute;
 

@@ -16,6 +16,13 @@ void main() {
     );
   });
 
+  test('fraud filtresi reddini güvenli ve eyleme dönük açıklar', () {
+    expect(
+      FinancialFailureMessage.payment('{payment.fraud.review}'),
+      'Ödeme güvenlik kontrolünde reddedildi. Destekle iletişime geçebilirsin.',
+    );
+  });
+
   test('bilinen payout anahtarını açık Türkçe metne çevirir', () {
     expect(
       FinancialFailureMessage.payout('{payout.settlement.failed}'),

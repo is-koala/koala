@@ -46,13 +46,25 @@ class _BPaymentResultPageState extends BPaymentResultPagemodel {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               AppIcon(
-                _isSecured ? AppIcons.shield : AppIcons.info,
+                _isSecured
+                    ? AppIcons.shield
+                    : _isFailed
+                    ? AppIcons.cancelCircle
+                    : AppIcons.info,
                 size: AppSizes.iconHuge,
-                color: _isSecured ? AppColors.success : AppColors.warning,
+                color: _isSecured
+                    ? AppColors.success
+                    : _isFailed
+                    ? AppColors.danger
+                    : AppColors.warning,
               ),
               const SizedBox(height: AppSizes.spaceMedium),
               Text(
-                _isSecured ? 'Ödeme Güvende' : 'Ödeme Henüz Doğrulanmadı',
+                _isSecured
+                    ? 'Ödeme Güvende'
+                    : _isFailed
+                    ? 'Ödeme Başarısız'
+                    : 'Ödeme Henüz Doğrulanmadı',
                 style: Theme.of(context).textTheme.headlineSmall,
                 textAlign: TextAlign.center,
               ),
@@ -62,6 +74,8 @@ class _BPaymentResultPageState extends BPaymentResultPagemodel {
                     (_isSecured
                         ? 'Ücret Koala güvencesinde tutuluyor. Çalışan artık '
                               'mesaiye başlayabilir.'
+                        : _isFailed
+                        ? 'Ödeme tamamlanamadı. İlan detayına dönüp yeniden deneyebilirsin.'
                         : 'Sağlayıcı sonucu işleniyor olabilir. Birkaç saniye '
                               'sonra tekrar kontrol et.'),
                 textAlign: TextAlign.center,
