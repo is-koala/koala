@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -13,7 +14,7 @@ class FakeApi {
   FakeApi({required this.handler});
 
   /// Gelen isteğe karşılık dönülecek sahte yanıtı üretir.
-  final FakeApiResponse Function(RequestOptions options) handler;
+  final FutureOr<FakeApiResponse> Function(RequestOptions options) handler;
 
   /// Sahte sunucuya ulaşan istekler, sırayla.
   final List<RequestOptions> requests = [];
@@ -63,7 +64,7 @@ class _FakeAdapter implements HttpClientAdapter {
   ) async {
     _fakeApi.requests.add(options);
 
-    final response = _fakeApi.handler(options);
+    final response = await _fakeApi.handler(options);
 
     if (response.isConnectionError) {
       throw DioException.connectionError(
