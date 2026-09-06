@@ -50,10 +50,11 @@ flutter pub get
 
 What is covered today: the router redirect guard, the `Job` model's JSON round-trip, `asPrice`, the `SavedJobs` / `Page` / `Search` / `Apply` / `Theme` / `BJobs` providers, and `MyButton` / `MyListTile` as widget tests. Most tests run headless. `integration_test/live_qa_login_test.dart` is the deliberate exception: it runs on a device or simulator against the configured real API and needs `QA_WORKER_EMAIL`, `QA_WORKER_PASSWORD`, `QA_EMPLOYER_EMAIL` and `QA_EMPLOYER_PASSWORD` as compile-time defines. Supply those credentials only at invocation time; keep the live check connected to real data.
 
-Two shared helpers under `test/support/`, use them instead of rolling your own:
+Three shared helpers under `test/support/`, use them instead of rolling your own:
 
 - **`fixtures.dart`** → `buildJob(...)`. `Job` has eight required fields; passing only the one the test cares about keeps the test readable.
 - **`pump.dart`** → `pumpInApp(tester, widget, brightness: ...)`. Product widgets read their colors from `context`, so they cannot be pumped bare — they need a `MaterialApp` with the real theme. The `brightness` parameter is there so a widget can be asserted in **both** themes, which is the project's core rule.
+- **`fake_api.dart`** → `FakeApi(handler: ...).client`. A fake HTTP layer plus an `ApiClient` that carries **the production interceptor chain** — `Authorization`, `X-Device-Id`, the `401` refresh and the retry all run in tests. Keychain and `SharedPreferences` do not exist there, so the client is fed `FakeTokenStorage` and `FakeDeviceIdentity` from the same file; pass your own `tokenStorage:` when a test needs to start with a token or read back the refreshed one, and check `sessionExpired` when it should end the session. `requests` holds the `RequestOptions` that reached the fake server — but note a retried request **mutates the options it already sent**, so capture headers inside the handler rather than reading them afterwards.
 
 CI runs `flutter test` on every PR and blocks the Android and iOS build jobs behind it, so a red test stops the pipeline.
 
@@ -123,18 +124,26 @@ A feature has at most three top-level folders: **`models/`** (plain data classes
 
 ### State management
 
-`provider`. Eight `ChangeNotifierProvider`s are registered in `main.dart`:
+`provider`. Sixteen `ChangeNotifierProvider`s are registered in `main.dart`, in this order:
 
 | Provider | Responsibility |
 |---|---|
 | `ThemeProvider` | Light/dark/system theme, persisted in `SharedPreferences` |
+| `UserProvider` | The session owner off `/users/me` — read by both apps |
+| `AvailabilityProvider` | The worker's weekly availability draft (`PUT` replaces all slots) |
+| `JobCategoryProvider` | The server's job categories, fetched once and cached app-wide |
 | `PageProvider` | Employee shell: which tab, and the explore map/list toggle |
 | `SavedJobsProvider` | Saved jobs |
+| `JobAlertsProvider` | The job alerts screen's server state |
+| `TimesheetQueueProvider` | The offline timesheet event queue — **`lazy: false`**, it has to drain on start |
 | `ReviewProvider` | The review form state |
+| `NotificationProvider` | The notification feed and the unread count |
 | `ApplyProvider` | The application form state |
 | `SearchProvider` | The explore search query |
 | `BPageProvider` | Business shell tab |
 | `BJobsProvider` | Business job posts |
+| `BCompanyProvider` | The employer's company and its stats |
+| `BJobTemplatesProvider` | The employer's job templates |
 
 > ⚠️ **`BPageProvider` is registered twice.** `main.dart` creates a global one, and `business/core/b_shell_page.dart` creates a second one with its own `ChangeNotifierProvider`. Pages inside the shell read the shell's instance, anything outside reads the global one — writing to one does not move the other. If you touch business tab state, know which instance you are on.
 
@@ -252,6 +261,8 @@ Four things worth knowing:
 
 - **The count is free, the people are not.** `JobSummaryDto.applicationCount` arrives with the list (the server fills it in the same pass as the cover images), so no screen fetches applicants just to show a number. Who actually applied comes from `GET /jobs/{id}/applications` and is fetched **per job, on demand**, through `BJobsProvider.ensureApplicants` — the detail screen for its own job, the home screen for the three posts its preview shows, and the posts list only for past posts, whose footer names the person who took the job. Never load them for the whole list; that was the old N+1.
 - **Insurance is a company-only concept, deliberately.** `CreateIndividualJobDto` has no `insuranceRequired`, the server forces it to `false`, and it rejects an individual job in any category whose `requiresInsurance` is set (`400`) — reporting SGK is the employer's legal duty and a one-day individual employer is not expected to carry it. So the create screen hides the switch for an individual employer, replaces it with a line saying why, **and filters those categories out of the picker** rather than letting the form fail on submit. Which endpoint is used comes from `CurrentUser.activeCompany` — the first **approved** membership.
+
+  The company side of the same rule is enforced too: a company job in a `requiresInsurance` category is rejected with `400` unless `insuranceRequired` is `true`, so the switch is **forced on and disabled** while such a category is selected, with a line saying why. The value is **derived** (`_insuranceLocked` / `_insuranceRequired` in `b_create_pagemodel.dart`), never a field synced on category selection — the field version was the bug: every path that changes the category (the picker, a template) had to remember to update it, and one that forgot dropped the rule silently.
 - **There is no endpoint that deletes a job, and there should not be.** The post menu offers two things instead: *İlanı Kapat* (`POST /jobs/{id}/close`) stops new applications and leaves the post valid, *İlanı İptal Et* (`POST /jobs/{id}/cancel`) invalidates it and notifies the applicants. Cancel asks for confirmation first because the two read alike but are not, and it refuses with `409` while a live assignment exists (`PENDING_CONFIRMATION` / `CONFIRMED` / `IN_PROGRESS`) — cancelling there would route around the escrow and the cancellation policy, and the assignment's own cancel flow must be used instead. Neither one deletes anything; the record and the application history stay.
 - **Accepting an application does not close the job.** The server opens an assignment in `PENDING_CONFIRMATION` and waits for the worker; the post stays in "Aktif" until its `JobStatus` says otherwise. Active vs. past is decided by `JobStatus` (`OPEN`/`IN_PROGRESS` → active), never by a local flag.
 
@@ -553,7 +564,11 @@ The server marks the calling session with `current`. That row gets a "Bu cihaz" 
 
 **Client version gate.** Every request carries `X-App-Version` (`ApiConfig.appVersionHeader`) sourced from `AppInfo.version`. The server's `MinimumAppVersionFilter` compares it and answers `426` with `errorCode: UPGRADE_REQUIRED`, mapped to `ApiErrorType.upgradeRequired`. Two traps: the filter **passes any request that omits the header**, so dropping it silently disables forced updates entirely; and `AppInfo.version` is kept in sync with `pubspec.yaml` **by hand** — bump both together. Reading it from the package would need `package_info_plus` (present in `pubspec.lock` only via `geolocator_linux`, a platform we do not build), so it is a real new dependency and needs asking.
 
-A `426` is handled **once, globally**: `ApiClient` closes `AppUpdateGate` and `MaterialApp.router`'s `builder` swaps the whole app for `UpdateRequiredView`. It is deliberately not a route — the gate can trip on any request from any screen, and there is nowhere to navigate back to. The gate is one-way; nothing reopens it, because the version cannot change while the app is running. **The store button is hidden until `AppInfo.androidPackageId` / `iosAppStoreId` are filled in** — `applicationId` is still Flutter's default `com.example.koala`, so there is no real store listing to link to yet.
+A `426` is handled **once, globally**: `ApiClient` closes `AppUpdateGate` and `MaterialApp.router`'s `builder` swaps the whole app for `UpdateRequiredView`. It is deliberately not a route — the gate can trip on any request from any screen, and there is nowhere to navigate back to. The gate is one-way; nothing reopens it, because the version cannot change while the app is running. **The store button appears as soon as `AppInfo.androidPackageId` *or* `iosAppStoreId` is filled in.** `androidPackageId` is now set (`com.iskoala.koala`, matching `applicationId` in `android/app/build.gradle.kts`, ADR-0006) while `iosAppStoreId` is still empty — Apple hands the numeric id out at registration.
+
+> ⚠️ **In that half-filled state the button is wrong on iOS.** `UpdateRequiredView._storeUri` returns the Apple link only when the App Store id is non-empty and otherwise **falls through to the Play Store URL**, so an iOS user who trips the `426` gate is shown a button that opens Google Play. It was correct when both ids were empty (the button was hidden); filling only the Android one turned the fallback into a wrong link. Fix it either by gating the button per platform or by filling `iosAppStoreId`.
+
+The iOS `PRODUCT_BUNDLE_IDENTIFIER` in `project.pbxproj` is also **still Flutter's default `com.example.koala`** and has to be changed before the first App Store upload.
 
 **Not wired up:**
 
