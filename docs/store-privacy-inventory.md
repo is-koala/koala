@@ -10,7 +10,8 @@ doğrulandıktan sonra hesap sahibi tarafından mağaza konsollarında yayımlan
 | --- | --- | --- | --- | --- |
 | İletişim ve hesap | Ad, soyad, e-posta, telefon, kullanıcı kimliği | Hesap, güvenlik ve iletişim | Koala backend; e-posta/SMS sağlayıcıları gerçek üretim ayarına göre doğrulanır | Contact Info, User ID |
 | Konum | Yaklaşık konum, onaylı adres, iş konumu ve gerekli akışlarda koordinat | Yakındaki ilan, adres ve mesai güvenliği | Cihaz izni + Koala backend + Google Maps SDK; precise/approximate ayrımı trafikle doğrulanır | Location |
-| Kimlik belgesi | TCKN, belge no, doğum tarihi; ileride SOD/DG1/DG11/DG15 kanıtı | Kimlik doğrulama ve dolandırıcılık önleme | Backend saklama/anonimleştirme kapsamı ayrıca onaylanır; DG2 gönderilmez | Other Personal Info, Sensitive Info |
+| Kimlik belgesi | TCKN, belge no, doğum tarihi; çip okunduğunda SOD/DG1 ve varsa DG11/DG15 + imza | Kimlik doğrulama ve dolandırıcılık önleme | Backend saklama/anonimleştirme kapsamı ayrıca onaylanır; **DG2 hiç gönderilmez**, çip kanıtı isteğe bağlı ve kart okunmadan da doğrulama tamamlanıyor | Other Personal Info, Sensitive Info |
+| Kamera görüntüsü | Kimlik kartının arka yüzünün tek karelik fotoğrafı | Kartın makine okunabilir alanını (MRZ) okumak | **Cihazdan çıkmıyor**: kare yerel ML Kit modeliyle işlenir, yalnız türetilen belge no / doğum / son geçerlilik çipi açmak için kullanılır; görüntü backend'e gönderilmez ve saklanmaz | Photos (yalnız cihaz içi işleme) |
 | Özgeçmiş ve profil | CV dosyası, profil resmi, deneyim, eğitim, nitelik ve ilgi alanı | İş başvurusu ve profil | Koala dosya deposu/backend; yetkili işveren erişimi | Files and Docs, Photos, User Content |
 | Mesaj ve başvuru içeriği | Sohbet metni, ön yazı, değerlendirme, uyuşmazlık gerekçesi | Pazaryeri iletişimi ve işlem desteği | Koala backend; yetki ve saklama süresi ayrıca doğrulanır | Messages, Other User Content |
 | Ödeme ve çalışma | Ödeme denemesi/sonucu, IBAN'ın girilen değeri, atama, mesai, fatura bağı | Escrow, ödeme, yasal kayıt ve destek | Iyzico ve Koala backend; ödeme kartı uygulama tarafından tutulmaz | Purchases, Payment Info |
@@ -24,6 +25,16 @@ doğrulandıktan sonra hesap sahibi tarafından mağaza konsollarında yayımlan
 - `geolocator`: cihaz konum izni; yalnız kullanıcı akışında istenir.
 - `image_picker` ve `file_picker`: seçilen logo, profil görseli, kimlik/CV dosyası;
   bütün galeriye sürekli erişim varsayılmaz.
+- `flutter_nfc_kit` ve `dmrtd`: kimlik kartının çipini ICAO 9303 üzerinden
+  okur. Trafik yalnız cihaz ile kart arasında; okunan veri gruplarından
+  **yalnız** SOD, DG1 ve varsa DG11/DG15 doğrulama isteğine eklenir. Ağ
+  bağlantısı yok, üçüncü tarafa aktarım yok. `dmrtd` LGPL-3.0/ticari ikili
+  lisanslı — mağaza yayınından önce hukuk onayı gerekiyor.
+- `google_mlkit_text_recognition`: MRZ okuması için **cihaz içi** metin
+  tanıma. Latin modeli uygulamayla birlikte paketleniyor, çalışma zamanında
+  indirme ya da sunucuya görüntü gönderimi yok; bu yüzden fotoğraf hiçbir
+  noktada Koala backend'ine veya Google'a ulaşmıyor. Kullanılmayan dört dil
+  modeli R8 kurallarıyla dışarıda bırakıldı (`android/app/proguard-rules.pro`).
 - `flutter_secure_storage`: tokenları Keychain/Keystore'da yerel saklar.
 - `sqflite`: gönderilemeyen mesai olaylarını kullanıcıya göre bölümlenmiş yerel
   kuyrukta saklar; makullük inceleme bayrağı taşıyanlar dahil başarılı sunucu
