@@ -3,6 +3,8 @@ import 'package:koala/business/features/home/models/job_applicant.dart';
 import 'package:koala/employee/features/auth/models/public_profile.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/profile_avatar.dart';
+import 'package:koala/product/models/availability.dart';
+import 'package:koala/product/services/availability_service.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -18,15 +20,17 @@ import 'package:koala/product/widgets/block_user_action.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:koala/product/widgets/report_sheet.dart';
+import 'package:koala/product/widgets/availability_view.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 part 'b_user_profile_pagemodel.dart';
 
 /// İşverenin bir adayın kartına dokununca açtığı profil.
 ///
-/// İki kaynaktan besleniyor: [applicant] başvuru listesinden geliyor ve ekran
+/// Üç kaynaktan besleniyor: [applicant] başvuru listesinden geliyor ve ekran
 /// açılır açılmaz ad, fotoğraf, ön yazı ve tarihi çizebiliyor; meslek,
-/// hakkında, konum ve özgeçmiş `GET /users/{userId}`'den arkadan doluyor.
+/// hakkında, konum ve özgeçmiş `GET /users/{userId}`'den, müsaitlik ise
+/// `GET /users/{userId}/availability`'den arkadan doluyor.
 ///
 /// Sunucu bu uçta tam adres döndürmüyor — yalnızca il/ilçe — ve `cvUrl`'i
 /// sadece bu ilanın işverenine veriyor.
@@ -67,6 +71,13 @@ class _BUserProfilePageState extends BUserProfilePageModel {
                   _aboutSection(context),
                   const SizedBox(height: AppSizes.spaceLarge),
                   _infoSection(context),
+                  const SizedBox(height: AppSizes.spaceLarge),
+                  AvailabilityView(
+                    availability: _availability,
+                    isLoading: _isAvailabilityLoading,
+                    errorMessage: _availabilityErrorMessage,
+                    onRetry: _loadAvailability,
+                  ),
                   const SizedBox(height: AppSizes.spaceLarge),
                   _cvSection(context),
                   const SizedBox(height: AppSizes.navBarClearance),

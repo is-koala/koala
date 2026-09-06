@@ -18,9 +18,22 @@ abstract class ProfilePageModel extends State<ProfilePage>
     // ilk kare çizildikten sonra tek seferlik yükleme yapılıyor; sekmeye her
     // dönüşte `initState` çalışmıyor.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<UserProvider>().load();
+      if (mounted) _loadProfileData();
     });
   }
+
+  Future<void> _loadProfileData({bool silent = false}) async {
+    final userProvider = context.read<UserProvider>();
+    await userProvider.load(silent: silent);
+    if (!mounted) return;
+
+    final user = userProvider.user;
+    if (user != null) {
+      await context.read<AvailabilityProvider>().load(user.id, silent: silent);
+    }
+  }
+
+  Future<void> _refreshProfile() => _loadProfileData(silent: true);
 
   Future<void> _navigateToAccountInfo(CurrentUser user) async {
     await context.push('/account-info', extra: user);

@@ -330,7 +330,7 @@ Three things worth knowing:
 
 Employer payment is wired through `POST /job-assignments/{id}/payment-session`. The hosted Iyzico checkout opens in the platform's in-app browser (`SFSafariViewController` on iOS, Custom Tabs on Android), never as an unrestricted embedded WebView. The return link only triggers a refresh; the app shows success from the backend assignment/payment state, not from query parameters.
 
-Endpoints that exist on the server and have no app surface yet: payouts (`GET /users/me/payouts`); push-token registration (`/users/me/devices/push-token`); availability and job alerts (`/users/me/availability`, `/users/me/job-alerts`); blocks and reports (`/users/me/blocks`, `/reports`); employer tools (`/users/me/talent-pool`, `/users/me/job-templates`).
+Endpoints that exist on the server and have no app surface yet: payouts (`GET /users/me/payouts`); push-token registration (`/users/me/devices/push-token`); blocks and reports (`/users/me/blocks`, `/reports`); employer tools (`/users/me/talent-pool`, `/users/me/job-templates`).
 
 > The orphaned fakes were deleted once the employer's job flow landed: `profile/services/fake_user.dart` and its `profile/models/user.dart`, `jobs/services/my_jobs_service.dart`, `business/features/chat/services/b_chat_service.dart`. `employee/features/profile/` and `business/features/chat/` are `presentation/` only now — a feature carries `models/` and `services/` only when it has data of its own.
 - `GET /jobs` is ready to be wired: `JobSummaryDto` carries `latitude`/`longitude`, `GET /jobs/{jobId}` returns the richer `JobDetailDto` (description, duties, dress code, age range, full address, creator, company) and the search takes a bounding box (`minLatitude`/`maxLatitude`/`minLongitude`/`maxLongitude`). Only the category mapping is missing.
@@ -546,6 +546,8 @@ The server marks the calling session with `current`. That row gets a "Bu cihaz" 
 `ExperienceCard` became **`TimelineCard`** when education reused it; the parameters are neutral now (`subtitle`, `subtitleIcon`) because the same row renders a company for experience and a school for education.
 
 `qualifications` and `interests` are editable in *Hesabı Düzenle* and shown on the profile — but only when filled, unlike *Hakkımda* which always draws with a placeholder. Three empty headings in a row read as an unfinished profile.
+
+**Worker availability is a weekly replacement, not a per-day patch.** The shared models and `AvailabilityService` live in `product/` because both employee and business profiles consume them; `AvailabilityProvider` owns the employee's seven-day editing draft. Every save sends all slots to `PUT /users/me/availability`, so a day editor must never issue its own request. Date exceptions use their separate PUT/DELETE endpoints. The shared read-only `AvailabilityView` appears on both the worker's own profile and an employer's candidate profile, where an empty schedule says “Müsaitlik bilgisi paylaşılmamış.”
 
 **Followed companies** live at `/followed-companies` (paged), reached from the profile app bar. `FollowedCompanyDto` is a trimmed summary whose id field is `companyId`, not `id`, so it has its own model rather than reusing `Company`. You cannot unfollow from that list on purpose — unfollowing belongs to the company screen, and two sources of truth for one flag invites drift.
 

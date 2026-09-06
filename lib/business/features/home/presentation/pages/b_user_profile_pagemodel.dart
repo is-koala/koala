@@ -20,12 +20,17 @@ abstract class BUserProfilePageModel extends State<BUserProfilePage> {
   static const String _missing = '—';
 
   final _userService = UserService();
+  final _availabilityService = AvailabilityService();
 
   /// Adayın herkese açık profili. Başvuru kaydında olmayan alanlar —
   /// meslek, hakkında, konum, özgeçmiş — buradan geliyor.
   PublicProfile? _profile;
   bool _isLoading = true;
   String? _errorMessage;
+
+  Availability? _availability;
+  bool _isAvailabilityLoading = true;
+  String? _availabilityErrorMessage;
 
   /// Özgeçmiş açılırken beklenen kısa an; buton iki kez tetiklenmesin diye.
   bool _isOpeningCv = false;
@@ -34,6 +39,31 @@ abstract class BUserProfilePageModel extends State<BUserProfilePage> {
   void initState() {
     super.initState();
     _loadProfile();
+    _loadAvailability();
+  }
+
+  Future<void> _loadAvailability() async {
+    setState(() {
+      _isAvailabilityLoading = true;
+      _availabilityErrorMessage = null;
+    });
+
+    try {
+      final availability = await _availabilityService.fetchForUser(
+        widget.applicant.user.id,
+      );
+      if (!mounted) return;
+      setState(() {
+        _availability = availability;
+        _isAvailabilityLoading = false;
+      });
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _availabilityErrorMessage = error.message;
+        _isAvailabilityLoading = false;
+      });
+    }
   }
 
   Future<void> _loadProfile() async {

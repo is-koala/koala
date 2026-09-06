@@ -66,7 +66,13 @@ void main() {
 
   group('giriş yapmış employee', () {
     test('kendi sayfalarında serbest bırakılır', () {
-      for (final location in ['/explore', '/jobs', '/chat', '/profile']) {
+      for (final location in [
+        '/explore',
+        '/jobs',
+        '/chat',
+        '/profile',
+        '/availability',
+      ]) {
         expect(
           redirect(loggedIn: true, userType: 'employee', location: location),
           isNull,
@@ -114,7 +120,13 @@ void main() {
     });
 
     test('employee sayfalarına giremez', () {
-      for (final location in ['/explore', '/jobs', '/chat', '/profile']) {
+      for (final location in [
+        '/explore',
+        '/jobs',
+        '/chat',
+        '/profile',
+        '/availability',
+      ]) {
         expect(
           redirect(loggedIn: true, userType: 'business', location: location),
           '/business/home',

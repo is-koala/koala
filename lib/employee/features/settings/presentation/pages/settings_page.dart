@@ -6,6 +6,7 @@ import 'package:koala/employee/features/jobs/presentation/providers/review_provi
 import 'package:koala/employee/features/jobs/presentation/providers/saved_jobs_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/job_alerts_provider.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
+import 'package:koala/employee/features/profile/presentation/providers/availability_provider.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/network/realtime_client.dart';
@@ -113,6 +114,7 @@ class SettingsPage extends StatelessWidget {
             if (context.mounted) {
               // Bir sonraki oturum, çıkan kullanıcının verisini görmesin.
               context.read<UserProvider>().clear();
+              context.read<AvailabilityProvider>().clear();
               context.read<ApplyProvider>().clear();
               context.read<SavedJobsProvider>().clear();
               context.read<JobAlertsProvider>().clear();
