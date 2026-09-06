@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:koala/business/features/home/services/b_gallery_upload_validator.dart';
 import 'package:koala/business/features/home/presentation/widgets/b_gallery_tile.dart';
+import 'package:koala/product/constants/app_padding.dart';
+import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/constants/upload_limits.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/models/gallery_image.dart';
 import 'package:koala/product/providers/job_gallery_provider.dart';
-import 'package:koala/product/services/gallery_upload_validator.dart';
+import 'package:koala/product/widgets/app_bottom_sheet.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/confirm_dialog.dart';
 import 'package:koala/product/widgets/job_gallery_view.dart';
@@ -181,7 +184,7 @@ class _BJobGallerySectionState extends State<BJobGallerySection> {
     final path = await (widget.chooseImage ?? _chooseFromDevice)();
     if (path == null || !mounted) return;
 
-    final error = await GalleryUploadValidator.errorFor(path);
+    final error = await BGalleryUploadValidator.errorFor(path);
     if (!mounted) return;
     if (error != null) {
       AppToast.error(context, error);
@@ -197,39 +200,10 @@ class _BJobGallerySectionState extends State<BJobGallerySection> {
   }
 
   Future<void> _selectCompanyImage() async {
-    final selected = await showModalBottomSheet<GalleryImage>(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(AppSizes.spaceMedium),
-              child: Text(
-                'Şirket Galerisinden Seç',
-                style: sheetContext.textTheme.titleMedium,
-              ),
-            ),
-            for (final image in _selectableCompanyImages)
-              ListTile(
-                leading: Image.network(
-                  image.url,
-                  width: AppSizes.thumbnail,
-                  height: AppSizes.thumbnail,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) =>
-                      const SizedBox.square(dimension: AppSizes.thumbnail),
-                ),
-                title: Text(
-                  image.caption?.isNotEmpty == true
-                      ? image.caption!
-                      : 'Şirket görseli',
-                ),
-                onTap: () => Navigator.of(sheetContext).pop(image),
-              ),
-          ],
-        ),
-      ),
+    final selected = await AppBottomSheet.show<GalleryImage>(
+      context,
+      builder: (_) =>
+          _CompanyGalleryPickerSheet(images: _selectableCompanyImages),
     );
 
     if (selected == null || !mounted) return;
@@ -285,5 +259,70 @@ class _BJobGallerySectionState extends State<BJobGallerySection> {
     } else {
       AppToast.error(context, _provider.errorMessage ?? 'İşlem tamamlanamadı');
     }
+  }
+}
+
+class _CompanyGalleryPickerSheet extends StatelessWidget {
+  const _CompanyGalleryPickerSheet({required this.images});
+
+  final List<GalleryImage> images;
+
+  static const double _maxHeightRatio = 0.6;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBottomSheet(
+      title: 'Şirket Galerisinden Seç',
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: context.dynamicHeight(_maxHeightRatio),
+        ),
+        child: ListView.separated(
+          shrinkWrap: true,
+          itemCount: images.length,
+          separatorBuilder: (_, _) =>
+              const SizedBox(height: AppSizes.spaceSmall),
+          itemBuilder: (context, index) => _row(context, images[index]),
+        ),
+      ),
+    );
+  }
+
+  Widget _row(BuildContext context, GalleryImage image) {
+    return Material(
+      color: context.tileColor,
+      borderRadius: AppRadius.innerCircular,
+      child: InkWell(
+        borderRadius: AppRadius.innerCircular,
+        onTap: () => Navigator.pop(context, image),
+        child: Padding(
+          padding: AppPadding.tileTall,
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: AppRadius.smallCircular,
+                child: Image.network(
+                  image.url,
+                  width: AppSizes.thumbnail,
+                  height: AppSizes.thumbnail,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) =>
+                      const SizedBox.square(dimension: AppSizes.thumbnail),
+                ),
+              ),
+              const SizedBox(width: AppSizes.spaceMedium),
+              Expanded(
+                child: Text(
+                  image.caption?.isNotEmpty == true
+                      ? image.caption!
+                      : 'Şirket görseli',
+                  style: context.textTheme.titleSmall,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

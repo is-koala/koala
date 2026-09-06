@@ -1,12 +1,12 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:koala/product/services/gallery_upload_validator.dart';
+import 'package:koala/business/features/home/services/b_gallery_upload_validator.dart';
 
 void main() {
   test('desteklenmeyen görsel türünü yüklemeden reddediyor', () async {
     expect(
-      await GalleryUploadValidator.errorFor('/tmp/image.gif'),
+      await BGalleryUploadValidator.errorFor('/tmp/image.gif'),
       'Yalnızca PNG, JPG veya WEBP yükleyebilirsiniz',
     );
   });
@@ -22,7 +22,7 @@ void main() {
     addTearDown(() => file.deleteSync());
 
     expect(
-      await GalleryUploadValidator.errorFor(file.path),
+      await BGalleryUploadValidator.errorFor(file.path),
       'Görsel en fazla 10 MB olabilir',
     );
   });
@@ -32,6 +32,6 @@ void main() {
       ..writeAsBytesSync(const [1, 2, 3]);
     addTearDown(() => file.deleteSync());
 
-    expect(await GalleryUploadValidator.errorFor(file.path), isNull);
+    expect(await BGalleryUploadValidator.errorFor(file.path), isNull);
   });
 }

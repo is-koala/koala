@@ -26,6 +26,7 @@ Job buildJob({
   bool experienceRequired = false,
   DateTime? startDateTime,
   DateTime? endDateTime,
+  String? coverImageUrl,
 }) {
   return Job(
     id: id,
@@ -47,6 +48,7 @@ Job buildJob({
     experienceRequired: experienceRequired,
     startDateTime: startDateTime,
     endDateTime: endDateTime,
+    coverImageUrl: coverImageUrl,
   );
 }
 

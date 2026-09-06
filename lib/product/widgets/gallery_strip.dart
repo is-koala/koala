@@ -38,6 +38,7 @@ class GalleryStrip extends StatelessWidget {
     final image = images[index];
 
     return GestureDetector(
+      key: ValueKey('gallery-image-${image.id}'),
       onTap: () => GalleryViewer.open(context, images, index),
       child: ClipRRect(
         borderRadius: AppRadius.innerCircular,
@@ -53,6 +54,12 @@ class GalleryStrip extends StatelessWidget {
                   fit: BoxFit.cover,
                   errorBuilder: (_, _, _) => _placeholder(context),
                 ),
+                if (image.isCover)
+                  Positioned(
+                    top: AppSizes.spaceSmall,
+                    right: AppSizes.spaceSmall,
+                    child: _coverBadge(context),
+                  ),
                 if (image.caption?.isNotEmpty == true)
                   Positioned(
                     left: 0,
@@ -63,6 +70,23 @@ class GalleryStrip extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _coverBadge(BuildContext context) {
+    return Container(
+      padding: AppPadding.badge,
+      decoration: BoxDecoration(
+        color: context.accentColor,
+        borderRadius: AppRadius.smallCircular,
+      ),
+      child: Text(
+        'Kapak',
+        style: context.textTheme.labelSmall?.copyWith(
+          color: AppColors.onAccent,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

@@ -45,6 +45,9 @@ class JobGalleryProvider extends ChangeNotifier {
     _loadingJobId = jobId;
     _errorMessage = null;
     if (_loadedJobId != jobId) {
+      // Eski ilandaki yazma isteği yeni galerinin denetimlerini kilitlemez.
+      // Nesil kontrolü geç kalan yanıtı zaten yok sayacak.
+      _isBusy = false;
       _loadedJobId = null;
       _images = const [];
       _loadedSuccessfully = false;

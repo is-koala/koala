@@ -4,6 +4,7 @@ import 'package:koala/business/features/home/presentation/widgets/b_job_gallery_
 import 'package:koala/product/models/gallery_image.dart';
 import 'package:koala/product/providers/job_gallery_provider.dart';
 import 'package:koala/product/services/job_gallery_service.dart';
+import 'package:koala/product/widgets/app_bottom_sheet.dart';
 import 'package:koala/product/widgets/gallery_strip.dart';
 
 import '../../../../../support/fake_api.dart';
@@ -171,6 +172,8 @@ void main() {
 
     await tester.tap(find.text('Şirketten Seç'));
     await tester.pumpAndSettle();
+    expect(find.byType(AppBottomSheet), findsOneWidget);
+    expect(find.byType(ListTile), findsNothing);
     await tester.tap(find.text('Mutfak'));
     await tester.pumpAndSettle();
 

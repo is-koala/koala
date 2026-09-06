@@ -49,7 +49,7 @@ abstract class BCompanyGalleryPagemodel extends State<BCompanyGalleryPage> {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (picked == null || !mounted) return;
 
-    final error = await GalleryUploadValidator.errorFor(picked.path);
+    final error = await BGalleryUploadValidator.errorFor(picked.path);
     if (!mounted) return;
     if (error != null) {
       AppToast.error(context, error);

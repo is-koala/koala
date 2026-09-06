@@ -175,4 +175,45 @@ void main() {
       'company_img',
     ]);
   });
+
+  test(
+    'yazma sürerken başka ilana geçince yeni galeri meşgul kalmıyor',
+    () async {
+      final writeResponse = Completer<FakeApiResponse>();
+      final api = FakeApi(
+        handler: (request) {
+          if (request.method != 'GET') return writeResponse.future;
+          final jobId = request.uri.pathSegments[1];
+          return FakeApiResponse(
+            statusCode: 200,
+            body: galleryBody(['${jobId}_img'], coverId: '${jobId}_img'),
+          );
+        },
+      );
+      final provider = JobGalleryProvider(
+        service: JobGalleryService.withClient(api.client),
+      );
+      await provider.load('job_1');
+
+      final write = provider.replaceGallery(provider.images);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(provider.isBusy, isTrue);
+
+      await provider.load('job_2');
+
+      expect(provider.isLoadedFor('job_2'), isTrue);
+      expect(provider.isBusy, isFalse);
+      expect(provider.canAddImage, isTrue);
+
+      writeResponse.complete(
+        FakeApiResponse(
+          statusCode: 200,
+          body: galleryBody(['job_1_img'], coverId: 'job_1_img'),
+        ),
+      );
+      expect(await write, isFalse);
+      expect(provider.isLoadedFor('job_2'), isTrue);
+      expect(provider.isBusy, isFalse);
+    },
+  );
 }
