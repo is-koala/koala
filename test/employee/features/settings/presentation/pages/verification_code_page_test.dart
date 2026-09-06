@@ -296,11 +296,13 @@ void main() {
     expect(api.requests, hasLength(1));
   });
 
-  // Sunucu aynı değere ikinci bir kod üretmiyor: gönderilen değer
-  // kullanıcının mevcut değerine eşitse `pendingVerifications` boş dönüyor
-  // (`UserManager.patchCurrentUser`). Elde yeni bir kimlik yokken "yeni kod
-  // gönderildi" demek, kullanıcıyı hiç gelmeyecek bir kod için bekletir.
-  testWidgets('yeni doğrulama dönmezse başarı bildirilmiyor, ekran kapanıyor', (
+  // Boş `pendingVerifications` yalnızca tek bir anlama geliyor: gönderilen
+  // değer kullanıcının mevcut değerine eşit, yani doğrulama bu arada
+  // tamamlanmış ve değer uygulanmış (`UserManager.patchCurrentUser` eşit
+  // değere doğrulama açmıyor). "Yeni kod gönderildi" demek kullanıcıyı hiç
+  // gelmeyecek bir kod için bekletirdi; doğrusu durumu söyleyip zinciri
+  // kesmeden çıkmak — tek kaydetmede ikinci doğrulama sırada olabilir.
+  testWidgets('yeni doğrulama dönmezse zaten doğrulanmış deyip kapanıyor', (
     tester,
   ) async {
     final api = FakeApi(
@@ -324,11 +326,11 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
 
     expect(find.text('Yeni kod gönderildi.'), findsNothing);
-    expect(
-      find.text('Bu doğrulama artık geçerli değil. Değişikliği baştan yap.'),
-      findsOneWidget,
-    );
-    expect(finished, isFalse);
+    expect(find.text('E-posta adresin zaten doğrulanmış.'), findsOneWidget);
+    // `true`: değer uygulandı. `false` dönmek çağıranda sıradaki doğrulamayı
+    // düşürürdü (`account_info_pagemodel` zinciri `verified != true`'da
+    // kesiyor) ve alanlara yeni değer yazılırken hata mesajı gösterilirdi.
+    expect(finished, isTrue);
   });
 
   testWidgets('tekrar gönderilen kod eskisinin yerine geçiyor', (tester) async {

@@ -170,19 +170,24 @@ abstract class VerificationCodePagemodel extends State<VerificationCodePage> {
 
       final refreshed = pending.where((item) => item.type == verification.type);
       if (refreshed.isEmpty) {
-        // Sunucu yeni bir kod üretmedi: gönderilen değer kullanıcının mevcut
-        // değerine eşitse `UserManager.patchCurrentUser` doğrulama açmadan
-        // `200` dönüyor, yani bekleyen kayıt bu arada (örneğin başka bir
-        // cihazda) kapanmış. Elimizde artık kodu kabul edecek bir kimlik yok;
-        // eskisini saklayıp "yeni kod gönderildi" demek, kullanıcıyı hiç
-        // gelmeyecek bir kod için bekletirdi. Sayaçlar da bilerek
-        // sıfırlanmıyor — yenilenen bir şey yok. `403`/`404` ile aynı çıkış:
-        // ekran kapanıyor ve değişiklik baştan isteniyor.
-        AppToast.error(
+        // Boş liste tek bir anlama geliyor: `UserManager.patchCurrentUser`
+        // gönderilen değer kullanıcının mevcut değerine eşitse doğrulama
+        // açmadan `200` dönüyor. Yani bekleyen doğrulama bu arada (örneğin
+        // başka bir cihazda) tamamlanmış ve değer uygulanmış. Kod istemenin
+        // anlamı kalmadı; "yeni kod gönderildi" demek kullanıcıyı hiç
+        // gelmeyecek bir kod için bekletirdi.
+        //
+        // Çıkış `true` ile: değer gerçekten yazıldı ve `updateProfile`
+        // sağlayıcıdaki kullanıcıyı zaten tazeledi. `false` dönmek çağıranın
+        // doğrulama zincirini keserdi (`verified != true` → `break`), yani
+        // aynı kaydetmede bekleyen ikinci doğrulama hiç sorulmazdı.
+        AppToast.success(
           context,
-          'Bu doğrulama artık geçerli değil. Değişikliği baştan yap.',
+          verification.isEmail
+              ? 'E-posta adresin zaten doğrulanmış.'
+              : 'Telefon numaran zaten doğrulanmış.',
         );
-        _finish(false);
+        _finish(true);
         return;
       }
 
