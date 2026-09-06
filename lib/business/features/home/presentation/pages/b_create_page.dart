@@ -181,13 +181,18 @@ class _BCreatePageState extends BCreatePageModel {
               // Sigorta yalnızca kurumsal ilanlarda sorulabiliyor: bireysel
               // ilan ucu `insuranceRequired`'ı zorla `false` yazıyor ve
               // sigorta gerektiren kategorilerde ilan açtırmıyor.
-              if (company != null)
+              if (company != null) ...[
                 _switchTile(
                   title: "Sigorta Gerekli",
                   value: _insuranceRequired,
-                  onChanged: (v) => setState(() => _insuranceRequired = v),
-                )
-              else
+                  // Kategori sigorta zorunlu kılıyorsa anahtar kapatılamıyor:
+                  // sunucu o ilanı zaten kabul etmiyor.
+                  onChanged: _insuranceLocked
+                      ? null
+                      : (v) => setState(() => _insurancePreference = v),
+                ),
+                if (_insuranceLocked) _insuranceLockedNotice(),
+              ] else
                 _insuranceNotice(),
 
               const SizedBox(height: AppSizes.navBarClearance),
@@ -627,10 +632,26 @@ class _BCreatePageState extends BCreatePageModel {
     );
   }
 
+  /// Anahtar kilitliyken neden kapatılamadığını söyleyen açıklama.
+  ///
+  /// Devre dışı bir anahtar tek başına "bozuk" görünüyor; kuralın kategoriden
+  /// geldiğini yazmak, kategoriyi değiştirince kilidin kalkacağını da
+  /// anlatıyor.
+  Widget _insuranceLockedNotice() {
+    return const Padding(
+      padding: EdgeInsets.only(top: AppSizes.spaceSmall),
+      child: BInfoNotice(
+        message:
+            'Bu kategoride sigortalı çalışma zorunlu, ilan bu şekilde '
+            'yayınlanır.',
+      ),
+    );
+  }
+
   Widget _switchTile({
     required String title,
     required bool value,
-    required ValueChanged<bool> onChanged,
+    required ValueChanged<bool>? onChanged,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSizes.spaceTiny),
