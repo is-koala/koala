@@ -28,6 +28,27 @@ gelmez.
 | `eposta-onayla` | `token` | `/email-verification` |
 | `payment-result` | `status`, `assignmentId` | `/payment-result` |
 
+## Doğrulanmış HTTPS bağlantıları
+
+Production uygulaması `https://iskoala.com/<host>` ve
+`https://www.iskoala.com/<host>` adreslerini; staging uygulaması yalnız
+`https://staging.iskoala.com/<host>` adreslerini kabul eder. `<host>` yukarıdaki
+beş kanonik addan biri olmalıdır. Development flavor'ı public HTTPS alan adı
+sahiplenmez. Örneğin:
+
+```text
+https://iskoala.com/hesap-dogrula?token=<registration-token>
+https://staging.iskoala.com/sifre-sifirla?token=<reset-token>
+https://iskoala.com/payment/result?status=success&assignmentId=<id>
+```
+
+iOS Associated Domains ve Android `autoVerify` yalnız bu ortam hostlarını
+sahiplenir. Web tarafındaki AASA/`assetlinks.json` da aynı yolları yayımlar.
+Uygulama kurulu değilse HTTPS adresi web formunda kalır; mağazaya zorlanmaz.
+Ödeme dönüşünün HTTPS yolu `/payment/result`, özel şema hedefi ise geriye dönük
+uyumluluk için `payment-result` olarak kalır. Eski özel şema alias'ları yalnız
+daha önce gönderilmiş e-postalar içindir ve HTTPS path olarak kabul edilmez.
+
 `eposta-onayla` hedefi şimdilik tokenı kullanıcıya göstermeden taşıyan geçici
 karşılama ekranıdır. Kalıcı e-posta doğrulama akışı hazır olduğunda aynı host
 korunup bu hedefin davranışı tamamlanacaktır.
@@ -46,8 +67,8 @@ Yeni bağlantılar alias yerine kanonik host'ları üretmelidir.
 
 ## Doğrulama kuralları
 
-- Şema ve host tam eşleşir; benzer adlar ve HTTPS web adresleri native link
-  sayılmaz.
+- Özel şema ve host tam eşleşir. HTTPS'te ortam alan adı ile tek kanonik path
+  birlikte tam eşleşir; `http`, API hostu, port ve iç içe path kabul edilmez.
 - User-info, açık port, fragment veya boş olmayan path taşıyan bağlantı
   reddedilir.
 - Her gerekli alan tam bir kez bulunmalı ve boş olmamalıdır. Gerekli alanın

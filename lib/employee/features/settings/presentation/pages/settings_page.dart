@@ -89,6 +89,11 @@ class SettingsPage extends StatelessWidget {
           onTap: () => ThemeModeSheet.show(context),
         ),
         MyListTile(
+          icon: AppIcons.delete,
+          title: "Hesabı Sil",
+          onTap: () => context.push('/account-deletion'),
+        ),
+        MyListTile(
           icon: AppIcons.logout,
           title: "Çıkış Yap",
           onTap: () async {

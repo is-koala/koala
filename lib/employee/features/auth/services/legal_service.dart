@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:koala/employee/features/auth/models/agreement_version.dart';
 import 'package:koala/employee/features/auth/models/consent_decision.dart';
+import 'package:koala/product/models/account_deletion.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
@@ -48,10 +49,11 @@ class LegalService {
   }
 
   /// Hesap silme talebi oluşturur.
-  Future<void> requestAccountDeletion({String? reason}) {
-    return _apiClient.postWithoutData(
+  Future<AccountDeletion> requestAccountDeletion({String? reason}) {
+    return _apiClient.post<AccountDeletion>(
       ApiPaths.accountDeletion,
       body: {'reason': reason},
+      parse: (data) => AccountDeletion.fromJson(data as Map<String, dynamic>),
     );
   }
 }

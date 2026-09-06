@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:koala/business/core/b_shell_page.dart';
+import 'package:koala/business/features/home/presentation/pages/b_account_deletion_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_create_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_home_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_posts_page.dart';
@@ -41,6 +42,7 @@ import 'package:koala/employee/features/chat/models/conversation.dart';
 import 'package:koala/employee/features/profile/presentation/pages/profile_page.dart';
 import 'package:koala/employee/features/home/presentation/pages/shell_page.dart';
 import 'package:koala/employee/features/company_detail/presentation/pages/company_detail_page.dart';
+import 'package:koala/employee/features/settings/presentation/pages/account_deletion_page.dart';
 import 'package:koala/employee/features/settings/presentation/pages/settings_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/login_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/register_page.dart';
@@ -299,6 +301,12 @@ class RouterManager {
         pageBuilder: (context, state) => _page(state, const SettingsPage()),
       ),
 
+      GoRoute(
+        path: '/account-deletion',
+        pageBuilder: (context, state) =>
+            _page(state, const AccountDeletionPage()),
+      ),
+
       // Kimlik doğrulama ve adres, başvuru kapısının iki şartı; ikisi de
       // hesap bilgilerinden ve başvuru ekranından açılıyor.
       GoRoute(
@@ -421,6 +429,12 @@ class RouterManager {
       GoRoute(
         path: '/business/settings',
         pageBuilder: (context, state) => _page(state, const BSettingsPage()),
+      ),
+
+      GoRoute(
+        path: '/business/account-deletion',
+        pageBuilder: (context, state) =>
+            _page(state, const BAccountDeletionPage()),
       ),
 
       GoRoute(
