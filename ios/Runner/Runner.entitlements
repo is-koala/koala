@@ -7,5 +7,11 @@
 		<string>applinks:iskoala.com</string>
 		<string>applinks:www.iskoala.com</string>
 	</array>
+	<!-- Bunun yeri .entitlements: iso7816.select-identifiers'ın aksine bu
+	     gerçekten bir entitlement ve provisioning profile'da bulunmalı. -->
+	<key>com.apple.developer.nfc.readersession.formats</key>
+	<array>
+		<string>TAG</string>
+	</array>
 </dict>
 </plist>

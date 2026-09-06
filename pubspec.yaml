@@ -43,6 +43,31 @@ dependencies:
   image_picker: ^1.2.0
   url_launcher: ^6.3.2
 
+  # Kimlik kartı çipi (NFC) ve MRZ okuma
+  #
+  # dmrtd: ICAO Doc 9303'ü Dart'ta uygulayan tek ciddi açık kaynak kütüphane.
+  # pub.dev'de **yok** (https://pub.dev/packages/dmrtd 404 dönüyor), yalnızca
+  # GitHub'da yaşıyor. `ref:` ile commit sabitlendi — dal takip edilmiyor,
+  # çünkü çip protokolü sessizce değişirse doğrulama akışı üretimde kırılır.
+  #
+  # ⚠️ LİSANS SORUSU AÇIK: dmrtd LGPL-3.0 ya da ticari lisansla dağıtılıyor.
+  # Kapalı kaynak bir uygulamaya statik olarak girdiğinde yeniden bağlama
+  # yükümlülüğü doğurabilir. Soru hukuk tarafında ve **mağazaya çıkmadan önce
+  # cevaplanmalı**; kod yazmayı bloke etmiyor ama yayını bloke ediyor.
+  dmrtd:
+    git:
+      url: https://github.com/ZeroPass/dmrtd.git
+      ref: 3b6c091843573b275ae68a87335e1872f8b60ea0
+
+  # dmrtd'nin ham APDU taşıması. Zaten dmrtd'nin bağımlılığı; burada açıkça
+  # yazılı çünkü NFC'nin var / kapalı / desteklenmiyor ayrımını doğrudan bu
+  # paketin `nfcAvailability` alanından okuyoruz.
+  flutter_nfc_kit: ^3.6.2
+
+  # MRZ okuması için **genel OCR**. MRZ ayrıştırıcı değil: TD1 düzeni ve ICAO
+  # kontrol hanesi doğrulaması `settings/models/mrz_key.dart` içinde bizim.
+  google_mlkit_text_recognition: ^0.17.1
+
   # State Management
   provider: ^6.1.5
 
@@ -51,6 +76,25 @@ dependencies:
   flutter_secure_storage: ^11.0.0
   stomp_dart_client: ^3.0.1
   file_picker: ^12.2.0
+
+# dmrtd `archive: ^3.6.1` istiyor, lottie 3.5.1 ise `archive: ^4.0.0`; ikisi
+# aynı anda çözülemiyor ve pub'ın önerdiği çıkış yolu lottie'yi 3.3.0'a
+# düşürmek — yani zaten yayında olan bir paketi geriye almak.
+#
+# Bunun yerine `archive` 3.6.1'e sabitlendi. Gerekçe:
+# - lottie'nin `archive`'dan kullandığı **her şey** (`ZipDecoder.decodeBytes`,
+#   `GZipDecoder.decodeBytes`, `ArchiveFile.name/.content`) 3.6.1'de aynı
+#   imzayla var; `composition.dart` dışında `archive`'a hiç dokunmuyor.
+# - O iki yol da sihirli baytla korumalı (`PK`, `1f 8b`) ve uygulamanın tek
+#   Lottie varlığı düz JSON (`assets/lottie/email_verification_pending.json`),
+#   yani zip/gzip kodu çalışma zamanında hiç çalışmıyor.
+#
+# ⚠️ Bu bir override: lottie kendi tabanının altında çalışıyor. `archive` 4
+# isteyen **yeni** bir paket eklenirse bu satır onu sessizce eski sürüme
+# çeker — o gün burayı okuyun. dmrtd `archive` 4'e geçtiğinde ya da dmrtd
+# ticari bir SDK ile değiştiğinde bu blok tümüyle silinmeli.
+dependency_overrides:
+  archive: ^3.6.1
 
 dev_dependencies:
   flutter_test:

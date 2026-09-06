@@ -1,3 +1,4 @@
+import 'package:koala/employee/features/auth/models/chip_evidence.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/models/profile_update_result.dart';
 import 'package:koala/employee/features/auth/models/public_profile.dart';
@@ -149,11 +150,31 @@ class UserService {
     );
   }
 
+  /// Çipe imzalatılacak tek kullanımlık sayıyı alır.
+  ///
+  /// **Kart okunmadan önce** çağrılmalı — imzalanacak şey bu, kart
+  /// okunduktan sonra alınan bir sayı tekrar korumasını sağlamaz. Sayı 8
+  /// bayt, base64, tek kullanımlık ve 10 dakika geçerli.
+  Future<String> startIdentityChallenge() {
+    return _apiClient.post<String>(
+      ApiPaths.currentUserIdentityChallenge,
+      parse: (data) => data! as String,
+    );
+  }
+
   /// Kimliği doğrular.
   ///
-  /// Sunucu bilgileri NVİ'ye soruyor; tutmazsa `400`, servise ulaşamazsa
-  /// `502` dönüyor. Başarılıysa `/users/me`'deki `identityVerified` `true`
-  /// oluyor — çağıran taraf kullanıcıyı tazelemeli.
+  /// Beş beyan alanı zorunlu; [evidence] varsa çipten okunan kanıt aynı
+  /// istekte, gövdeye base64 alanlar olarak ekleniyor.
+  ///
+  /// **[evidence] bilerek isteğe bağlı.** Sunucudaki
+  /// `IDENTITY_PASSIVE_AUTH_ENABLED` bugün `false`; bayrak kapalıyken
+  /// `verifyChipEvidence` hemen dönüyor ve fazladan alanlar yok sayılıyor.
+  /// Yani kanıtsız çağrı **eskisi gibi** çalışıyor: NFC'si olmayan telefon,
+  /// okunmayan kart ve elle giriş yolu akışın dışına düşmüyor.
+  ///
+  /// Başarılıysa `/users/me`'deki `identityVerified` `true` oluyor —
+  /// çağıran taraf kullanıcıyı tazelemeli.
   ///
   /// [tcIdentityNumber] 11 hane ve son hanesi çift olmak zorunda; sunucu
   /// deseni doğruluyor. [tcDocumentNumber] kimlik kartının üstündeki seri
@@ -164,6 +185,7 @@ class UserService {
     required DateTime birthDate,
     required String tcIdentityNumber,
     required String tcDocumentNumber,
+    ChipEvidence? evidence,
   }) {
     return _apiClient.postWithoutData(
       ApiPaths.currentUserIdentityVerification,
@@ -173,6 +195,7 @@ class UserService {
         'birthDate': birthDate.asLocalDate,
         'tcIdentityNumber': tcIdentityNumber,
         'tcDocumentNumber': tcDocumentNumber,
+        ...?evidence?.toJson(),
       },
     );
   }

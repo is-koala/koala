@@ -29,8 +29,13 @@ val hasReleaseSigning = listOf(
 
 plugins {
     id("com.android.application")
-    // Kotlin derlemesi AGP'nin built-in Kotlin'i üzerinden yürüyor; ayrı bir
-    // kotlin-android eklentisi uygulanmıyor (android.builtInKotlin=true).
+    // ⚠️ Bu satır bilerek geri geldi. `flutter_nfc_kit` hâlâ
+    // `org.jetbrains.kotlin.android` uyguluyor ve AGP 9'un built-in
+    // Kotlin'iyle bir arada çalışmıyor; bu yüzden `gradle.properties`'te
+    // `android.builtInKotlin=false` var ve app modülünün Kotlin'i yeniden
+    // eklentiden geliyor. Gerekçenin tamamı ve geri açma koşulu
+    // `android/gradle.properties` içinde.
+    id("org.jetbrains.kotlin.android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -51,7 +56,11 @@ android {
         applicationId = "com.iskoala.koala"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        // flutter_nfc_kit 3.6.x minSdk 24 istiyor. Flutter'ın varsayılanına
+        // (flutter.minSdkVersion) bırakılırsa SDK sürümüyle birlikte sessizce
+        // değişir; NFC'nin tabanı sürüm notlarına yazılacak bir karar olduğu
+        // için elle sabitlendi.
+        minSdk = 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -111,6 +120,13 @@ android {
 
     buildTypes {
         release {
+            // R8 kuralları `proguard-rules.pro`'da; ML Kit'in kullanılmayan
+            // dil modelleri olmadan release build'i düşüyor.
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+
             // Release hiçbir zaman debug anahtarıyla imzalanmaz. Yerelde
             // key.properties, CI'da yalnız secret-backed ortam değişkenleri
             // kullanılır; değerler eksikse çıktı imzasız kalır ve release

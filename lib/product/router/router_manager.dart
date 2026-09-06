@@ -65,6 +65,7 @@ import 'package:koala/employee/features/settings/presentation/pages/address_page
 import 'package:koala/employee/features/auth/models/pending_verification.dart';
 import 'package:koala/employee/features/settings/presentation/pages/change_password_page.dart';
 import 'package:koala/employee/features/settings/presentation/pages/verification_code_page.dart';
+import 'package:koala/employee/features/settings/presentation/pages/identity_chip_page.dart';
 import 'package:koala/employee/features/settings/presentation/pages/identity_verification_page.dart';
 import 'package:koala/product/network/session_manager.dart';
 
@@ -350,6 +351,14 @@ class RouterManager {
           final user = state.extra as CurrentUser;
           return _page(state, IdentityVerificationPage(user: user));
         },
+      ),
+
+      // Çip okuma, kimlik ekranından açılıyor ve sonucu ona geri veriyor.
+      // Kimliğin kendisini doğrulamıyor: kanıt üretip kapanıyor, kanıtsız
+      // kapanması da meşru bir sonuç.
+      GoRoute(
+        path: '/identity-chip',
+        pageBuilder: (context, state) => _page(state, const IdentityChipPage()),
       ),
 
       GoRoute(

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:koala/employee/features/auth/models/chip_evidence.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
 import 'package:koala/product/network/api_exception.dart';
@@ -269,6 +270,94 @@ void main() {
       expect((request.data as Map<String, dynamic>)['birthDate'], '1998-04-07');
     });
 
+    test('kanıt gönderilmediğinde gövde eskisiyle birebir aynı', () async {
+      // Kabul maddesi: bayrak kapalıyken akış eskisi gibi çalışmalı. Çip
+      // yolundan geçmeyen bir doğrulama isteği fazladan **tek bir alan**
+      // bile taşımamalı — sunucudaki `verifyChipEvidence` bayrak kapalıyken
+      // hemen dönüyor ama sözleşmenin değişmediği burada kilitleniyor.
+      final api = FakeApi(
+        handler: (_) =>
+            const FakeApiResponse(statusCode: 200, body: {'success': true}),
+      );
+
+      await UserService.withClient(api.client).verifyIdentity(
+        firstName: 'Ada',
+        lastName: 'Kaya',
+        birthDate: DateTime(1998, 4, 7),
+        tcIdentityNumber: '12345678950',
+        tcDocumentNumber: 'A01B23456',
+      );
+
+      final body = api.requests.single.data! as Map<String, dynamic>;
+      expect(body.keys, {
+        'firstName',
+        'lastName',
+        'birthDate',
+        'tcIdentityNumber',
+        'tcDocumentNumber',
+      });
+    });
+
+    test('kanıt verildiğinde aynı istekte base64 alanlar da gider', () async {
+      final api = FakeApi(
+        handler: (_) =>
+            const FakeApiResponse(statusCode: 200, body: {'success': true}),
+      );
+
+      await UserService.withClient(api.client).verifyIdentity(
+        firstName: 'Ada',
+        lastName: 'Kaya',
+        birthDate: DateTime(1998, 4, 7),
+        tcIdentityNumber: '12345678950',
+        tcDocumentNumber: 'A01B23456',
+        evidence: const ChipEvidence(
+          sod: 'c29k',
+          dg1: 'ZGcx',
+          dg11: 'ZGcxMQ==',
+          dg15: 'ZGcxNQ==',
+          challenge: 'Y2hhbGxlbmdl',
+          activeAuthenticationSignature: 'c2ln',
+        ),
+      );
+
+      final request = api.requests.single;
+      final body = request.data! as Map<String, dynamic>;
+
+      expect(request.path, '/users/me/identity-verification');
+      expect(body['sod'], 'c29k');
+      expect(body['dg1'], 'ZGcx');
+      expect(body['dg11'], 'ZGcxMQ==');
+      expect(body['dg15'], 'ZGcxNQ==');
+      expect(body['challenge'], 'Y2hhbGxlbmdl');
+      expect(body['activeAuthenticationSignature'], 'c2ln');
+      // Beyan alanları yerinde kalıyor; kanıt onların yerine geçmiyor.
+      expect(body['tcIdentityNumber'], '12345678950');
+    });
+
+    test('DG15 taşımayan kartta imza alanları gövdeye hiç konmuyor', () async {
+      // Sunucu `null` ile boş metni ayırıyor; `""` göndermek gereksiz yere
+      // çözümleme yoluna sokardı. DG15 yoksa akış yine tamamlanıyor.
+      final api = FakeApi(
+        handler: (_) =>
+            const FakeApiResponse(statusCode: 200, body: {'success': true}),
+      );
+
+      await UserService.withClient(api.client).verifyIdentity(
+        firstName: 'Ada',
+        lastName: 'Kaya',
+        birthDate: DateTime(1998, 4, 7),
+        tcIdentityNumber: '12345678950',
+        tcDocumentNumber: 'A01B23456',
+        evidence: const ChipEvidence(sod: 'c29k', dg1: 'ZGcx'),
+      );
+
+      final body = api.requests.single.data! as Map<String, dynamic>;
+      expect(body.containsKey('dg15'), isFalse);
+      expect(body.containsKey('challenge'), isFalse);
+      expect(body.containsKey('activeAuthenticationSignature'), isFalse);
+      expect(body.containsKey('dg11'), isFalse);
+    });
+
     test('bilgiler doğrulanamazsa hata yükselir', () async {
       final api = FakeApi(
         handler: (_) => const FakeApiResponse(
@@ -285,6 +374,40 @@ void main() {
           tcIdentityNumber: '12345678950',
           tcDocumentNumber: 'A01B23456',
         ),
+        throwsA(isA<ApiException>()),
+      );
+    });
+  });
+
+  group('UserService.startIdentityChallenge', () {
+    test('tek kullanımlık sayı challenge ucundan alınır', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 200,
+          body: {'success': true, 'data': 'q83vEjRWeJA='},
+        ),
+      );
+
+      final challenge = await UserService.withClient(
+        api.client,
+      ).startIdentityChallenge();
+
+      final request = api.requests.single;
+      expect(request.path, '/users/me/identity-verification/challenge');
+      expect(request.method, 'POST');
+      expect(challenge, 'q83vEjRWeJA=');
+    });
+
+    test('sayı alınamazsa hata yükselir', () async {
+      // Çağıran taraf bunu "doğrulama başlatılamadı" olarak gösteriyor;
+      // sessizce kanıtsız devam etmek, kullanıcıya olmayan bir güvence
+      // vermek olurdu.
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse.connectionError(),
+      );
+
+      await expectLater(
+        UserService.withClient(api.client).startIdentityChallenge(),
         throwsA(isA<ApiException>()),
       );
     });
