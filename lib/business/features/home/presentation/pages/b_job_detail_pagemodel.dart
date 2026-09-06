@@ -61,6 +61,9 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
   /// İptal ya da uyuşmazlık isteği sunucuya gitti mi.
   bool _isRunningAssignmentAction = false;
 
+  /// Şablon çıkarma isteği sunucuya gitti mi; düğme kilitleniyor.
+  bool _isSavingTemplate = false;
+
   @override
   void initState() {
     super.initState();
@@ -278,6 +281,73 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
       await _assignmentService.openDispute(assignmentId: id, reason: reason);
       return 'Sorun bildirildi, Koala inceleyecek';
     });
+  }
+
+  // ------------------------------------------------------------ Şablonlar
+
+  /// Başlık çubuğundaki "Şablon olarak kaydet" düğmesi.
+  ///
+  /// İlan gelmeden çizilmiyor: şablon var olan bir ilandan çıkarıldığı için
+  /// elde ilan yokken basılacak bir düğme göstermek anlamsız.
+  Widget? _saveAsTemplateAction() {
+    if (_detail == null) return null;
+
+    return IconButton(
+      tooltip: 'Şablon olarak kaydet',
+      icon: AppIcon(AppIcons.fileText, color: context.textPrimary),
+      onPressed: _isSavingTemplate ? null : _saveAsTemplate,
+    );
+  }
+
+  /// İlanı şablon olarak kaydeder.
+  ///
+  /// Sunucu şablonu ilandan kendisi çıkarıyor; istemcinin gönderdiği tek şey
+  /// ad ve ilanın kimliği. Ad zorunlu (`@NotBlank`), o yüzden alanı boşken
+  /// onayı kapalı tutan [ReasonDialog] kullanılıyor — `ConfirmDialog`'un
+  /// metin alanı yok.
+  Future<void> _saveAsTemplate() async {
+    if (_isSavingTemplate) return;
+
+    final name = await ReasonDialog.show(
+      context,
+      title: 'Şablon olarak kaydet',
+      description:
+          'İlanın başlığı, kategorisi, ücreti ve gereksinimleri şablona '
+          'kopyalanır. Adres ve tarih kopyalanmaz; sonraki ilanda yeniden '
+          'girilir.',
+      fieldLabel: 'Şablon adı',
+      confirmLabel: 'Kaydet',
+      // Yıkıcı bir işlem değil: kırmızı düğme yanlış sinyal verirdi.
+      isDestructive: false,
+    );
+
+    if (name == null || !mounted) return;
+
+    setState(() => _isSavingTemplate = true);
+
+    final provider = context.read<BJobTemplatesProvider>();
+    final created = await provider.createFromJob(
+      jobId: widget.jobId,
+      templateName: name,
+    );
+
+    if (!mounted) return;
+    setState(() => _isSavingTemplate = false);
+
+    if (created) {
+      AppToast.success(
+        context,
+        'Şablon kaydedildi',
+        actionLabel: 'Şablonlarım',
+        // Toast sayfadan uzun yaşayabiliyor; ayrılmış bir sayfanın
+        // context'iyle gezinmek hata verirdi.
+        onAction: () {
+          if (mounted) context.push('/business/job-templates');
+        },
+      );
+    } else {
+      AppToast.error(context, provider.errorMessage ?? 'Şablon kaydedilemedi');
+    }
   }
 
   /// İptal ve uyuşmazlığın ortak gövdesi: kilit, hata ve tazeleme.

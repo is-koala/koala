@@ -131,6 +131,22 @@ class ApiPaths {
   static String currentUserJobAlert(String alertId) =>
       '$currentUserJobAlerts/$alertId';
 
+  /// İşverenin ilan şablonları.
+  ///
+  /// Şablon formdan değil, **var olan bir ilandan** çıkarılıyor: `POST`
+  /// gövdesi yalnızca `templateName` ve `jobId` taşıyor, alanları sunucu
+  /// ilandan kopyalıyor. İlanın sahibi ya da şirketinin yetkilisi olmayan
+  /// biri şablon çıkaramıyor; reddi `404`.
+  ///
+  /// **Adres, tarih ve durum kopyalanmıyor** — aynı ilan bir sonraki hafta
+  /// başka güne, çoğu zaman başka adrese açılıyor. Liste sayfalı değil, düz
+  /// bir dizi dönüyor ve kullanıcı bazlı; aynı şirketin başka yetkilisinin
+  /// şablonları görünmüyor.
+  static const String currentUserJobTemplates = '/users/me/job-templates';
+
+  static String currentUserJobTemplate(String templateId) =>
+      '$currentUserJobTemplates/$templateId';
+
   // ----------------------------------------------------------------- Atama
 
   static const String jobAssignments = '/job-assignments';
