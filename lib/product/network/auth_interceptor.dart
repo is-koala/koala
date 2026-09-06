@@ -105,8 +105,23 @@ class AuthInterceptor extends QueuedInterceptor {
     }
   }
 
+  /// İsteği tazelenmiş token'la bir kez daha gönderir.
+  ///
+  /// Multipart gövde tek kullanımlık: `FormData` ilk gönderimde akışa
+  /// dönüştürülüp mühürleniyor, aynı nesne ikinci kez gönderilince dio
+  /// "The FormData has already been finalized" diye düşüyor. Yani dosya
+  /// yükleyen bir istek, yükleme sırasında erişim token'ı dolduğunda hiç
+  /// tekrar denenemiyordu. `clone()` parçaları yeniden okunabilir biçimde
+  /// kopyaladığı için tekrar denenen istek dosyayı yine taşıyor — kopyalamak
+  /// yerine `FormData`'yı burada yeniden kurmak, isteği kimin kurduğunu
+  /// bilmeyi gerektirirdi.
   Future<Response<dynamic>> _retry(RequestOptions options) async {
     final accessToken = await _tokenStorage.readAccessToken();
+
+    final body = options.data;
+    if (body is FormData) {
+      options.data = body.clone();
+    }
 
     return _tokenDio.fetch<dynamic>(
       options
