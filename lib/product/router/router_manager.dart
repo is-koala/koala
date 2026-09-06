@@ -34,6 +34,9 @@ import 'package:koala/employee/features/auth/presentation/pages/onboarding_page.
 import 'package:koala/employee/features/auth/presentation/pages/register_type_page.dart';
 import 'package:koala/employee/features/home/presentation/pages/explore_pages/explore_page.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/jobs_page.dart';
+import 'package:koala/employee/features/jobs/presentation/pages/job_alerts_page.dart';
+import 'package:koala/employee/features/jobs/presentation/pages/job_alert_form_page.dart';
+import 'package:koala/employee/features/jobs/models/job_alert.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/review_page.dart';
 import 'package:koala/employee/features/jobs/models/my_job.dart';
 import 'package:koala/employee/features/chat/presentation/pages/chat_list_page.dart';
@@ -112,7 +115,13 @@ class RouterManager {
     }
 
     // Business kullanıcısı employee sayfalarına erişmeye çalışırsa
-    final employeeRoutes = ['/explore', '/jobs', '/chat', '/profile'];
+    final employeeRoutes = [
+      '/explore',
+      '/jobs',
+      '/job-alerts',
+      '/chat',
+      '/profile',
+    ];
     final isEmployeeRoute = employeeRoutes.any(
       (route) => location.startsWith(route),
     );
@@ -299,6 +308,21 @@ class RouterManager {
       GoRoute(
         path: '/settings',
         pageBuilder: (context, state) => _page(state, const SettingsPage()),
+      ),
+
+      GoRoute(
+        path: '/job-alerts',
+        pageBuilder: (context, state) => _page(state, const JobAlertsPage()),
+      ),
+
+      GoRoute(
+        path: '/job-alerts/form',
+        pageBuilder: (context, state) => _page(
+          state,
+          JobAlertFormPage(
+            alert: state.extra is JobAlert ? state.extra as JobAlert : null,
+          ),
+        ),
       ),
 
       GoRoute(

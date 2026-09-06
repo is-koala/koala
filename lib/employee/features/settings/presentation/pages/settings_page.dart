@@ -4,6 +4,7 @@ import 'package:koala/employee/features/auth/services/auth_service.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/review_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/saved_jobs_provider.dart';
+import 'package:koala/employee/features/jobs/presentation/providers/job_alerts_provider.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -73,6 +74,11 @@ class SettingsPage extends StatelessWidget {
           onTap: () => context.push('/sessions'),
         ),
         MyListTile(
+          icon: AppIcons.notification,
+          title: 'İş Alarmlarım',
+          onTap: () => context.push('/job-alerts'),
+        ),
+        MyListTile(
           icon: AppIcons.shield,
           title: "Şikayetlerim",
           onTap: () => context.push('/reports'),
@@ -109,6 +115,7 @@ class SettingsPage extends StatelessWidget {
               context.read<UserProvider>().clear();
               context.read<ApplyProvider>().clear();
               context.read<SavedJobsProvider>().clear();
+              context.read<JobAlertsProvider>().clear();
               // Değerlendirme kaydı cihazda duruyor; yeni kullanıcı önceki
               // kullanıcının işaretlerini görmemeli.
               context.read<ReviewProvider>().clear();

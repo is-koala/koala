@@ -112,6 +112,14 @@ class ApiPaths {
   /// Tek bir ilanı kaydetme / kaydı kaldırma.
   static String savedJob(String jobId) => '$savedJobs/$jobId';
 
+  /// İş alarmında en az bir ölçüt zorunludur; ilçe tek başına ölçüt sayılmaz.
+  /// İl ve ilçe adları sunucuda metin olarak eşleştiği için referans
+  /// listesinden seçilir. Kullanıcı başına en fazla 10 alarm vardır.
+  static const String currentUserJobAlerts = '/users/me/job-alerts';
+
+  static String currentUserJobAlert(String alertId) =>
+      '$currentUserJobAlerts/$alertId';
+
   // ----------------------------------------------------------------- Atama
 
   static const String jobAssignments = '/job-assignments';
