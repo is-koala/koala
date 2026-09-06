@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:koala/employee/features/company_detail/models/company.dart';
+import 'package:koala/employee/features/company_detail/models/company_image.dart';
 import 'package:koala/business/features/home/presentation/providers/b_company_provider.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
@@ -11,6 +12,7 @@ import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
+import 'package:koala/product/constants/upload_limits.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
@@ -44,17 +46,9 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
   /// Logonun önizleme boyutu.
   static const double _logoSize = 88;
 
-  /// Sunucunun kabul ettiği en büyük görsel — `UploadProperties.maxImageSizeMb`.
-  /// İstemcide de bakılıyor ki kullanıcı yüklemeyi bekleyip hata almasın.
-  static const int _maxLogoBytes = 10 * 1024 * 1024;
-
-  /// Sunucunun kabul ettiği uzantılar (`UploadProperties.imageExtensions`).
-  static const Set<String> _allowedLogoExtensions = {
-    'png',
-    'jpg',
-    'jpeg',
-    'webp',
-  };
+  /// Galeri satırındaki kapak önizlemesi; logodan küçük çünkü satırın
+  /// yüksekliğini belirlemesi gerekmiyor.
+  static const double _galleryCoverSize = 48;
 
   /// Logo işlemi sürerken; iki kez tetiklenmesin diye.
   bool _isLogoBusy = false;
@@ -130,15 +124,14 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (picked == null || !mounted) return;
 
-    final extension = picked.path.split('.').last.toLowerCase();
-    if (!_allowedLogoExtensions.contains(extension)) {
+    if (!UploadLimits.hasAllowedImageExtension(picked.path)) {
       AppToast.error(context, 'Yalnızca PNG, JPG veya WEBP yükleyebilirsiniz');
       return;
     }
 
     final length = await File(picked.path).length();
     if (!mounted) return;
-    if (length > _maxLogoBytes) {
+    if (length > UploadLimits.maxImageBytes) {
       AppToast.error(context, 'Görsel en fazla 10 MB olabilir');
       return;
     }
@@ -271,6 +264,10 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
             const SizedBox(height: AppSizes.space),
             _logoSection(company),
             const SizedBox(height: AppSizes.spaceLarge),
+            _sectionLabel("Şirket Galerisi"),
+            const SizedBox(height: AppSizes.space),
+            _galleryRow(company),
+            const SizedBox(height: AppSizes.spaceLarge),
             _sectionLabel("Firma Bilgileri"),
             const SizedBox(height: AppSizes.spaceMedium),
             MyTextfield(labelText: "Firma Adı", controller: _nameController),
@@ -344,7 +341,7 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'PNG, JPG veya WEBP · en fazla 10 MB',
+                UploadLimits.imageRuleLabel,
                 style: context.textTheme.bodySmall?.copyWith(
                   color: context.textTertiary,
                 ),
@@ -383,6 +380,86 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
           ),
         ),
       ],
+    );
+  }
+
+  /// Galeri ekranına giriş: kapak önizlemesi, sayı ve chevron.
+  ///
+  /// Kapağı `Company.coverImage` veriyor — kapak işaretli görsel, yoksa
+  /// galerinin ilki. Hesabı sunucu yapıyor, ekran yalnız gösteriyor.
+  Widget _galleryRow(Company company) {
+    final cover = company.coverImage;
+    final count = company.images.length;
+
+    return Material(
+      color: context.tileColor,
+      borderRadius: AppRadius.innerCircular,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context.push('/business/company-gallery'),
+        child: Padding(
+          padding: AppPadding.card,
+          child: Row(
+            children: [
+              _galleryCover(cover),
+              const SizedBox(width: AppSizes.spaceMedium),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Şirket Galerisi',
+                      style: context.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: AppSizes.smallGap),
+                    Text(
+                      count == 0
+                          ? 'Henüz görsel yok'
+                          : '$count görsel · en fazla '
+                                '${UploadLimits.maxCompanyImages}',
+                      style: context.textTheme.bodySmall?.copyWith(
+                        color: context.textTertiary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              AppIcon(
+                AppIcons.arrowRight,
+                size: AppSizes.iconMedium,
+                color: context.textTertiary,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _galleryCover(CompanyImage? cover) {
+    final placeholder = AppIcon(
+      AppIcons.gallery,
+      size: AppSizes.iconMedium,
+      color: context.textTertiary,
+    );
+
+    return ClipRRect(
+      borderRadius: AppRadius.smallCircular,
+      child: SizedBox.square(
+        dimension: _galleryCoverSize,
+        child: ColoredBox(
+          color: context.elevatedColor,
+          child: cover == null
+              ? Center(child: placeholder)
+              : Image.network(
+                  cover.url,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => Center(child: placeholder),
+                ),
+        ),
+      ),
     );
   }
 

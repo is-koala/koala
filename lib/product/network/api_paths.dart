@@ -274,12 +274,29 @@ class ApiPaths {
   static String companyFollow(String companyId) =>
       '${company(companyId)}/follow';
 
-  /// Şirketin galerisi.
+  /// Şirketin galerisi: `GET` herkese açık, `POST` ve `PUT` yalnızca
+  /// şirketin `ADMIN` yetkilisine.
   ///
-  /// Şirket detayı görselleri zaten gövdesinde döndürüyor; bu uç yalnızca
-  /// galeriyi tek başına yönetmek için.
+  /// Okumak için gerekmiyor — şirket detayı görselleri zaten gövdesinde
+  /// döndürüyor. Yazma tarafında üç kural var:
+  ///
+  /// - `POST` multipart ve parçanın adı **`image`**; JSON parçası yok, yanıt
+  ///   `201` ve galerinin tamamı.
+  /// - `PUT` galeriyi **toptan değiştiriyor**: gövdedeki listede olmayan
+  ///   görsel galeriden düşüyor, yani sıralama ya da kapak değişikliğinde
+  ///   galerinin tamamı gönderilmeli.
+  /// - Galeri en fazla **10 görsel** taşıyor; aşılırsa `409`.
+  ///
+  /// Dört uç da galerinin son hâlini döndürüyor, ikinci bir okuma gereksiz.
   static String companyImages(String companyId) =>
       '${company(companyId)}/images';
+
+  /// Galerideki tek bir görsel: `DELETE` ile galeriden düşürülüyor.
+  ///
+  /// [imageId] galeri satırının değil **görselin** kimliği; listede dönen
+  /// `GalleryImageDto.id` doğrudan buraya konuyor.
+  static String companyImage(String companyId, String imageId) =>
+      '${companyImages(companyId)}/$imageId';
 
   /// Şirketin yetkilileri.
   static String companyContacts(String companyId) =>

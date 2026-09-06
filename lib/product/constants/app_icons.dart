@@ -90,6 +90,9 @@ abstract final class AppIcons {
   static const String task = 'task';
   static const String dress = 'tshirt';
 
+  /// Şirket galerisi: boş galeri durumu ve yüklenemeyen görselin yerine.
+  static const String gallery = 'gallery';
+
   // ────────────────────────────────────── İş Kategorileri
   static const String camera = 'camera';
   static const String restaurant = 'forkKnife';
