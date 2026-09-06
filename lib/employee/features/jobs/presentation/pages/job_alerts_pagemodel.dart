@@ -15,7 +15,7 @@ abstract class JobAlertsPagemodel extends State<JobAlertsPage> {
       if (alert.cityName != null) alert.cityName!,
       if (alert.districtName != null) alert.districtName!,
       if (alert.minimumSalary != null)
-        'En az ${alert.minimumSalary!.asPrice} ₺',
+        'En az ${alert.minimumSalary!.asExactPrice} ₺',
       if (alert.type != null) alert.type!.displayName,
     ];
     return values.join(' · ');

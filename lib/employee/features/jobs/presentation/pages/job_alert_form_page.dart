@@ -46,7 +46,9 @@ class _JobAlertFormPageState extends JobAlertFormPagemodel {
               MyTextfield(
                 labelText: 'Alarm adı',
                 controller: nameController,
-                inputFormatters: [LengthLimitingTextInputFormatter(255)],
+                inputFormatters: [
+                  LengthLimitingTextInputFormatter(JobAlertDraft.maxNameLength),
+                ],
               ),
               const SizedBox(height: AppSizes.spaceMedium),
               _dropdown<JobCategory>(

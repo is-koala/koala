@@ -9,6 +9,7 @@ class JobAlertsProvider extends ChangeNotifier {
     : _service = service ?? JobAlertService();
 
   final JobAlertService _service;
+  static const int maximumAlertCount = 10;
   final List<JobAlert> _alerts = [];
   bool _isLoading = false;
   bool _hasLoaded = false;
@@ -19,7 +20,7 @@ class JobAlertsProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get hasLoaded => _hasLoaded;
   String? get errorMessage => _errorMessage;
-  bool get canCreate => _alerts.length < 10;
+  bool get canCreate => _alerts.length < maximumAlertCount;
 
   Future<void> load({bool force = false}) async {
     if (_isLoading) return;
@@ -50,7 +51,8 @@ class JobAlertsProvider extends ChangeNotifier {
   Future<bool> create(JobAlertDraft draft) async {
     _errorMessage = null;
     if (!canCreate) {
-      _errorMessage = 'En fazla 10 iş alarmı oluşturabilirsiniz.';
+      _errorMessage =
+          'En fazla $maximumAlertCount iş alarmı oluşturabilirsiniz.';
       notifyListeners();
       return false;
     }
@@ -129,7 +131,7 @@ class JobAlertsProvider extends ChangeNotifier {
 
   String _messageFor(ApiException error) {
     if (error.type == ApiErrorType.conflict) {
-      return 'En fazla 10 iş alarmı oluşturabilirsiniz.';
+      return 'En fazla $maximumAlertCount iş alarmı oluşturabilirsiniz.';
     }
     if (error.type == ApiErrorType.notFound) {
       return 'İş alarmı bulunamadı. Listeyi yenileyip tekrar deneyin.';

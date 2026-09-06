@@ -159,7 +159,8 @@ class _JobAlertsPageState extends JobAlertsPagemodel {
     return Padding(
       padding: AppPadding.card,
       child: Text(
-        '10 alarm sınırına ulaştınız. Yeni alarm için önce birini silin.',
+        '${JobAlertsProvider.maximumAlertCount} alarm sınırına ulaştınız. '
+        'Yeni alarm için önce birini silin.',
         textAlign: TextAlign.center,
         style: context.textTheme.bodySmall?.copyWith(
           color: context.textSecondary,

@@ -66,6 +66,8 @@ class JobAlertDraft {
   final JobType? type;
   final bool isActive;
 
+  static const int maxNameLength = 255;
+
   void validate() {
     final normalizedCity = _trimmed(cityName);
     final normalizedDistrict = _trimmed(districtName);
@@ -73,9 +75,9 @@ class JobAlertDraft {
     if (name.trim().isEmpty) {
       throw const JobAlertValidationException('Alarm adı zorunludur.');
     }
-    if (name.trim().length > 255) {
+    if (name.trim().length > maxNameLength) {
       throw const JobAlertValidationException(
-        'Alarm adı en fazla 255 karakter olabilir.',
+        'Alarm adı en fazla $maxNameLength karakter olabilir.',
       );
     }
     if (minimumSalary != null && minimumSalary! < 0) {

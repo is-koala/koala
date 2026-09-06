@@ -46,4 +46,30 @@ void main() {
     expect(find.text('Tekrar Dene'), findsOneWidget);
     expect(find.text('Henüz iş alarmınız yok'), findsNothing);
   });
+
+  testWidgets('kriter özeti küsuratlı asgari ücreti yuvarlamaz', (
+    tester,
+  ) async {
+    final api = FakeApi(
+      handler: (_) => const FakeApiResponse(
+        statusCode: 200,
+        body: {
+          'success': true,
+          'data': [
+            {
+              'id': 'alert-1',
+              'alertName': 'Küsuratlı ücret',
+              'minSalary': 1250.5,
+              'active': true,
+            },
+          ],
+        },
+      ),
+    );
+
+    await pumpPage(tester, api);
+
+    expect(find.text('En az 1.250,5 ₺'), findsOneWidget);
+    expect(find.text('En az 1.251 ₺'), findsNothing);
+  });
 }
