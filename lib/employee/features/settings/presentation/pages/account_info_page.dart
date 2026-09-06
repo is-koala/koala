@@ -152,10 +152,7 @@ class _AccountInfoPageState extends AccountInfoPagemodel {
       label: "Adres",
       value: label.isEmpty ? "Eklenmedi" : label,
       isMissing: label.isEmpty,
-      onTap: () async {
-        await context.push('/address', extra: widget.user);
-        if (mounted) context.pop();
-      },
+      onTap: openAddress,
     );
   }
 
@@ -174,10 +171,7 @@ class _AccountInfoPageState extends AccountInfoPagemodel {
       label: "Kimlik",
       value: "Doğrulanmadı",
       isMissing: true,
-      onTap: () async {
-        await context.push('/identity-verification', extra: widget.user);
-        if (mounted) context.pop();
-      },
+      onTap: openIdentityVerification,
     );
   }
 

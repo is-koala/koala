@@ -186,6 +186,24 @@ abstract class AccountInfoPagemodel extends State<AccountInfoPage> {
     });
   }
 
+  /// Adres kendi ekranında düzenleniyor: uç toptan yazıyor ve ülke/il/ilçe
+  /// seçicisiyle koordinat istiyor.
+  Future<void> openAddress() => _editOnOwnPage('/address');
+
+  /// Kimlik de kendi ekranında doğrulanıyor.
+  Future<void> openIdentityVerification() =>
+      _editOnOwnPage('/identity-verification');
+
+  /// Kendi ekranında düzenlenen bir alana gidip dönüşte bu ekranı kapatır.
+  ///
+  /// Kapatmanın sebebi: alanlar `widget.user`'dan dolduruluyor ve o görüntü
+  /// diğer ekran kaydettiğinde bayatlıyor. Hesap ekranı yeniden açıldığında
+  /// tazesiyle geliyor.
+  Future<void> _editOnOwnPage(String route) async {
+    await context.push(route, extra: widget.user);
+    if (mounted) context.pop();
+  }
+
   /// Yeni değer eskisinden farklıysa onu, aynıysa `null` döner.
   static String? _changed(String value, String? current) {
     final trimmed = value.trim();
