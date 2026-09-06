@@ -52,7 +52,7 @@ class Payout {
         json['jobAssignmentId'],
         'jobAssignmentId',
       ),
-      amount: JsonField.requiredString(json['amount'], 'amount'),
+      amount: JsonField.rollingDecimalString(json['amount'], 'amount'),
       currency: JsonField.requiredString(json['currency'], 'currency'),
       status: PayoutStatus.fromCode(json['status']),
       failureReason: json['failureReason'] as String?,

@@ -35,7 +35,10 @@ class CreateJobRequest {
   final AddressWrite address;
   final JobType type;
   final SalaryType salaryType;
-  final double salary;
+
+  /// JSON'da dize gönderilir; backend `BigDecimal` olarak okur. Böylece
+  /// teklif alınan değer IEEE-754 dönüşümüne uğramadan snapshot'a taşınır.
+  final String salary;
   final DateTime startDateTime;
   final DateTime endDateTime;
   final int minAge;

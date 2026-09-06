@@ -29,19 +29,19 @@ class PricingBreakdown {
         'pricingVersion',
       ),
       currency: JsonField.requiredString(json['currency'], 'currency'),
-      workerPayout: JsonField.requiredString(
+      workerPayout: JsonField.requiredDecimalString(
         json['workerPayout'],
         'workerPayout',
       ),
-      serviceFeeRate: JsonField.requiredString(
+      serviceFeeRate: JsonField.requiredDecimalString(
         json['serviceFeeRate'],
         'serviceFeeRate',
       ),
-      serviceFeeAmount: JsonField.requiredString(
+      serviceFeeAmount: JsonField.requiredDecimalString(
         json['serviceFeeAmount'],
         'serviceFeeAmount',
       ),
-      employerTotal: JsonField.requiredString(
+      employerTotal: JsonField.requiredDecimalString(
         json['employerTotal'],
         'employerTotal',
       ),

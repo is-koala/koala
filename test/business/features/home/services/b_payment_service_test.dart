@@ -109,7 +109,7 @@ void main() {
               },
               {
                 'id': 'attempt-new',
-                'status': 'SUCCEEDED',
+                'status': 'VERIFY_PENDING',
                 'currency': 'TRY',
                 'workerPayout': '1000.10',
                 'commissionAmount': '75.01',
@@ -136,6 +136,8 @@ void main() {
         'attempt-new',
         'attempt-old',
       ]);
+      expect(attempts.first.status, BPaymentAttemptStatus.verifyPending);
+      expect(attempts.first.status.isActive, isTrue);
       expect(attempts.last.status, BPaymentAttemptStatus.failed);
       expect(attempts.last.pricing?.workerPayout, '1000.10');
     });
@@ -155,7 +157,39 @@ void main() {
       expect(attempts, isEmpty);
     });
 
-    test('ondalık alanları sayı olan denemeyi reddeder', () async {
+    test(
+      'rolling deploy sırasında eski JSON sayılarını geçici olarak kabul eder',
+      () async {
+        final api = FakeApi(
+          handler: (_) => const FakeApiResponse(
+            statusCode: 200,
+            body: {
+              'success': true,
+              'data': [
+                {
+                  'id': 'attempt-1',
+                  'status': 'FAILED',
+                  'currency': 'TRY',
+                  'workerPayout': 1000.10,
+                  'commissionAmount': '75.01',
+                  'commissionRate': '0.075',
+                  'totalCharged': '1075.11',
+                  'createdAt': '2026-09-05T12:00:00Z',
+                },
+              ],
+            },
+          ),
+        );
+
+        final attempts = await BPaymentService.withClient(
+          api.client,
+        ).fetchAttempts('assignment-1');
+
+        expect(attempts.single.workerPayout, '1000.1');
+      },
+    );
+
+    test('ondalık görünümlü olmayan string alanı sınırda reddeder', () async {
       final api = FakeApi(
         handler: (_) => const FakeApiResponse(
           statusCode: 200,
@@ -166,7 +200,7 @@ void main() {
                 'id': 'attempt-1',
                 'status': 'FAILED',
                 'currency': 'TRY',
-                'workerPayout': 1000.10,
+                'workerPayout': 'NaN',
                 'commissionAmount': '75.01',
                 'commissionRate': '0.075',
                 'totalCharged': '1075.11',

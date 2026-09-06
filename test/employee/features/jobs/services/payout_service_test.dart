@@ -62,7 +62,7 @@ void main() {
       expect(payouts, isEmpty);
     });
 
-    test('tutarı sayı döndüren sözleşme dışı yanıtı reddeder', () async {
+    test('rolling deploy sırasında eski JSON sayı tutarını geçici kabul eder', () async {
       final api = FakeApi(
         handler: (_) => const FakeApiResponse(
           statusCode: 200,
@@ -82,10 +82,11 @@ void main() {
         ),
       );
 
-      await expectLater(
-        PayoutService.withClient(api.client).fetchMyPayouts(),
-        throwsA(isA<ApiException>()),
-      );
+      final payouts = await PayoutService.withClient(
+        api.client,
+      ).fetchMyPayouts();
+
+      expect(payouts.single.amount, '1000.1');
     });
 
     for (final statusCode in [401, 500]) {

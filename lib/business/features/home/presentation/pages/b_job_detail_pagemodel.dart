@@ -54,7 +54,8 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
   /// Sohbet açılırken seçilen aday; aynı anda iki konuşma açılmasını önler.
   String? _openingChatUserId;
 
-  /// Bu ilanın ataması; başvuru kabul edilmemişse `null`.
+  /// Bu ilanın atamaları ve ekranda açıkça seçilmiş olanı.
+  List<Assignment> _assignments = const [];
   Assignment? _assignment;
 
   /// Atamanın mesai oturumları, girişten çıkışa.
@@ -70,6 +71,16 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
   List<BPaymentAttempt> _paymentAttempts = const [];
   bool _arePaymentAttemptsLoading = false;
   String? _paymentAttemptsError;
+
+  bool get _hasActivePaymentAttempt =>
+      _paymentAttempts.any((attempt) => attempt.status.isActive);
+
+  bool get _hasOpenDispute => _disputes.any((dispute) => dispute.isOpen);
+
+  bool get _canStartPayment =>
+      !_arePaymentAttemptsLoading &&
+      _paymentAttemptsError == null &&
+      !_hasActivePaymentAttempt;
 
   /// Atamanın uyuşmazlıkları; kart üzerinde açık olan gösteriliyor.
   List<Dispute> _disputes = const [];
@@ -147,15 +158,22 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
   /// çizilmiyor.
   Future<void> _loadAssignment() async {
     try {
-      final page = await _employerJobService.fetchMyAssignments();
-      final match = page.assignments
-          .where((assignment) => assignment.job.id == widget.jobId)
-          .firstOrNull;
+      final matches = await _employerJobService.fetchAssignmentsForJob(
+        widget.jobId,
+      );
+      final selectedId = _assignment?.id;
+      final match = matches.isEmpty
+          ? null
+          : matches.firstWhere(
+              (assignment) => assignment.id == selectedId,
+              orElse: () => matches.first,
+            );
 
       if (!mounted) return;
       if (match == null) {
         setState(() {
           _assignment = null;
+          _assignments = const [];
           _workSessions = const [];
           _disputes = const [];
           _paymentAttempts = const [];
@@ -167,6 +185,7 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
 
       if (!mounted) return;
       setState(() {
+        _assignments = matches;
         _assignment = match;
         _workSessions = const [];
         _disputes = const [];
@@ -184,6 +203,7 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
       if (!mounted) return;
       setState(() {
         _assignment = null;
+        _assignments = const [];
         _workSessions = const [];
         _disputes = const [];
         _paymentAttempts = const [];
@@ -191,6 +211,27 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
         _arePaymentAttemptsLoading = false;
       });
     }
+  }
+
+  Future<void> _selectAssignment(String assignmentId) async {
+    final match = _assignments
+        .where((item) => item.id == assignmentId)
+        .firstOrNull;
+    if (match == null || match.id == _assignment?.id) return;
+
+    setState(() {
+      _assignment = match;
+      _workSessions = const [];
+      _disputes = const [];
+      _paymentAttempts = const [];
+      _paymentAttemptsError = null;
+    });
+
+    await Future.wait([
+      _loadWorkSessions(match.id),
+      _loadDisputes(match.id),
+      _loadPaymentAttempts(match.id),
+    ]);
   }
 
   Future<void> _loadWorkSessions(String assignmentId) async {
@@ -242,7 +283,12 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
   /// Atamaya sabitlenmiş backend dökümünü gösterip açık onay alır.
   Future<void> _requestPayment() async {
     final assignment = _assignment;
-    if (assignment == null || _isStartingPayment) return;
+    if (assignment == null ||
+        !assignment.needsEmployerPayment ||
+        _isStartingPayment ||
+        !_canStartPayment) {
+      return;
+    }
 
     final breakdown = assignment.pricing;
     if (breakdown == null) {

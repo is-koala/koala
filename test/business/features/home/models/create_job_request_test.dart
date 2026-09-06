@@ -11,7 +11,7 @@ void main() {
     position: 'Garson',
     type: JobType.recurring,
     salaryType: SalaryType.hourly,
-    salary: 250,
+    salary: '250',
     startDateTime: DateTime(2026, 9, 1, 9, 30),
     endDateTime: DateTime(2026, 9, 1, 18),
     minAge: 18,
@@ -51,6 +51,32 @@ void main() {
     expect(json['type'], 'RECURRING');
     expect(json['salaryType'], 'HOURLY');
   });
+
+  test(
+    'ücret JSON gövdesine hassasiyet kaybetmeden ondalık dize olarak gider',
+    () {
+      final request = CreateJobRequest(
+        categoryId: 'cat_1',
+        title: 'Garson',
+        description: 'Açıklama',
+        position: 'Garson',
+        type: JobType.oneTime,
+        salaryType: SalaryType.daily,
+        salary: '9007199254740993.01',
+        startDateTime: DateTime(2026, 9, 1, 9),
+        endDateTime: DateTime(2026, 9, 1, 18),
+        minAge: 18,
+        maxAge: 40,
+        experienceRequired: false,
+        address: build().address,
+      );
+
+      expect(
+        request.toJson(forCompany: false)['salary'],
+        '9007199254740993.01',
+      );
+    },
+  );
 
   test('bireysel ilanda sigorta alanı gönderilmiyor', () {
     expect(

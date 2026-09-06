@@ -7,6 +7,7 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/formatters/turkish_money_formatter.dart';
+import 'package:koala/product/formatters/financial_failure_message.dart';
 
 /// Bir atamanın ödeme denemelerini kendi yükleme, hata ve boş durumlarıyla
 /// gösteren salt-okunur bölüm.
@@ -23,9 +24,6 @@ class BPaymentAttemptsSection extends StatelessWidget {
   final bool isLoading;
   final String? errorMessage;
   final VoidCallback onRetry;
-
-  static const _failedPaymentMessage =
-      'Ödeme tamamlanamadı. Lütfen tekrar dene.';
 
   @override
   Widget build(BuildContext context) {
@@ -107,7 +105,7 @@ class BPaymentAttemptsSection extends StatelessWidget {
           if (attempt.status == BPaymentAttemptStatus.failed) ...[
             const SizedBox(height: AppSizes.spaceSmall),
             Text(
-              _failedPaymentMessage,
+              FinancialFailureMessage.payment(attempt.failureReason),
               style: context.textTheme.bodySmall?.copyWith(
                 color: AppColors.danger,
               ),
@@ -122,6 +120,7 @@ class BPaymentAttemptsSection extends StatelessWidget {
     final color = switch (status) {
       BPaymentAttemptStatus.initiated => AppColors.warning,
       BPaymentAttemptStatus.inReview => AppColors.progress,
+      BPaymentAttemptStatus.verifyPending => AppColors.progress,
       BPaymentAttemptStatus.succeeded => AppColors.successStrong,
       BPaymentAttemptStatus.failed => AppColors.danger,
     };

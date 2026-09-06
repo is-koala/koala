@@ -157,4 +157,39 @@ void main() {
     expect(find.text('99,99 ₺'), findsOneWidget);
     semantics.dispose();
   });
+
+  testWidgets('bilinen payout hata anahtarını güvenli ayrıntıyla gösterir', (
+    tester,
+  ) async {
+    final api = FakeApi(
+      handler: (_) => const FakeApiResponse(
+        statusCode: 200,
+        body: {
+          'success': true,
+          'data': [
+            {
+              'id': 'failed',
+              'jobAssignmentId': 'assignment-1',
+              'amount': '99.99',
+              'currency': 'TRY',
+              'status': 'FAILED',
+              'failureReason': '{payout.settlement.failed}',
+              'createdAt': '2026-09-02T12:00:00Z',
+            },
+          ],
+        },
+      ),
+    );
+
+    await pumpPage(tester, api);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'Kazanç ödemesi tamamlanamadı. Destek ekibi işlemi inceleyecek.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('{payout.settlement.failed}'), findsNothing);
+  });
 }

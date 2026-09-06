@@ -13,6 +13,7 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/formatters/turkish_money_formatter.dart';
+import 'package:koala/product/formatters/financial_failure_message.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/empty_state.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
@@ -31,9 +32,6 @@ class EarningsPage extends StatefulWidget {
 }
 
 class _EarningsPageState extends EarningsPagemodel {
-  static const _failedPayoutMessage =
-      'Kazanç ödemesi tamamlanamadı. Lütfen destekle iletişime geç.';
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -192,7 +190,7 @@ class _EarningsPageState extends EarningsPagemodel {
             if (payout.status == PayoutStatus.failed) ...[
               const SizedBox(height: AppSizes.spaceSmall),
               Text(
-                _failedPayoutMessage,
+                FinancialFailureMessage.payout(payout.failureReason),
                 style: context.textTheme.bodySmall?.copyWith(
                   color: AppColors.danger,
                 ),

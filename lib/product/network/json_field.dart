@@ -10,6 +10,11 @@ abstract final class JsonField {
     throw FormatException('$field alanı eksik veya string değil.');
   }
 
+  static String requiredDecimalString(Object? value, String field) {
+    if (value is String && _decimalPattern.hasMatch(value)) return value;
+    throw FormatException('$field alanı geçerli bir ondalık dize değil.');
+  }
+
   static DateTime? dateOrNull(Object? value) {
     if (value == null) return null;
     if (value is String) return DateTime.tryParse(value);

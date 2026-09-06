@@ -49,7 +49,14 @@ const assignmentJson = {
 };
 
 Future<({FakeApi employerApi, FakeApi paymentApi, int Function() launches})>
-pumpPage(WidgetTester tester, {bool progressiveAttempt = false}) async {
+pumpPage(
+  WidgetTester tester, {
+  bool progressiveAttempt = false,
+  String? activeAttemptStatus,
+  bool openDispute = false,
+  List<Map<String, Object?>> assignments = const [assignmentJson],
+  String failureReason = 'Kart reddedildi.',
+}) async {
   final detailApi = FakeApi(
     handler: (_) => const FakeApiResponse(
       statusCode: 200,
@@ -89,22 +96,38 @@ pumpPage(WidgetTester tester, {bool progressiveAttempt = false}) async {
           },
         );
       }
-      return const FakeApiResponse(
+      return FakeApiResponse(
         statusCode: 200,
         body: {
           'success': true,
-          'data': {
-            'content': [assignmentJson],
-          },
+          'data': {'content': assignments},
         },
       );
     },
   );
   final assignmentApi = FakeApi(
-    handler: (_) => const FakeApiResponse(
-      statusCode: 200,
-      body: {'success': true, 'data': []},
-    ),
+    handler: (request) {
+      if (request.path.endsWith('/disputes') && openDispute) {
+        return const FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': [
+              {
+                'id': 'dispute-1',
+                'jobAssignmentId': 'assignment-1',
+                'status': 'OPEN',
+                'reason': 'Ücret uyuşmazlığı',
+              },
+            ],
+          },
+        );
+      }
+      return const FakeApiResponse(
+        statusCode: 200,
+        body: {'success': true, 'data': []},
+      );
+    },
   );
   var paymentFetchCount = 0;
   final paymentApi = FakeApi(
@@ -129,7 +152,7 @@ pumpPage(WidgetTester tester, {bool progressiveAttempt = false}) async {
       }
 
       paymentFetchCount++;
-      final isInitiated = progressiveAttempt && paymentFetchCount == 1;
+      final isInitiated = progressiveAttempt && paymentFetchCount > 1;
       return FakeApiResponse(
         statusCode: 200,
         body: <String, dynamic>{
@@ -137,13 +160,14 @@ pumpPage(WidgetTester tester, {bool progressiveAttempt = false}) async {
           'data': [
             {
               'id': 'attempt-1',
-              'status': isInitiated ? 'INITIATED' : 'FAILED',
+              'status':
+                  activeAttemptStatus ?? (isInitiated ? 'INITIATED' : 'FAILED'),
               'currency': 'TRY',
               'workerPayout': '1000.10',
               'commissionAmount': '50.01',
               'commissionRate': '0.050',
               'totalCharged': '1050.11',
-              if (!isInitiated) 'failureReason': 'Kart reddedildi.',
+              if (!isInitiated) 'failureReason': failureReason,
               'createdAt': '2026-09-06T12:00:00Z',
             },
           ],
@@ -281,32 +305,99 @@ void main() {
     expect(harness.launches(), 1);
   });
 
-  testWidgets('checkout dönüşünde güvenli hata gösterilir', (tester) async {
-    final harness = await pumpPage(tester, progressiveAttempt: true);
+  testWidgets('bilinen güvenli hata anahtarını kullanıcıya açıklar', (
+    tester,
+  ) async {
+    await pumpPage(tester, failureReason: '{payment.3ds.verification.failed}');
 
-    expect(find.text('Başlatıldı'), findsOneWidget);
-    expect(find.text('Kart reddedildi.'), findsNothing);
-
-    final button = find.text('Güvenli Ödemeyi Tamamla');
-    await tester.ensureVisible(button);
-    await tester.tap(button);
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.tap(find.text('Ödemeye geç'));
-    await tester.pumpAndSettle();
-
-    expect(harness.launches(), 1);
-    expect(find.text('Başlatıldı'), findsOneWidget);
-
-    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
-    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-    await tester.pumpAndSettle();
-
-    expect(find.text('Başarısız'), findsOneWidget);
     expect(
-      find.text('Ödeme tamamlanamadı. Lütfen tekrar dene.'),
+      find.text('3D Secure doğrulaması tamamlanamadı. Lütfen tekrar dene.'),
       findsOneWidget,
     );
-    expect(find.text('Kart reddedildi.'), findsNothing);
+    expect(find.text('{payment.3ds.verification.failed}'), findsNothing);
+  });
+
+  testWidgets(
+    'checkout dönüşünde yeni aktif deneme görünür ve yeniden ödeme kapanır',
+    (tester) async {
+      final harness = await pumpPage(tester, progressiveAttempt: true);
+
+      expect(find.text('Başarısız'), findsOneWidget);
+      expect(find.text('Kart reddedildi.'), findsNothing);
+
+      final button = find.text('Güvenli Ödemeyi Tamamla');
+      await tester.ensureVisible(button);
+      await tester.tap(button);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('Ödemeye geç'));
+      await tester.pumpAndSettle();
+
+      expect(harness.launches(), 1);
+      expect(find.text('Başarısız'), findsOneWidget);
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Başlatıldı'), findsOneWidget);
+      expect(find.text('Ödeme sonucu doğrulanıyor.'), findsOneWidget);
+      expect(find.text('Güvenli Ödemeyi Tamamla'), findsNothing);
+      expect(find.text('Kart reddedildi.'), findsNothing);
+    },
+  );
+
+  testWidgets('doğrulanan aktif deneme yeni checkout düğmesini kapatır', (
+    tester,
+  ) async {
+    final harness = await pumpPage(
+      tester,
+      activeAttemptStatus: 'VERIFY_PENDING',
+    );
+
+    expect(find.text('Sonuç doğrulanıyor'), findsWidgets);
+    expect(find.text('Ödeme sonucu doğrulanıyor.'), findsOneWidget);
+    expect(find.text('Güvenli Ödemeyi Tamamla'), findsNothing);
+    expect(harness.launches(), 0);
+  });
+
+  testWidgets('açık uyuşmazlık tamamlama ve iptali birlikte dondurur', (
+    tester,
+  ) async {
+    await pumpPage(tester, openDispute: true);
+
+    expect(find.textContaining('Emanetteki ücret'), findsOneWidget);
+    expect(find.text('İşi Tamamla'), findsNothing);
+    expect(find.text('İşi İptal Et'), findsNothing);
+  });
+
+  testWidgets('çoklu ilanda çalışan açıkça seçilir ve ödeme hedefi değişir', (
+    tester,
+  ) async {
+    final first = <String, Object?>{
+      ...assignmentJson,
+      'worker': {'id': 'worker-1', 'firstName': 'Ayşe', 'lastName': 'Çalışan'},
+    };
+    final second = <String, Object?>{
+      ...assignmentJson,
+      'id': 'assignment-2',
+      'worker': {'id': 'worker-2', 'firstName': 'Bora', 'lastName': 'Çalışan'},
+    };
+    final harness = await pumpPage(tester, assignments: [first, second]);
+
+    final selector = find.byKey(const ValueKey('assignment-selector'));
+    expect(selector, findsOneWidget);
+    await tester.ensureVisible(selector);
+    await tester.tap(selector);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Bora Çalışan').last);
+    await tester.pumpAndSettle();
+
+    expect(
+      harness.paymentApi.requests.any(
+        (request) => request.path == '/job-assignments/assignment-2/payments',
+      ),
+      isTrue,
+    );
   });
 }

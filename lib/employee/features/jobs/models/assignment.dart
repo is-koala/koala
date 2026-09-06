@@ -1,4 +1,5 @@
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/product/models/pricing_breakdown.dart';
 
 /// Atamanın durumu. Backend `AssignmentStatus` karşılığı.
@@ -64,6 +65,7 @@ class Assignment {
     required this.status,
     required this.paymentStatus,
     this.assignmentDateTime,
+    this.worker,
     this.actualCompletionDateTime,
     this.workHours = 0,
     this.workerPayout,
@@ -78,6 +80,7 @@ class Assignment {
 
   final AssignmentStatus status;
   final PaymentStatus paymentStatus;
+  final JobCreator? worker;
 
   final DateTime? assignmentDateTime;
   final DateTime? actualCompletionDateTime;
@@ -113,6 +116,10 @@ class Assignment {
       job: Job.fromJson((json['job'] as Map<String, dynamic>?) ?? const {}),
       status: AssignmentStatus.fromCode(json['status']),
       paymentStatus: PaymentStatus.fromCode(json['paymentStatus']),
+      worker: switch (json['worker']) {
+        final Map<String, dynamic> value => JobCreator.fromJson(value),
+        _ => null,
+      },
       assignmentDateTime: _parseDate(json['assignmentDateTime']),
       actualCompletionDateTime: _parseDate(json['actualCompletionDateTime']),
       workHours: (json['workHours'] as num?)?.toInt() ?? 0,

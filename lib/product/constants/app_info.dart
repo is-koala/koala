@@ -12,7 +12,7 @@ class AppInfo {
   /// `pubspec.yaml`'daki `version` ile elle eşit tutuluyor. Doğrusu bunu
   /// paketten okumak (`package_info_plus`) ama o yeni bir bağımlılık;
   /// sürüm yükseltilirken burası da güncellenmeli.
-  static const String version = '1.0.0';
+  static const String version = '1.1.0';
 
   /// Play Store paket adı. Zorunlu güncelleme ekranındaki mağaza düğmesi
   /// buna bağlı.

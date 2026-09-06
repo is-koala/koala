@@ -5,6 +5,7 @@ import 'package:koala/product/network/json_field.dart';
 enum BPaymentAttemptStatus {
   initiated('INITIATED', 'Başlatıldı'),
   inReview('IN_REVIEW', 'İnceleniyor'),
+  verifyPending('VERIFY_PENDING', 'Sonuç doğrulanıyor'),
   succeeded('SUCCEEDED', 'Başarılı'),
   failed('FAILED', 'Başarısız');
 
@@ -12,6 +13,11 @@ enum BPaymentAttemptStatus {
 
   final String code;
   final String displayName;
+
+  bool get isActive =>
+      this == BPaymentAttemptStatus.initiated ||
+      this == BPaymentAttemptStatus.inReview ||
+      this == BPaymentAttemptStatus.verifyPending;
 
   static BPaymentAttemptStatus fromCode(Object? value) {
     return BPaymentAttemptStatus.values.firstWhere(
@@ -58,19 +64,19 @@ class BPaymentAttempt {
       id: JsonField.requiredString(json['id'], 'id'),
       status: BPaymentAttemptStatus.fromCode(json['status']),
       currency: JsonField.requiredString(json['currency'], 'currency'),
-      workerPayout: JsonField.requiredString(
+      workerPayout: JsonField.rollingDecimalString(
         json['workerPayout'],
         'workerPayout',
       ),
-      commissionAmount: JsonField.requiredString(
+      commissionAmount: JsonField.rollingDecimalString(
         json['commissionAmount'],
         'commissionAmount',
       ),
-      commissionRate: JsonField.requiredString(
+      commissionRate: JsonField.rollingDecimalString(
         json['commissionRate'],
         'commissionRate',
       ),
-      totalCharged: JsonField.requiredString(
+      totalCharged: JsonField.rollingDecimalString(
         json['totalCharged'],
         'totalCharged',
       ),

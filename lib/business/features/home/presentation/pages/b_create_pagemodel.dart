@@ -454,10 +454,8 @@ abstract class BCreatePageModel extends State<BCreatePage> {
     final description = _descriptionController.text.trim();
     if (description.isEmpty) return _warn('Açıklama zorunlu');
 
-    final salary = double.tryParse(
-      _priceController.text.trim().replaceAll(',', '.'),
-    );
-    if (salary == null || salary < 1) {
+    final salary = _normalizedWorkerPayout;
+    if (salary == null) {
       return _warn('Geçerli bir ücret girin');
     }
 

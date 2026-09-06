@@ -172,6 +172,32 @@ class _BJobDetailPageState extends BJobDetailPageModel {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (_assignments.length > 1) ...[
+              Text('Çalışan seç', style: context.textTheme.labelMedium),
+              const SizedBox(height: AppSizes.spaceTiny),
+              DropdownButton<String>(
+                key: const ValueKey('assignment-selector'),
+                value: assignment.id,
+                isExpanded: true,
+                items: [
+                  for (var index = 0; index < _assignments.length; index++)
+                    DropdownMenuItem(
+                      value: _assignments[index].id,
+                      child: Text(
+                        _assignments[index].worker?.fullName.isNotEmpty == true
+                            ? _assignments[index].worker!.fullName
+                            : 'Çalışan ${index + 1}',
+                      ),
+                    ),
+                ],
+                onChanged: _isRunningAssignmentAction
+                    ? null
+                    : (id) {
+                        if (id != null) unawaited(_selectAssignment(id));
+                      },
+              ),
+              const SizedBox(height: AppSizes.space),
+            ],
             _assignmentStatusRow(assignment),
             if (_workSessions.isNotEmpty) ...[
               const SizedBox(height: AppSizes.space),
@@ -190,7 +216,10 @@ class _BJobDetailPageState extends BJobDetailPageModel {
             ?_openDisputeBanner(),
             if (assignment.needsEmployerPayment) ...[
               const SizedBox(height: AppSizes.spaceMedium),
-              _paymentButton(),
+              if (_canStartPayment)
+                _paymentButton()
+              else
+                _paymentPendingPanel(),
             ],
             if (_canComplete(assignment)) ...[
               const SizedBox(height: AppSizes.spaceMedium),
@@ -216,8 +245,33 @@ class _BJobDetailPageState extends BJobDetailPageModel {
   /// Tamamlama yalnızca bu iki durumdan yapılabiliyor; sunucu da aynı
   /// kapıyı tutuyor ve dışından `409` döndürüyor.
   bool _canComplete(Assignment assignment) =>
-      assignment.status == AssignmentStatus.confirmed ||
-      assignment.status == AssignmentStatus.inProgress;
+      !_hasOpenDispute &&
+      (assignment.status == AssignmentStatus.confirmed ||
+          assignment.status == AssignmentStatus.inProgress);
+
+  Widget _paymentPendingPanel() {
+    final message = _arePaymentAttemptsLoading
+        ? 'Ödeme denemeleri kontrol ediliyor.'
+        : _paymentAttemptsError != null
+        ? 'Ödeme durumu doğrulanamadı. Yeni ödeme başlatmadan önce yenile.'
+        : 'Ödeme sonucu doğrulanıyor.';
+
+    return Container(
+      width: double.infinity,
+      padding: AppPadding.card,
+      decoration: _panelDecoration(context),
+      child: Row(
+        children: [
+          Expanded(child: Text(message)),
+          if (!_arePaymentAttemptsLoading)
+            TextButton(
+              onPressed: () => _loadPaymentAttempts(),
+              child: const Text('Yenile'),
+            ),
+        ],
+      ),
+    );
+  }
 
   Widget _paymentButton() {
     return SizedBox(
@@ -417,7 +471,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     final canCancel = _canComplete(assignment);
     final canDispute =
         assignment.paymentStatus == PaymentStatus.heldInEscrow &&
-        !_disputes.any((dispute) => dispute.isOpen);
+        !_hasOpenDispute;
 
     if (!canCancel && !canDispute) return const [];
 
