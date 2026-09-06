@@ -39,7 +39,7 @@ Flutter 3.47.1 (stable), Dart SDK `^3.8.1`. The font is Poppins.
 
 ```bash
 flutter analyze --no-pub     # after every change; must stay clean
-flutter test                 # after every change to logic
+flutter test --flavor staging --dart-define-from-file=config/staging.json   # after every change to logic
 dart format lib test         # before handing the work over
 flutter pub get
 ```
@@ -56,7 +56,9 @@ Three shared helpers under `test/support/`, use them instead of rolling your own
 - **`pump.dart`** → `pumpInApp(tester, widget, brightness: ...)`. Product widgets read their colors from `context`, so they cannot be pumped bare — they need a `MaterialApp` with the real theme. The `brightness` parameter is there so a widget can be asserted in **both** themes, which is the project's core rule.
 - **`fake_api.dart`** → `FakeApi(handler: ...).client`. A fake HTTP layer plus an `ApiClient` that carries **the production interceptor chain** — `Authorization`, `X-Device-Id`, the `401` refresh and the retry all run in tests. Keychain and `SharedPreferences` do not exist there, so the client is fed `FakeTokenStorage` and `FakeDeviceIdentity` from the same file; pass your own `tokenStorage:` when a test needs to start with a token or read back the refreshed one, and check `sessionExpired` when it should end the session. `requests` holds the `RequestOptions` that reached the fake server — but note a retried request **mutates the options it already sent**, so capture headers inside the handler rather than reading them afterwards.
 
-CI runs `flutter test` on every PR and blocks the Android and iOS build jobs behind it, so a red test stops the pipeline.
+CI runs the suite as `flutter test --flavor staging --dart-define-from-file=config/staging.json` on every PR and blocks the Android and iOS build jobs behind it, so a red test stops the pipeline. It also runs `test/product/network/api_config_test.dart` on its own first.
+
+**Bare `flutter test` is red, and that is the design working.** `ApiConfig` refuses to build a client when no environment was selected, so a missing flavor cannot quietly fall back to the internet API — the single test CI runs first exists to prove exactly that. Do not "fix" a red bare run by loosening `ApiConfig`; pass the flavor and the define file, the way CI does.
 
 > **You can build this project — do it.** `flutter doctor` is green (Xcode installed and `xcode-select` pointed at it, Android SDK 37, JDK 17), so both of these work and are the real check that a change compiles end to end:
 >
@@ -588,7 +590,7 @@ The iOS `PRODUCT_BUNDLE_IDENTIFIER` in `project.pbxproj` is also **still Flutter
 ## Working habits
 
 - Run `flutter analyze --no-pub` after every change and leave it clean. If the change touched `android/` or `ios/`, run the matching `flutter build` too — analyze does not see the native side.
-- Run `flutter test` after every change to logic, and add a test with it. If a bug got through, the fix and the test that would have caught it belong in the same change.
+- Run `flutter test --flavor staging --dart-define-from-file=config/staging.json` after every change to logic, and add a test with it. The bare command is red on purpose (see above). If a bug got through, the fix and the test that would have caught it belong in the same change.
 - When adding values to the constant files, give them meaningful names and a `///` comment saying *why* that value, not what it is.
 - Before deleting anything, verify it is committed, and report what was deleted along with the command to undo it.
 - When the user sends a screenshot, do not guess the problem; trace it from the code and explain the cause. Most layout problems come from constraints — a missing `Center`/`Expanded`/`stretch` and the like.
