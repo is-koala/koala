@@ -4,6 +4,7 @@ import 'package:koala/business/features/home/presentation/providers/b_company_pr
 import 'package:koala/business/features/home/presentation/providers/b_job_templates_provider.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
 import 'package:koala/employee/features/auth/services/auth_service.dart';
+import 'package:koala/employee/features/jobs/presentation/providers/timesheet_queue_provider.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/employee/features/profile/presentation/providers/availability_provider.dart';
 import 'package:koala/product/network/realtime_client.dart';
@@ -84,6 +85,7 @@ class BSettingsPage extends StatelessWidget {
           icon: AppIcons.logout,
           title: "Çıkış Yap",
           onTap: () async {
+            await context.read<TimesheetQueueProvider>().pause();
             // Canlı bağlantı oturuma bağlı; token silinmeden önce
             // kapatılıyor ki yeniden bağlanmaya çalışmasın. İşveren tarafı da
             // aynı `RealtimeClient` örneğini kullanıyor.

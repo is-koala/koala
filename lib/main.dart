@@ -7,6 +7,7 @@ import 'package:koala/employee/features/home/presentation/providers/search_provi
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/saved_jobs_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/job_alerts_provider.dart';
+import 'package:koala/employee/features/jobs/presentation/providers/timesheet_queue_provider.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/employee/features/profile/presentation/providers/availability_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/review_provider.dart';
@@ -31,6 +32,10 @@ void main() {
         ChangeNotifierProvider(create: (_) => PageProvider()),
         ChangeNotifierProvider(create: (_) => SavedJobsProvider()),
         ChangeNotifierProvider(create: (_) => JobAlertsProvider()),
+        ChangeNotifierProvider(
+          create: (_) => TimesheetQueueProvider(),
+          lazy: false,
+        ),
         ChangeNotifierProvider(create: (_) => ReviewProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => ApplyProvider()),

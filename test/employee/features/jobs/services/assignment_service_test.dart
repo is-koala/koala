@@ -163,6 +163,41 @@ void main() {
       expect(session.isOpen, isTrue);
     });
 
+    test(
+      'çevrimdışı olay kimliği ve yakalanma anı birlikte gönderilir',
+      () async {
+        final api = sessionApi();
+        final capturedAt = DateTime.parse('2026-09-06T10:00:00Z');
+
+        await AssignmentService.withClient(api.client).checkIn(
+          assignmentId: 'asg_1',
+          latitude: 39.92,
+          longitude: 32.85,
+          clientEventId: '3d513c3e-e449-4e0a-ae0-ef3cdef809e4',
+          capturedAt: capturedAt,
+        );
+
+        expect(api.requests.single.data, {
+          'latitude': 39.92,
+          'longitude': 32.85,
+          'clientEventId': '3d513c3e-e449-4e0a-ae0-ef3cdef809e4',
+          'capturedAt': '2026-09-06T10:00:00.000Z',
+        });
+      },
+    );
+
+    test('olay kimliği yakalanma anı olmadan gönderilemez', () {
+      final api = sessionApi();
+
+      expect(
+        () => AssignmentService.withClient(
+          api.client,
+        ).checkIn(assignmentId: 'asg_1', clientEventId: 'event-without-time'),
+        throwsArgumentError,
+      );
+      expect(api.requests, isEmpty);
+    });
+
     // Konum isteğe bağlı: alınamadığında giriş yine yapılabilmeli, gövdede
     // boş koordinat gönderilmemeli.
     test('konum alınamazsa gövde boş gider', () async {

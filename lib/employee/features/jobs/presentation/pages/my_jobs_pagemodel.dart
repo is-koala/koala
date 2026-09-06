@@ -28,6 +28,8 @@ abstract class MyJobsPagemodel extends State<MyJobsPage> {
 
   /// Mesai isteği sunucuya gitmiş atamanın id'si; butonu kilitliyor.
   String? timesheetBusyAssignmentId;
+  TimesheetQueueProvider? _timesheetQueue;
+  int _timesheetDeliveryRevision = 0;
 
   /// Açık mesai süresini işleten sayaç.
   ///
@@ -56,7 +58,47 @@ abstract class MyJobsPagemodel extends State<MyJobsPage> {
     // çekilmesin diye provider ilk çağrıdan sonra ağa çıkmıyor.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) context.read<ApplyProvider>().load();
+      if (mounted) unawaited(_initializeTimesheetQueue());
     });
+  }
+
+  Future<void> _initializeTimesheetQueue() async {
+    try {
+      final queue = context.read<TimesheetQueueProvider>();
+      _timesheetQueue = queue;
+      queue.addListener(_onTimesheetQueueChanged);
+      _announceTimesheetDelivery(queue);
+
+      final userProvider = context.read<UserProvider>();
+      if (userProvider.user == null) await userProvider.load(silent: true);
+      if (!mounted) return;
+      final userId = userProvider.user?.id;
+      if (userId != null && queue.activeUserId != userId) {
+        final started = await queue.tryStartForUser(userId);
+        if (!started && mounted) {
+          AppToast.error(context, 'Mesai kuyruğu başlatılamadı.');
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        AppToast.error(context, 'Mesai kuyruğu başlatılamadı.');
+      }
+    }
+  }
+
+  void _onTimesheetQueueChanged() {
+    final queue = _timesheetQueue;
+    if (!mounted || queue == null) return;
+    _announceTimesheetDelivery(queue);
+  }
+
+  void _announceTimesheetDelivery(TimesheetQueueProvider queue) {
+    if (!mounted) return;
+    if (queue.deliveryRevision == _timesheetDeliveryRevision) return;
+    _timesheetDeliveryRevision = queue.deliveryRevision;
+    if (queue.takeDeliveryAcknowledgement() == null) return;
+    AppToast.success(context, 'Mesai kaydı gönderildi.');
+    unawaited(_loadJobs());
   }
 
   /// Kabul edilmiş işleri çeker.
@@ -123,6 +165,7 @@ abstract class MyJobsPagemodel extends State<MyJobsPage> {
   /// `REJECTED` için `null` döndürüyor.
   @override
   void dispose() {
+    _timesheetQueue?.removeListener(_onTimesheetQueueChanged);
     _elapsedTicker?.cancel();
     super.dispose();
   }
@@ -352,8 +395,7 @@ abstract class MyJobsPagemodel extends State<MyJobsPage> {
   /// yüzünden çalışanın mesaisi başlamamazlık edemez.
   Future<void> checkIn(MyJob job) => _runTimesheetAction(
     job,
-    successMessage: 'Mesain başladı',
-    action: (id, position) => _service.checkIn(
+    action: (queue, id, position) => queue.recordCheckIn(
       assignmentId: id,
       latitude: position?.latitude,
       longitude: position?.longitude,
@@ -363,8 +405,7 @@ abstract class MyJobsPagemodel extends State<MyJobsPage> {
   /// Açık mesai oturumunu kapatır.
   Future<void> checkOut(MyJob job) => _runTimesheetAction(
     job,
-    successMessage: 'Mesain bitti',
-    action: (id, position) => _service.checkOut(
+    action: (queue, id, position) => queue.recordCheckOut(
       assignmentId: id,
       latitude: position?.latitude,
       longitude: position?.longitude,
@@ -373,8 +414,12 @@ abstract class MyJobsPagemodel extends State<MyJobsPage> {
 
   Future<void> _runTimesheetAction(
     MyJob job, {
-    required String successMessage,
-    required Future<WorkSession> Function(String id, Position? position) action,
+    required Future<TimesheetSubmission> Function(
+      TimesheetQueueProvider queue,
+      String id,
+      Position? position,
+    )
+    action,
   }) async {
     final assignmentId = job.assignmentId;
     if (assignmentId == null || timesheetBusyAssignmentId != null) return;
@@ -382,21 +427,56 @@ abstract class MyJobsPagemodel extends State<MyJobsPage> {
     setState(() => timesheetBusyAssignmentId = assignmentId);
 
     try {
-      await action(assignmentId, await _currentPosition());
+      final queue = context.read<TimesheetQueueProvider>();
+      if (queue.activeUserId == null) {
+        final userProvider = context.read<UserProvider>();
+        if (userProvider.user == null) await userProvider.load(silent: true);
+        final userId = userProvider.user?.id;
+        if (userId == null) {
+          throw StateError('Oturum sahibi yüklenemedi.');
+        }
+        await queue.startForUser(userId);
+      }
+
+      final result = await action(
+        queue,
+        assignmentId,
+        await _currentPosition(),
+      );
       if (!mounted) return;
-      AppToast.success(context, successMessage);
-      // Giriş atamayı `IN_PROGRESS`'e çekiyor, çıkış `workHours` yazıyor;
-      // ikisi de listedeki kaydı eskitiyor.
-      await _loadJobs();
-    } on ApiException catch (error) {
+      switch (result) {
+        case TimesheetSubmission.sent:
+          // Listener normalde ACK sırasında bildirir; sayfa kuyruğa henüz
+          // bağlanmadıysa aynı tek-tüketim yolunu burada tamamla.
+          _announceTimesheetDelivery(queue);
+        case TimesheetSubmission.pending:
+          AppToast.info(context, 'Kaydedildi, gönderilmeyi bekliyor.');
+        case TimesheetSubmission.requiresSupport:
+          AppToast.error(
+            context,
+            'Mesai kaydı için destek gerekiyor.',
+            actionLabel: 'Destek Al',
+            onAction: () => openTimesheetSupport(job),
+          );
+      }
+    } catch (_) {
       if (!mounted) return;
-      AppToast.error(context, error.message);
-      // 409: durum sunucuda değişmiş — başka cihazdan giriş yapılmış ya da
-      // işveren işi kapatmış olabilir. Doğrusunu göstermek için tazeleniyor.
-      if (error.type == ApiErrorType.conflict) await _loadJobs();
+      AppToast.error(context, 'Mesai kaydı cihazda saklanamadı. Tekrar dene.');
     } finally {
       if (mounted) setState(() => timesheetBusyAssignmentId = null);
     }
+  }
+
+  Future<void> openTimesheetSupport(MyJob job) async {
+    final jobId = job.jobId;
+    if (jobId == null) {
+      await context.push('/reports');
+      return;
+    }
+    await ReportSheet.show(
+      context,
+      ReportTarget.job(jobId: jobId, title: job.title),
+    );
   }
 
   /// Cihazın konumu; alınamazsa `null`.

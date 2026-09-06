@@ -6,14 +6,18 @@ import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
 import 'package:koala/employee/features/jobs/models/cancellation.dart';
 import 'package:koala/employee/features/jobs/models/my_job.dart';
+import 'package:koala/employee/features/jobs/models/timesheet_event.dart';
 import 'package:koala/employee/features/jobs/models/work_session.dart';
 import 'package:koala/employee/features/jobs/services/assignment_service.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/review_provider.dart';
+import 'package:koala/employee/features/jobs/presentation/providers/timesheet_queue_provider.dart';
+import 'package:koala/employee/features/jobs/presentation/widgets/timesheet_queue_status.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/network/api_exception.dart';
+import 'package:koala/product/models/report.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
@@ -26,6 +30,7 @@ import 'package:koala/product/widgets/confirm_dialog.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:koala/product/widgets/notification_bell.dart';
 import 'package:koala/product/widgets/reason_dialog.dart';
+import 'package:koala/product/widgets/report_sheet.dart';
 import 'package:provider/provider.dart';
 
 part 'my_jobs_pagemodel.dart';
@@ -63,6 +68,7 @@ class _MyJobsPageState extends MyJobsPagemodel {
 
   @override
   Widget build(BuildContext context) {
+    final queuedEvents = context.watch<TimesheetQueueProvider>().events;
     if (loading) {
       return Scaffold(
         appBar: MyAppbar(
@@ -70,7 +76,9 @@ class _MyJobsPageState extends MyJobsPagemodel {
           showBackButton: false,
           actions: const [NotificationBell(route: '/notifications')],
         ),
-        body: const Center(child: CircularProgressIndicator()),
+        body: queuedEvents.isEmpty
+            ? const Center(child: CircularProgressIndicator())
+            : _queueLoadState(queuedEvents, showLoading: true),
       );
     }
 
@@ -84,7 +92,7 @@ class _MyJobsPageState extends MyJobsPagemodel {
           showBackButton: false,
           actions: const [NotificationBell(route: '/notifications')],
         ),
-        body: _errorState(error),
+        body: _errorState(error, queuedEvents: queuedEvents),
       );
     }
 
@@ -141,16 +149,18 @@ class _MyJobsPageState extends MyJobsPagemodel {
           showBackButton: false,
           actions: const [NotificationBell(route: '/notifications')],
         ),
-        body: RefreshIndicator(
-          onRefresh: reload,
-          child: const EmptyState(
-            icon: AppIcons.work,
-            title: 'Henüz bir işin yok',
-            description:
-                'Bir ilana başvurduğunda başvurun ve işlerin burada '
-                'görünecek.',
-          ),
-        ),
+        body: queuedEvents.isEmpty
+            ? RefreshIndicator(
+                onRefresh: reload,
+                child: const EmptyState(
+                  icon: AppIcons.work,
+                  title: 'Henüz bir işin yok',
+                  description:
+                      'Bir ilana başvurduğunda başvurun ve işlerin burada '
+                      'görünecek.',
+                ),
+              )
+            : _queueLoadState(queuedEvents),
       );
     }
 
@@ -204,13 +214,23 @@ class _MyJobsPageState extends MyJobsPagemodel {
   }
 
   /// İşler çekilemediğinde: mesaj ve tekrar deneme.
-  Widget _errorState(String message) {
+  Widget _errorState(
+    String message, {
+    List<TimesheetEvent> queuedEvents = const [],
+  }) {
     return Center(
       child: Padding(
         padding: AppPadding.primaryAll,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (queuedEvents.isNotEmpty) ...[
+              TimesheetQueueStatus(
+                events: queuedEvents,
+                onSupport: () => context.push('/reports'),
+              ),
+              const SizedBox(height: AppSizes.spaceMedium),
+            ],
             Text(
               message,
               textAlign: TextAlign.center,
@@ -223,6 +243,26 @@ class _MyJobsPageState extends MyJobsPagemodel {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _queueLoadState(
+    List<TimesheetEvent> events, {
+    bool showLoading = false,
+  }) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: AppPadding.primaryAll,
+      children: [
+        TimesheetQueueStatus(
+          events: events,
+          onSupport: () => context.push('/reports'),
+        ),
+        if (showLoading) ...[
+          const SizedBox(height: AppSizes.spaceLarge),
+          const Center(child: CircularProgressIndicator()),
+        ],
+      ],
     );
   }
 
@@ -811,6 +851,11 @@ class _MyJobsPageState extends MyJobsPagemodel {
   /// satırın atama kimliği yok ve mesaisi de olamaz.
   Widget _approvedTile(MyJob job) {
     if (job.assignmentId == null) return _jobTile(job, AppColors.onAccent);
+    final queuedEvents = context
+        .watch<TimesheetQueueProvider>()
+        .eventsForAssignment(job.assignmentId!);
+    final lastQueuedAction = queuedEvents.lastOrNull?.action;
+    final needsSupport = queuedEvents.any((event) => event.requiresSupport);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSizes.spaceSmall),
@@ -823,6 +868,13 @@ class _MyJobsPageState extends MyJobsPagemodel {
             contentPadding: AppPadding.zero,
             menu: _assignmentMenu(job, AppColors.onAccent),
           ),
+          if (queuedEvents.isNotEmpty) ...[
+            const SizedBox(height: AppSizes.spaceSmall),
+            TimesheetQueueStatus(
+              events: queuedEvents,
+              onSupport: () => openTimesheetSupport(job),
+            ),
+          ],
           const SizedBox(height: AppSizes.spaceSmall),
           // Sunucu, para emanete geçmeden mesai başlatmıyor. Butonu açık
           // bırakıp 409 yedirmek yerine sebebi burada yazılıyor.
@@ -834,20 +886,29 @@ class _MyJobsPageState extends MyJobsPagemodel {
                 color: AppColors.onAccent.withValues(alpha: _dateAlpha),
               ),
             )
-          else
+          else if (!needsSupport &&
+              lastQueuedAction != TimesheetEventAction.checkOut)
             SizedBox(
               width: double.infinity,
               height: _inlineButtonHeight,
               child: ElevatedButton.icon(
                 onPressed: timesheetBusyAssignmentId != null
                     ? null
-                    : () => checkIn(job),
+                    : () => lastQueuedAction == TimesheetEventAction.checkIn
+                          ? checkOut(job)
+                          : checkIn(job),
                 icon: _timesheetIcon(
                   job,
-                  icon: Icons.play_arrow_rounded,
+                  icon: lastQueuedAction == TimesheetEventAction.checkIn
+                      ? Icons.stop_rounded
+                      : Icons.play_arrow_rounded,
                   color: context.accentColor,
                 ),
-                label: const Text('Mesaiyi Başlat'),
+                label: Text(
+                  lastQueuedAction == TimesheetEventAction.checkIn
+                      ? 'Mesaiyi Bitir'
+                      : 'Mesaiyi Başlat',
+                ),
                 style: _timesheetButtonStyle(
                   background: AppColors.onAccent,
                   foreground: context.accentColor,
@@ -863,6 +924,13 @@ class _MyJobsPageState extends MyJobsPagemodel {
   Widget _inProgressTile(MyJob job) {
     final foreground = context.textPrimary;
     final session = openSessions[job.assignmentId];
+    final queuedEvents = job.assignmentId == null
+        ? const <TimesheetEvent>[]
+        : context.watch<TimesheetQueueProvider>().eventsForAssignment(
+            job.assignmentId!,
+          );
+    final lastQueuedAction = queuedEvents.lastOrNull?.action;
+    final needsSupport = queuedEvents.any((event) => event.requiresSupport);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSizes.spaceSmall),
@@ -879,26 +947,35 @@ class _MyJobsPageState extends MyJobsPagemodel {
             const SizedBox(height: AppSizes.spaceSmall),
             _sessionLine(session),
           ],
+          if (queuedEvents.isNotEmpty) ...[
+            const SizedBox(height: AppSizes.spaceSmall),
+            TimesheetQueueStatus(
+              events: queuedEvents,
+              onSupport: () => openTimesheetSupport(job),
+            ),
+          ],
           const SizedBox(height: AppSizes.spaceSmall),
-          SizedBox(
-            width: double.infinity,
-            height: _inlineButtonHeight,
-            child: ElevatedButton.icon(
-              onPressed: timesheetBusyAssignmentId != null
-                  ? null
-                  : () => checkOut(job),
-              icon: _timesheetIcon(
-                job,
-                icon: Icons.stop_rounded,
-                color: AppColors.onAccent,
-              ),
-              label: const Text('Mesaiyi Bitir'),
-              style: _timesheetButtonStyle(
-                background: AppColors.progress,
-                foreground: AppColors.onAccent,
+          if (!needsSupport &&
+              lastQueuedAction != TimesheetEventAction.checkOut)
+            SizedBox(
+              width: double.infinity,
+              height: _inlineButtonHeight,
+              child: ElevatedButton.icon(
+                onPressed: timesheetBusyAssignmentId != null
+                    ? null
+                    : () => checkOut(job),
+                icon: _timesheetIcon(
+                  job,
+                  icon: Icons.stop_rounded,
+                  color: AppColors.onAccent,
+                ),
+                label: const Text('Mesaiyi Bitir'),
+                style: _timesheetButtonStyle(
+                  background: AppColors.progress,
+                  foreground: AppColors.onAccent,
+                ),
               ),
             ),
-          ),
         ],
       ),
     );

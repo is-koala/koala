@@ -14,6 +14,10 @@ dependencies:
 
   # Storage
   shared_preferences: ^2.5.5
+  sqflite: ^2.4.3
+
+  # Bağlantı durumu yalnızca kalıcı mesai kuyruğunu yeniden denemeyi tetikler.
+  connectivity_plus: ^7.3.1
 
   # UI
   smooth_page_indicator: ^3.0.0
@@ -53,6 +57,7 @@ dev_dependencies:
     sdk: flutter
 
   flutter_lints: ^6.0.0
+  sqflite_common_ffi: ^2.4.2+1
   integration_test:
     sdk: flutter
 

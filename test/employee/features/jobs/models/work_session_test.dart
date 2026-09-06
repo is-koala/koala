@@ -39,6 +39,27 @@ void main() {
       expect(session.checkInLongitude, isNull);
     });
 
+    test('çevrimdışı olay kimlikleri ve makullük bayrakları ayrıştırılır', () {
+      final body = sessionBody()
+        ..addAll({
+          'checkInClientEventId': 'event-in',
+          'checkInCapturedAt': '2026-03-10T09:29:00Z',
+          'checkInReceivedAt': '2026-03-10T09:31:00Z',
+          'checkInPlausibilityFlags': ['OUTSIDE_JOB_WINDOW'],
+          'checkOutClientEventId': 'event-out',
+          'checkOutCapturedAt': '2026-03-10T17:29:00Z',
+          'checkOutReceivedAt': '2026-03-10T17:31:00Z',
+          'checkOutPlausibilityFlags': ['DEVICE_TIME_IMPLAUSIBLE'],
+        });
+
+      final session = WorkSession.fromJson(body);
+
+      expect(session.checkInClientEventId, 'event-in');
+      expect(session.checkOutClientEventId, 'event-out');
+      expect(session.checkInNeedsReview, isTrue);
+      expect(session.checkOutNeedsReview, isTrue);
+    });
+
     // Açık oturum: sıradaki eylem çıkış.
     test('çıkışı olmayan oturum açık sayılır', () {
       expect(

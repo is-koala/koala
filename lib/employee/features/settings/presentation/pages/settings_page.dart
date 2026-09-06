@@ -5,6 +5,7 @@ import 'package:koala/employee/features/jobs/presentation/providers/apply_provid
 import 'package:koala/employee/features/jobs/presentation/providers/review_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/saved_jobs_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/job_alerts_provider.dart';
+import 'package:koala/employee/features/jobs/presentation/providers/timesheet_queue_provider.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/employee/features/profile/presentation/providers/availability_provider.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -104,6 +105,9 @@ class SettingsPage extends StatelessWidget {
           icon: AppIcons.logout,
           title: "Çıkış Yap",
           onTap: () async {
+            // Bekleyen kayıtlar kullanıcı bölümünde kalır; yalnız bu oturuma
+            // ait aktif bölüm işaretçisi temizlenir.
+            await context.read<TimesheetQueueProvider>().pause();
             // Sunucudaki oturumu da kapatıyor; çağrı başarısız olsa bile
             // token'lar cihazdan siliniyor.
             // Canlı bağlantı oturuma bağlı; token silinmeden önce
