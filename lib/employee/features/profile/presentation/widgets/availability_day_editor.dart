@@ -1,24 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:koala/employee/features/profile/models/availability_slot.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/models/availability_day.dart';
+import 'package:koala/product/models/availability_slot.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
 /// Haftalık ızgarada tek günün saat aralıklarını düzenleyen satır.
 class AvailabilityDayEditor extends StatelessWidget {
   const AvailabilityDayEditor({
     super.key,
-    required this.dayOfWeek,
+    required this.day,
     required this.slots,
     required this.onAdd,
     required this.onRemove,
   });
 
-  final String dayOfWeek;
+  final AvailabilityDay day;
   final List<AvailabilitySlot> slots;
   final VoidCallback onAdd;
   final ValueChanged<int> onRemove;
@@ -38,7 +39,7 @@ class AvailabilityDayEditor extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  AvailabilitySlot.labelForDay(dayOfWeek),
+                  day.label,
                   style: context.textTheme.bodyLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),

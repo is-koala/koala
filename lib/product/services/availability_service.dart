@@ -1,8 +1,7 @@
 import 'package:flutter/foundation.dart';
-import 'package:koala/employee/features/profile/models/availability.dart';
-import 'package:koala/employee/features/profile/models/availability_exception.dart';
-import 'package:koala/employee/features/profile/models/availability_slot.dart';
-import 'package:koala/product/extensions/date_extensions.dart';
+import 'package:koala/product/models/availability.dart';
+import 'package:koala/product/models/availability_exception.dart';
+import 'package:koala/product/models/availability_slot.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
@@ -50,15 +49,15 @@ class AvailabilityService {
     required bool available,
     String? note,
   }) {
-    final trimmedNote = note?.trim();
+    final input = AvailabilityException(
+      date: date,
+      available: available,
+      note: note,
+    );
 
     return _apiClient.put<AvailabilityException>(
       ApiPaths.currentUserAvailabilityExceptions,
-      body: {
-        'date': date.asLocalDate,
-        'available': available,
-        'note': trimmedNote == null || trimmedNote.isEmpty ? null : trimmedNote,
-      },
+      body: input.toRequestJson(),
       parse: (data) =>
           AvailabilityException.fromJson(data! as Map<String, dynamic>),
     );

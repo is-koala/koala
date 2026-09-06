@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:koala/employee/features/profile/models/availability.dart';
-import 'package:koala/employee/features/profile/models/availability_slot.dart';
-import 'package:koala/employee/features/profile/services/availability_service.dart';
+import 'package:koala/product/services/availability_service.dart';
+import 'package:koala/product/models/availability.dart';
+import 'package:koala/product/models/availability_day.dart';
+import 'package:koala/product/models/availability_exception.dart';
+import 'package:koala/product/models/availability_slot.dart';
 import 'package:koala/product/network/api_exception.dart';
 
 /// Oturum sahibinin müsaitlik ekranı için tek durum modülü.
@@ -21,6 +23,8 @@ class AvailabilityProvider extends ChangeNotifier {
 
   Availability? _availability;
   String? _loadedUserId;
+  int _stateGeneration = 0;
+  bool _isLoadInFlight = false;
   bool _isLoading = false;
   bool _isSaving = false;
   String? _errorMessage;
@@ -38,13 +42,14 @@ class AvailabilityProvider extends ChangeNotifier {
   bool isLoadedFor(String userId) =>
       _loadedUserId == userId && _availability != null;
 
-  List<AvailabilitySlot> slotsForDay(String dayOfWeek) => _draftSlots
-      .where((slot) => slot.dayOfWeek == dayOfWeek)
-      .toList(growable: false);
+  List<AvailabilitySlot> slotsForDay(AvailabilityDay day) =>
+      _draftSlots.where((slot) => slot.day == day).toList(growable: false);
 
   /// Haftalık şablonu ve yaklaşan istisnaları sunucudan getirir.
   Future<void> load(String userId, {bool silent = false}) async {
-    if (_isLoading) return;
+    if (_isLoadInFlight || _isSaving) return;
+    _isLoadInFlight = true;
+    final generation = ++_stateGeneration;
 
     _isLoading = !silent || _availability == null;
     _errorMessage = null;
@@ -52,32 +57,43 @@ class AvailabilityProvider extends ChangeNotifier {
 
     try {
       final availability = await _service.fetchForUser(userId);
+      if (generation != _stateGeneration) return;
       _availability = availability;
       _loadedUserId = userId;
       _draftSlots
         ..clear()
         ..addAll(_ordered(availability.slots));
     } on ApiException catch (error) {
-      _errorMessage = error.message;
+      if (generation == _stateGeneration) _errorMessage = error.message;
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (generation == _stateGeneration) {
+        _isLoadInFlight = false;
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
   /// Bir günün taslağını değiştirir; diğer günleri olduğu gibi bırakır.
-  void replaceDaySlots(String dayOfWeek, List<AvailabilitySlot> slots) {
+  bool replaceDaySlots(
+    String userId,
+    AvailabilityDay day,
+    List<AvailabilitySlot> slots,
+  ) {
+    if (!_canMutate(userId) || _isSaving) return false;
+
     _draftSlots
-      ..removeWhere((slot) => slot.dayOfWeek == dayOfWeek)
-      ..addAll(slots.map((slot) => slot.copyWith(dayOfWeek: dayOfWeek)));
+      ..removeWhere((slot) => slot.day == day)
+      ..addAll(slots.map((slot) => slot.copyWith(day: day)));
     _draftSlots.sort(_compareSlots);
     _errorMessage = null;
     notifyListeners();
+    return true;
   }
 
   /// Taslaktaki bütün haftayı sunucuya kaydeder.
-  Future<bool> saveWeekly() async {
-    if (_isSaving) return false;
+  Future<bool> saveWeekly(String userId) async {
+    if (!_canMutate(userId)) return false;
 
     final validationMessage = _validateSlots(_draftSlots);
     if (validationMessage != null) {
@@ -86,38 +102,31 @@ class AvailabilityProvider extends ChangeNotifier {
       return false;
     }
 
-    _isSaving = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    try {
-      final saved = await _service.replaceSlots(_ordered(_draftSlots));
-      // Haftalık PUT yanıtı sözleşme gereği istisnaları boş döndürüyor.
-      // İstisnalar ayrı uçtan yönetildiği için eldeki listeyi koruyoruz.
-      _availability = Availability(
-        slots: saved.slots,
-        exceptions: _availability?.exceptions ?? const [],
-      );
-      _draftSlots
-        ..clear()
-        ..addAll(_ordered(saved.slots));
-      return true;
-    } on ApiException catch (error) {
-      _errorMessage = error.message;
-      return false;
-    } finally {
-      _isSaving = false;
-      notifyListeners();
-    }
+    return _runSave<Availability>(
+      userId: userId,
+      request: () => _service.replaceSlots(_ordered(_draftSlots)),
+      apply: (saved) {
+        // Haftalık PUT yanıtı sözleşme gereği istisnaları boş döndürüyor.
+        // İstisnalar ayrı uçtan yönetildiği için eldeki listeyi koruyoruz.
+        _availability = Availability(
+          slots: saved.slots,
+          exceptions: _availability?.exceptions ?? const [],
+        );
+        _draftSlots
+          ..clear()
+          ..addAll(_ordered(saved.slots));
+      },
+    );
   }
 
   /// Tarih istisnasını ekler veya aynı tarihteki kaydı günceller.
   Future<bool> saveException({
+    required String userId,
     required DateTime date,
     required bool available,
     String? note,
   }) async {
-    if (_isSaving) return false;
+    if (!_canMutate(userId)) return false;
 
     final today = DateUtils.dateOnly(DateTime.now());
     final selectedDate = DateUtils.dateOnly(date);
@@ -132,70 +141,90 @@ class AvailabilityProvider extends ChangeNotifier {
       return false;
     }
 
-    _isSaving = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    try {
-      final saved = await _service.saveException(
+    return _runSave<AvailabilityException>(
+      userId: userId,
+      request: () => _service.saveException(
         date: selectedDate,
         available: available,
         note: note,
-      );
-      final exceptions = [
-        ...?_availability?.exceptions.where(
-          (item) => !DateUtils.isSameDay(item.date, saved.date),
-        ),
-        saved,
-      ]..sort((left, right) => left.date.compareTo(right.date));
+      ),
+      apply: (saved) {
+        final exceptions = [
+          ...?_availability?.exceptions.where(
+            (item) => !DateUtils.isSameDay(item.date, saved.date),
+          ),
+          saved,
+        ]..sort((left, right) => left.date.compareTo(right.date));
 
-      _availability = Availability(
-        slots: _availability?.slots ?? const [],
-        exceptions: exceptions,
-      );
-      return true;
-    } on ApiException catch (error) {
-      _errorMessage = error.message;
-      return false;
-    } finally {
-      _isSaving = false;
-      notifyListeners();
-    }
+        _availability = Availability(
+          slots: _availability?.slots ?? const [],
+          exceptions: exceptions,
+        );
+      },
+    );
   }
 
   /// Tarih istisnasını siler ve başarılı olduğunda görünür listeden çıkarır.
-  Future<bool> deleteException(String exceptionId) async {
-    if (_isSaving) return false;
-
-    _isSaving = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    try {
-      await _service.deleteException(exceptionId);
-      _availability = Availability(
-        slots: _availability?.slots ?? const [],
-        exceptions: [
-          ...?_availability?.exceptions.where((item) => item.id != exceptionId),
-        ],
-      );
-      return true;
-    } on ApiException catch (error) {
-      _errorMessage = error.message;
-      return false;
-    } finally {
-      _isSaving = false;
-      notifyListeners();
-    }
+  Future<bool> deleteException(String userId, String exceptionId) {
+    return _runSave<void>(
+      userId: userId,
+      request: () => _service.deleteException(exceptionId),
+      apply: (_) {
+        _availability = Availability(
+          slots: _availability?.slots ?? const [],
+          exceptions: [
+            ...?_availability?.exceptions.where(
+              (item) => item.id != exceptionId,
+            ),
+          ],
+        );
+      },
+    );
   }
 
   /// Çıkışta önceki kullanıcının şablonu sonraki oturumda görünmesin.
   void clear() {
+    _stateGeneration++;
     _availability = null;
     _loadedUserId = null;
     _draftSlots.clear();
+    _isLoadInFlight = false;
+    _isLoading = false;
+    _isSaving = false;
     _errorMessage = null;
     notifyListeners();
+  }
+
+  bool _canMutate(String userId) {
+    return !_isLoadInFlight && isLoadedFor(userId);
+  }
+
+  Future<bool> _runSave<T>({
+    required String userId,
+    required Future<T> Function() request,
+    required void Function(T value) apply,
+  }) async {
+    if (_isSaving || !_canMutate(userId)) return false;
+
+    final generation = _stateGeneration;
+    _isSaving = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final value = await request();
+      if (generation != _stateGeneration || !isLoadedFor(userId)) return false;
+      apply(value);
+      return true;
+    } on ApiException catch (error) {
+      if (generation == _stateGeneration) _errorMessage = error.message;
+      return false;
+    } finally {
+      if (generation == _stateGeneration) {
+        _isSaving = false;
+        notifyListeners();
+      }
+    }
   }
 
   static String? _validateSlots(List<AvailabilitySlot> slots) {
@@ -214,7 +243,7 @@ class AvailabilityProvider extends ChangeNotifier {
       for (var index = 1; index < ordered.length; index++) {
         final previous = ordered[index - 1];
         final current = ordered[index];
-        if (previous.dayOfWeek == current.dayOfWeek &&
+        if (previous.day == current.day &&
             current.startMinutes < previous.endMinutes) {
           return 'Aynı gün içindeki saat aralıkları çakışamaz.';
         }
@@ -231,9 +260,7 @@ class AvailabilityProvider extends ChangeNotifier {
   }
 
   static int _compareSlots(AvailabilitySlot left, AvailabilitySlot right) {
-    final dayComparison = AvailabilitySlot.dayIndex(
-      left.dayOfWeek,
-    ).compareTo(AvailabilitySlot.dayIndex(right.dayOfWeek));
+    final dayComparison = left.day.order.compareTo(right.day.order);
     if (dayComparison != 0) return dayComparison;
     return left.startMinutes.compareTo(right.startMinutes);
   }

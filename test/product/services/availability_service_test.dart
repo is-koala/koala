@@ -1,9 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:koala/employee/features/profile/models/availability_slot.dart';
-import 'package:koala/employee/features/profile/services/availability_service.dart';
+import 'package:koala/product/models/availability_day.dart';
+import 'package:koala/product/models/availability_slot.dart';
+import 'package:koala/product/services/availability_service.dart';
 import 'package:koala/product/network/api_exception.dart';
 
-import '../../../../support/fake_api.dart';
+import '../../support/fake_api.dart';
 
 const Map<String, dynamic> _availabilityData = {
   'slots': [
@@ -55,12 +56,12 @@ void main() {
       await AvailabilityService.withClient(api.client).replaceSlots(const [
         AvailabilitySlot(
           id: 'yerel-kimlik-gönderilmez',
-          dayOfWeek: 'MONDAY',
+          day: AvailabilityDay.monday,
           startTime: '09:00',
           endTime: '17:00',
         ),
         AvailabilitySlot(
-          dayOfWeek: 'TUESDAY',
+          day: AvailabilityDay.tuesday,
           startTime: '10:00',
           endTime: '18:00',
         ),
@@ -95,7 +96,7 @@ void main() {
         await expectLater(
           AvailabilityService.withClient(api.client).replaceSlots(const [
             AvailabilitySlot(
-              dayOfWeek: 'MONDAY',
+              day: AvailabilityDay.monday,
               startTime: '17:00',
               endTime: '09:00',
             ),
@@ -122,12 +123,12 @@ void main() {
       await expectLater(
         AvailabilityService.withClient(api.client).replaceSlots(const [
           AvailabilitySlot(
-            dayOfWeek: 'MONDAY',
+            day: AvailabilityDay.monday,
             startTime: '09:00',
             endTime: '12:00',
           ),
           AvailabilitySlot(
-            dayOfWeek: 'MONDAY',
+            day: AvailabilityDay.monday,
             startTime: '11:00',
             endTime: '13:00',
           ),

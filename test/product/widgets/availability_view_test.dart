@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:koala/employee/features/profile/models/availability.dart';
-import 'package:koala/employee/features/profile/models/availability_exception.dart';
-import 'package:koala/employee/features/profile/models/availability_slot.dart';
+import 'package:koala/product/models/availability.dart';
+import 'package:koala/product/models/availability_day.dart';
+import 'package:koala/product/models/availability_exception.dart';
+import 'package:koala/product/models/availability_slot.dart';
 import 'package:koala/product/widgets/availability_view.dart';
 
 import '../../support/pump.dart';
@@ -29,7 +30,7 @@ void main() {
         availability: Availability(
           slots: const [
             AvailabilitySlot(
-              dayOfWeek: 'MONDAY',
+              day: AvailabilityDay.monday,
               startTime: '09:00',
               endTime: '17:00',
             ),

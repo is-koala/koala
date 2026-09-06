@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:koala/employee/features/profile/models/availability_slot.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/availability_day_editor.dart';
+import 'package:koala/product/models/availability_day.dart';
+import 'package:koala/product/models/availability_slot.dart';
 
 import '../../../../../support/pump.dart';
 
@@ -12,15 +13,15 @@ void main() {
     await pumpInApp(
       tester,
       AvailabilityDayEditor(
-        dayOfWeek: 'MONDAY',
+        day: AvailabilityDay.monday,
         slots: const [
           AvailabilitySlot(
-            dayOfWeek: 'MONDAY',
+            day: AvailabilityDay.monday,
             startTime: '09:00',
             endTime: '12:00',
           ),
           AvailabilitySlot(
-            dayOfWeek: 'MONDAY',
+            day: AvailabilityDay.monday,
             startTime: '13:00',
             endTime: '17:00',
           ),

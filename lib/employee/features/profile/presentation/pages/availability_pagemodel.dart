@@ -1,6 +1,6 @@
 part of 'availability_page.dart';
 
-abstract class AvailabilityPageModel extends State<AvailabilityPage> {
+abstract class AvailabilityPagemodel extends State<AvailabilityPage> {
   static const TimeOfDay _defaultStartTime = TimeOfDay(hour: 9, minute: 0);
   static const TimeOfDay _defaultEndTime = TimeOfDay(hour: 17, minute: 0);
 
@@ -37,7 +37,18 @@ abstract class AvailabilityPageModel extends State<AvailabilityPage> {
     await context.read<AvailabilityProvider>().load(user.id, silent: true);
   }
 
-  Future<void> _addSlot(String dayOfWeek) async {
+  String? get _editableUserId {
+    final userId = context.read<UserProvider>().user?.id;
+    if (userId == null) return null;
+    return context.read<AvailabilityProvider>().isLoadedFor(userId)
+        ? userId
+        : null;
+  }
+
+  Future<void> _addSlot(AvailabilityDay day) async {
+    final userId = _editableUserId;
+    if (userId == null) return;
+
     final start = await showTimePicker(
       context: context,
       initialTime: _defaultStartTime,
@@ -54,10 +65,10 @@ abstract class AvailabilityPageModel extends State<AvailabilityPage> {
       cancelText: 'Vazgeç',
       confirmText: 'Seç',
     );
-    if (end == null || !mounted) return;
+    if (end == null || !mounted || _editableUserId != userId) return;
 
     final slot = AvailabilitySlot(
-      dayOfWeek: dayOfWeek,
+      day: day,
       startTime: _asApiTime(start),
       endTime: _asApiTime(end),
     );
@@ -67,22 +78,25 @@ abstract class AvailabilityPageModel extends State<AvailabilityPage> {
     }
 
     final provider = context.read<AvailabilityProvider>();
-    provider.replaceDaySlots(dayOfWeek, [
-      ...provider.slotsForDay(dayOfWeek),
-      slot,
-    ]);
+    provider.replaceDaySlots(userId, day, [...provider.slotsForDay(day), slot]);
   }
 
-  void _removeSlot(String dayOfWeek, int index) {
+  void _removeSlot(AvailabilityDay day, int index) {
+    final userId = _editableUserId;
+    if (userId == null) return;
+
     final provider = context.read<AvailabilityProvider>();
-    final slots = provider.slotsForDay(dayOfWeek);
+    final slots = provider.slotsForDay(day);
     if (index < 0 || index >= slots.length) return;
-    provider.replaceDaySlots(dayOfWeek, [...slots]..removeAt(index));
+    provider.replaceDaySlots(userId, day, [...slots]..removeAt(index));
   }
 
   Future<void> _saveWeekly() async {
+    final userId = _editableUserId;
+    if (userId == null) return;
+
     final provider = context.read<AvailabilityProvider>();
-    final saved = await provider.saveWeekly();
+    final saved = await provider.saveWeekly(userId);
     if (!mounted) return;
 
     if (saved) {
@@ -96,14 +110,18 @@ abstract class AvailabilityPageModel extends State<AvailabilityPage> {
   }
 
   Future<void> _editException([AvailabilityException? initial]) async {
+    final userId = _editableUserId;
+    if (userId == null) return;
+
     final input = await AvailabilityExceptionSheet.show(
       context,
       initial: initial,
     );
-    if (input == null || !mounted) return;
+    if (input == null || !mounted || _editableUserId != userId) return;
 
     final provider = context.read<AvailabilityProvider>();
     final saved = await provider.saveException(
+      userId: userId,
       date: input.date,
       available: input.available,
       note: input.note,
@@ -121,16 +139,20 @@ abstract class AvailabilityPageModel extends State<AvailabilityPage> {
   }
 
   Future<void> _deleteException(AvailabilityException exception) async {
+    final userId = _editableUserId;
+    final exceptionId = exception.id;
+    if (userId == null || exceptionId == null) return;
+
     final confirmed = await ConfirmDialog.show(
       context,
       title: 'Tarih istisnasını sil',
       message: '${exception.date.asShortDate} tarihli kayıt silinecek.',
       actionLabel: 'Sil',
     );
-    if (confirmed != true || !mounted) return;
+    if (confirmed != true || !mounted || _editableUserId != userId) return;
 
     final provider = context.read<AvailabilityProvider>();
-    final deleted = await provider.deleteException(exception.id);
+    final deleted = await provider.deleteException(userId, exceptionId);
     if (!mounted) return;
 
     if (deleted) {

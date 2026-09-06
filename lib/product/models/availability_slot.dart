@@ -1,25 +1,25 @@
+import 'package:koala/product/models/availability_day.dart';
+
 /// Haftalık müsaitlik şablonundaki tek saat aralığı.
 ///
-/// Gün, backend'in `DayOfWeek` sabitini (`MONDAY`…`SUNDAY`) olduğu gibi
-/// taşır. Saatler de modelde `HH:mm` dizesidir; `TimeOfDay` yalnız arayüzde
-/// kullanılır.
+/// Saatler modelde `HH:mm` dizesidir; `TimeOfDay` yalnız arayüzde kullanılır.
 class AvailabilitySlot {
   const AvailabilitySlot({
     this.id,
-    required this.dayOfWeek,
+    required this.day,
     required this.startTime,
     required this.endTime,
   });
 
   final String? id;
-  final String dayOfWeek;
+  final AvailabilityDay day;
   final String startTime;
   final String endTime;
 
   factory AvailabilitySlot.fromJson(Map<String, dynamic> json) {
     return AvailabilitySlot(
       id: json['id'] as String?,
-      dayOfWeek: json['dayOfWeek'] as String,
+      day: AvailabilityDay.fromCode(json['dayOfWeek']),
       startTime: _readTime(json['startTime']),
       endTime: _readTime(json['endTime']),
     );
@@ -27,58 +27,32 @@ class AvailabilitySlot {
 
   /// PUT gövdesi kimlik taşımaz; sunucu bütün şablonu silip yeniden yazar.
   Map<String, dynamic> toRequestJson() => {
-    'dayOfWeek': dayOfWeek,
+    'dayOfWeek': day.code,
     'startTime': startTime,
     'endTime': endTime,
   };
 
   AvailabilitySlot copyWith({
     String? id,
-    String? dayOfWeek,
+    AvailabilityDay? day,
     String? startTime,
     String? endTime,
   }) {
     return AvailabilitySlot(
       id: id ?? this.id,
-      dayOfWeek: dayOfWeek ?? this.dayOfWeek,
+      day: day ?? this.day,
       startTime: startTime ?? this.startTime,
       endTime: endTime ?? this.endTime,
     );
   }
 
-  String get dayLabel => labelForDay(dayOfWeek);
-
-  static String labelForDay(String dayOfWeek) => switch (dayOfWeek) {
-    'MONDAY' => 'Pazartesi',
-    'TUESDAY' => 'Salı',
-    'WEDNESDAY' => 'Çarşamba',
-    'THURSDAY' => 'Perşembe',
-    'FRIDAY' => 'Cuma',
-    'SATURDAY' => 'Cumartesi',
-    'SUNDAY' => 'Pazar',
-    _ => dayOfWeek,
-  };
+  String get dayLabel => day.label;
 
   String get timeLabel => '$startTime–$endTime';
 
   int get startMinutes => _minutes(startTime);
 
   int get endMinutes => _minutes(endTime);
-
-  static const List<String> weekDays = [
-    'MONDAY',
-    'TUESDAY',
-    'WEDNESDAY',
-    'THURSDAY',
-    'FRIDAY',
-    'SATURDAY',
-    'SUNDAY',
-  ];
-
-  static int dayIndex(String dayOfWeek) {
-    final index = weekDays.indexOf(dayOfWeek);
-    return index == -1 ? weekDays.length : index;
-  }
 
   static String _readTime(Object? value) {
     final raw = value as String;

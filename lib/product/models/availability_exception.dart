@@ -3,13 +3,14 @@ import 'package:koala/product/extensions/date_extensions.dart';
 /// Haftalık şablonu tek bir tarih için geçersiz kılan müsaitlik kaydı.
 class AvailabilityException {
   const AvailabilityException({
-    required this.id,
+    this.id,
     required this.date,
     required this.available,
     this.note,
   });
 
-  final String id;
+  /// Sunucudan okunmuş kayıtlarda doludur; PUT isteği hazırlanırken yoktur.
+  final String? id;
   final DateTime date;
   final bool available;
   final String? note;
@@ -23,9 +24,14 @@ class AvailabilityException {
     );
   }
 
-  Map<String, dynamic> toRequestJson() => {
-    'date': date.asLocalDate,
-    'available': available,
-    'note': note,
-  };
+  Map<String, dynamic> toRequestJson() {
+    final normalizedNote = note?.trim();
+    return {
+      'date': date.asLocalDate,
+      'available': available,
+      'note': normalizedNote == null || normalizedNote.isEmpty
+          ? null
+          : normalizedNote,
+    };
+  }
 }

@@ -1,7 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:koala/employee/features/profile/models/availability.dart';
-import 'package:koala/employee/features/profile/models/availability_exception.dart';
-import 'package:koala/employee/features/profile/models/availability_slot.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -9,6 +6,10 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
+import 'package:koala/product/models/availability.dart';
+import 'package:koala/product/models/availability_day.dart';
+import 'package:koala/product/models/availability_exception.dart';
+import 'package:koala/product/models/availability_slot.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
 /// Kullanıcının müsaitliğini değiştirmeden gösteren ortak görünüm.
@@ -167,17 +168,15 @@ class AvailabilityView extends StatelessWidget {
   }
 
   Widget _weeklyPanel(BuildContext context, List<AvailabilitySlot> slots) {
-    final visibleDays = AvailabilitySlot.weekDays.where(
-      (day) => slots.any((slot) => slot.dayOfWeek == day),
+    final visibleDays = AvailabilityDay.values.where(
+      (day) => slots.any((slot) => slot.day == day),
     );
 
     return _panel(
       context,
       Column(
         children: visibleDays.map((day) {
-          final daySlots = slots
-              .where((slot) => slot.dayOfWeek == day)
-              .toList();
+          final daySlots = slots.where((slot) => slot.day == day).toList();
           return Padding(
             padding: const EdgeInsets.only(bottom: AppSizes.spaceSmall),
             child: Row(

@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
-import 'package:koala/employee/features/profile/models/availability_slot.dart';
+import 'package:koala/product/models/availability_day.dart';
+import 'package:koala/product/models/availability_slot.dart';
 import 'package:koala/employee/features/profile/presentation/providers/availability_provider.dart';
-import 'package:koala/employee/features/profile/services/availability_service.dart';
+import 'package:koala/product/services/availability_service.dart';
 
 import '../../../../../support/fake_api.dart';
 
@@ -67,14 +70,14 @@ void main() {
     final provider = providerFor(api);
     await provider.load('user_1');
 
-    provider.replaceDaySlots('MONDAY', const [
+    provider.replaceDaySlots('user_1', AvailabilityDay.monday, const [
       AvailabilitySlot(
-        dayOfWeek: 'MONDAY',
+        day: AvailabilityDay.monday,
         startTime: '08:00',
         endTime: '12:00',
       ),
     ]);
-    final saved = await provider.saveWeekly();
+    final saved = await provider.saveWeekly('user_1');
 
     final body = api.requests.last.data as Map<String, dynamic>;
     final slots = body['slots'] as List<dynamic>;
@@ -103,19 +106,19 @@ void main() {
       final provider = providerFor(api);
       await provider.load('user_1');
 
-      provider.replaceDaySlots('MONDAY', const [
+      provider.replaceDaySlots('user_1', AvailabilityDay.monday, const [
         AvailabilitySlot(
-          dayOfWeek: 'MONDAY',
+          day: AvailabilityDay.monday,
           startTime: '09:00',
           endTime: '12:00',
         ),
         AvailabilitySlot(
-          dayOfWeek: 'MONDAY',
+          day: AvailabilityDay.monday,
           startTime: '11:00',
           endTime: '13:00',
         ),
       ]);
-      final saved = await provider.saveWeekly();
+      final saved = await provider.saveWeekly('user_1');
 
       expect(saved, isFalse);
       expect(
@@ -136,15 +139,15 @@ void main() {
     final provider = providerFor(api);
     await provider.load('user_1');
 
-    provider.replaceDaySlots('MONDAY', const [
+    provider.replaceDaySlots('user_1', AvailabilityDay.monday, const [
       AvailabilitySlot(
-        dayOfWeek: 'MONDAY',
+        day: AvailabilityDay.monday,
         startTime: '17:00',
         endTime: '09:00',
       ),
     ]);
 
-    expect(await provider.saveWeekly(), isFalse);
+    expect(await provider.saveWeekly('user_1'), isFalse);
     expect(
       provider.errorMessage,
       'Bitiş saati başlangıç saatinden sonra olmalı.',
@@ -167,15 +170,15 @@ void main() {
     final provider = providerFor(api);
     await provider.load('user_1');
 
-    provider.replaceDaySlots('MONDAY', const [
+    provider.replaceDaySlots('user_1', AvailabilityDay.monday, const [
       AvailabilitySlot(
-        dayOfWeek: 'MONDAY',
+        day: AvailabilityDay.monday,
         startTime: '10:00',
         endTime: '18:00',
       ),
     ]);
 
-    expect(await provider.saveWeekly(), isTrue);
+    expect(await provider.saveWeekly('user_1'), isTrue);
     expect(api.requests, hasLength(2));
   });
 
@@ -210,6 +213,7 @@ void main() {
 
     expect(
       await provider.saveException(
+        userId: 'user_1',
         date: DateTime(2026, 9, 14),
         available: true,
         note: 'Fazladan çalışabilirim',
@@ -218,10 +222,63 @@ void main() {
     );
     expect(provider.availability?.exceptions, hasLength(2));
 
-    expect(await provider.deleteException('exception_2'), isTrue);
+    expect(await provider.deleteException('user_1', 'exception_2'), isTrue);
     expect(
       provider.availability?.exceptions.map((item) => item.id),
       isNot(contains('exception_2')),
     );
+  });
+
+  test('ilk yükleme tamamlanmadan boş haftayı PUT etmez', () async {
+    final loadResponse = Completer<FakeApiResponse>();
+    final api = FakeApi(
+      handler: (request) => request.method == 'GET'
+          ? loadResponse.future
+          : const FakeApiResponse(
+              statusCode: 200,
+              body: {'success': true, 'data': _savedAvailability},
+            ),
+    );
+    final provider = providerFor(api);
+
+    final loading = provider.load('user_1');
+    expect(await provider.saveWeekly('user_1'), isFalse);
+
+    loadResponse.complete(
+      const FakeApiResponse(
+        statusCode: 200,
+        body: {'success': true, 'data': _loadedAvailability},
+      ),
+    );
+    await loading;
+
+    expect(api.requests.map((request) => request.method), ['GET']);
+  });
+
+  test('çıkış sırasında dönen kaydetme yanıtı durumu geri doldurmaz', () async {
+    final saveResponse = Completer<FakeApiResponse>();
+    final api = FakeApi(
+      handler: (request) => request.method == 'GET'
+          ? const FakeApiResponse(
+              statusCode: 200,
+              body: {'success': true, 'data': _loadedAvailability},
+            )
+          : saveResponse.future,
+    );
+    final provider = providerFor(api);
+    await provider.load('user_1');
+
+    final saving = provider.saveWeekly('user_1');
+    provider.clear();
+    saveResponse.complete(
+      const FakeApiResponse(
+        statusCode: 200,
+        body: {'success': true, 'data': _savedAvailability},
+      ),
+    );
+
+    expect(await saving, isFalse);
+    expect(provider.availability, isNull);
+    expect(provider.isSaving, isFalse);
   });
 }

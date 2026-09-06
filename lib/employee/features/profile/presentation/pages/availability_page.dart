@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:koala/employee/features/profile/models/availability_exception.dart';
-import 'package:koala/employee/features/profile/models/availability_slot.dart';
 import 'package:koala/employee/features/profile/presentation/providers/availability_provider.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/availability_day_editor.dart';
@@ -12,6 +10,9 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
+import 'package:koala/product/models/availability_day.dart';
+import 'package:koala/product/models/availability_exception.dart';
+import 'package:koala/product/models/availability_slot.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/confirm_dialog.dart';
@@ -29,23 +30,32 @@ class AvailabilityPage extends StatefulWidget {
   State<AvailabilityPage> createState() => _AvailabilityPageState();
 }
 
-class _AvailabilityPageState extends AvailabilityPageModel {
+class _AvailabilityPageState extends AvailabilityPagemodel {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AvailabilityProvider>();
+    final userProvider = context.watch<UserProvider>();
+    final userId = userProvider.user?.id;
+    final isInitialized = userId != null && provider.isLoadedFor(userId);
 
     return Scaffold(
       appBar: MyAppbar(title: 'Müsaitliğim', isLarge: true),
-      body: switch ((
-        provider.availability,
-        provider.isLoading,
-        provider.errorMessage,
-      )) {
-        (null, true, _) => const Center(child: CircularProgressIndicator()),
-        (null, _, final String message) => _errorState(message),
-        _ => _content(provider),
-      },
+      body: isInitialized
+          ? _content(provider)
+          : _initializationState(userProvider, provider),
     );
+  }
+
+  Widget _initializationState(
+    UserProvider userProvider,
+    AvailabilityProvider availabilityProvider,
+  ) {
+    final message = userProvider.user == null
+        ? userProvider.errorMessage
+        : availabilityProvider.errorMessage;
+    if (message != null) return _errorState(message);
+
+    return const Center(child: CircularProgressIndicator());
   }
 
   Widget _errorState(String message) {
@@ -100,11 +110,11 @@ class _AvailabilityPageState extends AvailabilityPageModel {
             ),
           ),
           const SizedBox(height: AppSizes.spaceMedium),
-          ...AvailabilitySlot.weekDays.map(
+          ...AvailabilityDay.values.map(
             (day) => Padding(
               padding: const EdgeInsets.only(bottom: AppSizes.spaceSmall),
               child: AvailabilityDayEditor(
-                dayOfWeek: day,
+                day: day,
                 slots: provider.slotsForDay(day),
                 onAdd: () => _addSlot(day),
                 onRemove: (index) => _removeSlot(day, index),

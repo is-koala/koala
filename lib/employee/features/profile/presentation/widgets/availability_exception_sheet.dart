@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:koala/employee/features/profile/models/availability_exception.dart';
+import 'package:koala/product/models/availability_exception.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
@@ -41,9 +41,6 @@ class AvailabilityExceptionSheet extends StatefulWidget {
 
 class _AvailabilityExceptionSheetState
     extends State<AvailabilityExceptionSheet> {
-  /// İstisnalar yakın plan içindir; tarih seçicinin sonsuza açılması yerine
-  /// iki yıllık kullanılabilir bir pencere gösterilir.
-  static const int _pickerYearHorizon = 2;
   static const int _maximumNoteLength = 255;
 
   late DateTime _date;
@@ -122,7 +119,7 @@ class _AvailabilityExceptionSheetState
       child: InkWell(
         key: const ValueKey('availability-exception-date'),
         borderRadius: AppRadius.innerCircular,
-        onTap: _pickDate,
+        onTap: widget.initial == null ? _pickDate : null,
         child: Container(
           width: double.infinity,
           padding: AppPadding.infoTile,
@@ -144,11 +141,12 @@ class _AvailabilityExceptionSheetState
                   style: context.textTheme.bodyMedium,
                 ),
               ),
-              AppIcon(
-                AppIcons.arrowRight,
-                size: AppSizes.iconSmall,
-                color: context.textTertiary,
-              ),
+              if (widget.initial == null)
+                AppIcon(
+                  AppIcons.arrowRight,
+                  size: AppSizes.iconSmall,
+                  color: context.textTertiary,
+                ),
             ],
           ),
         ),
@@ -162,11 +160,7 @@ class _AvailabilityExceptionSheetState
       context: context,
       initialDate: _date.isBefore(today) ? today : _date,
       firstDate: today,
-      lastDate: DateTime(
-        today.year + _pickerYearHorizon,
-        today.month,
-        today.day,
-      ),
+      lastDate: DateTime(9999, 12, 31),
       helpText: 'İstisna tarihini seç',
       cancelText: 'Vazgeç',
       confirmText: 'Seç',
