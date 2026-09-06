@@ -160,6 +160,7 @@ void main() {
             GalleryImage(
               id: 'company_img',
               url: 'not-a-url',
+              isCover: true,
               caption: 'Mutfak',
             ),
           ],
@@ -179,6 +180,12 @@ void main() {
         (entry) => (entry as Map)['imageId'],
       ),
       ['img_1', 'company_img'],
+    );
+    expect(
+      ((api.requests.last.data as Map)['images'] as List).map(
+        (entry) => (entry as Map)['cover'],
+      ),
+      [true, false],
     );
   });
 

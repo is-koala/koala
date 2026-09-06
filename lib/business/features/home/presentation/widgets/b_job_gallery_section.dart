@@ -234,7 +234,10 @@ class _BJobGallerySectionState extends State<BJobGallerySection> {
 
     if (selected == null || !mounted) return;
     await _run(
-      () => _provider.replaceGallery([..._images, selected]),
+      () => _provider.replaceGallery([
+        ..._images,
+        selected.copyWith(isCover: false),
+      ]),
       'Görsel ilana eklendi',
     );
   }
