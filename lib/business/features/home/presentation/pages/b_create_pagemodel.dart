@@ -43,7 +43,13 @@ abstract class BCreatePageModel extends State<BCreatePage> {
   JobType _selectedType = JobType.oneTime;
   SalaryType _selectedSalaryType = SalaryType.daily;
   bool _experienceRequired = false;
-  bool _insuranceRequired = false;
+
+  /// Kullanıcının sigorta anahtarında bıraktığı tercih.
+  ///
+  /// İsteğe giden değer bu değil [_insuranceRequired]: kategori sigortayı
+  /// zorunlu kılıyorsa tercih ne olursa olsun `true` gidiyor. İkisi ayrı
+  /// duruyor ki kilit kalktığında kullanıcının kendi tercihi geri gelsin.
+  bool _insurancePreference = false;
 
   DateTime? _startDateTime;
   DateTime? _endDateTime;
@@ -109,6 +115,24 @@ abstract class BCreatePageModel extends State<BCreatePage> {
   /// açılmasını hiç kabul etmiyor.
   bool get _isCompanyJob =>
       context.read<UserProvider>().user?.activeCompany != null;
+
+  /// Sigorta anahtarı kilitli mi: seçilen kategori sigortalı çalışma
+  /// gerektiriyor ve ilan şirket adına açılıyor.
+  ///
+  /// Sunucu bu durumda `insuranceRequired=false` gelen ilanı `400` ile geri
+  /// çeviriyor (`JobManager`), yani anahtarın kapatılabilir olması kullanıcıyı
+  /// formu doldurup en sonda hataya bırakıyordu.
+  ///
+  /// Değer **türetiliyor, saklanmıyor**: kategori seçiminde elle güncellenen
+  /// bir alan tam olarak bu hatayı doğurmuştu (is-koala/koala#24) — kategoriyi
+  /// değiştiren her yolun (seçici, şablon) alanı güncellemeyi hatırlaması
+  /// gerekirdi, biri unutulduğunda kural sessizce düşüyordu.
+  bool get _insuranceLocked =>
+      _selectedCategory?.requiresInsurance == true && _isCompanyJob;
+
+  /// İsteğe konacak sigorta değeri. Kilitliyken kullanıcının tercihi
+  /// dinlenmiyor.
+  bool get _insuranceRequired => _insuranceLocked || _insurancePreference;
 
   /// Seçilebilir kategoriler.
   ///
@@ -213,7 +237,7 @@ abstract class BCreatePageModel extends State<BCreatePage> {
       _selectedType = template.type;
       _selectedSalaryType = template.salaryType;
       _experienceRequired = template.experienceRequired;
-      _insuranceRequired = applied.insuranceRequired;
+      _insurancePreference = applied.insuranceRequired;
 
       _appliedTemplateName = template.templateName;
     });
@@ -450,6 +474,12 @@ abstract class BCreatePageModel extends State<BCreatePage> {
     // bir mesaj vermek daha iyi.
     if (category.requiresInsurance && !_isCompanyJob) {
       return _warn('Bu kategoride ilan yalnızca şirket adına açılabilir');
+    }
+    // Şirket ilanında son savunma. [_insuranceRequired] kategoriden
+    // türetildiği için buraya normalde düşülmüyor; anahtar tarafındaki kural
+    // ileride bozulursa istek sunucuya hiç gitmesin diye duruyor.
+    if (category.requiresInsurance && !_insuranceRequired) {
+      return _warn('Bu kategoride sigortalı çalışma zorunlu');
     }
 
     final position = _positionController.text.trim();
