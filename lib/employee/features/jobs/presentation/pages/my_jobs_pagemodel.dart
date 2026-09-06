@@ -65,8 +65,8 @@ abstract class MyJobsPagemodel extends State<MyJobsPage> {
   Future<void> _initializeTimesheetQueue() async {
     final queue = context.read<TimesheetQueueProvider>();
     _timesheetQueue = queue;
-    _timesheetDeliveryRevision = queue.deliveryRevision;
     queue.addListener(_onTimesheetQueueChanged);
+    _announceTimesheetDelivery(queue);
 
     final userProvider = context.read<UserProvider>();
     if (userProvider.user == null) await userProvider.load(silent: true);
@@ -80,8 +80,14 @@ abstract class MyJobsPagemodel extends State<MyJobsPage> {
   void _onTimesheetQueueChanged() {
     final queue = _timesheetQueue;
     if (!mounted || queue == null) return;
+    _announceTimesheetDelivery(queue);
+  }
+
+  void _announceTimesheetDelivery(TimesheetQueueProvider queue) {
+    if (!mounted) return;
     if (queue.deliveryRevision == _timesheetDeliveryRevision) return;
     _timesheetDeliveryRevision = queue.deliveryRevision;
+    if (queue.takeDeliveryAcknowledgement() == null) return;
     AppToast.success(context, 'Mesai kaydı gönderildi.');
     unawaited(_loadJobs());
   }
@@ -431,7 +437,9 @@ abstract class MyJobsPagemodel extends State<MyJobsPage> {
       if (!mounted) return;
       switch (result) {
         case TimesheetSubmission.sent:
-          AppToast.success(context, 'Mesai kaydı gönderildi.');
+          // Listener normalde ACK sırasında bildirir; sayfa kuyruğa henüz
+          // bağlanmadıysa aynı tek-tüketim yolunu burada tamamla.
+          _announceTimesheetDelivery(queue);
         case TimesheetSubmission.pending:
           AppToast.info(context, 'Kaydedildi, gönderilmeyi bekliyor.');
         case TimesheetSubmission.requiresSupport:

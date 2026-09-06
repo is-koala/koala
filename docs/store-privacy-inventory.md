@@ -26,7 +26,9 @@ doğrulandıktan sonra hesap sahibi tarafından mağaza konsollarında yayımlan
   bütün galeriye sürekli erişim varsayılmaz.
 - `flutter_secure_storage`: tokenları Keychain/Keystore'da yerel saklar.
 - `sqflite`: gönderilemeyen mesai olaylarını kullanıcıya göre bölümlenmiş yerel
-  kuyrukta saklar; kayıtlar başarılı sunucu onayından sonra silinir.
+  kuyrukta saklar; makullük inceleme bayrağı taşıyanlar dahil başarılı sunucu
+  onayı alan kayıtlar silinir. Reddedilen/uzlaştırılamayan kayıtlar destek
+  görünürlüğü için cihazda kalır ve aynı atamanın sonraki olayını durdurur.
 - `connectivity_plus`: yalnız yeniden denemeyi tetikleyen bağlantı türü sinyalini
   üretir; bağlantı bilgisi Koala backend'ine veya tanılama loglarına gönderilmez.
 - Iyzico ödeme sayfası platformun güvenli tarayıcı yüzeyinde açılır; ödeme sonucu

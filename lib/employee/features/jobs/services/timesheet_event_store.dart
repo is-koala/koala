@@ -20,23 +20,40 @@ abstract interface class TimesheetEventStore {
 /// bulunabilsin diye olaylarla son etkin kullanıcıyı aynı SQLite dosyasında
 /// tutan adapter.
 class SqfliteTimesheetEventStore implements TimesheetEventStore {
-  SqfliteTimesheetEventStore({DatabaseFactory? factory})
-    : _factory = factory ?? databaseFactory;
+  SqfliteTimesheetEventStore({DatabaseFactory? factory, String? databasePath})
+    : _factory = factory ?? databaseFactory,
+      _databasePath = databasePath;
 
   static const String _databaseName = 'koala_timesheet_queue.db';
   static const String _table = 'timesheet_events';
   static const String _metadataTable = 'timesheet_queue_metadata';
   static const String _activeUserKey = 'active_user_id';
   final DatabaseFactory _factory;
+  final String? _databasePath;
   Database? _database;
+  Future<Database>? _openingDatabase;
 
   Future<Database> get _db async {
     final existing = _database;
     if (existing != null) return existing;
+    final opening = _openingDatabase;
+    if (opening != null) return opening;
 
-    final directory = await _factory.getDatabasesPath();
-    return _database = await _factory.openDatabase(
-      '$directory/$_databaseName',
+    final future = _openDatabase();
+    _openingDatabase = future;
+    try {
+      return _database = await future;
+    } finally {
+      if (identical(_openingDatabase, future)) _openingDatabase = null;
+    }
+  }
+
+  Future<Database> _openDatabase() async {
+    final explicitPath = _databasePath;
+    final path =
+        explicitPath ?? '${await _factory.getDatabasesPath()}/$_databaseName';
+    return _factory.openDatabase(
+      path,
       options: OpenDatabaseOptions(
         version: 1,
         onCreate: (database, _) async {
@@ -68,6 +85,14 @@ class SqfliteTimesheetEventStore implements TimesheetEventStore {
         },
       ),
     );
+  }
+
+  /// Testlerde ve sınırlı yaşam döngüsü sahiplerinde dosyayı kapatır.
+  Future<void> close() async {
+    final database = _database ?? await _openingDatabase;
+    _database = null;
+    _openingDatabase = null;
+    await database?.close();
   }
 
   @override

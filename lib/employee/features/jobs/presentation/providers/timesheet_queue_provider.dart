@@ -46,13 +46,11 @@ class TimesheetQueueProvider extends ChangeNotifier
        _sessionManager = sessionManager {
     WidgetsBinding.instance.addObserver(this);
     _retrySubscription = _retryTrigger.onNetworkAvailable.listen((_) {
-      unawaited(flush());
+      _schedule(flush);
     });
     _sessionManager?.addListener(_onSessionChanged);
   }
 
-  static const String _reviewMessage =
-      'Mesai kaydı sunucu incelemesine alındı. Gerekirse destekle iletişime geç.';
   static const String _conflictMessage =
       'Mesai kaydı sunucudaki durumla uzlaştırılamadı. Destekle iletişime geç.';
   static const String _permanentFailureMessage =
@@ -67,6 +65,7 @@ class TimesheetQueueProvider extends ChangeNotifier
   final SessionManager? _sessionManager;
   late final StreamSubscription<void> _retrySubscription;
   bool _isDisposed = false;
+  Future<void>? _retryCancellation;
 
   String? _activeUserId;
   List<TimesheetEvent> _events = const [];
@@ -81,7 +80,16 @@ class TimesheetQueueProvider extends ChangeNotifier
   int get deliveryRevision => _deliveryRevision;
   TimesheetEvent? get lastDeliveredEvent => _lastDeliveredEvent;
 
+  /// Son teslim bilgisini, sayfa olaydan sonra bağlansa bile, tam bir kez
+  /// gösterebilmesi için tüketir.
+  TimesheetEvent? takeDeliveryAcknowledgement() {
+    final event = _lastDeliveredEvent;
+    _lastDeliveredEvent = null;
+    return event;
+  }
+
   Future<void> startForUser(String userId) async {
+    if (_isDisposed) return;
     final generation = ++_generation;
     _activeUserId = userId;
     await _store.setLastActiveUser(userId);
@@ -91,8 +99,9 @@ class TimesheetQueueProvider extends ChangeNotifier
 
   /// Profil isteği çevrimdışıyken de önceki oturumun kalıcı kuyruğunu açar.
   Future<void> resumeLastUser() async {
+    if (_isDisposed) return;
     final userId = await _store.readLastActiveUser();
-    if (userId == null || _activeUserId != null) return;
+    if (_isDisposed || userId == null || _activeUserId != null) return;
     final generation = ++_generation;
     _activeUserId = userId;
     await _reload(userId, generation);
@@ -100,27 +109,28 @@ class TimesheetQueueProvider extends ChangeNotifier
   }
 
   Future<void> pause() async {
+    if (_isDisposed) return;
     _generation++;
     _activeUserId = null;
     _events = const [];
     _lastDeliveredEvent = null;
     await _store.setLastActiveUser(null);
-    notifyListeners();
+    if (!_isDisposed) notifyListeners();
   }
 
   void _onSessionChanged() {
     final session = _sessionManager;
-    if (session == null || !session.isInitialized) return;
+    if (_isDisposed || session == null || !session.isInitialized) return;
     if (session.isLoggedIn && session.userType == SessionManager.employeeType) {
-      unawaited(resumeLastUser());
+      _schedule(resumeLastUser);
       return;
     }
-    unawaited(pause());
+    _schedule(pause);
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) unawaited(flush());
+    if (state == AppLifecycleState.resumed) _schedule(flush);
   }
 
   List<TimesheetEvent> eventsForAssignment(String assignmentId) => _events
@@ -155,6 +165,9 @@ class TimesheetQueueProvider extends ChangeNotifier
     required double? latitude,
     required double? longitude,
   }) async {
+    if (_isDisposed) {
+      throw StateError('Mesai kuyruğu kapatıldı.');
+    }
     final userId = _activeUserId;
     if (userId == null) {
       throw StateError('Mesai kuyruğu kullanıcı oturumu için hazır değil.');
@@ -185,7 +198,7 @@ class TimesheetQueueProvider extends ChangeNotifier
 
   /// Açılış, resume, bağlantı dönüşü ve yeni olay aynı tek-uçuş yolunu kullanır.
   Future<void> flush() {
-    if (_activeUserId == null) return Future.value();
+    if (_isDisposed || _activeUserId == null) return Future.value();
     _flushAgain = true;
     final running = _flushFuture;
     if (running != null) return running;
@@ -195,24 +208,24 @@ class TimesheetQueueProvider extends ChangeNotifier
     return future.whenComplete(() {
       if (identical(_flushFuture, future)) {
         _flushFuture = null;
-        notifyListeners();
+        if (!_isDisposed) notifyListeners();
       }
     });
   }
 
   Future<void> _drain() async {
-    while (_flushAgain) {
+    while (_flushAgain && !_isDisposed) {
       _flushAgain = false;
       final userId = _activeUserId;
       final generation = _generation;
-      if (userId == null) return;
+      if (_isDisposed || userId == null) return;
 
       await _reload(userId, generation);
-      if (generation != _generation) return;
+      if (_isDisposed || generation != _generation) return;
 
       final blockedAssignments = <String>{};
       for (final event in _events) {
-        if (generation != _generation) return;
+        if (_isDisposed || generation != _generation) return;
         if (event.requiresSupport) {
           blockedAssignments.add(event.assignmentId);
           continue;
@@ -231,17 +244,25 @@ class TimesheetQueueProvider extends ChangeNotifier
 
   Future<bool> _deliver(TimesheetEvent event, int generation) async {
     try {
-      final session = await _gateway.send(event);
+      await _gateway.send(event);
       if (generation != _generation) return false;
-      if (_needsReview(session, event.action)) {
-        await _store.markRequiresSupport(event.clientEventId, _reviewMessage);
-        return false;
-      }
+      // Makullük bayrakları ret değil, sunucuda kalıcılaştırılmış bir
+      // inceleme işaretidir. Başarılı 2xx olayı kuyrukta bırakmak aynı
+      // atamanın sonraki check-in/check-out olaylarını sonsuza dek kilitler.
+      // Sayfa modeli teslim revizyonuyla oturumları yeniden yükleyip sunucudaki
+      // bayraklı kaydı görür.
       await _acknowledge(event);
       return true;
     } on ApiException catch (error) {
       if (generation != _generation) return false;
       if (error.type == ApiErrorType.conflict) {
+        if (error.errorCode == 'TIMESHEET_IDEMPOTENCY_CONFLICT') {
+          await _store.markRequiresSupport(
+            event.clientEventId,
+            _conflictMessage,
+          );
+          return false;
+        }
         return _reconcileConflict(event, generation);
       }
       if (error.type == ApiErrorType.validation ||
@@ -260,17 +281,11 @@ class TimesheetQueueProvider extends ChangeNotifier
       final sessions = await _gateway.fetchSessions(event.assignmentId);
       if (generation != _generation) return false;
       final matching = sessions
-          .where(
-            (session) => _eventId(session, event.action) == event.clientEventId,
-          )
+          .where((session) => _matchesEvent(session, event))
           .firstOrNull;
 
       if (matching == null) {
         await _store.markRequiresSupport(event.clientEventId, _conflictMessage);
-        return false;
-      }
-      if (_needsReview(matching, event.action)) {
-        await _store.markRequiresSupport(event.clientEventId, _reviewMessage);
         return false;
       }
       await _acknowledge(event);
@@ -282,43 +297,88 @@ class TimesheetQueueProvider extends ChangeNotifier
 
   Future<void> _acknowledge(TimesheetEvent event) async {
     await _store.remove(event.clientEventId);
+    if (_isDisposed) return;
     _lastDeliveredEvent = event;
     _deliveryRevision++;
   }
 
-  String? _eventId(WorkSession session, TimesheetEventAction action) {
-    return switch (action) {
-      TimesheetEventAction.checkIn => session.checkInClientEventId,
-      TimesheetEventAction.checkOut => session.checkOutClientEventId,
+  bool _matchesEvent(WorkSession session, TimesheetEvent event) {
+    final (eventId, capturedAt, latitude, longitude) = switch (event.action) {
+      TimesheetEventAction.checkIn => (
+        session.checkInClientEventId,
+        session.checkInCapturedAt,
+        session.checkInLatitude,
+        session.checkInLongitude,
+      ),
+      TimesheetEventAction.checkOut => (
+        session.checkOutClientEventId,
+        session.checkOutCapturedAt,
+        session.checkOutLatitude,
+        session.checkOutLongitude,
+      ),
     };
+
+    return eventId == event.clientEventId &&
+        capturedAt?.toUtc() == event.capturedAt.toUtc() &&
+        _normalizedCoordinate(latitude) ==
+            _normalizedCoordinate(event.latitude) &&
+        _normalizedCoordinate(longitude) ==
+            _normalizedCoordinate(event.longitude);
   }
 
-  bool _needsReview(WorkSession session, TimesheetEventAction action) {
-    return switch (action) {
-      TimesheetEventAction.checkIn => session.checkInNeedsReview,
-      TimesheetEventAction.checkOut => session.checkOutNeedsReview,
-    };
-  }
+  int? _normalizedCoordinate(double? value) =>
+      value == null ? null : (value * 1000000).round();
 
   Future<void> _reload(String userId, int generation) async {
+    if (_isDisposed) return;
     final loaded = await _store.readForUser(userId);
-    if (generation != _generation || userId != _activeUserId) return;
+    if (_isDisposed || generation != _generation || userId != _activeUserId) {
+      return;
+    }
     _events = loaded;
     notifyListeners();
   }
 
-  @visibleForTesting
-  Future<void> disposeAsync() async {
+  void _schedule(Future<void> Function() operation) {
+    if (_isDisposed) return;
+    unawaited(_runBackground(operation));
+  }
+
+  Future<void> _runBackground(Future<void> Function() operation) async {
+    try {
+      await operation();
+    } catch (error, stackTrace) {
+      if (_isDisposed) return;
+      debugPrint('Mesai kuyruğu arka plan işlemi başarısız: $error');
+      debugPrintStack(stackTrace: stackTrace);
+    }
+  }
+
+  void _beginDispose() {
     if (_isDisposed) return;
     _isDisposed = true;
+    _generation++;
+    _activeUserId = null;
+    _events = const [];
+    _lastDeliveredEvent = null;
     WidgetsBinding.instance.removeObserver(this);
     _sessionManager?.removeListener(_onSessionChanged);
-    await _retrySubscription.cancel();
+  }
+
+  Future<void> _cancelRetrySubscription() {
+    return _retryCancellation ??= _retrySubscription.cancel();
+  }
+
+  @visibleForTesting
+  Future<void> disposeAsync() {
+    _beginDispose();
+    return _cancelRetrySubscription();
   }
 
   @override
   void dispose() {
-    unawaited(disposeAsync());
+    _beginDispose();
+    unawaited(_cancelRetrySubscription());
     super.dispose();
   }
 

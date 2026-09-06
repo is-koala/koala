@@ -50,6 +50,16 @@ class _MemoryStore implements TimesheetEventStore {
   }
 }
 
+class _FailingStore extends _MemoryStore {
+  bool failReads = false;
+
+  @override
+  Future<List<TimesheetEvent>> readForUser(String userId) {
+    if (failReads) throw StateError('SQLite okunamadı');
+    return super.readForUser(userId);
+  }
+}
+
 class _FakeGateway implements TimesheetEventGateway {
   bool isOffline = false;
   bool failAfterServerAck = false;
@@ -381,47 +391,22 @@ void main() {
     },
   );
 
-  test('uzlaştırılamayan 409 olayı kalıcı destek durumuna alınır', () async {
-    final store = _MemoryStore();
-    final gateway = _FakeGateway()
-      ..sendError = const ApiException(
-        message: 'Çakışma',
-        type: ApiErrorType.conflict,
-        statusCode: 409,
-        errorCode: 'TIMESHEET_IDEMPOTENCY_CONFLICT',
-      );
-    final trigger = _ManualRetryTrigger();
-    final provider = TimesheetQueueProvider.withAdapters(
-      store: store,
-      gateway: gateway,
-      retryTrigger: trigger,
-      eventIdFactory: () => 'event-conflict',
-    );
-    await provider.startForUser('user-a');
-
-    expect(
-      await provider.recordCheckIn(assignmentId: 'assignment-a'),
-      TimesheetSubmission.requiresSupport,
-    );
-    expect(provider.events.single.requiresSupport, isTrue);
-    expect(provider.events.single.supportMessage, contains('Destek'));
-    await provider.disposeAsync();
-  });
-
   test(
-    'sunucuda aynı kimlikle bulunan 409 olayı teslim edilmiş sayılır',
+    'idempotency payload çakışması aynı kimlik bulunsa da silinmez',
     () async {
       final store = _MemoryStore();
       final gateway = _FakeGateway()
         ..sendError = const ApiException(
           message: 'Çakışma',
           type: ApiErrorType.conflict,
+          statusCode: 409,
+          errorCode: 'TIMESHEET_IDEMPOTENCY_CONFLICT',
         )
-        ..sessions = const [
+        ..sessions = [
           WorkSession(
             id: 'session-a',
             assignmentId: 'assignment-a',
-            checkInClientEventId: 'event-existing',
+            checkInClientEventId: 'event-conflict',
           ),
         ];
       final trigger = _ManualRetryTrigger();
@@ -429,12 +414,56 @@ void main() {
         store: store,
         gateway: gateway,
         retryTrigger: trigger,
-        eventIdFactory: () => 'event-existing',
+        eventIdFactory: () => 'event-conflict',
       );
       await provider.startForUser('user-a');
 
       expect(
         await provider.recordCheckIn(assignmentId: 'assignment-a'),
+        TimesheetSubmission.requiresSupport,
+      );
+      expect(provider.events.single.requiresSupport, isTrue);
+      expect(provider.events.single.supportMessage, contains('Destek'));
+      await provider.disposeAsync();
+    },
+  );
+
+  test(
+    'sunucuda aynı kimlik ve payload bulunan genel 409 teslim edilmiş sayılır',
+    () async {
+      final capturedAt = DateTime.parse('2026-09-06T10:00:00Z');
+      final store = _MemoryStore();
+      final gateway = _FakeGateway()
+        ..sendError = const ApiException(
+          message: 'Çakışma',
+          type: ApiErrorType.conflict,
+        )
+        ..sessions = [
+          WorkSession(
+            id: 'session-a',
+            assignmentId: 'assignment-a',
+            checkInClientEventId: 'event-existing',
+            checkInCapturedAt: capturedAt,
+            checkInLatitude: 41.123457,
+            checkInLongitude: 29.123457,
+          ),
+        ];
+      final trigger = _ManualRetryTrigger();
+      final provider = TimesheetQueueProvider.withAdapters(
+        store: store,
+        gateway: gateway,
+        retryTrigger: trigger,
+        utcNow: () => capturedAt,
+        eventIdFactory: () => 'event-existing',
+      );
+      await provider.startForUser('user-a');
+
+      expect(
+        await provider.recordCheckIn(
+          assignmentId: 'assignment-a',
+          latitude: 41.1234567,
+          longitude: 29.1234567,
+        ),
         TimesheetSubmission.sent,
       );
       expect(provider.events, isEmpty);
@@ -442,8 +471,47 @@ void main() {
     },
   );
 
+  test('aynı kimlikte farklı payload bulunan genel 409 olayı silmez', () async {
+    final capturedAt = DateTime.parse('2026-09-06T10:00:00Z');
+    final store = _MemoryStore();
+    final gateway = _FakeGateway()
+      ..sendError = const ApiException(
+        message: 'Çakışma',
+        type: ApiErrorType.conflict,
+      )
+      ..sessions = [
+        WorkSession(
+          id: 'session-a',
+          assignmentId: 'assignment-a',
+          checkInClientEventId: 'event-existing',
+          checkInCapturedAt: capturedAt.add(const Duration(seconds: 1)),
+          checkInLatitude: 41.123457,
+          checkInLongitude: 29.123457,
+        ),
+      ];
+    final provider = TimesheetQueueProvider.withAdapters(
+      store: store,
+      gateway: gateway,
+      retryTrigger: _ManualRetryTrigger(),
+      utcNow: () => capturedAt,
+      eventIdFactory: () => 'event-existing',
+    );
+    await provider.startForUser('user-a');
+
+    expect(
+      await provider.recordCheckIn(
+        assignmentId: 'assignment-a',
+        latitude: 41.1234567,
+        longitude: 29.1234567,
+      ),
+      TimesheetSubmission.requiresSupport,
+    );
+    expect(provider.events.single.requiresSupport, isTrue);
+    await provider.disposeAsync();
+  });
+
   test(
-    'makullük bayraklı ack tekrar gönderilmeden destek durumuna alınır',
+    'makullük bayraklı 2xx ack kuyruğu engellemeden teslim edilir',
     () async {
       final store = _MemoryStore();
       final gateway = _FakeGateway();
@@ -458,15 +526,76 @@ void main() {
       await reviewProvider.startForUser('user-a');
       expect(
         await reviewProvider.recordCheckOut(assignmentId: 'assignment-a'),
-        TimesheetSubmission.requiresSupport,
+        TimesheetSubmission.sent,
       );
       await reviewProvider.flush();
 
       expect(reviewGateway.sentCount, 1);
-      expect(reviewProvider.events.single.requiresSupport, isTrue);
+      expect(reviewProvider.events, isEmpty);
       await reviewProvider.disposeAsync();
     },
   );
+
+  test(
+    'geç bağlanan sayfa teslim bildirimini yalnız bir kez tüketir',
+    () async {
+      final provider = TimesheetQueueProvider.withAdapters(
+        store: _MemoryStore(),
+        gateway: _FakeGateway(),
+        retryTrigger: _ManualRetryTrigger(),
+        eventIdFactory: () => 'event-delivered-before-page',
+      );
+      await provider.startForUser('user-a');
+      await provider.recordCheckIn(assignmentId: 'assignment-a');
+
+      expect(provider.deliveryRevision, 1);
+      expect(
+        provider.takeDeliveryAcknowledgement()?.clientEventId,
+        'event-delivered-before-page',
+      );
+      expect(provider.takeDeliveryAcknowledgement(), isNull);
+      await provider.disposeAsync();
+    },
+  );
+
+  test('arka plan SQLite hatası yakalanmayan async hataya dönüşmez', () async {
+    final store = _FailingStore();
+    final trigger = _ManualRetryTrigger();
+    final provider = TimesheetQueueProvider.withAdapters(
+      store: store,
+      gateway: _FakeGateway(),
+      retryTrigger: trigger,
+    );
+    await provider.startForUser('user-a');
+    store.failReads = true;
+
+    trigger.controller.add(null);
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    store.failReads = false;
+    await provider.disposeAsync();
+  });
+
+  test('aktif flush sırasında dispose sonrası bildirim yapmaz', () async {
+    final gateway = _FakeGateway()..sendGate = Completer<void>();
+    final provider = TimesheetQueueProvider.withAdapters(
+      store: _MemoryStore(),
+      gateway: gateway,
+      retryTrigger: _ManualRetryTrigger(),
+      eventIdFactory: () => 'event-dispose',
+    );
+    await provider.startForUser('user-a');
+
+    final recording = provider.recordCheckIn(assignmentId: 'assignment-a');
+    while (gateway.sent.isEmpty) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    provider.dispose();
+    gateway.sendGate!.complete();
+
+    await expectLater(recording, completes);
+  });
 
   test('aktif kullanıcı yalnız kendi kuyruk bölümünü görür', () async {
     final store = _MemoryStore()
