@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/business/features/home/presentation/providers/b_company_provider.dart';
 import 'package:koala/business/features/home/services/b_company_service.dart';
@@ -270,6 +272,198 @@ void main() {
       expect(await provider.updateCompany(email: 'bozuk'), isFalse);
       expect(provider.errorMessage, 'E-posta geçersiz');
       expect(provider.company?.name, 'Kahve Durağı');
+    });
+  });
+
+  group('galeri', () {
+    /// Şirket okumasını, galeri yazmasını ve istatistiği birlikte karşılar.
+    FakeApi galleryApi({
+      required FakeApiResponse Function() onWrite,
+      List<Map<String, dynamic>> initialImages = const [],
+    }) {
+      return FakeApi(
+        handler: (options) {
+          if (options.path.contains('/images')) return onWrite();
+
+          if (options.path.startsWith('/companies/')) {
+            return FakeApiResponse(
+              statusCode: 200,
+              body: {
+                'success': true,
+                'data': {...companyJson(), 'images': initialImages},
+              },
+            );
+          }
+
+          return FakeApiResponse(
+            statusCode: 200,
+            body: {'success': true, 'data': statsJson()},
+          );
+        },
+      );
+    }
+
+    /// `postFile` dosyayı istekten **önce** okuyor: var olmayan bir yol
+    /// `ApiException` değil `FileSystemException` fırlatır.
+    String tempImage(String name) {
+      final file = File('${Directory.systemTemp.path}/$name')
+        ..writeAsBytesSync(const [1, 2, 3]);
+      addTearDown(() => file.existsSync() ? file.deleteSync() : null);
+      return file.path;
+    }
+
+    FakeApiResponse gallery(List<Map<String, dynamic>> images) {
+      return FakeApiResponse(
+        statusCode: 200,
+        body: {'success': true, 'data': images},
+      );
+    }
+
+    Map<String, dynamic> imageJson(
+      String id, {
+      int sortOrder = 0,
+      bool cover = false,
+    }) => {
+      'id': id,
+      'url': 'https://cdn.local/$id.png',
+      'sortOrder': sortOrder,
+      'cover': cover,
+    };
+
+    test('şirket yüklenince galeri gövdeden geliyor', () async {
+      final provider = providerFor(
+        galleryApi(
+          onWrite: () => gallery(const []),
+          initialImages: [imageJson('img_1', cover: true)],
+        ),
+      );
+
+      await provider.load(userId: 'user_1', companyId: 'comp_1');
+
+      // Ayrı bir `GET /companies/{id}/images` atılmıyor: şirket detayı
+      // görselleri zaten taşıyor.
+      expect(provider.galleryImages.map((image) => image.id), ['img_1']);
+      expect(provider.canAddGalleryImage, isTrue);
+    });
+
+    test('ekleme sonrası liste sunucudan dönen sırayla tazeleniyor', () async {
+      final api = galleryApi(
+        onWrite: () => gallery([
+          imageJson('img_1', cover: true),
+          imageJson('img_2', sortOrder: 1),
+        ]),
+        initialImages: [imageJson('img_1', cover: true)],
+      );
+      final provider = providerFor(api);
+      await provider.load(userId: 'user_1', companyId: 'comp_1');
+
+      final added = await provider.addGalleryImage(
+        tempImage('koala_gallery_add.png'),
+      );
+
+      expect(added, isTrue);
+      expect(provider.galleryImages.map((image) => image.id), [
+        'img_1',
+        'img_2',
+      ]);
+      // `Company` değil `List<GalleryImageDto>` dönüyor; eldeki şirketin
+      // geri kalanı korunuyor.
+      expect(provider.company?.name, 'Kahve Durağı');
+    });
+
+    test('galeri doluyken ekleme düğmesi kapalı', () async {
+      final provider = providerFor(
+        galleryApi(
+          onWrite: () => gallery(const []),
+          initialImages: [
+            for (var index = 0; index < 10; index++)
+              imageJson('img_$index', sortOrder: index),
+          ],
+        ),
+      );
+
+      await provider.load(userId: 'user_1', companyId: 'comp_1');
+
+      expect(provider.canAddGalleryImage, isFalse);
+    });
+
+    test('409 gelirse sunucunun mesajı taşınıyor', () async {
+      final provider = providerFor(
+        galleryApi(
+          onWrite: () => const FakeApiResponse(
+            statusCode: 409,
+            body: {
+              'success': false,
+              'message': 'Galeri için izin verilen görsel sayısına ulaşıldı.',
+            },
+          ),
+        ),
+      );
+      await provider.load(userId: 'user_1', companyId: 'comp_1');
+
+      expect(
+        await provider.addGalleryImage(tempImage('koala_gallery_409.png')),
+        isFalse,
+      );
+      expect(
+        provider.galleryErrorMessage,
+        'Galeri için izin verilen görsel sayısına ulaşıldı.',
+      );
+    });
+
+    test('sıralama galerinin tamamını tek PUT ile gönderiyor', () async {
+      final api = galleryApi(
+        onWrite: () => gallery([
+          imageJson('img_2', cover: true),
+          imageJson('img_1', sortOrder: 1),
+        ]),
+        initialImages: [
+          imageJson('img_1', cover: true),
+          imageJson('img_2', sortOrder: 1),
+        ],
+      );
+      final provider = providerFor(api);
+      await provider.load(userId: 'user_1', companyId: 'comp_1');
+
+      final saved = await provider.replaceGallery(
+        provider.galleryImages.reversed.toList(),
+      );
+
+      expect(saved, isTrue);
+      final write = api.requests.last;
+      expect(write.method, 'PUT');
+      expect((write.data as Map)['images'], hasLength(2));
+      expect(provider.galleryImages.first.id, 'img_2');
+    });
+
+    test('kapak sunucudan geliyor, istemci hesaplamıyor', () async {
+      final api = galleryApi(
+        // Silinen kapağın yerine sunucu kalanların ilkini kapak yaptı.
+        onWrite: () => gallery([imageJson('img_2', cover: true)]),
+        initialImages: [
+          imageJson('img_1', cover: true),
+          imageJson('img_2', sortOrder: 1),
+        ],
+      );
+      final provider = providerFor(api);
+      await provider.load(userId: 'user_1', companyId: 'comp_1');
+
+      final removed = await provider.removeGalleryImage('img_1');
+
+      expect(removed, isTrue);
+      expect(api.requests.last.method, 'DELETE');
+      expect(api.requests.last.path, '/companies/comp_1/images/img_1');
+      expect(provider.galleryImages.single.isCover, isTrue);
+    });
+
+    test('şirket yokken galeri isteği atılmıyor', () async {
+      final api = galleryApi(onWrite: () => gallery(const []));
+      final provider = providerFor(api);
+      await provider.load(userId: 'user_1');
+      final before = api.requests.length;
+
+      expect(await provider.removeGalleryImage('img_1'), isFalse);
+      expect(api.requests, hasLength(before));
     });
   });
 

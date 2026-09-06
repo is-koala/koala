@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:koala/employee/features/company_detail/models/company.dart';
+import 'package:koala/employee/features/company_detail/models/company_image.dart';
 import 'package:koala/business/features/home/models/employer_stats.dart';
 import 'package:koala/business/features/home/services/b_company_service.dart';
 import 'package:koala/employee/features/company_detail/services/company_service.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
+import 'package:koala/product/constants/upload_limits.dart';
 import 'package:koala/product/network/api_exception.dart';
 
 /// İşverenin profil verisi: şirketi ve özet sayıları.
@@ -173,6 +175,86 @@ class BCompanyProvider extends ChangeNotifier {
     return _replaceCompany(() => _service.removeLogo(current.id));
   }
 
+  // ----------------------------------------------------------------- Galeri
+
+  /// Şirketin galerisi.
+  ///
+  /// Ayrı bir alanda değil şirketin içinde duruyor: `GET /companies/{id}`
+  /// görselleri zaten gövdesinde döndürüyor ve iki kopya tutmak şirket
+  /// detayındaki galeri ile buradakinin ayrışmasına açık kapı bırakırdı.
+  List<CompanyImage> get galleryImages => _company?.images ?? const [];
+
+  /// Galeriye görsel eklenebilir mi. Sunucu sınırı aştığında `409` döndürüyor;
+  /// düğmenin kapalı olması kullanıcıyı o hatayı almadan durduruyor.
+  bool get canAddGalleryImage =>
+      _company != null && galleryImages.length < UploadLimits.maxCompanyImages;
+
+  /// Galeri işlemi sürerken; düğmeler kapansın ve istek iki kez atılmasın.
+  bool get isGalleryBusy => _isGalleryBusy;
+
+  /// Galeri isteği düştüğünde dolan mesaj. Şirketin kendi hatasından ayrı:
+  /// yükleme başarısız diye şirket bilgileri ekranı boşalmamalı.
+  String? get galleryErrorMessage => _galleryErrorMessage;
+
+  bool _isGalleryBusy = false;
+  String? _galleryErrorMessage;
+
+  /// Galeriye bir görsel ekler.
+  ///
+  /// [filePath] cihazdaki görselin yolu. Uzantı ve boyut denetimi çağıran
+  /// ekranda; burada yalnız istek var.
+  Future<bool> addGalleryImage(String filePath) {
+    return _replaceGallery(
+      (companyId) => _service.addCompanyImage(companyId, filePath),
+    );
+  }
+
+  /// Sıralamayı ve kapak seçimini tek istekte kaydeder.
+  ///
+  /// [images] galerinin **tamamı** olmalı: sunucu listede olmayan görseli
+  /// galeriden düşürüyor.
+  Future<bool> replaceGallery(List<CompanyImage> images) {
+    return _replaceGallery(
+      (companyId) => _service.replaceCompanyGallery(companyId, images),
+    );
+  }
+
+  /// Görseli galeriden çıkarır. Kapak silinirse sunucu kalanların ilkini
+  /// kapak yapıyor; ekran dönen listeyi olduğu gibi gösteriyor.
+  Future<bool> removeGalleryImage(String imageId) {
+    return _replaceGallery(
+      (companyId) => _service.removeCompanyImage(companyId, imageId),
+    );
+  }
+
+  /// Galerinin yeni hâlini döndüren üç isteğin ortak sarmalayıcısı.
+  ///
+  /// Yanıt `Company` değil `List<GalleryImageDto>` olduğu için
+  /// [_replaceCompany] kullanılamıyor: eldeki şirketin yalnızca galerisi
+  /// değişiyor.
+  Future<bool> _replaceGallery(
+    Future<List<CompanyImage>> Function(String companyId) call,
+  ) async {
+    final current = _company;
+    if (current == null || _isGalleryBusy) return false;
+
+    _isGalleryBusy = true;
+    _galleryErrorMessage = null;
+    notifyListeners();
+
+    try {
+      final images = await call(current.id);
+      _company = current.copyWith(images: images);
+      return true;
+    } on ApiException catch (error) {
+      _galleryErrorMessage = error.message;
+      return false;
+    } finally {
+      _isGalleryBusy = false;
+      notifyListeners();
+    }
+  }
+
   /// Şirketin yeni hâlini döndüren isteklerin ortak sarmalayıcısı.
   ///
   /// Onay bilgisi yanıtlarda gelmeyebiliyor, eldeki değer korunuyor.
@@ -202,6 +284,7 @@ class BCompanyProvider extends ChangeNotifier {
     _stats = null;
     _errorMessage = null;
     _statsErrorMessage = null;
+    _galleryErrorMessage = null;
     _loadedKey = null;
     notifyListeners();
   }

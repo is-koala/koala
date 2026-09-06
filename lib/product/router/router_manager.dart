@@ -8,6 +8,7 @@ import 'package:koala/business/features/home/presentation/pages/b_home_page.dart
 import 'package:koala/business/features/home/presentation/pages/b_posts_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_profile_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_settings_page.dart';
+import 'package:koala/business/features/home/presentation/pages/b_company_gallery_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_company_info_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_job_detail_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_job_templates_page.dart';
@@ -472,6 +473,12 @@ class RouterManager {
       GoRoute(
         path: '/business/company-info',
         pageBuilder: (context, state) => _page(state, const BCompanyInfoPage()),
+      ),
+
+      GoRoute(
+        path: '/business/company-gallery',
+        pageBuilder: (context, state) =>
+            _page(state, const BCompanyGalleryPage()),
       ),
 
       GoRoute(

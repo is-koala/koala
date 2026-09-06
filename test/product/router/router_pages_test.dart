@@ -31,4 +31,15 @@ void main() {
       );
     }
   });
+
+  test('şirket galerisi shell dışında, kendi rotasıyla açılıyor', () {
+    final gallery = allGoRoutes(
+      RouterManager.router.configuration.routes,
+    ).where((route) => route.path == '/business/company-gallery');
+
+    // Galeri navbar'ın üstünü kaplamalı, o yüzden shell'in içine değil üst
+    // düzeye konuyor — `/business/company-info` ile aynı yerde.
+    expect(gallery, hasLength(1));
+    expect(gallery.single.pageBuilder, isNotNull);
+  });
 }

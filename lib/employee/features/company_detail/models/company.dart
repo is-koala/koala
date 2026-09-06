@@ -97,7 +97,15 @@ class Company {
     return images.isEmpty ? null : images.first;
   }
 
-  Company copyWith({bool? isApproved, bool? isFollowing, int? followerCount}) {
+  /// [images] galeri uçları için: dört uç da `Company` değil
+  /// `List<GalleryImageDto>` döndürüyor, yani yanıt eldeki kaydın üstüne
+  /// yazılamıyor — yalnız galerisi değişiyor.
+  Company copyWith({
+    bool? isApproved,
+    bool? isFollowing,
+    int? followerCount,
+    List<CompanyImage>? images,
+  }) {
     return Company(
       id: id,
       name: name,
@@ -109,7 +117,7 @@ class Company {
       taxNumber: taxNumber,
       type: type,
       address: address,
-      images: images,
+      images: images ?? this.images,
       followerCount: followerCount ?? this.followerCount,
       isFollowing: isFollowing ?? this.isFollowing,
       isApproved: isApproved ?? this.isApproved,

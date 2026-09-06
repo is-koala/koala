@@ -5,6 +5,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/business/features/home/services/b_company_service.dart';
 import 'package:koala/employee/features/company_detail/models/company.dart';
+import 'package:koala/employee/features/company_detail/models/company_image.dart';
+import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/models/canonical_address.dart';
 
 import '../../../../support/fake_api.dart';
@@ -49,6 +51,27 @@ const _companyBody = {
     'followerCount': 12,
     'approved': true,
   },
+};
+
+/// `List<GalleryImageDto>` biçiminde bir galeri yanıtı.
+const _galleryBody = {
+  'success': true,
+  'data': [
+    {
+      'id': 'img_1',
+      'url': 'https://cdn.local/1.png',
+      'sortOrder': 0,
+      'cover': true,
+      'caption': null,
+    },
+    {
+      'id': 'img_2',
+      'url': 'https://cdn.local/2.png',
+      'sortOrder': 1,
+      'cover': false,
+      'caption': 'Mutfak',
+    },
+  ],
 };
 
 void main() {
@@ -167,6 +190,140 @@ void main() {
       expect(request.contentType, startsWith('multipart/form-data'));
       // Parçanın adı `logo`; sunucu `@RequestPart("logo")` bekliyor.
       expect((request.data as FormData).files.single.key, 'logo');
+    });
+  });
+
+  group('galeri', () {
+    test('görsel ekleme çok parçalı POST olarak gidiyor', () async {
+      final api = FakeApi(
+        handler: (_) =>
+            const FakeApiResponse(statusCode: 201, body: _galleryBody),
+      );
+      final file = File('${Directory.systemTemp.path}/koala_gallery_test.png')
+        ..writeAsBytesSync(const [1, 2, 3]);
+      addTearDown(() => file.deleteSync());
+
+      final images = await BCompanyService.withClient(
+        api.client,
+      ).addCompanyImage('comp_1', file.path);
+
+      final request = api.requests.single;
+      expect(request.method, 'POST');
+      expect(request.path, '/companies/comp_1/images');
+      expect(request.contentType, startsWith('multipart/form-data'));
+      // Parçanın adı `image`; sunucu `@RequestPart("image")` bekliyor ve
+      // yanına konacak bir JSON parçası istemiyor.
+      expect((request.data as FormData).files.single.key, 'image');
+      // 201 de başarı: uç galerinin tamamını döndürüyor, ikinci bir okuma
+      // isteğine gerek yok.
+      expect(images.map((image) => image.id), ['img_1', 'img_2']);
+      expect(images.first.isCover, isTrue);
+    });
+
+    test('galeri sınırı aşılınca sunucunun mesajı taşınıyor', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 409,
+          body: {
+            'success': false,
+            'message': 'Galeri için izin verilen görsel sayısına ulaşıldı.',
+            'errorCode': 'GALLERY_LIMIT_EXCEEDED',
+          },
+        ),
+      );
+      final file = File('${Directory.systemTemp.path}/koala_gallery_409.png')
+        ..writeAsBytesSync(const [1, 2, 3]);
+      addTearDown(() => file.deleteSync());
+
+      await expectLater(
+        BCompanyService.withClient(
+          api.client,
+        ).addCompanyImage('comp_1', file.path),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.type, 'type', ApiErrorType.conflict)
+              .having(
+                (e) => e.message,
+                'message',
+                'Galeri için izin verilen görsel sayısına ulaşıldı.',
+              ),
+        ),
+      );
+    });
+
+    test('sıralama tek PUT ile ve galerinin tamamıyla gidiyor', () async {
+      final api = FakeApi(
+        handler: (_) =>
+            const FakeApiResponse(statusCode: 200, body: _galleryBody),
+      );
+
+      await BCompanyService.withClient(
+        api.client,
+      ).replaceCompanyGallery('comp_1', const [
+        CompanyImage(id: 'img_2', url: '', sortOrder: 1, caption: 'Mutfak'),
+        CompanyImage(id: 'img_1', url: '', sortOrder: 0, isCover: true),
+      ]);
+
+      final request = api.requests.single;
+      expect(request.method, 'PUT');
+      expect(request.path, '/companies/comp_1/images');
+
+      final entries =
+          (request.data as Map)['images'] as List<Map<String, dynamic>>;
+      // Toptan değiştirme: listede olmayan görsel siliniyor, o yüzden
+      // galerinin **tamamı** gövdeye giriyor.
+      expect(entries, hasLength(2));
+      expect(entries.map((entry) => entry['imageId']), ['img_2', 'img_1']);
+      // Sıra listedeki konumdan geliyor; modeldeki eski değer değil.
+      expect(entries.map((entry) => entry['sortOrder']), [0, 1]);
+      expect(entries.map((entry) => entry['cover']), [false, true]);
+      // Başlık düzenlenmiyor ama korunuyor: gönderilmezse sunucuda siliniyor.
+      expect(entries.first['caption'], 'Mutfak');
+    });
+
+    test('galeride olmayan görsel gönderilince 404 çeviriliyor', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 404,
+          body: {
+            'success': false,
+            'message': 'Görsel bu galeride bulunamadı.',
+            'errorCode': 'IMAGE_NOT_IN_GALLERY',
+          },
+        ),
+      );
+
+      await expectLater(
+        BCompanyService.withClient(api.client).replaceCompanyGallery(
+          'comp_1',
+          const [CompanyImage(id: 'img_9', url: '')],
+        ),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.type, 'type', ApiErrorType.notFound)
+              .having(
+                (e) => e.message,
+                'message',
+                'Görsel bu galeride bulunamadı.',
+              ),
+        ),
+      );
+    });
+
+    test('kaldırma görselin kimliğiyle DELETE atıyor', () async {
+      final api = FakeApi(
+        handler: (_) =>
+            const FakeApiResponse(statusCode: 200, body: _galleryBody),
+      );
+
+      final images = await BCompanyService.withClient(
+        api.client,
+      ).removeCompanyImage('comp_1', 'img_3');
+
+      expect(api.requests.single.method, 'DELETE');
+      // Yol satır kimliğini değil görselin kimliğini taşıyor.
+      expect(api.requests.single.path, '/companies/comp_1/images/img_3');
+      expect(images, hasLength(2));
     });
   });
 
