@@ -22,19 +22,20 @@ class BPricingBreakdownCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _row(context, 'Çalışana ödenecek', breakdown.workerPayout),
+          _row(context, 'Çalışan Ücreti', breakdown.workerPayout),
           const SizedBox(height: AppSizes.spaceSmall),
           _row(
             context,
-            'Koala hizmet bedeli (%${_percent(breakdown.serviceFeeRate)})',
+            'Hizmet Bedeli',
             breakdown.serviceFeeAmount,
+            detail: '(%${_percent(breakdown.serviceFeeRate)})',
           ),
           const SizedBox(height: AppSizes.spaceSmall),
           Divider(color: context.dividerColor),
           const SizedBox(height: AppSizes.spaceSmall),
           _row(
             context,
-            'Toplam ödeyeceğin',
+            'İşveren Toplamı',
             breakdown.employerTotal,
             emphasized: true,
           ),
@@ -48,6 +49,7 @@ class BPricingBreakdownCard extends StatelessWidget {
     String label,
     String amount, {
     bool emphasized = false,
+    String? detail,
   }) {
     final style = emphasized
         ? context.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)
@@ -55,7 +57,22 @@ class BPricingBreakdownCard extends StatelessWidget {
 
     return Row(
       children: [
-        Expanded(child: Text(label, style: style)),
+        Expanded(
+          child: Wrap(
+            spacing: AppSizes.spaceTiny,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(label, style: style),
+              if (detail != null)
+                Text(
+                  detail,
+                  style: context.textTheme.bodySmall?.copyWith(
+                    color: context.textSecondary,
+                  ),
+                ),
+            ],
+          ),
+        ),
         const SizedBox(width: AppSizes.spaceSmall),
         Text(amount, style: style),
         const SizedBox(width: AppSizes.spaceTiny),

@@ -1,6 +1,7 @@
 part of 'b_job_detail_page.dart';
 
-abstract class BJobDetailPageModel extends State<BJobDetailPage> {
+abstract class BJobDetailPageModel extends State<BJobDetailPage>
+    with WidgetsBindingObserver {
   /// Rozet zeminlerinin opaklığı.
   static const double _tintAlpha = 0.12;
 
@@ -82,6 +83,7 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadDetail();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
@@ -99,6 +101,21 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
       await provider.ensureApplicants(widget.jobId);
       await _loadAssignment();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// Hosted checkout'tan uygulamaya dönüldüğünde backend mutabakatının son
+  /// atama ve deneme durumunu görünür kılar.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_loadAssignment());
+    }
   }
 
   Future<void> _loadDetail() async {
@@ -222,22 +239,19 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
     }
   }
 
-  /// Backend dökümünü getirip kullanıcıdan açık onay alır.
+  /// Atamaya sabitlenmiş backend dökümünü gösterip açık onay alır.
   Future<void> _requestPayment() async {
     final assignment = _assignment;
     if (assignment == null || _isStartingPayment) return;
 
-    final workerPayout = assignment.workerPayout;
-    if (workerPayout == null) {
-      AppToast.error(context, 'Çalışan ücreti bilgisi alınamadı.');
+    final breakdown = assignment.pricing;
+    if (breakdown == null) {
+      AppToast.error(context, 'Atamanın fiyat dökümü alınamadı.');
       return;
     }
 
     setState(() => _isStartingPayment = true);
     try {
-      final breakdown = await _paymentService.quote(workerPayout.toString());
-      if (!mounted) return;
-
       final confirmed = await _confirmPayment(breakdown);
       if (confirmed != true || !mounted) return;
 
@@ -267,7 +281,6 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
         'Ödemeyi tamamladıktan sonra Koala uygulamasına döneceksin.',
       );
     }
-    await _loadPaymentAttempts(assignment.id);
   }
 
   /// Fiyat dökümünü taşıyan ödeme onayı. Gövdesi arayüz dosyasında.

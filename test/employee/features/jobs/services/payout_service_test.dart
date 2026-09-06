@@ -62,6 +62,32 @@ void main() {
       expect(payouts, isEmpty);
     });
 
+    test('tutarı sayı döndüren sözleşme dışı yanıtı reddeder', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': [
+              {
+                'id': 'payout-1',
+                'jobAssignmentId': 'assignment-1',
+                'amount': 1000.10,
+                'currency': 'TRY',
+                'status': 'PROCESSING',
+                'createdAt': '2026-09-06T12:00:00Z',
+              },
+            ],
+          },
+        ),
+      );
+
+      await expectLater(
+        PayoutService.withClient(api.client).fetchMyPayouts(),
+        throwsA(isA<ApiException>()),
+      );
+    });
+
     for (final statusCode in [401, 500]) {
       test('$statusCode yanıtı ApiException yükseltir', () async {
         final api = FakeApi(

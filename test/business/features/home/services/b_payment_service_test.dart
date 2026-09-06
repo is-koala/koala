@@ -54,6 +54,30 @@ void main() {
         throwsA(isA<ApiException>()),
       );
     });
+
+    test('ondalıkları sayı döndüren sözleşme dışı yanıtı reddeder', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {
+              'pricingVersion': 'v1',
+              'currency': 'TRY',
+              'workerPayout': 1000.10,
+              'serviceFeeRate': '0.075',
+              'serviceFeeAmount': '75.01',
+              'employerTotal': '1075.11',
+            },
+          },
+        ),
+      );
+
+      await expectLater(
+        BPaymentService.withClient(api.client).quote('1000.10'),
+        throwsA(isA<ApiException>()),
+      );
+    });
   });
 
   group('BPaymentService.fetchAttempts', () {
@@ -129,6 +153,34 @@ void main() {
       ).fetchAttempts('assignment-1');
 
       expect(attempts, isEmpty);
+    });
+
+    test('ondalık alanları sayı olan denemeyi reddeder', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': [
+              {
+                'id': 'attempt-1',
+                'status': 'FAILED',
+                'currency': 'TRY',
+                'workerPayout': 1000.10,
+                'commissionAmount': '75.01',
+                'commissionRate': '0.075',
+                'totalCharged': '1075.11',
+                'createdAt': '2026-09-05T12:00:00Z',
+              },
+            ],
+          },
+        ),
+      );
+
+      await expectLater(
+        BPaymentService.withClient(api.client).fetchAttempts('assignment-1'),
+        throwsA(isA<ApiException>()),
+      );
     });
   });
 }

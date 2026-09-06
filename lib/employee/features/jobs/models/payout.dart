@@ -1,3 +1,5 @@
+import 'package:koala/product/network/json_field.dart';
+
 /// Çalışana yapılan ödeme çıkışının backend durumu.
 enum PayoutStatus {
   pending('PENDING', 'Bekliyor'),
@@ -45,35 +47,17 @@ class Payout {
 
   factory Payout.fromJson(Map<String, dynamic> json) {
     return Payout(
-      id: _requiredString(json['id'], 'id'),
-      jobAssignmentId: _requiredString(
+      id: JsonField.requiredString(json['id'], 'id'),
+      jobAssignmentId: JsonField.requiredString(
         json['jobAssignmentId'],
         'jobAssignmentId',
       ),
-      amount: _requiredString(json['amount'], 'amount'),
-      currency: _requiredString(json['currency'], 'currency'),
+      amount: JsonField.requiredString(json['amount'], 'amount'),
+      currency: JsonField.requiredString(json['currency'], 'currency'),
       status: PayoutStatus.fromCode(json['status']),
       failureReason: json['failureReason'] as String?,
-      completedAt: _dateOrNull(json['completedAt']),
-      createdAt: _requiredDate(json['createdAt'], 'createdAt'),
+      completedAt: JsonField.dateOrNull(json['completedAt']),
+      createdAt: JsonField.requiredDate(json['createdAt'], 'createdAt'),
     );
-  }
-
-  static String _requiredString(Object? value, String field) {
-    if (value is String && value.isNotEmpty) return value;
-    if (value is num) return value.toString();
-    throw FormatException('$field alanı eksik.');
-  }
-
-  static DateTime? _dateOrNull(Object? value) {
-    if (value == null) return null;
-    if (value is String) return DateTime.tryParse(value);
-    return null;
-  }
-
-  static DateTime _requiredDate(Object? value, String field) {
-    final parsed = _dateOrNull(value);
-    if (parsed != null) return parsed;
-    throw FormatException('$field alanı eksik.');
   }
 }

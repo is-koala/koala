@@ -1,4 +1,5 @@
 import 'package:koala/business/features/home/models/b_pricing_breakdown.dart';
+import 'package:koala/product/network/json_field.dart';
 
 /// Tek bir ödeme denemesinin backend durumu.
 enum BPaymentAttemptStatus {
@@ -54,40 +55,33 @@ class BPaymentAttempt {
   factory BPaymentAttempt.fromJson(Map<String, dynamic> json) {
     final pricing = json['pricing'];
     return BPaymentAttempt(
-      id: _requiredString(json['id'], 'id'),
+      id: JsonField.requiredString(json['id'], 'id'),
       status: BPaymentAttemptStatus.fromCode(json['status']),
-      currency: _requiredString(json['currency'], 'currency'),
-      workerPayout: _requiredString(json['workerPayout'], 'workerPayout'),
-      commissionAmount: _requiredString(
+      currency: JsonField.requiredString(json['currency'], 'currency'),
+      workerPayout: JsonField.requiredString(
+        json['workerPayout'],
+        'workerPayout',
+      ),
+      commissionAmount: JsonField.requiredString(
         json['commissionAmount'],
         'commissionAmount',
       ),
-      commissionRate: _requiredString(json['commissionRate'], 'commissionRate'),
-      totalCharged: _requiredString(json['totalCharged'], 'totalCharged'),
-      pricing: pricing is Map<String, dynamic>
-          ? BPricingBreakdown.fromJson(pricing)
-          : null,
+      commissionRate: JsonField.requiredString(
+        json['commissionRate'],
+        'commissionRate',
+      ),
+      totalCharged: JsonField.requiredString(
+        json['totalCharged'],
+        'totalCharged',
+      ),
+      pricing: switch (pricing) {
+        null => null,
+        final Map<String, dynamic> value => BPricingBreakdown.fromJson(value),
+        _ => throw const FormatException('pricing alanı geçersiz.'),
+      },
       failureReason: json['failureReason'] as String?,
-      completedAt: _dateOrNull(json['completedAt']),
-      createdAt: _requiredDate(json['createdAt'], 'createdAt'),
+      completedAt: JsonField.dateOrNull(json['completedAt']),
+      createdAt: JsonField.requiredDate(json['createdAt'], 'createdAt'),
     );
-  }
-
-  static String _requiredString(Object? value, String field) {
-    if (value is String && value.isNotEmpty) return value;
-    if (value is num) return value.toString();
-    throw FormatException('$field alanı eksik.');
-  }
-
-  static DateTime? _dateOrNull(Object? value) {
-    if (value == null) return null;
-    if (value is String) return DateTime.tryParse(value);
-    return null;
-  }
-
-  static DateTime _requiredDate(Object? value, String field) {
-    final parsed = _dateOrNull(value);
-    if (parsed != null) return parsed;
-    throw FormatException('$field alanı eksik.');
   }
 }

@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/business/features/home/presentation/pages/b_job_detail_page.dart';
 import 'package:koala/business/features/home/presentation/providers/b_company_provider.dart';
@@ -36,11 +37,19 @@ const assignmentJson = {
   'status': 'CONFIRMED',
   'paymentStatus': 'PENDING_COLLECTION',
   'workerPayout': 1000.10,
+  'pricing': {
+    'pricingVersion': 'assignment-v1',
+    'currency': 'TRY',
+    'workerPayout': '1000.10',
+    'serviceFeeRate': '0.050',
+    'serviceFeeAmount': '50.01',
+    'employerTotal': '1050.11',
+  },
   'job': jobJson,
 };
 
 Future<({FakeApi employerApi, FakeApi paymentApi, int Function() launches})>
-pumpPage(WidgetTester tester) async {
+pumpPage(WidgetTester tester, {bool progressiveAttempt = false}) async {
   final detailApi = FakeApi(
     handler: (_) => const FakeApiResponse(
       statusCode: 200,
@@ -97,15 +106,18 @@ pumpPage(WidgetTester tester) async {
       body: {'success': true, 'data': []},
     ),
   );
+  var paymentFetchCount = 0;
   final paymentApi = FakeApi(
     handler: (request) {
+      // Güncel tarife atamaya sabitlenmiş snapshot'tan bilerek farklı. Ödeme
+      // onayı bu ucu çağırırsa toplam sessizce değişir ve test kırılmalıdır.
       if (request.path == '/payment-quotes') {
         return const FakeApiResponse(
           statusCode: 200,
           body: {
             'success': true,
             'data': {
-              'pricingVersion': 'v1',
+              'pricingVersion': 'current-v2',
               'currency': 'TRY',
               'workerPayout': '1000.10',
               'serviceFeeRate': '0.075',
@@ -115,20 +127,23 @@ pumpPage(WidgetTester tester) async {
           },
         );
       }
-      return const FakeApiResponse(
+
+      paymentFetchCount++;
+      final isInitiated = progressiveAttempt && paymentFetchCount == 1;
+      return FakeApiResponse(
         statusCode: 200,
-        body: {
+        body: <String, dynamic>{
           'success': true,
           'data': [
             {
               'id': 'attempt-1',
-              'status': 'FAILED',
+              'status': isInitiated ? 'INITIATED' : 'FAILED',
               'currency': 'TRY',
               'workerPayout': '1000.10',
-              'commissionAmount': '75.01',
-              'commissionRate': '0.075',
-              'totalCharged': '1075.11',
-              'failureReason': 'Kart reddedildi.',
+              'commissionAmount': '50.01',
+              'commissionRate': '0.050',
+              'totalCharged': '1050.11',
+              if (!isInitiated) 'failureReason': 'Kart reddedildi.',
               'createdAt': '2026-09-06T12:00:00Z',
             },
           ],
@@ -202,7 +217,7 @@ void main() {
 
     expect(find.text('Ödeme Denemeleri'), findsOneWidget);
     expect(find.text('Başarısız'), findsOneWidget);
-    expect(find.text('1075.11'), findsOneWidget);
+    expect(find.text('1050.11'), findsOneWidget);
     expect(find.text('Kart reddedildi.'), findsOneWidget);
   });
 
@@ -217,9 +232,19 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('Ödemeyi Onayla'), findsOneWidget);
+    expect(find.text('Çalışan Ücreti'), findsOneWidget);
+    expect(find.text('Hizmet Bedeli'), findsOneWidget);
+    expect(find.text('(%5)'), findsOneWidget);
+    expect(find.text('İşveren Toplamı'), findsOneWidget);
     expect(find.text('1000.10'), findsOneWidget);
-    expect(find.text('75.01'), findsOneWidget);
-    expect(find.text('1075.11'), findsWidgets);
+    expect(find.text('50.01'), findsOneWidget);
+    expect(find.text('1050.11'), findsWidgets);
+    expect(
+      harness.paymentApi.requests.where(
+        (request) => request.path == '/payment-quotes',
+      ),
+      isEmpty,
+    );
     expect(
       harness.employerApi.requests.where((request) => request.method == 'POST'),
       isEmpty,
@@ -244,5 +269,32 @@ void main() {
       hasLength(1),
     );
     expect(harness.launches(), 1);
+  });
+
+  testWidgets('checkout dönüşünde deneme durumunu ve hata sebebini yeniler', (
+    tester,
+  ) async {
+    final harness = await pumpPage(tester, progressiveAttempt: true);
+
+    expect(find.text('Başlatıldı'), findsOneWidget);
+    expect(find.text('Kart reddedildi.'), findsNothing);
+
+    final button = find.text('Güvenli Ödemeyi Tamamla');
+    await tester.ensureVisible(button);
+    await tester.tap(button);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.text('Ödemeye geç'));
+    await tester.pumpAndSettle();
+
+    expect(harness.launches(), 1);
+    expect(find.text('Başlatıldı'), findsOneWidget);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Başarısız'), findsOneWidget);
+    expect(find.text('Kart reddedildi.'), findsOneWidget);
   });
 }

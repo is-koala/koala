@@ -109,7 +109,7 @@ void main() {
     await enterPriceAndBlur(tester, '1000.10');
 
     expect(api.requests.single.data, {'workerPayout': '1000.10'});
-    expect(find.text('Çalışana ödenecek'), findsOneWidget);
+    expect(find.text('Çalışan Ücreti'), findsOneWidget);
     expect(
       find.descendant(
         of: find.byType(BPricingBreakdownCard),
@@ -117,9 +117,10 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.text('Koala hizmet bedeli (%7,5)'), findsOneWidget);
+    expect(find.text('Hizmet Bedeli'), findsOneWidget);
+    expect(find.text('(%7,5)'), findsOneWidget);
     expect(find.text('75.01'), findsOneWidget);
-    expect(find.text('Toplam ödeyeceğin'), findsOneWidget);
+    expect(find.text('İşveren Toplamı'), findsOneWidget);
     expect(find.text('1075.11'), findsOneWidget);
   });
 
