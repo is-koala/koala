@@ -31,6 +31,12 @@ class ApplyProvider extends ChangeNotifier {
   /// mesaja değil buna bakıyor.
   String? _errorCode;
 
+  /// Geri çekme isteği sunucuya gitmiş başvurunun kimliği.
+  ///
+  /// Tek bir alan yetiyor: kullanıcı aynı anda tek bir başvuruyu geri
+  /// çekiyor. Ekran satırın düğmesini buna bakarak kilitliyor.
+  String? _withdrawingId;
+
   List<JobApplication> get applications => List.unmodifiable(_applications);
 
   bool get isLoading => _isLoading;
@@ -41,16 +47,28 @@ class ApplyProvider extends ChangeNotifier {
 
   String? get errorCode => _errorCode;
 
+  /// Geri çekme isteği süren başvurunun kimliği; yoksa `null`.
+  String? get withdrawingId => _withdrawingId;
+
   /// Başvuruların "İşlerim" ekranındaki karşılığı.
   ///
-  /// Ekran hâlâ [MyJob] üzerinden çiziliyor; kabul edilmiş başvurular bir
-  /// atamaya dönüştüğü için buradaki karşılıkları yalnızca "başvuru bekliyor"
-  /// ve "reddedildi" durumları.
+  /// Ekran hâlâ [MyJob] üzerinden çiziliyor. Kabul edilmiş başvuru bir
+  /// atamaya dönüştüğü için buraya girmiyor; kalan dört durumun her birinin
+  /// kendi satırı var — bkz. [_toMyJob].
   List<MyJob> get appliedJobs =>
       _applications.map(_toMyJob).nonNulls.toList(growable: false);
 
+  /// Bu ilana yeniden başvurmayı engelleyen bir kayıt var mı.
+  ///
+  /// Geri çekilmiş başvuru saymıyor: sunucu o ilana yeniden başvurmaya izin
+  /// veriyor ([ApplicationStatus.blocksReapplication]). Burası saysaydı
+  /// sunucunun kuralı uygulamadan hiç erişilemez kalırdı — [applyToJob]
+  /// isteği atmadan `false` dönüyor.
   bool hasApplied(String jobId) {
-    return _applications.any((application) => application.job.id == jobId);
+    return _applications.any(
+      (application) =>
+          application.job.id == jobId && application.status.blocksReapplication,
+    );
   }
 
   /// Başvuruları sunucudan çeker.
@@ -107,6 +125,50 @@ class ApplyProvider extends ChangeNotifier {
     }
   }
 
+  /// Başvuruyu geri çeker.
+  ///
+  /// Başarılıysa `true` döner. Sunucu yalnızca `APPLIED` durumundan geçiriyor;
+  /// yanıtlanmış ya da zaten geri çekilmiş başvuruda `409` dönüyor.
+  ///
+  /// **Yalnızca durum sunucudan alınıyor, kayıt olduğu gibi değiştirilmiyor.**
+  /// Uç `JobApplicationDetailDto` döndürüyor ve onun `job` alanı
+  /// `ShortJobDto` — yalnızca id ve başlık. Kaydı yerine koysaydık satırın
+  /// ücreti, şirketi ve özeti silinir, "Geçmiş" bölümünde ₺0'lık bir satır
+  /// kalırdı. Liste yeniden çekilmiyor: kullanıcı sonucu anında görüyor.
+  Future<bool> withdraw(String applicationId) async {
+    if (_withdrawingId != null) return false;
+
+    _withdrawingId = applicationId;
+    _errorMessage = null;
+    _errorCode = null;
+    notifyListeners();
+
+    try {
+      final withdrawn = await _service.withdraw(applicationId);
+      final index = _applications.indexWhere(
+        (application) => application.id == applicationId,
+      );
+      if (index != -1) {
+        _applications[index] = _applications[index].copyWith(
+          status: withdrawn.status,
+        );
+      }
+      return true;
+    } on ApiException catch (error) {
+      // 409: başvuru araya girip kabul ya da reddedilmiş demektir, ekrandaki
+      // liste bayat. Tazeleme mesajdan **önce** çalışıyor: [load] başlarken
+      // hata alanlarını temizliyor, ters sırada kullanıcıya gösterilecek
+      // mesaj kaybolurdu.
+      if (error.type == ApiErrorType.conflict) await load(force: true);
+      _errorMessage = error.message;
+      _errorCode = error.errorCode;
+      return false;
+    } finally {
+      _withdrawingId = null;
+      notifyListeners();
+    }
+  }
+
   /// Çıkışta önceki kullanıcının başvuruları kalmasın.
   void clear() {
     _applications.clear();
@@ -118,11 +180,28 @@ class ApplyProvider extends ChangeNotifier {
 
   /// Başvuruyu ekranın satırına çevirir; listede yeri yoksa `null` döner.
   ///
-  /// **Kabul edilen başvuru atlanıyor.** O başvuru artık bir atama ve
-  /// atamalar uçtan ayrıca geliyor; ikisini birden çizmek aynı işi listede
-  /// iki kez gösterirdi.
+  /// Her başvuru durumunun ekranda ne olacağına **tek bir exhaustive
+  /// `switch`** karar veriyor: `null` "listede yeri yok" demek. Eleme ayrı bir
+  /// `if` olarak dursaydı switch'te ulaşılamaz bir dal kalır, o dal da bir
+  /// gün eleme kalktığında sessizce yanlış durumu çizerdi.
   static MyJob? _toMyJob(JobApplication application) {
-    if (application.status == ApplicationStatus.accepted) return null;
+    final status = switch (application.status) {
+      ApplicationStatus.applied => MyJobStatus.pending,
+      ApplicationStatus.rejected => MyJobStatus.applicationRejected,
+      ApplicationStatus.withdrawn => MyJobStatus.withdrawn,
+      // **Bilinmeyen durum kararı.** Satır listeden düşürülmüyor: sunucuda
+      // kullanıcının bir kaydı var ve onu gizlemek "başvurum kayboldu"
+      // demek olurdu. Ama bilinen bir durum gibi de çizilmiyor; kapalı
+      // sayılıp geçmişe konuyor, çünkü ne olduğunu bilmediğimiz bir kayıt
+      // üzerinde önerebileceğimiz hiçbir eylem yok.
+      ApplicationStatus.unknown => MyJobStatus.unknown,
+      // **Kabul edilen başvuru atlanıyor.** O başvuru artık bir atama ve
+      // atamalar uçtan ayrıca geliyor; ikisini birden çizmek aynı işi
+      // listede iki kez gösterirdi.
+      ApplicationStatus.accepted => null,
+    };
+
+    if (status == null) return null;
 
     final job = application.job;
     final date = application.applicationDateTime;
@@ -136,11 +215,7 @@ class ApplyProvider extends ChangeNotifier {
       description: job.subtitle,
       date: date?.asShortDate ?? '',
       price: job.price,
-      status: switch (application.status) {
-        ApplicationStatus.rejected => MyJobStatus.applicationRejected,
-        // `accepted` yukarıda eleniyor; kalan tek durum bekleyen başvuru.
-        _ => MyJobStatus.pending,
-      },
+      status: status,
       rejectionReason: application.rejectionReason,
     );
   }

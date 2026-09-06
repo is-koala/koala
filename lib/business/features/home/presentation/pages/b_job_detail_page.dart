@@ -12,6 +12,7 @@ import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:koala/employee/features/jobs/models/assignment.dart';
 import 'package:koala/employee/features/jobs/models/cancellation.dart';
 import 'package:koala/employee/features/jobs/models/dispute.dart';
+import 'package:koala/employee/features/jobs/models/job_application.dart';
 import 'package:koala/employee/features/jobs/models/work_session.dart';
 import 'package:koala/employee/features/jobs/services/assignment_service.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
@@ -464,6 +465,10 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     }
 
     final accepted = post.acceptedApplicants;
+    // Geri çekilen ve durumu tanınmayan başvurular da bu listede: sunucu
+    // kaydı silmiyor ve işverenin listesinde tutuyor. Kartları çiziliyor,
+    // yalnızca kabul/ret butonları çıkmıyor.
+    final unanswered = post.unansweredApplicants;
 
     return [
       if (accepted.isNotEmpty) ...[
@@ -473,13 +478,9 @@ class _BJobDetailPageState extends BJobDetailPageModel {
           _applicantCard(context, applicant, isAccepted: true),
         const SizedBox(height: AppSizes.spaceLarge),
       ],
-      _sectionTitle(context, "Başvuranlar (${post.applicants.length})"),
+      _sectionTitle(context, "Başvuranlar (${unanswered.length})"),
       const SizedBox(height: AppSizes.space),
-      _applicantsList(
-        context,
-        post.applicants,
-        hasAccepted: accepted.isNotEmpty,
-      ),
+      _applicantsList(context, unanswered, hasAccepted: accepted.isNotEmpty),
     ];
   }
 
@@ -609,14 +610,32 @@ class _BJobDetailPageState extends BJobDetailPageModel {
       _ => context.textTertiary,
     };
 
+    return _labelBadge(
+      context,
+      label: status.displayName,
+      tint: color,
+      textColor: isLive ? color : context.textSecondary,
+    );
+  }
+
+  /// Renkli zemin üstünde kalın, küçük bir etiket taşıyan rozet.
+  ///
+  /// İlanın ve başvurunun durum rozetleri aynı biçimi kuruyordu; ikisi de
+  /// buradan geçiyor ki bir gün biçim değişirse tek yerde değişsin.
+  Widget _labelBadge(
+    BuildContext context, {
+    required String label,
+    required Color tint,
+    required Color textColor,
+  }) {
     return _badge(
       context,
-      color: color,
+      color: tint,
       child: Text(
-        status.displayName,
+        label,
         style: context.textTheme.labelMedium?.copyWith(
           fontWeight: FontWeight.w600,
-          color: isLive ? color : context.textSecondary,
+          color: textColor,
         ),
       ),
     );
@@ -922,10 +941,32 @@ class _BJobDetailPageState extends BJobDetailPageModel {
                 ],
               ),
             )
+          // Butonlar başvurunun durumuna bakıyor, yalnızca [isAccepted]
+          // bayrağına değil: geri çekilmiş ya da durumu tanınmayan bir
+          // başvuruya basmak sunucudan `409` getirirdi. Bekleyenler listesi
+          // zaten süzüyor, bu kartın kendi güvencesi.
+          else if (applicant.isPending)
+            _applicantActions(context, applicant)
           else
-            _applicantActions(context, applicant),
+            _applicationStatusBadge(context, applicant.status),
         ],
       ),
+    );
+  }
+
+  /// Yanıtlanamayan bir başvurunun durumunu yazan nötr rozet.
+  ///
+  /// Kabul rozetinin yeşili yalnızca kabule ait; reddedilen ya da geri
+  /// çekilen başvuruyu aynı renkle çizmek yanlış bilgi olurdu.
+  Widget _applicationStatusBadge(
+    BuildContext context,
+    ApplicationStatus status,
+  ) {
+    return _labelBadge(
+      context,
+      label: status.displayName,
+      tint: context.textTertiary,
+      textColor: context.textSecondary,
     );
   }
 

@@ -215,6 +215,15 @@ class ApiPaths {
   static String respondToApplication(String applicationId) =>
       '/job-applications/$applicationId/respond';
 
+  /// Başvuranın kendi başvurusunu geri çekmesi.
+  ///
+  /// Silme değil — kayıt duruyor, durumu `WITHDRAWN` oluyor ve işverenin
+  /// listesinde görünmeye devam ediyor. Yalnızca `APPLIED` durumundan
+  /// geçilebiliyor; başkasının başvurusu `404` (varlığı sızmasın diye `403`
+  /// değil).
+  static String withdrawApplication(String applicationId) =>
+      '/job-applications/$applicationId/withdraw';
+
   // ------------------------------------------------------------------ Şirket
 
   static const String companies = '/companies';

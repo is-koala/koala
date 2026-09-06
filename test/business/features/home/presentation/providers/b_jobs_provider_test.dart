@@ -158,6 +158,46 @@ void main() {
       },
     );
 
+    // Geri çekilen aday `applied` sanılıyordu: işverene "yanıt bekliyor"
+    // görünüyor, "Kabul Et"e basınca sunucudan `409` geliyordu. Artık
+    // bekleyen sayılmıyor ama listeden de düşmüyor — sunucu kaydı silmiyor
+    // ve işverenin listesinde tutuyor.
+    test(
+      'geri çekilen aday yanıt bekleyen değil ama listede kalıyor',
+      () async {
+        final api = buildApi(
+          jobs: [jobJson('a')],
+          applicantsByJob: {
+            'a': [
+              applicantJson('app_1'),
+              applicantJson('app_2', status: 'WITHDRAWN'),
+              applicantJson('app_3', status: 'UZAYLI'),
+              applicantJson('app_4', status: 'REJECTED'),
+              applicantJson('app_5', status: 'ACCEPTED'),
+            ],
+          },
+        );
+        final provider = providerFor(api);
+
+        await provider.load();
+        await provider.ensureApplicants('a');
+        final post = provider.getPostByJobId('a')!;
+
+        // "Son Başvurular" bir eylem çağrısı: yalnızca yanıt bekleyenler.
+        expect(post.applicants.map((a) => a.id), ['app_1']);
+        // İlan detayındaki "Başvuranlar": işverenin yanıtlamadığı her kayıt.
+        // Geri çekilen ve durumu tanınmayan burada duruyor, butonsuz.
+        expect(post.unansweredApplicants.map((a) => a.id), [
+          'app_1',
+          'app_2',
+          'app_3',
+        ]);
+        expect(post.acceptedApplicants.map((a) => a.id), ['app_5']);
+        expect(post.applications[1].status, ApplicationStatus.withdrawn);
+        expect(post.applications[2].status, ApplicationStatus.unknown);
+      },
+    );
+
     test('tek ilanın başvuruları gelmezse liste ayakta kalıyor', () async {
       final api = buildApi(
         jobs: [jobJson('a'), jobJson('b')],

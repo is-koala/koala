@@ -11,6 +11,8 @@ enum MyJobStatus {
   rejected, // Çalışan işi kabul etmedi
   applicationRejected, // İşveren başvuruyu reddetti
   cancelled, // İki taraftan biri işi iptal etti
+  withdrawn, // Başvuran başvurusunu geri çekti
+  unknown, // Sunucudan bu sürümün tanımadığı bir durum geldi
 }
 
 extension MyJobStatusExtension on MyJobStatus {
@@ -34,6 +36,12 @@ extension MyJobStatusExtension on MyJobStatus {
         return 'Başvuru Reddedildi';
       case MyJobStatus.cancelled:
         return 'İptal Edildi';
+      // İki "geri çekildi" arasında fark yok ama özne var: bunu kullanıcının
+      // kendisi yaptı, o yüzden ikinci tekil.
+      case MyJobStatus.withdrawn:
+        return 'Geri Çektin';
+      case MyJobStatus.unknown:
+        return 'Bilinmiyor';
     }
   }
 
@@ -60,6 +68,12 @@ extension MyJobStatusExtension on MyJobStatus {
         return 'İşveren başka bir adayla devam etti';
       case MyJobStatus.cancelled:
         return 'İş iptal edildi';
+      case MyJobStatus.withdrawn:
+        return 'Başvurunu geri çektin';
+      // Kullanıcıya sunucunun kod adını göstermenin faydası yok; yapabileceği
+      // tek şey uygulamayı güncellemek.
+      case MyJobStatus.unknown:
+        return 'Bu kaydın durumu uygulamanın bu sürümünde tanınmıyor';
     }
   }
 }
@@ -113,15 +127,27 @@ class MyJob {
     this.rejectionReason,
   });
 
-  /// İş kapandı mı: geçmişe düşen, iptal edilen ve reddedilen işler.
+  /// İş kapandı mı: üzerinde yapılacak bir şey kalmayan her satır.
   ///
-  /// Bu üçünün ortak yanı üzerlerinde yapılacak bir şey kalmaması; ekranda
-  /// da aynı bölümde duruyorlar.
-  bool get isClosed =>
-      status == MyJobStatus.past ||
-      status == MyJobStatus.rejected ||
-      status == MyJobStatus.applicationRejected ||
-      status == MyJobStatus.cancelled;
+  /// Geçmişe düşen, iptal edilen, reddedilen, geri çekilen ve durumu
+  /// tanınmayan kayıtlar; ekranda hepsi aynı bölümde duruyor.
+  ///
+  /// Elle yazılmış bir `||` zinciriydi ve derleyici sessiz kalıyordu: yeni bir
+  /// [MyJobStatus] eklenince kayıt hiçbir bölüme girmeden ekrandan düşüyordu.
+  /// Exhaustive `switch` aynı hatayı bir daha derleme hatasına çeviriyor.
+  bool get isClosed => switch (status) {
+    MyJobStatus.past ||
+    MyJobStatus.rejected ||
+    MyJobStatus.applicationRejected ||
+    MyJobStatus.cancelled ||
+    MyJobStatus.withdrawn ||
+    MyJobStatus.unknown => true,
+    MyJobStatus.pending ||
+    MyJobStatus.awaitingApproval ||
+    MyJobStatus.approved ||
+    MyJobStatus.inProgress ||
+    MyJobStatus.completed => false,
+  };
 
   /// Satırın alt satırında gösterilecek metin.
   ///

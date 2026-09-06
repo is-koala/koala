@@ -32,9 +32,24 @@ class BJobPost {
   bool get isActive =>
       job.status == JobStatus.open || job.status == JobStatus.inProgress;
 
-  /// Henüz yanıtlanmamış başvurular — işverenin kabul/ret göstereceği liste.
+  /// Yanıt bekleyen başvurular — işverenin kabul/ret göstereceği liste.
+  ///
+  /// Bir eylem çağrısı, o yüzden dar: yalnızca `APPLIED`. Geri çekilen ya da
+  /// durumu tanınmayan kayıt burada yok; ilan detayındaki tam liste için
+  /// [unansweredApplicants].
   List<JobApplicant> get applicants =>
       applications.where((a) => a.isPending).toList();
+
+  /// İşverenin yanıtlamadığı başvurular — ilan detayındaki "Başvuranlar".
+  ///
+  /// [applicants]'tan farkı: geri çekilen ve durumu tanınmayan kayıtlar da
+  /// burada. Sunucu geri çekilen başvuruyu silmiyor ve işverenin listesinden
+  /// düşürmüyor — kart çiziliyor, yalnızca kabul/ret butonları çıkmıyor
+  /// ([JobApplicant.isPending]). Kaydı gizlemek işverene başvuranın hiç
+  /// olmadığını söylerdi.
+  List<JobApplicant> get unansweredApplicants => applications
+      .where((application) => !application.status.isAnsweredByEmployer)
+      .toList();
 
   /// Kabul edilmiş başvurular.
   ///

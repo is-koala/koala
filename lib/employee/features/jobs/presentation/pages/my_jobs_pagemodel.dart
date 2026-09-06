@@ -175,6 +175,42 @@ abstract class MyJobsPagemodel extends State<MyJobsPage> {
     setState(() {});
   }
 
+  /// Başvuruyu geri çeker.
+  ///
+  /// Gerekçe sorulmuyor — sunucu istemiyor ve kullanıcıdan kendi başvurusunu
+  /// geri çekmek için açıklama beklemek gereksiz — o yüzden [ReasonDialog]
+  /// değil [ConfirmDialog].
+  ///
+  /// İstek [ApplyProvider] üzerinden gidiyor: liste o provider'da duruyor ve
+  /// geri çekilen satır orada güncelleniyor, atamalar yeniden çekilmiyor.
+  Future<void> withdrawApplication(MyJob job) async {
+    final provider = context.read<ApplyProvider>();
+    if (provider.withdrawingId != null) return;
+
+    final confirmed = await ConfirmDialog.show(
+      context,
+      title: 'Başvurunu geri çek',
+      message:
+          '"${job.title}" ilanına yaptığın başvuru geri çekilecek ve işveren '
+          'artık yanıtlayamayacak. İlan hâlâ açıksa yeniden başvurabilirsin.',
+      actionLabel: 'Geri Çek',
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final withdrawn = await provider.withdraw(job.id);
+    if (!mounted) return;
+
+    if (withdrawn) {
+      AppToast.success(context, 'Başvurun geri çekildi');
+      return;
+    }
+
+    // `409` alındıysa provider listeyi zaten tazeledi; burada yalnızca
+    // sunucunun Türkçe mesajı gösteriliyor.
+    AppToast.error(context, provider.errorMessage ?? 'Başvuru geri çekilemedi');
+  }
+
   /// Atamayı iptal eder.
   ///
   /// Kutu açılmadan önce kesinti önizlemesi çekiliyor: çalışanın iptalinde
