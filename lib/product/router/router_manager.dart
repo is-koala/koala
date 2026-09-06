@@ -38,6 +38,7 @@ import 'package:koala/employee/features/home/presentation/pages/explore_pages/ex
 import 'package:koala/employee/features/jobs/presentation/pages/jobs_page.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/job_alerts_page.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/job_alert_form_page.dart';
+import 'package:koala/employee/features/jobs/presentation/pages/earnings_page.dart';
 import 'package:koala/employee/features/jobs/models/job_alert.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/review_page.dart';
 import 'package:koala/employee/features/jobs/models/my_job.dart';
@@ -125,6 +126,7 @@ class RouterManager {
       '/chat',
       '/profile',
       '/availability',
+      '/earnings',
     ];
     final isEmployeeRoute = employeeRoutes.any(
       (route) => location.startsWith(route),
@@ -527,6 +529,11 @@ class RouterManager {
       GoRoute(
         path: '/sessions',
         pageBuilder: (context, state) => _page(state, const SessionsPage()),
+      ),
+
+      GoRoute(
+        path: '/earnings',
+        pageBuilder: (context, state) => _page(state, const EarningsPage()),
       ),
 
       GoRoute(

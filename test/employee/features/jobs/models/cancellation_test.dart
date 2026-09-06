@@ -3,9 +3,9 @@ import 'package:koala/employee/features/jobs/models/cancellation.dart';
 
 Map<String, dynamic> cancellationBody({
   String party = 'EMPLOYER',
-  num feeRate = 0.5,
-  num feeAmount = 750,
-  num refundAmount = 750,
+  Object feeRate = '0.5',
+  Object feeAmount = '750.00',
+  Object refundAmount = '750.00',
 }) {
   return {
     'id': 'cnc_1',
@@ -29,7 +29,7 @@ void main() {
       expect(cancellation.assignmentId, 'asg_1');
       expect(cancellation.cancelledByParty, CancellationParty.employer);
       expect(cancellation.noticeMinutes, 300);
-      expect(cancellation.refundAmount, 750);
+      expect(cancellation.refundAmount, '750.00');
     });
 
     test('kesinti uygulandıysa hasFee true', () {
@@ -39,7 +39,7 @@ void main() {
     // Çalışanın iptalinde kesinti yok; işveren tam iade alıyor.
     test('kesintisiz iptalde hasFee false', () {
       final cancellation = Cancellation.fromJson(
-        cancellationBody(party: 'WORKER', feeRate: 0, feeAmount: 0),
+        cancellationBody(party: 'WORKER', feeRate: '0', feeAmount: '0.00'),
       );
 
       expect(cancellation.hasFee, isFalse);
@@ -63,9 +63,9 @@ void main() {
 
   group('CancellationPreview', () {
     Map<String, dynamic> previewBody({
-      num feeRate = 0.5,
-      num feeAmount = 750,
-      num refundAmount = 750,
+      Object feeRate = '0.5',
+      Object feeAmount = '750.00',
+      Object refundAmount = '750.00',
       int noticeMinutes = 300,
       bool cancellableNow = true,
     }) {
@@ -82,8 +82,8 @@ void main() {
       final preview = CancellationPreview.fromJson(previewBody());
 
       expect(preview.feePercent, 50);
-      expect(preview.feeAmount, 750);
-      expect(preview.refundAmount, 750);
+      expect(preview.feeAmount, '750.00');
+      expect(preview.refundAmount, '750.00');
       expect(preview.hasFee, isTrue);
       expect(preview.cancellableNow, isTrue);
     });
@@ -91,7 +91,7 @@ void main() {
     // Çalışanın iptalinde kesinti çıkmıyor.
     test('kesintisiz önizlemede hasFee false', () {
       final preview = CancellationPreview.fromJson(
-        previewBody(feeRate: 0, feeAmount: 0, refundAmount: 1500),
+        previewBody(feeRate: '0', feeAmount: '0.00', refundAmount: '1500.00'),
       );
 
       expect(preview.hasFee, isFalse);
@@ -126,10 +126,38 @@ void main() {
     test('alanlar hiç gelmezse güvenli varsayılanlar', () {
       final preview = CancellationPreview.fromJson(const {});
 
-      expect(preview.feeAmount, 0);
+      expect(preview.feeAmount, '0');
       expect(preview.hasFee, isFalse);
       // Bilinmiyorsa iptal edilebilir varsayılmıyor.
       expect(preview.cancellableNow, isFalse);
     });
+
+    test('backend ondalık dizelerini hassasiyet kaybı olmadan korur', () {
+      final preview = CancellationPreview.fromJson(
+        previewBody(
+          feeRate: '0.075',
+          feeAmount: '9007199254740993.99',
+          refundAmount: '1000.10',
+        ),
+      );
+
+      expect(preview.feeRate, '0.075');
+      expect(preview.feePercent, 8);
+      expect(preview.feeAmount, '9007199254740993.99');
+      expect(preview.refundAmount, '1000.10');
+    });
+
+    test(
+      'rolling deploy sırasında eski JSON sayılarını geçici olarak okur',
+      () {
+        final preview = CancellationPreview.fromJson(
+          previewBody(feeRate: 0.5, feeAmount: 750, refundAmount: 750),
+        );
+
+        expect(preview.feeRate, '0.5');
+        expect(preview.feeAmount, '750');
+        expect(preview.refundAmount, '750');
+      },
+    );
   });
 }

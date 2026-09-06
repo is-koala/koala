@@ -20,9 +20,14 @@ abstract class BCreatePageModel extends State<BCreatePage> {
   /// Başlangıç seçildiğinde bitişin varsayılan olarak kaydırıldığı süre.
   static const Duration _defaultShiftDuration = Duration(hours: 8);
 
+  /// Ücret alanından çıkarken art arda gelen odak/değer olaylarını tek fiyat
+  /// isteğinde birleştiren kısa bekleme.
+  static const Duration _pricingDebounce = Duration(milliseconds: 350);
+
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _priceController = TextEditingController();
+  final _priceFocusNode = FocusNode();
   final _sectorController = TextEditingController();
   final _positionController = TextEditingController();
   final _dutiesController = TextEditingController();
@@ -45,6 +50,15 @@ abstract class BCreatePageModel extends State<BCreatePage> {
 
   bool _isSubmitting = false;
 
+  BPricingBreakdown? _pricingBreakdownValue;
+  bool _isLoadingPricing = false;
+  bool _pricingUnavailable = false;
+  Timer? _pricingTimer;
+  int _pricingGeneration = 0;
+
+  BPaymentService get _paymentService =>
+      widget.paymentService ?? BPaymentService();
+
   /// Uygulanan şablonun adı; hiç uygulanmadıysa `null`. Düğmenin metnini ve
   /// "adres ile tarih dahil değil" bilgisini bu belirliyor.
   String? _appliedTemplateName;
@@ -58,6 +72,7 @@ abstract class BCreatePageModel extends State<BCreatePage> {
   @override
   void initState() {
     super.initState();
+    _priceFocusNode.addListener(_onPriceFocusChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<JobCategoryProvider>().load();
@@ -73,6 +88,10 @@ abstract class BCreatePageModel extends State<BCreatePage> {
     _titleController.dispose();
     _descriptionController.dispose();
     _priceController.dispose();
+    _priceFocusNode
+      ..removeListener(_onPriceFocusChanged)
+      ..dispose();
+    _pricingTimer?.cancel();
     _addressController.dispose();
     _sectorController.dispose();
     _positionController.dispose();
@@ -199,6 +218,8 @@ abstract class BCreatePageModel extends State<BCreatePage> {
       _appliedTemplateName = template.templateName;
     });
 
+    _schedulePricingQuote();
+
     final warning = applied.warning;
     if (warning != null) {
       AppToast.info(context, warning);
@@ -213,6 +234,73 @@ abstract class BCreatePageModel extends State<BCreatePage> {
     if (salary == null) return '';
     if (salary == salary.roundToDouble()) return salary.toStringAsFixed(0);
     return '$salary';
+  }
+
+  void _onPriceChanged(String _) {
+    _pricingGeneration++;
+    _pricingTimer?.cancel();
+    if (_pricingBreakdownValue == null && !_pricingUnavailable) return;
+    setState(() {
+      _pricingBreakdownValue = null;
+      _pricingUnavailable = false;
+    });
+  }
+
+  void _onPriceFocusChanged() {
+    if (!_priceFocusNode.hasFocus) _schedulePricingQuote();
+  }
+
+  void _schedulePricingQuote() {
+    _pricingTimer?.cancel();
+    final workerPayout = _normalizedWorkerPayout;
+    if (workerPayout == null) {
+      if (_pricingBreakdownValue != null || _pricingUnavailable) {
+        setState(() {
+          _pricingBreakdownValue = null;
+          _pricingUnavailable = false;
+        });
+      }
+      return;
+    }
+
+    final generation = ++_pricingGeneration;
+    _pricingTimer = Timer(_pricingDebounce, () {
+      _loadPricing(workerPayout, generation);
+    });
+  }
+
+  String? get _normalizedWorkerPayout {
+    final value = _priceController.text.trim().replaceAll(',', '.');
+    final match = RegExp(r'^(\d+)(?:\.\d+)?$').firstMatch(value);
+    if (match == null) return null;
+
+    final wholePart = match.group(1)!;
+    final isAtLeastOne = wholePart.contains(RegExp(r'[1-9]'));
+    return isAtLeastOne ? value : null;
+  }
+
+  Future<void> _loadPricing(String workerPayout, int generation) async {
+    if (!mounted || generation != _pricingGeneration) return;
+    setState(() {
+      _isLoadingPricing = true;
+      _pricingUnavailable = false;
+    });
+
+    try {
+      final breakdown = await _paymentService.quote(workerPayout);
+      if (!mounted || generation != _pricingGeneration) return;
+      setState(() => _pricingBreakdownValue = breakdown);
+    } on ApiException {
+      if (!mounted || generation != _pricingGeneration) return;
+      setState(() {
+        _pricingBreakdownValue = null;
+        _pricingUnavailable = true;
+      });
+    } finally {
+      if (mounted && generation == _pricingGeneration) {
+        setState(() => _isLoadingPricing = false);
+      }
+    }
   }
 
   /// Haritadan koordinat seçtirir.
@@ -370,10 +458,8 @@ abstract class BCreatePageModel extends State<BCreatePage> {
     final description = _descriptionController.text.trim();
     if (description.isEmpty) return _warn('Açıklama zorunlu');
 
-    final salary = double.tryParse(
-      _priceController.text.trim().replaceAll(',', '.'),
-    );
-    if (salary == null || salary < 1) {
+    final salary = _normalizedWorkerPayout;
+    if (salary == null) {
       return _warn('Geçerli bir ücret girin');
     }
 

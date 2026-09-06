@@ -19,7 +19,7 @@ void main() {
       },
     );
     final url = Uri.parse(
-      'https://sandbox-payment.iyzipay.com/checkoutform/token',
+      'https://sandbox-cpp.iyzipay.com?token=token&lang=tr',
     );
 
     expect(await browser.open(url), isTrue);
@@ -39,7 +39,7 @@ void main() {
     );
 
     final opened = await browser.open(
-      Uri.parse('https://sandbox-payment.iyzipay.com/checkoutform/token'),
+      Uri.parse('https://sandbox-api.iyzipay.com/checkoutform/token'),
     );
 
     expect(opened, isFalse);
@@ -61,10 +61,10 @@ void main() {
     );
 
     for (final value in [
-      'http://sandbox-payment.iyzipay.com/checkoutform/token',
-      'https://sandbox-payment.iyzipay.com.attacker.example/checkoutform/token',
-      'https://user:pass@sandbox-payment.iyzipay.com/checkoutform/token',
-      'https://sandbox-payment.iyzipay.com:8443/checkoutform/token',
+      'http://sandbox-cpp.iyzipay.com/?token=token',
+      'https://sandbox-cpp.iyzipay.com.attacker.example/?token=token',
+      'https://user:pass@sandbox-cpp.iyzipay.com/?token=token',
+      'https://sandbox-cpp.iyzipay.com:8443/?token=token',
     ]) {
       expect(await browser.open(Uri.parse(value)), isFalse);
     }

@@ -1,4 +1,6 @@
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/home/models/job_detail.dart';
+import 'package:koala/product/models/pricing_breakdown.dart';
 
 /// Atamanın durumu. Backend `AssignmentStatus` karşılığı.
 enum AssignmentStatus {
@@ -63,10 +65,12 @@ class Assignment {
     required this.status,
     required this.paymentStatus,
     this.assignmentDateTime,
+    this.worker,
     this.actualCompletionDateTime,
     this.workHours = 0,
     this.workerPayout,
     this.totalCharged,
+    this.pricing,
   });
 
   final String id;
@@ -76,6 +80,7 @@ class Assignment {
 
   final AssignmentStatus status;
   final PaymentStatus paymentStatus;
+  final JobCreator? worker;
 
   final DateTime? assignmentDateTime;
   final DateTime? actualCompletionDateTime;
@@ -89,6 +94,10 @@ class Assignment {
   /// İşverenden tahsil edilen toplam.
   final double? totalCharged;
 
+  /// İlan yayımlanırken backend'in atamaya sabitlediği fiyat snapshot'ı.
+  /// Ödeme onayı bu değeri gösterir; güncel komisyon tarifesiyle yenilenmez.
+  final PricingBreakdown? pricing;
+
   /// İş bitti ve para çalışana geçti mi.
   bool get isPaidOut =>
       status == AssignmentStatus.completed && paymentStatus.isPaid;
@@ -101,16 +110,26 @@ class Assignment {
           paymentStatus == PaymentStatus.failed);
 
   factory Assignment.fromJson(Map<String, dynamic> json) {
+    final pricing = json['pricing'];
     return Assignment(
       id: '${json['id']}',
       job: Job.fromJson((json['job'] as Map<String, dynamic>?) ?? const {}),
       status: AssignmentStatus.fromCode(json['status']),
       paymentStatus: PaymentStatus.fromCode(json['paymentStatus']),
+      worker: switch (json['worker']) {
+        final Map<String, dynamic> value => JobCreator.fromJson(value),
+        _ => null,
+      },
       assignmentDateTime: _parseDate(json['assignmentDateTime']),
       actualCompletionDateTime: _parseDate(json['actualCompletionDateTime']),
       workHours: (json['workHours'] as num?)?.toInt() ?? 0,
       workerPayout: (json['workerPayout'] as num?)?.toDouble(),
       totalCharged: (json['totalCharged'] as num?)?.toDouble(),
+      pricing: switch (pricing) {
+        null => null,
+        final Map<String, dynamic> value => PricingBreakdown.fromJson(value),
+        _ => throw const FormatException('pricing alanı geçersiz.'),
+      },
     );
   }
 

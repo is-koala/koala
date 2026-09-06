@@ -1,3 +1,5 @@
+import 'package:koala/product/network/json_field.dart';
+
 /// İptali kimin yaptığı. Backend `CancellationParty` karşılığı.
 enum CancellationParty {
   worker('WORKER', 'Çalışan'),
@@ -37,9 +39,9 @@ class Cancellation {
     required this.cancelledByParty,
     this.reason,
     this.noticeMinutes = 0,
-    this.feeRate = 0,
-    this.feeAmount = 0,
-    this.refundAmount = 0,
+    this.feeRate = '0',
+    this.feeAmount = '0',
+    this.refundAmount = '0',
     this.cancelledAt,
   });
 
@@ -56,21 +58,21 @@ class Cancellation {
   final int noticeMinutes;
 
   /// Uygulanan kesinti oranı, 0 ile 1 arasında.
-  final double feeRate;
+  final String feeRate;
 
   /// Kesilen tutar.
-  final double feeAmount;
+  final String feeAmount;
 
   /// İşverene iade edilen tutar.
-  final double refundAmount;
+  final String refundAmount;
 
   final DateTime? cancelledAt;
 
   /// Kesinti uygulandı mı.
-  bool get hasFee => feeAmount > 0;
+  bool get hasFee => _isPositiveDecimal(feeAmount);
 
   /// Kesinti oranının yüzde karşılığı; "%50" diye yazmak için.
-  int get feePercent => (feeRate * 100).round();
+  int get feePercent => _roundedPercent(feeRate);
 
   factory Cancellation.fromJson(Map<String, dynamic> json) {
     return Cancellation(
@@ -79,9 +81,12 @@ class Cancellation {
       cancelledByParty: CancellationParty.fromCode(json['cancelledByParty']),
       reason: json['reason'] as String?,
       noticeMinutes: (json['noticeMinutes'] as num?)?.toInt() ?? 0,
-      feeRate: (json['feeRate'] as num?)?.toDouble() ?? 0,
-      feeAmount: (json['feeAmount'] as num?)?.toDouble() ?? 0,
-      refundAmount: (json['refundAmount'] as num?)?.toDouble() ?? 0,
+      feeRate: JsonField.rollingDecimalString(json['feeRate'], 'feeRate'),
+      feeAmount: JsonField.rollingDecimalString(json['feeAmount'], 'feeAmount'),
+      refundAmount: JsonField.rollingDecimalString(
+        json['refundAmount'],
+        'refundAmount',
+      ),
       cancelledAt: switch (json['cancelledAt']) {
         final String value => DateTime.tryParse(value),
         _ => null,
@@ -101,21 +106,21 @@ class Cancellation {
 /// çıkabilir. Sunucu iptalde yeniden hesaplıyor.
 class CancellationPreview {
   const CancellationPreview({
-    this.feeRate = 0,
-    this.feeAmount = 0,
-    this.refundAmount = 0,
+    this.feeRate = '0',
+    this.feeAmount = '0',
+    this.refundAmount = '0',
     this.noticeMinutes = 0,
     this.cancellableNow = false,
   });
 
   /// Uygulanacak kesinti oranı, 0 ile 1 arasında.
-  final double feeRate;
+  final String feeRate;
 
   /// Kesilecek tutar.
-  final double feeAmount;
+  final String feeAmount;
 
   /// İşverene iade edilecek tutar.
-  final double refundAmount;
+  final String refundAmount;
 
   /// İşin başlamasına kalan süre, dakika. Negatif olabiliyor: iş başlamış.
   final int noticeMinutes;
@@ -128,21 +133,46 @@ class CancellationPreview {
   final bool cancellableNow;
 
   /// Kesinti uygulanacak mı.
-  bool get hasFee => feeAmount > 0;
+  bool get hasFee => _isPositiveDecimal(feeAmount);
 
   /// Kesinti oranının yüzde karşılığı.
-  int get feePercent => (feeRate * 100).round();
+  int get feePercent => _roundedPercent(feeRate);
 
   /// İş başladı mı. Başlamışsa iade yapılmıyor.
   bool get hasStarted => noticeMinutes <= 0;
 
   factory CancellationPreview.fromJson(Map<String, dynamic> json) {
     return CancellationPreview(
-      feeRate: (json['feeRate'] as num?)?.toDouble() ?? 0,
-      feeAmount: (json['feeAmount'] as num?)?.toDouble() ?? 0,
-      refundAmount: (json['refundAmount'] as num?)?.toDouble() ?? 0,
+      feeRate: JsonField.rollingDecimalString(json['feeRate'], 'feeRate'),
+      feeAmount: JsonField.rollingDecimalString(json['feeAmount'], 'feeAmount'),
+      refundAmount: JsonField.rollingDecimalString(
+        json['refundAmount'],
+        'refundAmount',
+      ),
       noticeMinutes: (json['noticeMinutes'] as num?)?.toInt() ?? 0,
       cancellableNow: json['cancellableNow'] as bool? ?? false,
     );
   }
+}
+
+bool _isPositiveDecimal(String value) {
+  if (value.startsWith('-')) return false;
+  return value.runes.any((digit) => digit >= 49 && digit <= 57);
+}
+
+int _roundedPercent(String value) {
+  final negative = value.startsWith('-');
+  final unsigned = value.startsWith(RegExp(r'[+-]'))
+      ? value.substring(1)
+      : value;
+  final parts = unsigned.split('.');
+  final fraction = parts.length == 2 ? parts[1] : '';
+  final denominator = BigInt.from(10).pow(fraction.length);
+  final numerator = BigInt.parse('${parts[0]}$fraction');
+  final scaled = numerator * BigInt.from(100);
+  var rounded = scaled ~/ denominator;
+  if ((scaled.remainder(denominator) * BigInt.two) >= denominator) {
+    rounded += BigInt.one;
+  }
+  return (negative ? -rounded : rounded).toInt();
 }

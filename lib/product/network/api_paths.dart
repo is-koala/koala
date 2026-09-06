@@ -117,6 +117,9 @@ class ApiPaths {
   /// Kabul edilmiş başvuruların dönüştüğü işler.
   static const String myAssignments = '/users/me/assignments';
 
+  /// Oturum sahibi iş arayana yapılan ödeme çıkışları. Düz liste döner.
+  static const String currentUserPayouts = '/users/me/payouts';
+
   /// Kaydedilen ilanlar.
   static const String savedJobs = '/users/me/saved-jobs';
 
@@ -165,6 +168,13 @@ class ApiPaths {
 
   static String assignmentPaymentSession(String assignmentId) =>
       '${jobAssignment(assignmentId)}/payment-session';
+
+  /// Atamanın bütün ödeme denemeleri. Düz liste döner.
+  static String assignmentPayments(String assignmentId) =>
+      '${jobAssignment(assignmentId)}/payments';
+
+  /// İlan yayımlanmadan önce backend fiyat snapshot'ını önizler.
+  static const String paymentQuotes = '/payment-quotes';
 
   /// Mesai başlatma ve bitirme. İkisini de yalnızca işi yapan kişi
   /// çağırabiliyor; konum gövdesi isteğe bağlı.

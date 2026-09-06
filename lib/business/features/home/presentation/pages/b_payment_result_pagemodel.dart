@@ -9,6 +9,8 @@ abstract class BPaymentResultPagemodel extends State<BPaymentResultPage> {
 
   bool get _isSecured => _assignment?.paymentStatus.isSecured ?? false;
 
+  bool get _isFailed => _assignment?.paymentStatus == PaymentStatus.failed;
+
   @override
   void initState() {
     super.initState();

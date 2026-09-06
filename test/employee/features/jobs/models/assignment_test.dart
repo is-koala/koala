@@ -6,6 +6,14 @@ Map<String, dynamic> assignmentBody({
   String status = 'CONFIRMED',
   String paymentStatus = 'HELD_IN_ESCROW',
   num? workerPayout = 1350,
+  Map<String, dynamic>? pricing = const {
+    'pricingVersion': 'v7',
+    'currency': 'TRY',
+    'workerPayout': '1350.00',
+    'serviceFeeRate': '0.075',
+    'serviceFeeAmount': '101.25',
+    'employerTotal': '1451.25',
+  },
 }) {
   return {
     'id': 'asg_1',
@@ -15,6 +23,7 @@ Map<String, dynamic> assignmentBody({
     'workHours': 6,
     'workerPayout': workerPayout,
     'totalCharged': 1500,
+    'pricing': pricing,
     'job': {
       'id': 'job_1',
       'title': 'Düğün Fotoğrafçısı',
@@ -35,7 +44,28 @@ void main() {
       expect(assignment.paymentStatus, PaymentStatus.heldInEscrow);
       expect(assignment.workHours, 6);
       expect(assignment.workerPayout, 1350);
+      expect(assignment.pricing?.pricingVersion, 'v7');
+      expect(assignment.pricing?.workerPayout, '1350.00');
+      expect(assignment.pricing?.employerTotal, '1451.25');
       expect(assignment.job.title, 'Düğün Fotoğrafçısı');
+    });
+
+    test('pricing snapshot ondalıkları yalnız string kabul eder', () {
+      expect(
+        () => Assignment.fromJson(
+          assignmentBody(
+            pricing: {
+              'pricingVersion': 'v7',
+              'currency': 'TRY',
+              'workerPayout': 1350.00,
+              'serviceFeeRate': '0.075',
+              'serviceFeeAmount': '101.25',
+              'employerTotal': '1451.25',
+            },
+          ),
+        ),
+        throwsFormatException,
+      );
     });
 
     // Çalışanın eline geçen tutar komisyon düşülmüş hâli; ilandaki ücretten

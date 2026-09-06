@@ -76,6 +76,11 @@ class SettingsPage extends StatelessWidget {
           onTap: () => context.push('/sessions'),
         ),
         MyListTile(
+          icon: AppIcons.moneyBag,
+          title: 'Kazançlarım',
+          onTap: () => context.push('/earnings'),
+        ),
+        MyListTile(
           icon: AppIcons.notification,
           title: 'İş Alarmlarım',
           onTap: () => context.push('/job-alerts'),

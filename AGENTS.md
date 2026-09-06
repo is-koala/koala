@@ -330,7 +330,7 @@ Three things worth knowing:
 
 Employer payment is wired through `POST /job-assignments/{id}/payment-session`. The hosted Iyzico checkout opens in the platform's in-app browser (`SFSafariViewController` on iOS, Custom Tabs on Android), never as an unrestricted embedded WebView. The return link only triggers a refresh; the app shows success from the backend assignment/payment state, not from query parameters.
 
-Endpoints that exist on the server and have no app surface yet: payouts (`GET /users/me/payouts`); push-token registration (`/users/me/devices/push-token`); blocks and reports (`/users/me/blocks`, `/reports`); employer tools (`/users/me/talent-pool`, `/users/me/job-templates`).
+Endpoints that exist on the server and have no app surface yet: push-token registration (`/users/me/devices/push-token`); blocks and reports (`/users/me/blocks`, `/reports`); employer tools (`/users/me/talent-pool`, `/users/me/job-templates`).
 
 > The orphaned fakes were deleted once the employer's job flow landed: `profile/services/fake_user.dart` and its `profile/models/user.dart`, `jobs/services/my_jobs_service.dart`, `business/features/chat/services/b_chat_service.dart`. `employee/features/profile/` and `business/features/chat/` are `presentation/` only now — a feature carries `models/` and `services/` only when it has data of its own.
 - `GET /jobs` is ready to be wired: `JobSummaryDto` carries `latitude`/`longitude`, `GET /jobs/{jobId}` returns the richer `JobDetailDto` (description, duties, dress code, age range, full address, creator, company) and the search takes a bounding box (`minLatitude`/`maxLatitude`/`minLongitude`/`maxLongitude`). Only the category mapping is missing.

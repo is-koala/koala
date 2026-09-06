@@ -125,6 +125,24 @@ class EmployerJobService {
     );
   }
 
+  /// [jobId] için tüm atamaları sayfa sınırından bağımsız döndürür.
+  ///
+  /// Bir ilanda birden fazla çalışan olabilir; ödeme gibi atama-kimliğine
+  /// bağlı işlemlerde ilk sayfadaki rastgele bir kaydı seçmek güvenli değildir.
+  Future<List<Assignment>> fetchAssignmentsForJob(String jobId) async {
+    final matches = <Assignment>[];
+    var pageNumber = 0;
+
+    while (true) {
+      final page = await fetchMyAssignments(page: pageNumber);
+      matches.addAll(
+        page.assignments.where((assignment) => assignment.job.id == jobId),
+      );
+      if (page.last) return matches;
+      pageNumber++;
+    }
+  }
+
   /// İşi tamamlanmış işaretler.
   ///
   /// Yalnızca işveren çağırabiliyor. Tamamlanınca emanetteki para çıkışa
