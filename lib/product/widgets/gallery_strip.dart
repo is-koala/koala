@@ -17,8 +17,13 @@ class GalleryStrip extends StatelessWidget {
 
   final List<GalleryImage> images;
 
+  /// Dikey ekranda galeriyi içerikten daha baskın yapmadan okunur tutar.
   static const double _stripHeight = 140;
+
+  /// Sonraki görselin kenarını göstererek yatay kaydırmayı belli eder.
   static const double _cardWidth = 180;
+
+  /// Metni okunur tutarken görsel başlığını tamamen karartmaz.
   static const double _captionScrimAlpha = 0.45;
 
   @override

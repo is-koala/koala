@@ -267,6 +267,7 @@ class _CompanyGalleryPickerSheet extends StatelessWidget {
 
   final List<GalleryImage> images;
 
+  /// Uzun şirket galerisi kayarken alttaki sayfa bağlamını görünür bırakır.
   static const double _maxHeightRatio = 0.6;
 
   @override

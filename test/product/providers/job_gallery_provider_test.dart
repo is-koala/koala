@@ -216,4 +216,42 @@ void main() {
       expect(provider.isBusy, isFalse);
     },
   );
+
+  test(
+    'yazma sürerken aynı ilanı yenilemek meşgul durumunu sıfırlıyor',
+    () async {
+      final writeResponse = Completer<FakeApiResponse>();
+      final api = FakeApi(
+        handler: (request) => request.method == 'GET'
+            ? FakeApiResponse(
+                statusCode: 200,
+                body: galleryBody(['img_1'], coverId: 'img_1'),
+              )
+            : writeResponse.future,
+      );
+      final provider = JobGalleryProvider(
+        service: JobGalleryService.withClient(api.client),
+      );
+      await provider.load('job_1');
+
+      final write = provider.replaceGallery(provider.images);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(provider.isBusy, isTrue);
+
+      await provider.load('job_1', force: true);
+
+      expect(provider.isLoadedFor('job_1'), isTrue);
+      expect(provider.isBusy, isFalse);
+      expect(provider.canAddImage, isTrue);
+
+      writeResponse.complete(
+        FakeApiResponse(
+          statusCode: 200,
+          body: galleryBody(['img_1'], coverId: 'img_1'),
+        ),
+      );
+      expect(await write, isFalse);
+      expect(provider.isBusy, isFalse);
+    },
+  );
 }

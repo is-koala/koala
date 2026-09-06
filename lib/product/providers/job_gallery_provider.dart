@@ -41,13 +41,14 @@ class JobGalleryProvider extends ChangeNotifier {
     if (isLoadedFor(jobId) && !force && _errorMessage == null) return;
 
     final generation = ++_generation;
+    // Yeni yükleme, aynı ilanı zorla yenilese bile süren yazmayı geçersiz
+    // kılar. Eski isteğin finally bloğu nesil uyuşmadığı için bu bayrağı
+    // temizleyemez; yeni galeri kendi meşgul durumuyla başlamalı.
+    _isBusy = false;
     _isLoading = true;
     _loadingJobId = jobId;
     _errorMessage = null;
     if (_loadedJobId != jobId) {
-      // Eski ilandaki yazma isteği yeni galerinin denetimlerini kilitlemez.
-      // Nesil kontrolü geç kalan yanıtı zaten yok sayacak.
-      _isBusy = false;
       _loadedJobId = null;
       _images = const [];
       _loadedSuccessfully = false;

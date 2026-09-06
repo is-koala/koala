@@ -22,6 +22,9 @@ class JobGalleryView extends StatelessWidget {
   final String? errorMessage;
   final VoidCallback? onRetry;
 
+  /// Küçük yükleme göstergesinde halkayı ağırlaştırmayan kalınlık.
+  static const double _loadingStrokeWidth = 2;
+
   @override
   Widget build(BuildContext context) {
     if (!isLoading && errorMessage == null && images.isEmpty) {
@@ -38,7 +41,9 @@ class JobGalleryView extends StatelessWidget {
           const Center(
             child: SizedBox.square(
               dimension: AppSizes.icon,
-              child: CircularProgressIndicator(strokeWidth: 2),
+              child: CircularProgressIndicator(
+                strokeWidth: _loadingStrokeWidth,
+              ),
             ),
           )
         else if (errorMessage != null)
