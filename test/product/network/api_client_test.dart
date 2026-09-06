@@ -1,5 +1,9 @@
+import 'dart:io';
+
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/product/network/api_exception.dart';
+import 'package:koala/product/network/api_paths.dart';
 
 import '../../support/fake_api.dart';
 
@@ -110,6 +114,91 @@ void main() {
       );
 
       expect(error.message, 'Olmadı');
+    });
+  });
+
+  group('ApiClient dosya yükleme', () {
+    late Directory tempDir;
+    late File imageFile;
+
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('koala_post_file');
+      imageFile = File('${tempDir.path}/galeri.jpg');
+      await imageFile.writeAsString('koala-galeri-gorseli');
+    });
+
+    tearDown(() => tempDir.delete(recursive: true));
+
+    test('postFile dosyayı verilen parça adıyla multipart POST eder', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 201,
+          body: {
+            'success': true,
+            'data': [
+              {'id': 'img-1'},
+            ],
+          },
+        ),
+      );
+
+      final ids = await api.client.postFile<List<String>>(
+        ApiPaths.companyImages('c-1'),
+        fieldName: 'image',
+        filePath: imageFile.path,
+        parse: (data) => [
+          for (final item in data! as List<dynamic>)
+            (item as Map<String, dynamic>)['id'] as String,
+        ],
+      );
+
+      expect(ids, ['img-1']);
+
+      final request = api.requests.single;
+      expect(request.path, '/companies/c-1/images');
+      expect(request.method, 'POST');
+      // Taban ayarlar `application/json` yazıyor; galeri ucu bunu `415` ile
+      // geri çevirirdi.
+      expect(
+        request.headers[Headers.contentTypeHeader],
+        startsWith(Headers.multipartFormDataContentType),
+      );
+
+      // Sunucu uçları yalnız bir `MultipartFile` alıyor, yanında JSON parçası
+      // beklemiyor.
+      final formData = request.data! as FormData;
+      expect(formData.fields, isEmpty);
+      expect(formData.files, hasLength(1));
+      expect(formData.files.single.key, 'image');
+      expect(formData.files.single.value.filename, 'galeri.jpg');
+    });
+
+    test('postFile success false yanıtını ApiException yapar', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 409,
+          body: {
+            'success': false,
+            'message': 'Galeri sınırı aşıldı.',
+            'errorCode': 'GALLERY_LIMIT_EXCEEDED',
+          },
+        ),
+      );
+
+      final error = await _captureError(
+        () => api.client.postFile<List<String>>(
+          ApiPaths.companyImages('c-1'),
+          fieldName: 'image',
+          filePath: imageFile.path,
+          // data yok; ayrıştırma çağrılsaydı burada patlardı.
+          parse: (data) => (data! as List<dynamic>).cast<String>(),
+        ),
+      );
+
+      expect(error.type, ApiErrorType.conflict);
+      expect(error.statusCode, 409);
+      expect(error.message, 'Galeri sınırı aşıldı.');
+      expect(error.errorCode, 'GALLERY_LIMIT_EXCEEDED');
     });
   });
 

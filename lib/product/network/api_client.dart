@@ -123,8 +123,30 @@ class ApiClient {
       () => _dio.post<dynamic>(
         path,
         data: FormData.fromMap(parts),
-        options: Options(contentType: Headers.multipartFormDataContentType),
+        options: _multipartOptions,
       ),
+      parse: parse,
+    );
+  }
+
+  /// Tek dosya yükleyen `POST` isteği.
+  ///
+  /// [postMultipartJson]'dan farkı, JSON parçası istememesi: galeriye görsel
+  /// ekleyen uçlar yalnızca `@RequestPart("image") MultipartFile` alıyor,
+  /// yanına konacak bir JSON parçası uydurmak sunucunun beklemediği bir
+  /// parçayı göndermek olurdu. [putFile]'dan farkı yöntemin `POST` olması.
+  /// [fieldName] backend'in beklediği parça adı (`image`, `file` ...).
+  Future<T> postFile<T>(
+    String path, {
+    required String fieldName,
+    required String filePath,
+    required T Function(Object? data) parse,
+  }) async {
+    final formData = await _fileFormData(fieldName, filePath);
+
+    return _send<T>(
+      () =>
+          _dio.post<dynamic>(path, data: formData, options: _multipartOptions),
       parse: parse,
     );
   }
@@ -160,25 +182,17 @@ class ApiClient {
   /// Tek dosya yükleyen `PUT` isteği.
   ///
   /// Dosyayı `multipart/form-data` olarak gönderiyor; [fieldName] backend'in
-  /// beklediği parça adı (`logo`, `image`, `file` ...). İçerik tipi
-  /// `FormData` verildiğinde dio tarafından kuruluyor ama taban ayarlarda
-  /// `application/json` yazdığı için burada açıkça geçersiz kılınıyor.
+  /// beklediği parça adı (`logo`, `image`, `file` ...).
   Future<T> putFile<T>(
     String path, {
     required String fieldName,
     required String filePath,
     required T Function(Object? data) parse,
   }) async {
-    final formData = FormData.fromMap({
-      fieldName: await MultipartFile.fromFile(filePath),
-    });
+    final formData = await _fileFormData(fieldName, filePath);
 
     return _send<T>(
-      () => _dio.put<dynamic>(
-        path,
-        data: formData,
-        options: Options(contentType: Headers.multipartFormDataContentType),
-      ),
+      () => _dio.put<dynamic>(path, data: formData, options: _multipartOptions),
       parse: parse,
     );
   }
@@ -189,15 +203,9 @@ class ApiClient {
     required String fieldName,
     required String filePath,
   }) async {
-    final formData = FormData.fromMap({
-      fieldName: await MultipartFile.fromFile(filePath),
-    });
+    final formData = await _fileFormData(fieldName, filePath);
     return _send<void>(
-      () => _dio.put<dynamic>(
-        path,
-        data: formData,
-        options: Options(contentType: Headers.multipartFormDataContentType),
-      ),
+      () => _dio.put<dynamic>(path, data: formData, options: _multipartOptions),
     );
   }
 
@@ -223,6 +231,24 @@ class ApiClient {
     required T Function(Object? data) parse,
   }) {
     return _send<T>(() => _dio.patch<dynamic>(path, data: body), parse: parse);
+  }
+
+  /// Multipart isteklerin içerik tipi. Taban ayarlarda `application/json`
+  /// yazdığı için `FormData` verilse bile açıkça geçersiz kılınması gerekiyor;
+  /// aksi hâlde Spring isteği `415` ile geri çevirir.
+  ///
+  /// Her çağrıda yeni bir nesne veriyor: dio `Options.method`'u geçilen
+  /// nesnenin üstüne yazıyor, paylaşılan tek bir örnek `POST` ile `PUT`
+  /// isteklerinin birbirinin yöntemini ezmesine açık kapı bırakırdı.
+  static Options get _multipartOptions =>
+      Options(contentType: Headers.multipartFormDataContentType);
+
+  /// Tek dosya taşıyan multipart gövde. [fieldName] backend'in beklediği
+  /// parça adı (`image`, `logo`, `file` ...).
+  Future<FormData> _fileFormData(String fieldName, String filePath) async {
+    return FormData.fromMap({
+      fieldName: await MultipartFile.fromFile(filePath),
+    });
   }
 
   Future<T> _send<T>(
