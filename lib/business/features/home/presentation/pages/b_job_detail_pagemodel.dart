@@ -1,6 +1,7 @@
 part of 'b_job_detail_page.dart';
 
-abstract class BJobDetailPageModel extends State<BJobDetailPage> {
+abstract class BJobDetailPageModel extends State<BJobDetailPage>
+    with WidgetsBindingObserver {
   /// Rozet zeminlerinin opaklığı.
   static const double _tintAlpha = 0.12;
 
@@ -22,14 +23,23 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
   /// Onay kutusundaki çok satırlı gövdenin satır aralığı.
   static const double _dialogLineHeight = 1.4;
 
-  final _jobService = JobService();
-  final _employerJobService = EmployerJobService();
-  final _paymentBrowser = BPaymentBrowser();
-  final _chatService = ChatService();
+  JobService get _jobService => widget.jobService ?? JobService();
+
+  EmployerJobService get _employerJobService =>
+      widget.employerJobService ?? EmployerJobService();
+
+  BPaymentService get _paymentService =>
+      widget.paymentService ?? BPaymentService();
+
+  BPaymentBrowser get _paymentBrowser =>
+      widget.paymentBrowser ?? BPaymentBrowser();
+
+  ChatService get _chatService => ChatService();
 
   /// Mesai oturumlarını iki taraf da okuyabiliyor; sohbette olduğu gibi tek
   /// servis iki uygulamaya hizmet ediyor.
-  final _assignmentService = AssignmentService();
+  AssignmentService get _assignmentService =>
+      widget.assignmentService ?? AssignmentService();
 
   /// İlanın tam hâli. Liste ucu açıklama/görev/adres döndürmediği için ekran
   /// açılırken `GET /jobs/{id}` ayrıca çağrılıyor.
@@ -44,7 +54,8 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
   /// Sohbet açılırken seçilen aday; aynı anda iki konuşma açılmasını önler.
   String? _openingChatUserId;
 
-  /// Bu ilanın ataması; başvuru kabul edilmemişse `null`.
+  /// Bu ilanın atamaları ve ekranda açıkça seçilmiş olanı.
+  List<Assignment> _assignments = const [];
   Assignment? _assignment;
 
   /// Atamanın mesai oturumları, girişten çıkışa.
@@ -55,8 +66,29 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
 
   bool _isStartingPayment = false;
 
+  /// Bu atamanın ödeme girişimleri. Deneme listesi, atamanın kendisini veya
+  /// mesai bölümünü kapatmadan ayrı hata durumuna düşer.
+  List<BPaymentAttempt> _paymentAttempts = const [];
+  bool _arePaymentAttemptsLoading = false;
+  String? _paymentAttemptsError;
+
+  bool get _hasActivePaymentAttempt =>
+      _paymentAttempts.any((attempt) => attempt.status.isActive);
+
+  bool get _hasOpenDispute => _disputes.any((dispute) => dispute.isOpen);
+
+  bool get _canStartPayment =>
+      !_arePaymentAttemptsLoading &&
+      _paymentAttemptsError == null &&
+      !_hasActivePaymentAttempt;
+
   /// Atamanın uyuşmazlıkları; kart üzerinde açık olan gösteriliyor.
   List<Dispute> _disputes = const [];
+  bool _areDisputesLoading = true;
+  String? _disputesError;
+
+  bool get _isDisputeStateVerified =>
+      !_areDisputesLoading && _disputesError == null;
 
   /// İptal ya da uyuşmazlık isteği sunucuya gitti mi.
   bool _isRunningAssignmentAction = false;
@@ -67,6 +99,7 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadDetail();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
@@ -84,6 +117,21 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
       await provider.ensureApplicants(widget.jobId);
       await _loadAssignment();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// Hosted checkout'tan uygulamaya dönüldüğünde backend mutabakatının son
+  /// atama ve deneme durumunu görünür kılar.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_loadAssignment());
+    }
   }
 
   Future<void> _loadDetail() async {
@@ -108,74 +156,213 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
     }
   }
 
-  /// İlanın atamasını ve mesai oturumlarını çeker.
+  /// İlanın atamasını ve ona bağlı yardımcı kayıtları çeker.
   ///
   /// Bölüm ilanın ön koşulu değil: çekilemezse sessiz geçiliyor ve ekranın
   /// geri kalanı yerinde kalıyor. Ataması olmayan ilanda zaten hiç
   /// çizilmiyor.
   Future<void> _loadAssignment() async {
     try {
-      final page = await _employerJobService.fetchMyAssignments();
-      final match = page.assignments
-          .where((assignment) => assignment.job.id == widget.jobId)
-          .firstOrNull;
+      final matches = await _employerJobService.fetchAssignmentsForJob(
+        widget.jobId,
+      );
+      final selectedId = _assignment?.id;
+      final match = matches.isEmpty
+          ? null
+          : matches.firstWhere(
+              (assignment) => assignment.id == selectedId,
+              orElse: () => matches.first,
+            );
 
       if (!mounted) return;
       if (match == null) {
         setState(() {
           _assignment = null;
+          _assignments = const [];
           _workSessions = const [];
           _disputes = const [];
+          _areDisputesLoading = false;
+          _disputesError = null;
+          _paymentAttempts = const [];
+          _paymentAttemptsError = null;
+          _arePaymentAttemptsLoading = false;
         });
         return;
       }
 
-      final sessions = await _assignmentService.fetchWorkSessions(match.id);
-      final disputes = await _assignmentService.fetchDisputes(match.id);
       if (!mounted) return;
       setState(() {
+        _assignments = matches;
         _assignment = match;
-        _workSessions = sessions;
-        _disputes = disputes;
+        _workSessions = const [];
+        _disputes = const [];
+        _areDisputesLoading = true;
+        _disputesError = null;
+        _paymentAttempts = const [];
+        _paymentAttemptsError = null;
+        _arePaymentAttemptsLoading = false;
       });
+
+      await Future.wait([
+        _loadWorkSessions(match.id),
+        _loadDisputes(match.id),
+        _loadPaymentAttempts(match.id),
+      ]);
     } on ApiException {
       if (!mounted) return;
       setState(() {
         _assignment = null;
+        _assignments = const [];
         _workSessions = const [];
         _disputes = const [];
+        _areDisputesLoading = false;
+        _disputesError = null;
+        _paymentAttempts = const [];
+        _paymentAttemptsError = null;
+        _arePaymentAttemptsLoading = false;
       });
     }
   }
 
-  Future<void> _startPayment() async {
+  Future<void> _selectAssignment(String assignmentId) async {
+    final match = _assignments
+        .where((item) => item.id == assignmentId)
+        .firstOrNull;
+    if (match == null || match.id == _assignment?.id) return;
+
+    setState(() {
+      _assignment = match;
+      _workSessions = const [];
+      _disputes = const [];
+      _areDisputesLoading = true;
+      _disputesError = null;
+      _paymentAttempts = const [];
+      _paymentAttemptsError = null;
+    });
+
+    await Future.wait([
+      _loadWorkSessions(match.id),
+      _loadDisputes(match.id),
+      _loadPaymentAttempts(match.id),
+    ]);
+  }
+
+  Future<void> _loadWorkSessions(String assignmentId) async {
+    try {
+      final sessions = await _assignmentService.fetchWorkSessions(assignmentId);
+      if (mounted && _assignment?.id == assignmentId) {
+        setState(() => _workSessions = sessions);
+      }
+    } on ApiException {
+      // Mesai kaydı yardımcı bölümdür; ilanın kalanını kapatmaz.
+    }
+  }
+
+  Future<void> _loadDisputes(String assignmentId) async {
+    if (mounted && _assignment?.id == assignmentId) {
+      setState(() {
+        _areDisputesLoading = true;
+        _disputesError = null;
+      });
+    }
+
+    try {
+      final disputes = await _assignmentService.fetchDisputes(assignmentId);
+      if (mounted && _assignment?.id == assignmentId) {
+        setState(() {
+          _disputes = disputes;
+          _disputesError = null;
+        });
+      }
+    } on ApiException catch (error) {
+      if (mounted && _assignment?.id == assignmentId) {
+        setState(() {
+          _disputes = const [];
+          _disputesError = error.message;
+        });
+      }
+    } finally {
+      if (mounted && _assignment?.id == assignmentId) {
+        setState(() => _areDisputesLoading = false);
+      }
+    }
+  }
+
+  Future<void> _loadPaymentAttempts([String? assignmentId]) async {
+    if (!mounted) return;
+    final id = assignmentId ?? _assignment?.id;
+    if (id == null) return;
+
+    setState(() {
+      _arePaymentAttemptsLoading = true;
+      _paymentAttemptsError = null;
+    });
+
+    try {
+      final attempts = await _paymentService.fetchAttempts(id);
+      if (!mounted || _assignment?.id != id) return;
+      setState(() => _paymentAttempts = attempts);
+    } on ApiException catch (error) {
+      if (!mounted || _assignment?.id != id) return;
+      setState(() => _paymentAttemptsError = error.message);
+    } finally {
+      if (mounted && _assignment?.id == id) {
+        setState(() => _arePaymentAttemptsLoading = false);
+      }
+    }
+  }
+
+  /// Atamaya sabitlenmiş backend dökümünü gösterip açık onay alır.
+  Future<void> _requestPayment() async {
     final assignment = _assignment;
-    if (assignment == null || _isStartingPayment) return;
+    if (assignment == null ||
+        !assignment.needsEmployerPayment ||
+        _isStartingPayment ||
+        !_canStartPayment) {
+      return;
+    }
+
+    final breakdown = assignment.pricing;
+    if (breakdown == null) {
+      AppToast.error(context, 'Atamanın fiyat dökümü alınamadı.');
+      return;
+    }
 
     setState(() => _isStartingPayment = true);
     try {
-      final session = await _employerJobService.createPaymentSession(
-        assignment.id,
-      );
-      final opened = await _paymentBrowser.open(session.paymentPageUrl);
-      if (!opened) {
-        throw const ApiException(
-          message: 'Ödeme sayfası açılamadı.',
-          type: ApiErrorType.unknown,
-        );
-      }
-      if (mounted) {
-        AppToast.success(
-          context,
-          'Ödemeyi tamamladıktan sonra Koala uygulamasına döneceksin.',
-        );
-      }
+      final confirmed = await _confirmPayment(breakdown);
+      if (confirmed != true || !mounted) return;
+
+      await _startPayment(assignment);
     } on ApiException catch (error) {
       if (mounted) AppToast.error(context, error.message);
     } finally {
       if (mounted) setState(() => _isStartingPayment = false);
     }
   }
+
+  /// Açık onaydan sonra Iyzico oturumunu başlatır.
+  Future<void> _startPayment(Assignment assignment) async {
+    final session = await _employerJobService.createPaymentSession(
+      assignment.id,
+    );
+    final opened = await _paymentBrowser.open(session.paymentPageUrl);
+    if (!opened) {
+      throw const ApiException(
+        message: 'Ödeme sayfası açılamadı.',
+        type: ApiErrorType.unknown,
+      );
+    }
+    if (mounted) {
+      AppToast.success(
+        context,
+        'Ödemeyi tamamladıktan sonra Koala uygulamasına döneceksin.',
+      );
+    }
+  }
+
+  /// Fiyat dökümünü taşıyan ödeme onayı. Gövdesi arayüz dosyasında.
+  Future<bool?> _confirmPayment(BPricingBreakdown breakdown);
 
   /// Atamayı iptal eder.
   ///
@@ -248,7 +435,7 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
 
     if (!preview.hasFee) {
       return '$opening\n\nŞu an iptal edersen kesinti uygulanmaz, ücretin '
-          'tamamı (₺${preview.refundAmount.toStringAsFixed(0)}) iade edilir. '
+          'tamamı (${TurkishMoneyFormatter.format(preview.refundAmount, 'TRY')}) iade edilir. '
           'Tutar iptal anında yeniden hesaplanır.';
     }
 
@@ -257,8 +444,8 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
         : '';
 
     return '$opening\n\nŞu an iptal edersen %${preview.feePercent} kesinti '
-        'uygulanır: ₺${preview.feeAmount.toStringAsFixed(0)} kesilir, '
-        '₺${preview.refundAmount.toStringAsFixed(0)} iade edilir.$started '
+        'uygulanır: ${TurkishMoneyFormatter.format(preview.feeAmount, 'TRY')} kesilir, '
+        '${TurkishMoneyFormatter.format(preview.refundAmount, 'TRY')} iade edilir.$started '
         'Tutar iptal anında yeniden hesaplanır.';
   }
 

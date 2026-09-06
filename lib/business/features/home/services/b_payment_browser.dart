@@ -12,8 +12,10 @@ class BPaymentBrowser {
        _launch = launch ?? _launchUrl;
 
   static const Set<String> _allowedHosts = {
-    'sandbox-payment.iyzipay.com',
-    'payment.iyzipay.com',
+    'api.iyzipay.com',
+    'cpp.iyzipay.com',
+    'sandbox-api.iyzipay.com',
+    'sandbox-cpp.iyzipay.com',
   };
 
   final PaymentLaunchModeSupport _supportsMode;

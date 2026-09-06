@@ -1,14 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
 import 'package:koala/business/features/home/models/b_job_post.dart';
+import 'package:koala/business/features/home/models/b_payment_attempt.dart';
+import 'package:koala/business/features/home/models/b_pricing_breakdown.dart';
 import 'package:koala/business/features/home/models/job_applicant.dart';
 import 'package:koala/business/features/home/presentation/providers/b_company_provider.dart';
 import 'package:koala/business/features/home/presentation/providers/b_job_templates_provider.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
 import 'package:koala/business/features/home/presentation/widgets/b_job_gallery_section.dart';
+import 'package:koala/business/features/home/presentation/widgets/b_payment_attempts_section.dart';
+import 'package:koala/business/features/home/presentation/widgets/b_pricing_breakdown_card.dart';
 import 'package:koala/business/features/home/services/employer_job_service.dart';
 import 'package:koala/business/features/home/services/b_payment_browser.dart';
+import 'package:koala/business/features/home/services/b_payment_service.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
@@ -28,8 +35,10 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
+import 'package:koala/product/formatters/turkish_money_formatter.dart';
 import 'package:koala/product/models/gallery_image.dart';
 import 'package:koala/product/network/api_exception.dart';
+import 'package:koala/product/providers/job_gallery_provider.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
@@ -44,9 +53,24 @@ part 'b_job_detail_pagemodel.dart';
 /// İki kaynaktan besleniyor: ilanın kendisi `GET /jobs/{id}`'den, başvurular
 /// [BJobsProvider] üzerinden `GET /jobs/{id}/applications`'tan.
 class BJobDetailPage extends StatefulWidget {
-  const BJobDetailPage({super.key, required this.jobId});
+  const BJobDetailPage({
+    super.key,
+    required this.jobId,
+    this.jobService,
+    this.employerJobService,
+    this.assignmentService,
+    this.paymentService,
+    this.paymentBrowser,
+    this.galleryProvider,
+  });
 
   final String jobId;
+  final JobService? jobService;
+  final EmployerJobService? employerJobService;
+  final AssignmentService? assignmentService;
+  final BPaymentService? paymentService;
+  final BPaymentBrowser? paymentBrowser;
+  final JobGalleryProvider? galleryProvider;
 
   @override
   State<BJobDetailPage> createState() => _BJobDetailPageState();
@@ -112,6 +136,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
                   jobId: widget.jobId,
                   canManage: post != null,
                   companyImages: job.company == null ? const [] : companyImages,
+                  provider: widget.galleryProvider,
                 ),
                 const SizedBox(height: AppSizes.spaceLarge),
                 _sectionTitle(context, "Detaylar"),
@@ -147,6 +172,32 @@ class _BJobDetailPageState extends BJobDetailPageModel {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (_assignments.length > 1) ...[
+              Text('Çalışan seç', style: context.textTheme.labelMedium),
+              const SizedBox(height: AppSizes.spaceTiny),
+              DropdownButton<String>(
+                key: const ValueKey('assignment-selector'),
+                value: assignment.id,
+                isExpanded: true,
+                items: [
+                  for (var index = 0; index < _assignments.length; index++)
+                    DropdownMenuItem(
+                      value: _assignments[index].id,
+                      child: Text(
+                        _assignments[index].worker?.fullName.isNotEmpty == true
+                            ? _assignments[index].worker!.fullName
+                            : 'Çalışan ${index + 1}',
+                      ),
+                    ),
+                ],
+                onChanged: _isRunningAssignmentAction
+                    ? null
+                    : (id) {
+                        if (id != null) unawaited(_selectAssignment(id));
+                      },
+              ),
+              const SizedBox(height: AppSizes.space),
+            ],
             _assignmentStatusRow(assignment),
             if (_workSessions.isNotEmpty) ...[
               const SizedBox(height: AppSizes.space),
@@ -163,9 +214,16 @@ class _BJobDetailPageState extends BJobDetailPageModel {
               ),
             ],
             ?_openDisputeBanner(),
+            if (!_isDisputeStateVerified) ...[
+              const SizedBox(height: AppSizes.spaceMedium),
+              _disputeStatePanel(assignment),
+            ],
             if (assignment.needsEmployerPayment) ...[
               const SizedBox(height: AppSizes.spaceMedium),
-              _paymentButton(),
+              if (_canStartPayment)
+                _paymentButton()
+              else
+                _paymentPendingPanel(),
             ],
             if (_canComplete(assignment)) ...[
               const SizedBox(height: AppSizes.spaceMedium),
@@ -176,21 +234,80 @@ class _BJobDetailPageState extends BJobDetailPageModel {
         ),
       ),
       const SizedBox(height: AppSizes.spaceLarge),
+      _sectionTitle(context, 'Ödeme Denemeleri'),
+      const SizedBox(height: AppSizes.space),
+      BPaymentAttemptsSection(
+        attempts: _paymentAttempts,
+        isLoading: _arePaymentAttemptsLoading,
+        errorMessage: _paymentAttemptsError,
+        onRetry: () => _loadPaymentAttempts(),
+      ),
+      const SizedBox(height: AppSizes.spaceLarge),
     ];
   }
 
   /// Tamamlama yalnızca bu iki durumdan yapılabiliyor; sunucu da aynı
   /// kapıyı tutuyor ve dışından `409` döndürüyor.
   bool _canComplete(Assignment assignment) =>
-      assignment.status == AssignmentStatus.confirmed ||
-      assignment.status == AssignmentStatus.inProgress;
+      _isDisputeStateVerified &&
+      !_hasOpenDispute &&
+      (assignment.status == AssignmentStatus.confirmed ||
+          assignment.status == AssignmentStatus.inProgress);
+
+  Widget _disputeStatePanel(Assignment assignment) {
+    return Container(
+      width: double.infinity,
+      padding: AppPadding.card,
+      decoration: _panelDecoration(context),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              _areDisputesLoading
+                  ? 'Uyuşmazlık durumu kontrol ediliyor.'
+                  : 'Uyuşmazlık durumu doğrulanamadı.',
+            ),
+          ),
+          if (!_areDisputesLoading)
+            TextButton(
+              onPressed: () => _loadDisputes(assignment.id),
+              child: const Text('Yenile'),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _paymentPendingPanel() {
+    final message = _arePaymentAttemptsLoading
+        ? 'Ödeme denemeleri kontrol ediliyor.'
+        : _paymentAttemptsError != null
+        ? 'Ödeme durumu doğrulanamadı. Yeni ödeme başlatmadan önce yenile.'
+        : 'Ödeme sonucu doğrulanıyor.';
+
+    return Container(
+      width: double.infinity,
+      padding: AppPadding.card,
+      decoration: _panelDecoration(context),
+      child: Row(
+        children: [
+          Expanded(child: Text(message)),
+          if (!_arePaymentAttemptsLoading)
+            TextButton(
+              onPressed: () => _loadPaymentAttempts(),
+              child: const Text('Yenile'),
+            ),
+        ],
+      ),
+    );
+  }
 
   Widget _paymentButton() {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
         key: const ValueKey('start-payment'),
-        onPressed: _isStartingPayment ? null : _startPayment,
+        onPressed: _isStartingPayment ? null : _requestPayment,
         icon: _isStartingPayment
             ? const SizedBox.square(
                 dimension: AppSizes.iconSmall,
@@ -200,6 +317,35 @@ class _BJobDetailPageState extends BJobDetailPageModel {
               )
             : const AppIcon(AppIcons.shield, size: AppSizes.iconSmall),
         label: const Text('Güvenli Ödemeyi Tamamla'),
+      ),
+    );
+  }
+
+  @override
+  Future<bool?> _confirmPayment(BPricingBreakdown breakdown) {
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: const RoundedRectangleBorder(
+          borderRadius: AppRadius.secondaryCircular,
+        ),
+        title: Text(
+          'Ödemeyi Onayla',
+          style: dialogContext.textTheme.titleMedium,
+        ),
+        content: SingleChildScrollView(
+          child: BPricingBreakdownCard(breakdown: breakdown),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Vazgeç'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Ödemeye geç'),
+          ),
+        ],
       ),
     );
   }
@@ -353,8 +499,9 @@ class _BJobDetailPageState extends BJobDetailPageModel {
   List<Widget> _assignmentActions(Assignment assignment) {
     final canCancel = _canComplete(assignment);
     final canDispute =
+        _isDisputeStateVerified &&
         assignment.paymentStatus == PaymentStatus.heldInEscrow &&
-        !_disputes.any((dispute) => dispute.isOpen);
+        !_hasOpenDispute;
 
     if (!canCancel && !canDispute) return const [];
 

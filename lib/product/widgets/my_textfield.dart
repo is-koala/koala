@@ -13,6 +13,7 @@ class MyTextfield extends StatelessWidget {
     this.suffixIcon,
     this.showSuffixIcon,
     this.controller,
+    this.focusNode,
     this.onChanged,
     this.keyboardType = TextInputType.text,
     this.height = AppSizes.fieldHeight,
@@ -27,6 +28,7 @@ class MyTextfield extends StatelessWidget {
   final Widget? suffixIcon;
   final bool? showSuffixIcon;
   final TextEditingController? controller;
+  final FocusNode? focusNode;
   final Function(String)? onChanged;
   final TextInputType keyboardType;
 
@@ -59,6 +61,7 @@ class MyTextfield extends StatelessWidget {
       height: height,
       child: TextField(
         controller: controller,
+        focusNode: focusNode,
         enabled: enabled,
         onChanged: onChanged,
         obscureText: isObscureText,

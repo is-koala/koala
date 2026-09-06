@@ -22,7 +22,7 @@ dosyaya yazmadan doğrudan GitHub Actions secret'larına aktarır.
 - Bir production etiketi, iki mağazanın **iç test** kanalına yayın demektir;
   production mağaza yayını anlamına gelmez.
 
-`dart run tool/validate_release_tag.dart mobile-v1.0.0` etiketi, pubspec ve
+`dart run tool/validate_release_tag.dart mobile-v1.1.0` etiketi, pubspec ve
 istemci başlık sürümünü tek sınırda doğrular.
 
 ## Bir kez yapılacak insan adımları

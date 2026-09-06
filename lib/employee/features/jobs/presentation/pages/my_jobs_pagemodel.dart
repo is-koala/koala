@@ -330,7 +330,7 @@ abstract class MyJobsPagemodel extends State<MyJobsPage> {
     }
 
     return '$opening\n\nBu iptalde %${preview.feePercent} kesinti '
-        'uygulanacak (₺${preview.feeAmount.toStringAsFixed(0)}). Tutar iptal '
+        'uygulanacak (${TurkishMoneyFormatter.format(preview.feeAmount, 'TRY')}). Tutar iptal '
         'anında yeniden hesaplanır.';
   }
 

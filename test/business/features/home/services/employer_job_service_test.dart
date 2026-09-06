@@ -18,7 +18,7 @@ CreateJobRequest buildRequest() {
     position: 'Garson',
     type: JobType.oneTime,
     salaryType: SalaryType.daily,
-    salary: 1500,
+    salary: '1500',
     startDateTime: DateTime(2026, 9, 1, 9),
     endDateTime: DateTime(2026, 9, 1, 18),
     minAge: 18,
@@ -273,7 +273,7 @@ void main() {
               'success': true,
               'data': {
                 'paymentPageUrl':
-                    'https://sandbox-payment.iyzipay.com/checkout',
+                    'https://sandbox-cpp.iyzipay.com?token=token&lang=tr',
                 'token': 'iyzi-token',
               },
             },
@@ -288,7 +288,7 @@ void main() {
           api.requests.single.path,
           '/job-assignments/asg_1/payment-session',
         );
-        expect(session.paymentPageUrl.host, 'sandbox-payment.iyzipay.com');
+        expect(session.paymentPageUrl.host, 'sandbox-cpp.iyzipay.com');
       },
     );
 
@@ -357,6 +357,57 @@ void main() {
       expect(api.requests.single.path, '/job-assignments/asg_1/complete');
       expect(api.requests.single.method, 'POST');
       expect(assignment.status, AssignmentStatus.completed);
+    });
+
+    test('bir ilanın atamalarını tüm sayfalardan eksiksiz toplar', () async {
+      final api = FakeApi(
+        handler: (request) {
+          final page = request.queryParameters['page'];
+          return FakeApiResponse(
+            statusCode: 200,
+            body: {
+              'success': true,
+              'data': {
+                'content': [
+                  {
+                    'id': page == 0 ? 'other-assignment' : 'target-$page',
+                    'status': 'CONFIRMED',
+                    'paymentStatus': 'PENDING_COLLECTION',
+                    'worker': {
+                      'id': 'worker-$page',
+                      'firstName': page == 0 ? 'Başka' : 'Ayşe',
+                      'lastName': 'Çalışan',
+                    },
+                    'job': {
+                      'id': page == 0 ? 'other-job' : 'job_1',
+                      'title': 'Garson',
+                      'category': {
+                        'id': 'c',
+                        'code': 'WAITER',
+                        'name': 'Garson',
+                      },
+                      'salary': 1500,
+                    },
+                  },
+                ],
+                'page': page,
+                'last': page == 1,
+              },
+            },
+          );
+        },
+      );
+
+      final assignments = await EmployerJobService.withClient(
+        api.client,
+      ).fetchAssignmentsForJob('job_1');
+
+      expect(assignments.map((assignment) => assignment.id), ['target-1']);
+      expect(assignments.single.worker?.fullName, 'Ayşe Çalışan');
+      expect(api.requests.map((request) => request.queryParameters['page']), [
+        0,
+        1,
+      ]);
     });
 
     // Sunucu yalnızca CONFIRMED ve IN_PROGRESS durumlarından tamamlatıyor.
