@@ -357,7 +357,7 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
 
     if (!preview.hasFee) {
       return '$opening\n\nŞu an iptal edersen kesinti uygulanmaz, ücretin '
-          'tamamı (₺${preview.refundAmount.toStringAsFixed(0)}) iade edilir. '
+          'tamamı (${TurkishMoneyFormatter.format(preview.refundAmount, 'TRY')}) iade edilir. '
           'Tutar iptal anında yeniden hesaplanır.';
     }
 
@@ -366,8 +366,8 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
         : '';
 
     return '$opening\n\nŞu an iptal edersen %${preview.feePercent} kesinti '
-        'uygulanır: ₺${preview.feeAmount.toStringAsFixed(0)} kesilir, '
-        '₺${preview.refundAmount.toStringAsFixed(0)} iade edilir.$started '
+        'uygulanır: ${TurkishMoneyFormatter.format(preview.feeAmount, 'TRY')} kesilir, '
+        '${TurkishMoneyFormatter.format(preview.refundAmount, 'TRY')} iade edilir.$started '
         'Tutar iptal anında yeniden hesaplanır.';
   }
 
