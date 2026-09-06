@@ -23,6 +23,17 @@ class ApiPaths {
   static const String currentUserCv = '/users/me/cv';
   static const String currentUserAddress = '/users/me/address';
 
+  /// Oturum sahibinin haftalık müsaitlik şablonu. `PUT` bu şablonu toptan
+  /// değiştirir; eksik gönderilen bir gün sunucuda silinir.
+  static const String currentUserAvailability = '/users/me/availability';
+
+  /// Tarihe özel çalışabilir / çalışamaz istisnaları.
+  static const String currentUserAvailabilityExceptions =
+      '$currentUserAvailability/exceptions';
+
+  static String currentUserAvailabilityException(String exceptionId) =>
+      '$currentUserAvailabilityExceptions/$exceptionId';
+
   /// Kimlik doğrulama. Ad, soyad, doğum tarihi, TC kimlik ve belge numarası
   /// gönderiliyor; sunucu NVİ'ye soruyor.
   ///
@@ -269,6 +280,11 @@ class ApiPaths {
   /// Tam adres dönmüyor, yalnızca il ve ilçe. `cvUrl` yalnızca kişinin
   /// kendisine ya da o kişinin başvurduğu bir ilanın işverenine doluyor.
   static String publicProfile(String userId) => '/users/$userId';
+
+  /// Bir kullanıcının herkese açık haftalık müsaitliği ve yaklaşan tarih
+  /// istisnaları.
+  static String userAvailability(String userId) =>
+      '${publicProfile(userId)}/availability';
 
   /// Bir kullanıcı hakkında yazılmış değerlendirmeler. Sayfalı ve herkese
   /// açık.

@@ -10,6 +10,7 @@ import 'package:koala/employee/features/profile/presentation/widgets/cv_actions_
 import 'package:koala/employee/features/profile/services/education_service.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/timeline_card.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
+import 'package:koala/employee/features/profile/presentation/providers/availability_provider.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/profile_avatar.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/experience_sheet.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/profile_reviews.dart';
@@ -24,6 +25,7 @@ import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/confirm_dialog.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
+import 'package:koala/product/widgets/availability_view.dart';
 import 'package:provider/provider.dart';
 
 part 'profile_pagemodel.dart';
@@ -117,8 +119,10 @@ class _ProfilePageState extends ProfilePageModel {
   }
 
   Widget _content(CurrentUser user) {
+    final availabilityProvider = context.watch<AvailabilityProvider>();
+
     return RefreshIndicator(
-      onRefresh: () => context.read<UserProvider>().load(silent: true),
+      onRefresh: _refreshProfile,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         child: Padding(
@@ -133,6 +137,14 @@ class _ProfilePageState extends ProfilePageModel {
               cvArea(user),
               const SizedBox(height: AppSizes.spaceLarge),
               rosettes(user),
+              AvailabilityView(
+                availability: availabilityProvider.availability,
+                isLoading: availabilityProvider.isLoading,
+                errorMessage: availabilityProvider.errorMessage,
+                onRetry: () => availabilityProvider.load(user.id),
+                onEdit: () => context.push('/availability'),
+              ),
+              const SizedBox(height: AppSizes.spaceLarge),
               experienceSection(user),
               const SizedBox(height: AppSizes.spaceMedium),
               educationSection(user),

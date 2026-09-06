@@ -4,6 +4,7 @@ import 'package:koala/business/features/home/presentation/providers/b_company_pr
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
 import 'package:koala/employee/features/auth/services/auth_service.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
+import 'package:koala/employee/features/profile/presentation/providers/availability_provider.dart';
 import 'package:koala/product/network/realtime_client.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -91,6 +92,7 @@ class BSettingsPage extends StatelessWidget {
             // Provider'lar uygulama boyunca yaşıyor: temizlenmezse bir
             // sonraki oturum öncekinin ilanlarını ve profilini görürdü.
             context.read<UserProvider>().clear();
+            context.read<AvailabilityProvider>().clear();
             context.read<BJobsProvider>().clear();
             context.read<BCompanyProvider>().clear();
 
