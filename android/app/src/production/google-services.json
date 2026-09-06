@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "385053924336",
+    "project_id": "iskoala",
+    "storage_bucket": "iskoala.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:385053924336:android:1649e4793e0fedbead5b35",
+        "android_client_info": {
+          "package_name": "com.iskoala.koala"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC5AGwW7_a2Ky3GFtW_p2z87bf8JXzfJg8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
