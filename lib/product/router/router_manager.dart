@@ -313,7 +313,6 @@ class RouterManager {
       ),
 
       GoRoute(
-<<<<<<< HEAD
         path: '/job-alerts',
         pageBuilder: (context, state) => _page(state, const JobAlertsPage()),
       ),
@@ -326,10 +325,11 @@ class RouterManager {
             alert: state.extra is JobAlert ? state.extra as JobAlert : null,
           ),
         ),
-=======
+      ),
+
+      GoRoute(
         path: '/availability',
         pageBuilder: (context, state) => _page(state, const AvailabilityPage()),
->>>>>>> ec435df (feat: add worker availability schedule)
       ),
 
       GoRoute(
