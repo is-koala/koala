@@ -66,6 +66,20 @@
 	<string>Bu uygulama yakınınızdaki koala işlerini göstermek için konumunuza erişim gerektirir.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Şirket logonuzu seçebilmeniz için fotoğraflarınıza erişim gerekiyor.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Kimlik kartınızın arka yüzündeki bilgileri okuyabilmemiz için kameraya erişim gerekiyor.</string>
+	<!-- NFCReaderUsageDescription boş bırakılamaz: Apple boş metinle NFC
+	     oturumunu hiç açmıyor. -->
+	<key>NFCReaderUsageDescription</key>
+	<string>Kimliğinizi doğrulayabilmemiz için kimlik kartınızın çipini okumak üzere NFC erişimi gerekiyor.</string>
+	<!-- ⚠️ Adı "entitlement" gibi görünse de bu anahtar Info.plist'e yazılır,
+	     .entitlements dosyasına DEĞİL. .entitlements'a konursa build
+	     "Provisioning profile ... doesn't include the ... entitlement" ile
+	     düşer. A0000002471001 eMRTD uygulamasının AID'si. -->
+	<key>com.apple.developer.nfc.readersession.iso7816.select-identifiers</key>
+	<array>
+		<string>A0000002471001</string>
+	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
