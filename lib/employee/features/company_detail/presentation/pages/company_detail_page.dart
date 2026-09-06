@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/company_detail/models/company.dart';
-import 'package:koala/employee/features/company_detail/presentation/widgets/company_gallery_strip.dart';
+import 'package:koala/product/widgets/gallery_strip.dart';
 import 'package:koala/employee/features/company_detail/services/company_service.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
@@ -128,7 +128,7 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
             const SizedBox(height: AppSizes.space),
             // Galerisi olmayan şirkette bölüm hiç çizilmiyor: boş bir başlık
             // eksik bir sayfa gibi okunurdu.
-            CompanyGalleryStrip(images: company.images),
+            GalleryStrip(images: company.images),
             const SizedBox(height: AppSizes.spaceLarge),
           ],
           _buildSectionTitle('İletişim Bilgileri'),

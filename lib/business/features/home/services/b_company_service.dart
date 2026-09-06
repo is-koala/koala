@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:koala/employee/features/company_detail/models/company.dart';
-import 'package:koala/employee/features/company_detail/models/company_image.dart';
+import 'package:koala/product/models/gallery_image.dart';
 import 'package:koala/business/features/home/models/employer_stats.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
@@ -119,11 +119,11 @@ class BCompanyService {
   ///
   /// [filePath] okunamıyorsa `ApiException` değil `FileSystemException`
   /// fırlıyor: dosya istekten **önce** okunuyor.
-  Future<List<CompanyImage>> addCompanyImage(
+  Future<List<GalleryImage>> addCompanyImage(
     String companyId,
     String filePath,
   ) {
-    return _apiClient.postFile<List<CompanyImage>>(
+    return _apiClient.postFile<List<GalleryImage>>(
       ApiPaths.companyImages(companyId),
       fieldName: 'image',
       filePath: filePath,
@@ -137,11 +137,11 @@ class BCompanyService {
   /// kaydı galeriden düşürüyor; yalnız değişen satırı göndermek diğerlerini
   /// silerdi. Sıra listedeki konumdan yazılıyor, galeride bulunmayan bir
   /// görsel gönderilirse `404` geliyor.
-  Future<List<CompanyImage>> replaceCompanyGallery(
+  Future<List<GalleryImage>> replaceCompanyGallery(
     String companyId,
-    List<CompanyImage> images,
+    List<GalleryImage> images,
   ) {
-    return _apiClient.put<List<CompanyImage>>(
+    return _apiClient.put<List<GalleryImage>>(
       ApiPaths.companyImages(companyId),
       body: {
         'images': [
@@ -156,25 +156,19 @@ class BCompanyService {
   /// Görseli galeriden çıkarır ve galerinin yeni hâlini döndürür.
   ///
   /// Kapak silinirse sunucu kalanların ilkini kapak yapıyor.
-  Future<List<CompanyImage>> removeCompanyImage(
+  Future<List<GalleryImage>> removeCompanyImage(
     String companyId,
     String imageId,
   ) {
-    return _apiClient.delete<List<CompanyImage>>(
+    return _apiClient.delete<List<GalleryImage>>(
       ApiPaths.companyImage(companyId, imageId),
       parse: _gallery,
     );
   }
 
   /// Dört galeri ucunun da döndürdüğü `List<GalleryImageDto>`.
-  static List<CompanyImage> _gallery(Object? data) {
-    if (data is! List) return const [];
-
-    return data
-        .whereType<Map<String, dynamic>>()
-        .map(CompanyImage.fromJson)
-        .toList();
-  }
+  static List<GalleryImage> _gallery(Object? data) =>
+      GalleryImage.listFromJson(data);
 
   /// İşverenin özet sayıları.
   Future<EmployerStats> fetchEmployerStats(String userId) {

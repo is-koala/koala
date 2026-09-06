@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:koala/employee/features/company_detail/models/company.dart';
-import 'package:koala/employee/features/company_detail/models/company_image.dart';
+import 'package:koala/product/models/gallery_image.dart';
 import 'package:koala/business/features/home/models/employer_stats.dart';
 import 'package:koala/business/features/home/services/b_company_service.dart';
 import 'package:koala/employee/features/company_detail/services/company_service.dart';
@@ -182,12 +182,12 @@ class BCompanyProvider extends ChangeNotifier {
   /// Ayrı bir alanda değil şirketin içinde duruyor: `GET /companies/{id}`
   /// görselleri zaten gövdesinde döndürüyor ve iki kopya tutmak şirket
   /// detayındaki galeri ile buradakinin ayrışmasına açık kapı bırakırdı.
-  List<CompanyImage> get galleryImages => _company?.images ?? const [];
+  List<GalleryImage> get galleryImages => _company?.images ?? const [];
 
   /// Galeriye görsel eklenebilir mi. Sunucu sınırı aştığında `409` döndürüyor;
   /// düğmenin kapalı olması kullanıcıyı o hatayı almadan durduruyor.
   bool get canAddGalleryImage =>
-      _company != null && galleryImages.length < UploadLimits.maxCompanyImages;
+      _company != null && galleryImages.length < UploadLimits.maxGalleryImages;
 
   /// Galeri işlemi sürerken; düğmeler kapansın ve istek iki kez atılmasın.
   bool get isGalleryBusy => _isGalleryBusy;
@@ -213,7 +213,7 @@ class BCompanyProvider extends ChangeNotifier {
   ///
   /// [images] galerinin **tamamı** olmalı: sunucu listede olmayan görseli
   /// galeriden düşürüyor.
-  Future<bool> replaceGallery(List<CompanyImage> images) {
+  Future<bool> replaceGallery(List<GalleryImage> images) {
     return _replaceGallery(
       (companyId) => _service.replaceCompanyGallery(companyId, images),
     );
@@ -233,7 +233,7 @@ class BCompanyProvider extends ChangeNotifier {
   /// [_replaceCompany] kullanılamıyor: eldeki şirketin yalnızca galerisi
   /// değişiyor.
   Future<bool> _replaceGallery(
-    Future<List<CompanyImage>> Function(String companyId) call,
+    Future<List<GalleryImage>> Function(String companyId) call,
   ) async {
     final current = _company;
     if (current == null || _isGalleryBusy) return false;

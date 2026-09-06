@@ -3,8 +3,10 @@ import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
 import 'package:koala/business/features/home/models/b_job_post.dart';
 import 'package:koala/business/features/home/models/job_applicant.dart';
+import 'package:koala/business/features/home/presentation/providers/b_company_provider.dart';
 import 'package:koala/business/features/home/presentation/providers/b_job_templates_provider.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
+import 'package:koala/business/features/home/presentation/widgets/b_job_gallery_section.dart';
 import 'package:koala/business/features/home/services/employer_job_service.dart';
 import 'package:koala/business/features/home/services/b_payment_browser.dart';
 import 'package:koala/employee/features/home/models/job.dart';
@@ -26,6 +28,7 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
+import 'package:koala/product/models/gallery_image.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
@@ -53,6 +56,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
   @override
   Widget build(BuildContext context) {
     final post = context.watch<BJobsProvider>().getPostByJobId(widget.jobId);
+    final company = context.watch<BCompanyProvider>().company;
 
     return Scaffold(
       backgroundColor: context.backgroundColor,
@@ -60,11 +64,11 @@ class _BJobDetailPageState extends BJobDetailPageModel {
         title: "İlan Detayı",
         actions: [?_saveAsTemplateAction()],
       ),
-      body: _body(post),
+      body: _body(post, companyImages: company?.images ?? const []),
     );
   }
 
-  Widget _body(BJobPost? post) {
+  Widget _body(BJobPost? post, {required List<GalleryImage> companyImages}) {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -104,6 +108,12 @@ class _BJobDetailPageState extends BJobDetailPageModel {
                   ),
                   const SizedBox(height: AppSizes.spaceLarge),
                 ],
+                BJobGallerySection(
+                  jobId: widget.jobId,
+                  canManage: post != null,
+                  companyImages: job.company == null ? const [] : companyImages,
+                ),
+                const SizedBox(height: AppSizes.spaceLarge),
                 _sectionTitle(context, "Detaylar"),
                 const SizedBox(height: AppSizes.space),
                 _detailsCard(context, job),

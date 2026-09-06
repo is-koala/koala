@@ -298,6 +298,15 @@ class ApiPaths {
   static String companyImage(String companyId, String imageId) =>
       '${companyImages(companyId)}/$imageId';
 
+  /// İlan galerisi. `GET` herkese açık; yazma uçları yalnız ilanı
+  /// düzenleyebilen işverene açıktır. Dört yöntem de galerinin tamamını
+  /// döndürür ve `PUT` gövdede olmayan ilişkileri kaldırır.
+  static String jobImages(String jobId) => '${job(jobId)}/images';
+
+  /// İlan galerisindeki medya ilişkisini medya kimliğiyle kaldırır.
+  static String jobImage(String jobId, String imageId) =>
+      '${jobImages(jobId)}/$imageId';
+
   /// Şirketin yetkilileri.
   static String companyContacts(String companyId) =>
       '${company(companyId)}/contacts';

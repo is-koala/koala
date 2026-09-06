@@ -5,7 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/business/features/home/services/b_company_service.dart';
 import 'package:koala/employee/features/company_detail/models/company.dart';
-import 'package:koala/employee/features/company_detail/models/company_image.dart';
+import 'package:koala/product/models/gallery_image.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/models/canonical_address.dart';
 
@@ -260,8 +260,8 @@ void main() {
       await BCompanyService.withClient(
         api.client,
       ).replaceCompanyGallery('comp_1', const [
-        CompanyImage(id: 'img_2', url: '', sortOrder: 1, caption: 'Mutfak'),
-        CompanyImage(id: 'img_1', url: '', sortOrder: 0, isCover: true),
+        GalleryImage(id: 'img_2', url: '', sortOrder: 1, caption: 'Mutfak'),
+        GalleryImage(id: 'img_1', url: '', sortOrder: 0, isCover: true),
       ]);
 
       final request = api.requests.single;
@@ -296,7 +296,7 @@ void main() {
       await expectLater(
         BCompanyService.withClient(api.client).replaceCompanyGallery(
           'comp_1',
-          const [CompanyImage(id: 'img_9', url: '')],
+          const [GalleryImage(id: 'img_9', url: '')],
         ),
         throwsA(
           isA<ApiException>()

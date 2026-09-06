@@ -20,6 +20,7 @@ void main() {
         status: JobStatus.inProgress,
         insuranceRequired: true,
         experienceRequired: true,
+        coverImageUrl: 'https://cdn.local/job_42-cover.webp',
       );
 
       final restored = Job.fromJson(job.toJson());
@@ -36,6 +37,7 @@ void main() {
       expect(restored.experienceRequired, isTrue);
       expect(restored.latitude, job.latitude);
       expect(restored.company, job.company);
+      expect(restored.coverImageUrl, job.coverImageUrl);
     });
 
     test('tarihler ISO 8601 üzerinden turu atlatır', () {
@@ -69,6 +71,7 @@ void main() {
         'companyName': 'Koala Cafe',
         'latitude': 39.9,
         'longitude': 32.8,
+        'coverImageUrl': 'https://cdn.local/job_1-cover.webp',
       });
 
       expect(job.type, JobType.oneTime);
@@ -78,6 +81,7 @@ void main() {
       expect(job.price, 500.0);
       expect(job.locationLabel, 'Kızılay/Ankara');
       expect(job.hasLocation, isTrue);
+      expect(job.coverImageUrl, 'https://cdn.local/job_1-cover.webp');
     });
 
     // Backend enlem/boylamı opsiyonel döndürüyor; koordinatsız ilan haritada

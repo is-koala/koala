@@ -1,5 +1,5 @@
 import 'package:koala/product/models/canonical_address.dart';
-import 'package:koala/employee/features/company_detail/models/company_image.dart';
+import 'package:koala/product/models/gallery_image.dart';
 
 /// Şirketin hukuki türü. Backend `CompanyType` enum'ının birebir karşılığı.
 enum CompanyType {
@@ -73,7 +73,7 @@ class Company {
   ///
   /// Ayrı bir uç var (`GET /companies/{id}/images`) ama şirket detayı zaten
   /// görselleri gövdesinde taşıyor; ikinci bir istek atmaya gerek yok.
-  final List<CompanyImage> images;
+  final List<GalleryImage> images;
 
   /// Şirketi takip eden kullanıcı sayısı.
   final int followerCount;
@@ -90,7 +90,7 @@ class Company {
   final bool isApproved;
 
   /// Kapak görseli; yoksa galerinin ilki, o da yoksa `null`.
-  CompanyImage? get coverImage {
+  GalleryImage? get coverImage {
     for (final image in images) {
       if (image.isCover) return image;
     }
@@ -104,7 +104,7 @@ class Company {
     bool? isApproved,
     bool? isFollowing,
     int? followerCount,
-    List<CompanyImage>? images,
+    List<GalleryImage>? images,
   }) {
     return Company(
       id: id,
@@ -144,7 +144,7 @@ class Company {
       images: images is List
           ? images
                 .whereType<Map<String, dynamic>>()
-                .map(CompanyImage.fromJson)
+                .map(GalleryImage.fromJson)
                 .toList()
           : const [],
       followerCount: (json['followerCount'] as num?)?.toInt() ?? 0,

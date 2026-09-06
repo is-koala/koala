@@ -30,15 +30,7 @@ class JobCard extends StatelessWidget {
       child: ListTile(
         shape: shape,
         contentPadding: AppPadding.primaryAll,
-        leading: CircleAvatar(
-          backgroundColor: job.category.color,
-          // Kategori rengi doygun ve temadan bağımsız; üstündeki ikon da öyle.
-          child: AppIcon(
-            job.category.icon,
-            color: AppColors.onAccent,
-            size: AppSizes.icon,
-          ),
-        ),
+        leading: _leading(),
         title: Text(job.title, style: context.textTheme.titleSmall),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -69,6 +61,37 @@ class JobCard extends StatelessWidget {
           ],
         ),
         onTap: () => JobDetailBottomSheet.show(context, job),
+      ),
+    );
+  }
+
+  Widget _leading() {
+    final coverImageUrl = job.coverImageUrl;
+    if (coverImageUrl == null || coverImageUrl.isEmpty) {
+      return _categoryAvatar();
+    }
+
+    return ClipRRect(
+      borderRadius: AppRadius.innerCircular,
+      child: Image.network(
+        coverImageUrl,
+        width: AppSizes.thumbnail,
+        height: AppSizes.thumbnail,
+        fit: BoxFit.cover,
+        semanticLabel: 'İlan kapağı',
+        errorBuilder: (_, _, _) => _categoryAvatar(),
+      ),
+    );
+  }
+
+  Widget _categoryAvatar() {
+    return CircleAvatar(
+      backgroundColor: job.category.color,
+      // Kategori rengi doygun ve temadan bağımsız; üstündeki ikon da öyle.
+      child: AppIcon(
+        job.category.icon,
+        color: AppColors.onAccent,
+        size: AppSizes.icon,
       ),
     );
   }

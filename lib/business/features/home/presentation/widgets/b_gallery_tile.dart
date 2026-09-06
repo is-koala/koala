@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:koala/employee/features/company_detail/models/company_image.dart';
+import 'package:koala/product/models/gallery_image.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -23,13 +23,13 @@ class BGalleryTile extends StatelessWidget {
     this.onRemove,
   });
 
-  final CompanyImage image;
+  final GalleryImage image;
 
   /// Görselin listedeki sırası (1'den başlayan). Başlığı olmayan görsele ad
   /// olarak yazılıyor.
   final int position;
 
-  /// Ekleme, sıralama ve kaldırma yalnız şirketin `ADMIN` yetkilisinde.
+  /// Ekleme, sıralama ve kaldırma yalnız galeriyi yönetebilen kullanıcıda.
   final bool canManage;
 
   final VoidCallback? onSetCover;

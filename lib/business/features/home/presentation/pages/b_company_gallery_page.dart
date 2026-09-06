@@ -1,10 +1,9 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:koala/business/features/home/presentation/providers/b_company_provider.dart';
 import 'package:koala/business/features/home/presentation/widgets/b_gallery_tile.dart';
-import 'package:koala/employee/features/company_detail/models/company_image.dart';
+import 'package:koala/business/features/home/services/b_gallery_upload_validator.dart';
+import 'package:koala/product/models/gallery_image.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -175,9 +174,9 @@ class _BCompanyGalleryPageState extends BCompanyGalleryPagemodel {
       padding: const EdgeInsets.only(top: AppSizes.spaceSmall),
       child: Text(
         isFull
-            ? 'Galeri dolu (${images.length}/${UploadLimits.maxCompanyImages}). '
+            ? 'Galeri dolu (${images.length}/${UploadLimits.maxGalleryImages}). '
                   'Yeni görsel eklemek için önce birini kaldırın.'
-            : '${images.length}/${UploadLimits.maxCompanyImages} görsel · '
+            : '${images.length}/${UploadLimits.maxGalleryImages} görsel · '
                   '${UploadLimits.imageRuleLabel}',
         style: context.textTheme.bodySmall?.copyWith(
           color: context.textTertiary,

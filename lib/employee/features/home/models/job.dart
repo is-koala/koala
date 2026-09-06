@@ -294,6 +294,7 @@ class Job {
     this.cityName,
     this.districtName,
     this.company,
+    this.coverImageUrl,
     this.applicationCount = 0,
     this.latitude,
     this.longitude,
@@ -322,6 +323,12 @@ class Job {
 
   /// İlanı açan şirketin adı. Bireysel ilanlarda `null`.
   final String? company;
+
+  /// Arama/listeme kartında gösterilen ilan galerisi kapağı.
+  ///
+  /// Tam galeri ayrı uçtan yüklenir; özet yanıtı kart için yalnızca bu
+  /// URL'yi taşır.
+  final String? coverImageUrl;
 
   /// İlana gelen toplam başvuru sayısı — yanıtlanmışlar dâhil.
   ///
@@ -378,6 +385,7 @@ class Job {
       cityName: json['cityName'] as String?,
       districtName: json['districtName'] as String?,
       company: json['companyName'] as String?,
+      coverImageUrl: json['coverImageUrl'] as String?,
       applicationCount: (json['applicationCount'] as num?)?.toInt() ?? 0,
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
@@ -403,6 +411,7 @@ class Job {
       'cityName': cityName,
       'districtName': districtName,
       'companyName': company,
+      'coverImageUrl': coverImageUrl,
       'applicationCount': applicationCount,
       'latitude': latitude,
       'longitude': longitude,

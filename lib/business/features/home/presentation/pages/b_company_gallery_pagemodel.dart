@@ -9,10 +9,10 @@ abstract class BCompanyGalleryPagemodel extends State<BCompanyGalleryPage> {
   ///
   /// Olmasaydı liste bırakıldığı anda eski sırasına dönüp istek bitince
   /// yeniden yerine oturur, sürükleme geri alınmış gibi görünürdü.
-  List<CompanyImage>? _pendingOrder;
+  List<GalleryImage>? _pendingOrder;
 
   /// Ekranda çizilecek galeri.
-  List<CompanyImage> get images =>
+  List<GalleryImage> get images =>
       _pendingOrder ?? context.read<BCompanyProvider>().galleryImages;
 
   /// Kullanıcı bu şirketin yöneticisi mi.
@@ -49,24 +49,10 @@ abstract class BCompanyGalleryPagemodel extends State<BCompanyGalleryPage> {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (picked == null || !mounted) return;
 
-    if (!UploadLimits.hasAllowedImageExtension(picked.path)) {
-      AppToast.error(context, 'Yalnızca PNG, JPG veya WEBP yükleyebilirsiniz');
-      return;
-    }
-
-    final int length;
-    try {
-      length = await File(picked.path).length();
-    } on FileSystemException {
-      // `ApiClient.postFile` dosyayı istekten önce okuyor; okunamayan yol
-      // `ApiException` değil `FileSystemException` fırlatırdı.
-      if (mounted) AppToast.error(context, 'Seçilen görsel okunamadı');
-      return;
-    }
-
+    final error = await BGalleryUploadValidator.errorFor(picked.path);
     if (!mounted) return;
-    if (length > UploadLimits.maxImageBytes) {
-      AppToast.error(context, 'Görsel en fazla 10 MB olabilir');
+    if (error != null) {
+      AppToast.error(context, error);
       return;
     }
 
@@ -99,7 +85,7 @@ abstract class BCompanyGalleryPagemodel extends State<BCompanyGalleryPage> {
   ///
   /// Eski kapağın bayrağı da düşürülüyor: sunucu birden fazla kapak taşıyan
   /// gövdeyi `400` ile geri çeviriyor.
-  Future<void> setCover(CompanyImage image) async {
+  Future<void> setCover(GalleryImage image) async {
     final updated = [
       for (final current in images) current.copyWith(isCover: current == image),
     ];
@@ -112,7 +98,7 @@ abstract class BCompanyGalleryPagemodel extends State<BCompanyGalleryPage> {
 
   // --------------------------------------------------------------- Kaldırma
 
-  Future<void> remove(CompanyImage image) async {
+  Future<void> remove(GalleryImage image) async {
     final confirmed = await ConfirmDialog.show(
       context,
       title: 'Görseli kaldır',
