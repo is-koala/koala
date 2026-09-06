@@ -22,14 +22,23 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
   /// Onay kutusundaki çok satırlı gövdenin satır aralığı.
   static const double _dialogLineHeight = 1.4;
 
-  final _jobService = JobService();
-  final _employerJobService = EmployerJobService();
-  final _paymentBrowser = BPaymentBrowser();
-  final _chatService = ChatService();
+  JobService get _jobService => widget.jobService ?? JobService();
+
+  EmployerJobService get _employerJobService =>
+      widget.employerJobService ?? EmployerJobService();
+
+  BPaymentService get _paymentService =>
+      widget.paymentService ?? BPaymentService();
+
+  BPaymentBrowser get _paymentBrowser =>
+      widget.paymentBrowser ?? BPaymentBrowser();
+
+  ChatService get _chatService => ChatService();
 
   /// Mesai oturumlarını iki taraf da okuyabiliyor; sohbette olduğu gibi tek
   /// servis iki uygulamaya hizmet ediyor.
-  final _assignmentService = AssignmentService();
+  AssignmentService get _assignmentService =>
+      widget.assignmentService ?? AssignmentService();
 
   /// İlanın tam hâli. Liste ucu açıklama/görev/adres döndürmediği için ekran
   /// açılırken `GET /jobs/{id}` ayrıca çağrılıyor.
@@ -54,6 +63,12 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
   bool _isCompleting = false;
 
   bool _isStartingPayment = false;
+
+  /// Bu atamanın ödeme girişimleri. Deneme listesi, atamanın kendisini veya
+  /// mesai bölümünü kapatmadan ayrı hata durumuna düşer.
+  List<BPaymentAttempt> _paymentAttempts = const [];
+  bool _arePaymentAttemptsLoading = false;
+  String? _paymentAttemptsError;
 
   /// Atamanın uyuşmazlıkları; kart üzerinde açık olan gösteriliyor.
   List<Dispute> _disputes = const [];
@@ -108,7 +123,7 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
     }
   }
 
-  /// İlanın atamasını ve mesai oturumlarını çeker.
+  /// İlanın atamasını ve ona bağlı yardımcı kayıtları çeker.
   ///
   /// Bölüm ilanın ön koşulu değil: çekilemezse sessiz geçiliyor ve ekranın
   /// geri kalanı yerinde kalıyor. Ataması olmayan ilanda zaten hiç
@@ -126,56 +141,137 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage> {
           _assignment = null;
           _workSessions = const [];
           _disputes = const [];
+          _paymentAttempts = const [];
+          _paymentAttemptsError = null;
+          _arePaymentAttemptsLoading = false;
         });
         return;
       }
 
-      final sessions = await _assignmentService.fetchWorkSessions(match.id);
-      final disputes = await _assignmentService.fetchDisputes(match.id);
       if (!mounted) return;
       setState(() {
         _assignment = match;
-        _workSessions = sessions;
-        _disputes = disputes;
+        _workSessions = const [];
+        _disputes = const [];
+        _paymentAttempts = const [];
+        _paymentAttemptsError = null;
+        _arePaymentAttemptsLoading = false;
       });
+
+      await Future.wait([
+        _loadWorkSessions(match.id),
+        _loadDisputes(match.id),
+        _loadPaymentAttempts(match.id),
+      ]);
     } on ApiException {
       if (!mounted) return;
       setState(() {
         _assignment = null;
         _workSessions = const [];
         _disputes = const [];
+        _paymentAttempts = const [];
+        _paymentAttemptsError = null;
+        _arePaymentAttemptsLoading = false;
       });
     }
   }
 
-  Future<void> _startPayment() async {
+  Future<void> _loadWorkSessions(String assignmentId) async {
+    try {
+      final sessions = await _assignmentService.fetchWorkSessions(assignmentId);
+      if (mounted && _assignment?.id == assignmentId) {
+        setState(() => _workSessions = sessions);
+      }
+    } on ApiException {
+      // Mesai kaydı yardımcı bölümdür; ilanın kalanını kapatmaz.
+    }
+  }
+
+  Future<void> _loadDisputes(String assignmentId) async {
+    try {
+      final disputes = await _assignmentService.fetchDisputes(assignmentId);
+      if (mounted && _assignment?.id == assignmentId) {
+        setState(() => _disputes = disputes);
+      }
+    } on ApiException {
+      // Uyuşmazlık listesi yardımcı bölümdür; ilanın kalanını kapatmaz.
+    }
+  }
+
+  Future<void> _loadPaymentAttempts([String? assignmentId]) async {
+    if (!mounted) return;
+    final id = assignmentId ?? _assignment?.id;
+    if (id == null) return;
+
+    setState(() {
+      _arePaymentAttemptsLoading = true;
+      _paymentAttemptsError = null;
+    });
+
+    try {
+      final attempts = await _paymentService.fetchAttempts(id);
+      if (!mounted || _assignment?.id != id) return;
+      setState(() => _paymentAttempts = attempts);
+    } on ApiException catch (error) {
+      if (!mounted || _assignment?.id != id) return;
+      setState(() => _paymentAttemptsError = error.message);
+    } finally {
+      if (mounted && _assignment?.id == id) {
+        setState(() => _arePaymentAttemptsLoading = false);
+      }
+    }
+  }
+
+  /// Backend dökümünü getirip kullanıcıdan açık onay alır.
+  Future<void> _requestPayment() async {
     final assignment = _assignment;
     if (assignment == null || _isStartingPayment) return;
 
+    final workerPayout = assignment.workerPayout;
+    if (workerPayout == null) {
+      AppToast.error(context, 'Çalışan ücreti bilgisi alınamadı.');
+      return;
+    }
+
     setState(() => _isStartingPayment = true);
     try {
-      final session = await _employerJobService.createPaymentSession(
-        assignment.id,
-      );
-      final opened = await _paymentBrowser.open(session.paymentPageUrl);
-      if (!opened) {
-        throw const ApiException(
-          message: 'Ödeme sayfası açılamadı.',
-          type: ApiErrorType.unknown,
-        );
-      }
-      if (mounted) {
-        AppToast.success(
-          context,
-          'Ödemeyi tamamladıktan sonra Koala uygulamasına döneceksin.',
-        );
-      }
+      final breakdown = await _paymentService.quote(workerPayout.toString());
+      if (!mounted) return;
+
+      final confirmed = await _confirmPayment(breakdown);
+      if (confirmed != true || !mounted) return;
+
+      await _startPayment(assignment);
     } on ApiException catch (error) {
       if (mounted) AppToast.error(context, error.message);
     } finally {
       if (mounted) setState(() => _isStartingPayment = false);
     }
   }
+
+  /// Açık onaydan sonra Iyzico oturumunu başlatır.
+  Future<void> _startPayment(Assignment assignment) async {
+    final session = await _employerJobService.createPaymentSession(
+      assignment.id,
+    );
+    final opened = await _paymentBrowser.open(session.paymentPageUrl);
+    if (!opened) {
+      throw const ApiException(
+        message: 'Ödeme sayfası açılamadı.',
+        type: ApiErrorType.unknown,
+      );
+    }
+    if (mounted) {
+      AppToast.success(
+        context,
+        'Ödemeyi tamamladıktan sonra Koala uygulamasına döneceksin.',
+      );
+    }
+    await _loadPaymentAttempts(assignment.id);
+  }
+
+  /// Fiyat dökümünü taşıyan ödeme onayı. Gövdesi arayüz dosyasında.
+  Future<bool?> _confirmPayment(BPricingBreakdown breakdown);
 
   /// Atamayı iptal eder.
   ///

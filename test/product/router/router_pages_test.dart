@@ -42,4 +42,13 @@ void main() {
     expect(gallery, hasLength(1));
     expect(gallery.single.pageBuilder, isNotNull);
   });
+
+  test('kazançlar ekranı shell dışında, kendi rotasıyla açılıyor', () {
+    final earnings = allGoRoutes(
+      RouterManager.router.configuration.routes,
+    ).where((route) => route.path == '/earnings');
+
+    expect(earnings, hasLength(1));
+    expect(earnings.single.pageBuilder, isNotNull);
+  });
 }

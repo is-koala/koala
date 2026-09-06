@@ -2,13 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
 import 'package:koala/business/features/home/models/b_job_post.dart';
+import 'package:koala/business/features/home/models/b_payment_attempt.dart';
+import 'package:koala/business/features/home/models/b_pricing_breakdown.dart';
 import 'package:koala/business/features/home/models/job_applicant.dart';
 import 'package:koala/business/features/home/presentation/providers/b_company_provider.dart';
 import 'package:koala/business/features/home/presentation/providers/b_job_templates_provider.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
 import 'package:koala/business/features/home/presentation/widgets/b_job_gallery_section.dart';
+import 'package:koala/business/features/home/presentation/widgets/b_pricing_breakdown_card.dart';
 import 'package:koala/business/features/home/services/employer_job_service.dart';
 import 'package:koala/business/features/home/services/b_payment_browser.dart';
+import 'package:koala/business/features/home/services/b_payment_service.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
@@ -30,6 +34,7 @@ import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/models/gallery_image.dart';
 import 'package:koala/product/network/api_exception.dart';
+import 'package:koala/product/providers/job_gallery_provider.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
@@ -44,9 +49,24 @@ part 'b_job_detail_pagemodel.dart';
 /// İki kaynaktan besleniyor: ilanın kendisi `GET /jobs/{id}`'den, başvurular
 /// [BJobsProvider] üzerinden `GET /jobs/{id}/applications`'tan.
 class BJobDetailPage extends StatefulWidget {
-  const BJobDetailPage({super.key, required this.jobId});
+  const BJobDetailPage({
+    super.key,
+    required this.jobId,
+    this.jobService,
+    this.employerJobService,
+    this.assignmentService,
+    this.paymentService,
+    this.paymentBrowser,
+    this.galleryProvider,
+  });
 
   final String jobId;
+  final JobService? jobService;
+  final EmployerJobService? employerJobService;
+  final AssignmentService? assignmentService;
+  final BPaymentService? paymentService;
+  final BPaymentBrowser? paymentBrowser;
+  final JobGalleryProvider? galleryProvider;
 
   @override
   State<BJobDetailPage> createState() => _BJobDetailPageState();
@@ -112,6 +132,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
                   jobId: widget.jobId,
                   canManage: post != null,
                   companyImages: job.company == null ? const [] : companyImages,
+                  provider: widget.galleryProvider,
                 ),
                 const SizedBox(height: AppSizes.spaceLarge),
                 _sectionTitle(context, "Detaylar"),
@@ -176,6 +197,10 @@ class _BJobDetailPageState extends BJobDetailPageModel {
         ),
       ),
       const SizedBox(height: AppSizes.spaceLarge),
+      _sectionTitle(context, 'Ödeme Denemeleri'),
+      const SizedBox(height: AppSizes.space),
+      _paymentAttemptsSection(),
+      const SizedBox(height: AppSizes.spaceLarge),
     ];
   }
 
@@ -190,7 +215,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
       width: double.infinity,
       child: ElevatedButton.icon(
         key: const ValueKey('start-payment'),
-        onPressed: _isStartingPayment ? null : _startPayment,
+        onPressed: _isStartingPayment ? null : _requestPayment,
         icon: _isStartingPayment
             ? const SizedBox.square(
                 dimension: AppSizes.iconSmall,
@@ -200,6 +225,167 @@ class _BJobDetailPageState extends BJobDetailPageModel {
               )
             : const AppIcon(AppIcons.shield, size: AppSizes.iconSmall),
         label: const Text('Güvenli Ödemeyi Tamamla'),
+      ),
+    );
+  }
+
+  Widget _paymentAttemptsSection() {
+    if (_arePaymentAttemptsLoading && _paymentAttempts.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final error = _paymentAttemptsError;
+    if (error != null && _paymentAttempts.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: AppPadding.primaryAll,
+        decoration: _panelDecoration(context),
+        child: Column(
+          children: [
+            Text(
+              error,
+              textAlign: TextAlign.center,
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: context.textSecondary,
+              ),
+            ),
+            const SizedBox(height: AppSizes.spaceSmall),
+            TextButton(
+              onPressed: _loadPaymentAttempts,
+              child: const Text('Tekrar Dene'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_paymentAttempts.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: AppPadding.primaryAll,
+        decoration: _panelDecoration(context),
+        child: Text(
+          'Henüz ödeme denemesi yok.',
+          style: context.textTheme.bodyMedium?.copyWith(
+            color: context.textSecondary,
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        for (final attempt in _paymentAttempts) ...[
+          _paymentAttemptCard(attempt),
+          if (attempt != _paymentAttempts.last)
+            const SizedBox(height: AppSizes.spaceSmall),
+        ],
+      ],
+    );
+  }
+
+  Widget _paymentAttemptCard(BPaymentAttempt attempt) {
+    final failureReason = attempt.failureReason;
+    final total = attempt.pricing?.employerTotal ?? attempt.totalCharged;
+
+    return Container(
+      width: double.infinity,
+      padding: AppPadding.card,
+      decoration: _panelDecoration(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              _paymentAttemptBadge(attempt.status),
+              const Spacer(),
+              Text(
+                total,
+                style: context.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: AppSizes.spaceTiny),
+              Text(
+                attempt.currency == 'TRY' ? '₺' : attempt.currency,
+                style: context.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSizes.spaceSmall),
+          Text(
+            attempt.createdAt.toLocal().asShortDateTime,
+            style: context.textTheme.bodySmall?.copyWith(
+              color: context.textTertiary,
+            ),
+          ),
+          if (attempt.status == BPaymentAttemptStatus.failed &&
+              failureReason != null &&
+              failureReason.isNotEmpty) ...[
+            const SizedBox(height: AppSizes.spaceSmall),
+            Text(
+              failureReason,
+              style: context.textTheme.bodySmall?.copyWith(
+                color: AppColors.danger,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _paymentAttemptBadge(BPaymentAttemptStatus status) {
+    final color = switch (status) {
+      BPaymentAttemptStatus.initiated => AppColors.warning,
+      BPaymentAttemptStatus.inReview => AppColors.progress,
+      BPaymentAttemptStatus.succeeded => AppColors.successStrong,
+      BPaymentAttemptStatus.failed => AppColors.danger,
+    };
+
+    return Container(
+      padding: AppPadding.badge,
+      decoration: BoxDecoration(
+        color: context.payoutSurface,
+        borderRadius: AppRadius.smallCircular,
+      ),
+      child: Text(
+        status.displayName,
+        style: context.textTheme.labelSmall?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Future<bool?> _confirmPayment(BPricingBreakdown breakdown) {
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: const RoundedRectangleBorder(
+          borderRadius: AppRadius.secondaryCircular,
+        ),
+        title: Text(
+          'Ödemeyi Onayla',
+          style: dialogContext.textTheme.titleMedium,
+        ),
+        content: SingleChildScrollView(
+          child: BPricingBreakdownCard(breakdown: breakdown),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Vazgeç'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Ödemeye geç'),
+          ),
+        ],
       ),
     );
   }

@@ -72,6 +72,7 @@ void main() {
         '/chat',
         '/profile',
         '/availability',
+        '/earnings',
       ]) {
         expect(
           redirect(loggedIn: true, userType: 'employee', location: location),
@@ -126,6 +127,7 @@ void main() {
         '/chat',
         '/profile',
         '/availability',
+        '/earnings',
       ]) {
         expect(
           redirect(loggedIn: true, userType: 'business', location: location),
