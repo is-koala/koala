@@ -92,9 +92,31 @@ class TimesheetQueueProvider extends ChangeNotifier
     if (_isDisposed) return;
     final generation = ++_generation;
     _activeUserId = userId;
-    await _store.setLastActiveUser(userId);
-    await _reload(userId, generation);
-    await flush();
+    try {
+      await _store.setLastActiveUser(userId);
+      await _reload(userId, generation);
+      await flush();
+    } catch (_) {
+      if (!_isDisposed && generation == _generation) {
+        _activeUserId = null;
+        _events = const [];
+      }
+      rethrow;
+    }
+  }
+
+  /// UI/lifecycle başlatmasının yakalanmayan async hataya dönüşmesini
+  /// engeller. Etkileşimli kayıt yolu, kullanıcıya hata gösterebilmek için
+  /// [startForUser] üzerinden hatayı yükseltmeye devam eder.
+  Future<bool> tryStartForUser(String userId) async {
+    if (_isDisposed) return false;
+    try {
+      await startForUser(userId);
+      return true;
+    } catch (_) {
+      _reportBackgroundFailure();
+      return false;
+    }
   }
 
   /// Profil isteği çevrimdışıyken de önceki oturumun kalıcı kuyruğunu açar.
@@ -347,11 +369,16 @@ class TimesheetQueueProvider extends ChangeNotifier
   Future<void> _runBackground(Future<void> Function() operation) async {
     try {
       await operation();
-    } catch (error, stackTrace) {
+    } catch (_) {
       if (_isDisposed) return;
-      debugPrint('Mesai kuyruğu arka plan işlemi başarısız: $error');
-      debugPrintStack(stackTrace: stackTrace);
+      _reportBackgroundFailure();
     }
+  }
+
+  void _reportBackgroundFailure() {
+    // SQLite hata metni sorgu argümanlarını (kullanıcı kimliği/konum)
+    // içerebilir. Arka plan sınırında yalnız sabit, PII'siz mesaj yaz.
+    debugPrint('Mesai kuyruğu arka plan işlemi tamamlanamadı.');
   }
 
   void _beginDispose() {

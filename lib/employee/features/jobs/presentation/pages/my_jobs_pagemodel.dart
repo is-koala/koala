@@ -63,17 +63,26 @@ abstract class MyJobsPagemodel extends State<MyJobsPage> {
   }
 
   Future<void> _initializeTimesheetQueue() async {
-    final queue = context.read<TimesheetQueueProvider>();
-    _timesheetQueue = queue;
-    queue.addListener(_onTimesheetQueueChanged);
-    _announceTimesheetDelivery(queue);
+    try {
+      final queue = context.read<TimesheetQueueProvider>();
+      _timesheetQueue = queue;
+      queue.addListener(_onTimesheetQueueChanged);
+      _announceTimesheetDelivery(queue);
 
-    final userProvider = context.read<UserProvider>();
-    if (userProvider.user == null) await userProvider.load(silent: true);
-    if (!mounted) return;
-    final userId = userProvider.user?.id;
-    if (userId != null && queue.activeUserId != userId) {
-      await queue.startForUser(userId);
+      final userProvider = context.read<UserProvider>();
+      if (userProvider.user == null) await userProvider.load(silent: true);
+      if (!mounted) return;
+      final userId = userProvider.user?.id;
+      if (userId != null && queue.activeUserId != userId) {
+        final started = await queue.tryStartForUser(userId);
+        if (!started && mounted) {
+          AppToast.error(context, 'Mesai kuyruğu başlatılamadı.');
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        AppToast.error(context, 'Mesai kuyruğu başlatılamadı.');
+      }
     }
   }
 

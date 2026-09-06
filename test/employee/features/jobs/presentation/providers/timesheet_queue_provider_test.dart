@@ -52,11 +52,20 @@ class _MemoryStore implements TimesheetEventStore {
 
 class _FailingStore extends _MemoryStore {
   bool failReads = false;
+  bool failActiveUserWrites = false;
 
   @override
   Future<List<TimesheetEvent>> readForUser(String userId) {
-    if (failReads) throw StateError('SQLite okunamadı');
+    if (failReads) throw StateError('SQLite okunamadı: $userId');
     return super.readForUser(userId);
+  }
+
+  @override
+  Future<void> setLastActiveUser(String? userId) {
+    if (failActiveUserWrites) {
+      throw StateError('SQLite yazılamadı: $userId');
+    }
+    return super.setLastActiveUser(userId);
   }
 }
 
@@ -568,12 +577,47 @@ void main() {
     );
     await provider.startForUser('user-a');
     store.failReads = true;
+    final originalDebugPrint = debugPrint;
+    final logs = <String>[];
+    debugPrint = (message, {wrapWidth}) {
+      if (message != null) logs.add(message);
+    };
 
-    trigger.controller.add(null);
-    await Future<void>.delayed(Duration.zero);
-    await Future<void>.delayed(Duration.zero);
+    try {
+      trigger.controller.add(null);
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+    } finally {
+      debugPrint = originalDebugPrint;
+    }
 
+    expect(logs, ['Mesai kuyruğu arka plan işlemi tamamlanamadı.']);
+    expect(logs.join(), isNot(contains('user-a')));
     store.failReads = false;
+    await provider.disposeAsync();
+  });
+
+  test('sayfa başlatma store hatasını güvenli sonuç olarak alır', () async {
+    final store = _FailingStore()..failActiveUserWrites = true;
+    final provider = TimesheetQueueProvider.withAdapters(
+      store: store,
+      gateway: _FakeGateway(),
+      retryTrigger: _ManualRetryTrigger(),
+    );
+    final originalDebugPrint = debugPrint;
+    final logs = <String>[];
+    debugPrint = (message, {wrapWidth}) {
+      if (message != null) logs.add(message);
+    };
+
+    try {
+      expect(await provider.tryStartForUser('sensitive-user-id'), isFalse);
+    } finally {
+      debugPrint = originalDebugPrint;
+    }
+    expect(provider.activeUserId, isNull);
+    expect(logs, ['Mesai kuyruğu arka plan işlemi tamamlanamadı.']);
+    expect(logs.join(), isNot(contains('sensitive-user-id')));
     await provider.disposeAsync();
   });
 
