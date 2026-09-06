@@ -13,6 +13,7 @@ class JobAlertsProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool _hasLoaded = false;
   String? _errorMessage;
+  int _generation = 0;
 
   List<JobAlert> get alerts => List.unmodifiable(_alerts);
   bool get isLoading => _isLoading;
@@ -24,21 +25,25 @@ class JobAlertsProvider extends ChangeNotifier {
     if (_isLoading) return;
     if (_hasLoaded && !force && _errorMessage == null) return;
 
+    final generation = _generation;
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
       final alerts = await _service.fetchAlerts();
+      if (generation != _generation) return;
       _alerts
         ..clear()
         ..addAll(alerts);
     } on ApiException catch (error) {
-      _errorMessage = error.message;
+      if (generation == _generation) _errorMessage = error.message;
     } finally {
-      _isLoading = false;
-      _hasLoaded = true;
-      notifyListeners();
+      if (generation == _generation) {
+        _isLoading = false;
+        _hasLoaded = true;
+        notifyListeners();
+      }
     }
   }
 
@@ -50,42 +55,54 @@ class JobAlertsProvider extends ChangeNotifier {
       return false;
     }
 
-    _isLoading = true;
-    notifyListeners();
-    try {
-      final alert = await _service.createAlert(draft);
-      _alerts.insert(0, alert);
-      return true;
-    } on JobAlertValidationException catch (error) {
-      _errorMessage = error.message;
-      return false;
-    } on ApiException catch (error) {
-      _errorMessage = _messageFor(error);
-      return false;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+    return _save(
+      draft: draft,
+      request: () => _service.createAlert(draft),
+      apply: (alert) => _alerts.insert(0, alert),
+    );
   }
 
   Future<bool> update(String alertId, JobAlertDraft draft) async {
+    return _save(
+      draft: draft,
+      request: () => _service.updateAlert(alertId, draft),
+      apply: (updated) {
+        final index = _alerts.indexWhere((alert) => alert.id == alertId);
+        if (index >= 0) _alerts[index] = updated;
+      },
+    );
+  }
+
+  Future<bool> _save({
+    required JobAlertDraft draft,
+    required Future<JobAlert> Function() request,
+    required ValueChanged<JobAlert> apply,
+  }) async {
     _errorMessage = null;
-    _isLoading = true;
-    notifyListeners();
     try {
-      final updated = await _service.updateAlert(alertId, draft);
-      final index = _alerts.indexWhere((alert) => alert.id == alertId);
-      if (index >= 0) _alerts[index] = updated;
-      return true;
+      draft.validate();
     } on JobAlertValidationException catch (error) {
       _errorMessage = error.message;
+      notifyListeners();
       return false;
+    }
+
+    _isLoading = true;
+    notifyListeners();
+    final generation = _generation;
+    try {
+      final saved = await request();
+      if (generation != _generation) return false;
+      apply(saved);
+      return true;
     } on ApiException catch (error) {
-      _errorMessage = _messageFor(error);
+      if (generation == _generation) _errorMessage = _messageFor(error);
       return false;
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (generation == _generation) {
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -94,15 +111,18 @@ class JobAlertsProvider extends ChangeNotifier {
     if (index < 0) return false;
 
     final removed = _alerts.removeAt(index);
+    final generation = _generation;
     _errorMessage = null;
     notifyListeners();
     try {
       await _service.deleteAlert(alertId);
-      return true;
+      return generation == _generation;
     } on ApiException catch (error) {
-      _alerts.insert(index, removed);
-      _errorMessage = _messageFor(error);
-      notifyListeners();
+      if (generation == _generation) {
+        _alerts.insert(index, removed);
+        _errorMessage = _messageFor(error);
+        notifyListeners();
+      }
       return false;
     }
   }
@@ -121,7 +141,9 @@ class JobAlertsProvider extends ChangeNotifier {
   }
 
   void clear() {
+    _generation++;
     _alerts.clear();
+    _isLoading = false;
     _hasLoaded = false;
     _errorMessage = null;
     notifyListeners();

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/jobs/models/job_alert.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/job_alerts_provider.dart';
@@ -61,6 +63,25 @@ void main() {
     expect(saved, isFalse);
     expect(api.requests, hasLength(1));
     expect(provider.errorMessage, 'En fazla 10 iş alarmı oluşturabilirsiniz.');
+  });
+
+  test('yalnızca ilçe seçiliyse istek gönderilmez', () async {
+    final api = FakeApi(
+      handler: (_) => throw StateError('İstek gönderilmemeliydi'),
+    );
+    final provider = providerWith(api);
+
+    final saved = await provider.create(
+      const JobAlertDraft(name: 'Yakınımdaki işler', districtName: 'Çankaya'),
+    );
+
+    expect(saved, isFalse);
+    expect(api.requests, isEmpty);
+    expect(
+      provider.errorMessage,
+      'İlçe tek başına yeterli değil; kategori, il, tür ya da asgari '
+      'ücretten birini de seçin.',
+    );
   });
 
   test('aktiflik güncellenir ve silinen alarm listeden kalkar', () async {
@@ -145,5 +166,29 @@ void main() {
 
     expect(provider.alerts, isEmpty);
     expect(provider.hasLoaded, isFalse);
+  });
+
+  test('çıkıştan sonra tamamlanan eski istek listeyi geri doldurmaz', () async {
+    final response = Completer<FakeApiResponse>();
+    final api = FakeApi(handler: (_) => response.future);
+    final provider = providerWith(api);
+
+    final load = provider.load();
+    await Future<void>.delayed(Duration.zero);
+    provider.clear();
+    response.complete(
+      FakeApiResponse(
+        statusCode: 200,
+        body: {
+          'success': true,
+          'data': [alertJson(1)],
+        },
+      ),
+    );
+    await load;
+
+    expect(provider.alerts, isEmpty);
+    expect(provider.hasLoaded, isFalse);
+    expect(provider.isLoading, isFalse);
   });
 }

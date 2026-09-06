@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/presentation/providers/job_category_provider.dart';
@@ -8,10 +7,10 @@ import 'package:koala/employee/features/jobs/presentation/pages/job_alert_form_p
 import 'package:koala/employee/features/jobs/presentation/providers/job_alerts_provider.dart';
 import 'package:koala/employee/features/jobs/services/job_alert_service.dart';
 import 'package:koala/product/services/reference_location_service.dart';
-import 'package:koala/product/theme/theme.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../../support/fake_api.dart';
+import '../../../../../support/pump.dart';
 
 void main() {
   testWidgets('düzenleme formu opsiyonel ölçütleri temizleyebilir', (
@@ -62,7 +61,7 @@ void main() {
             'data': {
               'id': 'alert-1',
               'alertName': 'Hafta içi alarmı',
-              'minSalary': 100,
+              'minSalary': 1250.5,
               'active': true,
             },
           },
@@ -76,7 +75,8 @@ void main() {
       code: 'BARISTA',
     );
 
-    await tester.pumpWidget(
+    await pumpInApp(
+      tester,
       MultiProvider(
         providers: [
           ChangeNotifierProvider(
@@ -90,20 +90,17 @@ void main() {
             ),
           ),
         ],
-        child: MaterialApp(
-          theme: lightTheme,
-          home: JobAlertFormPage(
-            alert: const JobAlert(
-              id: 'alert-1',
-              name: 'Hafta içi alarmı',
-              category: category,
-              cityName: 'Ankara',
-              districtName: 'Çankaya',
-              minimumSalary: 100,
-              isActive: true,
-            ),
-            locationService: ReferenceLocationService.withClient(api.client),
+        child: JobAlertFormPage(
+          alert: const JobAlert(
+            id: 'alert-1',
+            name: 'Hafta içi alarmı',
+            category: category,
+            cityName: 'Ankara',
+            districtName: 'Çankaya',
+            minimumSalary: 1250.5,
+            isActive: true,
           ),
+          locationService: ReferenceLocationService.withClient(api.client),
         ),
       ),
     );
@@ -113,6 +110,7 @@ void main() {
     expect(find.text('Barista'), findsOneWidget);
     expect(find.text('Ankara'), findsOneWidget);
     expect(find.text('Çankaya'), findsOneWidget);
+    expect(find.text('1250.5'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Kategori seçimini temizle'));
     await tester.tap(find.byTooltip('İl seçimini temizle'));
@@ -126,5 +124,6 @@ void main() {
     expect(updateRequest.data, containsPair('categoryId', null));
     expect(updateRequest.data, containsPair('cityName', null));
     expect(updateRequest.data, containsPair('districtName', null));
+    expect(updateRequest.data, containsPair('minSalary', 1250.5));
   });
 }

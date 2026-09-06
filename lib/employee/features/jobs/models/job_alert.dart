@@ -101,7 +101,6 @@ class JobAlertDraft {
   }
 
   Map<String, dynamic> toRequestBody() {
-    validate();
     return {
       'alertName': name.trim(),
       'categoryId': category?.id,

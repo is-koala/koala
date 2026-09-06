@@ -3,21 +3,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/job_alerts_page.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/job_alerts_provider.dart';
 import 'package:koala/employee/features/jobs/services/job_alert_service.dart';
-import 'package:koala/product/theme/theme.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../../support/fake_api.dart';
+import '../../../../../support/pump.dart';
 
 Future<void> pumpPage(WidgetTester tester, FakeApi api) async {
   await tester.pumpWidget(const SizedBox.shrink());
-  await tester.pumpWidget(
+  await pumpInApp(
+    tester,
     ChangeNotifierProvider(
       create: (_) =>
           JobAlertsProvider(service: JobAlertService.withClient(api.client)),
-      child: MaterialApp(
-        theme: lightTheme,
-        home: JobAlertsPage(key: UniqueKey()),
-      ),
+      child: JobAlertsPage(key: UniqueKey()),
     ),
   );
   await tester.pumpAndSettle();

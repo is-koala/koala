@@ -4,11 +4,13 @@ import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/presentation/providers/job_category_provider.dart';
 import 'package:koala/employee/features/jobs/models/job_alert.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/job_alerts_provider.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/models/reference_location.dart';
 import 'package:koala/product/services/reference_location_service.dart';
+import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:koala/product/widgets/my_button.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
@@ -26,7 +28,7 @@ class JobAlertFormPage extends StatefulWidget {
   State<JobAlertFormPage> createState() => _JobAlertFormPageState();
 }
 
-class _JobAlertFormPageState extends JobAlertFormPageModel {
+class _JobAlertFormPageState extends JobAlertFormPagemodel {
   @override
   Widget build(BuildContext context) {
     final categories = context.watch<JobCategoryProvider>().categories;
@@ -165,7 +167,7 @@ class _JobAlertFormPageState extends JobAlertFormPageModel {
             : IconButton(
                 tooltip: '$label seçimini temizle',
                 onPressed: onClear,
-                icon: const Icon(Icons.clear),
+                icon: const AppIcon(AppIcons.cancelCircle),
               ),
       ),
       isExpanded: true,

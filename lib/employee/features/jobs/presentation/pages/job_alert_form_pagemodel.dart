@@ -1,6 +1,6 @@
 part of 'job_alert_form_page.dart';
 
-abstract class JobAlertFormPageModel extends State<JobAlertFormPage> {
+abstract class JobAlertFormPagemodel extends State<JobAlertFormPage> {
   late final TextEditingController nameController;
   late final TextEditingController salaryController;
   late final ReferenceLocationService locationService;
@@ -24,7 +24,7 @@ abstract class JobAlertFormPageModel extends State<JobAlertFormPage> {
     final alert = widget.alert;
     nameController = TextEditingController(text: alert?.name);
     salaryController = TextEditingController(
-      text: alert?.minimumSalary?.toStringAsFixed(0) ?? '',
+      text: _formatSalary(alert?.minimumSalary),
     );
     selectedCategory = alert?.category;
     selectedType = alert?.type;
@@ -166,5 +166,12 @@ abstract class JobAlertFormPageModel extends State<JobAlertFormPage> {
     nameController.dispose();
     salaryController.dispose();
     super.dispose();
+  }
+
+  static String _formatSalary(double? value) {
+    if (value == null) return '';
+    return value == value.truncateToDouble()
+        ? value.toStringAsFixed(0)
+        : value.toString();
   }
 }

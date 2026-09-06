@@ -102,28 +102,6 @@ void main() {
     },
   );
 
-  test('yalnızca ilçe seçiliyse istek gönderilmez', () async {
-    final api = FakeApi(
-      handler: (_) => throw StateError('İstek gönderilmemeliydi'),
-    );
-    final service = JobAlertService.withClient(api.client);
-
-    await expectLater(
-      service.createAlert(
-        const JobAlertDraft(name: 'Yakınımdaki işler', districtName: 'Çankaya'),
-      ),
-      throwsA(
-        isA<JobAlertValidationException>().having(
-          (error) => error.message,
-          'message',
-          'İlçe tek başına yeterli değil; kategori, il, tür ya da asgari '
-              'ücretten birini de seçin.',
-        ),
-      ),
-    );
-    expect(api.requests, isEmpty);
-  });
-
   test('alarm güncelleme ve silme kayıt yolunu kullanır', () async {
     final api = FakeApi(
       handler: (request) => request.method == 'PUT'
