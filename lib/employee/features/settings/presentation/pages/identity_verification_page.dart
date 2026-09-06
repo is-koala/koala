@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
+import 'package:koala/employee/features/settings/models/identity_chip_result.dart';
+import 'package:koala/employee/features/settings/models/identity_error.dart';
+import 'package:koala/employee/features/settings/presentation/widgets/identity_chip_card.dart';
 import 'package:koala/employee/features/settings/presentation/widgets/settings_hint.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
@@ -17,14 +20,25 @@ import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
 import 'package:provider/provider.dart';
 
+part 'identity_verification_pagemodel.dart';
+
 /// Kimlik doğrulama formu.
 ///
 /// İlana başvurabilmenin ilk şartı: sunucu doğrulanmamış kullanıcının
-/// başvurusunu `APPLICANT_IDENTITY_NOT_VERIFIED` ile reddediyor. Bilgiler
-/// NVİ'ye soruluyor, o yüzden kimlik kartındakiyle birebir aynı olmalı.
+/// başvurusunu `APPLICANT_IDENTITY_NOT_VERIFIED` ile reddediyor.
 ///
-/// Doğrulama başarılı olduğunda ad ve soyad **kilitleniyor** — hesap bilgileri
-/// ekranı da o noktadan sonra ikisini düzenletmiyor.
+/// Ekranın **iki yolu** var ve ikincisi zorunlu değil:
+///
+/// 1. **Beyan** — beş alan doldurulup gönderiliyor. Sunucudaki
+///    `IDENTITY_PASSIVE_AUTH_ENABLED` bugün `false` olduğu için bu yol tek
+///    başına çalışıyor ve bu sürüm yayına çıktığında hiçbir şey değişmiyor.
+/// 2. **Çip** — kimlik kartının çipi okunup kanıt (`sod`, `dg1`, varsa
+///    `dg11`/`dg15` ve imza) aynı isteğe ekleniyor. NFC'si olmayan telefon,
+///    okunmayan kart ya da vazgeçen kullanıcı birinci yola düşüyor; çip bir
+///    kapı değil.
+///
+/// Doğrulama başarılı olduğunda ad ve soyad **kilitleniyor** — hesap
+/// bilgileri ekranı da o noktadan sonra ikisini düzenletmiyor.
 class IdentityVerificationPage extends StatefulWidget {
   const IdentityVerificationPage({super.key, required this.user});
 
@@ -35,64 +49,15 @@ class IdentityVerificationPage extends StatefulWidget {
       _IdentityVerificationPageState();
 }
 
-class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
-  final UserService _userService = UserService();
-
-  late final TextEditingController _firstName;
-  late final TextEditingController _lastName;
-  late final TextEditingController _tcIdentity;
-  late final TextEditingController _tcDocument;
-
-  DateTime? _birthDate;
-  bool _isSubmitting = false;
-
-  /// TC kimlik numarası tam 11 hane.
-  static const int _tcIdentityLength = 11;
-
-  /// Doğum tarihi seçicinin gidebileceği en eski yıl.
-  static const int _earliestYear = 1920;
-
-  /// Çalışma yaşı alt sınırı; seçici bundan yenisini göstermiyor.
-  static const int _minimumAge = 15;
-
-  @override
-  void initState() {
-    super.initState();
-    // Kayıtta girilen ad ve soyad çoğu kullanıcıda kimliktekiyle aynı;
-    // form boş açılırsa gereksiz yere yeniden yazdırmış oluruz.
-    _firstName = TextEditingController(text: widget.user.firstName);
-    _lastName = TextEditingController(text: widget.user.lastName);
-    _tcIdentity = TextEditingController();
-    _tcDocument = TextEditingController();
-    _birthDate = widget.user.birthDate;
-  }
-
-  @override
-  void dispose() {
-    _firstName.dispose();
-    _lastName.dispose();
-    _tcIdentity.dispose();
-    _tcDocument.dispose();
-    super.dispose();
-  }
-
-  /// Gönderilebilir mi. Sunucunun deseni ayrıca doğruluyor; buradaki kontrol
-  /// kullanıcıyı boşuna bir gidiş dönüşten kurtarıyor.
-  bool get _canSubmit =>
-      _firstName.text.trim().isNotEmpty &&
-      _lastName.text.trim().isNotEmpty &&
-      _tcIdentity.text.trim().length == _tcIdentityLength &&
-      _tcDocument.text.trim().isNotEmpty &&
-      _birthDate != null;
-
+class _IdentityVerificationPageState extends IdentityVerificationPagemodel {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: MyAppbar(title: 'Kimlik Doğrulama'),
       bottomNavigationBar: ButtonNavbar(
-        onPressed: _canSubmit ? _submit : null,
+        onPressed: canSubmit ? submit : null,
         title: 'Doğrula',
-        isLoading: _isSubmitting,
+        isLoading: isSubmitting,
       ),
       body: SingleChildScrollView(
         padding: AppPadding.primaryAll,
@@ -100,36 +65,45 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _intro(),
+            const SizedBox(height: AppSizes.spaceMedium),
+            IdentityChipCard(result: chip, onRead: readChip),
             const SizedBox(height: AppSizes.spaceLarge),
             MyTextfield(
               labelText: 'Ad',
-              controller: _firstName,
+              controller: firstName,
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: AppSizes.spaceMedium),
             MyTextfield(
               labelText: 'Soyad',
-              controller: _lastName,
+              controller: lastName,
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: AppSizes.spaceMedium),
             MyTextfield(
               labelText: 'TC Kimlik No',
-              controller: _tcIdentity,
+              controller: tcIdentity,
               keyboardType: TextInputType.number,
               inputFormatters: [
                 FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(_tcIdentityLength),
+                LengthLimitingTextInputFormatter(
+                  IdentityVerificationPagemodel.tcIdentityLength,
+                ),
               ],
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: AppSizes.spaceMedium),
             MyTextfield(
               labelText: 'Seri No',
-              controller: _tcDocument,
+              controller: tcDocument,
+              enabled: !isLockedByChip,
               onChanged: (_) => setState(() {}),
             ),
-            SettingsHint('Kimlik kartının ön yüzündeki seri numarası.'),
+            SettingsHint(
+              isLockedByChip
+                  ? 'Kartın çipinden okundu, değiştirilemez.'
+                  : 'Kimlik kartının ön yüzündeki seri numarası.',
+            ),
             const SizedBox(height: AppSizes.spaceMedium),
             _birthDateField(),
             const SizedBox(height: AppSizes.navBarClearance),
@@ -150,7 +124,8 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
       child: Text(
         'İşe başvurabilmen ve ücretini alabilmen için kimliğini bir kez '
         'doğrulaman gerekiyor. Bilgiler kimlik kartındakiyle birebir aynı '
-        'olmalı; doğrulandıktan sonra adın ve soyadın değiştirilemez.',
+        'olmalı; doğrulandıktan sonra adın, soyadın ve doğum tarihin '
+        'değiştirilemez.',
         style: context.textTheme.bodyMedium?.copyWith(
           color: context.textSecondary,
           height: _lineHeight,
@@ -163,10 +138,13 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
   static const double _lineHeight = 1.4;
 
   Widget _birthDateField() {
-    final birthDate = _birthDate;
+    final selected = birthDate;
+    // Çip oturumu açıldıysa tarih kanıtlanmış; dokundurmak yalnızca
+    // kanıtla çelişen bir değer üretebilirdi.
+    final onTap = isLockedByChip ? null : pickBirthDate;
 
     return InkWell(
-      onTap: _pickBirthDate,
+      onTap: onTap,
       borderRadius: AppRadius.innerCircular,
       child: Container(
         width: double.infinity,
@@ -185,60 +163,15 @@ class _IdentityVerificationPageState extends State<IdentityVerificationPage> {
             ),
             const Spacer(),
             Text(
-              birthDate == null ? 'Seç' : birthDate.asShortDate,
+              selected == null ? 'Seç' : selected.asShortDate,
               style: context.textTheme.bodyMedium?.copyWith(
-                color: birthDate == null ? context.textTertiary : null,
-                fontWeight: birthDate == null ? null : FontWeight.w600,
+                color: selected == null ? context.textTertiary : null,
+                fontWeight: selected == null ? null : FontWeight.w600,
               ),
             ),
           ],
         ),
       ),
     );
-  }
-
-  Future<void> _pickBirthDate() async {
-    final now = DateTime.now();
-    final latest = DateTime(now.year - _minimumAge, now.month, now.day);
-
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _birthDate ?? latest,
-      firstDate: DateTime(_earliestYear),
-      lastDate: latest,
-    );
-    if (picked == null) return;
-
-    setState(() => _birthDate = picked);
-  }
-
-  Future<void> _submit() async {
-    setState(() => _isSubmitting = true);
-
-    try {
-      await _userService.verifyIdentity(
-        firstName: _firstName.text.trim(),
-        lastName: _lastName.text.trim(),
-        birthDate: _birthDate!,
-        tcIdentityNumber: _tcIdentity.text.trim(),
-        tcDocumentNumber: _tcDocument.text.trim(),
-      );
-
-      if (!mounted) return;
-      // `identityVerified` bayrağı `/users/me`'den okunuyor; başvuru kapısı
-      // da oraya bakıyor, o yüzden kullanıcı tazelenmeden dönülmemeli.
-      await context.read<UserProvider>().load(silent: true);
-
-      if (!mounted) return;
-      AppToast.success(context, 'Kimliğin doğrulandı');
-      context.pop(true);
-    } on ApiException catch (error) {
-      if (!mounted) return;
-      // 400: bilgiler NVİ'de tutmadı. 502: doğrulama servisine ulaşılamadı.
-      // İkisinin de mesajı sunucudan Türkçe geliyor.
-      AppToast.error(context, error.message);
-    } finally {
-      if (mounted) setState(() => _isSubmitting = false);
-    }
   }
 }
