@@ -40,15 +40,42 @@ class JobApplicationService {
     );
   }
 
+  /// Başvuruyu geri çeker.
+  ///
+  /// Uç `JobApplicationDetailDto` döndürüyor, o yüzden `postWithoutData` değil
+  /// `post` + `parse`: dönen kaydın **durumu** sunucunun son sözü ve liste
+  /// yeniden çekilmeden kullanılabiliyor.
+  ///
+  /// ⚠️ Dönen kaydın `job` alanı `ShortJobDto` — yalnızca id ve başlık.
+  /// `MyApplicationDto`'nun taşıdığı ücret, şirket ve kategori burada **yok**,
+  /// bu yüzden çağıran taraf kaydı olduğu gibi listedekinin yerine koymamalı;
+  /// bkz. [ApplyProvider.withdraw].
+  ///
+  /// Sunucu yalnızca `APPLIED` durumundan geçiriyor: başkasının başvurusu
+  /// `404` (`JOB_APPLICATION_NOT_FOUND`), yanıtlanmış ya da zaten geri
+  /// çekilmiş başvuru `409` (`JOB_APPLICATION_NOT_WITHDRAWABLE`).
+  Future<JobApplication> withdraw(String applicationId) {
+    return _apiClient.post<JobApplication>(
+      ApiPaths.withdrawApplication(applicationId),
+      parse: (data) => JobApplication.fromJson(data! as Map<String, dynamic>),
+    );
+  }
+
   /// Kullanıcının başvuruları, yeniden eskiye.
+  ///
+  /// [ApplicationStatus.unknown] bir süzgeç değeri değil, istemcinin
+  /// sentineli: sunucunun enum'unda karşılığı yok ve gönderilseydi `400`
+  /// gelirdi. O yüzden süzgeçsiz çağrı sayılıyor.
   Future<JobApplicationPage> fetchMyApplications({
     ApplicationStatus? status,
     int page = 0,
     int size = 20,
   }) {
+    final filter = status == ApplicationStatus.unknown ? null : status;
+
     return _apiClient.get<JobApplicationPage>(
       ApiPaths.myApplications,
-      queryParameters: {'status': ?status?.code, 'page': page, 'size': size},
+      queryParameters: {'status': ?filter?.code, 'page': page, 'size': size},
       parse: (data) =>
           JobApplicationPage.fromJson(data! as Map<String, dynamic>),
     );

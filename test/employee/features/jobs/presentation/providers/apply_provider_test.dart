@@ -246,11 +246,263 @@ void main() {
   });
 
   group('ApplicationStatus', () {
-    test('tanınmayan durum başvuruldu sayılır', () {
-      expect(ApplicationStatus.fromCode('UZAYLI'), ApplicationStatus.applied);
+    // Tanınmayan kod eskiden `applied`'a düşüyordu: sunucu yeni bir durum
+    // eklediğinde o başvuru "yanıt bekliyor" gibi görünüyor, iki taraf da
+    // sunucunun reddedeceği bir işlemi deniyordu. Var olan bir duruma
+    // benzemek, bilinmediğini söylemekten tehlikeli.
+    test('tanınmayan durum bilinmiyor sayılır', () {
+      expect(ApplicationStatus.fromCode('UZAYLI'), ApplicationStatus.unknown);
       expect(
         ApplicationStatus.fromCode('REJECTED'),
         ApplicationStatus.rejected,
+      );
+      expect(
+        ApplicationStatus.fromCode('WITHDRAWN'),
+        ApplicationStatus.withdrawn,
+      );
+    });
+
+    // Eylem gösterme kararının tek yeri: `applied` dışında hiçbir durum —
+    // bilinmeyen dahil — yanıt bekliyor sayılmıyor.
+    test('yalnızca APPLIED yanıt bekliyor', () {
+      expect(ApplicationStatus.applied.isPending, isTrue);
+      expect(ApplicationStatus.withdrawn.isPending, isFalse);
+      expect(ApplicationStatus.unknown.isPending, isFalse);
+      expect(ApplicationStatus.accepted.isPending, isFalse);
+      expect(ApplicationStatus.rejected.isPending, isFalse);
+    });
+
+    // Sunucunun kuralı: geri çekilmiş olmayan her kayıt yeniden başvurmayı
+    // engelliyor. Bilinmeyen durum da engelliyor — istek atıp `409` yemektense
+    // düğmeyi kapalı tutmak doğru taraf.
+    test('yalnızca geri çekilen kayıt yeniden başvurmaya izin verir', () {
+      expect(ApplicationStatus.withdrawn.blocksReapplication, isFalse);
+      expect(ApplicationStatus.applied.blocksReapplication, isTrue);
+      expect(ApplicationStatus.accepted.blocksReapplication, isTrue);
+      expect(ApplicationStatus.rejected.blocksReapplication, isTrue);
+      expect(ApplicationStatus.unknown.blocksReapplication, isTrue);
+    });
+  });
+
+  // Sunucu geri çekilen ilana yeniden başvuruyu kabul ediyor
+  // (`existsByJobIdAndUserIdAndStatusNot(jobId, userId, WITHDRAWN)`); istemci
+  // saymaya devam ederse o kural uygulamadan erişilemez kalıyordu.
+  group('ApplyProvider.hasApplied', () {
+    Future<ApplyProvider> loadWith(List<Map<String, dynamic>> content) async {
+      final api = FakeApi(
+        handler: (_) => FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {'content': content, 'last': true},
+          },
+        ),
+      );
+      final provider = buildProvider(api);
+      await provider.load();
+      return provider;
+    }
+
+    test('geri çekilen başvuru sayılmaz', () async {
+      final provider = await loadWith([applicationBody(status: 'WITHDRAWN')]);
+
+      expect(provider.hasApplied('job_1'), isFalse);
+    });
+
+    test('aynı ilanda geri çekilenin yanında duran başvuru sayılır', () async {
+      final provider = await loadWith([
+        applicationBody(id: 'app_1', status: 'WITHDRAWN'),
+        applicationBody(id: 'app_2'),
+      ]);
+
+      expect(provider.hasApplied('job_1'), isTrue);
+    });
+
+    test('geri çekilen ilana yeniden başvuru isteği gider', () async {
+      var listed = false;
+      final api = FakeApi(
+        handler: (options) {
+          if (!listed) {
+            listed = true;
+            return FakeApiResponse(
+              statusCode: 200,
+              body: {
+                'success': true,
+                'data': {
+                  'content': [applicationBody(status: 'WITHDRAWN')],
+                  'last': true,
+                },
+              },
+            );
+          }
+          return FakeApiResponse(
+            statusCode: 201,
+            body: {
+              'success': true,
+              'data': applicationBody(id: 'app_2'),
+            },
+          );
+        },
+      );
+      final provider = buildProvider(api);
+      await provider.load();
+
+      final ok = await provider.applyToJob(buildJob(id: 'job_1'));
+
+      expect(ok, isTrue);
+      expect(api.requests.last.path, '/jobs/job_1/applications');
+    });
+  });
+
+  group('ApplyProvider.withdraw', () {
+    /// Önce listeyi doldurur, sonra geri çekme isteğine [onWithdraw] yanıtını
+    /// verir. Geri çekme `409` dönerse provider listeyi tazelediği için
+    /// listeleme yanıtı birden çok kez istenebiliyor.
+    (ApplyProvider, FakeApi) buildWith({
+      required FakeApiResponse onWithdraw,
+      String listedStatus = 'APPLIED',
+    }) {
+      final api = FakeApi(
+        handler: (options) => options.path.endsWith('/withdraw')
+            ? onWithdraw
+            : FakeApiResponse(
+                statusCode: 200,
+                body: {
+                  'success': true,
+                  'data': {
+                    'content': [applicationBody(status: listedStatus)],
+                    'last': true,
+                  },
+                },
+              ),
+      );
+      return (buildProvider(api), api);
+    }
+
+    test('başarılı geri çekmede satır durumu değişir', () async {
+      final (provider, api) = buildWith(
+        onWithdraw: const FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {
+              'id': 'app_1',
+              'status': 'WITHDRAWN',
+              'job': {'id': 'job_1', 'title': 'Deneyimli Barista'},
+            },
+          },
+        ),
+      );
+      await provider.load();
+
+      final ok = await provider.withdraw('app_1');
+
+      expect(ok, isTrue);
+      expect(api.requests.last.path, '/job-applications/app_1/withdraw');
+      expect(provider.applications.single.status, ApplicationStatus.withdrawn);
+      expect(provider.appliedJobs.single.status, MyJobStatus.withdrawn);
+      // Geri çekilen ilana yeniden başvurulabiliyor.
+      expect(provider.hasApplied('job_1'), isFalse);
+    });
+
+    // Uç `ShortJobDto` döndürüyor (yalnızca id ve başlık): dönen kayıt olduğu
+    // gibi listedekinin yerine konsaydı satırın ücreti, şirketi ve özeti
+    // silinirdi. Sunucudan alınan tek şey durum.
+    test('satırın ilan özeti korunur', () async {
+      final (provider, _) = buildWith(
+        onWithdraw: const FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {
+              'id': 'app_1',
+              'status': 'WITHDRAWN',
+              'job': {'id': 'job_1', 'title': 'Deneyimli Barista'},
+            },
+          },
+        ),
+      );
+      await provider.load();
+
+      await provider.withdraw('app_1');
+
+      final job = provider.appliedJobs.single;
+      expect(job.price, 15000);
+      expect(job.company, 'Koala Cafe');
+      expect(job.description, 'Barista');
+    });
+
+    // 409: başvuru araya girip kabul ya da reddedilmiş demektir; ekrandaki
+    // durum bayat, doğrusunu göstermek için liste yeniden çekiliyor.
+    test('409 alınırsa hata taşınır ve liste tazelenir', () async {
+      final (provider, api) = buildWith(
+        onWithdraw: const FakeApiResponse(
+          statusCode: 409,
+          body: {
+            'success': false,
+            'message': 'Bu başvuru geri çekilemez.',
+            'errorCode': 'JOB_APPLICATION_NOT_WITHDRAWABLE',
+          },
+        ),
+      );
+      await provider.load();
+
+      final ok = await provider.withdraw('app_1');
+
+      expect(ok, isFalse);
+      expect(provider.errorCode, 'JOB_APPLICATION_NOT_WITHDRAWABLE');
+      expect(provider.errorMessage, 'Bu başvuru geri çekilemez.');
+      // İlk listeleme + geri çekme + tazeleme.
+      expect(api.requests, hasLength(3));
+      expect(api.requests.last.path, '/users/me/applications');
+    });
+
+    // 404 kaydın olmadığını değil, kullanıcının sahibi olmadığını da
+    // anlatabiliyor; her hâlükârda liste tazelenmiyor, mesaj gösteriliyor.
+    test('404 alınırsa liste tazelenmez', () async {
+      final (provider, api) = buildWith(
+        onWithdraw: const FakeApiResponse(
+          statusCode: 404,
+          body: {
+            'success': false,
+            'message': 'Başvuru bulunamadı.',
+            'errorCode': 'JOB_APPLICATION_NOT_FOUND',
+          },
+        ),
+      );
+      await provider.load();
+
+      final ok = await provider.withdraw('app_1');
+
+      expect(ok, isFalse);
+      expect(provider.errorCode, 'JOB_APPLICATION_NOT_FOUND');
+      expect(api.requests, hasLength(2));
+    });
+
+    test('istek sürerken ikinci geri çekme isteği gitmez', () async {
+      final (provider, api) = buildWith(
+        onWithdraw: const FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {
+              'id': 'app_1',
+              'status': 'WITHDRAWN',
+              'job': {'id': 'job_1', 'title': 'Deneyimli Barista'},
+            },
+          },
+        ),
+      );
+      await provider.load();
+
+      await Future.wait([
+        provider.withdraw('app_1'),
+        provider.withdraw('app_1'),
+      ]);
+
+      expect(
+        api.requests.where((r) => r.path.endsWith('/withdraw')),
+        hasLength(1),
       );
     });
   });
@@ -299,6 +551,28 @@ void main() {
       final job = provider.appliedJobs.single;
       expect(job.status, MyJobStatus.applicationRejected);
       expect(job.subtitle, job.description);
+    });
+
+    // Geri çekilen başvuru "Başvuru Bekliyor" çiziliyordu: kullanıcı kendi
+    // geri çektiği başvuruyu hâlâ değerlendiriliyor sanıyordu.
+    test('geri çekilen başvuru kendi durumunu taşır', () async {
+      final provider = await loadWith([applicationBody(status: 'WITHDRAWN')]);
+
+      final job = provider.appliedJobs.single;
+      expect(job.status, MyJobStatus.withdrawn);
+      expect(job.status.displayName, 'Geri Çektin');
+      // Üzerinde yapılacak bir şey kalmadı; geçmiş bölümünde duruyor.
+      expect(job.isClosed, isTrue);
+    });
+
+    // Bilinmeyen durum satırı listeden düşmüyor — kullanıcının sunucuda bir
+    // kaydı var — ama hiçbir eylem önermiyor.
+    test('tanınmayan durum kendi satırında ve kapalı görünür', () async {
+      final provider = await loadWith([applicationBody(status: 'UZAYLI')]);
+
+      final job = provider.appliedJobs.single;
+      expect(job.status, MyJobStatus.unknown);
+      expect(job.isClosed, isTrue);
     });
 
     // Kabul edilen başvuru artık bir atama; atamalar ayrı uçtan geliyor ve

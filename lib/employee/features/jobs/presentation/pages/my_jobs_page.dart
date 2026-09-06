@@ -22,6 +22,7 @@ import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/empty_state.dart';
 import 'package:koala/product/widgets/app_toast.dart';
+import 'package:koala/product/widgets/confirm_dialog.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:koala/product/widgets/notification_bell.dart';
 import 'package:koala/product/widgets/reason_dialog.dart';
@@ -31,6 +32,9 @@ part 'my_jobs_pagemodel.dart';
 
 /// Atama satırındaki menünün seçenekleri.
 enum _AssignmentAction { cancel, dispute }
+
+/// Başvuru satırındaki menünün seçenekleri.
+enum _ApplicationAction { withdraw }
 
 class MyJobsPage extends StatefulWidget {
   const MyJobsPage({super.key});
@@ -106,14 +110,18 @@ class _MyJobsPageState extends MyJobsPagemodel {
       MyJobStatus.completed,
       extraJobs: appliedJobs,
     );
-    // Geçmiş, kapanmış her işi topluyor: tamamlanan, iptal edilen ve
-    // reddedilen. Üçünde de yapılacak bir şey kalmadı, ayrı bölümler
-    // sayfayı gereksiz uzatırdı.
+    // Geçmiş, kapanmış her işi topluyor: tamamlanan, iptal edilen, reddedilen,
+    // geri çekilen ve durumu tanınmayan. Hepsinde yapılacak bir şey kalmadı,
+    // ayrı bölümler sayfayı gereksiz uzatırdı.
+    //
+    // Hangi durumun kapalı sayıldığına tek yerde karar veriliyor:
+    // [MyJob.isClosed]. Burası eskiden durumları elle sayıyordu ve derleyici
+    // uyarmadığı için yeni bir durum hiçbir bölüme girmeden ekrandan
+    // düşebiliyordu. Atamalar önce: ödeme alınan işler listenin başında
+    // kalsın, kapanmış başvurular altta.
     final closedJobs = [
-      ...jobsByStatus(MyJobStatus.past, extraJobs: appliedJobs),
-      ...jobsByStatus(MyJobStatus.cancelled, extraJobs: appliedJobs),
-      ...jobsByStatus(MyJobStatus.rejected, extraJobs: appliedJobs),
-      ...jobsByStatus(MyJobStatus.applicationRejected, extraJobs: appliedJobs),
+      ...allJobs.where((job) => job.isClosed),
+      ...appliedJobs.where((job) => job.isClosed),
     ];
 
     // Bölümlerin hepsi boşsa sayfa yalnızca başlıktan ibaret kalırdı; kullanıcı
@@ -296,7 +304,11 @@ class _MyJobsPageState extends MyJobsPagemodel {
       child: _jobList(
         jobs: jobs,
         foreground: context.textPrimary,
-        itemBuilder: (job) => _jobTile(job, context.textPrimary),
+        itemBuilder: (job) => _jobTile(
+          job,
+          context.textPrimary,
+          menu: _applicationMenu(job, context.textPrimary),
+        ),
       ),
     );
   }
@@ -622,6 +634,34 @@ class _MyJobsPageState extends MyJobsPagemodel {
             value: _AssignmentAction.dispute,
             child: Text('Sorun Bildir'),
           ),
+      ],
+    );
+  }
+
+  /// Bekleyen başvurunun tek ikincil eylemi: geri çekme.
+  ///
+  /// Menü yalnızca "Başvuru Bekliyor" satırında çıkıyor; sunucu da geri
+  /// çekmeyi yalnızca `APPLIED` durumdan kabul ediyor. Atamadan gelen
+  /// satırlar eleniyor: geri çekme **başvurunun** kimliğini istiyor ve o
+  /// satırlarda [MyJob.id] atamanın kimliği olur.
+  Widget? _applicationMenu(MyJob job, Color foreground) {
+    if (job.status != MyJobStatus.pending || job.assignmentId != null) {
+      return null;
+    }
+
+    return PopupMenuButton<_ApplicationAction>(
+      // Bir başvuru geri çekilirken diğerlerinin menüsü de kapanıyor:
+      // provider tek bir isteği izliyor ve arada ikinci istek gitmiyor.
+      enabled: context.watch<ApplyProvider>().withdrawingId == null,
+      icon: AppIcon(AppIcons.more, color: foreground),
+      onSelected: (action) => switch (action) {
+        _ApplicationAction.withdraw => withdrawApplication(job),
+      },
+      itemBuilder: (_) => const [
+        PopupMenuItem(
+          value: _ApplicationAction.withdraw,
+          child: Text('Başvurumu Geri Çek'),
+        ),
       ],
     );
   }

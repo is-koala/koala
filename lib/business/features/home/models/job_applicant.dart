@@ -50,7 +50,12 @@ class JobApplicant {
   String? get profilePictureUrl => user.profilePictureUrl;
 
   /// Başvurunun hâlâ yanıt bekleyip beklemediği.
-  bool get isPending => status == ApplicationStatus.applied;
+  ///
+  /// Kararı [ApplicationStatus.isPending] veriyor: geri çekilen, yanıtlanan ve
+  /// durumu tanınmayan başvuru bekleyen sayılmıyor, o yüzden kabul/ret
+  /// butonları çizilmiyor. Sunucu da yalnızca `APPLIED` başvuruyu
+  /// yanıtlatıyor; geri çekilmişe basmak `409` demekti.
+  bool get isPending => status.isPending;
 
   factory JobApplicant.fromJson(Map<String, dynamic> json) {
     final applicant = json['applicant'];
