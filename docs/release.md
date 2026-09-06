@@ -9,6 +9,23 @@ repo yalnız doğrulanabilir yapılandırmayı ve gizli değer almayan şablonu 
 `./tool/setup_release_providers.sh` çalıştırılır. Sihirbaz gizli değerleri yerel
 dosyaya yazmadan doğrudan GitHub Actions secret'larına aktarır.
 
+## En düşük işletim sistemi sürümleri
+
+Kimlik kartının çipini okuyan akış tabanı yükseltti; ikisi de mağaza
+listelemesinde kimin kurabileceğini belirliyor:
+
+- **Android `minSdk = 24`** — `flutter_nfc_kit` 3.6.x'in tabanı.
+  `android/app/build.gradle.kts` içinde artık elle sabit; Flutter'ın
+  varsayılanına bırakılırsa SDK yükseldikçe sessizce değişirdi.
+- **iOS `IPHONEOS_DEPLOYMENT_TARGET = 15.5`** (önceki 15.0) —
+  `google_mlkit_text_recognition` ve `google_mlkit_commons` podspec'lerinin
+  tabanı. `ios/Podfile` ile Xcode ayarı aynı değerde tutulmalı; ayrışırlarsa
+  build yalnız bir tarafta kırılıyor.
+
+NFC'si olmayan cihazlar **kapsam dışı değil**: `android.hardware.nfc`
+`required="false"` ile bildiriliyor, yani Play Store uygulamayı o cihazlarda
+gizlemiyor ve kimlik doğrulama beyan formuyla tamamlanabiliyor.
+
 ## Yayın kimliği ve sürümleme
 
 - Production Android kimliği `com.iskoala.koala`, iOS kimliği
@@ -47,7 +64,17 @@ istemci başlık sürümünü tek sınırda doğrular.
 ### iOS
 
 1. Apple Developer'da `com.iskoala.koala` App ID'sini aç, Associated Domains
-   capability'sini etkinleştir ve provisioning profile'ı yeniden üret.
+   **ve Near Field Communication Tag Reading** capability'lerini etkinleştir,
+   ardından provisioning profile'ı yeniden üret. NFC ücretli Developer Program
+   üyeliği ister; özel bir Apple onayı yok ama profil yenilenmeden kimlik
+   doğrulama build'i imzalanamaz.
+
+   > `com.apple.developer.nfc.readersession.formats` → `["TAG"]` iki
+   > entitlements dosyasında da yazılı (`Runner`, `Runner-staging`) ve
+   > profilde bulunmalı. Buna karşılık
+   > `com.apple.developer.nfc.readersession.iso7816.select-identifiers`
+   > adına rağmen bir entitlement **değil**: `Info.plist`'e yazılır ve
+   > profile hiç girmez.
 2. Apple Distribution sertifikası, App Store profile ve en az yetkili App
    Store Connect API anahtarı üret. Private key yalnız CI secret store'da kalır.
 3. App Store Connect'te uygulama kaydını ve TestFlight iç test grubunu aç.

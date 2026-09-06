@@ -2,6 +2,13 @@
     <!-- Uygulama İzinleri -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Kimlik kartının çipi NFC üzerinden okunuyor. -->
+    <uses-permission android:name="android.permission.NFC" />
+    <!-- required="false" KRİTİK: true olsaydı Play Store uygulamayı NFC'si
+         olmayan cihazlarda tümüyle GİZLERDİ. Kimlik doğrulama NFC'siz
+         cihazda da beyanla tamamlanabildiği için uygulamanın o kullanıcılara
+         görünmemesi kabul edilemez. -->
+    <uses-feature android:name="android.hardware.nfc" android:required="false" />
     <application
         android:label="${appLabel}"
         android:usesCleartextTraffic="${usesCleartextTraffic}"

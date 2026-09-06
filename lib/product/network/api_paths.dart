@@ -42,6 +42,17 @@ class ApiPaths {
   static const String currentUserIdentityVerification =
       '/users/me/identity-verification';
 
+  /// Çipe imzalatılacak tek kullanımlık sayı.
+  ///
+  /// **Kart okunmadan önce** alınmalı: imzalanacak şey bu. `sod` ve `dg1`
+  /// bir kart için sabit olduğundan, tekrar gönderimi engelleyen tek şey
+  /// bu sayının çipe imzalatılması.
+  ///
+  /// Sunucu 8 bayt üretip base64 döndürüyor; **tek kullanımlık** ve
+  /// **10 dakika** geçerli (`IdentityChallengeManager`).
+  static const String currentUserIdentityChallenge =
+      '$currentUserIdentityVerification/challenge';
+
   /// Oturum sahibinin takip ettiği şirketler. Sayfalı.
   static const String followedCompanies = '/users/me/followed-companies';
 
