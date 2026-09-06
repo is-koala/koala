@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "195837480054",
+    "project_id": "iskoala-staging",
+    "storage_bucket": "iskoala-staging.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:195837480054:android:ea9fe81b7e63ba9827e357",
+        "android_client_info": {
+          "package_name": "com.iskoala.koala.dev"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDdGW3wzlXbfbAvMM3ma1UKsv-C84A4eSQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:195837480054:android:4d456e6b86d5109427e357",
+        "android_client_info": {
+          "package_name": "com.iskoala.koala.staging"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDdGW3wzlXbfbAvMM3ma1UKsv-C84A4eSQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
