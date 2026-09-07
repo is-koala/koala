@@ -17,6 +17,36 @@ Map<String, dynamic> alertJson(int index, {bool active = true}) => {
 JobAlertsProvider providerWith(FakeApi api) =>
     JobAlertsProvider(service: JobAlertService.withClient(api.client));
 
+/// Sunucunun hata zarfı.
+///
+/// `errorCode` **hiçbir zaman boş gelmiyor**: `ErrorResult:20` boş bırakılanı
+/// kategori adıyla dolduruyor, yani alan doğrulamalarının hepsi tek tip
+/// `VALIDATION_FAILED` taşıyor (`ErrorContractIT:137` bunu sabitliyor).
+/// Kotanın kendi kodu var; alan hatalarını ancak `details` ayırıyor.
+///
+/// `errorCategory` zarfa gerçeğe sadık kalsın diye konuyor; bugünkü
+/// `ApiResponse.fromJson` onu **okumuyor**, yani hiçbir iddia ona dayanmıyor.
+FakeApiResponse errorResponse({
+  required int statusCode,
+  required String message,
+  String? errorCode,
+  List<Map<String, dynamic>>? details,
+}) => FakeApiResponse(
+  statusCode: statusCode,
+  body: {
+    'success': false,
+    'message': message,
+    'errorCode': errorCode,
+    'errorCategory': statusCode == 404
+        ? 'RESOURCE_NOT_FOUND'
+        : 'VALIDATION_FAILED',
+    'details': ?details,
+  },
+);
+
+/// Yerel ön koşulları geçen, sunucuya gerçekten çıkan bir taslak.
+const validDraft = JobAlertDraft(name: 'Ankara garson', cityName: 'Ankara');
+
 void main() {
   test('alarmlar yüklenir ve yeni alarm listenin başına eklenir', () async {
     final api = FakeApi(
@@ -190,5 +220,164 @@ void main() {
     expect(provider.alerts, isEmpty);
     expect(provider.hasLoaded, isFalse);
     expect(provider.isLoading, isFalse);
+  });
+
+  // Bu dört testin tamamı `_messageFor`'un yönlendirmesini sabitliyor.
+  // AGENTS.md: "ApiException.errorCode is what routing keys off, never the
+  // message text."
+  // Bu grubun tamamı `_messageFor`'un yönlendirmesini sabitliyor.
+  // AGENTS.md: "ApiException.errorCode is what routing keys off, never the
+  // message text."
+  group('sunucu hatası doğru mesaja yönleniyor', () {
+    test('kota aşımı ölçüt mesajını değil kendi mesajını gösterir', () async {
+      // Sunucu kotayı `ValidationException` ile döndürüyor
+      // (`JobAlertManager:57`): HTTP **400**, 409 değil. Yani durum kodu ve
+      // `ApiErrorType` bunu ölçüt hatasından ayıramıyor; ayıran `errorCode`.
+      final api = FakeApi(
+        handler: (request) => errorResponse(
+          statusCode: 400,
+          message: 'Daha fazla iş alarmı oluşturamazsınız.',
+          errorCode: 'JOB_ALERT_TOO_MANY',
+        ),
+      );
+      final provider = providerWith(api);
+
+      // Yerel kota koruması listeyi sayıyor; liste boşken istek gerçekten
+      // çıkıyor ve kotayı sunucu söylüyor (başka cihazda alarm açılmış olabilir).
+      expect(provider.canCreate, isTrue);
+      expect(await provider.create(validDraft), isFalse);
+
+      expect(
+        provider.errorMessage,
+        'En fazla ${JobAlertsProvider.maximumAlertCount} iş alarmı oluşturabilirsiniz.',
+      );
+    });
+
+    test('ölçüt eksikliği sunucunun kendi alan metnini gösterir', () async {
+      // Alan doğrulamalarının hepsi `VALIDATION_FAILED` koduna düşüyor
+      // (`ErrorResult:20` boş kodu kategori adıyla dolduruyor), o yüzden kod
+      // bunları ayıramaz; ayıran `details`.
+      final api = FakeApi(
+        handler: (request) => errorResponse(
+          statusCode: 400,
+          message: 'Gönderdiğiniz bilgilerde hata var.',
+          errorCode: 'VALIDATION_FAILED',
+          details: [
+            // Alan adını Hibernate Validator türetiyor: `has` öneki düşüyor,
+            // `hasAtLeastOneCriterion()` → `atLeastOneCriterion`.
+            {
+              'field': 'atLeastOneCriterion',
+              'message': 'En az bir kriter belirtilmelidir.',
+            },
+          ],
+        ),
+      );
+      final provider = providerWith(api);
+
+      expect(await provider.create(validDraft), isFalse);
+
+      expect(provider.errorMessage, 'En az bir kriter belirtilmelidir.');
+    });
+
+    test('boş ad hatası ölçüt mesajına düşmez', () async {
+      // `SaveJobAlertDto:23` `@NotBlank`. Ölçüt hatasıyla aynı durum kodunu ve
+      // aynı `errorCode`'u taşıyor; yalnız `details` farklı.
+      final api = FakeApi(
+        handler: (request) => errorResponse(
+          statusCode: 400,
+          message: 'Gönderdiğiniz bilgilerde hata var.',
+          errorCode: 'VALIDATION_FAILED',
+          details: [
+            {'field': 'alertName', 'message': 'Alarm adı gereklidir.'},
+          ],
+        ),
+      );
+      final provider = providerWith(api);
+
+      expect(await provider.create(validDraft), isFalse);
+
+      expect(provider.errorMessage, 'Alarm adı gereklidir.');
+    });
+
+    test(
+      'ölçütle ilgisi olmayan alan hatası da kendi metnini gösterir',
+      () async {
+        // Ölçüt metnini yedek yapan eski hâl `cityName` gibi bambaşka bir alan
+        // hatasında da "en az bir geçerli ölçüt seçin" yazıyordu.
+        final api = FakeApi(
+          handler: (request) => errorResponse(
+            statusCode: 400,
+            message: 'Gönderdiğiniz bilgilerde hata var.',
+            errorCode: 'VALIDATION_FAILED',
+            details: [
+              {
+                'field': 'cityName',
+                'message': 'Şehir adı en fazla 255 karakter olabilir.',
+              },
+            ],
+          ),
+        );
+        final provider = providerWith(api);
+
+        expect(await provider.create(validDraft), isFalse);
+
+        expect(
+          provider.errorMessage,
+          'Şehir adı en fazla 255 karakter olabilir.',
+        );
+      },
+    );
+
+    test('silinmiş alarm, sunucunun kendi 404 metnine düşmüyor', () async {
+      // `JobAlertManager:160`. Bu dal eski `ApiErrorType.notFound` dalının
+      // yerini aldı; sabiti yanlış yazmak testlerden kaçmamalı.
+      final api = FakeApi(
+        handler: (request) => request.method == 'GET'
+            ? FakeApiResponse(
+                statusCode: 200,
+                body: {
+                  'success': true,
+                  'data': [alertJson(1)],
+                },
+              )
+            : errorResponse(
+                statusCode: 404,
+                message: 'İş alarmı bulunamadı.',
+                errorCode: 'JOB_ALERT_NOT_FOUND',
+              ),
+      );
+      final provider = providerWith(api);
+      await provider.load();
+
+      expect(await provider.delete('alert-1'), isFalse);
+
+      // Sunucunun kendi metni yalnız "İş alarmı bulunamadı." — ne yapılacağını
+      // söylemiyor. Yedeğe düşülseydi bu görünürdü.
+      expect(
+        provider.errorMessage,
+        'İş alarmı bulunamadı. Listeyi yenileyip tekrar deneyin.',
+      );
+      expect(provider.alerts.single.id, 'alert-1');
+    });
+
+    test('kategori bulunamadı, alarm bulunamadı sanılmıyor', () async {
+      // `JobAlertManager:177` kategoriyi `JobCategoryManager:59` ile çözüyor:
+      // aynı 404, ama kullanıcıya "listeyi yenile" demek yanlış yönlendirme.
+      final api = FakeApi(
+        handler: (request) => errorResponse(
+          statusCode: 404,
+          message: 'Kategori bulunamadı.',
+          errorCode: 'JOB_ALERT_CATEGORY_NOT_FOUND',
+        ),
+      );
+      final provider = providerWith(api);
+
+      expect(await provider.create(validDraft), isFalse);
+
+      expect(
+        provider.errorMessage,
+        'Seçtiğiniz kategori artık yok. Ölçütleri güncelleyip tekrar deneyin.',
+      );
+    });
   });
 }
