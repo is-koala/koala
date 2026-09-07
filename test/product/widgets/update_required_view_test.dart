@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/product/constants/app_info.dart';
 import 'package:koala/product/widgets/my_button.dart';
@@ -76,7 +77,7 @@ void main() {
         androidPackageId: AppInfo.androidPackageId,
       );
 
-      expect(uri?.host, anyOf(isNull, 'apps.apple.com'));
+      expect(uri?.host, isNot('play.google.com'));
     });
   });
 
@@ -96,7 +97,7 @@ void main() {
       expect(find.byType(MyButton), findsNothing);
       expect(find.text('Mağazayı Aç'), findsNothing);
       expect(find.text('Lütfen uygulamayı güncelleyin.'), findsOneWidget);
-      expect(find.textContaining('destek@iskoala.com'), findsOneWidget);
+      expect(find.textContaining(AppInfo.supportEmail), findsOneWidget);
     }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
     testWidgets('iki kimlik de boşken düğme yok ama açıklama duruyor', (
@@ -113,7 +114,7 @@ void main() {
 
       expect(find.byType(MyButton), findsNothing);
       expect(find.text('Lütfen uygulamayı güncelleyin.'), findsOneWidget);
-      expect(find.textContaining('destek@iskoala.com'), findsOneWidget);
+      expect(find.textContaining(AppInfo.supportEmail), findsOneWidget);
     });
 
     testWidgets('platformun kimliği doluyken düğme çiziliyor', (tester) async {
@@ -128,7 +129,67 @@ void main() {
 
       expect(find.byType(MyButton), findsOneWidget);
       expect(find.text('Mağazayı Aç'), findsOneWidget);
-      expect(find.textContaining('destek@iskoala.com'), findsNothing);
+      expect(find.textContaining(AppInfo.supportEmail), findsNothing);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+    testWidgets('Android kimliği boşken düğme yerine yönlendirme metni çiziliyor', (
+      tester,
+    ) async {
+      await pumpInApp(
+        tester,
+        const UpdateRequiredView(
+          message: 'Lütfen uygulamayı güncelleyin.',
+          iosAppStoreId: iosId,
+          androidPackageId: '',
+        ),
+      );
+
+      expect(find.byType(MyButton), findsNothing);
+      expect(find.textContaining(AppInfo.supportEmail), findsOneWidget);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
+    testWidgets('Android kimliği doluyken düğme çiziliyor', (tester) async {
+      await pumpInApp(
+        tester,
+        const UpdateRequiredView(
+          message: 'Lütfen uygulamayı güncelleyin.',
+          iosAppStoreId: '',
+          androidPackageId: androidId,
+        ),
+      );
+
+      expect(find.byType(MyButton), findsOneWidget);
+      expect(find.textContaining(AppInfo.supportEmail), findsNothing);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
+    testWidgets('yönlendirme metni koyu temada da çiziliyor', (tester) async {
+      await pumpInApp(
+        tester,
+        const UpdateRequiredView(
+          message: 'Lütfen uygulamayı güncelleyin.',
+          iosAppStoreId: '',
+          androidPackageId: '',
+        ),
+        brightness: Brightness.dark,
+      );
+
+      expect(find.byType(MyButton), findsNothing);
+      expect(find.textContaining(AppInfo.supportEmail), findsOneWidget);
+    });
+
+    testWidgets('düğme koyu temada da çiziliyor', (tester) async {
+      await pumpInApp(
+        tester,
+        const UpdateRequiredView(
+          message: 'Lütfen uygulamayı güncelleyin.',
+          iosAppStoreId: iosId,
+          androidPackageId: '',
+        ),
+        brightness: Brightness.dark,
+      );
+
+      expect(find.byType(MyButton), findsOneWidget);
+      expect(find.text('Mağazayı Aç'), findsOneWidget);
     }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
   });
 }

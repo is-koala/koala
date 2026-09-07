@@ -41,7 +41,7 @@ class UpdateRequiredView extends StatelessWidget {
   /// olmaması tek başına "peki ne yapayım" sorusunu cevaplamıyor.
   static const String _noStoreGuidance =
       'Bu cihaz için mağaza bağlantımız henüz yok. Uygulamayı kurduğun '
-      'yerden güncelleyebilir, sorun sürerse destek@iskoala.com adresine '
+      'yerden güncelleyebilir, sorun sürerse ${AppInfo.supportEmail} adresine '
       'yazabilirsin.';
 
   /// Verilen platformun mağaza adresi; o platformun kimliği boşsa `null`.

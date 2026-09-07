@@ -2,6 +2,11 @@
 class AppInfo {
   const AppInfo._();
 
+  /// Kullanıcının bir yere sıkıştığında yazacağı adres. İki ekran kullanıyor:
+  /// sürüm kapısı mağaza bağlantısı bilinmediğinde, ve çip doğrulaması
+  /// sorunu sürdüğünde.
+  static const String supportEmail = 'destek@iskoala.com';
+
   /// İstemci sürümü; her istekte `X-App-Version` başlığıyla gidiyor.
   ///
   /// Sunucudaki `MinimumAppVersionFilter` bunu ayarlardaki en düşük sürümle
