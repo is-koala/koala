@@ -71,19 +71,31 @@ MapExploreController _controller(
   );
 }
 
-/// Debounce zamanlayıcısı ve ağ çağrısı bitene kadar olay kuyruğunu boşaltır.
-Future<void> settle([Duration wait = Duration.zero]) async {
-  if (wait > Duration.zero) await Future<void>.delayed(wait);
-  await pumpEventQueue(times: 50);
+/// Debounce zamanlayıcısını **sahte saatte** ilerletir ve yanıtın controller'a
+/// dönmesi için mikro-görev turlarını boşaltır.
+///
+/// Eskiden burada gerçek `Future.delayed` vardı: 60 ms'lik debounce'a 120 ms
+/// pay biçiliyordu. Pay bir eşitleme noktası değil, tahmin — yüklü bir makinede
+/// sessizce yetmiyor ve üretim kodu doğruyken test kırmızıya dönüyor
+/// (is-koala/koala#88). `tester.pump(Duration)` zamanlayıcıyı duvar saatinden
+/// bağımsız ilerletiyor; liste tarafındaki testler baştan bunu yapıyordu.
+Future<void> settle(
+  WidgetTester tester, [
+  Duration wait = Duration.zero,
+]) async {
+  await tester.pump(wait);
+  await tester.pump();
 }
 
 void main() {
-  test('görünen alan dört sınırlayıcı kutu parametresiyle gidiyor', () async {
+  testWidgets('görünen alan dört sınırlayıcı kutu parametresiyle gidiyor', (
+    tester,
+  ) async {
     final api = _api();
     final controller = _controller(api);
 
     controller.onCameraIdle(_wide);
-    await settle();
+    await settle(tester);
 
     final query = api.requests.single.queryParameters;
     expect(query['minLatitude'], 39.0);
@@ -93,19 +105,22 @@ void main() {
     controller.dispose();
   });
 
-  test('harita sayfa boyutu sunucunun üst sınırına çıkıyor', () async {
+  testWidgets('harita sayfa boyutu sunucunun üst sınırına çıkıyor', (
+    tester,
+  ) async {
     final api = _api();
     final controller = _controller(api);
 
     controller.onCameraIdle(_wide);
-    await settle();
+    await settle(tester);
 
     expect(api.requests.single.queryParameters['size'], 100);
-    expect(MapExploreController.mapPageSize, 100);
     controller.dispose();
   });
 
-  test('art arda gelen kamera olayları tek istek üretiyor', () async {
+  testWidgets('art arda gelen kamera olayları tek istek üretiyor', (
+    tester,
+  ) async {
     final api = _api();
     final controller = _controller(
       api,
@@ -121,81 +136,87 @@ void main() {
           maxLongitude: 34.0 + i,
         ),
       );
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+      await tester.pump(const Duration(milliseconds: 10));
     }
 
-    await settle(const Duration(milliseconds: 120));
+    await settle(tester, const Duration(milliseconds: 120));
 
     expect(api.requests.length, 1);
     controller.dispose();
   });
 
-  test('kırpılmamış sonuçtan sonra içeriye yaklaşmak istek atmıyor', () async {
+  testWidgets('kırpılmamış sonuçtan sonra içeriye yaklaşmak istek atmıyor', (
+    tester,
+  ) async {
     final api = _api(last: true);
     final controller = _controller(api);
 
     controller.onCameraIdle(_wide);
-    await settle();
+    await settle(tester);
     expect(api.requests.length, 1);
 
     controller.onCameraIdle(_inside);
-    await settle();
+    await settle(tester);
 
     expect(api.requests.length, 1);
     controller.dispose();
   });
 
-  test('kırpılmış sonuçtan sonra içeriye yaklaşmak istek atıyor', () async {
+  testWidgets('kırpılmış sonuçtan sonra içeriye yaklaşmak istek atıyor', (
+    tester,
+  ) async {
     final api = _api(last: false);
     final controller = _controller(api);
 
     controller.onCameraIdle(_wide);
-    await settle();
+    await settle(tester);
 
     controller.onCameraIdle(_inside);
-    await settle();
+    await settle(tester);
 
     expect(api.requests.length, 2);
     controller.dispose();
   });
 
-  test('dışarı kayan görünen alan istek atıyor', () async {
+  testWidgets('dışarı kayan görünen alan istek atıyor', (tester) async {
     final api = _api();
     final controller = _controller(api);
 
     controller.onCameraIdle(_wide);
-    await settle();
+    await settle(tester);
 
     controller.onCameraIdle(_elsewhere);
-    await settle();
+    await settle(tester);
 
     expect(api.requests.length, 2);
     controller.dispose();
   });
 
-  test('kırpılma bayrağı `last: false` ile açılıyor', () async {
+  testWidgets('kırpılma bayrağı `last: false` ile açılıyor', (tester) async {
     final api = _api(last: false);
     final controller = _controller(api);
 
     controller.onCameraIdle(_wide);
-    await settle();
+    await settle(tester);
 
     expect(controller.isTruncated, isTrue);
     controller.dispose();
   });
 
-  test('kırpılmayan sonuçta bayrak kapalı', () async {
+  testWidgets('kırpılmayan sonuçta bayrak kapalı', (tester) async {
     final api = _api(last: true);
     final controller = _controller(api);
 
     controller.onCameraIdle(_wide);
-    await settle();
+    await settle(tester);
 
     expect(controller.isTruncated, isFalse);
     controller.dispose();
   });
 
-  test('geç dönen eski yanıt yeni sonucun üzerine yazmıyor', () async {
+  testWidgets('geç dönen eski yanıt yeni sonucun üzerine yazmıyor', (
+    tester,
+  ) async {
     final first = Completer<FakeApiResponse>();
     final second = Completer<FakeApiResponse>();
     var call = 0;
@@ -209,34 +230,36 @@ void main() {
     final controller = _controller(api);
 
     controller.onCameraIdle(_wide);
-    await settle();
+    await settle(tester);
     controller.onCameraIdle(_elsewhere);
-    await settle();
+    await settle(tester);
     expect(call, 2);
 
     // İkinci yanıt önce dönüyor, birincisi sonra: eski yanıt kazanmamalı.
     second.complete(
       FakeApiResponse(statusCode: 200, body: _body(['yeni'], last: true)),
     );
-    await settle();
+    await settle(tester);
     first.complete(
       FakeApiResponse(statusCode: 200, body: _body(['eski'], last: true)),
     );
-    await settle();
+    await settle(tester);
 
     expect(controller.jobs.map((job) => job.id), ['yeni']);
     controller.dispose();
   });
 
-  test('arama metni mevcut kutuyla birlikte sunucuya gidiyor', () async {
+  testWidgets('arama metni mevcut kutuyla birlikte sunucuya gidiyor', (
+    tester,
+  ) async {
     final api = _api();
     final controller = _controller(api);
 
     controller.onCameraIdle(_wide);
-    await settle();
+    await settle(tester);
 
     controller.setSearchText('garson');
-    await settle();
+    await settle(tester);
 
     final query = api.requests.last.queryParameters;
     expect(query['query'], 'garson');
@@ -244,24 +267,24 @@ void main() {
     controller.dispose();
   });
 
-  test('aynı arama metni yeniden istek doğurmuyor', () async {
+  testWidgets('aynı arama metni yeniden istek doğurmuyor', (tester) async {
     final api = _api();
     final controller = _controller(api);
 
     controller.onCameraIdle(_wide);
-    await settle();
+    await settle(tester);
     controller.setSearchText('garson');
-    await settle();
+    await settle(tester);
     final count = api.requests.length;
 
     controller.setSearchText('garson');
-    await settle();
+    await settle(tester);
 
     expect(api.requests.length, count);
     controller.dispose();
   });
 
-  test('hata mesajı doluyor, eldeki pinler silinmiyor', () async {
+  testWidgets('hata mesajı doluyor, eldeki pinler silinmiyor', (tester) async {
     var call = 0;
     final api = FakeApi(
       handler: (_) {
@@ -281,9 +304,9 @@ void main() {
     final controller = _controller(api);
 
     controller.onCameraIdle(_wide);
-    await settle();
+    await settle(tester);
     controller.onCameraIdle(_elsewhere);
-    await settle();
+    await settle(tester);
 
     expect(controller.errorMessage, 'Sunucu hatası');
     expect(controller.jobs.map((job) => job.id), ['a']);
@@ -291,7 +314,9 @@ void main() {
     controller.dispose();
   });
 
-  test('dispose sonrası bekleyen zamanlayıcı istek atmıyor', () async {
+  testWidgets('dispose sonrası bekleyen zamanlayıcı istek atmıyor', (
+    tester,
+  ) async {
     final api = _api();
     final controller = _controller(
       api,
@@ -300,7 +325,7 @@ void main() {
 
     controller.onCameraIdle(_wide);
     controller.dispose();
-    await settle(const Duration(milliseconds: 120));
+    await settle(tester, const Duration(milliseconds: 120));
 
     expect(api.requests, isEmpty);
   });
