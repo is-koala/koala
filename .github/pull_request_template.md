@@ -27,6 +27,6 @@ CONTRIBUTING.md'deki kurallara göre:
 - [ ] Zemin/metin/ayraç renkleri `context` erişimcilerinden alınmış; `AppColors` yalnızca marka ve durum renkleri için kullanılmış
 - [ ] `TextStyle` içinde `fontFamily` tekrarı yok; ölçek `context.textTheme`'den geliyor
 - [ ] Hard-coded padding, radius, boyut ve asset yolu yok; `product/constants` kullanılıyor
-- [ ] Yeni ikonlar `hugeicons`'tan
+- [ ] Yeni ikonlar `AppIcons` kataloğundan, `AppIcon` ile çiziliyor
 - [ ] Değişiklik hem açık hem koyu temada kontrol edilmiş
 - [ ] CI yeşil (format + analiz)
