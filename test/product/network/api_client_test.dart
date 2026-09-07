@@ -195,7 +195,7 @@ void main() {
         ),
       );
 
-      expect(error.type, ApiErrorType.conflict);
+      expect(error.type, ApiErrorType.dataConflict);
       expect(error.statusCode, 409);
       expect(error.message, 'Galeri sınırı aşıldı.');
       expect(error.errorCode, 'GALLERY_LIMIT_EXCEEDED');
@@ -230,7 +230,7 @@ void main() {
       expect(error.messageForField('password'), isNull);
     });
 
-    test('401 yanıtı unauthorized olur', () async {
+    test('401 yanıtı unauthenticated olur', () async {
       final api = FakeApi(
         handler: (_) => const FakeApiResponse(
           statusCode: 401,
@@ -242,7 +242,7 @@ void main() {
         () => api.client.postWithoutData('/users/me'),
       );
 
-      expect(error.type, ApiErrorType.unauthorized);
+      expect(error.type, ApiErrorType.unauthenticated);
       expect(error.message, 'Oturum bulunamadı');
     });
 

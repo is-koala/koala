@@ -317,7 +317,7 @@ class ApiClient {
 
         throw ApiException(
           message: envelope.message ?? 'İşlem tamamlanamadı.',
-          type: _typeForStatus(response.statusCode),
+          type: _typeFor(envelope, response.statusCode),
           statusCode: response.statusCode,
           errorCode: envelope.errorCode,
           fieldErrors: envelope.fieldErrors,
@@ -398,7 +398,7 @@ class ApiClient {
 
     final envelope = ApiResponse.fromJson<void>(body);
 
-    final type = _typeForStatus(statusCode);
+    final type = _typeFor(envelope, statusCode);
 
     // Sürüm kapısı her uçtan gelebiliyor; çağıranın karşılamasını beklemek
     // yerine burada bir kez yakalanıyor.
@@ -415,14 +415,34 @@ class ApiClient {
     );
   }
 
+  /// Hata tipini belirler: **önce zarftaki `errorCategory`**, o yoksa ya da
+  /// tanınmıyorsa durum kodu.
+  ///
+  /// Sıra bu yönde, çünkü durum kodu bilgi kaybediyor: sunucu `401` altında
+  /// üç, `409` altında iki ayrı kategori döndürüyor ve bunlar kullanıcıdan
+  /// farklı şeyler istiyor (is-koala/koala#82).
+  ///
+  /// Kategori tanınmadığında **istisna atılmıyor**: küme kapalı ama
+  /// büyüyebilir; sunucunun eklediği yeni bir değer uygulamayı düşürmemeli,
+  /// bugünkü durum kodu davranışına düşmeli.
+  ApiErrorType _typeFor(ApiResponse<void> envelope, int? statusCode) {
+    return ApiErrorType.fromCategory(envelope.errorCategory) ??
+        _typeForStatus(statusCode);
+  }
+
+  /// Kategori gelmediğinde çalışan yedek.
+  ///
+  /// Eski sunucu, zarfı elle yazan filtreler ve gövdesi JSON olmayan yanıtlar
+  /// için tek bilgi kaynağı bu. Ürettiği tipler kategori eşlemesiyle uyumlu:
+  /// `409` [ApiErrorType.dataConflict] veriyor, çünkü bugün sunucudan gelen
+  /// her `409` `ConflictException`, yani `DATA_CONFLICT`.
   ApiErrorType _typeForStatus(int? statusCode) {
     if (statusCode == null) return ApiErrorType.unknown;
     if (statusCode == 400 || statusCode == 422) return ApiErrorType.validation;
-    if (statusCode == 401 || statusCode == 403) {
-      return ApiErrorType.unauthorized;
-    }
+    if (statusCode == 401) return ApiErrorType.unauthenticated;
+    if (statusCode == 403) return ApiErrorType.forbidden;
     if (statusCode == 404) return ApiErrorType.notFound;
-    if (statusCode == 409) return ApiErrorType.conflict;
+    if (statusCode == 409) return ApiErrorType.dataConflict;
     if (statusCode == 429) return ApiErrorType.tooManyRequests;
     if (statusCode == 426) return ApiErrorType.upgradeRequired;
     if (statusCode >= 500) return ApiErrorType.server;

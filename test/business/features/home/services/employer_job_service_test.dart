@@ -161,7 +161,7 @@ void main() {
       EmployerJobService.withClient(api.client).cancelJob('job_1'),
       throwsA(
         isA<ApiException>()
-            .having((e) => e.type, 'type', ApiErrorType.conflict)
+            .having((e) => e.type, 'type', ApiErrorType.dataConflict)
             .having(
               (e) => e.message,
               'message',
@@ -425,7 +425,7 @@ void main() {
           isA<ApiException>().having(
             (error) => error.type,
             'type',
-            ApiErrorType.conflict,
+            ApiErrorType.dataConflict,
           ),
         ),
       );

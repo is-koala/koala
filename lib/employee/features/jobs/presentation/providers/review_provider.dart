@@ -70,7 +70,11 @@ class ReviewProvider extends ChangeNotifier {
       return true;
     } on ApiException catch (error) {
       _errorMessage = error.message;
-      if (error.type == ApiErrorType.conflict) {
+      // Yalnızca `dataConflict`: "bu atama zaten değerlendirilmiş" sunucudan
+      // `ConflictException` ile geliyor. `businessRule` bir iş kuralı ihlali
+      // (ör. sunucunun kendi tutarsızlığı) demek; onu da "değerlendirildi"
+      // sayarsak kullanıcı bir daha hiç değerlendiremez.
+      if (error.type == ApiErrorType.dataConflict) {
         await _markReviewed(assignmentId);
       }
       return false;

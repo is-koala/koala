@@ -184,7 +184,22 @@ Cold-start links can arrive before `SplashPage` finishes loading the session. `A
 
 **All runtime data services are wired to the real backend.** Fakes live only in tests; production pages must not invent sessions or domain data locally.
 
-The API is a Spring Boot service in the private `is-koala/koala-backend` repository: layered `webAPI → business → dataAccess`, Postgres + Liquibase, RabbitMQ for mail/SMS/push, S3-compatible storage for files, and Iyzico for payments. Every response comes wrapped in the same envelope — `{success, message, httpStatus, path, timeStamp, requestId, data}` — and errors add `errorCode` plus a `details` array of field errors. Messages are localized; the app sends `Accept-Language: tr`.
+The API is a Spring Boot service in the private `is-koala/koala-backend` repository: layered `webAPI → business → dataAccess`, Postgres + Liquibase, RabbitMQ for mail/SMS/push, S3-compatible storage for files, and Iyzico for payments. Every response comes wrapped in the same envelope — `{success, message, httpStatus, path, timeStamp, requestId, data}`. Messages are localized; the app sends `Accept-Language: tr`.
+
+**The base envelope keeps its nulls; the error envelope drops them.** `Result` and `DataResult` carry **no** `@JsonInclude`, so a success response spells out `"data": null` and `"message": null` rather than omitting the fields — a `SuccessResult` endpoint still sends a `data` key. `ErrorResult` is annotated `@JsonInclude(NON_NULL)`, so on the error side every field below can simply be **absent**. Treat a missing one as "not sent", never as a malformed response.
+
+An error adds **five** fields on top of the base envelope, and **all five are conditional**:
+
+| Field | When it appears |
+|---|---|
+| `errorCode` | Always in practice — `ErrorResult` falls back to `errorCategory.name()` when the exception carries no code of its own. It is close to free text (a `KoalaException` derives it from the message key: `{jwt.expired}` → `JWT_EXPIRED`), so it identifies *this* error, not its class. |
+| `errorCategory` | Whenever the response comes from `GlobalExceptionHandler` or `MinimumAppVersionFilter`. A closed set of 17 values (`ErrorCategory.java`) — **this is the field to `switch` on.** |
+| `resource` / `resourceId` | Only when `RequestResourceResolver` can name the record the request was about; both are null on endpoints that address no single record. |
+| `details` | Only on field-level validation errors; `withDetails` stores `null` for an empty list, so an error with no field errors omits the key rather than sending `[]`. |
+
+**`ApiErrorType` is derived from `errorCategory`, and the HTTP status code is only the fallback** (`ApiErrorType.fromCategory`, then `ApiClient._typeForStatus`). The status code loses information the app needs: the server distinguishes `AUTHENTICATION_REQUIRED` / `INVALID_CREDENTIALS` / `TOKEN_EXPIRED` from `ACCESS_DENIED`, and `BUSINESS_RULE_VIOLATION` from `DATA_CONFLICT`, while `401`/`403` and `409` collapse each pair into one type (is-koala/koala#82). The first split is the one users feel — a dead session sends them back to the login screen, a permission refusal must not.
+
+> ⚠️ **The category set is closed but it can grow.** `fromCategory` returns `null` for a value it does not know, and the client falls back to the status code — it must never throw, or a server-side enum addition would crash the app. `test/product/network/api_client_error_category_test.dart` pins all 17 values plus the unknown-value path.
 
 **The network layer lives in `lib/product/network/`** and is shared by both apps:
 
@@ -193,7 +208,7 @@ The API is a Spring Boot service in the private `is-koala/koala-backend` reposit
 | `api_config.dart` | Flavor, base URL, app-link scheme and timeouts. Both `--flavor` and `--dart-define=API_BASE_URL=...` are mandatory; an invalid or missing environment fails closed before networking starts. |
 | `api_paths.dart` | Endpoint paths, plus the set of paths that need no token. |
 | `api_client.dart` | The only place `dio` is touched: unwraps the envelope, turns `DioException` into `ApiException`. `putFile` is the multipart upload path — it builds the `FormData` and forces the content type, because the base options say `application/json`. |
-| `api_exception.dart` | `ApiException` / `ApiErrorType` — the single error type services and pages see. |
+| `api_exception.dart` | `ApiException` / `ApiErrorType` — the single error type services and pages see. `ApiErrorType.fromCategory` owns the `errorCategory` → type mapping; `isConflict` is there for callers that mean "the server state moved" regardless of which of the two conflict categories arrived. |
 | `auth_interceptor.dart` | Attaches the bearer token, refreshes once on a 401 and retries. |
 | `token_storage.dart` | Access/refresh tokens in Keychain/Keystore (`flutter_secure_storage`). |
 | `session_manager.dart` | Opens and closes the session: tokens plus the `is_logged_in` / `user_type` flags the router reads. |

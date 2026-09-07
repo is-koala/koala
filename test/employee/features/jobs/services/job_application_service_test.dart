@@ -151,7 +151,7 @@ void main() {
         JobApplicationService.withClient(api.client).withdraw('app_1'),
         throwsA(
           isA<ApiException>()
-              .having((e) => e.type, 'type', ApiErrorType.conflict)
+              .having((e) => e.type, 'type', ApiErrorType.dataConflict)
               .having(
                 (e) => e.errorCode,
                 'errorCode',

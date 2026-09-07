@@ -99,7 +99,7 @@ void main() {
           isA<ApiException>().having(
             (error) => error.type,
             'type',
-            ApiErrorType.conflict,
+            ApiErrorType.dataConflict,
           ),
         ),
       );

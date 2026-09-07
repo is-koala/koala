@@ -457,6 +457,29 @@ void main() {
       expect(api.requests.last.path, '/users/me/applications');
     });
 
+    // İki çakışma kategorisi de ekrandaki listeyi bayat yapıyor; tazeleme
+    // yalnız birine bağlanırsa diğerinde kullanıcı yanlış durumu görmeye
+    // devam eder.
+    for (final category in ['DATA_CONFLICT', 'BUSINESS_RULE_VIOLATION']) {
+      test('$category alınırsa liste yine tazeleniyor', () async {
+        final (provider, api) = buildWith(
+          onWithdraw: FakeApiResponse(
+            statusCode: 409,
+            body: {
+              'success': false,
+              'message': 'Bu başvuru geri çekilemez.',
+              'errorCategory': category,
+            },
+          ),
+        );
+        await provider.load();
+
+        expect(await provider.withdraw('app_1'), isFalse);
+        expect(api.requests, hasLength(3));
+        expect(api.requests.last.path, '/users/me/applications');
+      });
+    }
+
     // 404 kaydın olmadığını değil, kullanıcının sahibi olmadığını da
     // anlatabiliyor; her hâlükârda liste tazelenmiyor, mesaj gösteriliyor.
     test('404 alınırsa liste tazelenmez', () async {

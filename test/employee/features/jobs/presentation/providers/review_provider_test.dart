@@ -63,6 +63,54 @@ void main() {
       expect(provider.errorMessage, isNotNull);
     });
 
+    // `409` artık iki kategoriye ayrılıyor ve bu yol yalnızca birine ait.
+    // "Zaten değerlendirilmiş" sunucudan `ConflictException` ile, yani
+    // `DATA_CONFLICT` olarak geliyor.
+    test('DATA_CONFLICT atamayı işaretler', () async {
+      final provider = providerWith(
+        FakeApi(
+          handler: (_) => const FakeApiResponse(
+            statusCode: 409,
+            body: {
+              'success': false,
+              'message': 'Bu iş zaten değerlendirilmiş',
+              'errorCategory': 'DATA_CONFLICT',
+            },
+          ),
+        ),
+      );
+
+      await provider.submitReview(assignmentId: 'asg_1', rating: 5);
+
+      expect(provider.hasReviewed('asg_1'), isTrue);
+    });
+
+    // İş kuralı ihlali "değerlendirme yazıldı" demek değil; öyle sayılırsa
+    // kullanıcı o atamayı bir daha hiç değerlendiremez.
+    test('BUSINESS_RULE_VIOLATION atamayı işaretlemez', () async {
+      final provider = providerWith(
+        FakeApi(
+          handler: (_) => const FakeApiResponse(
+            statusCode: 409,
+            body: {
+              'success': false,
+              'message': 'İş henüz tamamlanmadı',
+              'errorCategory': 'BUSINESS_RULE_VIOLATION',
+            },
+          ),
+        ),
+      );
+
+      final sent = await provider.submitReview(
+        assignmentId: 'asg_1',
+        rating: 5,
+      );
+
+      expect(sent, isFalse);
+      expect(provider.hasReviewed('asg_1'), isFalse);
+      expect(provider.errorMessage, 'İş henüz tamamlanmadı');
+    });
+
     test('işaret cihazda saklanır', () async {
       final provider = providerWith(createdApi());
       await provider.submitReview(assignmentId: 'asg_1', rating: 4);

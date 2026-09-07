@@ -562,7 +562,7 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     } on ApiException catch (error) {
       if (!mounted) return;
       AppToast.error(context, error.message);
-      if (error.type == ApiErrorType.conflict) await _loadAssignment();
+      if (error.type.isConflict) await _loadAssignment();
     } finally {
       if (mounted) setState(() => _isRunningAssignmentAction = false);
     }
@@ -591,7 +591,7 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     } on ApiException catch (error) {
       if (!mounted) return;
       AppToast.error(context, error.message);
-      if (error.type == ApiErrorType.conflict) await _loadAssignment();
+      if (error.type.isConflict) await _loadAssignment();
     } finally {
       if (mounted) setState(() => _isCompleting = false);
     }

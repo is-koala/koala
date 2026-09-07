@@ -200,7 +200,7 @@ void main() {
           isA<ApiException>().having(
             (error) => error.type,
             'type',
-            ApiErrorType.unauthorized,
+            ApiErrorType.unauthenticated,
           ),
         ),
       );

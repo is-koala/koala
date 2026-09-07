@@ -9,12 +9,18 @@ import 'package:koala/product/network/api_exception.dart';
 ///
 /// `data` yalnızca `SuccessDataResult` dönen uçlarda var; `SuccessResult`
 /// dönenlerde alan hiç gelmiyor.
+///
+/// Hata zarfı (`ErrorResult`) bunun üstüne beş alan ekliyor: `errorCode`,
+/// `errorCategory`, `resource`, `resourceId`, `details`. `ErrorResult`
+/// `@JsonInclude(NON_NULL)` taşıdığı için hepsi **koşullu** — biri gelmedi
+/// diye hata sayılmaz.
 class ApiResponse<T> {
   const ApiResponse({
     required this.success,
     this.message,
     this.data,
     this.errorCode,
+    this.errorCategory,
     this.fieldErrors = const [],
   });
 
@@ -22,6 +28,14 @@ class ApiResponse<T> {
   final String? message;
   final T? data;
   final String? errorCode;
+
+  /// Backend'in kapalı hata kümesi (`ErrorCategory`). Hata sınıflandırmasının
+  /// asıl kaynağı bu; `errorCode` serbest metne yakın, kategori değil.
+  ///
+  /// `@JsonInclude(NON_NULL)` yüzünden yok olabilir; eski sunucu ya da zarfı
+  /// elle yazan filtreler alanı hiç göndermeyebilir.
+  final String? errorCategory;
+
   final List<ApiFieldError> fieldErrors;
 
   /// Zarfı çözer. [parse] verilmezse `data` okunmaz — gövdesiz uçlar için.
@@ -36,6 +50,15 @@ class ApiResponse<T> {
       message: json['message'] as String?,
       data: parse == null ? null : parse(json['data']),
       errorCode: json['errorCode'] as String?,
+      // `as String?` değil: alan beklenmedik bir türde gelirse cast bir
+      // `TypeError` atar ve bu ayrıştırma `_toApiException`'ın içinden
+      // çağrıldığı için `ApiClient`'ın `TypeError` ağına takılmadan yukarı
+      // fırlar — yani sınıflandırmanın kaynağı olan alan uygulamayı
+      // düşürebilirdi. Tanınmayan kategoriyle aynı yere düşsün: yok sayılsın.
+      errorCategory: switch (json['errorCategory']) {
+        final String category => category,
+        _ => null,
+      },
       fieldErrors: details is List
           ? details
                 .whereType<Map<String, dynamic>>()
