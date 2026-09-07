@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/home/models/job_search_query.dart';
@@ -253,6 +255,125 @@ void main() {
 
       expect(api.requests.last.queryParameters['page'], 0);
       expect(provider.jobs.map((job) => job.id), ['a']);
+    });
+  });
+
+  // Haritada jeton baştan vardı, listede yoktu: uçan bir istek varken gelen
+  // süzgeç `_query`'ye yazılıyor ama istek sessizce düşüyordu.
+  group('JobSearchProvider yarış jetonu', () {
+    test('uçan istek varken yeni süzgeç sessizce düşmüyor', () async {
+      final first = Completer<FakeApiResponse>();
+      var call = 0;
+
+      final api = FakeApi(
+        handler: (_) {
+          call++;
+          if (call == 1) return first.future;
+          return FakeApiResponse(
+            statusCode: 200,
+            body: _page(ids: ['yeni'], page: 0, last: true),
+          );
+        },
+      );
+      final provider = _providerFor(api);
+
+      // İlk yükleme uçuşta kalıyor; kullanıcı bu sırada süzgeci değiştiriyor.
+      final pending = provider.load();
+      await api.requestsReach(1);
+
+      await provider.applyQuery(const JobSearchQuery(categoryId: 'cat-1'));
+
+      // Yeni ölçüt gerçekten yola çıktı.
+      expect(api.requests, hasLength(2));
+      expect(api.requests.last.queryParameters['categoryId'], 'cat-1');
+      expect(provider.jobs.map((job) => job.id), ['yeni']);
+
+      // Geç dönen ilk yanıt yeni sonucun üstüne yazamıyor.
+      first.complete(
+        FakeApiResponse(
+          statusCode: 200,
+          body: _page(ids: ['eski'], page: 0, last: true),
+        ),
+      );
+      await pending;
+
+      expect(provider.jobs.map((job) => job.id), ['yeni']);
+      expect(provider.query.categoryId, 'cat-1');
+    });
+
+    test('geç dönen eski hata yeni sonucu bozmuyor', () async {
+      final first = Completer<FakeApiResponse>();
+      var call = 0;
+
+      final api = FakeApi(
+        handler: (_) {
+          call++;
+          if (call == 1) return first.future;
+          return FakeApiResponse(
+            statusCode: 200,
+            body: _page(ids: ['yeni'], page: 0, last: true),
+          );
+        },
+      );
+      final provider = _providerFor(api);
+
+      final pending = provider.load();
+      await api.requestsReach(1);
+      await provider.applyQuery(const JobSearchQuery(categoryId: 'cat-1'));
+
+      first.complete(
+        const FakeApiResponse(
+          statusCode: 500,
+          body: {'success': false, 'message': 'Sunucu hatası'},
+        ),
+      );
+      await pending;
+
+      // Eski istek patladı diye yeni sonucun üstüne hata şeridi düşmüyor.
+      expect(provider.errorMessage, isNull);
+      expect(provider.jobs.map((job) => job.id), ['yeni']);
+      expect(provider.isLoading, isFalse);
+    });
+
+    test('uçan sayfa yeni süzgecin sonucuna karışmıyor', () async {
+      final second = Completer<FakeApiResponse>();
+      var call = 0;
+
+      final api = FakeApi(
+        handler: (RequestOptions options) {
+          call++;
+          if (call == 1) {
+            return FakeApiResponse(
+              statusCode: 200,
+              body: _page(ids: ['a'], page: 0, last: false),
+            );
+          }
+          // 2. çağrı: loadMore. 3. çağrı: yeni süzgecin ilk sayfası.
+          if (call == 2) return second.future;
+          return FakeApiResponse(
+            statusCode: 200,
+            body: _page(ids: ['c'], page: 0, last: true),
+          );
+        },
+      );
+      final provider = _providerFor(api);
+
+      await provider.load();
+      final more = provider.loadMore();
+      await api.requestsReach(2);
+
+      await provider.applyQuery(const JobSearchQuery(categoryId: 'cat-1'));
+
+      second.complete(
+        FakeApiResponse(
+          statusCode: 200,
+          body: _page(ids: ['b'], page: 1, last: true),
+        ),
+      );
+      await more;
+
+      // 'b' eski ölçütün ikinci sayfasıydı; yeni listeye eklenmemeli.
+      expect(provider.jobs.map((job) => job.id), ['c']);
     });
   });
 }

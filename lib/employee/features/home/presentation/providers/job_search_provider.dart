@@ -31,6 +31,16 @@ class JobSearchProvider extends ChangeNotifier {
   /// Bir ilk-sayfa isteği uçuyor mu. [_isLoading]'den ayrı: sessiz yükleme
   /// göstergeyi açmıyor ama yine de tek başına uçmalı.
   bool _isFetching = false;
+
+  /// Uçan isteğin sıra numarası; yanıt döndüğünde hâlâ güncel mi diye
+  /// karşılaştırılıyor.
+  ///
+  /// Haritada bu jeton baştan vardı ([MapExploreController]), listede yoktu:
+  /// uçan bir istek varken gelen yeni süzgeç `_query`'ye yazılıyor ama istek
+  /// **sessizce düşüyordu**. Kullanıcı süzgeci değiştiriyor, ekran eski sonucu
+  /// göstermeye devam ediyordu. Jeton hem yeni isteğin atılmasını sağlıyor hem
+  /// de geç dönen eski yanıtın yeni sonucun üzerine yazmasını engelliyor.
+  int _requestToken = 0;
   bool _isLoading = false;
   bool _isLoadingMore = false;
   String? _errorMessage;
@@ -58,7 +68,7 @@ class JobSearchProvider extends ChangeNotifier {
   /// [silent] verildiğinde yükleniyor göstergesi açılmıyor — yenilemede
   /// listenin boşalıp yeniden dolması göz yoruyor.
   Future<void> load({bool silent = false}) async {
-    if (_isFetching) return;
+    final token = ++_requestToken;
 
     _isFetching = true;
     _isLoading = !silent;
@@ -68,6 +78,9 @@ class JobSearchProvider extends ChangeNotifier {
     try {
       final page = await _service.search(_query, page: 0);
 
+      // Geç dönen eski yanıt: aradan yeni bir istek geçmişse bu yanıt bayat.
+      if (token != _requestToken) return;
+
       _jobs.clear();
       _jobIds.clear();
       _addAll(page.jobs);
@@ -75,11 +88,17 @@ class JobSearchProvider extends ChangeNotifier {
       _totalElements = page.totalElements;
       _isLast = page.last;
     } on ApiException catch (error) {
+      if (token != _requestToken) return;
+
       _errorMessage = error.message;
     } finally {
-      _isFetching = false;
-      _isLoading = false;
-      notifyListeners();
+      // Bayrakları yalnız **son** istek indiriyor; eski yanıt uçuştaki yeni
+      // isteğin yükleniyor durumunu kapatamaz.
+      if (token == _requestToken) {
+        _isFetching = false;
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -87,23 +106,34 @@ class JobSearchProvider extends ChangeNotifier {
   Future<void> loadMore() async {
     if (_isLoadingMore || _isFetching || _isLast) return;
 
+    final token = ++_requestToken;
+
     _isLoadingMore = true;
     notifyListeners();
 
     try {
       final page = await _service.search(_query, page: _page + 1);
 
+      // Araya yeni bir süzgeç girdiyse bu sayfa artık başka bir sorgunun
+      // sonucu: listeye eklemek eski ölçütün ilanlarını yenilerin arasına
+      // karıştırırdı.
+      if (token != _requestToken) return;
+
       _addAll(page.jobs);
       _page = page.page;
       _totalElements = page.totalElements;
       _isLast = page.last;
     } on ApiException catch (error) {
+      if (token != _requestToken) return;
+
       // Sayfa eklenemedi diye eldeki liste silinmiyor; kullanıcı gördüğü
       // ilanlara bakmayı sürdürebilsin.
       _errorMessage = error.message;
     } finally {
-      _isLoadingMore = false;
-      notifyListeners();
+      if (token == _requestToken) {
+        _isLoadingMore = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -112,6 +142,11 @@ class JobSearchProvider extends ChangeNotifier {
   /// Sorgu değişmediyse ağa çıkmıyor: süzgeç sheet'i "Uygula" ile kapanıyor ve
   /// hiçbir şey değiştirmeden kapanan sheet istek doğurmamalı — `GET /jobs`
   /// PUBLIC kovasında dakikada 120 istekle sınırlı.
+  ///
+  /// Uçan bir istek varsa **beklenmiyor, geçiliyor**: yeni ölçüt her zaman
+  /// kazanıyor ve eski yanıt jetonuyla eleniyor. Eskiden `load` uçan istek
+  /// varken çıkışa dönüyordu, yani `_query` yeni süzgeci taşırken ekran eski
+  /// sonuçta kalıyordu.
   Future<void> applyQuery(JobSearchQuery query) async {
     if (_isSameQuery(query)) return;
 
