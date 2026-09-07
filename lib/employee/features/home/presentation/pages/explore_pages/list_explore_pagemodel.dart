@@ -3,106 +3,86 @@ part of 'list_explore_page.dart';
 abstract class ListExplorePagemodel extends State<ListExplorePage>
     with AutomaticKeepAliveClientMixin<ListExplorePage> {
   bool isOpen = true;
-  List<Job> _jobs = [];
-  List<Job> _filteredJobs = [];
-  Position? _currentPosition;
-  bool _loading = true;
-  final JobService _jobService = JobService();
 
-  // Arama
+  /// Listenin sonuna bu kadar kala sonraki sayfa isteniyor; kullanıcı dibe
+  /// değmeden yükleme başlasın. `NotificationView` ile aynı eşik.
+  static const double _loadMoreThreshold = 240;
+
+  /// Arama kutusunda yazımın durmasını bu kadar bekliyoruz.
+  ///
+  /// Her tuşta istek atmak `GET /jobs`'un PUBLIC kovasındaki dakikada 120
+  /// istek sınırını tek aramada tüketebiliyor.
+  static const Duration _searchDebounce = Duration(milliseconds: 400);
+
+  final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
-  String _searchQuery = '';
 
-  // Aktif filtreler
-  String _selectedFilter = 'all';
-  String _selectedPriceRange = 'all';
-  String _selectedDistance = 'all';
+  Timer? _searchTimer;
+  Position? _currentPosition;
 
-  // Geçici filtreler (bottomsheet'te seçilenler)
-  String _tempFilter = 'all';
-  String _tempPriceRange = 'all';
-  String _tempDistance = 'all';
+  /// Süzgeç sheet'inin uygulanmış hâli.
+  ///
+  /// Sunucu sorgusu bundan **türetiliyor** ([JobFilterSelection.toQuery]);
+  /// tersi mümkün değil, çünkü sorgu kategorinin adını ya da kullanıcının
+  /// seçtiği kilometreyi taşımıyor — sınırlayıcı kutudan yarıçapa geri
+  /// dönülemez. Çubuktaki çipler bu seçimden çiziliyor.
+  JobFilterSelection _selection = const JobFilterSelection();
 
   @override
   void initState() {
     super.initState();
-    _loadJobsAndLocation();
-    // Filtre sheet'i açıldığında kategoriler hazır olsun; provider aynı
-    // listeyi ikinci kez çekmiyor.
+    _scrollController.addListener(_onScroll);
+    _resolvePosition();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<JobCategoryProvider>().load();
+      if (!mounted) return;
+      // Filtre sheet'i açıldığında kategoriler hazır olsun; provider aynı
+      // listeyi ikinci kez çekmiyor.
+      context.read<JobCategoryProvider>().load();
+      context.read<JobSearchProvider>().load();
     });
   }
 
   @override
   void dispose() {
+    _searchTimer?.cancel();
+    _scrollController
+      ..removeListener(_onScroll)
+      ..dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
   }
 
-  Future<void> _loadJobsAndLocation() async {
-    try {
-      // İşleri yükle
-      final jobs = (await _jobService.search()).jobs;
+  JobSearchProvider get _search => context.read<JobSearchProvider>();
 
-      // Konumu al
-      Position? position;
-      try {
-        position = await Geolocator.getCurrentPosition();
-      } catch (e) {
-        // Konum alınamazsa varsayılan konum kullan
-        position = null;
-      }
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
 
-      // Konuma göre sırala. Koordinatı olmayan ilanlar listenin sonuna
-      // düşüyor: uzaklıkları bilinmiyor, en yakın diye göstermek yanlış olur.
-      if (position != null) {
-        final origin = position;
-        jobs.sort((a, b) {
-          final distA = _distanceFrom(origin, a);
-          final distB = _distanceFrom(origin, b);
-          return distA.compareTo(distB);
-        });
-      }
+    final remaining =
+        _scrollController.position.maxScrollExtent -
+        _scrollController.position.pixels;
 
-      if (!mounted) return;
-      setState(() {
-        _jobs = jobs;
-        _filteredJobs = jobs;
-        _currentPosition = position;
-        _loading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-      });
-    }
+    if (remaining <= _loadMoreThreshold) _search.loadMore();
   }
 
-  /// Sıralama için ham uzaklık, metre. Koordinatı olmayan ilan en sona
-  /// düşsün diye sonsuz dönüyor.
-  static double _distanceFrom(Position origin, Job job) {
-    if (!job.hasLocation) return double.infinity;
-    return Geolocator.distanceBetween(
-      origin.latitude,
-      origin.longitude,
-      job.latitude!,
-      job.longitude!,
-    );
-  }
-
-  /// Kullanıcı herhangi bir süzgeç ya da arama uyguladı mı.
+  /// Konumu bir kez okur.
   ///
-  /// Boş liste iki farklı sebepten olabiliyor: ya süzgece uyan iş yok, ya
-  /// da ortalıkta hiç ilan yok. İkisine aynı metni göstermek yanıltıcı.
-  bool get hasActiveFilter =>
-      _searchQuery.isNotEmpty ||
-      _selectedFilter != 'all' ||
-      _selectedPriceRange != 'all' ||
-      _selectedDistance != 'all';
+  /// İki işi var: kartlardaki mesafe satırı ve mesafe süzgecinin sınırlayıcı
+  /// kutusu. İzin yoksa mesafe süzgeci sheet'te kapalı çiziliyor ve izin
+  /// istemeyi öneriyor — bkz. [_requestLocation].
+  Future<void> _resolvePosition() async {
+    Position? position;
+    try {
+      position = await Geolocator.getCurrentPosition();
+    } catch (_) {
+      position = null;
+    }
+
+    if (!mounted) return;
+    setState(() => _currentPosition = position);
+  }
 
   /// İlana olan uzaklık, km. Konum izni yoksa ya da ilanın koordinatı
   /// yoksa `null` — mesafe satırı o zaman hiç çizilmiyor.
@@ -117,123 +97,126 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
     return distance / 1000; // km'ye çevir
   }
 
-  void _onSearchChanged(String query) {
-    setState(() {
-      _searchQuery = query;
-      _applyAllFilters();
-    });
+  /// Ekrana çizilecek liste.
+  ///
+  /// Mesafeye göre sıralama **yalnız mesafe süzgeci seçiliyken** uygulanıyor.
+  /// Sunucuda mesafe sıralaması yok (`SORTABLE_FIELDS` dört alan taşıyor), yani
+  /// bu sıralama o ana kadar yüklenmiş sayfaların üzerinde çalışıyor ve yeni
+  /// sayfa geldikçe kartlar yer değiştiriyor. Süzgeç açıkken sonuç zaten
+  /// kullanıcının çevresindeki kutuyla sınırlı olduğu için sıralama orada
+  /// anlamlı; süzgeç kapalıyken sunucunun `createdAt DESC` sırası korunuyor,
+  /// aksi hâlde liste sebepsiz yere gözün önünde karışırdı.
+  List<Job> _visibleJobs(List<Job> jobs) {
+    if (_selection.radiusKm == null || _currentPosition == null) return jobs;
+
+    final origin = _currentPosition!;
+    // Koordinatı olmayan ilanlar sona düşüyor: uzaklıkları bilinmiyor, en
+    // yakın diye göstermek yanlış olur.
+    return [...jobs]..sort(
+      (a, b) => _rawDistance(origin, a).compareTo(_rawDistance(origin, b)),
+    );
+  }
+
+  static double _rawDistance(Position origin, Job job) {
+    if (!job.hasLocation) return double.infinity;
+    return Geolocator.distanceBetween(
+      origin.latitude,
+      origin.longitude,
+      job.latitude!,
+      job.longitude!,
+    );
+  }
+
+  // ------------------------------------------------------------------- Arama
+
+  /// Parametre almıyor: aranan metni `_searchController` zaten tutuyor ve
+  /// [_buildQuery] onu oradan okuyor. `onChanged`'in verdiği dizeyi ikinci bir
+  /// kaynak olarak taşımak, ikisinin ayrışabileceği bir yer açardı.
+  void _onSearchChanged() {
+    setState(() {}); // temizleme ikonu metne göre çiziliyor
+    _searchTimer?.cancel();
+    _searchTimer = Timer(_searchDebounce, _applyQuery);
   }
 
   void _clearSearch() {
+    _searchTimer?.cancel();
     _searchController.clear();
-    setState(() {
-      _searchQuery = '';
-      _applyAllFilters();
-    });
+    setState(() {});
+    _applyQuery();
   }
 
-  void _applyAllFilters() {
-    List<Job> filtered = _jobs;
+  // --------------------------------------------------------------- Süzgeçler
 
-    // Arama filtresi
-    if (_searchQuery.trim().isNotEmpty) {
-      final lowerQuery = _searchQuery.toLowerCase();
-      filtered = filtered.where((job) {
-        return job.title.toLowerCase().contains(lowerQuery) ||
-            job.subtitle.toLowerCase().contains(lowerQuery) ||
-            (job.company?.toLowerCase().contains(lowerQuery) ?? false) ||
-            job.category.displayName.toLowerCase().contains(lowerQuery) ||
-            (job.locationLabel?.toLowerCase().contains(lowerQuery) ?? false) ||
-            (job.sector?.toLowerCase().contains(lowerQuery) ?? false) ||
-            (job.position?.toLowerCase().contains(lowerQuery) ?? false);
-      }).toList();
-    }
+  /// Arayüzdeki seçimleri tek bir sunucu sorgusuna çevirir.
+  JobSearchQuery _buildQuery() {
+    return _selection.toQuery(
+      searchText: _searchController.text,
+      latitude: _currentPosition?.latitude,
+      longitude: _currentPosition?.longitude,
+    );
+  }
 
-    // Kategori ve tip filtresi
-    if (_selectedFilter != 'all') {
-      if (_selectedFilter == 'oneTime') {
-        filtered = filtered
-            .where((job) => job.type == JobType.oneTime)
-            .toList();
-      } else if (_selectedFilter == 'recurring') {
-        filtered = filtered
-            .where((job) => job.type == JobType.recurring)
-            .toList();
-      } else {
-        // Geriye kalan tek seçenek kategori: filtre anahtarı kategorinin
-        // backend'deki `code` değeri. Tanınmayan bir anahtar hiçbir işi
-        // elemesin diye doğrudan kodla karşılaştırılıyor.
-        filtered = filtered
-            .where((job) => job.category.code == _selectedFilter)
-            .toList();
+  void _applyQuery() {
+    if (!mounted) return;
+    _search.applyQuery(_buildQuery());
+  }
+
+  /// Süzgeç sheet'ini açar. Sheet yalnız "Uygula"ya basılırsa değer döndürüyor;
+  /// vazgeçilerek kapatıldığında sorgu olduğu gibi kalıyor.
+  Future<void> _openFilterSheet() async {
+    final picked = await JobFilterSheet.show(
+      context,
+      selection: _selection,
+      categories: context.read<JobCategoryProvider>().categories,
+      hasLocation: _currentPosition != null,
+      onRequestLocation: _requestLocation,
+    );
+    if (picked == null || !mounted) return;
+
+    setState(() => _selection = picked);
+    _applyQuery();
+  }
+
+  Future<void> _openSortSheet() async {
+    final picked = await JobSortSheet.show(context, selected: _selection.sort);
+    if (picked == null || !mounted) return;
+
+    setState(() => _selection = _selection.copyWith(sort: picked));
+    _applyQuery();
+  }
+
+  /// Çubuktaki çipin çarpısı: yalnız o alanı temizliyor.
+  void _removeFilter(JobFilterField field) {
+    setState(() => _selection = _selection.without(field));
+    _applyQuery();
+  }
+
+  /// Bütün süzgeçleri sıfırlar; boş sonuç ekranındaki çıkış da buna bağlı.
+  void _clearFilters() {
+    setState(() => _selection = _selection.cleared());
+    _applyQuery();
+  }
+
+  /// Konum iznini ister ve alınırsa konumu tazeler.
+  ///
+  /// Mesafe süzgeci izin olmadan çalışamıyor; eskiden bu durumda süzgeç
+  /// sessizce yok sayılıyordu.
+  Future<bool> _requestLocation() async {
+    try {
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
       }
-    }
-
-    // Ücret aralığı filtresi
-    if (_selectedPriceRange != 'all') {
-      if (_selectedPriceRange == '0-500') {
-        filtered = filtered.where((job) => job.price <= 500).toList();
-      } else if (_selectedPriceRange == '500-1000') {
-        filtered = filtered
-            .where((job) => job.price > 500 && job.price <= 1000)
-            .toList();
-      } else if (_selectedPriceRange == '1000-2000') {
-        filtered = filtered
-            .where((job) => job.price > 1000 && job.price <= 2000)
-            .toList();
-      } else if (_selectedPriceRange == '2000+') {
-        filtered = filtered.where((job) => job.price > 2000).toList();
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        return false;
       }
+    } catch (_) {
+      return false;
     }
 
-    // Mesafe filtresi
-    if (_selectedDistance != 'all' && _currentPosition != null) {
-      if (_selectedDistance == '0-5') {
-        filtered = filtered.where((job) {
-          final distance = _getDistance(job);
-          return distance != null && distance <= 5;
-        }).toList();
-      } else if (_selectedDistance == '5-10') {
-        filtered = filtered.where((job) {
-          final distance = _getDistance(job);
-          return distance != null && distance > 5 && distance <= 10;
-        }).toList();
-      } else if (_selectedDistance == '10-20') {
-        filtered = filtered.where((job) {
-          final distance = _getDistance(job);
-          return distance != null && distance > 10 && distance <= 20;
-        }).toList();
-      } else if (_selectedDistance == '20+') {
-        filtered = filtered.where((job) {
-          final distance = _getDistance(job);
-          return distance != null && distance > 20;
-        }).toList();
-      }
-    }
-
-    _filteredJobs = filtered;
-  }
-
-  void _showCategoryFilter() {
-    _tempFilter = _selectedFilter;
-  }
-
-  void _showPriceFilter() {
-    _tempPriceRange = _selectedPriceRange;
-  }
-
-  void _showDistanceFilter() {
-    _tempDistance = _selectedDistance;
-  }
-
-  void _applyTempFilters() {
-    setState(() {
-      _selectedFilter = _tempFilter;
-      _selectedPriceRange = _tempPriceRange;
-      _selectedDistance = _tempDistance;
-      _applyAllFilters();
-    });
-    Navigator.pop(context);
+    await _resolvePosition();
+    return _currentPosition != null;
   }
 
   @override

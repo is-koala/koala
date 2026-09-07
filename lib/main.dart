@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:koala/product/network/api_config.dart';
 import 'package:koala/business/features/home/presentation/providers/b_page_provider.dart';
 import 'package:koala/employee/features/home/presentation/providers/job_category_provider.dart';
+import 'package:koala/employee/features/home/presentation/providers/job_search_provider.dart';
 import 'package:koala/employee/features/home/presentation/providers/page_provider.dart';
 import 'package:koala/employee/features/home/presentation/providers/search_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
@@ -29,6 +30,7 @@ void main() {
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => AvailabilityProvider()),
         ChangeNotifierProvider(create: (_) => JobCategoryProvider()),
+        ChangeNotifierProvider(create: (_) => JobSearchProvider()),
         ChangeNotifierProvider(create: (_) => PageProvider()),
         ChangeNotifierProvider(create: (_) => SavedJobsProvider()),
         ChangeNotifierProvider(create: (_) => JobAlertsProvider()),

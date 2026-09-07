@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/home/models/job_map_bounds.dart';
+import 'package:koala/employee/features/home/models/job_search_query.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:koala/product/network/api_exception.dart';
 
@@ -39,7 +41,9 @@ void main() {
         ),
       );
 
-      final result = await JobService.withClient(api.client).search();
+      final result = await JobService.withClient(
+        api.client,
+      ).search(const JobSearchQuery());
 
       expect(api.requests.single.path, '/jobs');
       expect(result.jobs.single.title, 'Garson');
@@ -58,7 +62,7 @@ void main() {
         ),
       );
 
-      await JobService.withClient(api.client).search();
+      await JobService.withClient(api.client).search(const JobSearchQuery());
 
       expect(api.requests.single.queryParameters, {'page': 0, 'size': 20});
     });
@@ -74,9 +78,13 @@ void main() {
         ),
       );
 
-      await JobService.withClient(
-        api.client,
-      ).search(query: 'garson', categoryId: 'cat-1', type: JobType.recurring);
+      await JobService.withClient(api.client).search(
+        const JobSearchQuery(
+          query: 'garson',
+          categoryId: 'cat-1',
+          type: JobType.recurring,
+        ),
+      );
 
       expect(api.requests.single.queryParameters, {
         'query': 'garson',
@@ -99,15 +107,57 @@ void main() {
       );
 
       await JobService.withClient(api.client).search(
-        minLatitude: 39.8,
-        maxLatitude: 40.0,
-        minLongitude: 32.7,
-        maxLongitude: 32.9,
+        const JobSearchQuery(
+          bounds: JobMapBounds(
+            minLatitude: 39.8,
+            maxLatitude: 40.0,
+            minLongitude: 32.7,
+            maxLongitude: 32.9,
+          ),
+        ),
       );
 
       final query = api.requests.single.queryParameters;
       expect(query['minLatitude'], 39.8);
       expect(query['maxLongitude'], 32.9);
+    });
+
+    test('sayfa ve boyut çağıranın verdiği gibi gidiyor', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {'content': []},
+          },
+        ),
+      );
+
+      await JobService.withClient(
+        api.client,
+      ).search(const JobSearchQuery(), page: 2, size: 100);
+
+      final query = api.requests.single.queryParameters;
+      expect(query['page'], 2);
+      expect(query['size'], 100);
+    });
+
+    test('sıralama sorgu modelinden geliyor', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {'content': []},
+          },
+        ),
+      );
+
+      await JobService.withClient(
+        api.client,
+      ).search(const JobSearchQuery(sort: JobSortOption.salaryDesc));
+
+      expect(api.requests.single.queryParameters['sort'], 'salary,desc');
     });
 
     test('boş sayfa hata değil', () async {
@@ -121,7 +171,9 @@ void main() {
         ),
       );
 
-      final result = await JobService.withClient(api.client).search();
+      final result = await JobService.withClient(
+        api.client,
+      ).search(const JobSearchQuery());
 
       expect(result.jobs, isEmpty);
     });

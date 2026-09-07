@@ -66,7 +66,7 @@ abstract class CompanyDetailPagemodel extends State<CompanyDetailPage> {
   /// kimliği almıyor — o yüzden arama sonucu şirket **adına** göre eleniyor.
   /// Aynı adı taşıyan iki şirket varsa ilanları karışır.
   Future<List<Job>> _loadCompanyJobs(String companyName) async {
-    final allJobs = (await _jobService.search()).jobs;
+    final allJobs = (await _jobService.search(const JobSearchQuery())).jobs;
     return allJobs.where((job) => job.company == companyName).toList();
   }
 

@@ -126,7 +126,7 @@ A feature has at most three top-level folders: **`models/`** (plain data classes
 
 ### State management
 
-`provider`. Sixteen `ChangeNotifierProvider`s are registered in `main.dart`, in this order:
+`provider`. Seventeen `ChangeNotifierProvider`s are registered in `main.dart`, in this order:
 
 | Provider | Responsibility |
 |---|---|
@@ -134,6 +134,7 @@ A feature has at most three top-level folders: **`models/`** (plain data classes
 | `UserProvider` | The session owner off `/users/me` — read by both apps |
 | `AvailabilityProvider` | The worker's weekly availability draft (`PUT` replaces all slots) |
 | `JobCategoryProvider` | The server's job categories, fetched once and cached app-wide |
+| `JobSearchProvider` | Explore's server-side search: the `JobSearchQuery`, the pages and the infinite scroll |
 | `PageProvider` | Employee shell: which tab, and the explore map/list toggle |
 | `SavedJobsProvider` | Saved jobs |
 | `JobAlertsProvider` | The job alerts screen's server state |
@@ -363,7 +364,19 @@ Employer payment is wired through `POST /job-assignments/{id}/payment-session`. 
 Endpoints that exist on the server and have no app surface yet: push-token registration (`/users/me/devices/push-token`); blocks and reports (`/users/me/blocks`, `/reports`); employer tools (`/users/me/talent-pool`, `/users/me/job-templates`).
 
 > The orphaned fakes were deleted once the employer's job flow landed: `profile/services/fake_user.dart` and its `profile/models/user.dart`, `jobs/services/my_jobs_service.dart`, `business/features/chat/services/b_chat_service.dart`. `employee/features/profile/` and `business/features/chat/` are `presentation/` only now — a feature carries `models/` and `services/` only when it has data of its own.
-- `GET /jobs` is ready to be wired: `JobSummaryDto` carries `latitude`/`longitude`, `GET /jobs/{jobId}` returns the richer `JobDetailDto` (description, duties, dress code, age range, full address, creator, company) and the search takes a bounding box (`minLatitude`/`maxLatitude`/`minLongitude`/`maxLongitude`). Only the category mapping is missing.
+- **Explore searches on the server.** `JobSearchQuery` (`employee/features/home/models/`) mirrors `JobSearchCriteriaDto` field for field — no invented fields — and `JobService.search` takes it, with `page`/`size` kept separate because they belong to pagination. `JobSortOption` carries only the four fields in the server's `SORTABLE_FIELDS`; an unlisted field is a `400` (`PAGE_SORT_FIELD_NOT_ALLOWED`), not an empty list, so sort strings are never written by hand. The default `createdAt,desc` sends no `sort` at all, since that is what the server already does.
+
+  Three things follow from that and are easy to get wrong:
+
+  - **The query cannot be read backwards.** It holds a `categoryId`, not a name, and a bounding box, not the kilometres the user picked. `JobFilterSelection` is the UI's side of it and converts one way; the filter chips in the bar are drawn from the selection, never from the query.
+  - **The category filter goes by id.** `code` stays what the icon, colour and map pin resolve from — the server pins that contract in `ReferenceDataController` — but the filter is `categoryId`. Comparing against `code` was the old bug.
+  - **The list and the map share the query model, not the state.** `JobSearchProvider` (registered in `main.dart`) owns the list's pages and infinite scroll; `MapExploreController` is created by the map page and owns the map's own. Merging the two is the right direction and a separate job — what must not diverge is the query.
+
+  - **Both sides carry a request token, and neither may drop a query instead.** `JobSearchProvider.applyQuery` used to write the new criteria into `_query` and then let `load` return at `if (_isFetching)`, so the request was **silently discarded**: the model held the user's new filter while the screen kept showing the old results, and nothing anywhere reported the loss (is-koala/koala#31). A token is the fix in both directions — the newest query always goes out, and a late response, error included, is dropped when it no longer matches. `loadMore`'s page is tokened too: once a new filter has been applied, an in-flight page belongs to the previous query and appending it would mix two result sets. **Do not "fix" a concurrent request by refusing to send it.**
+
+- **The map sends its visible region.** `onCameraIdle` → `getVisibleRegion()` → `JobMapBounds` → the same four bounding-box fields. Three guards sit in front of the request and each one is load-bearing: a 500 ms debounce so a fast pan is one request; a containment check that skips the call when the new region is inside the last one **and** that result was not cropped; and a request token so a slow earlier response cannot overwrite newer pins. The map asks for `size: 100` (the server's `PageableSanitizer` ceiling) and, when the answer comes back `last: false`, says there are more jobs than fit rather than dropping pins silently. Markers are cached by job id so an idle camera does not regenerate artwork that has not changed.
+
+  **What the map says out loud lives in `MapExploreOverlay`** (`home/presentation/widgets/`), not in the page's `Stack`. It alone decides which card sits on top — loading, error + *Tekrar Dene*, the crop warning, "no results", the search result list — and the page just positions it. The split exists because the page cannot be widget-tested (`GoogleMap` wants a platform view), and that gap is exactly how the original defect survived: the whole status card was drawn under `if (!isSearching)`, so a `500` arriving while the search bar was open showed the user *"Sonuç bulunamadı"* and no way to retry. Error and crop warning are **not** search-conditional; the crop warning stacks **above** the result list rather than replacing it.
 - Sessions are no longer faked: `SessionManager` writes `is_logged_in` / `user_type` **and** the tokens together. Do not write those prefs keys by hand; a flag without a token is a user who looks logged in and gets 401s.
 
 > A service class is named after its file: `job_service.dart` → `JobService`. There is no `*Repository` naming in the codebase.
@@ -440,11 +453,13 @@ Bottom sheets go through **`AppBottomSheet`** (`product/widgets/`), which owns t
 
 Confirmations go through **`ConfirmDialog`** (`product/widgets/`): title, message, an action label that names the verb, and `isDestructive` (default `true`) for the red button. It returns `bool?`, so callers test `!= true` and treat "cancelled" and "dismissed" alike.
 
-> ⚠️ **Do not put a `ListTile` inside `AppBottomSheet`.** The shell's background is a `DecoratedBox` and `ListTile` paints its own background and ink splashes onto the nearest `Material` **above** that box, so both are hidden; Flutter reports it at runtime as *"ListTile background color or ink splashes may be invisible"*. Every tappable row in this codebase is `Material` + `InkWell` + `Padding` for exactly this reason — see `MyListTile`, `ThemeModeSheet._option` and `BOptionSheet._option`, and copy one of them. `test/business/.../b_option_sheet_test.dart` fails if a `ListTile` comes back.
+> ⚠️ **Do not put a `ListTile` inside `AppBottomSheet`.** The shell's background is a `DecoratedBox` and `ListTile` paints its own background and ink splashes onto the nearest `Material` **above** that box, so both are hidden; Flutter reports it at runtime as *"ListTile background color or ink splashes may be invisible"*. Every tappable row in this codebase is `Material` + `InkWell` + `Padding` for exactly this reason — see `MyListTile`, `ThemeModeSheet._option` and `OptionSheet._option`, and copy one of them. `test/product/widgets/option_sheet_test.dart` fails if a `ListTile` comes back.
 >
-> **This catches the widgets that build a `ListTile` for you, too** — and that is the version that actually shipped twice. `SwitchListTile`, `CheckboxListTile` and `RadioListTile` all construct a `ListTile` internally, so the assertion fires with no `ListTile` anywhere in the file and `grep ListTile` finds nothing. Use **`SheetSwitchRow`** (`employee/features/profile/presentation/widgets/`) for a switch in a sheet; it keeps the tap-the-label behaviour that `SwitchListTile` gave for free. And do not "fix" this by wrapping `AppBottomSheet`'s content in a transparent `Material` — that silences the assertion by overriding the convention this whole section exists to enforce.
+> **This catches the widgets that build a `ListTile` for you, too** — and that is the version that actually shipped twice. `SwitchListTile`, `CheckboxListTile` and `RadioListTile` all construct a `ListTile` internally, so the assertion fires with no `ListTile` anywhere in the file and `grep ListTile` finds nothing. Use **`SheetSwitchRow`** (`product/widgets/`) for a switch in a sheet; it keeps the tap-the-label behaviour that `SwitchListTile` gave for free. And do not "fix" this by wrapping `AppBottomSheet`'s content in a transparent `Material` — that silences the assertion by overriding the convention this whole section exists to enforce.
 
-Single-choice lists on the business side go through **`BOptionSheet`** (`business/features/home/presentation/widgets/`): a generic sheet driven by a label getter, with optional per-item icon and colour. The matching field is **`BSelectionField`**, which wears `MyTextfield`'s frame so a "tap to choose" field and a typed field sit on the same grid. Job category, country, province and district all use the pair — the category used to be a chip row, but the list comes from the server and can grow.
+Single-choice lists go through **`OptionSheet`** (`product/widgets/`): a generic sheet driven by a label getter, with optional per-item icon and colour. It used to be `BOptionSheet` under `business/`; the employee explore filter picks its province and district with the same sheet now, and `b_` means "employer side only". The matching field on the employer side is **`BSelectionField`**, which wears `MyTextfield`'s frame so a "tap to choose" field and a typed field sit on the same grid. Job category, country, province and district all use the pair — the category used to be a chip row, but the list comes from the server and can grow.
+
+The pills inside a filter sheet go through **`FilterPill`** (`product/widgets/`). It is not called `FilterChip` because Flutter owns that name. Explore's filter sheet, its sort sheet and the active-filter summary in the bar all draw the same pill; `onRemove` adds the cross that clears one field.
 
 > ⚠️ **Two footguns that cost compile errors and silent bugs:**
 > - `context.size` is **not** the `SizeExtension` getter — `BuildContext` has its own nullable `size`, and the instance member wins. Use `MediaQuery.sizeOf(context)`. `context.width` / `context.height` are fine.

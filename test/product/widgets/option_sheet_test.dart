@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/product/models/reference_location.dart';
-import 'package:koala/business/features/home/presentation/widgets/b_option_sheet.dart';
+import 'package:koala/product/widgets/option_sheet.dart';
 
-import '../../../../../support/pump.dart';
+import '../../support/pump.dart';
 
 const _options = [
   ReferenceLocation(id: '1', name: 'Ankara'),
@@ -19,7 +19,7 @@ Widget sheetOpener({
     builder: (context) => TextButton(
       onPressed: () async {
         onPicked(
-          await BOptionSheet.show<ReferenceLocation>(
+          await OptionSheet.show<ReferenceLocation>(
             context,
             title: 'İl',
             options: _options,

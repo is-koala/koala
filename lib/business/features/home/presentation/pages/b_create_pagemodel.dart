@@ -153,7 +153,7 @@ abstract class BCreatePageModel extends State<BCreatePage> {
   /// Kategoriler `/reference/job-categories`'ten geliyor ve sayısı artabilir;
   /// bu yüzden çip dizisi değil, il seçimiyle aynı açılır liste.
   Future<void> _pickCategory() async {
-    final picked = await BOptionSheet.show<JobCategory>(
+    final picked = await OptionSheet.show<JobCategory>(
       context,
       title: 'Kategori',
       options: _selectableCategories,
@@ -200,7 +200,7 @@ abstract class BCreatePageModel extends State<BCreatePage> {
       return;
     }
 
-    final picked = await BOptionSheet.show<JobTemplate>(
+    final picked = await OptionSheet.show<JobTemplate>(
       context,
       title: 'Şablondan doldur',
       options: provider.templates,
