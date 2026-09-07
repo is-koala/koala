@@ -10,6 +10,15 @@ class JobAlertsProvider extends ChangeNotifier {
 
   final JobAlertService _service;
   static const int maximumAlertCount = 10;
+
+  /// Sunucunun makine tarafından okunabilir hata kodları.
+  ///
+  /// `KoalaException.deriveErrorCode` bunları mesaj anahtarından türetiyor:
+  /// süslü parantezler düşüyor, nokta alt çizgi oluyor, tamamı büyük harfe
+  /// çıkıyor. Yani `{job.alert.too.many}` → `JOB_ALERT_TOO_MANY`.
+  static const String _quotaExceededCode = 'JOB_ALERT_TOO_MANY';
+  static const String _alertNotFoundCode = 'JOB_ALERT_NOT_FOUND';
+  static const String _categoryNotFoundCode = 'JOB_ALERT_CATEGORY_NOT_FOUND';
   final List<JobAlert> _alerts = [];
   bool _isLoading = false;
   bool _hasLoaded = false;
@@ -129,16 +138,39 @@ class JobAlertsProvider extends ChangeNotifier {
     }
   }
 
+  /// Sunucunun hatasını ekranda yazacak metne çevirir.
+  ///
+  /// Yönlendirme `errorCode` ile, durum kodu ya da [ApiErrorType] ile değil.
+  /// Sebebi somut: kota aşımını sunucu `ValidationException` ile döndürüyor
+  /// (`JobAlertManager:57`), yani ölçüt eksikliğiyle **aynı** HTTP 400 ve
+  /// **aynı** `VALIDATION_FAILED` kategorisini taşıyor. Tipe bakan bir dal
+  /// ikisini ayıramaz — ayıramıyordu da: kotaya takılan kullanıcıya "en az
+  /// bir geçerli ölçüt seçin" yazılıyordu, ve 409 bekleyen dal bu uçlardan
+  /// hiç çalışmıyordu çünkü iş alarmı uçlarında 409 atan hiçbir yer yok.
+  ///
+  /// AGENTS.md kuralı zaten bu: "`ApiException.errorCode` is what routing
+  /// keys off, never the message text."
   String _messageFor(ApiException error) {
-    if (error.type == ApiErrorType.conflict) {
-      return 'En fazla $maximumAlertCount iş alarmı oluşturabilirsiniz.';
+    switch (error.errorCode) {
+      case _quotaExceededCode:
+        return 'En fazla $maximumAlertCount iş alarmı oluşturabilirsiniz.';
+      case _alertNotFoundCode:
+        return 'İş alarmı bulunamadı. Listeyi yenileyip tekrar deneyin.';
+      case _categoryNotFoundCode:
+        return 'Seçtiğiniz kategori artık yok. Ölçütleri güncelleyip tekrar deneyin.';
     }
-    if (error.type == ApiErrorType.notFound) {
-      return 'İş alarmı bulunamadı. Listeyi yenileyip tekrar deneyin.';
-    }
-    if (error.type == ApiErrorType.validation) {
-      return 'Alarm için en az bir geçerli ölçüt seçin.';
-    }
+
+    // Alan bazlı doğrulama hatalarının hepsi **tek** koda düşüyor: boş
+    // `errorCode`'u `ErrorResult:20` kategori adıyla dolduruyor, yani ad,
+    // şehir, ilçe, ücret ve ölçüt hataları ayrımsız `VALIDATION_FAILED`
+    // taşıyor (`ErrorContractIT:137` bunu sabitliyor). Onları birbirinden
+    // ayıran `details`: sunucu her alan için çözülmüş Türkçe metni orada
+    // gönderiyor (`Accept-Language: tr`), o yüzden burada kopyasını tutmak
+    // yerine olduğu gibi gösteriliyor.
+    if (error.fieldErrors.isNotEmpty) return error.fieldErrors.first.message;
+
+    // Tanımadığımız bir hata: sunucunun kendi metni zaten Türkçe,
+    // uydurmaktan iyi.
     return error.message;
   }
 
