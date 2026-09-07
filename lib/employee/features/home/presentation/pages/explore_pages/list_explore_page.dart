@@ -469,7 +469,7 @@ class _ListExplorePageState extends ListExplorePagemodel {
       child: TextField(
         controller: _searchController,
         focusNode: _searchFocusNode,
-        onChanged: _onSearchChanged,
+        onChanged: (_) => _onSearchChanged(),
         style: context.textTheme.bodyLarge,
         decoration: InputDecoration(
           hintText: "İş, şirket veya konum ara...",

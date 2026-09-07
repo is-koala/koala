@@ -11,48 +11,22 @@ void main() {
     provider.addListener(() => notifications++);
   });
 
-  test('başlangıçta boş ve kapalı', () {
-    expect(provider.query, isEmpty);
+  test('başlangıçta arama kipi kapalı', () {
     expect(provider.isSearching, isFalse);
   });
 
-  test('setQuery sorguyu yazar ve bildirir', () {
-    provider.setQuery('barista');
-
-    expect(provider.query, 'barista');
-    expect(notifications, 1);
-  });
-
-  test('startSearching arama kipini açar, sorguya dokunmaz', () {
-    provider.setQuery('garson');
+  test('startSearching kipi açar ve bildirir', () {
     provider.startSearching();
 
     expect(provider.isSearching, isTrue);
-    expect(provider.query, 'garson');
+    expect(notifications, 1);
   });
 
-  // stopSearching hem kipi kapatıyor hem sorguyu siliyor: arama kapanınca
-  // liste filtresiz haline dönsün diye.
-  test('stopSearching kipi kapatır ve sorguyu temizler', () {
-    provider.setQuery('garson');
+  test('stopSearching kipi kapatır ve bildirir', () {
     provider.startSearching();
     provider.stopSearching();
 
     expect(provider.isSearching, isFalse);
-    expect(provider.query, isEmpty);
-  });
-
-  test('clearQuery sorguyu siler ama kipi açık bırakır', () {
-    provider.setQuery('garson');
-    provider.startSearching();
-    provider.clearQuery();
-
-    expect(provider.query, isEmpty);
-    expect(provider.isSearching, isTrue);
-  });
-
-  test('boş sorgu da bildirim üretir', () {
-    provider.setQuery('');
-    expect(notifications, 1);
+    expect(notifications, 2);
   });
 }

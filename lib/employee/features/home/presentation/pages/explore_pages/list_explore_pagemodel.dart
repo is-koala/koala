@@ -129,7 +129,10 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
 
   // ------------------------------------------------------------------- Arama
 
-  void _onSearchChanged(String query) {
+  /// Parametre almıyor: aranan metni `_searchController` zaten tutuyor ve
+  /// [_buildQuery] onu oradan okuyor. `onChanged`'in verdiği dizeyi ikinci bir
+  /// kaynak olarak taşımak, ikisinin ayrışabileceği bir yer açardı.
+  void _onSearchChanged() {
     setState(() {}); // temizleme ikonu metne göre çiziliyor
     _searchTimer?.cancel();
     _searchTimer = Timer(_searchDebounce, _applyQuery);

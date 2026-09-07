@@ -193,7 +193,6 @@ class _MapExplorePageState extends MapExplorePageModel {
           focusNode: _searchFocusNode,
           autofocus: true,
           onChanged: (value) {
-            searchProvider.setQuery(value);
             _onMapSearch(value);
             setState(() {});
           },
@@ -212,7 +211,6 @@ class _MapExplorePageState extends MapExplorePageModel {
               icon: Icon(Icons.close, color: context.textSecondary),
               onPressed: () {
                 _searchController.clear();
-                searchProvider.clearQuery();
                 _onMapSearch('');
                 setState(() {});
               },
