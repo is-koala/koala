@@ -277,7 +277,10 @@ class TimesheetQueueProvider extends ChangeNotifier
       return true;
     } on ApiException catch (error) {
       if (generation != _generation) return false;
-      if (error.type == ApiErrorType.conflict) {
+      // İki çakışma kategorisi de "sunucudaki hâl kuyruktakinden farklı"
+      // demek; olayı kuyrukta kilitli bırakmamak için ikisi de uzlaştırmaya
+      // gidiyor.
+      if (error.type.serverStateMoved) {
         if (error.errorCode == 'TIMESHEET_IDEMPOTENCY_CONFLICT') {
           await _store.markRequiresSupport(
             event.clientEventId,

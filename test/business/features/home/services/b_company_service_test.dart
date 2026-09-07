@@ -241,7 +241,7 @@ void main() {
         ).addCompanyImage('comp_1', file.path),
         throwsA(
           isA<ApiException>()
-              .having((e) => e.type, 'type', ApiErrorType.conflict)
+              .having((e) => e.type, 'type', ApiErrorType.dataConflict)
               .having(
                 (e) => e.message,
                 'message',

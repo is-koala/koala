@@ -133,6 +133,16 @@ class FakeApiResponse {
       body = null,
       rawBody = null;
 
+  /// Sunucuya ulaşılmış ama zamanında yanıt gelmemiş hâl.
+  ///
+  /// [FakeApiResponse.connectionError]'dan ayrı: ikisi farklı
+  /// `DioExceptionType` üretiyor ve `ApiClient` bunları farklı tiplere
+  /// çeviriyor. Bu yol da zarf taşımıyor, yani hata kategorisi olamaz.
+  const FakeApiResponse.timeout()
+    : statusCode = -2,
+      body = null,
+      rawBody = null;
+
   final int statusCode;
   final Map<String, dynamic>? body;
 
@@ -140,6 +150,8 @@ class FakeApiResponse {
   final String? rawBody;
 
   bool get isConnectionError => statusCode == -1;
+
+  bool get isTimeout => statusCode == -2;
 }
 
 class _FakeAdapter implements HttpClientAdapter {
@@ -161,6 +173,13 @@ class _FakeAdapter implements HttpClientAdapter {
       throw DioException.connectionError(
         requestOptions: options,
         reason: 'test',
+      );
+    }
+
+    if (response.isTimeout) {
+      throw DioException.receiveTimeout(
+        timeout: const Duration(milliseconds: 1),
+        requestOptions: options,
       );
     }
 

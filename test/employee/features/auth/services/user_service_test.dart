@@ -140,7 +140,7 @@ void main() {
         throwsA(
           isA<ApiException>()
               .having((e) => e.message, 'message', 'Oturum bulunamadı')
-              .having((e) => e.type, 'type', ApiErrorType.unauthorized),
+              .having((e) => e.type, 'type', ApiErrorType.unauthenticated),
         ),
       );
     });

@@ -86,7 +86,7 @@ void main() {
           callCount++;
           throw const ApiException(
             message: 'Devam eden işiniz bulunduğu için talep alınamadı.',
-            type: ApiErrorType.conflict,
+            type: ApiErrorType.dataConflict,
           );
         },
       ),

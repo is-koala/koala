@@ -110,15 +110,17 @@ class ChatThreadController extends ChangeNotifier {
     }
   }
 
-  /// Engel kaynaklı `403`'ü yakalar.
+  /// Engel kaynaklı yetki reddini yakalar.
   ///
-  /// `ApiClient` `401` ile `403`'ü aynı [ApiErrorType.unauthorized] tipine
-  /// indiriyor (`api_client.dart:343`), ayrım yalnızca [ApiException.statusCode]
-  /// ile yapılabiliyor. Bu ayrım önemli: `401` oturumun bitmesi,
-  /// `AuthInterceptor` onu yenilemeye çalışıyor; `403` ise engel ve
-  /// kullanıcı oturumdan atılmamalı.
+  /// Ayrım önemli: [ApiErrorType.unauthenticated] oturumun bitmesi demek,
+  /// `AuthInterceptor` onu yenilemeye çalışıyor ve başaramazsa oturumu
+  /// kapatıyor; [ApiErrorType.forbidden] ise engel — kullanıcı oturumdan
+  /// atılmamalı, mesaj kutusu kilitlenmeli.
+  ///
+  /// Tipe bakılıyor, `statusCode`'a değil: ayrımın kaynağı artık sunucunun
+  /// `errorCategory` alanı (`ACCESS_DENIED`), durum kodu yalnızca yedek.
   void _captureBlock(ApiException error) {
-    if (error.statusCode != 403) return;
+    if (error.type != ApiErrorType.forbidden) return;
     _blockedMessage = error.message;
   }
 

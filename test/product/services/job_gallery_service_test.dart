@@ -101,7 +101,7 @@ void main() {
 
   for (final (status, type) in [
     (404, ApiErrorType.notFound),
-    (409, ApiErrorType.conflict),
+    (409, ApiErrorType.dataConflict),
   ]) {
     test('$status sunucu mesajını koruyor', () async {
       final api = FakeApi(

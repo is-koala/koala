@@ -6,14 +6,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Kullanıcının bıraktığı değerlendirmeler.
 ///
 /// Sunucuda "bu işi değerlendirdim mi" diye sorulacak bir uç yok: ikinci
-/// değerlendirme `409` ile reddediliyor, o kadar. "Değerlendir" butonunun
-/// yerinde "Değerlendirildi" rozetini gösterebilmek için değerlendirilen
-/// atamaların kimlikleri cihazda tutuluyor.
+/// değerlendirme reddediliyor, o kadar. "Değerlendir" butonunun yerinde
+/// "Değerlendirildi" rozetini gösterebilmek için değerlendirilen atamaların
+/// kimlikleri cihazda tutuluyor.
 ///
 /// Bu bir önbellek, kaynak değil: kayıt kaybolursa (uygulama silinip
 /// kurulursa, kullanıcı başka cihaza geçerse) buton geri gelir, basıldığında
-/// sunucu `409` döndürür ve kayıt oradan tazelenir. Yani yanlış tarafa
-/// düşse bile akış tıkanmıyor.
+/// sunucu reddeder ve kayıt oradan tazelenir. Yani yanlış tarafa düşse bile
+/// akış tıkanmıyor — **eksik tarafa** düşerse. Fazla tarafa düşmesi kalıcı:
+/// [_prefsKey] diske yazılıyor ve onu silen tek şey çıkış.
 class ReviewProvider extends ChangeNotifier {
   ReviewProvider({ReviewService? service})
     : _service = service ?? ReviewService() {
@@ -22,6 +23,22 @@ class ReviewProvider extends ChangeNotifier {
 
   /// Değerlendirilmiş atamaların kimlikleri; cihazda saklanan anahtar.
   static const String _prefsKey = 'reviewed_assignments';
+
+  /// Sunucunun "bu atamayı zaten değerlendirdin" dediği hata kodu.
+  ///
+  /// `ReviewManager.leaveReview` iki farklı reddi **aynı**
+  /// `ConflictException` ile veriyor, yani ikisi de `409` + `DATA_CONFLICT`
+  /// olarak geliyor:
+  ///
+  /// - atama `COMPLETED` değilse `{review.work.not.completed}`
+  /// - değerlendirme zaten yazılmışsa `{review.already.reviewed}`
+  ///
+  /// Kategori bu ikisini ayıramıyor; ayıran tek alan `errorCode`, çünkü
+  /// `KoalaException` onu mesaj anahtarından türetiyor
+  /// (`{review.already.reviewed}` → `REVIEW_ALREADY_REVIEWED`). Sunucunun
+  /// ayrı bir kategori üretmesini beklemek yerine bugün gerçekten gönderdiği
+  /// alana bakılıyor; kod, sınıfını değil **bu** hatayı tanımlıyor.
+  static const String _alreadyReviewedErrorCode = 'REVIEW_ALREADY_REVIEWED';
 
   final ReviewService _service;
 
@@ -44,9 +61,15 @@ class ReviewProvider extends ChangeNotifier {
 
   /// Tamamlanmış bir işi değerlendirir. Başarılıysa `true` döner.
   ///
-  /// `409` iki anlama geliyor: iş henüz tamamlanmamış ya da bu iş zaten
-  /// değerlendirilmiş. İkincisinde sonuç kullanıcı açısından "yazıldı"
-  /// demek, o yüzden atama yine işaretleniyor — buton bir daha çıkmıyor.
+  /// Sunucu reddederse atama **yalnızca** [_alreadyReviewedErrorCode] ile
+  /// işaretleniyor: orada sonuç kullanıcı açısından "yazıldı" demek, buton
+  /// bir daha çıkmasın. Emin olunamayan her durumda — kod gelmedi, kod
+  /// tanınmadı, başka bir hata — hiç işaretlenmiyor.
+  ///
+  /// Asimetri bilinçli, çünkü iki yanlışın bedeli eşit değil: işaretlememek
+  /// kullanıcıya fazladan bir "Değerlendir" butonu gösterir ve bir sonraki
+  /// denemede sunucu doğruyu söyler; yanlışlıkla işaretlemek diske yazılır ve
+  /// o atamayı **kalıcı olarak** değerlendirilemez yapar.
   Future<bool> submitReview({
     required String assignmentId,
     required int rating,
@@ -70,7 +93,12 @@ class ReviewProvider extends ChangeNotifier {
       return true;
     } on ApiException catch (error) {
       _errorMessage = error.message;
-      if (error.type == ApiErrorType.conflict) {
+      // Kategoriye değil koda bakılıyor: `dataConflict` "zaten
+      // değerlendirilmiş" ile "iş henüz tamamlanmamış"ı aynı torbaya koyuyor.
+      // İkincisini işaretlemek, işi tamamlanmadan değerlendirmeye çalışan
+      // kullanıcının o atamayı iş bittikten sonra da hiç değerlendirememesi
+      // demekti.
+      if (error.errorCode == _alreadyReviewedErrorCode) {
         await _markReviewed(assignmentId);
       }
       return false;

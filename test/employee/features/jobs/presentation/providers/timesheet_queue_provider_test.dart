@@ -347,7 +347,10 @@ void main() {
   );
 
   test('401 ve 5xx hatalarında olay yeniden denemek için tutulur', () async {
-    for (final errorType in [ApiErrorType.unauthorized, ApiErrorType.server]) {
+    for (final errorType in [
+      ApiErrorType.unauthenticated,
+      ApiErrorType.server,
+    ]) {
       final store = _MemoryStore();
       final gateway = _FakeGateway()
         ..sendError = ApiException(message: 'Geçici hata', type: errorType);
@@ -407,7 +410,7 @@ void main() {
       final gateway = _FakeGateway()
         ..sendError = const ApiException(
           message: 'Çakışma',
-          type: ApiErrorType.conflict,
+          type: ApiErrorType.dataConflict,
           statusCode: 409,
           errorCode: 'TIMESHEET_IDEMPOTENCY_CONFLICT',
         )
@@ -437,48 +440,53 @@ void main() {
     },
   );
 
-  test(
-    'sunucuda aynı kimlik ve payload bulunan genel 409 teslim edilmiş sayılır',
-    () async {
-      final capturedAt = DateTime.parse('2026-09-06T10:00:00Z');
-      final store = _MemoryStore();
-      final gateway = _FakeGateway()
-        ..sendError = const ApiException(
-          message: 'Çakışma',
-          type: ApiErrorType.conflict,
-        )
-        ..sessions = [
-          WorkSession(
-            id: 'session-a',
-            assignmentId: 'assignment-a',
-            checkInClientEventId: 'event-existing',
-            checkInCapturedAt: capturedAt,
-            checkInLatitude: 41.123457,
-            checkInLongitude: 29.123457,
-          ),
-        ];
-      final trigger = _ManualRetryTrigger();
-      final provider = TimesheetQueueProvider.withAdapters(
-        store: store,
-        gateway: gateway,
-        retryTrigger: trigger,
-        utcNow: () => capturedAt,
-        eventIdFactory: () => 'event-existing',
-      );
-      await provider.startForUser('user-a');
+  // İki çakışma kategorisi de uzlaştırmaya gitmeli: olay kuyrukta kilitli
+  // kalırsa aynı atamanın sonraki bütün check-in/check-out'ları da tıkanır.
+  // Tek kategoriye daraltılırsa bu döngünün yarısı kırmızıya döner.
+  for (final conflictType in [
+    ApiErrorType.dataConflict,
+    ApiErrorType.businessRule,
+  ]) {
+    test(
+      'sunucuda aynı kimlik ve payload bulunan ${conflictType.name} teslim edilmiş sayılır',
+      () async {
+        final capturedAt = DateTime.parse('2026-09-06T10:00:00Z');
+        final store = _MemoryStore();
+        final gateway = _FakeGateway()
+          ..sendError = ApiException(message: 'Çakışma', type: conflictType)
+          ..sessions = [
+            WorkSession(
+              id: 'session-a',
+              assignmentId: 'assignment-a',
+              checkInClientEventId: 'event-existing',
+              checkInCapturedAt: capturedAt,
+              checkInLatitude: 41.123457,
+              checkInLongitude: 29.123457,
+            ),
+          ];
+        final trigger = _ManualRetryTrigger();
+        final provider = TimesheetQueueProvider.withAdapters(
+          store: store,
+          gateway: gateway,
+          retryTrigger: trigger,
+          utcNow: () => capturedAt,
+          eventIdFactory: () => 'event-existing',
+        );
+        await provider.startForUser('user-a');
 
-      expect(
-        await provider.recordCheckIn(
-          assignmentId: 'assignment-a',
-          latitude: 41.1234567,
-          longitude: 29.1234567,
-        ),
-        TimesheetSubmission.sent,
-      );
-      expect(provider.events, isEmpty);
-      await provider.disposeAsync();
-    },
-  );
+        expect(
+          await provider.recordCheckIn(
+            assignmentId: 'assignment-a',
+            latitude: 41.1234567,
+            longitude: 29.1234567,
+          ),
+          TimesheetSubmission.sent,
+        );
+        expect(provider.events, isEmpty);
+        await provider.disposeAsync();
+      },
+    );
+  }
 
   test('aynı kimlikte farklı payload bulunan genel 409 olayı silmez', () async {
     final capturedAt = DateTime.parse('2026-09-06T10:00:00Z');
@@ -486,7 +494,7 @@ void main() {
     final gateway = _FakeGateway()
       ..sendError = const ApiException(
         message: 'Çakışma',
-        type: ApiErrorType.conflict,
+        type: ApiErrorType.dataConflict,
       )
       ..sessions = [
         WorkSession(

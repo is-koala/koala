@@ -333,10 +333,42 @@ void main() {
       expect(thread.blockedMessage, 'Bu kullanıcıyla mesajlaşamazsınız.');
     });
 
+    // Engelin `statusCode` yerine kategoriden tanındığını ölçen tek test
+    // aşağıdaki. Bir ara "ACCESS_DENIED kategorisi sohbeti kilitliyor" diye
+    // ikinci bir test daha vardı; `403` + `ACCESS_DENIED` kuruyordu, yani
+    // üstündeki iki `403` testinin kopyasıydı — `403` tek başına zaten
+    // `forbidden` üretiyor, kategori satırı sonucu hiç değiştirmiyordu.
+    // Ölçüldü: `_captureBlock` `statusCode == 403`'e geri çevrildiğinde o
+    // test yeşil kalıyor, yalnızca bu kırmızıya dönüyordu. Kaldırıldı;
+    // ayırt edici gücü olmayan bir test, kapsamı olduğundan geniş gösterir.
+    //
+    // Kategoriyle durum kodunun **çeliştiği** yönün diğer yarısı
+    // (`401` + `ACCESS_DENIED` → `forbidden`) sınıflandırmanın kendi
+    // testinde: `api_client_error_category_test.dart`.
+    test('403 taşıyan TOKEN_EXPIRED engel sayılmıyor', () async {
+      final thread = build(
+        FakeApi(
+          handler: (_) => const FakeApiResponse(
+            statusCode: 403,
+            body: {
+              'success': false,
+              'message': 'Oturum süresi doldu.',
+              'errorCategory': 'TOKEN_EXPIRED',
+            },
+          ),
+        ),
+      );
+
+      await thread.load(currentUserId: _me);
+
+      expect(thread.blockedMessage, isNull);
+      expect(thread.errorMessage, 'Oturum süresi doldu.');
+    });
+
     test('401 engel sayılmıyor', () async {
-      // `ApiErrorType` 401 ile 403'ü aynı tipe indiriyor; ayrım
-      // `statusCode` ile yapılıyor. Süresi dolmuş oturum mesaj kutusunu
-      // kilitlememeli.
+      // `401` artık `unauthenticated`, `403` ise `forbidden`. Süresi dolmuş
+      // oturum mesaj kutusunu kilitlememeli: kullanıcının yapması gereken
+      // yeniden giriş, sohbeti terk etmek değil.
       final thread = build(
         FakeApi(
           handler: (_) => const FakeApiResponse(

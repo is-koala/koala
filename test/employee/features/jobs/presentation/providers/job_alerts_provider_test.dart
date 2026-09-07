@@ -95,6 +95,35 @@ void main() {
     expect(provider.errorMessage, 'En fazla 10 iş alarmı oluşturabilirsiniz.');
   });
 
+  // Kaynağa göre bu uçlar çakışma üretmiyor; yine de biri gelirse uydurulmuş
+  // bir kota cümlesi değil sunucunun kendi metni gösterilmeli.
+  test('çakışma gelirse sunucunun kendi metni gösterilir', () async {
+    final api = FakeApi(
+      handler: (request) => request.method == 'GET'
+          ? const FakeApiResponse(
+              statusCode: 200,
+              body: {'success': true, 'data': []},
+            )
+          : const FakeApiResponse(
+              statusCode: 409,
+              body: {
+                'success': false,
+                'message': 'Bu alarm başka bir işlemde kilitli.',
+                'errorCode': 'JOB_ALERT_LOCKED',
+                'errorCategory': 'BUSINESS_RULE_VIOLATION',
+              },
+            ),
+    );
+    final provider = providerWith(api);
+    await provider.load();
+
+    await provider.create(
+      const JobAlertDraft(name: 'Alarm', cityName: 'Ankara'),
+    );
+
+    expect(provider.errorMessage, 'Bu alarm başka bir işlemde kilitli.');
+  });
+
   test('yalnızca ilçe seçiliyse istek gönderilmez', () async {
     final api = FakeApi(
       handler: (_) => throw StateError('İstek gönderilmemeliydi'),

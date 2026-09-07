@@ -159,7 +159,7 @@ class ApplyProvider extends ChangeNotifier {
       // liste bayat. Tazeleme mesajdan **önce** çalışıyor: [load] başlarken
       // hata alanlarını temizliyor, ters sırada kullanıcıya gösterilecek
       // mesaj kaybolurdu.
-      if (error.type == ApiErrorType.conflict) await load(force: true);
+      if (error.type.serverStateMoved) await load(force: true);
       _errorMessage = error.message;
       _errorCode = error.errorCode;
       return false;

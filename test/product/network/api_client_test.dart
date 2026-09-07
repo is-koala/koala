@@ -195,7 +195,7 @@ void main() {
         ),
       );
 
-      expect(error.type, ApiErrorType.conflict);
+      expect(error.type, ApiErrorType.dataConflict);
       expect(error.statusCode, 409);
       expect(error.message, 'Galeri sınırı aşıldı.');
       expect(error.errorCode, 'GALLERY_LIMIT_EXCEEDED');
@@ -230,7 +230,7 @@ void main() {
       expect(error.messageForField('password'), isNull);
     });
 
-    test('401 yanıtı unauthorized olur', () async {
+    test('401 yanıtı unauthenticated olur', () async {
       final api = FakeApi(
         handler: (_) => const FakeApiResponse(
           statusCode: 401,
@@ -242,7 +242,7 @@ void main() {
         () => api.client.postWithoutData('/users/me'),
       );
 
-      expect(error.type, ApiErrorType.unauthorized);
+      expect(error.type, ApiErrorType.unauthenticated);
       expect(error.message, 'Oturum bulunamadı');
     });
 
@@ -325,6 +325,107 @@ void main() {
       );
 
       expect(error.message, 'Olmadı');
+    });
+  });
+
+  // Zarfın metin alanları `as String?` ile okunursa, beklenmedik türde gelen
+  // bir alan `_TypeError` atar. Hata yanıtında bu cast `_toApiException`'ın
+  // *içinden* çalışıyor, yani `ApiClient`'ın `TypeError` ağına hiç uğramadan
+  // çağırana ham hâliyle ulaşır: sayfa `on ApiException` yakalar, uygulama
+  // düşer. Koruma alan alan değil zarfın geneline konuldu; bu grup da tek
+  // tek her alanı ölçüyor.
+  group('ApiClient zarfın tür koruması', () {
+    for (final field in ['message', 'errorCode', 'errorCategory', 'success']) {
+      test('$field beklenmedik türde gelirse ApiException kalır', () async {
+        final api = FakeApi(
+          handler: (_) => FakeApiResponse(
+            statusCode: 409,
+            body: {
+              'success': false,
+              'message': 'Çakışma',
+              'errorCode': 'ALREADY_EXISTS',
+              'errorCategory': 'DATA_CONFLICT',
+              // Sözleşme dizge (`success` için bool) diyor; bu alan bozuk.
+              field: 42,
+            },
+          ),
+        );
+
+        final error = await _captureError(
+          () => api.client.postWithoutData(ApiPaths.login),
+        );
+
+        // Bozuk alan "gelmedi" sayılıyor, kalan alanlar okunmaya devam ediyor.
+        expect(error.statusCode, 409);
+        expect(error.type, ApiErrorType.dataConflict);
+      });
+    }
+
+    test('bozuk errorCode null kalır, kategori okunmayı sürdürür', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 403,
+          body: {
+            'success': false,
+            'message': 'Yetkin yok',
+            'errorCode': 42,
+            'errorCategory': 'ACCESS_DENIED',
+          },
+        ),
+      );
+
+      final error = await _captureError(
+        () => api.client.postWithoutData(ApiPaths.login),
+      );
+
+      expect(error.errorCode, isNull);
+      expect(error.message, 'Yetkin yok');
+      expect(error.type, ApiErrorType.forbidden);
+    });
+
+    test('details içindeki bozuk alan diğer alan hatasını düşürmez', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 400,
+          body: {
+            'success': false,
+            'message': 'Doğrulama hatası',
+            'errorCategory': 'VALIDATION_FAILED',
+            'details': [
+              {'field': 42, 'message': 'Geçersiz'},
+              {'field': 'email', 'message': 'Geçersiz e-posta'},
+            ],
+          },
+        ),
+      );
+
+      final error = await _captureError(
+        () => api.client.postWithoutData(ApiPaths.login),
+      );
+
+      expect(error.type, ApiErrorType.validation);
+      expect(error.messageForField('email'), 'Geçersiz e-posta');
+      // Adı okunamayan alan hatası boş adla duruyor; listeyi düşürmüyor.
+      expect(error.fieldErrors, hasLength(2));
+    });
+
+    test('başarı zarfında da bozuk message çökme üretmiyor', () async {
+      // Başarı yolu `_send`'in `try`'ı içinden geçtiği için `TypeError` zaten
+      // yakalanıyordu — ama "Sunucudan beklenmeyen bir yanıt geldi." diyerek,
+      // yani gerçekten gelen veriyi atarak. Artık `data` okunmayı sürdürüyor.
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 200,
+          body: {'success': true, 'message': 42, 'data': 'değer'},
+        ),
+      );
+
+      final value = await api.client.get<String>(
+        ApiPaths.login,
+        parse: (data) => data as String,
+      );
+
+      expect(value, 'değer');
     });
   });
 }

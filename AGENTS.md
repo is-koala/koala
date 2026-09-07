@@ -184,7 +184,22 @@ Cold-start links can arrive before `SplashPage` finishes loading the session. `A
 
 **All runtime data services are wired to the real backend.** Fakes live only in tests; production pages must not invent sessions or domain data locally.
 
-The API is a Spring Boot service in the private `is-koala/koala-backend` repository: layered `webAPI → business → dataAccess`, Postgres + Liquibase, RabbitMQ for mail/SMS/push, S3-compatible storage for files, and Iyzico for payments. Every response comes wrapped in the same envelope — `{success, message, httpStatus, path, timeStamp, requestId, data}` — and errors add `errorCode` plus a `details` array of field errors. Messages are localized; the app sends `Accept-Language: tr`.
+The API is a Spring Boot service in the private `is-koala/koala-backend` repository: layered `webAPI → business → dataAccess`, Postgres + Liquibase, RabbitMQ for mail/SMS/push, S3-compatible storage for files, and Iyzico for payments. Every response comes wrapped in the same envelope — `{success, message, httpStatus, path, timeStamp, requestId, data}`. Messages are localized; the app sends `Accept-Language: tr`.
+
+**The base envelope keeps its nulls; the error envelope drops them.** `Result` and `DataResult` carry **no** `@JsonInclude`, so a success response spells out `"data": null` and `"message": null` rather than omitting the fields — a `SuccessResult` endpoint still sends a `data` key. `ErrorResult` is annotated `@JsonInclude(NON_NULL)`, so on the error side every field below can simply be **absent**. Treat a missing one as "not sent", never as a malformed response.
+
+An error adds **five** fields on top of the base envelope, and **all five are conditional**:
+
+| Field | When it appears |
+|---|---|
+| `errorCode` | Always in practice — `ErrorResult` falls back to `errorCategory.name()` when the exception carries no code of its own. It is close to free text (a `KoalaException` derives it from the message key: `{jwt.expired}` → `JWT_EXPIRED`), so it identifies *this* error, not its class. |
+| `errorCategory` | Whenever the response comes from `GlobalExceptionHandler` or `MinimumAppVersionFilter`. A closed set of 17 values (`ErrorCategory.java`) — **this is the field to `switch` on.** |
+| `resource` / `resourceId` | Only when `RequestResourceResolver` can name the record the request was about; both are null on endpoints that address no single record. |
+| `details` | Only on field-level validation errors; `withDetails` stores `null` for an empty list, so an error with no field errors omits the key rather than sending `[]`. |
+
+**`ApiErrorType` is derived from `errorCategory`, and the HTTP status code is only the fallback** (`ApiErrorType.fromCategory`, then `ApiClient._typeForStatus`). The status code loses information the app needs: the server distinguishes `AUTHENTICATION_REQUIRED` / `INVALID_CREDENTIALS` / `TOKEN_EXPIRED` from `ACCESS_DENIED`, and `BUSINESS_RULE_VIOLATION` from `DATA_CONFLICT`, while `401`/`403` and `409` collapse each pair into one type (is-koala/koala#82). The first split is the one users feel — a dead session sends them back to the login screen, a permission refusal must not.
+
+> ⚠️ **The category set is closed but it can grow.** `fromCategory` returns `null` for a value it does not know, and the client falls back to the status code — it must never throw, or a server-side enum addition would crash the app. `test/product/network/api_client_error_category_test.dart` pins all 17 values plus the unknown-value path.
 
 **The network layer lives in `lib/product/network/`** and is shared by both apps:
 
@@ -193,7 +208,7 @@ The API is a Spring Boot service in the private `is-koala/koala-backend` reposit
 | `api_config.dart` | Flavor, base URL, app-link scheme and timeouts. Both `--flavor` and `--dart-define=API_BASE_URL=...` are mandatory; an invalid or missing environment fails closed before networking starts. |
 | `api_paths.dart` | Endpoint paths, plus the set of paths that need no token. |
 | `api_client.dart` | The only place `dio` is touched: unwraps the envelope, turns `DioException` into `ApiException`. `putFile` is the multipart upload path — it builds the `FormData` and forces the content type, because the base options say `application/json`. |
-| `api_exception.dart` | `ApiException` / `ApiErrorType` — the single error type services and pages see. |
+| `api_exception.dart` | `ApiException` / `ApiErrorType` — the single error type services and pages see. `ApiErrorType.fromCategory` owns the `errorCategory` → type mapping; `serverStateMoved` is there for callers that mean exactly that — reload, because the record changed — regardless of which of the two conflict categories arrived. **A caller that needs to know *which* error arrived reads `errorCode`, not the category**: the category names a class of error, the code names the error itself (`ReviewProvider`, `JobAlertsProvider`). |
 | `auth_interceptor.dart` | Attaches the bearer token, refreshes once on a 401 and retries. |
 | `token_storage.dart` | Access/refresh tokens in Keychain/Keystore (`flutter_secure_storage`). |
 | `session_manager.dart` | Opens and closes the session: tokens plus the `is_logged_in` / `user_type` flags the router reads. |
@@ -334,7 +349,9 @@ Four things worth knowing:
 Three things worth knowing:
 
 - **Anonymous reviews are supported and the toggle is back.** `CreateReviewDto` takes `anonymous`, and `ReviewDto` carries the flag with `author` omitted when set. The hiding happens **only in the response layer** — `author_id` stays populated in the database, so the one-review-per-party rule and abuse review still work. `Review.author` is therefore nullable and `authorLabel` falls back to "Anonim"; no placeholder user is invented. The choice cannot be changed afterwards, and the review screen says plainly that an employer may still infer who wrote it from the job — an assignment has only two sides.
-- **Nothing on the server says "did I review this".** The second review is a `409`, and that is the whole API. `ReviewProvider` therefore keeps the reviewed assignment ids in `SharedPreferences` (`reviewed_assignments`) so the "Değerlendirildi" badge survives a restart, and marks an id on a `409` too — the cache is a convenience, not a source of truth, and it self-heals. It is cleared on logout alongside the other providers.
+- **Nothing on the server says "did I review this".** The second review is a `409`, and that is the whole API. `ReviewProvider` therefore keeps the reviewed assignment ids in `SharedPreferences` (`reviewed_assignments`) so the "Değerlendirildi" badge survives a restart. It is cleared on logout alongside the other providers.
+
+  **A rejection only marks the id when `errorCode` is `REVIEW_ALREADY_REVIEWED`, and the category is not enough to decide that.** `ReviewManager.leaveReview` refuses two different situations with the same `ConflictException` — the assignment is not `COMPLETED` yet (`{review.work.not.completed}`), and the review already exists (`{review.already.reviewed}`) — so both arrive as `409` + `DATA_CONFLICT`. Marking the first one writes the id to disk and leaves that assignment permanently unreviewable, long after the work is finished. The only field that separates them is `errorCode`, which `KoalaException` derives from the message key. When no code arrives, or a code the app does not know, nothing is marked: the cache is a convenience, so it may only fail in the direction that shows one extra button.
 - **A review is allowed the moment the assignment is `COMPLETED`,** not when the money moves. So "Değerlendir" sits in **both** the "Ödeme Bekleniyor" and the "Geçmiş" section; if it were only in the first, an employer who pays quickly could never be reviewed.
 
 > `RatingSummary` is `null`, not zeroed, for someone with no reviews — the endpoint returns `data: null` and `hasRating` keeps "no rating" apart from "rated 0.0", the same distinction `EmployerStats.hasRating` makes.
