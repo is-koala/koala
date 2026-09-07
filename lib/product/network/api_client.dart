@@ -433,9 +433,21 @@ class ApiClient {
   /// Kategori gelmediğinde çalışan yedek.
   ///
   /// Eski sunucu, zarfı elle yazan filtreler ve gövdesi JSON olmayan yanıtlar
-  /// için tek bilgi kaynağı bu. Ürettiği tipler kategori eşlemesiyle uyumlu:
-  /// `409` [ApiErrorType.dataConflict] veriyor, çünkü bugün sunucudan gelen
-  /// her `409` `ConflictException`, yani `DATA_CONFLICT`.
+  /// için tek bilgi kaynağı bu.
+  ///
+  /// **`409` iki kategoriden hangisi olduğunu söylemiyor.** Sunucu bu durum
+  /// kodunu iki ayrı yoldan üretiyor: `ConflictException` (bir
+  /// `KoalaException`) `categoryOf(CONFLICT)` üzerinden `DATA_CONFLICT`
+  /// veriyor, `IllegalStateException` ise `handleIllegalState` içinde
+  /// doğrudan `BUSINESS_RULE_VIOLATION` veriyor
+  /// (`GlobalExceptionHandler.java:86`). Buradaki
+  /// [ApiErrorType.dataConflict] bir olgu değil **seçim**: ikisi de aynı
+  /// gövdeyi taşıyabildiği için durum kodundan ayırt edilemiyorlar, ve
+  /// çağıranların çoğu ([ApiErrorType.serverStateMoved]) ikisine de aynı
+  /// tepkiyi veriyor.
+  ///
+  /// Ayrımı gerçekten önemseyen bir çağıran bu yedeğe güvenmemeli — zaten
+  /// güvenmiyor: kategoriden değil `errorCode`'dan karar veriyor.
   ApiErrorType _typeForStatus(int? statusCode) {
     if (statusCode == null) return ApiErrorType.unknown;
     if (statusCode == 400 || statusCode == 422) return ApiErrorType.validation;

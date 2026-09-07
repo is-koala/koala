@@ -50,15 +50,19 @@ enum ApiErrorType {
 
   /// İstek biçimsel olarak doğru ama bir iş kuralı buna izin vermiyor.
   ///
-  /// Kategori: `BUSINESS_RULE_VIOLATION`. Yedek yok — durum kodu yolunda
-  /// `409` [dataConflict] üretiyor (bugün sunucudan gelen her `409` zaten
-  /// `ConflictException`, yani `DATA_CONFLICT`).
+  /// Kategori: `BUSINESS_RULE_VIOLATION`. Yedek yok, çünkü durum kodu bu
+  /// tipe hiç ulaşamıyor: sunucu bunu `409` ile gönderiyor
+  /// (`IllegalStateException` → `GlobalExceptionHandler.handleIllegalState`)
+  /// ama `409`'un yedeği [dataConflict]. Kategori gelmezse bu tip
+  /// üretilemiyor — bilinen ve kabul edilen kayıp.
   businessRule,
 
   /// Kaydın sunucudaki hâli istemcinin varsaydığından farklı: ekrandaki veri
   /// bayat ya da aynı kayıt zaten var.
   ///
-  /// Kategori: `DATA_CONFLICT`. Yedek: `409`.
+  /// Kategori: `DATA_CONFLICT`. Yedek: `409` — ama `409`'un iki kategorisi
+  /// var ve durum kodu hangisi olduğunu söylemiyor; ayrıntı
+  /// `ApiClient._typeForStatus`'ta.
   dataConflict,
 
   /// İstemci sürümü sunucunun istediği en düşük sürümün altında. Tekrar
@@ -105,6 +109,27 @@ enum ApiErrorType {
       'UNEXPECTED' || 'UPSTREAM_FAILED' => server,
       // İstemcinin kendi hatası; kullanıcıya gösterilecek özel bir karşılığı
       // yok, durum koduyla aynı yere düşüyor.
+      //
+      // `MEDIA_TYPE_NOT_SUPPORTED`'ın backend'de bugün **üreticisi yok**;
+      // yalnız `METHOD_NOT_ALLOWED` üretiliyor
+      // (`GlobalExceptionHandler.java:131`). Yine de duruyor, üç sebeple:
+      //
+      // 1. Bu tablo gözlenen kategorilerin değil, sunucunun kapalı kümesinin
+      //    (`ErrorCategory.java`) kopyası. Değer orada duruyor; buradan
+      //    silmek iki listeyi ayırır ve "17 değerin hepsi karşılanmış mı"
+      //    sorusunu cevapsız bırakır.
+      // 2. Uygulama multipart yüklüyor (`putFile`, `postFile`,
+      //    `postMultipartJson`). Spring bu uçlarda
+      //    `HttpMediaTypeNotSupportedException` atıyor ve backend'de o
+      //    istisnanın `@ExceptionHandler`'ı henüz yok — bugün `500` +
+      //    `UNEXPECTED` oluyor. O boşluk kapandığında üretici tam olarak bu
+      //    kategori olacak; yani planlanmış bir tüketici değil, planlanmış
+      //    bir **üretici** var.
+      // 3. Silmenin karşılığı sıfır: `415` `_typeForStatus`'ta da yok, yani
+      //    satır kalksa da tip `unknown` çıkıyor. Kazanç yok, kayıp var.
+      //
+      // Bu depoda "referansı yok" diye silinen bir enum değeri, planlanan
+      // akış gelince geri gerekmişti. Şüphede olan değer bırakılır.
       'METHOD_NOT_ALLOWED' || 'MEDIA_TYPE_NOT_SUPPORTED' => unknown,
       _ => null,
     };
