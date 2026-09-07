@@ -31,38 +31,32 @@ void main() {
     );
   }
 
-  testWidgets('dokunma geri çağırımı tetikliyor', (tester) async {
-    var tapped = false;
+  // Açık ve kapalı çip **aynı dokunuşla** sınanıyor. Tek başına duran negatif
+  // bir iddia ("kapalıyken tetiklenmiyor") dokunuş hiç inmese de geçerdi;
+  // ikizi geçtiği için dokunuşun çipe indiği de sabitlenmiş oluyor.
+  for (final enabled in [true, false]) {
+    final stateName = enabled ? 'açık' : 'kapalı';
 
-    await pumpInApp(
-      tester,
-      FilterPill(
-        label: 'Garsonluk',
-        isSelected: false,
-        onTap: () => tapped = true,
-      ),
+    testWidgets(
+      '$stateName çip dokunmayı ${enabled ? "iletiyor" : "yutuyor"}',
+      (tester) async {
+        var tapped = false;
+
+        await pumpInApp(
+          tester,
+          FilterPill(
+            label: 'Mesafe',
+            isSelected: false,
+            enabled: enabled,
+            onTap: () => tapped = true,
+          ),
+        );
+
+        await tester.tap(find.text('Mesafe'), warnIfMissed: false);
+        expect(tapped, enabled);
+      },
     );
-
-    await tester.tap(find.text('Garsonluk'));
-    expect(tapped, isTrue);
-  });
-
-  testWidgets('kapalı çip dokunmayı yutuyor', (tester) async {
-    var tapped = false;
-
-    await pumpInApp(
-      tester,
-      FilterPill(
-        label: 'Mesafe',
-        isSelected: false,
-        enabled: false,
-        onTap: () => tapped = true,
-      ),
-    );
-
-    await tester.tap(find.text('Mesafe'), warnIfMissed: false);
-    expect(tapped, isFalse);
-  });
+  }
 
   testWidgets('kaldırılabilir çip çarpı taşıyor ve tek alanı temizliyor', (
     tester,

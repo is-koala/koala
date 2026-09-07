@@ -78,12 +78,25 @@ Future<void> openSheet(WidgetTester tester) async {
 }
 
 /// Sheet uzun; alt bölümler ekrana ancak kaydırılınca giriyor.
-Future<void> tapScrolled(WidgetTester tester, Finder finder) async {
+///
+/// [warnIfMissed] yalnız kapalı bir satıra dokunurken kapatılıyor: orada
+/// dokunuşun bir şey tetiklememesi beklenen sonuç.
+Future<void> tapScrolled(
+  WidgetTester tester,
+  Finder finder, {
+  bool warnIfMissed = true,
+}) async {
   await tester.ensureVisible(finder);
   await tester.pumpAndSettle();
-  await tester.tap(finder);
+  await tester.tap(finder, warnIfMissed: warnIfMissed);
   await tester.pumpAndSettle();
 }
+
+/// `/districts` ucuna giden istekler.
+List<RequestOptions> districtRequests(FakeApi api) => [
+  for (final request in api.requests)
+    if (request.path.endsWith('/districts')) request,
+];
 
 void main() {
   for (final brightness in Brightness.values) {
@@ -120,10 +133,22 @@ void main() {
     await pumpInApp(tester, sheetOpener(api: api, onApplied: (_) {}));
     await openSheet(tester);
 
-    await tester.tap(find.text('İlçe'), warnIfMissed: false);
-    await tester.pumpAndSettle();
+    await tapScrolled(tester, find.text('İlçe'), warnIfMissed: false);
 
+    // Negatif iddiayı bağlayan şey bu: "Çankaya görünmüyor" dokunuş hiç
+    // inmemiş olsa da doğru olurdu, ama uca istek çıkmamış olması dokunuşun
+    // gerçekten yutulduğunu söylüyor.
+    expect(districtRequests(api), isEmpty);
     expect(find.text('Çankaya'), findsNothing);
+
+    // Aynı dokunuş il seçiliyken listeyi açıyor. Bu ikizi olmadan üstteki
+    // iddia sadece "dokunuş ıskaladı" demiş olurdu.
+    await tapScrolled(tester, find.text('İl'));
+    await tapScrolled(tester, find.text('Ankara'));
+    await tapScrolled(tester, find.text('İlçe'));
+
+    expect(districtRequests(api), hasLength(1));
+    expect(find.text('Çankaya'), findsOneWidget);
   });
 
   testWidgets('il seçimi ülke zincirinden geçip sorguya id koyuyor', (

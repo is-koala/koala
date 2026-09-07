@@ -100,6 +100,18 @@ List<String> _ids(int from, int count) => [
   for (var i = from; i < from + count; i++) '$i-ilan',
 ];
 
+/// Süzgeç sheet'i uzun; alt bölümler ekrana ancak kaydırılınca giriyor.
+///
+/// `job_filter_sheet_test.dart` baştan böyle dokunuyordu, bu dosya çıplak
+/// `tap` atıyordu: sheet'e araya bir bölüm eklendiği anda buradaki dokunuşlar
+/// ekran dışında kalıp sessizce ıskalardı.
+Future<void> tapScrolled(WidgetTester tester, Finder finder) async {
+  await tester.ensureVisible(finder);
+  await tester.pumpAndSettle();
+  await tester.tap(finder);
+  await tester.pumpAndSettle();
+}
+
 void main() {
   testWidgets('dibe yaklaşınca sonraki sayfa isteniyor', (tester) async {
     final api = _api({
@@ -184,12 +196,9 @@ void main() {
 
     await tester.tap(find.text('Süzgeçler'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Tekrarlı'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Saatlik'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Uygula'));
-    await tester.pumpAndSettle();
+    await tapScrolled(tester, find.text('Tekrarlı'));
+    await tapScrolled(tester, find.text('Saatlik'));
+    await tapScrolled(tester, find.text('Uygula'));
 
     final last = jobQueries(api).last;
     expect(last['type'], 'RECURRING');
@@ -206,8 +215,7 @@ void main() {
 
     await tester.tap(find.text('Süzgeçler'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Tekrarlı'));
-    await tester.pumpAndSettle();
+    await tapScrolled(tester, find.text('Tekrarlı'));
     // Sheet'in kapatma düğmesi `AppBottomSheet`'in kendi Material ikonu; çipin
     // çarpısı artık `AppIcons.close` olduğu için `.first` gerekmiyor ve tekil
     // eşleşme aramak dokunuşun nereye indiğini de sabitliyor.
@@ -225,14 +233,10 @@ void main() {
 
     await tester.tap(find.text('Süzgeçler'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Tekrarlı'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Kurumsal'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Temizle'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Uygula'));
-    await tester.pumpAndSettle();
+    await tapScrolled(tester, find.text('Tekrarlı'));
+    await tapScrolled(tester, find.text('Kurumsal'));
+    await tapScrolled(tester, find.text('Temizle'));
+    await tapScrolled(tester, find.text('Uygula'));
 
     final last = jobQueries(api).last;
     expect(last.containsKey('type'), isFalse);
@@ -269,12 +273,9 @@ void main() {
 
       await tester.tap(find.text('Süzgeçler'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Tekrarlı'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Saatlik'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Uygula'));
-      await tester.pumpAndSettle();
+      await tapScrolled(tester, find.text('Tekrarlı'));
+      await tapScrolled(tester, find.text('Saatlik'));
+      await tapScrolled(tester, find.text('Uygula'));
 
       expect(find.text('2'), findsOneWidget);
       expect(find.text('Tekrarlı'), findsOneWidget);
@@ -306,12 +307,8 @@ void main() {
 
     // Çipi gerçekten ekrana getirip dokunuyoruz: ekran dışında kalan bir
     // dokunuş kapalı olduğu için değil, ıskaladığı için sonuçsuz kalırdı.
-    await tester.ensureVisible(find.text('10 km içinde'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('10 km içinde'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Uygula'));
-    await tester.pumpAndSettle();
+    await tapScrolled(tester, find.text('10 km içinde'));
+    await tapScrolled(tester, find.text('Uygula'));
 
     // Seçilemedi: çubukta mesafe çipi yok ve sorguda kutu yok.
     expect(find.text('10 km içinde'), findsNothing);

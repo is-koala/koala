@@ -18,17 +18,22 @@ Map<String, dynamic> _job(String id) => {
   'status': 'OPEN',
 };
 
+/// [total] bilerek `ids.length`'ten ayrı verilebiliyor: sunucunun saydığı
+/// toplam, o sayfada dönen ilan sayısı **değil**. Varsayılanı içerik uzunluğuna
+/// eşitlemek, `totalElements`'i yanlışlıkla `content.length`'e bağlamış bir
+/// uygulamayı da yeşil bırakırdı.
 Map<String, dynamic> _page({
   required List<String> ids,
   required int page,
   required bool last,
+  int? total,
 }) => {
   'success': true,
   'data': {
     'content': [for (final id in ids) _job(id)],
     'page': page,
     'size': 20,
-    'totalElements': ids.length,
+    'totalElements': total ?? ids.length,
     'totalPages': last ? page + 1 : page + 2,
     'first': page == 0,
     'last': last,
@@ -72,6 +77,23 @@ void main() {
       expect(provider.errorMessage, isNull);
     });
 
+    test(
+      'toplam sonuç sayısı sunucudan geliyor, yüklenen kadarı değil',
+      () async {
+        final api = _pagedApi({
+          0: _page(ids: ['a', 'b'], page: 0, last: false, total: 137),
+        });
+        final provider = _providerFor(api);
+
+        await provider.load();
+
+        // Arama özeti bu sayıyı gösteriyor; yalnız yüklenmiş sayfaları saymak
+        // sonsuz kaydırmayla birlikte değişen bir sayı üretirdi.
+        expect(provider.totalElements, 137);
+        expect(provider.jobs, hasLength(2));
+      },
+    );
+
     test('yeniden yükleme listeyi baştan kuruyor', () async {
       final api = _pagedApi({
         0: _page(ids: ['a'], page: 0, last: true),
@@ -114,6 +136,21 @@ void main() {
 
       expect(provider.jobs.map((job) => job.id), ['a', 'b', 'c', 'd']);
       expect(provider.hasMore, isFalse);
+    });
+
+    test('sonraki sayfa toplam sayıyı tazeliyor', () async {
+      final api = _pagedApi({
+        0: _page(ids: ['a'], page: 0, last: false, total: 40),
+        1: _page(ids: ['b'], page: 1, last: true, total: 38),
+      });
+      final provider = _providerFor(api);
+
+      await provider.load();
+      expect(provider.totalElements, 40);
+
+      // İki istek arasında ilan kapanabiliyor; özet bayat sayıda kalmamalı.
+      await provider.loadMore();
+      expect(provider.totalElements, 38);
     });
 
     test('last: true gelince istek atmıyor', () async {
