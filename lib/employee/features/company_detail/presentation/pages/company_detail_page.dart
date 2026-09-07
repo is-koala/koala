@@ -4,6 +4,7 @@ import 'package:koala/employee/features/company_detail/models/company.dart';
 import 'package:koala/product/widgets/gallery_strip.dart';
 import 'package:koala/employee/features/company_detail/services/company_service.dart';
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/home/models/job_search_query.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';

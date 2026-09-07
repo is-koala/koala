@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
-import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/home/models/job_page.dart';
+import 'package:koala/employee/features/home/models/job_search_query.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
@@ -28,32 +28,22 @@ class JobService {
 
   /// İlan arar.
   ///
-  /// [minLatitude] ve arkadaşları haritanın görünen alanını sınırlıyor: harita
-  /// sekmesi kamerayı hareket ettirdikçe bu kutuyu güncelliyor. Liste
-  /// görünümü kutu göndermiyor, tüm ilanlar üzerinden arıyor.
+  /// Bütün ölçütler tek bir [JobSearchQuery] içinde geliyor: liste ve harita
+  /// sekmeleri aynı tipi kurduğu için ikisi zamanla ayrışamıyor. Sınırlayıcı
+  /// kutu da sorgunun bir alanı — haritanın görünen alanı oraya yazılıyor.
   ///
-  /// Kategori süzgeci kategorinin **id**'siyle çalışıyor, koduyla değil.
-  Future<JobPage> search({
-    String? query,
-    String? categoryId,
-    JobType? type,
-    double? minLatitude,
-    double? maxLatitude,
-    double? minLongitude,
-    double? maxLongitude,
+  /// [page] ve [size] sorgunun değil sayfalamanın parçası, o yüzden ayrı
+  /// duruyor. Sunucu boyutu **100** ile sınırlıyor; üstü sessizce kırpılmıyor,
+  /// 20'ye çekiliyor.
+  Future<JobPage> search(
+    JobSearchQuery query, {
     int page = 0,
     int size = defaultPageSize,
   }) {
     return _apiClient.get<JobPage>(
       ApiPaths.jobs,
       queryParameters: {
-        'query': ?query,
-        'categoryId': ?categoryId,
-        'type': ?type?.code,
-        'minLatitude': ?minLatitude,
-        'maxLatitude': ?maxLatitude,
-        'minLongitude': ?minLongitude,
-        'maxLongitude': ?maxLongitude,
+        ...query.toQueryParameters(),
         'page': page,
         'size': size,
       },

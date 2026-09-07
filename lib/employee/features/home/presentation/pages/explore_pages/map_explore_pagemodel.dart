@@ -50,7 +50,7 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
   /// İşleri yükle ve marker'ları oluştur
   Future<void> _loadJobs() async {
     try {
-      final jobs = (await _jobService.search()).jobs;
+      final jobs = (await _jobService.search(const JobSearchQuery())).jobs;
       _allJobs = jobs;
 
       final markers = await JobMarkerGenerator.generateMarkers(

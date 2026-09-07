@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:koala/employee/core/widgets/job_detail_bottom_sheet.dart';
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/home/models/job_search_query.dart';
 import 'package:koala/employee/features/home/presentation/providers/search_provider.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_marker_generator.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';

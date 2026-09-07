@@ -3,106 +3,101 @@ part of 'list_explore_page.dart';
 abstract class ListExplorePagemodel extends State<ListExplorePage>
     with AutomaticKeepAliveClientMixin<ListExplorePage> {
   bool isOpen = true;
-  List<Job> _jobs = [];
-  List<Job> _filteredJobs = [];
-  Position? _currentPosition;
-  bool _loading = true;
-  final JobService _jobService = JobService();
 
-  // Arama
+  /// Listenin sonuna bu kadar kala sonraki sayfa isteniyor; kullanıcı dibe
+  /// değmeden yükleme başlasın. `NotificationView` ile aynı eşik.
+  static const double _loadMoreThreshold = 240;
+
+  /// Arama kutusunda yazımın durmasını bu kadar bekliyoruz.
+  ///
+  /// Her tuşta istek atmak `GET /jobs`'un PUBLIC kovasındaki dakikada 120
+  /// istek sınırını tek aramada tüketebiliyor.
+  static const Duration _searchDebounce = Duration(milliseconds: 400);
+
+  /// Süzgeç çubuğundaki "hiçbiri" anahtarı.
+  static const String _all = 'all';
+
+  final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
-  String _searchQuery = '';
 
-  // Aktif filtreler
-  String _selectedFilter = 'all';
-  String _selectedPriceRange = 'all';
-  String _selectedDistance = 'all';
+  Timer? _searchTimer;
+  Position? _currentPosition;
 
-  // Geçici filtreler (bottomsheet'te seçilenler)
-  String _tempFilter = 'all';
-  String _tempPriceRange = 'all';
-  String _tempDistance = 'all';
+  /// Süzgeç sheet'lerinin **kova anahtarları**.
+  ///
+  /// Sunucu kova bilmiyor: ücret `minSalary`/`maxSalary` çifti, mesafe ise
+  /// sınırlayıcı kutu olarak gidiyor. Kovalar arayüzün kendi kavramı olduğu
+  /// için burada duruyor ve [_buildQuery] tek noktada çeviriyor — sorgu
+  /// modeline kova dizesi girmiyor.
+  ///
+  /// [_selectedCategory] üç şeyden biri: `_all`, bir [JobType] anahtarı ya da
+  /// bir kategorinin **id**'si. Kategori sunucuya `categoryId` ile gidiyor;
+  /// `code` yalnızca ikon/renk eşlemesinde kalıyor.
+  String _selectedCategory = _all;
+  String _selectedPriceRange = _all;
+  String _selectedDistance = _all;
+
+  // Geçici süzgeçler: sheet açıkken seçilenler, "Uygula"ya kadar sayfaya
+  // yansımıyor.
+  String _tempCategory = _all;
+  String _tempPriceRange = _all;
+  String _tempDistance = _all;
 
   @override
   void initState() {
     super.initState();
-    _loadJobsAndLocation();
-    // Filtre sheet'i açıldığında kategoriler hazır olsun; provider aynı
-    // listeyi ikinci kez çekmiyor.
+    _scrollController.addListener(_onScroll);
+    _resolvePosition();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<JobCategoryProvider>().load();
+      if (!mounted) return;
+      // Filtre sheet'i açıldığında kategoriler hazır olsun; provider aynı
+      // listeyi ikinci kez çekmiyor.
+      context.read<JobCategoryProvider>().load();
+      context.read<JobSearchProvider>().load();
     });
   }
 
   @override
   void dispose() {
+    _searchTimer?.cancel();
+    _scrollController
+      ..removeListener(_onScroll)
+      ..dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
   }
 
-  Future<void> _loadJobsAndLocation() async {
-    try {
-      // İşleri yükle
-      final jobs = (await _jobService.search()).jobs;
+  JobSearchProvider get _search => context.read<JobSearchProvider>();
 
-      // Konumu al
-      Position? position;
-      try {
-        position = await Geolocator.getCurrentPosition();
-      } catch (e) {
-        // Konum alınamazsa varsayılan konum kullan
-        position = null;
-      }
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
 
-      // Konuma göre sırala. Koordinatı olmayan ilanlar listenin sonuna
-      // düşüyor: uzaklıkları bilinmiyor, en yakın diye göstermek yanlış olur.
-      if (position != null) {
-        final origin = position;
-        jobs.sort((a, b) {
-          final distA = _distanceFrom(origin, a);
-          final distB = _distanceFrom(origin, b);
-          return distA.compareTo(distB);
-        });
-      }
+    final remaining =
+        _scrollController.position.maxScrollExtent -
+        _scrollController.position.pixels;
 
-      if (!mounted) return;
-      setState(() {
-        _jobs = jobs;
-        _filteredJobs = jobs;
-        _currentPosition = position;
-        _loading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-      });
-    }
+    if (remaining <= _loadMoreThreshold) _search.loadMore();
   }
 
-  /// Sıralama için ham uzaklık, metre. Koordinatı olmayan ilan en sona
-  /// düşsün diye sonsuz dönüyor.
-  static double _distanceFrom(Position origin, Job job) {
-    if (!job.hasLocation) return double.infinity;
-    return Geolocator.distanceBetween(
-      origin.latitude,
-      origin.longitude,
-      job.latitude!,
-      job.longitude!,
-    );
-  }
-
-  /// Kullanıcı herhangi bir süzgeç ya da arama uyguladı mı.
+  /// Konumu bir kez okur.
   ///
-  /// Boş liste iki farklı sebepten olabiliyor: ya süzgece uyan iş yok, ya
-  /// da ortalıkta hiç ilan yok. İkisine aynı metni göstermek yanıltıcı.
-  bool get hasActiveFilter =>
-      _searchQuery.isNotEmpty ||
-      _selectedFilter != 'all' ||
-      _selectedPriceRange != 'all' ||
-      _selectedDistance != 'all';
+  /// İki işi var: kartlardaki mesafe satırı ve mesafe süzgecinin sınırlayıcı
+  /// kutusu. İzin yoksa ikisi de sessizce devre dışı kalıyor — süzgecin izin
+  /// istemesi is-koala/koala#32'nin işi.
+  Future<void> _resolvePosition() async {
+    Position? position;
+    try {
+      position = await Geolocator.getCurrentPosition();
+    } catch (_) {
+      position = null;
+    }
+
+    if (!mounted) return;
+    setState(() => _currentPosition = position);
+  }
 
   /// İlana olan uzaklık, km. Konum izni yoksa ya da ilanın koordinatı
   /// yoksa `null` — mesafe satırı o zaman hiç çizilmiyor.
@@ -117,105 +112,124 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
     return distance / 1000; // km'ye çevir
   }
 
+  /// Ekrana çizilecek liste.
+  ///
+  /// Mesafeye göre sıralama **yalnız mesafe süzgeci seçiliyken** uygulanıyor.
+  /// Sunucuda mesafe sıralaması yok (`SORTABLE_FIELDS` dört alan taşıyor), yani
+  /// bu sıralama o ana kadar yüklenmiş sayfaların üzerinde çalışıyor ve yeni
+  /// sayfa geldikçe kartlar yer değiştiriyor. Süzgeç açıkken sonuç zaten
+  /// kullanıcının çevresindeki kutuyla sınırlı olduğu için sıralama orada
+  /// anlamlı; süzgeç kapalıyken sunucunun `createdAt DESC` sırası korunuyor,
+  /// aksi hâlde liste sebepsiz yere gözün önünde karışırdı.
+  List<Job> _visibleJobs(List<Job> jobs) {
+    if (_selectedDistance == _all || _currentPosition == null) return jobs;
+
+    final origin = _currentPosition!;
+    // Koordinatı olmayan ilanlar sona düşüyor: uzaklıkları bilinmiyor, en
+    // yakın diye göstermek yanlış olur.
+    return [...jobs]..sort(
+      (a, b) => _rawDistance(origin, a).compareTo(_rawDistance(origin, b)),
+    );
+  }
+
+  static double _rawDistance(Position origin, Job job) {
+    if (!job.hasLocation) return double.infinity;
+    return Geolocator.distanceBetween(
+      origin.latitude,
+      origin.longitude,
+      job.latitude!,
+      job.longitude!,
+    );
+  }
+
+  // ------------------------------------------------------------------- Arama
+
   void _onSearchChanged(String query) {
-    setState(() {
-      _searchQuery = query;
-      _applyAllFilters();
-    });
+    setState(() {}); // temizleme ikonu metne göre çiziliyor
+    _searchTimer?.cancel();
+    _searchTimer = Timer(_searchDebounce, _applyQuery);
   }
 
   void _clearSearch() {
+    _searchTimer?.cancel();
     _searchController.clear();
-    setState(() {
-      _searchQuery = '';
-      _applyAllFilters();
-    });
+    setState(() {});
+    _applyQuery();
   }
 
-  void _applyAllFilters() {
-    List<Job> filtered = _jobs;
+  // ----------------------------------------------------------------- Süzgeçler
 
-    // Arama filtresi
-    if (_searchQuery.trim().isNotEmpty) {
-      final lowerQuery = _searchQuery.toLowerCase();
-      filtered = filtered.where((job) {
-        return job.title.toLowerCase().contains(lowerQuery) ||
-            job.subtitle.toLowerCase().contains(lowerQuery) ||
-            (job.company?.toLowerCase().contains(lowerQuery) ?? false) ||
-            job.category.displayName.toLowerCase().contains(lowerQuery) ||
-            (job.locationLabel?.toLowerCase().contains(lowerQuery) ?? false) ||
-            (job.sector?.toLowerCase().contains(lowerQuery) ?? false) ||
-            (job.position?.toLowerCase().contains(lowerQuery) ?? false);
-      }).toList();
+  /// Arayüzdeki seçimleri tek bir sunucu sorgusuna çevirir.
+  JobSearchQuery _buildQuery() {
+    final (minSalary, maxSalary) = _salaryRange;
+
+    var query = JobSearchQuery(
+      query: _searchController.text,
+      categoryId: _categoryId,
+      type: _jobType,
+      minSalary: minSalary,
+      maxSalary: maxSalary,
+    );
+
+    final radiusKm = _radiusKm;
+    final position = _currentPosition;
+    if (radiusKm != null && position != null) {
+      query = query.withRadius(
+        latitude: position.latitude,
+        longitude: position.longitude,
+        radiusKm: radiusKm,
+      );
     }
 
-    // Kategori ve tip filtresi
-    if (_selectedFilter != 'all') {
-      if (_selectedFilter == 'oneTime') {
-        filtered = filtered
-            .where((job) => job.type == JobType.oneTime)
-            .toList();
-      } else if (_selectedFilter == 'recurring') {
-        filtered = filtered
-            .where((job) => job.type == JobType.recurring)
-            .toList();
-      } else {
-        // Geriye kalan tek seçenek kategori: filtre anahtarı kategorinin
-        // backend'deki `code` değeri. Tanınmayan bir anahtar hiçbir işi
-        // elemesin diye doğrudan kodla karşılaştırılıyor.
-        filtered = filtered
-            .where((job) => job.category.code == _selectedFilter)
-            .toList();
-      }
-    }
-
-    // Ücret aralığı filtresi
-    if (_selectedPriceRange != 'all') {
-      if (_selectedPriceRange == '0-500') {
-        filtered = filtered.where((job) => job.price <= 500).toList();
-      } else if (_selectedPriceRange == '500-1000') {
-        filtered = filtered
-            .where((job) => job.price > 500 && job.price <= 1000)
-            .toList();
-      } else if (_selectedPriceRange == '1000-2000') {
-        filtered = filtered
-            .where((job) => job.price > 1000 && job.price <= 2000)
-            .toList();
-      } else if (_selectedPriceRange == '2000+') {
-        filtered = filtered.where((job) => job.price > 2000).toList();
-      }
-    }
-
-    // Mesafe filtresi
-    if (_selectedDistance != 'all' && _currentPosition != null) {
-      if (_selectedDistance == '0-5') {
-        filtered = filtered.where((job) {
-          final distance = _getDistance(job);
-          return distance != null && distance <= 5;
-        }).toList();
-      } else if (_selectedDistance == '5-10') {
-        filtered = filtered.where((job) {
-          final distance = _getDistance(job);
-          return distance != null && distance > 5 && distance <= 10;
-        }).toList();
-      } else if (_selectedDistance == '10-20') {
-        filtered = filtered.where((job) {
-          final distance = _getDistance(job);
-          return distance != null && distance > 10 && distance <= 20;
-        }).toList();
-      } else if (_selectedDistance == '20+') {
-        filtered = filtered.where((job) {
-          final distance = _getDistance(job);
-          return distance != null && distance > 20;
-        }).toList();
-      }
-    }
-
-    _filteredJobs = filtered;
+    return query;
   }
+
+  void _applyQuery() {
+    if (!mounted) return;
+    _search.applyQuery(_buildQuery());
+  }
+
+  /// Kategori süzgecinin sunucuya giden değeri.
+  ///
+  /// Tür anahtarları (`oneTime` / `recurring`) kategori değil; onlar [_jobType]
+  /// üzerinden `type` alanına gidiyor.
+  String? get _categoryId {
+    if (_selectedCategory == _all) return null;
+    if (_jobTypeKeys.containsKey(_selectedCategory)) return null;
+    return _selectedCategory;
+  }
+
+  JobType? get _jobType => _jobTypeKeys[_selectedCategory];
+
+  static final Map<String, JobType> _jobTypeKeys = {
+    for (final type in JobType.values) type.name: type,
+  };
+
+  /// Ücret kovasının sunucu karşılığı. Üst sınırı olmayan kova `maxSalary`
+  /// göndermiyor.
+  (double?, double?) get _salaryRange => switch (_selectedPriceRange) {
+    '0-500' => (null, 500),
+    '500-1000' => (500, 1000),
+    '1000-2000' => (1000, 2000),
+    '2000+' => (2000, null),
+    _ => (null, null),
+  };
+
+  /// Mesafe kovasının yarıçapı, km.
+  ///
+  /// Kovalar "X km içinde" biçiminde: sunucu sınırlayıcı kutu süzüyor, kutu ise
+  /// "şu halkanın dışı" diye bir şey ifade edemiyor. Eski "20+ km" kovası bu
+  /// yüzden kaldırıldı — istemcide kalsaydı yalnız yüklenmiş sayfalar üzerinde
+  /// çalışıp sayfalandıkça yanlış sonuç verirdi.
+  double? get _radiusKm => switch (_selectedDistance) {
+    '0-5' => 5,
+    '0-10' => 10,
+    '0-20' => 20,
+    _ => null,
+  };
 
   void _showCategoryFilter() {
-    _tempFilter = _selectedFilter;
+    _tempCategory = _selectedCategory;
   }
 
   void _showPriceFilter() {
@@ -226,14 +240,27 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
     _tempDistance = _selectedDistance;
   }
 
+  /// Bütün süzgeçleri sıfırlar; boş sonuç ekranındaki çıkış buna bağlı.
+  void _clearFilters() {
+    setState(() {
+      _selectedCategory = _all;
+      _selectedPriceRange = _all;
+      _selectedDistance = _all;
+      _tempCategory = _all;
+      _tempPriceRange = _all;
+      _tempDistance = _all;
+    });
+    _applyQuery();
+  }
+
   void _applyTempFilters() {
     setState(() {
-      _selectedFilter = _tempFilter;
+      _selectedCategory = _tempCategory;
       _selectedPriceRange = _tempPriceRange;
       _selectedDistance = _tempDistance;
-      _applyAllFilters();
     });
     Navigator.pop(context);
+    _applyQuery();
   }
 
   @override

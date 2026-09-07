@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/home/models/job_search_query.dart';
 import 'package:koala/employee/features/home/presentation/providers/job_category_provider.dart';
+import 'package:koala/employee/features/home/presentation/providers/job_search_provider.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_card.dart';
-import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -37,6 +40,9 @@ class _ListExplorePageState extends ListExplorePagemodel {
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final search = context.watch<JobSearchProvider>();
+    final jobs = _visibleJobs(search.jobs);
+
     return GestureDetector(
       onTap: () => _searchFocusNode.unfocus(),
       child: Scaffold(
@@ -44,29 +50,39 @@ class _ListExplorePageState extends ListExplorePagemodel {
         backgroundColor: context.recessedColor,
         extendBody: true,
         extendBodyBehindAppBar: false,
-        body: CustomScrollView(
-          slivers: [
-            appBar(context),
-            const SliverToBoxAdapter(child: SizedBox(height: AppSizes.space)),
-            filters(),
-            if (_searchQuery.isNotEmpty)
-              SliverToBoxAdapter(child: _searchSummary()),
-            SliverToBoxAdapter(child: _listHeader()),
-            if (_loading)
-              SliverToBoxAdapter(child: _centered(_loadingIndicator()))
-            else if (_filteredJobs.isEmpty)
-              SliverToBoxAdapter(child: _centered(_emptyState()))
-            else
-              SliverList(
-                delegate: SliverChildBuilderDelegate((context, index) {
-                  final job = _filteredJobs[index];
-                  return JobCard(job: job, distance: _getDistance(job));
-                }, childCount: _filteredJobs.length),
+        body: RefreshIndicator(
+          onRefresh: () => _search.load(silent: true),
+          child: CustomScrollView(
+            controller: _scrollController,
+            // Liste kısayken de aşağı çekilebilsin: RefreshIndicator'ın
+            // çalışması buna bağlı.
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              appBar(context),
+              const SliverToBoxAdapter(child: SizedBox(height: AppSizes.space)),
+              filters(),
+              if (_searchController.text.isNotEmpty)
+                SliverToBoxAdapter(child: _searchSummary(search)),
+              SliverToBoxAdapter(child: _listHeader()),
+              if (search.isLoading && jobs.isEmpty)
+                SliverToBoxAdapter(child: _centered(_loadingIndicator()))
+              else if (jobs.isEmpty)
+                SliverToBoxAdapter(child: _centered(_emptyState(search)))
+              else
+                SliverList(
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    if (index >= jobs.length) return _loadMoreIndicator();
+                    final job = jobs[index];
+                    return JobCard(job: job, distance: _getDistance(job));
+                  }, childCount: jobs.length + (search.hasMore ? 1 : 0)),
+                ),
+              if (search.errorMessage != null && jobs.isNotEmpty)
+                SliverToBoxAdapter(child: _errorStrip(search.errorMessage!)),
+              const SliverToBoxAdapter(
+                child: SizedBox(height: AppSizes.navBarClearance),
               ),
-            const SliverToBoxAdapter(
-              child: SizedBox(height: AppSizes.navBarClearance),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -84,6 +100,11 @@ class _ListExplorePageState extends ListExplorePagemodel {
   Widget _loadingIndicator() =>
       Center(child: CircularProgressIndicator(color: context.accentColor));
 
+  Widget _loadMoreIndicator() => Padding(
+    padding: AppPadding.primaryAll,
+    child: Center(child: CircularProgressIndicator(color: context.accentColor)),
+  );
+
   Widget _listHeader() {
     return Padding(
       padding: AppPadding.primaryHorizontal,
@@ -91,7 +112,45 @@ class _ListExplorePageState extends ListExplorePagemodel {
     );
   }
 
-  Widget _searchSummary() {
+  /// Sayfa eklenemediğinde listenin altına düşen şerit.
+  ///
+  /// Liste ekranda kalıyor — hata yüzünden eldeki ilanları silmek kullanıcıyı
+  /// kazandığı yerden geri atardı; `debugPrint` ise kullanıcıya hiçbir şey
+  /// söylemiyor.
+  Widget _errorStrip(String message) {
+    return Padding(
+      padding: AppPadding.primaryAll,
+      child: Row(
+        children: [
+          AppIcon(
+            AppIcons.alert,
+            size: AppSizes.iconSmall,
+            color: context.textSecondary,
+          ),
+          const SizedBox(width: AppSizes.spaceSmall),
+          Expanded(
+            child: Text(
+              message,
+              style: context.textTheme.labelMedium?.copyWith(
+                color: context.textSecondary,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => _search.loadMore(),
+            child: Text(
+              'Tekrar Dene',
+              style: context.textTheme.labelLarge?.copyWith(
+                color: context.accentColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _searchSummary(JobSearchProvider search) {
     return Container(
       padding: const EdgeInsets.fromLTRB(
         AppPadding.primary,
@@ -102,7 +161,7 @@ class _ListExplorePageState extends ListExplorePagemodel {
       child: Row(
         children: [
           Text(
-            '"$_searchQuery" için ${_filteredJobs.length} sonuç',
+            '"${_searchController.text}" için ${search.totalElements} sonuç',
             style: context.textTheme.bodyMedium?.copyWith(
               fontWeight: FontWeight.w500,
               color: context.textSecondary,
@@ -123,32 +182,65 @@ class _ListExplorePageState extends ListExplorePagemodel {
     );
   }
 
-  Widget _emptyState() {
+  /// Boş liste üç ayrı sebepten olabiliyor ve üçü farklı çıkış istiyor.
+  ///
+  /// Süzgeç sunucuya taşındıktan sonra da ayrım korunuyor: ayrımı listenin
+  /// kendisi değil, **uygulanan sorgu** anlatıyor.
+  String _emptyMessage(JobSearchProvider search) {
+    final query = search.query;
+    if (search.errorMessage != null) return search.errorMessage!;
+    if (query.hasQuery) return '"${query.query}" ile eşleşen iş bulunamadı';
+    if (query.hasFilters) return 'Bu filtreye uygun iş bulunamadı';
+    return 'Yakınında henüz ilan yok';
+  }
+
+  Widget _emptyState(JobSearchProvider search) {
+    final query = search.query;
+    final hasSearch = query.hasQuery;
+
     return Column(
       children: [
         AppIcon(
-          AppIcons.searchList,
+          search.errorMessage != null ? AppIcons.alert : AppIcons.searchList,
           size: AppSizes.iconHuge,
           color: context.textTertiary,
         ),
         const SizedBox(height: AppSizes.spaceMedium),
         Text(
-          _searchQuery.isNotEmpty
-              ? '"$_searchQuery" ile eşleşen iş bulunamadı'
-              : hasActiveFilter
-              ? 'Bu filtreye uygun iş bulunamadı'
-              : 'Yakınında henüz ilan yok',
+          _emptyMessage(search),
           textAlign: TextAlign.center,
           style: context.textTheme.bodyLarge?.copyWith(
             color: context.textSecondary,
           ),
         ),
-        if (_searchQuery.isNotEmpty) ...[
+        if (search.errorMessage != null) ...[
+          const SizedBox(height: AppSizes.space),
+          TextButton(
+            onPressed: () => _search.load(),
+            child: Text(
+              'Tekrar Dene',
+              style: context.textTheme.labelLarge?.copyWith(
+                color: context.accentColor,
+              ),
+            ),
+          ),
+        ] else if (hasSearch) ...[
           const SizedBox(height: AppSizes.space),
           TextButton(
             onPressed: _clearSearch,
             child: Text(
               'Aramayı Temizle',
+              style: context.textTheme.labelLarge?.copyWith(
+                color: context.accentColor,
+              ),
+            ),
+          ),
+        ] else if (query.hasFilters) ...[
+          const SizedBox(height: AppSizes.space),
+          TextButton(
+            onPressed: _clearFilters,
+            child: Text(
+              'Süzgeçleri Temizle',
               style: context.textTheme.labelLarge?.copyWith(
                 color: context.accentColor,
               ),
@@ -184,21 +276,21 @@ class _ListExplorePageState extends ListExplorePagemodel {
             _buildFilterButton(
               icon: AppIcons.menu2,
               label: 'Kategoriler',
-              isActive: _selectedFilter != 'all',
+              isActive: _selectedCategory != ListExplorePagemodel._all,
               onTap: _showCategoryFilterSheet,
             ),
             const SizedBox(width: AppSizes.spaceSmall),
             _buildFilterButton(
               icon: AppIcons.moneyBag,
               label: 'Ücret',
-              isActive: _selectedPriceRange != 'all',
+              isActive: _selectedPriceRange != ListExplorePagemodel._all,
               onTap: _showPriceFilterSheet,
             ),
             const SizedBox(width: AppSizes.spaceSmall),
             _buildFilterButton(
               icon: AppIcons.route,
               label: 'Mesafe',
-              isActive: _selectedDistance != 'all',
+              isActive: _selectedDistance != ListExplorePagemodel._all,
               onTap: _showDistanceFilterSheet,
             ),
           ],
@@ -327,7 +419,7 @@ class _ListExplorePageState extends ListExplorePagemodel {
             borderRadius: AppRadius.stadiumCircular,
             borderSide: BorderSide.none,
           ),
-          prefixIcon: _searchQuery.isNotEmpty
+          prefixIcon: _searchController.text.isNotEmpty
               ? IconButton(
                   icon: Icon(
                     Icons.close,
@@ -364,16 +456,17 @@ class _ListExplorePageState extends ListExplorePagemodel {
     _openFilterSheet(
       title: 'Kategoriler',
       // Kategori satırları sunucudan geliyor; tip seçenekleri sabit kalıyor
-      // çünkü onların karşılığı `JobType` enum'ı.
+      // çünkü onların karşılığı `JobType` enum'ı. Kategorinin değeri **id**:
+      // sunucu `categoryId` bekliyor, `code` yalnızca ikon ve renk eşlemesi
+      // için var. İkisi is-koala/koala#32'de ayrı bölümlere ayrılacak.
       options: [
-        ('Tümü', 'all'),
-        ('Günlük', 'oneTime'),
-        ('Tekrarlı', 'recurring'),
+        ('Tümü', ListExplorePagemodel._all),
+        for (final type in JobType.values) (type.displayName, type.name),
         for (final category in context.read<JobCategoryProvider>().categories)
-          (category.displayName, category.code),
+          (category.displayName, category.id),
       ],
-      selected: () => _tempFilter,
-      onSelect: (value) => _tempFilter = value,
+      selected: () => _tempCategory,
+      onSelect: (value) => _tempCategory = value,
     );
   }
 
@@ -382,7 +475,7 @@ class _ListExplorePageState extends ListExplorePagemodel {
     _openFilterSheet(
       title: 'Ücret Aralığı',
       options: const [
-        ('Tümü', 'all'),
+        ('Tümü', ListExplorePagemodel._all),
         ('0-500₺', '0-500'),
         ('500-1000₺', '500-1000'),
         ('1000-2000₺', '1000-2000'),
@@ -397,12 +490,14 @@ class _ListExplorePageState extends ListExplorePagemodel {
     _showDistanceFilter();
     _openFilterSheet(
       title: 'Mesafe',
+      // Kovalar "X km içinde": sunucu sınırlayıcı kutu süzüyor ve kutu bir
+      // halkanın **dışını** ifade edemiyor, o yüzden eski "20+ km" seçeneği
+      // yok.
       options: const [
-        ('Tümü', 'all'),
-        ('0-5 km', '0-5'),
-        ('5-10 km', '5-10'),
-        ('10-20 km', '10-20'),
-        ('20+ km', '20+'),
+        ('Tümü', ListExplorePagemodel._all),
+        ('5 km içinde', '0-5'),
+        ('10 km içinde', '0-10'),
+        ('20 km içinde', '0-20'),
       ],
       selected: () => _tempDistance,
       onSelect: (value) => _tempDistance = value,

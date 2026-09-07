@@ -126,7 +126,7 @@ A feature has at most three top-level folders: **`models/`** (plain data classes
 
 ### State management
 
-`provider`. Sixteen `ChangeNotifierProvider`s are registered in `main.dart`, in this order:
+`provider`. Seventeen `ChangeNotifierProvider`s are registered in `main.dart`, in this order:
 
 | Provider | Responsibility |
 |---|---|
@@ -134,6 +134,7 @@ A feature has at most three top-level folders: **`models/`** (plain data classes
 | `UserProvider` | The session owner off `/users/me` — read by both apps |
 | `AvailabilityProvider` | The worker's weekly availability draft (`PUT` replaces all slots) |
 | `JobCategoryProvider` | The server's job categories, fetched once and cached app-wide |
+| `JobSearchProvider` | Explore's server-side search: the `JobSearchQuery`, the pages and the infinite scroll |
 | `PageProvider` | Employee shell: which tab, and the explore map/list toggle |
 | `SavedJobsProvider` | Saved jobs |
 | `JobAlertsProvider` | The job alerts screen's server state |
