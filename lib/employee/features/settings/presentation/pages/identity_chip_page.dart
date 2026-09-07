@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:koala/product/constants/app_info.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
@@ -288,7 +289,7 @@ class _IdentityChipPageState extends IdentityChipPagemodel {
           ),
           const SizedBox(height: AppSizes.spaceMedium),
           Text(
-            'Sorun sürerse destek@iskoala.com adresinden bize yazabilirsin.',
+            'Sorun sürerse ${AppInfo.supportEmail} adresinden bize yazabilirsin.',
             textAlign: TextAlign.center,
             style: context.textTheme.bodySmall?.copyWith(
               color: context.textTertiary,
