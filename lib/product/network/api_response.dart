@@ -46,25 +46,41 @@ class ApiResponse<T> {
     final details = json['details'];
 
     return ApiResponse<T>(
-      success: json['success'] as bool? ?? false,
-      message: json['message'] as String?,
+      // `as bool?` değil: gövde `"success": "false"` gibi bir şey taşırsa cast
+      // atar. Zarf yalnızca `true` derken başarılı sayılıyor, geri kalan her
+      // şey — yanlış tür dahil — başarısız.
+      success: json['success'] == true,
+      message: _stringOrNull(json['message']),
       data: parse == null ? null : parse(json['data']),
-      errorCode: json['errorCode'] as String?,
-      // `as String?` değil: alan beklenmedik bir türde gelirse cast bir
-      // `TypeError` atar ve bu ayrıştırma `_toApiException`'ın içinden
-      // çağrıldığı için `ApiClient`'ın `TypeError` ağına takılmadan yukarı
-      // fırlar — yani sınıflandırmanın kaynağı olan alan uygulamayı
-      // düşürebilirdi. Tanınmayan kategoriyle aynı yere düşsün: yok sayılsın.
-      errorCategory: switch (json['errorCategory']) {
-        final String category => category,
-        _ => null,
-      },
+      errorCode: _stringOrNull(json['errorCode']),
+      errorCategory: _stringOrNull(json['errorCategory']),
       fieldErrors: details is List
-          ? details
-                .whereType<Map<String, dynamic>>()
-                .map(ApiFieldError.fromJson)
-                .toList()
+          ? details.whereType<Map<String, dynamic>>().map(_fieldError).toList()
           : const [],
     );
   }
+
+  /// `details` dizisinin bir elemanı. Ayrıştırma burada, çünkü o da zarfın
+  /// parçası ve aynı korumayı kullanmalı; alan adı ya da mesaj dizge değilse
+  /// hata sayılmıyor, boş bırakılıyor.
+  static ApiFieldError _fieldError(Map<String, dynamic> json) => ApiFieldError(
+    field: _stringOrNull(json['field']) ?? '',
+    message: _stringOrNull(json['message']) ?? '',
+  );
+
+  /// Zarftaki bir metin alanını **yalnızca gerçekten dizgeyse** okur; değilse
+  /// "gelmedi" sayar.
+  ///
+  /// `as String?` yerine bunun olmasının sebebi zarfın **tamamı** için
+  /// geçerli: bu ayrıştırma `ApiClient._fromResponse` üzerinden
+  /// `_toApiException`'ın *içinden* çağrılıyor. Orada atılan bir `TypeError`
+  /// `_send`'in `catch (error)` dalına hiç uğramadan yukarı fırlar — bir
+  /// `catch` bloğunun içinden atılan hata aynı `try`'ın sonraki dallarına
+  /// düşmez. Yani `"errorCode": 42` taşıyan bir gövde çağırana `ApiException`
+  /// değil ham bir `_TypeError` verirdi.
+  ///
+  /// Koruma tek tek alanlara değil zarfın geneline konuyor: hangi alanın
+  /// korunduğunu hatırlamak gerekmesin. Sunucu sözleşmesi bu alanların
+  /// hepsine dizge diyor; gövdenin biçimi istemciyi düşürmemeli.
+  static String? _stringOrNull(Object? value) => value is String ? value : null;
 }

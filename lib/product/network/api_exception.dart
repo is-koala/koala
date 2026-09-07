@@ -122,18 +122,14 @@ enum ApiErrorType {
 }
 
 /// Bir alana bağlı doğrulama hatası. Backend `details` dizisinde döndürüyor.
+///
+/// JSON'dan kurulması `ApiResponse.fromJson`'da: zarfın bütün metin alanları
+/// tek bir tür korumasından geçiyor ve bu da onlardan biri.
 class ApiFieldError {
   const ApiFieldError({required this.field, required this.message});
 
   final String field;
   final String message;
-
-  factory ApiFieldError.fromJson(Map<String, dynamic> json) {
-    return ApiFieldError(
-      field: json['field'] as String? ?? '',
-      message: json['message'] as String? ?? '',
-    );
-  }
 }
 
 /// Uygulamanın gördüğü tek hata tipi.
