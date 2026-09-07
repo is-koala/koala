@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/widgets/filter_pill.dart';
 
+import '../../support/finders.dart';
 import '../../support/pump.dart';
 
 void main() {
@@ -76,8 +78,8 @@ void main() {
       ),
     );
 
-    expect(find.byIcon(Icons.close), findsOneWidget);
-    await tester.tap(find.byIcon(Icons.close));
+    expect(findAppIcon(AppIcons.close), findsOneWidget);
+    await tester.tap(findAppIcon(AppIcons.close));
     expect(removed, isTrue);
   });
 
@@ -87,6 +89,6 @@ void main() {
       const FilterPill(label: 'Ankara', isSelected: true),
     );
 
-    expect(find.byIcon(Icons.close), findsNothing);
+    expect(findAppIcon(AppIcons.close), findsNothing);
   });
 }

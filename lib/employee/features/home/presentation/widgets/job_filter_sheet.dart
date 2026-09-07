@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_filter_selection.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
@@ -11,6 +12,7 @@ import 'package:koala/product/models/reference_location.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/services/reference_location_service.dart';
 import 'package:koala/product/widgets/app_bottom_sheet.dart';
+import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/filter_pill.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
 import 'package:koala/product/widgets/option_sheet.dart';
@@ -298,8 +300,8 @@ class _JobFilterSheetState extends State<JobFilterSheet> {
                     ),
                   ),
                   const SizedBox(width: AppSizes.spaceSmall),
-                  Icon(
-                    Icons.keyboard_arrow_down,
+                  AppIcon(
+                    AppIcons.chevronDown,
                     size: AppSizes.iconMedium,
                     color: context.textSecondary,
                   ),

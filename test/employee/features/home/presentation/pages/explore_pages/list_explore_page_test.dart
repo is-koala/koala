@@ -7,9 +7,11 @@ import 'package:koala/employee/features/home/presentation/providers/job_category
 import 'package:koala/employee/features/home/presentation/providers/job_search_provider.dart';
 import 'package:koala/employee/features/home/services/job_category_service.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../../../support/fake_api.dart';
+import '../../../../../../support/finders.dart';
 import '../../../../../../support/pump.dart';
 
 Map<String, dynamic> _job(String id) => {
@@ -206,7 +208,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Tekrarlı'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.close).first);
+    // Sheet'in kapatma düğmesi `AppBottomSheet`'in kendi Material ikonu; çipin
+    // çarpısı artık `AppIcons.close` olduğu için `.first` gerekmiyor ve tekil
+    // eşleşme aramak dokunuşun nereye indiğini de sabitliyor.
+    await tester.tap(find.byIcon(Icons.close));
     await tester.pumpAndSettle();
 
     expect(jobQueries(api).length, before);
@@ -275,7 +280,7 @@ void main() {
       expect(find.text('Tekrarlı'), findsOneWidget);
 
       // Çipin çarpısı yalnız o alanı temizliyor.
-      await tester.tap(find.byIcon(Icons.close).first);
+      await tester.tap(findAppIcon(AppIcons.close).first);
       await tester.pumpAndSettle();
 
       final last = jobQueries(api).last;

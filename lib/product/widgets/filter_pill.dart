@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/widgets/app_icon.dart';
 
 /// Süzgeç sheet'lerindeki seçenek hapı.
 ///
@@ -72,8 +74,8 @@ class FilterPill extends StatelessWidget {
             const SizedBox(width: AppSizes.spaceSmall),
             GestureDetector(
               onTap: enabled ? onRemove : null,
-              child: Icon(
-                Icons.close,
+              child: AppIcon(
+                AppIcons.close,
                 size: AppSizes.iconSmall,
                 color: foreground,
               ),

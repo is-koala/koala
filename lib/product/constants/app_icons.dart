@@ -30,6 +30,17 @@ abstract final class AppIcons {
   static const String cancelCircle = 'closeCircle';
   static const String tick = 'check';
 
+  /// Tek bir seçimi temizleyen çarpı — süzgeç çipinin sağındaki gibi.
+  /// Sette çıplak bir çarpı iki adla var: `x` dolu gövdeli, `xmark` ise
+  /// çevredeki `chevronDown` ve `arrowLeft` ile aynı 1.5 kalınlıkta çizgi
+  /// ailesinden, o yüzden bu seçildi. [cancelCircle] daireli olanı ve daha
+  /// ağır bir "iptal" anlamı taşıyor.
+  static const String close = 'xmark';
+
+  /// "Dokun ve seç" alanının sağındaki ok. Bir yöne gitmeyi değil, altında bir
+  /// liste açılacağını anlatıyor; [arrowRight] gezinme için duruyor.
+  static const String chevronDown = 'chevronDown';
+
   // ────────────────────────────────────── Kullanıcı & Hesap
   static const String user = 'user';
   static const String userAdd = 'userAdd';
