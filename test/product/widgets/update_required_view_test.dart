@@ -132,21 +132,23 @@ void main() {
       expect(find.textContaining(AppInfo.supportEmail), findsNothing);
     }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
-    testWidgets('Android kimliği boşken düğme yerine yönlendirme metni çiziliyor', (
-      tester,
-    ) async {
-      await pumpInApp(
-        tester,
-        const UpdateRequiredView(
-          message: 'Lütfen uygulamayı güncelleyin.',
-          iosAppStoreId: iosId,
-          androidPackageId: '',
-        ),
-      );
+    testWidgets(
+      'Android kimliği boşken düğme yerine yönlendirme metni çiziliyor',
+      (tester) async {
+        await pumpInApp(
+          tester,
+          const UpdateRequiredView(
+            message: 'Lütfen uygulamayı güncelleyin.',
+            iosAppStoreId: iosId,
+            androidPackageId: '',
+          ),
+        );
 
-      expect(find.byType(MyButton), findsNothing);
-      expect(find.textContaining(AppInfo.supportEmail), findsOneWidget);
-    }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+        expect(find.byType(MyButton), findsNothing);
+        expect(find.textContaining(AppInfo.supportEmail), findsOneWidget);
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.android),
+    );
 
     testWidgets('Android kimliği doluyken düğme çiziliyor', (tester) async {
       await pumpInApp(
