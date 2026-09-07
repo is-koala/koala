@@ -14,9 +14,6 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
   /// istek sınırını tek aramada tüketebiliyor.
   static const Duration _searchDebounce = Duration(milliseconds: 400);
 
-  /// Süzgeç çubuğundaki "hiçbiri" anahtarı.
-  static const String _all = 'all';
-
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
@@ -24,25 +21,13 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
   Timer? _searchTimer;
   Position? _currentPosition;
 
-  /// Süzgeç sheet'lerinin **kova anahtarları**.
+  /// Süzgeç sheet'inin uygulanmış hâli.
   ///
-  /// Sunucu kova bilmiyor: ücret `minSalary`/`maxSalary` çifti, mesafe ise
-  /// sınırlayıcı kutu olarak gidiyor. Kovalar arayüzün kendi kavramı olduğu
-  /// için burada duruyor ve [_buildQuery] tek noktada çeviriyor — sorgu
-  /// modeline kova dizesi girmiyor.
-  ///
-  /// [_selectedCategory] üç şeyden biri: `_all`, bir [JobType] anahtarı ya da
-  /// bir kategorinin **id**'si. Kategori sunucuya `categoryId` ile gidiyor;
-  /// `code` yalnızca ikon/renk eşlemesinde kalıyor.
-  String _selectedCategory = _all;
-  String _selectedPriceRange = _all;
-  String _selectedDistance = _all;
-
-  // Geçici süzgeçler: sheet açıkken seçilenler, "Uygula"ya kadar sayfaya
-  // yansımıyor.
-  String _tempCategory = _all;
-  String _tempPriceRange = _all;
-  String _tempDistance = _all;
+  /// Sunucu sorgusu bundan **türetiliyor** ([JobFilterSelection.toQuery]);
+  /// tersi mümkün değil, çünkü sorgu kategorinin adını ya da kullanıcının
+  /// seçtiği kilometreyi taşımıyor — sınırlayıcı kutudan yarıçapa geri
+  /// dönülemez. Çubuktaki çipler bu seçimden çiziliyor.
+  JobFilterSelection _selection = const JobFilterSelection();
 
   @override
   void initState() {
@@ -85,8 +70,8 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
   /// Konumu bir kez okur.
   ///
   /// İki işi var: kartlardaki mesafe satırı ve mesafe süzgecinin sınırlayıcı
-  /// kutusu. İzin yoksa ikisi de sessizce devre dışı kalıyor — süzgecin izin
-  /// istemesi is-koala/koala#32'nin işi.
+  /// kutusu. İzin yoksa mesafe süzgeci sheet'te kapalı çiziliyor ve izin
+  /// istemeyi öneriyor — bkz. [_requestLocation].
   Future<void> _resolvePosition() async {
     Position? position;
     try {
@@ -122,7 +107,7 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
   /// anlamlı; süzgeç kapalıyken sunucunun `createdAt DESC` sırası korunuyor,
   /// aksi hâlde liste sebepsiz yere gözün önünde karışırdı.
   List<Job> _visibleJobs(List<Job> jobs) {
-    if (_selectedDistance == _all || _currentPosition == null) return jobs;
+    if (_selection.radiusKm == null || _currentPosition == null) return jobs;
 
     final origin = _currentPosition!;
     // Koordinatı olmayan ilanlar sona düşüyor: uzaklıkları bilinmiyor, en
@@ -157,31 +142,15 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
     _applyQuery();
   }
 
-  // ----------------------------------------------------------------- Süzgeçler
+  // --------------------------------------------------------------- Süzgeçler
 
   /// Arayüzdeki seçimleri tek bir sunucu sorgusuna çevirir.
   JobSearchQuery _buildQuery() {
-    final (minSalary, maxSalary) = _salaryRange;
-
-    var query = JobSearchQuery(
-      query: _searchController.text,
-      categoryId: _categoryId,
-      type: _jobType,
-      minSalary: minSalary,
-      maxSalary: maxSalary,
+    return _selection.toQuery(
+      searchText: _searchController.text,
+      latitude: _currentPosition?.latitude,
+      longitude: _currentPosition?.longitude,
     );
-
-    final radiusKm = _radiusKm;
-    final position = _currentPosition;
-    if (radiusKm != null && position != null) {
-      query = query.withRadius(
-        latitude: position.latitude,
-        longitude: position.longitude,
-        radiusKm: radiusKm,
-      );
-    }
-
-    return query;
   }
 
   void _applyQuery() {
@@ -189,78 +158,62 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
     _search.applyQuery(_buildQuery());
   }
 
-  /// Kategori süzgecinin sunucuya giden değeri.
-  ///
-  /// Tür anahtarları (`oneTime` / `recurring`) kategori değil; onlar [_jobType]
-  /// üzerinden `type` alanına gidiyor.
-  String? get _categoryId {
-    if (_selectedCategory == _all) return null;
-    if (_jobTypeKeys.containsKey(_selectedCategory)) return null;
-    return _selectedCategory;
+  /// Süzgeç sheet'ini açar. Sheet yalnız "Uygula"ya basılırsa değer döndürüyor;
+  /// vazgeçilerek kapatıldığında sorgu olduğu gibi kalıyor.
+  Future<void> _openFilterSheet() async {
+    final picked = await JobFilterSheet.show(
+      context,
+      selection: _selection,
+      categories: context.read<JobCategoryProvider>().categories,
+      hasLocation: _currentPosition != null,
+      onRequestLocation: _requestLocation,
+    );
+    if (picked == null || !mounted) return;
+
+    setState(() => _selection = picked);
+    _applyQuery();
   }
 
-  JobType? get _jobType => _jobTypeKeys[_selectedCategory];
+  Future<void> _openSortSheet() async {
+    final picked = await JobSortSheet.show(context, selected: _selection.sort);
+    if (picked == null || !mounted) return;
 
-  static final Map<String, JobType> _jobTypeKeys = {
-    for (final type in JobType.values) type.name: type,
-  };
-
-  /// Ücret kovasının sunucu karşılığı. Üst sınırı olmayan kova `maxSalary`
-  /// göndermiyor.
-  (double?, double?) get _salaryRange => switch (_selectedPriceRange) {
-    '0-500' => (null, 500),
-    '500-1000' => (500, 1000),
-    '1000-2000' => (1000, 2000),
-    '2000+' => (2000, null),
-    _ => (null, null),
-  };
-
-  /// Mesafe kovasının yarıçapı, km.
-  ///
-  /// Kovalar "X km içinde" biçiminde: sunucu sınırlayıcı kutu süzüyor, kutu ise
-  /// "şu halkanın dışı" diye bir şey ifade edemiyor. Eski "20+ km" kovası bu
-  /// yüzden kaldırıldı — istemcide kalsaydı yalnız yüklenmiş sayfalar üzerinde
-  /// çalışıp sayfalandıkça yanlış sonuç verirdi.
-  double? get _radiusKm => switch (_selectedDistance) {
-    '0-5' => 5,
-    '0-10' => 10,
-    '0-20' => 20,
-    _ => null,
-  };
-
-  void _showCategoryFilter() {
-    _tempCategory = _selectedCategory;
+    setState(() => _selection = _selection.copyWith(sort: picked));
+    _applyQuery();
   }
 
-  void _showPriceFilter() {
-    _tempPriceRange = _selectedPriceRange;
+  /// Çubuktaki çipin çarpısı: yalnız o alanı temizliyor.
+  void _removeFilter(JobFilterField field) {
+    setState(() => _selection = _selection.without(field));
+    _applyQuery();
   }
 
-  void _showDistanceFilter() {
-    _tempDistance = _selectedDistance;
-  }
-
-  /// Bütün süzgeçleri sıfırlar; boş sonuç ekranındaki çıkış buna bağlı.
+  /// Bütün süzgeçleri sıfırlar; boş sonuç ekranındaki çıkış da buna bağlı.
   void _clearFilters() {
-    setState(() {
-      _selectedCategory = _all;
-      _selectedPriceRange = _all;
-      _selectedDistance = _all;
-      _tempCategory = _all;
-      _tempPriceRange = _all;
-      _tempDistance = _all;
-    });
+    setState(() => _selection = _selection.cleared());
     _applyQuery();
   }
 
-  void _applyTempFilters() {
-    setState(() {
-      _selectedCategory = _tempCategory;
-      _selectedPriceRange = _tempPriceRange;
-      _selectedDistance = _tempDistance;
-    });
-    Navigator.pop(context);
-    _applyQuery();
+  /// Konum iznini ister ve alınırsa konumu tazeler.
+  ///
+  /// Mesafe süzgeci izin olmadan çalışamıyor; eskiden bu durumda süzgeç
+  /// sessizce yok sayılıyordu.
+  Future<bool> _requestLocation() async {
+    try {
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        return false;
+      }
+    } catch (_) {
+      return false;
+    }
+
+    await _resolvePosition();
+    return _currentPosition != null;
   }
 
   @override

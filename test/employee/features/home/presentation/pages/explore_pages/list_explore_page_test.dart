@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:koala/employee/features/home/models/job_search_query.dart';
 import 'package:koala/employee/features/home/presentation/pages/explore_pages/list_explore_page.dart';
 import 'package:koala/employee/features/home/presentation/providers/job_category_provider.dart';
 import 'package:koala/employee/features/home/presentation/providers/job_search_provider.dart';
@@ -172,99 +173,144 @@ void main() {
     expect(find.text('Yakınında henüz ilan yok'), findsNothing);
   });
 
-  testWidgets('kategori süzgeci sunucuya id ile gidiyor', (tester) async {
-    final api = FakeApi(
-      handler: (RequestOptions options) {
-        if (options.path.contains('job-categories')) {
-          return const FakeApiResponse(
-            statusCode: 200,
-            body: {
-              'success': true,
-              'data': [
-                {
-                  'id': 'category-uuid-1',
-                  'name': 'Garsonluk',
-                  'code': 'WAITER',
-                  'requiresInsurance': false,
-                },
-              ],
-            },
-          );
-        }
-        return FakeApiResponse(
-          statusCode: 200,
-          body: _pageBody(const [], last: true),
-        );
-      },
-    );
-
-    await pumpPage(tester, api);
-
-    await tester.tap(find.text('Kategoriler'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Garsonluk'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Uygula'));
-    await tester.pumpAndSettle();
-
-    final last = jobQueries(api).last;
-    expect(last['categoryId'], 'category-uuid-1');
-    expect(last.containsKey('type'), isFalse);
-  });
-
-  testWidgets('tür süzgeci categoryId değil type olarak gidiyor', (
+  testWidgets('süzgeç sheet\'i seçilenleri Uygula ile sunucuya gönderiyor', (
     tester,
   ) async {
     final api = _api({0: _pageBody(const [], last: true)});
 
     await pumpPage(tester, api);
 
-    await tester.tap(find.text('Kategoriler'));
+    await tester.tap(find.text('Süzgeçler'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Tekrarlı'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Saatlik'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Uygula'));
     await tester.pumpAndSettle();
 
     final last = jobQueries(api).last;
     expect(last['type'], 'RECURRING');
-    expect(last.containsKey('categoryId'), isFalse);
+    expect(last['salaryType'], 'HOURLY');
   });
 
-  testWidgets('ücret kovası minSalary/maxSalary olarak gidiyor', (
+  testWidgets('Uygula\'ya basılmadan kapanan sheet sorguyu değiştirmiyor', (
+    tester,
+  ) async {
+    final api = _api({0: _pageBody(const [], last: true)});
+
+    await pumpPage(tester, api);
+    final before = jobQueries(api).length;
+
+    await tester.tap(find.text('Süzgeçler'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Tekrarlı'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.close).first);
+    await tester.pumpAndSettle();
+
+    expect(jobQueries(api).length, before);
+    expect(find.text('Tekrarlı'), findsNothing);
+  });
+
+  testWidgets('Temizle bütün alanları sıfırlıyor', (tester) async {
+    final api = _api({0: _pageBody(const [], last: true)});
+
+    await pumpPage(tester, api);
+
+    await tester.tap(find.text('Süzgeçler'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Tekrarlı'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Kurumsal'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Temizle'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Uygula'));
+    await tester.pumpAndSettle();
+
+    final last = jobQueries(api).last;
+    expect(last.containsKey('type'), isFalse);
+    expect(last.containsKey('employerType'), isFalse);
+  });
+
+  testWidgets('sıralama menüsü yalnız sunucunun dört alanını sunuyor', (
     tester,
   ) async {
     final api = _api({0: _pageBody(const [], last: true)});
 
     await pumpPage(tester, api);
 
-    await tester.tap(find.text('Ücret'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('500-1000₺'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Uygula'));
+    await tester.tap(find.text('Sırala'));
     await tester.pumpAndSettle();
 
-    final last = jobQueries(api).last;
-    expect(last['minSalary'], 500.0);
-    expect(last['maxSalary'], 1000.0);
+    for (final option in JobSortOption.values) {
+      expect(find.text(option.label), findsOneWidget);
+    }
+    expect(find.text('En yakın'), findsNothing);
+
+    await tester.tap(find.text('Ücret (azalan)'));
+    await tester.pumpAndSettle();
+
+    expect(jobQueries(api).last['sort'], 'salary,desc');
   });
 
-  testWidgets('üst sınırı olmayan kova maxSalary göndermiyor', (tester) async {
+  testWidgets(
+    'etkin süzgeç sayısı çubukta görünüyor ve çip tek tek siliniyor',
+    (tester) async {
+      final api = _api({0: _pageBody(const [], last: true)});
+
+      await pumpPage(tester, api);
+
+      await tester.tap(find.text('Süzgeçler'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Tekrarlı'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Saatlik'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Uygula'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('2'), findsOneWidget);
+      expect(find.text('Tekrarlı'), findsOneWidget);
+
+      // Çipin çarpısı yalnız o alanı temizliyor.
+      await tester.tap(find.byIcon(Icons.close).first);
+      await tester.pumpAndSettle();
+
+      final last = jobQueries(api).last;
+      expect(last.containsKey('type'), isFalse);
+      expect(last['salaryType'], 'HOURLY');
+    },
+  );
+
+  testWidgets('konum izni yokken mesafe süzgeci kapalı ve sebebi yazıyor', (
+    tester,
+  ) async {
     final api = _api({0: _pageBody(const [], last: true)});
 
     await pumpPage(tester, api);
 
-    await tester.tap(find.text('Ücret'));
+    await tester.tap(find.text('Süzgeçler'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('2000₺+'));
+
+    expect(
+      find.text('Mesafeye göre süzmek için konum izni gerekiyor.'),
+      findsOneWidget,
+    );
+
+    // Çipi gerçekten ekrana getirip dokunuyoruz: ekran dışında kalan bir
+    // dokunuş kapalı olduğu için değil, ıskaladığı için sonuçsuz kalırdı.
+    await tester.ensureVisible(find.text('10 km içinde'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('10 km içinde'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Uygula'));
     await tester.pumpAndSettle();
 
-    final last = jobQueries(api).last;
-    expect(last['minSalary'], 2000.0);
-    expect(last.containsKey('maxSalary'), isFalse);
+    // Seçilemedi: çubukta mesafe çipi yok ve sorguda kutu yok.
+    expect(find.text('10 km içinde'), findsNothing);
+    expect(jobQueries(api).last.containsKey('minLatitude'), isFalse);
   });
 
   testWidgets('koyu temada da çiziliyor', (tester) async {

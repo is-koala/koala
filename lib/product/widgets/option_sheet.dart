@@ -13,13 +13,17 @@ import 'package:koala/product/widgets/app_icon.dart';
 /// ülke, il, ilçe. Kategori bir zamanlar çip dizisiydi; liste sunucudan
 /// geldiği ve büyüyebildiği için diğerleriyle aynı kalıba alındı.
 ///
+/// **`product/` altında ve öneksiz**, çünkü artık çalışan tarafındaki keşfet
+/// süzgeci de il ve ilçe seçimini bununla yaptırıyor; `b_` öneki "yalnız
+/// işveren tarafı" demek.
+///
 /// Satırlar `ListTile` değil, [ThemeModeSheet]'teki gibi `Material` + `InkWell`:
 /// `AppBottomSheet`'in kabuğu renkli bir `DecoratedBox` ve `ListTile` zeminini
 /// en yakın `Material`'a çizdiği için o kabuk zemini gizliyor — Flutter bunu
 /// "ListTile background color or ink splashes may be invisible" diye
 /// bildiriyor.
-class BOptionSheet<T> extends StatelessWidget {
-  const BOptionSheet({
+class OptionSheet<T> extends StatelessWidget {
+  const OptionSheet({
     super.key,
     required this.title,
     required this.options,
@@ -69,7 +73,7 @@ class BOptionSheet<T> extends StatelessWidget {
   }) {
     return AppBottomSheet.show<T>(
       context,
-      builder: (_) => BOptionSheet<T>(
+      builder: (_) => OptionSheet<T>(
         title: title,
         options: options,
         labelOf: labelOf,

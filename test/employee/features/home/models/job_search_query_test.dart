@@ -105,6 +105,15 @@ void main() {
       expect(updated.categoryId, 'cat-2');
     });
 
+    test('tam sayı verilen ücret alanı double olarak saklanıyor', () {
+      // Nöbetçi yüzünden parametre `Object?`; `100` yazımı derleniyor ama
+      // dönüştürülmezse çalışma anında tip hatası veriyordu.
+      final updated = const JobSearchQuery().copyWith(minSalary: 100);
+
+      expect(updated.minSalary, 100.0);
+      expect(updated.toQueryParameters()['minSalary'], 100.0);
+    });
+
     test('null verilen alan temizleniyor', () {
       const query = JobSearchQuery(query: 'garson', categoryId: 'cat-1');
 

@@ -243,7 +243,15 @@ class JobSearchQuery {
   /// Bir enlem derecesinin kabaca kaç kilometre olduğu.
   static const double _kmPerLatitudeDegree = 111.32;
 
+  /// Nöbetçi parametreler `Object?` olduğu için derleyici tip uyuşmazlığını
+  /// yakalayamıyor: `copyWith(minSalary: 100)` sorunsuz derleniyor ama `int`
+  /// bir `double?` alana atanamadığı için çalışma anında patlıyordu. Sayısal
+  /// alanlarda dönüştürme burada yapılıyor.
   static T? _pick<T>(Object? candidate, T? current) {
-    return identical(candidate, _unset) ? current : candidate as T?;
+    if (identical(candidate, _unset)) return current;
+    if (candidate is int && <double?>[] is List<T?>) {
+      return candidate.toDouble() as T?;
+    }
+    return candidate as T?;
   }
 }

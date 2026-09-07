@@ -3,18 +3,21 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/home/models/job_filter_selection.dart';
 import 'package:koala/employee/features/home/models/job_search_query.dart';
 import 'package:koala/employee/features/home/presentation/providers/job_category_provider.dart';
 import 'package:koala/employee/features/home/presentation/providers/job_search_provider.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_card.dart';
+import 'package:koala/employee/features/home/presentation/widgets/job_filter_sheet.dart';
+import 'package:koala/employee/features/home/presentation/widgets/job_sort_sheet.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
-import 'package:koala/product/widgets/app_bottom_sheet.dart';
 import 'package:koala/product/widgets/app_icon.dart';
+import 'package:koala/product/widgets/filter_pill.dart';
 import 'package:provider/provider.dart';
 
 part 'list_explore_pagemodel.dart';
@@ -253,7 +256,14 @@ class _ListExplorePageState extends ListExplorePagemodel {
 
   // ----------------------------------------------------------- Filtre çubuğu
 
+  /// Süzgeç çubuğu: tek "Süzgeçler" düğmesi + etkin süzgeç rozeti, yanında
+  /// "Sırala".
+  ///
+  /// Eskiden dört ayrı düğmeydi; sunucunun kabul ettiği alan sayısı üçten on
+  /// bire çıktığı için hepsi yatay çubuğa sığmıyor, tek sheet'e taşındı.
   SliverToBoxAdapter filters() {
+    final activeCount = _selection.activeCount;
+
     return SliverToBoxAdapter(
       child: Container(
         width: double.infinity,
@@ -265,36 +275,62 @@ class _ListExplorePageState extends ListExplorePagemodel {
           color: context.raisedColor,
           borderRadius: AppRadius.secondaryCircular,
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildFilterButton(
-              icon: AppIcons.transferV,
-              label: 'Sırala',
-              onTap: () {},
+            Row(
+              children: [
+                _buildFilterButton(
+                  icon: AppIcons.filter,
+                  label: 'Süzgeçler',
+                  isActive: activeCount > 0,
+                  badge: activeCount,
+                  onTap: _openFilterSheet,
+                ),
+                const SizedBox(width: AppSizes.spaceSmall),
+                _buildFilterButton(
+                  // `AppIcons.sort` tanımlıydı ama kullanılmıyordu; sıralama
+                  // düğmesinin ikonu artık o.
+                  icon: AppIcons.sort,
+                  label: 'Sırala',
+                  isActive: !_selection.sort.isDefault,
+                  onTap: _openSortSheet,
+                ),
+              ],
             ),
-            const SizedBox(width: AppSizes.spaceSmall),
-            _buildFilterButton(
-              icon: AppIcons.menu2,
-              label: 'Kategoriler',
-              isActive: _selectedCategory != ListExplorePagemodel._all,
-              onTap: _showCategoryFilterSheet,
-            ),
-            const SizedBox(width: AppSizes.spaceSmall),
-            _buildFilterButton(
-              icon: AppIcons.moneyBag,
-              label: 'Ücret',
-              isActive: _selectedPriceRange != ListExplorePagemodel._all,
-              onTap: _showPriceFilterSheet,
-            ),
-            const SizedBox(width: AppSizes.spaceSmall),
-            _buildFilterButton(
-              icon: AppIcons.route,
-              label: 'Mesafe',
-              isActive: _selectedDistance != ListExplorePagemodel._all,
-              onTap: _showDistanceFilterSheet,
-            ),
+            if (activeCount > 0) _activeFilterChips(),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Etkin süzgeçlerin özeti. Her çip kendi alanını temizliyor; sonda hepsini
+  /// birden kaldıran bir çıkış duruyor.
+  Widget _activeFilterChips() {
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSizes.spaceSmall),
+      child: Wrap(
+        spacing: AppSizes.spaceSmall,
+        runSpacing: AppSizes.spaceSmall,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          for (final filter in _selection.activeFilters)
+            FilterPill(
+              label: filter.label,
+              isSelected: true,
+              onRemove: () => _removeFilter(filter.field),
+            ),
+          TextButton(
+            onPressed: _clearFilters,
+            child: Text(
+              'Tümünü Temizle',
+              style: context.textTheme.labelLarge?.copyWith(
+                color: context.accentColor,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -304,6 +340,7 @@ class _ListExplorePageState extends ListExplorePagemodel {
     required String label,
     required VoidCallback onTap,
     bool isActive = false,
+    int badge = 0,
   }) {
     final activeColor = context.accentColor;
     final foreground = isActive ? activeColor : context.textSecondary;
@@ -338,8 +375,34 @@ class _ListExplorePageState extends ListExplorePagemodel {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
+              if (badge > 0) ...[
+                const SizedBox(width: AppSizes.spaceTiny),
+                _badge(badge),
+              ],
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  /// Kaç süzgecin açık olduğunu söyleyen rozet; düğmenin vurgusu tek başına
+  /// "kaç tane" sorusunu yanıtlamıyordu.
+  Widget _badge(int count) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSizes.spaceSmall,
+        vertical: 1,
+      ),
+      decoration: BoxDecoration(
+        color: context.accentColor,
+        borderRadius: AppRadius.stadiumCircular,
+      ),
+      child: Text(
+        '$count',
+        style: context.textTheme.labelSmall?.copyWith(
+          color: context.onAccentColor,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
@@ -443,156 +506,6 @@ class _ListExplorePageState extends ListExplorePagemodel {
                 _searchFocusNode.requestFocus();
               }
             },
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ------------------------------------------------------------ Filtre sheet
-
-  void _showCategoryFilterSheet() {
-    _showCategoryFilter();
-    _openFilterSheet(
-      title: 'Kategoriler',
-      // Kategori satırları sunucudan geliyor; tip seçenekleri sabit kalıyor
-      // çünkü onların karşılığı `JobType` enum'ı. Kategorinin değeri **id**:
-      // sunucu `categoryId` bekliyor, `code` yalnızca ikon ve renk eşlemesi
-      // için var. İkisi is-koala/koala#32'de ayrı bölümlere ayrılacak.
-      options: [
-        ('Tümü', ListExplorePagemodel._all),
-        for (final type in JobType.values) (type.displayName, type.name),
-        for (final category in context.read<JobCategoryProvider>().categories)
-          (category.displayName, category.id),
-      ],
-      selected: () => _tempCategory,
-      onSelect: (value) => _tempCategory = value,
-    );
-  }
-
-  void _showPriceFilterSheet() {
-    _showPriceFilter();
-    _openFilterSheet(
-      title: 'Ücret Aralığı',
-      options: const [
-        ('Tümü', ListExplorePagemodel._all),
-        ('0-500₺', '0-500'),
-        ('500-1000₺', '500-1000'),
-        ('1000-2000₺', '1000-2000'),
-        ('2000₺+', '2000+'),
-      ],
-      selected: () => _tempPriceRange,
-      onSelect: (value) => _tempPriceRange = value,
-    );
-  }
-
-  void _showDistanceFilterSheet() {
-    _showDistanceFilter();
-    _openFilterSheet(
-      title: 'Mesafe',
-      // Kovalar "X km içinde": sunucu sınırlayıcı kutu süzüyor ve kutu bir
-      // halkanın **dışını** ifade edemiyor, o yüzden eski "20+ km" seçeneği
-      // yok.
-      options: const [
-        ('Tümü', ListExplorePagemodel._all),
-        ('5 km içinde', '0-5'),
-        ('10 km içinde', '0-10'),
-        ('20 km içinde', '0-20'),
-      ],
-      selected: () => _tempDistance,
-      onSelect: (value) => _tempDistance = value,
-    );
-  }
-
-  /// Üç filtre sheet'i de aynı iskeleti kullanıyor: başlık, seçenek hapları
-  /// ve uygula butonu. Seçim sheet'in kendi `setState`'iyle güncelleniyor,
-  /// sayfaya ancak "Uygula"ya basılınca yansıyor.
-  void _openFilterSheet({
-    required String title,
-    required List<(String label, String value)> options,
-    required String Function() selected,
-    required ValueChanged<String> onSelect,
-  }) {
-    AppBottomSheet.show(
-      context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => AppBottomSheet(
-          title: title,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Wrap(
-                spacing: AppSizes.spaceSmall,
-                runSpacing: AppSizes.spaceSmall,
-                children: [
-                  for (final (label, value) in options)
-                    _buildFilterChip(
-                      label,
-                      value,
-                      selected(),
-                      (val) => setModalState(() => onSelect(val)),
-                    ),
-                ],
-              ),
-              const SizedBox(height: AppSizes.spaceLarge),
-              _buildApplyButton(),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFilterChip(
-    String label,
-    String value,
-    String currentValue,
-    ValueChanged<String> onTap,
-  ) {
-    final isSelected = currentValue == value;
-    return GestureDetector(
-      onTap: () => onTap(value),
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppPadding.primary,
-          vertical: AppSizes.space,
-        ),
-        decoration: BoxDecoration(
-          color: isSelected ? context.accentColor : context.tileColor,
-          borderRadius: AppRadius.secondaryCircular,
-        ),
-        child: Text(
-          label,
-          style: context.textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.w500,
-            color: isSelected ? context.onAccentColor : context.textPrimary,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildApplyButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: AppSizes.buttonHeightCompact,
-      child: ElevatedButton(
-        onPressed: _applyTempFilters,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: context.accentColor,
-          foregroundColor: context.onAccentColor,
-          shape: const RoundedRectangleBorder(
-            borderRadius: AppRadius.innerCircular,
-          ),
-          elevation: 0,
-        ),
-        // textTheme slotları renk taşıyor; verilmezse buton zemini yeşil
-        // olduğu hâlde metin koyu kalır.
-        child: Text(
-          'Uygula',
-          style: context.textTheme.titleSmall?.copyWith(
-            color: context.onAccentColor,
           ),
         ),
       ),

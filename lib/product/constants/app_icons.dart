@@ -47,6 +47,10 @@ abstract final class AppIcons {
   static const String clock = 'clock';
   static const String route = 'route';
   static const String sort = 'sort';
+
+  /// Süzgeç sheet'ini açan düğme. Sıralamadan ayrı bir kavram olduğu için
+  /// [sort] ile aynı ikonu paylaşmıyor.
+  static const String filter = 'filter';
   static const String transferV = 'transferV';
   static const String star = 'star';
 
