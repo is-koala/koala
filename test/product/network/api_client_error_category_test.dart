@@ -12,9 +12,9 @@ void main() {
   tearDown(() => AppUpdateGate().reset());
 
   group('errorCategory tipi belirliyor', () {
-    // Backend'in `ErrorCategory` enum'unun tamamı (17 değer). Kapalı kümenin
-    // her elemanı burada: yeni bir değer eklendiğinde eşlemenin bilinçli
-    // olarak yazılması gerekiyor.
+    // Backend'in `ErrorCategory` enum'unun tamamı. Kapalı kümenin her elemanı
+    // burada: yeni bir değer eklendiğinde eşlemenin bilinçli olarak yazılması
+    // gerekiyor. Eksiksiz olduğu aşağıdaki `serverCategories` ile ölçülüyor.
     const mapping = <String, ApiErrorType>{
       'VALIDATION_FAILED': ApiErrorType.validation,
       'REQUEST_MALFORMED': ApiErrorType.validation,
@@ -43,10 +43,47 @@ void main() {
       });
     });
 
-    test('kapalı kümenin tamamı sınanıyor', () {
-      // Sunucudaki `ErrorCategory` 17 değer taşıyor; tablo eksilirse bu
-      // testin kendisi düşer.
-      expect(mapping, hasLength(17));
+    // Sunucunun `ErrorCategory.java`'sındaki değerler, bildirim sırasıyla ve
+    // birebir. Eşlemenin karşılaştırıldığı yer burası.
+    const serverCategories = <String>[
+      'RESOURCE_NOT_FOUND',
+      'ENDPOINT_NOT_FOUND',
+      'VALIDATION_FAILED',
+      'REQUEST_MALFORMED',
+      'PARAMETER_MISSING',
+      'METHOD_NOT_ALLOWED',
+      'MEDIA_TYPE_NOT_SUPPORTED',
+      'BUSINESS_RULE_VIOLATION',
+      'DATA_CONFLICT',
+      'AUTHENTICATION_REQUIRED',
+      'INVALID_CREDENTIALS',
+      'TOKEN_EXPIRED',
+      'ACCESS_DENIED',
+      'RATE_LIMITED',
+      'CLIENT_TOO_OLD',
+      'UPSTREAM_FAILED',
+      'UNEXPECTED',
+    ];
+
+    test('eşleme sunucunun kapalı kümesiyle birebir', () {
+      // Eskiden bu `expect(mapping, hasLength(17))`'di ve kendi sabitini
+      // ölçüyordu: tablodan bir satır düşerse yakalıyor, ama bir anahtar
+      // yanlış yazılsa ya da sunucuya yeni bir değer eklense hiçbir şey
+      // söylemiyordu — sayı tutmaya devam ederdi.
+      //
+      // İddia artık kümenin **hangi** değerlerden oluştuğuna bakıyor. Bu
+      // liste de Java kaynağını otomatik okumuyor (Dart testinin erişimi
+      // yok), ama beklenen değerler açıkça yazılı olduğu için sunucu tarafı
+      // değiştiğinde diff'te görünüyor. Karşılaştırmanın gerçekten
+      // otomatikleşmesi ayrı bir iş: is-koala/koala#85.
+      expect(
+        mapping.keys.toSet(),
+        serverCategories.toSet(),
+        reason:
+            'Eşleme ile ErrorCategory.java ayrıştı. Sunucuya değer '
+            'eklendiyse eşlemeye de ekle; kaldırıldıysa iki listeden de '
+            'çıkar.',
+      );
     });
   });
 

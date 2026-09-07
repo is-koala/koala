@@ -333,29 +333,18 @@ void main() {
       expect(thread.blockedMessage, 'Bu kullanıcıyla mesajlaşamazsınız.');
     });
 
-    // Engel artık `statusCode`'dan değil, sunucunun `ACCESS_DENIED`
-    // kategorisinden tanınıyor.
-    test('ACCESS_DENIED kategorisi sohbeti kilitliyor', () async {
-      final thread = build(
-        FakeApi(
-          handler: (_) => const FakeApiResponse(
-            statusCode: 403,
-            body: {
-              'success': false,
-              'message': 'Bu kullanıcıyla mesajlaşamazsınız.',
-              'errorCategory': 'ACCESS_DENIED',
-            },
-          ),
-        ),
-      );
-
-      await thread.load(currentUserId: _me);
-
-      expect(thread.blockedMessage, 'Bu kullanıcıyla mesajlaşamazsınız.');
-    });
-
-    // Süresi dolmuş oturum `403` durum koduyla gelse bile engel değil:
-    // ayrımın kaynağı kategori. Kullanıcının yapması gereken yeniden giriş.
+    // Engelin `statusCode` yerine kategoriden tanındığını ölçen tek test
+    // aşağıdaki. Bir ara "ACCESS_DENIED kategorisi sohbeti kilitliyor" diye
+    // ikinci bir test daha vardı; `403` + `ACCESS_DENIED` kuruyordu, yani
+    // üstündeki iki `403` testinin kopyasıydı — `403` tek başına zaten
+    // `forbidden` üretiyor, kategori satırı sonucu hiç değiştirmiyordu.
+    // Ölçüldü: `_captureBlock` `statusCode == 403`'e geri çevrildiğinde o
+    // test yeşil kalıyor, yalnızca bu kırmızıya dönüyordu. Kaldırıldı;
+    // ayırt edici gücü olmayan bir test, kapsamı olduğundan geniş gösterir.
+    //
+    // Kategoriyle durum kodunun **çeliştiği** yönün diğer yarısı
+    // (`401` + `ACCESS_DENIED` → `forbidden`) sınıflandırmanın kendi
+    // testinde: `api_client_error_category_test.dart`.
     test('403 taşıyan TOKEN_EXPIRED engel sayılmıyor', () async {
       final thread = build(
         FakeApi(
