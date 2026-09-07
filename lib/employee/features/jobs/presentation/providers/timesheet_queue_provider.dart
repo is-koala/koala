@@ -280,7 +280,7 @@ class TimesheetQueueProvider extends ChangeNotifier
       // İki çakışma kategorisi de "sunucudaki hâl kuyruktakinden farklı"
       // demek; olayı kuyrukta kilitli bırakmamak için ikisi de uzlaştırmaya
       // gidiyor.
-      if (error.type.isConflict) {
+      if (error.type.serverStateMoved) {
         if (error.errorCode == 'TIMESHEET_IDEMPOTENCY_CONFLICT') {
           await _store.markRequiresSupport(
             event.clientEventId,

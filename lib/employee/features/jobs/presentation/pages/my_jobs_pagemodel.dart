@@ -383,7 +383,7 @@ abstract class MyJobsPagemodel extends State<MyJobsPage> {
       AppToast.error(context, error.message);
       // 409: durum sunucuda değişmiş — iş zaten iptal edilmiş ya da emanette
       // para kalmamış olabilir. Doğrusunu göstermek için tazeleniyor.
-      if (error.type.isConflict) await _loadJobs();
+      if (error.type.serverStateMoved) await _loadJobs();
     } finally {
       if (mounted) setState(() => assignmentActionId = null);
     }
@@ -508,7 +508,7 @@ abstract class MyJobsPagemodel extends State<MyJobsPage> {
       // işveren iptal etmiş olabilir. Mesaj sunucudan Türkçe geliyor, ama
       // liste eskimiş demektir; yenilemek doğru olanı gösteriyor.
       AppToast.error(context, error.message);
-      if (error.type.isConflict) await _loadJobs();
+      if (error.type.serverStateMoved) await _loadJobs();
     } finally {
       if (mounted) setState(() => respondingAssignmentId = null);
     }

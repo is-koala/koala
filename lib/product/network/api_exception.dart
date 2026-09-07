@@ -110,14 +110,20 @@ enum ApiErrorType {
     };
   }
 
-  /// Sunucudaki durum istemcinin varsaydığından farklı — kategorisi hangisi
-  /// olursa olsun.
+  /// Sunucudaki kayıt istemcinin varsaydığından farklı: ekrandaki veri bayat,
+  /// tazelenmesi gerekiyor.
   ///
-  /// [businessRule] ile [dataConflict] ayrı tipler, ama "ekrandaki veri bayat,
-  /// tazele" diyen çağıranlar için ikisi de aynı şeyi söylüyor. Ayrımı
-  /// gerçekten kullanan çağıran (ör. incelemeyi "yapılmış" işaretleyen yol)
-  /// bunun yerine tipin kendisine bakıyor.
-  bool get isConflict =>
+  /// Adı mekanizmayı değil **niyeti** söylüyor. Çağıranların hepsi aynı şeyi
+  /// yapıyor — listeyi ya da atamayı yeniden okuyor — ve bunun için
+  /// [businessRule] ile [dataConflict] arasındaki farkı bilmeleri gerekmiyor.
+  /// Önceki adı `isConflict`'ti ve çağıranı "hangi çakışma?" diye düşünmeye
+  /// çağırıyordu; cevabı olmayan bir soru.
+  ///
+  /// Ayrımı gerçekten kullanan bir yol bu getter'a hiç bakmıyor. `errorCode`
+  /// hangi hatanın geldiğini kategoriden daha iyi söylüyor
+  /// (`ReviewProvider`, `JobAlertsProvider`), çünkü kategori bir sınıf, kod
+  /// ise o hatanın kendisi.
+  bool get serverStateMoved =>
       this == ApiErrorType.businessRule || this == ApiErrorType.dataConflict;
 }
 
