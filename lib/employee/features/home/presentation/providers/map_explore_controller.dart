@@ -121,7 +121,7 @@ class MapExploreController extends ChangeNotifier {
 
     try {
       final page = await _service.search(
-        bounds.applyTo(JobSearchQuery(query: _searchText)),
+        JobSearchQuery(query: _searchText, bounds: bounds),
         size: mapPageSize,
       );
 

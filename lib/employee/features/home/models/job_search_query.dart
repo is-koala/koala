@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/home/models/job_map_bounds.dart';
+import 'package:koala/product/models/copy_with.dart';
 
 /// `GET /jobs` sıralama seçenekleri.
 ///
@@ -39,13 +41,6 @@ enum JobSortOption {
   bool get isDefault => this == JobSortOption.newest;
 }
 
-/// `copyWith`'te "dokunma" ile "temizle"yi ayıran nöbetçi.
-///
-/// Süzgeç çipleri tek tek kaldırılabildiği için `copyWith(categoryId: null)`
-/// çağrısının alanı **sıfırlaması** gerekiyor; sıradan bir `String?` parametrede
-/// bu "verilmedi" ile aynı şeye denk düşerdi.
-const Object _unset = Object();
-
 /// Keşfet'in sunucuya gönderdiği arama ölçütleri.
 ///
 /// Alanlar backend'deki `JobSearchCriteriaDto` ile **birebir**: uydurma alan
@@ -68,10 +63,7 @@ class JobSearchQuery {
     this.maxSalary,
     this.insuranceRequired,
     this.experienceRequired,
-    this.minLatitude,
-    this.maxLatitude,
-    this.minLongitude,
-    this.maxLongitude,
+    this.bounds,
     this.sort = JobSortOption.newest,
   });
 
@@ -98,11 +90,12 @@ class JobSearchQuery {
   final bool? insuranceRequired;
   final bool? experienceRequired;
 
-  /// Haritanın görünen alanı. Dördü birlikte anlamlı.
-  final double? minLatitude;
-  final double? maxLatitude;
-  final double? minLongitude;
-  final double? maxLongitude;
+  /// Haritanın görünen alanı.
+  ///
+  /// Dördü birlikte anlamlı olduğu için tek tip: dört ayrı `double?` "üçü dolu,
+  /// biri boş" gibi sunucuya gönderilemeyecek bir durumu temsil edilebilir
+  /// kılıyordu ve [JobMapBounds] zaten vardı.
+  final JobMapBounds? bounds;
 
   final JobSortOption sort;
 
@@ -126,15 +119,12 @@ class JobSearchQuery {
       experienceRequired != null ||
       hasBounds;
 
-  /// Sınırlayıcı kutunun dördü de dolu mu.
-  bool get hasBounds =>
-      minLatitude != null ||
-      maxLatitude != null ||
-      minLongitude != null ||
-      maxLongitude != null;
-
-  /// Ne arama ne süzgeç var: kullanıcı Keşfet'i olduğu gibi görüyor.
-  bool get isEmpty => !hasQuery && !hasFilters;
+  /// Sınırlayıcı kutu seçili mi.
+  ///
+  /// Eskiden dört alanın **herhangi biri** doluysa `true` veriyordu ama doc'u
+  /// "dördü de dolu mu" diyordu; tek alanla `true` dönen bir "dördü de" ifadesi
+  /// okuyanı yanıltıyordu. Kutu tek bir alan olunca soru da tekilleşti.
+  bool get hasBounds => bounds != null;
 
   /// `GET /jobs` sorgu parametreleri. Boş alanlar **konmuyor** — seçilmemiş bir
   /// süzgeç istekte görünmemeli.
@@ -151,10 +141,10 @@ class JobSearchQuery {
       'maxSalary': ?maxSalary,
       'insuranceRequired': ?insuranceRequired,
       'experienceRequired': ?experienceRequired,
-      'minLatitude': ?minLatitude,
-      'maxLatitude': ?maxLatitude,
-      'minLongitude': ?minLongitude,
-      'maxLongitude': ?maxLongitude,
+      'minLatitude': ?bounds?.minLatitude,
+      'maxLatitude': ?bounds?.maxLatitude,
+      'minLongitude': ?bounds?.minLongitude,
+      'maxLongitude': ?bounds?.maxLongitude,
       'sort': ?(sort.isDefault ? null : sort.parameter),
     };
   }
@@ -162,53 +152,42 @@ class JobSearchQuery {
   /// Alan güncelleyip yeni bir sorgu üretir.
   ///
   /// `null` geçmek alanı **temizler**; hiç geçmemek olduğu gibi bırakır — bkz.
-  /// [_unset].
+  /// [CopyWith].
   JobSearchQuery copyWith({
-    Object? query = _unset,
-    Object? categoryId = _unset,
-    Object? cityId = _unset,
-    Object? districtId = _unset,
-    Object? type = _unset,
-    Object? salaryType = _unset,
-    Object? employerType = _unset,
-    Object? minSalary = _unset,
-    Object? maxSalary = _unset,
-    Object? insuranceRequired = _unset,
-    Object? experienceRequired = _unset,
-    Object? minLatitude = _unset,
-    Object? maxLatitude = _unset,
-    Object? minLongitude = _unset,
-    Object? maxLongitude = _unset,
+    Object? query = CopyWith.unset,
+    Object? categoryId = CopyWith.unset,
+    Object? cityId = CopyWith.unset,
+    Object? districtId = CopyWith.unset,
+    Object? type = CopyWith.unset,
+    Object? salaryType = CopyWith.unset,
+    Object? employerType = CopyWith.unset,
+    Object? minSalary = CopyWith.unset,
+    Object? maxSalary = CopyWith.unset,
+    Object? insuranceRequired = CopyWith.unset,
+    Object? experienceRequired = CopyWith.unset,
+    Object? bounds = CopyWith.unset,
     JobSortOption? sort,
   }) {
     return JobSearchQuery(
-      query: _pick(query, this.query),
-      categoryId: _pick(categoryId, this.categoryId),
-      cityId: _pick(cityId, this.cityId),
-      districtId: _pick(districtId, this.districtId),
-      type: _pick(type, this.type),
-      salaryType: _pick(salaryType, this.salaryType),
-      employerType: _pick(employerType, this.employerType),
-      minSalary: _pick(minSalary, this.minSalary),
-      maxSalary: _pick(maxSalary, this.maxSalary),
-      insuranceRequired: _pick(insuranceRequired, this.insuranceRequired),
-      experienceRequired: _pick(experienceRequired, this.experienceRequired),
-      minLatitude: _pick(minLatitude, this.minLatitude),
-      maxLatitude: _pick(maxLatitude, this.maxLatitude),
-      minLongitude: _pick(minLongitude, this.minLongitude),
-      maxLongitude: _pick(maxLongitude, this.maxLongitude),
+      query: CopyWith.pick(query, this.query),
+      categoryId: CopyWith.pick(categoryId, this.categoryId),
+      cityId: CopyWith.pick(cityId, this.cityId),
+      districtId: CopyWith.pick(districtId, this.districtId),
+      type: CopyWith.pick(type, this.type),
+      salaryType: CopyWith.pick(salaryType, this.salaryType),
+      employerType: CopyWith.pick(employerType, this.employerType),
+      minSalary: CopyWith.pick(minSalary, this.minSalary),
+      maxSalary: CopyWith.pick(maxSalary, this.maxSalary),
+      insuranceRequired: CopyWith.pick(
+        insuranceRequired,
+        this.insuranceRequired,
+      ),
+      experienceRequired: CopyWith.pick(
+        experienceRequired,
+        this.experienceRequired,
+      ),
+      bounds: CopyWith.pick(bounds, this.bounds),
       sort: sort ?? this.sort,
-    );
-  }
-
-  /// Sınırlayıcı kutuyu temizler; kutu dört alan olduğu için tek tek
-  /// `copyWith(minLatitude: null, ...)` yazmak çağrı yerlerini kirletiyordu.
-  JobSearchQuery withoutBounds() {
-    return copyWith(
-      minLatitude: null,
-      maxLatitude: null,
-      minLongitude: null,
-      maxLongitude: null,
     );
   }
 
@@ -233,25 +212,15 @@ class JobSearchQuery {
         (_kmPerLatitudeDegree * math.cos(latitude * math.pi / 180)).abs();
 
     return copyWith(
-      minLatitude: latitude - latitudeDelta,
-      maxLatitude: latitude + latitudeDelta,
-      minLongitude: longitude - longitudeDelta,
-      maxLongitude: longitude + longitudeDelta,
+      bounds: JobMapBounds(
+        minLatitude: latitude - latitudeDelta,
+        maxLatitude: latitude + latitudeDelta,
+        minLongitude: longitude - longitudeDelta,
+        maxLongitude: longitude + longitudeDelta,
+      ),
     );
   }
 
   /// Bir enlem derecesinin kabaca kaç kilometre olduğu.
   static const double _kmPerLatitudeDegree = 111.32;
-
-  /// Nöbetçi parametreler `Object?` olduğu için derleyici tip uyuşmazlığını
-  /// yakalayamıyor: `copyWith(minSalary: 100)` sorunsuz derleniyor ama `int`
-  /// bir `double?` alana atanamadığı için çalışma anında patlıyordu. Sayısal
-  /// alanlarda dönüştürme burada yapılıyor.
-  static T? _pick<T>(Object? candidate, T? current) {
-    if (identical(candidate, _unset)) return current;
-    if (candidate is int && <double?>[] is List<T?>) {
-      return candidate.toDouble() as T?;
-    }
-    return candidate as T?;
-  }
 }

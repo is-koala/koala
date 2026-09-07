@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/home/models/job_map_bounds.dart';
 import 'package:koala/employee/features/home/models/job_search_query.dart';
 
 void main() {
@@ -46,10 +47,12 @@ void main() {
         maxSalary: 2000,
         insuranceRequired: true,
         experienceRequired: false,
-        minLatitude: 39.8,
-        maxLatitude: 40.0,
-        minLongitude: 32.7,
-        maxLongitude: 32.9,
+        bounds: JobMapBounds(
+          minLatitude: 39.8,
+          maxLatitude: 40.0,
+          minLongitude: 32.7,
+          maxLongitude: 32.9,
+        ),
         sort: JobSortOption.titleAsc,
       );
 
@@ -146,9 +149,21 @@ void main() {
     });
 
     test('sınırlayıcı kutu süzgeç sayılıyor', () {
-      const query = JobSearchQuery(minLatitude: 39.8, maxLatitude: 40.0);
+      const query = JobSearchQuery(
+        bounds: JobMapBounds(
+          minLatitude: 39.8,
+          maxLatitude: 40.0,
+          minLongitude: 32.7,
+          maxLongitude: 32.9,
+        ),
+      );
 
       expect(query.hasFilters, isTrue);
+      expect(query.hasBounds, isTrue);
+    });
+
+    test('kutusuz sorguda hasBounds kapalı', () {
+      expect(const JobSearchQuery().hasBounds, isFalse);
     });
   });
 
@@ -160,10 +175,10 @@ void main() {
         radiusKm: 5,
       );
 
-      expect(query.minLatitude, lessThan(39.92));
-      expect(query.maxLatitude, greaterThan(39.92));
-      expect(query.minLongitude, lessThan(32.85));
-      expect(query.maxLongitude, greaterThan(32.85));
+      expect(query.bounds!.minLatitude, lessThan(39.92));
+      expect(query.bounds!.maxLatitude, greaterThan(39.92));
+      expect(query.bounds!.minLongitude, lessThan(32.85));
+      expect(query.bounds!.maxLongitude, greaterThan(32.85));
     });
 
     test('kutu merkeze göre simetrik', () {
@@ -174,12 +189,12 @@ void main() {
       );
 
       expect(
-        query.maxLatitude! - 39.92,
-        closeTo(39.92 - query.minLatitude!, 1e-9),
+        query.bounds!.maxLatitude - 39.92,
+        closeTo(39.92 - query.bounds!.minLatitude, 1e-9),
       );
       expect(
-        query.maxLongitude! - 32.85,
-        closeTo(32.85 - query.minLongitude!, 1e-9),
+        query.bounds!.maxLongitude - 32.85,
+        closeTo(32.85 - query.bounds!.minLongitude, 1e-9),
       );
     });
 
@@ -195,8 +210,9 @@ void main() {
         radiusKm: 5,
       );
 
-      final ankaraSpan = ankara.maxLongitude! - ankara.minLongitude!;
-      final kuzeySpan = kuzey.maxLongitude! - kuzey.minLongitude!;
+      final ankaraSpan =
+          ankara.bounds!.maxLongitude - ankara.bounds!.minLongitude;
+      final kuzeySpan = kuzey.bounds!.maxLongitude - kuzey.bounds!.minLongitude;
 
       expect(kuzeySpan, greaterThan(ankaraSpan));
     });

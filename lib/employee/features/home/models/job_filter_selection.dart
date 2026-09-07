@@ -1,6 +1,7 @@
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_search_query.dart';
 import 'package:koala/product/extensions/num_extensions.dart';
+import 'package:koala/product/models/copy_with.dart';
 import 'package:koala/product/models/reference_location.dart';
 
 /// Süzgeç çubuğunda tek tek kaldırılabilen alanlar.
@@ -173,48 +174,41 @@ class JobFilterSelection {
   /// listenin okunma biçimi.
   JobFilterSelection cleared() => JobFilterSelection(sort: sort);
 
-  /// Alan güncelleyip yeni bir seçim üretir; `null` geçmek alanı **temizler**.
+  /// Alan güncelleyip yeni bir seçim üretir; `null` geçmek alanı **temizler**,
+  /// hiç geçmemek olduğu gibi bırakır — bkz. [CopyWith].
   JobFilterSelection copyWith({
-    Object? category = _unset,
-    Object? type = _unset,
-    Object? city = _unset,
-    Object? district = _unset,
-    Object? salaryType = _unset,
-    Object? employerType = _unset,
-    Object? minSalary = _unset,
-    Object? maxSalary = _unset,
-    Object? insuranceRequired = _unset,
-    Object? experienceRequired = _unset,
-    Object? radiusKm = _unset,
+    Object? category = CopyWith.unset,
+    Object? type = CopyWith.unset,
+    Object? city = CopyWith.unset,
+    Object? district = CopyWith.unset,
+    Object? salaryType = CopyWith.unset,
+    Object? employerType = CopyWith.unset,
+    Object? minSalary = CopyWith.unset,
+    Object? maxSalary = CopyWith.unset,
+    Object? insuranceRequired = CopyWith.unset,
+    Object? experienceRequired = CopyWith.unset,
+    Object? radiusKm = CopyWith.unset,
     JobSortOption? sort,
   }) {
     return JobFilterSelection(
-      category: _pick(category, this.category),
-      type: _pick(type, this.type),
-      city: _pick(city, this.city),
-      district: _pick(district, this.district),
-      salaryType: _pick(salaryType, this.salaryType),
-      employerType: _pick(employerType, this.employerType),
-      minSalary: _pick(minSalary, this.minSalary),
-      maxSalary: _pick(maxSalary, this.maxSalary),
-      insuranceRequired: _pick(insuranceRequired, this.insuranceRequired),
-      experienceRequired: _pick(experienceRequired, this.experienceRequired),
-      radiusKm: _pick(radiusKm, this.radiusKm),
+      category: CopyWith.pick(category, this.category),
+      type: CopyWith.pick(type, this.type),
+      city: CopyWith.pick(city, this.city),
+      district: CopyWith.pick(district, this.district),
+      salaryType: CopyWith.pick(salaryType, this.salaryType),
+      employerType: CopyWith.pick(employerType, this.employerType),
+      minSalary: CopyWith.pick(minSalary, this.minSalary),
+      maxSalary: CopyWith.pick(maxSalary, this.maxSalary),
+      insuranceRequired: CopyWith.pick(
+        insuranceRequired,
+        this.insuranceRequired,
+      ),
+      experienceRequired: CopyWith.pick(
+        experienceRequired,
+        this.experienceRequired,
+      ),
+      radiusKm: CopyWith.pick(radiusKm, this.radiusKm),
       sort: sort ?? this.sort,
     );
-  }
-
-  static const Object _unset = Object();
-
-  /// Nöbetçi parametreler `Object?` olduğu için derleyici tip uyuşmazlığını
-  /// yakalayamıyor: `copyWith(minSalary: 100)` sorunsuz derleniyor ama `int`
-  /// bir `double?` alana atanamadığı için çalışma anında patlıyordu. Sayısal
-  /// alanlarda dönüştürme burada yapılıyor.
-  static T? _pick<T>(Object? candidate, T? current) {
-    if (identical(candidate, _unset)) return current;
-    if (candidate is int && <double?>[] is List<T?>) {
-      return candidate.toDouble() as T?;
-    }
-    return candidate as T?;
   }
 }

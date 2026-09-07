@@ -64,8 +64,10 @@ void main() {
   });
 
   group('JobMapBounds sorguya uygulanması', () {
-    test('dört alanı da sorguya yazıyor', () {
-      final query = _ankara.applyTo(const JobSearchQuery());
+    // `applyTo` kalktı: kutu artık sorgunun bir alanı, ayrı bir yazma adımı
+    // değil. Ölçülen şey aynı — dört alanın isteğe eksiksiz gitmesi.
+    test('dört alanı da sorgu parametrelerine yazıyor', () {
+      const query = JobSearchQuery(bounds: _ankara);
 
       expect(query.toQueryParameters(), {
         'minLatitude': 39.8,
@@ -76,9 +78,20 @@ void main() {
     });
 
     test('sorgunun geri kalanını bozmuyor', () {
-      final query = _ankara.applyTo(const JobSearchQuery(query: 'garson'));
+      const query = JobSearchQuery(query: 'garson', bounds: _ankara);
 
       expect(query.query, 'garson');
+      expect(query.toQueryParameters()['minLatitude'], 39.8);
+    });
+
+    test('kutu tek çağrıda temizlenebiliyor', () {
+      const query = JobSearchQuery(query: 'garson', bounds: _ankara);
+
+      final cleared = query.copyWith(bounds: null);
+
+      expect(cleared.hasBounds, isFalse);
+      expect(cleared.query, 'garson');
+      expect(cleared.toQueryParameters().containsKey('minLatitude'), isFalse);
     });
   });
 

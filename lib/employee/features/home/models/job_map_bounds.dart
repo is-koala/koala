@@ -1,5 +1,3 @@
-import 'package:koala/employee/features/home/models/job_search_query.dart';
-
 /// Haritanın görünen alanı.
 ///
 /// `google_maps_flutter`'ın `LatLngBounds`'undan ayrı bir tip: sunucunun
@@ -35,16 +33,6 @@ class JobMapBounds {
         maxLatitude >= other.maxLatitude &&
         minLongitude <= other.minLongitude &&
         maxLongitude >= other.maxLongitude;
-  }
-
-  /// Kutuyu bir sorguya yazar; sorgunun geri kalanı olduğu gibi kalıyor.
-  JobSearchQuery applyTo(JobSearchQuery query) {
-    return query.copyWith(
-      minLatitude: minLatitude,
-      maxLatitude: maxLatitude,
-      minLongitude: minLongitude,
-      maxLongitude: maxLongitude,
-    );
   }
 
   @override

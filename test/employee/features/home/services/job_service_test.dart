@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/home/models/job_map_bounds.dart';
 import 'package:koala/employee/features/home/models/job_search_query.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:koala/product/network/api_exception.dart';
@@ -107,10 +108,12 @@ void main() {
 
       await JobService.withClient(api.client).search(
         const JobSearchQuery(
-          minLatitude: 39.8,
-          maxLatitude: 40.0,
-          minLongitude: 32.7,
-          maxLongitude: 32.9,
+          bounds: JobMapBounds(
+            minLatitude: 39.8,
+            maxLatitude: 40.0,
+            minLongitude: 32.7,
+            maxLongitude: 32.9,
+          ),
         ),
       );
 

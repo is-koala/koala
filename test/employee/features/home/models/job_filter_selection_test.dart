@@ -56,7 +56,7 @@ void main() {
       ).toQuery(latitude: 39.92, longitude: 32.85);
 
       expect(query.hasBounds, isTrue);
-      expect(query.minLatitude, lessThan(39.92));
+      expect(query.bounds!.minLatitude, lessThan(39.92));
     });
   });
 
