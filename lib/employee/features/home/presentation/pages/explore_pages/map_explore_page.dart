@@ -1,14 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:koala/employee/core/widgets/job_detail_bottom_sheet.dart';
 import 'package:koala/employee/features/home/models/job.dart';
-import 'package:koala/employee/features/home/models/job_search_query.dart';
+import 'package:koala/employee/features/home/models/job_map_bounds.dart';
+import 'package:koala/employee/features/home/presentation/providers/map_explore_controller.dart';
 import 'package:koala/employee/features/home/presentation/providers/search_provider.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_marker_generator.dart';
-import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:koala/employee/features/home/services/location_service.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_map.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -43,6 +46,9 @@ class _MapExplorePageState extends MapExplorePageModel {
     super.build(context);
     final searchProvider = context.watch<SearchProvider>();
 
+    final isSearching =
+        searchProvider.isSearching && _searchController.text.isNotEmpty;
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: appBar(searchProvider),
@@ -51,15 +57,15 @@ class _MapExplorePageState extends MapExplorePageModel {
           map(),
           if (_loading) loadingOverlay(),
 
-          // Arama sonuçları overlay
-          if (searchProvider.isSearching && _searchResults.isNotEmpty)
-            _searchResultsOverlay(),
+          // Arama sonuçları artık sunucudan geliyor: görünen alanla birlikte
+          // süzülen ilanların kendisi.
+          if (isSearching && _jobs.jobs.isNotEmpty) _searchResultsOverlay(),
 
           // Arama aktifken ve sonuç yoksa
-          if (searchProvider.isSearching &&
-              _searchController.text.isNotEmpty &&
-              _searchResults.isEmpty)
+          if (isSearching && !_jobs.isLoading && _jobs.jobs.isEmpty)
             _noResultsOverlay(),
+
+          if (!isSearching) _statusOverlay(),
 
           currentPositionButton(),
         ],
@@ -91,14 +97,13 @@ class _MapExplorePageState extends MapExplorePageModel {
         child: ListView.separated(
           shrinkWrap: true,
           padding: const EdgeInsets.symmetric(vertical: AppSizes.spaceSmall),
-          itemCount: _searchResults.length,
+          itemCount: _jobs.jobs.length,
           separatorBuilder: (_, _) => const Divider(
             height: 1,
             indent: AppPadding.primary,
             endIndent: AppPadding.primary,
           ),
-          itemBuilder: (context, index) =>
-              _searchResultTile(_searchResults[index]),
+          itemBuilder: (context, index) => _searchResultTile(_jobs.jobs[index]),
         ),
       ),
     );
@@ -176,6 +181,93 @@ class _MapExplorePageState extends MapExplorePageModel {
     );
   }
 
+  /// Görünen alan sorgusunun durumu: küçük bir yükleniyor göstergesi, sonuç
+  /// kırpıldıysa "yaklaş" uyarısı, hata olduysa görünür bir mesaj.
+  ///
+  /// Hata eskiden yalnızca `debugPrint`'e gidiyordu: harita bayat pinlerle
+  /// öylece duruyor, kullanıcı bir şeyin yanlış gittiğini hiç öğrenmiyordu.
+  Widget _statusOverlay() {
+    if (_jobs.isLoading) {
+      return _statusCard(
+        icon: AppIcons.search,
+        message: 'Bu alandaki ilanlar aranıyor...',
+        showSpinner: true,
+      );
+    }
+
+    final error = _jobs.errorMessage;
+    if (error != null) {
+      return _statusCard(
+        icon: AppIcons.alert,
+        message: error,
+        action: TextButton(
+          onPressed: _jobs.retry,
+          child: Text(
+            'Tekrar Dene',
+            style: context.textTheme.labelLarge?.copyWith(
+              color: context.accentColor,
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (_jobs.isTruncated) {
+      return _statusCard(
+        icon: AppIcons.alert,
+        message:
+            'Bu alanda ${MapExploreController.mapPageSize} ilandan fazlası '
+            'var; hepsini görmek için yaklaşın.',
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+
+  Widget _statusCard({
+    required AppIconData icon,
+    required String message,
+    bool showSpinner = false,
+    Widget? action,
+  }) {
+    return _overlayCard(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppPadding.primary,
+          vertical: AppSizes.space,
+        ),
+        child: Row(
+          children: [
+            if (showSpinner)
+              SizedBox.square(
+                dimension: AppSizes.iconSmall,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: context.accentColor,
+                ),
+              )
+            else
+              AppIcon(
+                icon,
+                size: AppSizes.iconSmall,
+                color: context.textSecondary,
+              ),
+            const SizedBox(width: AppSizes.spaceSmall),
+            Expanded(
+              child: Text(
+                message,
+                style: context.textTheme.labelMedium?.copyWith(
+                  color: context.textSecondary,
+                ),
+              ),
+            ),
+            ?action,
+          ],
+        ),
+      ),
+    );
+  }
+
   Positioned currentPositionButton() {
     return Positioned(
       bottom: _locationButtonBottom,
@@ -237,6 +329,9 @@ class _MapExplorePageState extends MapExplorePageModel {
       myLocationButtonEnabled: false,
       zoomControlsEnabled: false,
       markers: _markers,
+      // Kamera durduğunda görünen alan sunucuya gidiyor; hangi ilanların
+      // çekileceğini artık kullanıcının baktığı yer belirliyor.
+      onCameraIdle: _onCameraIdle,
       onMapCreated: (GoogleMapController controller) {
         _mapController = controller;
 
@@ -249,6 +344,10 @@ class _MapExplorePageState extends MapExplorePageModel {
             CameraUpdate.newLatLngZoom(_currentLatLng!, 16),
           );
         }
+
+        // İlk çizimde kamera "durmuş" sayılmıyor; ilk kutuyu kendimiz
+        // gönderiyoruz, yoksa harita kullanıcı kaydırana kadar boş kalırdı.
+        unawaited(_onCameraIdle());
       },
       onTap: (_) {
         // Haritaya tıklanınca aramayı kapat
@@ -291,6 +390,7 @@ class _MapExplorePageState extends MapExplorePageModel {
           onChanged: (value) {
             searchProvider.setQuery(value);
             _onMapSearch(value);
+            setState(() {});
           },
           style: context.textTheme.bodyLarge,
           decoration: InputDecoration(
@@ -309,6 +409,7 @@ class _MapExplorePageState extends MapExplorePageModel {
                 _searchController.clear();
                 searchProvider.clearQuery();
                 _onMapSearch('');
+                setState(() {});
               },
             ),
         ],
@@ -344,8 +445,6 @@ class _MapExplorePageState extends MapExplorePageModel {
     searchProvider.stopSearching();
     _searchController.clear();
     _searchFocusNode.unfocus();
-    setState(() {
-      _searchResults = [];
-    });
+    _onMapSearch('');
   }
 }
