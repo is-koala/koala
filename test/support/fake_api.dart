@@ -38,9 +38,38 @@ class FakeApi {
   /// Sahte sunucuya ulaşan istekler, sırayla.
   final List<RequestOptions> requests = [];
 
+  /// Beklenen istek sayısına göre bekleyenler; anahtar eşiğin kendisi.
+  final Map<int, Completer<void>> _arrivals = {};
+
   /// Oturum sonlandırma çağrıldı mı: yenileme başarısız olduğunda
   /// `AuthInterceptor` bunu tetikliyor.
   bool sessionExpired = false;
+
+  /// Sahte katmana ulaşan istek sayısı [count] olana kadar bekler.
+  ///
+  /// Uçuştaki bir isteğin araya girmesini beklemenin **tek doğru** yolu bu:
+  /// `Future.delayed` ile duvar saatinden pay biçmek yüklü bir makinede
+  /// sessizce yetmiyor ve iddia, üretim kodu doğruyken kırmızıya dönüyor
+  /// (is-koala/koala#88). İstek üretimdeki interceptor zincirinden geçtiği
+  /// için beş olay-döngüsü turu istiyor; kaç milisaniye sürdüğü makinenin o
+  /// anki yüküne bağlı, yani tahmin edilemez. Burada beklenen olayın
+  /// kendisi: istek adaptöre ulaştığı anda bu `Future` tamamlanıyor.
+  ///
+  /// Sayı çağrı anında zaten [count] ise beklemeden döner.
+  Future<void> requestsReach(int count) {
+    if (requests.length >= count) return Future<void>.value();
+    return (_arrivals[count] ??= Completer<void>()).future;
+  }
+
+  /// Adaptörün isteği kaydettiği tek yer; bekleyenler buradan uyandırılıyor.
+  void _recordRequest(RequestOptions options) {
+    requests.add(options);
+    for (final entry in _arrivals.entries) {
+      if (requests.length >= entry.key && !entry.value.isCompleted) {
+        entry.value.complete();
+      }
+    }
+  }
 
   /// Testte kullanılacak, sahte katmana bağlı istemci.
   ApiClient get client {
@@ -153,7 +182,7 @@ class _FakeAdapter implements HttpClientAdapter {
     Stream<Uint8List>? requestStream,
     Future<void>? cancelFuture,
   ) async {
-    _fakeApi.requests.add(options);
+    _fakeApi._recordRequest(options);
 
     final response = await _fakeApi.handler(options);
 

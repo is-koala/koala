@@ -78,7 +78,9 @@ void main() {
     );
 
     final loading = provider.load('job_1');
-    await Future<void>.delayed(const Duration(milliseconds: 10));
+    // Yükleme isteği sahte katmana ulaşana dek bekle: duvar saatinden pay
+    // biçmek yerine olayın kendisini bekliyoruz (is-koala/koala#88).
+    await api.requestsReach(1);
     expect(await provider.replaceGallery(const []), isFalse);
     expect(api.requests, hasLength(1));
 
@@ -196,7 +198,10 @@ void main() {
       await provider.load('job_1');
 
       final write = provider.replaceGallery(provider.images);
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+      // Yazma isteği gerçekten yola çıkmış olmalı; ikinci yükleme uçuştaki
+      // isteğin üstüne binmezse test kendi senaryosunu kurmuyor demektir.
+      await api.requestsReach(2);
+      expect(api.requests, hasLength(2));
       expect(provider.isBusy, isTrue);
 
       await provider.load('job_2');
@@ -235,7 +240,10 @@ void main() {
       await provider.load('job_1');
 
       final write = provider.replaceGallery(provider.images);
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+      // Zorla yenileme de uçuştaki yazmanın üstüne binmeli; istek adaptöre
+      // ulaşmadan devam etmek senaryoyu boşa çıkarır.
+      await api.requestsReach(2);
+      expect(api.requests, hasLength(2));
       expect(provider.isBusy, isTrue);
 
       await provider.load('job_1', force: true);
