@@ -469,27 +469,31 @@ The pills inside a filter sheet go through **`FilterPill`** (`product/widgets/`)
 
 ## Icons
 
-Three sources, all already in use:
+UI icons come from **`reicon_flutter`**, and pages never touch the package directly. Two pieces stand between them:
 
-- **`hugeicons`** for UI icons — `HugeIcons.strokeRoundedArrowLeft01` and friends. This is the default; reach for it first.
-- **`Icons`** (Material) still appears in older files. Do not add new ones; when you touch such a file, a Huge Icons equivalent is welcome but not mandatory.
-- **`flutter_svg`** for the map pins in `assets/map_pins/`, drawn through `employee/features/home/presentation/widgets/job_marker_generator.dart`.
+- **`AppIcons`** (`product/constants/app_icons.dart`) is the catalogue — a name per icon, `static const String home = 'home';`. Nothing outside it may invent a name.
+- **`AppIcon`** (`product/widgets/app_icon.dart`) is the widget that draws one: `AppIcon(AppIcons.home)`, with optional `size`, `color` and `filled`.
 
-> ⚠️ **A Huge Icons icon is not an `IconData`.** Since hugeicons 1.x an icon is raw SVG path data, not a font glyph, so it does **not** go into `Icon(...)`, `IconButton(icon: Icon(...))` or any other `IconData` slot — that is a compile error, and it is the single most common mistake in this codebase.
+Map pins are separate and unchanged: **`flutter_svg`** over `assets/map_pins/`, through `employee/features/home/presentation/widgets/job_marker_generator.dart`.
+
+Material **`Icons`** still appears in older files. Do not add new ones; when you touch such a file, moving it to `AppIcon` is welcome but not mandatory.
+
+> ⚠️ **A Reicon icon is not an `IconData`.** It is raw SVG path data resolved by name, so it does **not** go into `Icon(...)`, `IconButton(icon: Icon(...))` or any other `IconData` slot. Use `AppIcon`.
 >
 > ```dart
 > // ❌ derlenmez
-> Icon(HugeIcons.strokeRoundedArrowLeft01, size: AppSizes.icon)
+> Icon(AppIcons.arrowLeft, size: AppSizes.icon)
 >
 > // ✅
-> HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft01, size: AppSizes.icon)
+> AppIcon(AppIcons.arrowLeft, color: context.textPrimary)
 > ```
 >
-> The `HugeIcon` widget takes `icon`, `color`, `size` and `strokeWidth`. Two differences from `Icon` worth knowing: `size` defaults to a hard **24** instead of following the surrounding `IconTheme`, and every icon is rendered through `flutter_svg` rather than a font — so avoid putting a lot of them in one long scrolling list without checking the frame times.
->
-> When you need to **type** one — a widget field, a helper parameter, an enum getter — use **`AppIconData`** from `product/constants/app_icon_data.dart`, never `IconData`. That is the project's alias for hugeicons' unreadable `List<List<dynamic>>`. `MyListTile`, `NavItem`, `BNavItem`, `JobCategory.icon` and `ThemeMode.icon` all use it. Helpers that carry a Material `Icons.` value keep `IconData` — the two are not interchangeable.
+> When you need to **type** one — a widget field, a helper parameter, an enum getter — use **`AppIconData`** from `product/constants/app_icon_data.dart`. It is a `typedef` for `String`, and it exists so that swapping the icon package again touches `AppIcon` and the catalogue rather than every page. Helpers that still carry a Material `Icons.` value keep `IconData`; the two are not interchangeable.
 
-**Filled icons do not exist here.** The free hugeicons package ships stroke-rounded only; solid/duotone are behind their paid plan. If a design needs a filled icon, raise it rather than improvising.
+**Adding an icon means adding a name, and the name must exist in the package.** `AppIcon` resolves it at build time against `Reicon.outline` / `Reicon.filled`; an unknown name trips an `assert` in debug and draws an empty box in release. Check with `Reicon.outline.names` before adding to `AppIcons`, and `test/support/finders.dart`'s `findAppIcon` lets a test pin the name.
+
+**Filled icons exist**: `AppIcon(AppIcons.home, filled: true)` resolves `Reicon.filled`. Colour follows the surrounding `IconTheme` when `color` is omitted, falling back to `context.textPrimary`; size defaults to `AppSizes.icon`.
+
 
 > **`cupertino_icons` looks unused — do not remove it.** No file imports it. It is there because go_router 18 renders iOS page chrome through `cupertino_ui`, which draws `CupertinoIcons.back` from that font. Without the package the build warns about a missing font family and the glyph renders as an empty box. It costs 734 bytes in a release APK (the font is tree-shaken from 257 KB down to 848 bytes), and the icon cannot be swapped for a Huge Icons one because `cupertino_ui` hardcodes it.
 
