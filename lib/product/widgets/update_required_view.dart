@@ -17,44 +17,71 @@ import 'package:url_launcher/url_launcher.dart';
 /// çeviriyor, arkadaki ekranlara dönmek kullanıcıyı boş bir uygulamada
 /// dolaştırmaktan başka işe yaramaz.
 class UpdateRequiredView extends StatelessWidget {
-  const UpdateRequiredView({super.key, required this.message});
+  const UpdateRequiredView({
+    super.key,
+    required this.message,
+    this.iosAppStoreId = AppInfo.iosAppStoreId,
+    this.androidPackageId = AppInfo.androidPackageId,
+  });
 
   /// Sunucunun gönderdiği açıklama.
   final String message;
 
+  /// App Store'daki sayısal uygulama kimliği. Varsayılanı `AppInfo`'dan
+  /// geliyor; testler kimliğin dolu ve boş hâllerini buradan geçiyor.
+  final String iosAppStoreId;
+
+  /// Play Store paket adı. Varsayılanı `AppInfo`'dan geliyor.
+  final String androidPackageId;
+
   /// İkonu taşıyan kutunun kenar uzunluğu.
   static const double _iconBox = 96;
 
-  /// Mağaza bağlantısı biliniyor mu. Kimlikler doldurulmadan düğme
-  /// çizilmiyor: hiçbir yere gitmeyen bir düğme, olmayan düğmeden kötü.
-  static bool get _hasStoreLink =>
-      AppInfo.androidPackageId.isNotEmpty || AppInfo.iosAppStoreId.isNotEmpty;
+  /// Mağaza adresi bilinmiyorken kullanıcıya bırakılan yol. Düğmenin
+  /// olmaması tek başına "peki ne yapayım" sorusunu cevaplamıyor.
+  static const String _noStoreGuidance =
+      'Bu cihaz için mağaza bağlantımız henüz yok. Uygulamayı kurduğun '
+      'yerden güncelleyebilir, sorun sürerse destek@iskoala.com adresine '
+      'yazabilirsin.';
 
-  static Uri? _storeUri() {
-    if (defaultTargetPlatform == TargetPlatform.iOS &&
-        AppInfo.iosAppStoreId.isNotEmpty) {
-      return Uri.parse('https://apps.apple.com/app/id${AppInfo.iosAppStoreId}');
-    }
+  /// Verilen platformun mağaza adresi; o platformun kimliği boşsa `null`.
+  ///
+  /// Yedek yol **yok**. Kimlikler ikisi de boşken davranış doğruydu ama
+  /// yalnız Android kimliği doldurulunca yedek yol iPhone kullanıcısını
+  /// Google Play'e göndermeye başladı: hiçbir yere gitmeyen bir düğme
+  /// olmayan düğmeden kötüyse, yanlış mağazaya giden düğme daha da kötü.
+  @visibleForTesting
+  static Uri? storeUriFor({
+    required TargetPlatform platform,
+    required String iosAppStoreId,
+    required String androidPackageId,
+  }) => switch (platform) {
+    TargetPlatform.iOS when iosAppStoreId.isNotEmpty => Uri.parse(
+      'https://apps.apple.com/app/id$iosAppStoreId',
+    ),
+    TargetPlatform.android when androidPackageId.isNotEmpty => Uri.parse(
+      'https://play.google.com/store/apps/details?id=$androidPackageId',
+    ),
+    _ => null,
+  };
 
-    if (AppInfo.androidPackageId.isNotEmpty) {
-      return Uri.parse(
-        'https://play.google.com/store/apps/details?id='
-        '${AppInfo.androidPackageId}',
-      );
-    }
+  /// Çalışılan platformun mağaza adresi. Düğmenin çizilip çizilmeyeceği de
+  /// buradan geliyor: düğmenin varlığı ile açtığı adres tek bir değer, ayrı
+  /// bir bayrak olsaydı biri değişip diğeri yerinde kalabilirdi.
+  Uri? get _storeUri => storeUriFor(
+    platform: defaultTargetPlatform,
+    iosAppStoreId: iosAppStoreId,
+    androidPackageId: androidPackageId,
+  );
 
-    return null;
-  }
-
-  Future<void> _openStore() async {
-    final uri = _storeUri();
-    if (uri == null) return;
-
+  Future<void> _openStore(Uri uri) async {
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   @override
   Widget build(BuildContext context) {
+    final storeUri = _storeUri;
+
     return Scaffold(
       backgroundColor: context.backgroundColor,
       body: SafeArea(
@@ -94,9 +121,21 @@ class UpdateRequiredView extends StatelessWidget {
                   ),
                   textAlign: TextAlign.center,
                 ),
-                if (_hasStoreLink) ...[
+                if (storeUri != null) ...[
                   const SizedBox(height: AppSizes.spaceXLarge),
-                  MyButton(title: 'Mağazayı Aç', onPressed: _openStore),
+                  MyButton(
+                    title: 'Mağazayı Aç',
+                    onPressed: () => _openStore(storeUri),
+                  ),
+                ] else ...[
+                  const SizedBox(height: AppSizes.spaceMedium),
+                  Text(
+                    _noStoreGuidance,
+                    style: context.textTheme.bodySmall?.copyWith(
+                      color: context.textTertiary,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                 ],
               ],
             ),
