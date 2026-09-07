@@ -9,13 +9,12 @@ import 'package:koala/employee/features/home/models/job_map_bounds.dart';
 import 'package:koala/employee/features/home/presentation/providers/map_explore_controller.dart';
 import 'package:koala/employee/features/home/presentation/providers/search_provider.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_marker_generator.dart';
+import 'package:koala/employee/features/home/presentation/widgets/map_explore_overlay.dart';
 import 'package:koala/employee/features/home/services/location_service.dart';
 import 'package:koala/product/constants/app_colors.dart';
-import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_map.dart';
 import 'package:koala/product/constants/app_padding.dart';
-import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
@@ -31,15 +30,8 @@ class MapExplorePage extends StatefulWidget {
 }
 
 class _MapExplorePageState extends MapExplorePageModel {
-  /// Arama sonucu listesinin ekranın en fazla ne kadarını kaplayacağı.
-  /// Altındaki harita görünür kalmalı ki kullanıcı nereye baktığını bilsin.
-  static const double _overlayMaxHeightRatio = 0.4;
-
   /// Konum butonunun alttan yüksekliği: navbar'ın üstünde kalmalı.
   static const double _locationButtonBottom = 110;
-
-  /// Harita üstündeki kartların gölge yüksekliği.
-  static const double _overlayElevation = 8;
 
   @override
   Widget build(BuildContext context) {
@@ -57,213 +49,26 @@ class _MapExplorePageState extends MapExplorePageModel {
           map(),
           if (_loading) loadingOverlay(),
 
-          // Arama sonuçları artık sunucudan geliyor: görünen alanla birlikte
-          // süzülen ilanların kendisi.
-          if (isSearching && _jobs.jobs.isNotEmpty) _searchResultsOverlay(),
-
-          // Arama aktifken ve sonuç yoksa
-          if (isSearching && !_jobs.isLoading && _jobs.jobs.isEmpty)
-            _noResultsOverlay(),
-
-          if (!isSearching) _statusOverlay(),
+          // Üstteki kartların hangisinin çizileceğine `MapExploreOverlay`
+          // karar veriyor. Buraya bir `if` daha koymak, hata ve kırpılma
+          // uyarısını arama açıkken yutan kusuru geri getirir.
+          Positioned(
+            top: context.padding.top + kToolbarHeight + AppSizes.spaceSmall,
+            left: AppPadding.primary,
+            right: AppPadding.primary,
+            child: MapExploreOverlay(
+              isSearching: isSearching,
+              isLoading: _jobs.isLoading,
+              errorMessage: _jobs.errorMessage,
+              isTruncated: _jobs.isTruncated,
+              jobs: _jobs.jobs,
+              onRetry: _jobs.retry,
+              onJobTap: _focusOnJob,
+            ),
+          ),
 
           currentPositionButton(),
         ],
-      ),
-    );
-  }
-
-  /// Harita üstünde duran kartların ortak sarmalayıcısı.
-  Widget _overlayCard({required Widget child}) {
-    return Positioned(
-      top: context.padding.top + kToolbarHeight + AppSizes.spaceSmall,
-      left: AppPadding.primary,
-      right: AppPadding.primary,
-      child: Material(
-        elevation: _overlayElevation,
-        borderRadius: AppRadius.secondaryCircular,
-        color: context.backgroundColor,
-        child: child,
-      ),
-    );
-  }
-
-  Widget _searchResultsOverlay() {
-    return _overlayCard(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * _overlayMaxHeightRatio,
-        ),
-        child: ListView.separated(
-          shrinkWrap: true,
-          padding: const EdgeInsets.symmetric(vertical: AppSizes.spaceSmall),
-          itemCount: _jobs.jobs.length,
-          separatorBuilder: (_, _) => const Divider(
-            height: 1,
-            indent: AppPadding.primary,
-            endIndent: AppPadding.primary,
-          ),
-          itemBuilder: (context, index) => _searchResultTile(_jobs.jobs[index]),
-        ),
-      ),
-    );
-  }
-
-  Widget _searchResultTile(Job job) {
-    return ListTile(
-      leading: Container(
-        width: AppSizes.iconCircle,
-        height: AppSizes.iconCircle,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: job.category.color.withValues(alpha: 0.15),
-          borderRadius: AppRadius.smallCircular,
-        ),
-        child: AppIcon(
-          job.category.icon,
-          color: job.category.color,
-          size: AppSizes.iconMedium,
-        ),
-      ),
-      title: Text(
-        job.title,
-        style: context.textTheme.labelLarge,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      subtitle: Text(
-        '${job.company ?? ''} • ${job.locationLabel ?? ''}',
-        style: context.textTheme.labelMedium,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      trailing: Text(
-        '₺${job.price.toStringAsFixed(0)}',
-        style: context.textTheme.labelLarge?.copyWith(
-          fontWeight: FontWeight.w700,
-          color: context.accentColor,
-        ),
-      ),
-      onTap: () => _focusOnJob(job),
-    );
-  }
-
-  Widget _noResultsOverlay() {
-    return _overlayCard(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSizes.spaceLarge),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AppIcon(
-              AppIcons.searchList,
-              size: AppSizes.iconLarge,
-              color: context.textTertiary,
-            ),
-            const SizedBox(height: AppSizes.spaceSmall),
-            Text(
-              'Sonuç bulunamadı',
-              style: context.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-                color: context.textSecondary,
-              ),
-            ),
-            const SizedBox(height: AppSizes.spaceTiny),
-            Text(
-              'Farklı bir arama terimi deneyin',
-              style: context.textTheme.labelMedium?.copyWith(
-                color: context.textTertiary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Görünen alan sorgusunun durumu: küçük bir yükleniyor göstergesi, sonuç
-  /// kırpıldıysa "yaklaş" uyarısı, hata olduysa görünür bir mesaj.
-  ///
-  /// Hata eskiden yalnızca `debugPrint`'e gidiyordu: harita bayat pinlerle
-  /// öylece duruyor, kullanıcı bir şeyin yanlış gittiğini hiç öğrenmiyordu.
-  Widget _statusOverlay() {
-    if (_jobs.isLoading) {
-      return _statusCard(
-        icon: AppIcons.search,
-        message: 'Bu alandaki ilanlar aranıyor...',
-        showSpinner: true,
-      );
-    }
-
-    final error = _jobs.errorMessage;
-    if (error != null) {
-      return _statusCard(
-        icon: AppIcons.alert,
-        message: error,
-        action: TextButton(
-          onPressed: _jobs.retry,
-          child: Text(
-            'Tekrar Dene',
-            style: context.textTheme.labelLarge?.copyWith(
-              color: context.accentColor,
-            ),
-          ),
-        ),
-      );
-    }
-
-    if (_jobs.isTruncated) {
-      return _statusCard(
-        icon: AppIcons.alert,
-        message:
-            'Bu alanda ${MapExploreController.mapPageSize} ilandan fazlası '
-            'var; hepsini görmek için yaklaşın.',
-      );
-    }
-
-    return const SizedBox.shrink();
-  }
-
-  Widget _statusCard({
-    required AppIconData icon,
-    required String message,
-    bool showSpinner = false,
-    Widget? action,
-  }) {
-    return _overlayCard(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppPadding.primary,
-          vertical: AppSizes.space,
-        ),
-        child: Row(
-          children: [
-            if (showSpinner)
-              SizedBox.square(
-                dimension: AppSizes.iconSmall,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: context.accentColor,
-                ),
-              )
-            else
-              AppIcon(
-                icon,
-                size: AppSizes.iconSmall,
-                color: context.textSecondary,
-              ),
-            const SizedBox(width: AppSizes.spaceSmall),
-            Expanded(
-              child: Text(
-                message,
-                style: context.textTheme.labelMedium?.copyWith(
-                  color: context.textSecondary,
-                ),
-              ),
-            ),
-            ?action,
-          ],
-        ),
       ),
     );
   }
