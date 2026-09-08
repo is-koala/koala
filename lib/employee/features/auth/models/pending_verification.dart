@@ -9,7 +9,7 @@ class PendingVerification {
     required this.id,
     required this.type,
     this.sentTo,
-    this.message,
+    this.expiresAt,
   });
 
   final String id;
@@ -20,25 +20,16 @@ class PendingVerification {
   /// Doğrulamanın gönderildiği yeni adres veya numara.
   final String? sentTo;
 
-  /// Backend'in doldurduğu açıklama alanı — **arayüzde gösterilmemeli.**
+  /// Kodun sunucudaki son kullanma anı.
   ///
-  /// İki sebeple: `VerificationInfoDto` bu alana ham i18n anahtarını yazıyor
-  /// (`{email.verification.message}` / `{phone.verification.message}`) ve
-  /// anahtarları çözen `MessageResolvingAdvice` yalnızca yanıt zarfının en
-  /// üstündeki `message` alanına bakıyor, iç içe DTO alanlarına dokunmuyor.
-  /// Çözülse bile karşılığı `E-posta doğrulama kodunuz: {0}` — doldurulmamış
-  /// bir yer tutucu taşıyor.
-  ///
-  /// Kullanıcıya gösterilecek cümle uygulamada yazılıyor; [type] ve [sentTo]
-  /// bunun için yeterli.
-  final String? message;
+  /// Alan eski sunucu sürümlerinde bulunmadığı için nullable tutulur.
+  final DateTime? expiresAt;
 
   bool get isEmail => type == 'EMAIL';
 
   /// Kod ekranında gösterilen yönerge.
   ///
-  /// Cümle uygulamada kuruluyor: [message] kullanılamıyor ve hedefin
-  /// e-posta mı telefon mu olduğuna göre ifade değişiyor.
+  /// Cümle hedefin e-posta mı telefon mu olduğuna göre uygulamada kuruluyor.
   String get instruction {
     final target = sentTo;
     // `sentTo` sözleşmede zorunlu değil; boşsa hedefi adlandırmadan söyle.
@@ -51,11 +42,12 @@ class PendingVerification {
   }
 
   factory PendingVerification.fromJson(Map<String, dynamic> json) {
+    final expiresAt = json['expiresAt'];
     return PendingVerification(
       id: '${json['id']}',
       type: json['type'] as String? ?? '',
       sentTo: json['sentTo'] as String?,
-      message: json['message'] as String?,
+      expiresAt: expiresAt is String ? DateTime.tryParse(expiresAt) : null,
     );
   }
 }

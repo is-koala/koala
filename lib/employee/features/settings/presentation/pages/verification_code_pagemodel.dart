@@ -5,8 +5,8 @@ abstract class VerificationCodePagemodel extends State<VerificationCodePage> {
   /// (`100000 + SECURE_RANDOM.nextInt(900000)`).
   static const int codeLength = 6;
 
-  /// Kodun sunucudaki ömrü. `VerificationInfoDto` `expiresAt` döndürmediği
-  /// için sayaç ekranın açıldığı andan başlıyor; gösterilen süre yaklaşık.
+  /// Eski sunucu sürümü son kullanma anını döndürmezse kullanılan yaklaşık
+  /// kod ömrü.
   static const Duration codeLifetime = Duration(minutes: 15);
 
   /// Tekrar gönderme düğmesinin soğuma süresi. Sunucunun ayrı bir tekrar
@@ -22,10 +22,9 @@ abstract class VerificationCodePagemodel extends State<VerificationCodePage> {
 
   bool isConfirming = false;
 
-  /// Kalan saniyeler saat okunarak değil saniyede bir azaltılarak tutuluyor.
-  /// `DateTime.now()`'a bağlamak sayacı test edilemez hâle getirirdi ve
-  /// sunucu `expiresAt` döndürmediği için zaten mutlak bir an yok.
-  int _codeSecondsLeft = codeLifetime.inSeconds;
+  /// Sunucunun mutlak son kullanma anı; eski sunucuda ekran açılışından
+  /// itibaren [codeLifetime] sonrası kullanılır.
+  late DateTime _codeDeadline;
   int _resendSecondsLeft = resendCooldown.inSeconds;
 
   Timer? _ticker;
@@ -33,12 +32,18 @@ abstract class VerificationCodePagemodel extends State<VerificationCodePage> {
   VerificationService get _verificationService =>
       widget.verificationService ?? VerificationService();
 
+  DateTime _now() => widget.now?.call() ?? DateTime.now();
+
+  DateTime _deadlineFor(PendingVerification value) =>
+      value.expiresAt ?? _now().add(codeLifetime);
+
   @override
   void initState() {
     super.initState();
     verification = widget.verification;
-    // Ekran, kod yeni gönderilmişken açılıyor: soğuma süresi de kodun ömrü
-    // de o andan başlıyor.
+    _codeDeadline = _deadlineFor(verification);
+    // Ekran kod yeni gönderilmişken açıldığı için soğuma süresi o andan
+    // başlıyor.
     _startTicker();
   }
 
@@ -54,7 +59,6 @@ abstract class VerificationCodePagemodel extends State<VerificationCodePage> {
     _ticker = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
       setState(() {
-        if (_codeSecondsLeft > 0) _codeSecondsLeft--;
         if (_resendSecondsLeft > 0) _resendSecondsLeft--;
       });
       // Sayacak bir şey kalmadıysa boşuna kare çizdirmeye gerek yok.
@@ -62,7 +66,14 @@ abstract class VerificationCodePagemodel extends State<VerificationCodePage> {
     });
   }
 
-  /// Kodun tahmini ömründen kalan süre bitti mi.
+  int get _codeSecondsLeft {
+    final microseconds = _codeDeadline.difference(_now()).inMicroseconds;
+    if (microseconds <= 0) return 0;
+    return (microseconds + Duration.microsecondsPerSecond - 1) ~/
+        Duration.microsecondsPerSecond;
+  }
+
+  /// Kodun sunucunun bildirdiği veya geriye uyumlu tahmini ömrü kaldı mı.
   bool get hasTimeLeft => _codeSecondsLeft > 0;
 
   /// Kalan süre `dd:ss` biçiminde.
@@ -201,7 +212,7 @@ abstract class VerificationCodePagemodel extends State<VerificationCodePage> {
 
       setState(() {
         verification = refreshed.first;
-        _codeSecondsLeft = codeLifetime.inSeconds;
+        _codeDeadline = _deadlineFor(verification);
         code.clear();
       });
       _armResendCooldown();
