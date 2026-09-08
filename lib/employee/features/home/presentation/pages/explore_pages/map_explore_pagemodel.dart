@@ -13,11 +13,18 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
 
   Set<Marker> _markers = {};
 
-  /// Üretilmiş marker'lar, ilan kimliğine göre.
+  /// Yaklaşık konumlu ilanların belirsizlik daireleri.
   ///
-  /// Her `onCameraIdle` sonrası bütün pinleri yeniden üretmek gereksiz: pin
-  /// görseli ilanla birlikte değişmiyor. Yeni gelen ilanlar için üretiliyor,
-  /// görünen alandan çıkanlar atılıyor.
+  /// Marker'lardan ayrı tutuluyor: daire ilanın kendi verisinden hesaplanıyor,
+  /// üretimi asenkron değil, o yüzden önbelleğe de girmiyor.
+  Set<Circle> _areas = {};
+
+  /// Üretilmiş marker'lar, [JobMarkerGenerator.cacheKeyFor] anahtarıyla.
+  ///
+  /// Her `onCameraIdle` sonrası bütün pinleri yeniden üretmek gereksiz. Ama
+  /// anahtar yalnız ilan kimliği **olamaz**: aynı ilan, yetki sona erdiğinde
+  /// yuvarlanmış koordinat ve `APPROXIMATE` bayrağıyla geri geliyor ve
+  /// kimliğe bakan bir önbellek eski kesin pini ekranda tutardı.
   final Map<String, Marker> _markerCache = {};
 
   /// Marker üretimi de asenkron; iki güncelleme üst üste gelirse eskisi
@@ -105,7 +112,7 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
 
     final missing = [
       for (final job in jobs)
-        if (!_markerCache.containsKey(job.id)) job,
+        if (!_markerCache.containsKey(JobMarkerGenerator.cacheKeyFor(job))) job,
     ];
 
     if (missing.isNotEmpty) {
@@ -115,17 +122,18 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
       );
       if (!mounted || token != _markerToken) return;
 
-      for (final marker in generated) {
-        _markerCache[marker.markerId.value] = marker;
-      }
+      _markerCache.addAll(generated);
     }
 
-    // Görünen alandan çıkan ilanların marker'ı bellekte birikmesin.
-    final visibleIds = {for (final job in jobs) job.id};
-    _markerCache.removeWhere((id, _) => !visibleIds.contains(id));
+    // Görünen alandan çıkan **ve** kesinliği değişen ilanların marker'ı
+    // bellekte kalmasın; ikincisi anahtarın kesinliği taşımasından geliyor.
+    JobMarkerGenerator.evictStale(_markerCache, jobs);
 
     if (!mounted || token != _markerToken) return;
-    setState(() => _markers = _markerCache.values.toSet());
+    setState(() {
+      _markers = _markerCache.values.toSet();
+      _areas = JobMarkerGenerator.generateAreas(jobs: jobs);
+    });
   }
 
   /// Haritada arama yap.

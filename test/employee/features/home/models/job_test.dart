@@ -270,4 +270,81 @@ void main() {
       expect(JobType.recurring.displayName, 'Tekrarlı');
     });
   });
+
+  group('AddressPrecision', () {
+    test('sunucunun iki değeri okunuyor', () {
+      expect(
+        AddressPrecision.fromCode('APPROXIMATE'),
+        AddressPrecision.approximate,
+      );
+      expect(AddressPrecision.fromCode('EXACT'), AddressPrecision.exact);
+    });
+
+    test('eksik alan yaklaşık sayılıyor', () {
+      // Bu alanı hiç göndermeyen bir sunucu sürümü yetkiyi kanıtlamıyor;
+      // eksiği kesin saymak yuvarlanmış koordinatı tam adres gibi çizerdi.
+      expect(AddressPrecision.fromCode(null), AddressPrecision.approximate);
+    });
+
+    test('tanınmayan değer yaklaşık sayılıyor', () {
+      expect(
+        AddressPrecision.fromCode('STREET_LEVEL'),
+        AddressPrecision.approximate,
+      );
+    });
+  });
+
+  group('Job konum kesinliği', () {
+    test('sunucu gövdesinden okunuyor', () {
+      final job = Job.fromJson({
+        'id': 'job_1',
+        'latitude': 41.015137,
+        'longitude': 28.979530,
+        'addressPrecision': 'EXACT',
+      });
+
+      expect(job.addressPrecision, AddressPrecision.exact);
+    });
+
+    test('alan gelmezse yaklaşık kalıyor', () {
+      final job = Job.fromJson({'id': 'job_1', 'latitude': 41.02});
+
+      expect(job.addressPrecision, AddressPrecision.approximate);
+    });
+
+    test('toJson → fromJson turu kesinliği koruyor', () {
+      final job = buildJob(addressPrecision: AddressPrecision.exact);
+
+      expect(
+        Job.fromJson(job.toJson()).addressPrecision,
+        AddressPrecision.exact,
+      );
+    });
+
+    test('yaklaşık yarıçap yuvarlama hatasını kapsıyor', () {
+      // ±0.005° enlem ≈ 557 m; boylam bunun kosinüsüyle daralıyor, köşegen
+      // ikisinden de büyük olmalı.
+      final job = buildJob(latitude: 41.02, longitude: 28.98);
+
+      expect(job.approximateRadiusInMeters, greaterThan(556));
+      expect(job.approximateRadiusInMeters, lessThan(800));
+    });
+  });
+
+  group('JobDetail konum kesinliği', () {
+    test('sunucu gövdesinden okunuyor', () {
+      final detail = JobDetail.fromJson({
+        'id': 'job_1',
+        'addressPrecision': 'EXACT',
+      });
+
+      expect(detail.addressPrecision, AddressPrecision.exact);
+    });
+
+    test('alan gelmezse yaklaşık kalıyor', () {
+      final detail = JobDetail.fromJson({'id': 'job_1'});
+
+      expect(detail.addressPrecision, AddressPrecision.approximate);
+    });
+  });
 }

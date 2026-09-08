@@ -1,5 +1,6 @@
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
+import 'package:koala/product/models/canonical_address.dart';
 
 /// Testlerde kullanılan hazır [Job] üreticisi.
 ///
@@ -27,6 +28,7 @@ Job buildJob({
   DateTime? startDateTime,
   DateTime? endDateTime,
   String? coverImageUrl,
+  AddressPrecision addressPrecision = AddressPrecision.approximate,
 }) {
   return Job(
     id: id,
@@ -49,6 +51,7 @@ Job buildJob({
     startDateTime: startDateTime,
     endDateTime: endDateTime,
     coverImageUrl: coverImageUrl,
+    addressPrecision: addressPrecision,
   );
 }
 
@@ -71,6 +74,8 @@ JobDetail buildJobDetail({
   int? maxAge,
   JobCompany? company,
   JobCreator? creator,
+  CanonicalAddress? address,
+  AddressPrecision addressPrecision = AddressPrecision.approximate,
 }) {
   return JobDetail(
     id: id,
@@ -90,5 +95,7 @@ JobDetail buildJobDetail({
     maxAge: maxAge,
     company: company,
     creator: creator,
+    address: address,
+    addressPrecision: addressPrecision,
   );
 }

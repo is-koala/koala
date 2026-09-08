@@ -134,6 +134,10 @@ class _MapExplorePageState extends MapExplorePageModel {
       myLocationButtonEnabled: false,
       zoomControlsEnabled: false,
       markers: _markers,
+      // Yaklaşık konumlu ilanın altındaki belirsizlik dairesi. Pin tek başına
+      // bir nokta iddiası; daire o iddiayı ilanın gerçekten taşıdığı
+      // kesinliğe indiriyor (ADR-0003, is-koala/koala#93).
+      circles: _areas,
       // Kamera durduğunda görünen alan sunucuya gidiyor; hangi ilanların
       // çekileceğini artık kullanıcının baktığı yer belirliyor.
       onCameraIdle: _onCameraIdle,

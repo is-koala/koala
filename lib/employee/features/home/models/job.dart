@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
@@ -270,6 +272,30 @@ enum JobStatus {
   }
 }
 
+/// Sunucunun ilan konumunu hangi kesinlikte gönderdiği. Backend
+/// `AddressPrecision` karşılığı.
+///
+/// Diğer enum'lardan bir farkı var: tanınmayan değer **yaklaşık**'a düşüyor,
+/// "normal" olana değil. Bilinmeyen bir bayrağı kesin saymak, yuvarlanmış bir
+/// koordinatı tam iş adresi gibi çizmek olurdu; eksik alan da aynı yere
+/// düşüyor, çünkü bu alanı hiç göndermeyen bir sunucu sürümü de yetkiyi
+/// kanıtlamıyor (ADR-0003).
+enum AddressPrecision {
+  approximate('APPROXIMATE'),
+  exact('EXACT');
+
+  const AddressPrecision(this.code);
+
+  final String code;
+
+  static AddressPrecision fromCode(Object? value) {
+    return AddressPrecision.values.firstWhere(
+      (precision) => precision.code == value,
+      orElse: () => AddressPrecision.approximate,
+    );
+  }
+}
+
 /// Bir iş ilanının liste/harita görünümü.
 ///
 /// `GET /jobs` yanıtındaki `JobSummaryDto`'nun karşılığı. Açıklama, görevler,
@@ -298,6 +324,7 @@ class Job {
     this.applicationCount = 0,
     this.latitude,
     this.longitude,
+    this.addressPrecision = AddressPrecision.approximate,
   });
 
   final String id;
@@ -342,8 +369,44 @@ class Job {
   final double? latitude;
   final double? longitude;
 
+  /// [latitude]/[longitude] değerlerinin hangi kesinlikte geldiği.
+  ///
+  /// Koordinat yükte **her zaman** var: sunucu yetkisiz görüntüleyende onu
+  /// yuvarlıyor ama alanı boş bırakmıyor (`JobMapper` koordinatı daima
+  /// yazıyor, `JobAddressVisibility.protect` yalnız `EXACT`'te kesin değeri
+  /// üzerine koyuyor). Bu yüzden bayrağı okumamak, yuvarlanmış bir noktayı
+  /// kesin adres gibi çizmek demek — is-koala/koala#93 tam olarak buydu.
+  final AddressPrecision addressPrecision;
+
   /// Haritada pin çizilebilir mi.
   bool get hasLocation => latitude != null && longitude != null;
+
+  /// Yaklaşık koordinatın gerçek noktadan en fazla kaç metre uzakta
+  /// olabileceği.
+  ///
+  /// Sunucu koordinatı iki ondalığa yuvarlıyor (`HALF_UP`), yani gerçek nokta
+  /// her eksende gösterilen değerin ±0.005° içinde. Metreye çevrilip köşegeni
+  /// alınıyor: daire bu yarıçapta çizildiğinde gerçek konumu **kapsadığı**
+  /// garanti, kesin bir nokta iddiası taşımıyor.
+  ///
+  /// Bu bir istemci yuvarlaması **değil** — sunucudan gelen belirsizliğin
+  /// görselleştirilmesi. İstemcide yuvarlama `docs/research/location-and-map.md`
+  /// tarafından açıkça reddedilmiş bir yaklaşım.
+  double get approximateRadiusInMeters {
+    const latitudeError = _roundingHalfStep * _metersPerLatitudeDegree;
+    final longitudeError = latitudeError * cos((latitude ?? 0) * pi / 180);
+    return sqrt(
+      latitudeError * latitudeError + longitudeError * longitudeError,
+    );
+  }
+
+  /// Sunucunun yuvarlama adımının yarısı: `setScale(2, HALF_UP)` sonrası
+  /// gerçek değer gösterilen değerin bu kadar yakınında.
+  static const double _roundingHalfStep = 0.005;
+
+  /// Bir enlem derecesinin metre karşılığı. Boylamda bu değer enlemin
+  /// kosinüsüyle daralıyor, o yüzden ayrı bir sabit yok.
+  static const double _metersPerLatitudeDegree = 111320;
 
   /// Kartın ikinci satırı.
   ///
@@ -389,6 +452,7 @@ class Job {
       applicationCount: (json['applicationCount'] as num?)?.toInt() ?? 0,
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
+      addressPrecision: AddressPrecision.fromCode(json['addressPrecision']),
     );
   }
 
@@ -415,6 +479,7 @@ class Job {
       'applicationCount': applicationCount,
       'latitude': latitude,
       'longitude': longitude,
+      'addressPrecision': addressPrecision.code,
     };
   }
 
