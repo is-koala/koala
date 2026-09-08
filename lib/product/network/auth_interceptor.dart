@@ -1,12 +1,19 @@
 import 'package:dio/dio.dart';
+import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/network/api_paths.dart';
+import 'package:koala/product/network/api_response.dart';
 import 'package:koala/product/network/token_storage.dart';
 
-/// İsteklere `Authorization` başlığını ekler ve 401 gelen isteği bir kez
-/// `/auth/refresh-token` ile tazeleyip tekrar dener.
+/// İsteklere `Authorization` başlığını ekler ve oturumun bittiğini söyleyen
+/// isteği bir kez `/auth/refresh-token` ile tazeleyip tekrar dener.
 ///
-/// `QueuedInterceptor`'dan türüyor: aynı anda 401 alan birden fazla istek
-/// olduğunda token yalnızca bir defa yenilensin diye istekler sıraya giriyor.
+/// "Oturum bitti" ölçüsü [ApiErrorType.unauthenticated]: karar zarftaki
+/// `errorCategory` alanından çıkıyor, `401` yalnızca yedek — ayrıntı
+/// [_shouldRefresh]'te.
+///
+/// `QueuedInterceptor`'dan türüyor: aynı anda oturum hatası alan birden fazla
+/// istek olduğunda token yalnızca bir defa yenilensin diye istekler sıraya
+/// giriyor.
 ///
 /// Yenileme çağrısı, süresi **dolmuş** erişim token'ıyla da çalışıyor:
 /// backend `/auth/refresh-token` yolunda oturum filtresini atlıyor ve oturum
@@ -70,8 +77,29 @@ class AuthInterceptor extends QueuedInterceptor {
     }
   }
 
+  /// Bu hatanın oturumun bitmesi anlamına gelip gelmediğine karar verir.
+  ///
+  /// Ölçü **kategori**, durum kodu değil: sunucu `TOKEN_EXPIRED`'ı bir gün
+  /// `401` dışında bir durum koduyla gönderirse yenileme sessizce çalışmaz
+  /// hâle gelirdi (is-koala/koala#86). Ayrım `ApiErrorType`'ta zaten vardı
+  /// ama oturumu yenileyen yol onu hiç okumuyordu; tip ile davranış
+  /// arasındaki bağ yalnızca "sunucu bu kategorileri `401` ile gönderiyor"
+  /// varsayımıyla ayakta duruyordu.
+  ///
+  /// `401` **yedek olarak duruyor**, birincil kapı olarak değil:
+  /// [ApiErrorType.classify] kategori taşımayan zarfta durum koduna düşüyor,
+  /// yani eski sunucu, zarfı elle yazan filtreler, gövdesi JSON olmayan
+  /// yanıtlar ve yanıtsız ağ hataları bugünkü davranışı koruyor.
+  ///
+  /// Kararın `ApiClient`'takiyle aynı fonksiyondan çıkması şart: iki kopya,
+  /// aynı yanıt için yenileme yolunun ve kullanıcıya gösterilen tipin
+  /// sessizce ayrışması demek olurdu.
   bool _shouldRefresh(DioException err) {
-    if (err.response?.statusCode != 401) return false;
+    final type = ApiErrorType.classify(
+      errorCategory: ApiResponse.errorCategoryOf(err.response?.data),
+      statusCode: err.response?.statusCode,
+    );
+    if (type != ApiErrorType.unauthenticated) return false;
 
     final path = err.requestOptions.path;
     if (path == ApiPaths.refreshToken) return false;

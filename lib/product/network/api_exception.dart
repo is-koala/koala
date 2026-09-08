@@ -31,8 +31,9 @@ enum ApiErrorType {
   /// Kategoriler: `AUTHENTICATION_REQUIRED`, `INVALID_CREDENTIALS`,
   /// `TOKEN_EXPIRED`. Yedek: `401`.
   ///
-  /// `AuthInterceptor` yalnızca bu ailenin durum kodunda (`401`) token
-  /// yenilemeye çalışıyor ve başaramazsa oturumu kapatıyor.
+  /// `AuthInterceptor` token yenilemeyi **bu tipe** bakarak deniyor ve
+  /// başaramazsa oturumu kapatıyor; kararın kaynağı artık durum kodu değil
+  /// ([classify]).
   unauthenticated,
 
   /// Oturum geçerli ama bu işleme izin yok.
@@ -62,7 +63,7 @@ enum ApiErrorType {
   ///
   /// Kategori: `DATA_CONFLICT`. Yedek: `409` — ama `409`'un iki kategorisi
   /// var ve durum kodu hangisi olduğunu söylemiyor; ayrıntı
-  /// `ApiClient._typeForStatus`'ta.
+  /// [_fromStatusCode]'ta.
   dataConflict,
 
   /// İstemci sürümü sunucunun istediği en düşük sürümün altında. Tekrar
@@ -125,7 +126,7 @@ enum ApiErrorType {
       //    `UNEXPECTED` oluyor. O boşluk kapandığında üretici tam olarak bu
       //    kategori olacak; yani planlanmış bir tüketici değil, planlanmış
       //    bir **üretici** var.
-      // 3. Silmenin karşılığı sıfır: `415` `_typeForStatus`'ta da yok, yani
+      // 3. Silmenin karşılığı sıfır: `415` `_fromStatusCode`'ta da yok, yani
       //    satır kalksa da tip `unknown` çıkıyor. Kazanç yok, kayıp var.
       //
       // Bu depoda "referansı yok" diye silinen bir enum değeri, planlanan
@@ -133,6 +134,70 @@ enum ApiErrorType {
       'METHOD_NOT_ALLOWED' || 'MEDIA_TYPE_NOT_SUPPORTED' => unknown,
       _ => null,
     };
+  }
+
+  /// Hata tipini belirler: **önce zarftaki `errorCategory`**, o yoksa ya da
+  /// tanınmıyorsa durum kodu.
+  ///
+  /// Sıra bu yönde, çünkü durum kodu bilgi kaybediyor: sunucu `401` altında
+  /// üç, `409` altında iki ayrı kategori döndürüyor ve bunlar kullanıcıdan
+  /// farklı şeyler istiyor (is-koala/koala#82).
+  ///
+  /// Kategori tanınmadığında **istisna atılmıyor**: küme kapalı ama
+  /// büyüyebilir; sunucunun eklediği yeni bir değer uygulamayı düşürmemeli,
+  /// bugünkü durum kodu davranışına düşmeli.
+  ///
+  /// Kural burada duruyor, `ApiClient`'ta değil, çünkü **iki çağıranı** var
+  /// ve ikisi hatayı farklı katmanlarda görüyor: `ApiClient` zarfı çözdükten
+  /// sonra [ApiException]'ı kurarken, `AuthInterceptor` ise henüz ham
+  /// `Response` elindeyken oturumu yenileyip yenilemeyeceğine karar verirken
+  /// (is-koala/koala#86). Kuralın ikinci bir kopyası çıkarsa ikisi sessizce
+  /// ayrışır: yenileme yolu ile kullanıcıya gösterilen tip aynı yanıt için
+  /// farklı şey söylerdi.
+  ///
+  /// **Sınıflandırmaya açılan tek kapı bu.** Yedek tablo bilerek
+  /// library-private ([_fromStatusCode]): kural yalnızca tek yerde durursa
+  /// yetmiyor, o yere **giden yol** da tek olmalı. Yedek dışarıya açık
+  /// kalsaydı bir sayfa ya da provider kategoriyi hiç okumadan durum koduna
+  /// sorabilirdi — ki #86'nın düzelttiği kusur tam olarak buydu ve ne
+  /// analyzer ne de bir test bunu yakalardı. Kategorisi olmadığını **bilen**
+  /// çağıran da (zarfı olmayan yanıt) buradan geçiyor: `errorCategory: null`.
+  static ApiErrorType classify({String? errorCategory, int? statusCode}) {
+    return fromCategory(errorCategory) ?? _fromStatusCode(statusCode);
+  }
+
+  /// Kategori gelmediğinde çalışan yedek.
+  ///
+  /// **Dışarıdan çağrılamaz, [classify] üzerinden geçilir.** Eskiden bu tablo
+  /// `ApiClient._typeForStatus` olarak sınıfa private'dı ve dışarıdan
+  /// erişilemiyordu; yukarı taşınırken o kapalılık korunuyor.
+  ///
+  /// Eski sunucu, zarfı elle yazan filtreler ve gövdesi JSON olmayan yanıtlar
+  /// için tek bilgi kaynağı bu.
+  ///
+  /// **`409` iki kategoriden hangisi olduğunu söylemiyor.** Sunucu bu durum
+  /// kodunu iki ayrı yoldan üretiyor: `ConflictException` (bir
+  /// `KoalaException`) `categoryOf(CONFLICT)` üzerinden `DATA_CONFLICT`
+  /// veriyor, `IllegalStateException` ise `handleIllegalState` içinde
+  /// doğrudan `BUSINESS_RULE_VIOLATION` veriyor
+  /// (`GlobalExceptionHandler.java:86`). Buradaki [dataConflict] bir olgu
+  /// değil **seçim**: ikisi de aynı gövdeyi taşıyabildiği için durum
+  /// kodundan ayırt edilemiyorlar, ve çağıranların çoğu ([serverStateMoved])
+  /// ikisine de aynı tepkiyi veriyor.
+  ///
+  /// Ayrımı gerçekten önemseyen bir çağıran bu yedeğe güvenmemeli — zaten
+  /// güvenmiyor: kategoriden değil `errorCode`'dan karar veriyor.
+  static ApiErrorType _fromStatusCode(int? statusCode) {
+    if (statusCode == null) return unknown;
+    if (statusCode == 400 || statusCode == 422) return validation;
+    if (statusCode == 401) return unauthenticated;
+    if (statusCode == 403) return forbidden;
+    if (statusCode == 404) return notFound;
+    if (statusCode == 409) return dataConflict;
+    if (statusCode == 429) return tooManyRequests;
+    if (statusCode == 426) return upgradeRequired;
+    if (statusCode >= 500) return server;
+    return unknown;
   }
 
   /// Sunucudaki kayıt istemcinin varsaydığından farklı: ekrandaki veri bayat,

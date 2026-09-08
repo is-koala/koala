@@ -111,11 +111,19 @@ abstract class VerificationCodePagemodel extends State<VerificationCodePage> {
     } on ApiException catch (error) {
       if (!mounted) return;
 
-      // `403` başkasının kaydı, `404` hiç olmayan kayıt. İkisinde de kod
-      // girmenin anlamı kalmadı; kullanıcı değişikliği baştan başlatmalı.
+      // `forbidden` başkasının kaydı, `notFound` hiç olmayan kayıt. İkisinde
+      // de kod girmenin anlamı kalmadı; kullanıcı değişikliği baştan
+      // başlatmalı.
+      //
+      // Tipe bakılıyor, `statusCode`'a değil: ayrımın kaynağı sunucunun
+      // `errorCategory` alanı (`ACCESS_DENIED`, `RESOURCE_NOT_FOUND`),
+      // `403`/`404` yalnızca kategori gelmediğinde devreye giren yedek
+      // (is-koala/koala#86).
+      //
       // Tek toast gösteriliyor: [AppToast.show] sıradakini beklemeden
       // öncekini gizlediği için iki mesaj üst üste yazmanın anlamı yok.
-      if (error.statusCode == 403 || error.statusCode == 404) {
+      if (error.type == ApiErrorType.forbidden ||
+          error.type == ApiErrorType.notFound) {
         AppToast.error(
           context,
           'Bu doğrulama artık geçerli değil. Değişikliği baştan yap.',
