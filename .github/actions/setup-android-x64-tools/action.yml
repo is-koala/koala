@@ -23,6 +23,10 @@ inputs:
     description: sdkmanager'dan çekilecek build-tools sürümü
     required: false
     default: "37.0.0"
+  agp-aapt2-version:
+    description: Gradle önbelleğinde aranacak AGP aapt2 artifact sürümü
+    required: false
+    default: "9.1.0-14792394"
   probe-gen-snapshot:
     description: >-
       Release AOT derlemesinin çalıştırdığı x86-64 gen_snapshot da yoklansın mı.
@@ -70,6 +74,7 @@ runs:
     - name: x64 Android araç emülasyonunu doğrula
       shell: bash
       env:
+        AGP_AAPT2_VERSION: ${{ inputs.agp-aapt2-version }}
         BUILD_TOOLS_VERSION: ${{ inputs.build-tools-version }}
         PROBE_GEN_SNAPSHOT: ${{ inputs.probe-gen-snapshot }}
       run: |
@@ -106,18 +111,26 @@ runs:
         # İlk derlemeden önce bu dosya diskte yok, o yüzden yoklama fırsatçı:
         # önbellek sıcaksa gerçek binary ölçülür, soğuksa kapsanmadığı yazılır.
         gradle_home="${GRADLE_USER_HOME:-$HOME/.gradle}"
-        agp_aapt2=""
+        agp_aapt2_candidates=()
         if [[ -d "$gradle_home/caches" ]]; then
-          agp_aapt2="$(find "$gradle_home/caches" -type f -name aapt2 -print -quit 2>/dev/null || true)"
+          while IFS= read -r -d '' candidate; do
+            agp_aapt2_candidates+=("$candidate")
+          done < <(
+            find "$gradle_home/caches" -type f \
+              -path "*/aapt2-$AGP_AAPT2_VERSION-linux/aapt2" -print0 \
+              2>/dev/null
+          )
         fi
-        if [[ -n "$agp_aapt2" ]]; then
-          echo "AGP aapt2 (Gradle önbelleği): $agp_aapt2"
-          if ! "$agp_aapt2" version; then
-            echo "::error::AGP'nin Google Maven'dan çözdüğü aapt2 çalışmadı. Ne yapılacağı: docs/research/raspberry-pi-self-hosted-ci.md, \"Nöbetçi kırmızı olduğunda\" bölümü."
-            exit 1
-          fi
+        if (( ${#agp_aapt2_candidates[@]} > 0 )); then
+          for agp_aapt2 in "${agp_aapt2_candidates[@]}"; do
+            echo "AGP aapt2 (Gradle önbelleği): $agp_aapt2"
+            if ! "$agp_aapt2" version; then
+              echo "::error::AGP'nin Google Maven'dan çözdüğü aapt2 çalışmadı. Ne yapılacağı: docs/research/raspberry-pi-self-hosted-ci.md, \"Nöbetçi kırmızı olduğunda\" bölümü."
+              exit 1
+            fi
+          done
         else
-          echo "::notice::AGP aapt2 Gradle önbelleğinde yok (soğuk önbellek). Bu koşuda yalnız host'un x86-64 çalıştırma yeteneği doğrulandı; AGP'nin kendi aapt2'si DOĞRULANMADI."
+          echo "::notice::AGP aapt2 $AGP_AAPT2_VERSION Gradle önbelleğinde yok (soğuk önbellek). Bu koşuda yalnız host'un x86-64 çalıştırma yeteneği doğrulandı; AGP'nin kendi aapt2'si DOĞRULANMADI."
         fi
 
         # 3) Release AOT'un çalıştırdığı x86-64 gen_snapshot.
@@ -135,7 +148,7 @@ runs:
 
           gen_snapshot="$(find "$FLUTTER_ROOT/bin/cache/artifacts/engine" -type f -name gen_snapshot -path '*android-*' -print -quit 2>/dev/null || true)"
           if [[ -z "$gen_snapshot" ]]; then
-            echo "::error::Android gen_snapshot artifact'ı bulunamadı; release AOT yolu doğrulanamıyor."
+            echo "::error::Android gen_snapshot artifact'ı bulunamadı; release AOT yolu doğrulanamıyor. Ne yapılacağı: docs/research/raspberry-pi-self-hosted-ci.md, \"Nöbetçi kırmızı olduğunda\" bölümü."
             exit 1
           fi
           echo "Android gen_snapshot: $gen_snapshot"

@@ -32,16 +32,19 @@ env:
 jobs:
   analyze:
     name: Format & Analiz
-    # Fork nöbeti. Bu zincir self-hosted Pi'de koşuyor: yabancı bir fork'tan
-    # gelen PR'ın kodu doğrudan ev makinesinde çalışırdı. Depo bugün private
-    # (ölçüldü) olduğu için risk düşük, ama herkese açıldığı gün fark edilmesi
-    # zor bir açık olurdu.
+    # Savunma derinliği: bu koşul fork PR'ını Pi'den uzak tutar, ama güvenlik
+    # sınırı değildir; PR kendi workflow dosyasını değiştirebilir. Asıl sınır
+    # private depo Actions ayarındaki
+    # run_workflows_from_fork_pull_requests=false değeridir (2026-09-09'da
+    # REST API ile doğrulandı). O ayar açılmadan veya depo public yapılmadan
+    # önce self-hosted pull_request akışı kaldırılmalı ya da runner group yalnız
+    # default branch'teki güvenilir workflow'larla sınırlandırılmalıdır.
     #
     # İlk koşul şart: workflow_dispatch olayında github.event.pull_request yok,
     # boş string github.repository'ye eşit olmadığı için ikinci koşul tek
     # başına elle tetiklemeyi de kapatırdı.
     #
-    # NÖBET TEK YERDE: test ve build-android bu işe `needs:` ile bağlı ve
+    # KOŞUL TEK YERDE: test ve build-android bu işe `needs:` ile bağlı ve
     # GitHub, `needs` bağı atlanmış bir işi de atlıyor. Pi'de koşan YENİ bir iş
     # eklenirse bu zincire bağlanmalı, yoksa koruma sessizce kapsamaz.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository

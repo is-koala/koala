@@ -137,10 +137,13 @@ microSD yolunda `I/O error` üretti. Tekrar denenmemelidir.
 
 **Yapılacak olan**, sırasıyla:
 
-1. Android işi zaten normal PR akışında kapalı (`build-android` yalnız
-   `workflow_dispatch` + `build_android` girdisiyle koşar). Kırmızı bir
-   nöbetçi mobil CI'ı engellemez; işi elle tetiklemeyi bırak.
-2. APK/AAB gerçekten gerekiyorsa x64 bir runner kullan.
+1. Normal PR akışındaki debug APK işi kapalıdır; yalnız `workflow_dispatch` +
+   `build_android` girdisiyle çalışır. Buradaki kırmızı nöbetçi normal PR
+   analiz/test zincirini engellemez; elle tetiklenen işi yeniden çalıştırma.
+2. `mobile-v*` etiketi ise Play internal yayın kolunu otomatik başlatır ve aynı
+   nöbetçi kırmızıysa Android yayınını bilerek durdurur. Etiketi taşımaya veya
+   kapıyı atlamaya çalışma; release'i durdur ve Android paketlemeyi x64 bir
+   runner'a taşı.
 3. x64 runner yoksa, organizasyonun sabitlediği amd64 konteyner yolunu
    "Uygulamadan önce Pi üzerinde kanıtlanacaklar" bölümündeki kabul sırasıyla
    önce elle doğrula; yeşil kabul koşusu görülmeden Android paketleme

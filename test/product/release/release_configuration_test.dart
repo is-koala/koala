@@ -89,6 +89,56 @@ void main() {
     );
   });
 
+  test('Android nöbetçisi yalnız güncel AGP aapt2 adaylarını ölçer', () {
+    final action = File(
+      '.github/actions/setup-android-x64-tools/action.yml',
+    ).readAsStringSync();
+    final settings = File('android/settings.gradle.kts').readAsStringSync();
+    final agpVersion = RegExp(
+      r'id\("com\.android\.application"\) version "([^"]+)"',
+    ).firstMatch(settings)!.group(1)!;
+    final aapt2Version = RegExp(
+      r'agp-aapt2-version:[\s\S]*?default: "([^"]+)"',
+    ).firstMatch(action)!.group(1)!;
+
+    expect(aapt2Version, startsWith('$agpVersion-'));
+    expect(action, contains(r'-path "*/aapt2-$AGP_AAPT2_VERSION-linux/aapt2"'));
+    expect(
+      action,
+      contains(r'for agp_aapt2 in "${agp_aapt2_candidates[@]}"; do'),
+    );
+    expect(action, isNot(contains('-name aapt2 -print -quit')));
+  });
+
+  test('Android nöbetçisinin bütün hataları tek runbooka yönlenir', () {
+    final action = File(
+      '.github/actions/setup-android-x64-tools/action.yml',
+    ).readAsStringSync();
+    final errorLines = action
+        .split('\n')
+        .where((line) => line.contains('echo "::error::'))
+        .toList();
+
+    expect(errorLines, isNotEmpty);
+    for (final line in errorLines) {
+      expect(
+        line,
+        contains('docs/research/raspberry-pi-self-hosted-ci.md'),
+        reason: 'Kanonik runbooka yönlenmeyen hata: $line',
+      );
+    }
+  });
+
+  test('Android nöbetçisi runbooku PR ve etiket yayınını ayırır', () {
+    final runbook = File(
+      'docs/research/raspberry-pi-self-hosted-ci.md',
+    ).readAsStringSync();
+
+    expect(runbook, contains('workflow_dispatch'));
+    expect(runbook, contains('mobile-v*'));
+    expect(runbook, contains('Play internal'));
+  });
+
   test('yayın ve gizlilik belgeleri insan kapılarını açıkça ayırır', () {
     final release = File('docs/release.md').readAsStringSync();
     final privacy = File('docs/store-privacy-inventory.md').readAsStringSync();
