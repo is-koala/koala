@@ -187,6 +187,49 @@ void main() {
     });
   }
 
+  // Yukarıdaki döngü ayrımın **kaynağını** ölçmüyor, yalnız yedeğini:
+  // gövdelerinde `errorCategory` yok, yani sayfa `error.type` yerine
+  // `error.statusCode == 403 || error.statusCode == 404`'e geri döndürülse
+  // de ikisi yeşil kalır. Kararın gerçekten kategoriden çıktığını ancak
+  // ikisinin **çeliştiği** bir yanıt ölçebilir.
+  //
+  // Aşağıdaki iki durum kodu bilerek `403`/`404` **değil**: yedek tablo
+  // ikisine de başka bir tip verirdi, yani bu satırların yeşil kalmasının tek
+  // yolu kategoriyi okumak (is-koala/koala#86).
+  for (final (statusCode, category, fallbackType) in const [
+    // Yedek `dataConflict` derdi; kategori `forbidden` diyor.
+    (409, 'ACCESS_DENIED', 'dataConflict'),
+    // Yedek `validation` derdi; kategori `notFound` diyor.
+    (422, 'RESOURCE_NOT_FOUND', 'validation'),
+  ]) {
+    testWidgets('$statusCode + $category ekranı kapatıyor (durum kodu yedeği '
+        '$fallbackType derdi)', (tester) async {
+      final api = FakeApi(
+        handler: (_) => FakeApiResponse(
+          statusCode: statusCode,
+          body: {
+            'success': false,
+            'message': 'Doğrulama bulunamadı',
+            'errorCategory': category,
+          },
+        ),
+      );
+      bool? finished;
+
+      await pumpPage(tester, api, onFinished: (value) => finished = value);
+      await enterCode(tester, '123456');
+      await tester.tap(find.text('Onayla'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(finished, isFalse);
+      expect(
+        find.text('Bu doğrulama artık geçerli değil. Değişikliği baştan yap.'),
+        findsOneWidget,
+      );
+    });
+  }
+
   testWidgets('kodu tekrar gönder aynı yeni değerle PATCH atıyor ve düğme '
       'kilitleniyor', (tester) async {
     final api = FakeApi(

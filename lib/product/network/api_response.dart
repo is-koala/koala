@@ -53,12 +53,26 @@ class ApiResponse<T> {
       message: _stringOrNull(json['message']),
       data: parse == null ? null : parse(json['data']),
       errorCode: _stringOrNull(json['errorCode']),
-      errorCategory: _stringOrNull(json['errorCategory']),
+      errorCategory: errorCategoryOf(json),
       fieldErrors: details is List
           ? details.whereType<Map<String, dynamic>>().map(_fieldError).toList()
           : const [],
     );
   }
+
+  /// Ham gövdeden **yalnızca** kategoriyi okur; zarfın kalanına dokunmaz.
+  ///
+  /// `AuthInterceptor` için var: o, hatayı `ApiClient` zarfı çözmeden önce
+  /// görüyor ve elinde yalnızca dio'nun `Response.data`'sı oluyor. Zarfın
+  /// tamamını kurmak yerine tek alan okunuyor — ama okuma [fromJson] ile
+  /// **aynı yerden** geçiyor: `errorCategory` anahtarını ve tür korumasını
+  /// bilen tek kod burası olsun, iki okuyucu sessizce ayrışmasın.
+  ///
+  /// Gövde JSON değilse (hata sayfası, boş yanıt) `null` döner: kategori
+  /// yoktur, çağıran durum kodu yedeğine düşer.
+  static String? errorCategoryOf(Object? body) => body is Map<String, dynamic>
+      ? _stringOrNull(body['errorCategory'])
+      : null;
 
   /// `details` dizisinin bir elemanı. Ayrıştırma burada, çünkü o da zarfın
   /// parçası ve aynı korumayı kullanmalı; alan adı ya da mesaj dizge değilse
