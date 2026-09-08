@@ -18,7 +18,7 @@ env:
 jobs:
   analyze:
     name: Format & Analiz
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 
@@ -42,7 +42,7 @@ jobs:
   test:
     name: Testler
     needs: analyze
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 
@@ -74,7 +74,7 @@ jobs:
   build-android:
     name: Android derleme
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 

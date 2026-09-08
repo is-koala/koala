@@ -19,7 +19,7 @@ env:
 jobs:
   validate:
     name: Sözleşme ve testler
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
         with:
@@ -48,7 +48,7 @@ jobs:
   android-internal:
     name: Play internal
     needs: validate
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     environment: production
     steps:
       - uses: actions/checkout@v4
