@@ -108,6 +108,10 @@ Tam x64 Flutter SDK'yı emüle etmek zorunlu değil. Frontend-server artifact'ı
 
 Araştırmada Flutter 3.47.1'in `android-arm64-release/linux-x64.zip` içindeki `gen_snapshot` dosyası ile AGP 9.1.0 AAPT2 binary'sinin ELF bağımlılıkları ayrıca incelendi. İkisi de x86-64; `gen_snapshot` glibc bileşenlerine, AAPT2 bunlara ek olarak `libgcc_s.so.1` dosyasına bağlı. Debian'ın resmî QEMU user emulation akışı, yabancı mimari executable'ları transparan çalıştırmak için `qemu-user`, `qemu-user-binfmt`, `dpkg --add-architecture <architecture>` ve `libc6:<architecture>` kurulumunu tarif ediyor. [Debian QEMU user emulation](https://wiki.debian.org/QemuUserEmulation), [Debian Multiarch HOWTO](https://wiki.debian.org/Multiarch/HOWTO).
 
+Bu cümle Debian'ın genel akışının tarifidir, Koala'nın Pi'sinde uygulanacak bir
+adım listesi **değildir**. O paketleri bu hosta kurmak denendi ve reddedildi;
+gerekçe hemen aşağıda.
+
 Bu hibrit yol izole Debian ortamında teknik olarak mümkün olsa da gerçek Koala
 Pi hostunda reddedildi. Raspberry Pi OS'nin arm64 libc paketi ile Debian amd64
 paketi exact-version multiarch şartını karşılamadı; hosta foreign libc kurmak
@@ -117,6 +121,33 @@ Bu nedenle Pi üzerinde yalnız native Flutter analiz/test yolu desteklenir.
 Android paketleme ya x64 bir makinede yapılmalı ya da bütün x64 kullanıcı alanını
 hosttan ayıran, sabitlenmiş bir amd64 konteyner önce küçük bir kabul koşusuyla
 doğrulanmalıdır. Normal PR akışı bu deneysel işi otomatik başlatmaz.
+
+### Nöbetçi kırmızı olduğunda
+
+`.github/actions/setup-android-x64-tools` içindeki "x64 Android araç
+emülasyonunu doğrula" adımı düşerse `::error::` mesajı buraya yönlendirir. Bu
+bölüm bu sorunun **tek kanonik cevabıdır**; belgenin başka yerinde alternatif
+bir kurulum listesi yoktur ve olmamalıdır.
+
+**Yapılmayacak olan:** Pi hostuna `dpkg --add-architecture amd64` ile amd64
+mimarisi ve `libc6:amd64` benzeri foreign libc paketleri kurmak. Bu ölçüldü:
+Raspberry Pi OS'nin vendor sürümlü arm64 libc'si ile Debian'ın amd64 adayı
+exact-version multiarch şartını karşılamadı, `apt` kurulumu reddetti ve deneme
+microSD yolunda `I/O error` üretti. Tekrar denenmemelidir.
+
+**Yapılacak olan**, sırasıyla:
+
+1. Normal PR akışındaki debug APK işi kapalıdır; yalnız `workflow_dispatch` +
+   `build_android` girdisiyle çalışır. Buradaki kırmızı nöbetçi normal PR
+   analiz/test zincirini engellemez; elle tetiklenen işi yeniden çalıştırma.
+2. `mobile-v*` etiketi ise Play internal yayın kolunu otomatik başlatır ve aynı
+   nöbetçi kırmızıysa Android yayınını bilerek durdurur. Etiketi taşımaya veya
+   kapıyı atlamaya çalışma; release'i durdur ve Android paketlemeyi x64 bir
+   runner'a taşı.
+3. x64 runner yoksa, organizasyonun sabitlediği amd64 konteyner yolunu
+   "Uygulamadan önce Pi üzerinde kanıtlanacaklar" bölümündeki kabul sırasıyla
+   önce elle doğrula; yeşil kabul koşusu görülmeden Android paketleme
+   desteklenmiş sayılmaz.
 
 ## Seçeneklerin karşılaştırması
 

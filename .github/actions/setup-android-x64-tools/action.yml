@@ -1,0 +1,161 @@
+name: Android x64 araç zinciri (ARM64 host)
+description: >-
+  JDK ve Android SDK'yı runner'a özel önbellekte hazırlar, ardından derlemenin
+  fiilen çalıştıracağı x86-64 host araçlarının bu ARM64 host'ta QEMU/binfmt
+  altında koştuğunu doğrular.
+
+# Bu action ci.yml ve mobile-release.yml'deki birebir aynı 19 satırlık Android
+# bloğunu tek yere alıyor. Eskiden blok iki dosyaya kopyalanmıştı; build-tools
+# sürümünü yükseltmek dört eşgüdümlü düzenleme istiyordu.
+#
+# ÖNEMLİ: setup-flutter-linux-arm64'ten SONRA çağrılmalı. gen_snapshot
+# yoklaması FLUTTER_ROOT'a ihtiyaç duyuyor ve onu o action GITHUB_ENV'e yazıyor.
+
+inputs:
+  java-version:
+    description: Kurulacak Temurin JDK sürümü
+    required: true
+  platform-version:
+    description: sdkmanager'dan çekilecek Android platformu
+    required: false
+    default: android-37
+  build-tools-version:
+    description: sdkmanager'dan çekilecek build-tools sürümü
+    required: false
+    default: "37.0.0"
+  agp-aapt2-version:
+    description: Gradle önbelleğinde aranacak AGP aapt2 artifact sürümü
+    required: false
+    default: "9.1.0-14792394"
+  probe-gen-snapshot:
+    description: >-
+      Release AOT derlemesinin çalıştırdığı x86-64 gen_snapshot da yoklansın mı.
+      Yalnız release/AAB derleyen işlerde "true" verilmeli; debug APK derlemesi
+      JIT olduğu için Android AOT gen_snapshot'ını hiç çalıştırmaz ve yoklama
+      boşuna artifact indirtir.
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    # SDK'yı runner'a özel araç önbelleğinde tut: Pi'nin microSD'sinde her
+    # koşuda yeniden indirmek pahalı.
+    - name: Android SDK önbelleğini ayarla
+      shell: bash
+      run: |
+        set -euo pipefail
+        # Bu adım eskiden ci.yml içinde `shell:` belirtmeden koşuyordu, yani
+        # GitHub varsayılanı `bash -e {0}` ile: ne -u ne pipefail. Sonuç:
+        # RUNNER_TOOL_CACHE tanımsızken adım exit 0 veriyor ve SDK kökünü
+        # "/android-sdk" diye yazıyordu — yanlış yol sessizce kabul ediliyordu.
+        # Aynı genişletme composite action'ın set -u'su altında zaten exit 1
+        # veriyordu; iki dosya arasındaki bu asimetri burada kapandı.
+        : "${RUNNER_TOOL_CACHE:?RUNNER_TOOL_CACHE tanımsız; runner ortamı eksik kurulmuş}"
+        echo "ANDROID_HOME=$RUNNER_TOOL_CACHE/android-sdk" >> "$GITHUB_ENV"
+        echo "ANDROID_SDK_ROOT=$RUNNER_TOOL_CACHE/android-sdk" >> "$GITHUB_ENV"
+
+    - uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: ${{ inputs.java-version }}
+        cache: gradle
+
+    # platform-tools bilerek sürümsüz: sdkmanager bu paket için sürümlü
+    # koordinat yayımlamıyor. platforms;android-37 ve build-tools;37.0.0
+    # "paket;sürüm" biçiminde adreslenirken platform-tools'un depo kimliği tek
+    # ve daima en son revizyona işaret eden düz "platform-tools" — diğer ikisi
+    # gibi sabitlenebilecek bir koordinat yok. Asimetri kasıtlı; kaydı burada.
+    - uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
+      with:
+        packages: platform-tools platforms;${{ inputs.platform-version }} build-tools;${{ inputs.build-tools-version }}
+        log-accepted-android-sdk-licenses: false
+
+    - name: x64 Android araç emülasyonunu doğrula
+      shell: bash
+      env:
+        AGP_AAPT2_VERSION: ${{ inputs.agp-aapt2-version }}
+        BUILD_TOOLS_VERSION: ${{ inputs.build-tools-version }}
+        PROBE_GEN_SNAPSHOT: ${{ inputs.probe-gen-snapshot }}
+      run: |
+        set -euo pipefail
+
+        # ---------------------------------------------------------------
+        # Nöbetçinin NE KAPSAMADIĞI — sessiz boşluk bırakmamak için açıkça:
+        #  * Soğuk Gradle önbelleğinde AGP'nin kendi aapt2'si diskte yok, o
+        #    koşuda ölçülemez; yalnız "host x86-64 ELF açabiliyor mu"
+        #    yanıtlanır ve bu durum ::notice:: ile loga yazılır.
+        #  * Gradle'ın çalıştırdığı başka x86-64 native araçlar (bir Flutter
+        #    plugin'inin getirdiği binary gibi) yoklanmıyor.
+        #  * Emülasyonun HIZI değil, yalnız çalışıp çalışmadığı ölçülüyor.
+        #  * probe-gen-snapshot "false" iken release AOT yolu hiç yoklanmıyor.
+        # ---------------------------------------------------------------
+
+        # 1) binfmt/QEMU canlılık yoklaması.
+        # Bu aapt2'yi AGP KULLANMIYOR (bkz. 2. yoklama). Yine de burada duruyor,
+        # çünkü SDK build-tools içinde varlığı garanti tek x86-64 ELF; host'un
+        # yabancı mimari çalıştırıp çalıştıramadığını en ucuz buradan öğreniyoruz.
+        sdk_aapt2="$ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS_VERSION/aapt2"
+        echo "SDK build-tools aapt2: $sdk_aapt2"
+        if ! "$sdk_aapt2" version; then
+          echo "::error::x64 Android aracı çalışmadı (SDK build-tools aapt2). Ne yapılacağı: docs/research/raspberry-pi-self-hosted-ci.md, \"Nöbetçi kırmızı olduğunda\" bölümü."
+          exit 1
+        fi
+
+        # 2) Derlemenin FİİLEN çalıştırdığı aapt2.
+        # AGP 9.1.0 aapt2'yi SDK build-tools'tan değil, Google Maven'daki
+        # aapt2-9.1.0-14792394-linux.jar içinden çözüp Gradle önbelleğine
+        # çıkarıyor (docs/research/raspberry-pi-self-hosted-ci.md, "Android
+        # neden native ARM64 yolun zayıf halkası?"). Nöbetçi eskiden yalnız
+        # 1. adımı koşup doğrulamadığı bir şey için yeşil veriyordu.
+        # İlk derlemeden önce bu dosya diskte yok, o yüzden yoklama fırsatçı:
+        # önbellek sıcaksa gerçek binary ölçülür, soğuksa kapsanmadığı yazılır.
+        gradle_home="${GRADLE_USER_HOME:-$HOME/.gradle}"
+        agp_aapt2_candidates=()
+        if [[ -d "$gradle_home/caches" ]]; then
+          while IFS= read -r -d '' candidate; do
+            agp_aapt2_candidates+=("$candidate")
+          done < <(
+            find "$gradle_home/caches" -type f \
+              -path "*/aapt2-$AGP_AAPT2_VERSION-linux/aapt2" -print0 \
+              2>/dev/null
+          )
+        fi
+        if (( ${#agp_aapt2_candidates[@]} > 0 )); then
+          for agp_aapt2 in "${agp_aapt2_candidates[@]}"; do
+            echo "AGP aapt2 (Gradle önbelleği): $agp_aapt2"
+            if ! "$agp_aapt2" version; then
+              echo "::error::AGP'nin Google Maven'dan çözdüğü aapt2 çalışmadı. Ne yapılacağı: docs/research/raspberry-pi-self-hosted-ci.md, \"Nöbetçi kırmızı olduğunda\" bölümü."
+              exit 1
+            fi
+          done
+        else
+          echo "::notice::AGP aapt2 $AGP_AAPT2_VERSION Gradle önbelleğinde yok (soğuk önbellek). Bu koşuda yalnız host'un x86-64 çalıştırma yeteneği doğrulandı; AGP'nin kendi aapt2'si DOĞRULANMADI."
+        fi
+
+        # 3) Release AOT'un çalıştırdığı x86-64 gen_snapshot.
+        # Araştırma belgesi Flutter 3.47.1'in Android AOT host araçlarını yalnız
+        # linux-x64 olarak yayımladığını ölçtü ("Android neden native ARM64
+        # yolun zayıf halkası?" bölümü). Nöbetçi bunu hiç yoklamıyordu; yeşil
+        # bir nöbetçiden sonra AAB derlemesi emüle edilmemiş binary'ye
+        # çarpabiliyordu.
+        if [[ "$PROBE_GEN_SNAPSHOT" == "true" ]]; then
+          : "${FLUTTER_ROOT:?FLUTTER_ROOT tanımsız; bu action setup-flutter-linux-arm64 sonrasında çağrılmalı}"
+
+          # Dar bayrak Flutter sürümleri arasında gizli/değişken olduğu için
+          # tanınmazsa tüm Android artifact setine düşülüyor.
+          flutter precache --android_gen_snapshot || flutter precache --android
+
+          gen_snapshot="$(find "$FLUTTER_ROOT/bin/cache/artifacts/engine" -type f -name gen_snapshot -path '*android-*' -print -quit 2>/dev/null || true)"
+          if [[ -z "$gen_snapshot" ]]; then
+            echo "::error::Android gen_snapshot artifact'ı bulunamadı; release AOT yolu doğrulanamıyor. Ne yapılacağı: docs/research/raspberry-pi-self-hosted-ci.md, \"Nöbetçi kırmızı olduğunda\" bölümü."
+            exit 1
+          fi
+          echo "Android gen_snapshot: $gen_snapshot"
+          if ! "$gen_snapshot" --version; then
+            echo "::error::x64 Android gen_snapshot çalışmadı. Ne yapılacağı: docs/research/raspberry-pi-self-hosted-ci.md, \"Nöbetçi kırmızı olduğunda\" bölümü."
+            exit 1
+          fi
+        else
+          echo "::notice::gen_snapshot yoklaması kapalı (probe-gen-snapshot=false). Debug APK derlemesi JIT olduğu için Android AOT host aracını çalıştırmaz."
+        fi
