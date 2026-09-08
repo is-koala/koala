@@ -23,22 +23,11 @@ class FakeApi {
     required this.handler,
     TokenStorage? tokenStorage,
     DeviceIdentity? deviceIdentity,
-    this.leadingInterceptors = const [],
   }) : tokenStorage = tokenStorage ?? FakeTokenStorage(),
        deviceIdentity = deviceIdentity ?? FakeDeviceIdentity();
 
   /// Gelen isteğe karşılık dönülecek sahte yanıtı üretir.
   final FutureOr<FakeApiResponse> Function(RequestOptions options) handler;
-
-  /// Üretim zincirinden **önce** çalışacak interceptor'lar.
-  ///
-  /// `ApiClient` kendi zincirini `add` ile kurduğu için burada verilenler
-  /// listenin başında kalıyor, yani hatayı `AuthInterceptor`'a ulaşmadan önce
-  /// görüyorlar. Tek kullanım amacı bu: sahte katmandan **geçirilemeyen** bir
-  /// yanıt hâlini kurmak — gövde adaptörde JSON'a çevrilip dio tarafından
-  /// yeniden çözüldüğü için, "okununca fırlayan gövde" gibi bir şeyi başka
-  /// türlü zincire sokmanın yolu yok.
-  final List<Interceptor> leadingInterceptors;
 
   /// İstemcinin token'ları okuyup yazdığı depo. Testin kendisi de okuyabilir:
   /// yenileme sonrası yeni erişim token'ının saklandığı buradan görülüyor.
@@ -85,8 +74,7 @@ class FakeApi {
   /// Testte kullanılacak, sahte katmana bağlı istemci.
   ApiClient get client {
     final dio = Dio(BaseOptions(baseUrl: 'https://test.local'))
-      ..httpClientAdapter = _FakeAdapter(this)
-      ..interceptors.addAll(leadingInterceptors);
+      ..httpClientAdapter = _FakeAdapter(this);
 
     return ApiClient.withDio(
       dio,

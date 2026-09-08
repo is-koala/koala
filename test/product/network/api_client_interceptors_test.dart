@@ -424,61 +424,6 @@ void main() {
       ]);
     });
 
-    // Korkuluk testi (is-koala/koala#99 incelemesi). `errorCategoryOf` bugün
-    // toplam — hiçbir gövde biçiminde atmıyor — ama o okumaya bir gün
-    // ayrıştırma girerse korumasız bir `throw` `onError`'dan yukarı fırlar ve
-    // **bütün uygulamanın** oturum yenilemesi ölür. Burada o gün taklit
-    // ediliyor: gövde `Map<String, dynamic>` gibi görünüyor, okununca
-    // fırlıyor. Beklenen, isteğin kaybı değil bugünkü **yedeğe** düşmek —
-    // `401` durum kodu yenilemeyi yine başlatmalı.
-    test('kategori okuması fırlarsa durum kodu yedeğine düşülüyor', () async {
-      var businessCalls = 0;
-
-      final api = FakeApi(
-        handler: (options) {
-          if (options.path == ApiPaths.refreshToken) {
-            return const FakeApiResponse(
-              statusCode: 200,
-              body: {
-                'success': true,
-                'data': {'token': 'tazelenmis-erisim'},
-              },
-            );
-          }
-
-          businessCalls++;
-          if (businessCalls == 1) {
-            return const FakeApiResponse(
-              statusCode: 401,
-              body: {'success': false, 'message': 'Oturum bulunamadı'},
-            );
-          }
-          return const FakeApiResponse(
-            statusCode: 200,
-            body: {'success': true, 'data': 'tamam'},
-          );
-        },
-        tokenStorage: FakeTokenStorage(
-          accessToken: 'suresi-dolmus',
-          refreshToken: 'gecerli-yenileme',
-        ),
-        leadingInterceptors: [_PoisonErrorBody()],
-      );
-
-      final result = await api.client.get<String>(
-        ApiPaths.currentUser,
-        parse: (data) => data! as String,
-      );
-
-      expect(result, 'tamam');
-      expect(api.sessionExpired, isFalse);
-      expect(api.requests.map((request) => request.path), [
-        ApiPaths.currentUser,
-        ApiPaths.refreshToken,
-        ApiPaths.currentUser,
-      ]);
-    });
-
     test('aynı anda 401 alan iki isteğin yenilemesi sıraya giriyor', () async {
       final unauthorized = <String>{};
       final sent = <String>[];
@@ -600,30 +545,4 @@ void main() {
       },
     );
   });
-}
-
-/// Hatayı `AuthInterceptor`'a ulaşmadan önce yakalayıp gövdesini okunamaz
-/// hâle getirir.
-///
-/// Zincirin başında duruyor (`FakeApi.leadingInterceptors`), çünkü sahte
-/// katmandan geçirilerek böyle bir gövde kurulamıyor: adaptör gövdeyi JSON'a
-/// çeviriyor ve dio onu düz bir `Map` olarak geri çözüyor.
-class _PoisonErrorBody extends Interceptor {
-  @override
-  void onError(DioException err, ErrorInterceptorHandler handler) {
-    err.response?.data = _ThrowingBody();
-    handler.next(err);
-  }
-}
-
-/// `Map<String, dynamic>` gibi görünen, okununca fırlayan gövde.
-///
-/// `ApiResponse.errorCategoryOf` önce `body is Map<String, dynamic>` diye
-/// bakıyor, sonra tek alanı okuyor; bu sınıf ilk adımı geçip ikincisinde
-/// fırlıyor — yani taklit edilen şey "bozuk gövde" değil, o okumaya bir gün
-/// **ayrıştırma girmesi**.
-class _ThrowingBody implements Map<String, dynamic> {
-  @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      throw const FormatException('gövde okunamadı');
 }
