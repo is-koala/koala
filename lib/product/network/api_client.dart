@@ -391,7 +391,16 @@ class ApiClient {
     if (body is! Map<String, dynamic>) {
       return ApiException(
         message: 'Beklenmeyen bir hata oluştu.',
-        type: ApiErrorType.fromStatusCode(statusCode),
+        // Zarf yok, yani okunacak kategori de yok — ama yedek tabloya
+        // doğrudan gidilmiyor. `errorCategory: null` "bu yanıtın kategorisi
+        // yok" demenin kuralın kendi diliyle yazılmış hâli; karar yine tek
+        // kapıdan geçiyor. Yedeğe buradan kestirme atılsaydı tablo dışarıya
+        // açık kalmak zorunda kalır, o kapıdan giren bir çağıran da
+        // kategoriyi hiç okumadan #86'nın kusurunu geri getirirdi.
+        type: ApiErrorType.classify(
+          errorCategory: null,
+          statusCode: statusCode,
+        ),
         statusCode: statusCode,
       );
     }

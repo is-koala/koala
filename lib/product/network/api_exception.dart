@@ -63,7 +63,7 @@ enum ApiErrorType {
   ///
   /// Kategori: `DATA_CONFLICT`. Yedek: `409` — ama `409`'un iki kategorisi
   /// var ve durum kodu hangisi olduğunu söylemiyor; ayrıntı
-  /// [fromStatusCode]'ta.
+  /// [_fromStatusCode]'ta.
   dataConflict,
 
   /// İstemci sürümü sunucunun istediği en düşük sürümün altında. Tekrar
@@ -126,7 +126,7 @@ enum ApiErrorType {
       //    `UNEXPECTED` oluyor. O boşluk kapandığında üretici tam olarak bu
       //    kategori olacak; yani planlanmış bir tüketici değil, planlanmış
       //    bir **üretici** var.
-      // 3. Silmenin karşılığı sıfır: `415` `_typeForStatus`'ta da yok, yani
+      // 3. Silmenin karşılığı sıfır: `415` `_fromStatusCode`'ta da yok, yani
       //    satır kalksa da tip `unknown` çıkıyor. Kazanç yok, kayıp var.
       //
       // Bu depoda "referansı yok" diye silinen bir enum değeri, planlanan
@@ -154,11 +154,23 @@ enum ApiErrorType {
   /// (is-koala/koala#86). Kuralın ikinci bir kopyası çıkarsa ikisi sessizce
   /// ayrışır: yenileme yolu ile kullanıcıya gösterilen tip aynı yanıt için
   /// farklı şey söylerdi.
+  ///
+  /// **Sınıflandırmaya açılan tek kapı bu.** Yedek tablo bilerek
+  /// library-private ([_fromStatusCode]): kural yalnızca tek yerde durursa
+  /// yetmiyor, o yere **giden yol** da tek olmalı. Yedek dışarıya açık
+  /// kalsaydı bir sayfa ya da provider kategoriyi hiç okumadan durum koduna
+  /// sorabilirdi — ki #86'nın düzelttiği kusur tam olarak buydu ve ne
+  /// analyzer ne de bir test bunu yakalardı. Kategorisi olmadığını **bilen**
+  /// çağıran da (zarfı olmayan yanıt) buradan geçiyor: `errorCategory: null`.
   static ApiErrorType classify({String? errorCategory, int? statusCode}) {
-    return fromCategory(errorCategory) ?? fromStatusCode(statusCode);
+    return fromCategory(errorCategory) ?? _fromStatusCode(statusCode);
   }
 
   /// Kategori gelmediğinde çalışan yedek.
+  ///
+  /// **Dışarıdan çağrılamaz, [classify] üzerinden geçilir.** Eskiden bu tablo
+  /// `ApiClient._typeForStatus` olarak sınıfa private'dı ve dışarıdan
+  /// erişilemiyordu; yukarı taşınırken o kapalılık korunuyor.
   ///
   /// Eski sunucu, zarfı elle yazan filtreler ve gövdesi JSON olmayan yanıtlar
   /// için tek bilgi kaynağı bu.
@@ -175,7 +187,7 @@ enum ApiErrorType {
   ///
   /// Ayrımı gerçekten önemseyen bir çağıran bu yedeğe güvenmemeli — zaten
   /// güvenmiyor: kategoriden değil `errorCode`'dan karar veriyor.
-  static ApiErrorType fromStatusCode(int? statusCode) {
+  static ApiErrorType _fromStatusCode(int? statusCode) {
     if (statusCode == null) return unknown;
     if (statusCode == 400 || statusCode == 422) return validation;
     if (statusCode == 401) return unauthenticated;

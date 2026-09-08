@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/network/api_paths.dart';
 import 'package:koala/product/network/api_response.dart';
@@ -95,17 +96,46 @@ class AuthInterceptor extends QueuedInterceptor {
   /// aynı yanıt için yenileme yolunun ve kullanıcıya gösterilen tipin
   /// sessizce ayrışması demek olurdu.
   bool _shouldRefresh(DioException err) {
-    final type = ApiErrorType.classify(
-      errorCategory: ApiResponse.errorCategoryOf(err.response?.data),
-      statusCode: err.response?.statusCode,
-    );
-    if (type != ApiErrorType.unauthenticated) return false;
+    if (_typeOf(err) != ApiErrorType.unauthenticated) return false;
 
     final path = err.requestOptions.path;
     if (path == ApiPaths.refreshToken) return false;
     if (ApiPaths.publicPaths.contains(path)) return false;
 
     return err.requestOptions.extra[_retriedKey] != true;
+  }
+
+  /// Hatanın tipini, kategori okuması patlasa bile üretir.
+  ///
+  /// Bugün atan bir şey yok: [ApiResponse.errorCategoryOf] gövde `Map`
+  /// değilse `null` dönüyor, ise tek alanı tür korumasından geçirip okuyor —
+  /// yani fonksiyon toplam. Korkuluk bugünkü bir hata için değil, **yarın
+  /// için**: o okumaya bir gün ayrıştırma girerse (ör. ham `String` gövdeyi
+  /// `jsonDecode` etmek) korumasız bir `throw` buradan `onError`'ın dışına
+  /// fırlar. Bedeli bir isteğin kaybı değil, **bütün uygulamanın oturum
+  /// yenilemesinin** ölmesi olurdu; üstelik hata `ApiClient`'ın çevirisine
+  /// hiç uğramadığı için çağırana `ApiException` yerine ham bir istisna
+  /// olarak çıkardı.
+  ///
+  /// Düşülen yer bugünkü **yedek** davranış: kategori okunamadıysa "kategori
+  /// yok" demektir ve kural zaten o hâl için durum koduna sahip — eski
+  /// sunucu ve zarfsız hata sayfası da aynı yoldan geçiyor. Yani korkuluk
+  /// davranışı değiştirmiyor, kaybı sınırlıyor.
+  ///
+  /// Sessizce yutulmuyor: sunucunun gövde biçimi değiştiğinde bunu kimsenin
+  /// duymaması, yedeğe düşmenin kendisinden daha kötü olurdu.
+  ApiErrorType _typeOf(DioException err) {
+    final statusCode = err.response?.statusCode;
+    try {
+      return ApiErrorType.classify(
+        errorCategory: ApiResponse.errorCategoryOf(err.response?.data),
+        statusCode: statusCode,
+      );
+    } catch (error, stackTrace) {
+      debugPrint('Hata kategorisi okunamadı, durum koduna düşülüyor: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      return ApiErrorType.classify(errorCategory: null, statusCode: statusCode);
+    }
   }
 
   Future<bool> _refreshAccessToken() async {
