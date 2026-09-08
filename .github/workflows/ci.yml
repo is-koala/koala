@@ -22,11 +22,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: subosito/flutter-action@v2
+      # Resmî Linux arşivinde ARM64 SDK yok; sabit etiketi kaynaktan kuran
+      # yerel action, resmî ARM64 Dart ve test artifact'lerini indirir.
+      - uses: ./.github/actions/setup-flutter-linux-arm64
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
-          cache: true
 
       - name: Bağımlılıkları indir
         run: flutter pub get
@@ -46,11 +46,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: subosito/flutter-action@v2
+      - uses: ./.github/actions/setup-flutter-linux-arm64
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
-          cache: true
 
       - name: Bağımlılıkları indir
         run: flutter pub get
@@ -74,7 +72,9 @@ jobs:
   build-android:
     name: Android derleme
     needs: test
-    runs-on: self-hosted
+    # Android SDK'nın Linux host araçları x64 dağıtılıyor. Testler Pi'de
+    # native ARM64 çalışır; APK ise desteklenen x64 ortamda derlenir.
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 

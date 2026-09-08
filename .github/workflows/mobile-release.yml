@@ -25,11 +25,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+      - uses: ./.github/actions/setup-flutter-linux-arm64
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
-          cache: true
 
       - name: Bağımlılıkları indir
         run: flutter pub get
@@ -48,7 +46,9 @@ jobs:
   android-internal:
     name: Play internal
     needs: validate
-    runs-on: self-hosted
+    # Google'ın Android Linux host araçları x64; AAB'yi desteklenen x64
+    # runner'da, sözleşme ve testleri Raspberry Pi'de çalıştırıyoruz.
+    runs-on: ubuntu-latest
     environment: production
     steps:
       - uses: actions/checkout@v4
