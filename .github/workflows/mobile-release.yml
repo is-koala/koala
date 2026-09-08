@@ -41,15 +41,16 @@ jobs:
         run: |
           dart format --output=none --set-exit-if-changed lib test tool
           flutter analyze --fatal-infos
-          flutter test --flavor staging --dart-define-from-file=config/staging.json
+          flutter test --flavor staging --dart-define-from-file=config/staging.json --concurrency=1
 
   android-internal:
     name: Play internal
     needs: validate
-    # Google'ın Android Linux host araçları x64; AAB'yi desteklenen x64
-    # runner'da, sözleşme ve testleri Raspberry Pi'de çalıştırıyoruz.
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     environment: production
+    env:
+      ANDROID_HOME: ${{ runner.tool_cache }}/android-sdk
+      ANDROID_SDK_ROOT: ${{ runner.tool_cache }}/android-sdk
     steps:
       - uses: actions/checkout@v4
 
@@ -59,11 +60,23 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
           cache: gradle
 
-      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+      - uses: ./.github/actions/setup-flutter-linux-arm64
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
-          cache: true
+
+      - uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
+        with:
+          packages: platform-tools platforms;android-37 build-tools;37.0.0
+          log-accepted-android-sdk-licenses: false
+
+      - name: x64 Android araç emülasyonunu doğrula
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! "$ANDROID_SDK_ROOT/build-tools/37.0.0/aapt2" version; then
+            echo "::error::x64 Android aracı çalışmadı. Raspberry Pi QEMU/multiarch kurulumu için docs/research/raspberry-pi-self-hosted-ci.md dosyasına bak."
+            exit 1
+          fi
 
       - name: İmzalama sırlarını doğrula
         shell: bash

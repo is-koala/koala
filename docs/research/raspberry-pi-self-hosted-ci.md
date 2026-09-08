@@ -14,13 +14,12 @@ Tek bir yöntem bütün mobil CI'ı hem native hem resmî destek sınırları i�
 | Release AAB | Native Flutter + QEMU/binfmt ile x64 Android `gen_snapshot` ve paketleme araçları | Gerçek koşuyla doğrulanmalı; amd64 konteyner fallback |
 | iOS | `macos-latest` | Pi/Linux üzerinde yapılamaz |
 
-Bu araştırmanın ardından depoda seçilen ilk güvenli uygulama şudur: format,
-analiz ve test işleri Pi üzerinde native ARM64 çalışır; Flutter 3.47.1 kaynak
-checkout'u ve frontend-server düzeltmesi yerel composite action içinde runner'a
-özel araç önbelleğine kurulur. Android APK/AAB işleri şimdilik `ubuntu-latest`
-üzerinde kalır. Böylece Pi hostuna amd64 multiarch ve QEMU kurulumu zorunlu
-hâle getirilmeden CI yeşile dönebilir. Android'i de Pi'ye taşıma seçeneği,
-aşağıdaki QEMU kabul deneyi gerçek cihazda geçtikten sonra ikinci aşamadır.
+Bu araştırmanın ardından depoda seçilen uygulama şudur: format, analiz ve test
+işleri Pi üzerinde native ARM64 çalışır; Flutter 3.47.1 kaynak checkout'u ve
+frontend-server düzeltmesi yerel composite action içinde runner'a özel araç
+önbelleğine kurulur. Android APK/AAB işleri de aynı native Flutter SDK'yı
+kullanır; yalnız Google'ın x64 yayımladığı AAPT2 ve Android AOT host araçları
+Debian multiarch kütüphaneleriyle QEMU/binfmt üzerinden çalışır.
 
 Apple Silicon üzerindeki `linux/arm64` Docker doğrulamasında Flutter 3.47.1
 kaynaktan başarıyla hazırlandı; `flutter analyze --no-pub` ve Koala'nın 1.251
@@ -28,6 +27,27 @@ testinin tamamı geçti. Docker Desktop x64 binfmt emülasyonu sağlayabildiği 
 bu koşu, hatalı frontend-server dosyasının çıplak Pi'de de açılacağını kanıtlamaz;
 bu nedenle composite action yine aynı revizyondaki doğrulanmış ARM64 dosyayı
 yerine koyar. Gerçek cihaz kanıtı PR'ın self-hosted CI koşusudur.
+
+Google Maven'daki AGP 9.1 AAPT2 x64 binary'si ayrıca `linux/arm64` Debian
+Bookworm konteynerinde aşağıdaki amd64 runtime kütüphaneleriyle çalıştırıldı ve
+`Android Asset Packaging Tool (aapt) 2.20-14792394` çıktısı alındı. Bu deney,
+Android job'larındaki açık AAPT2 ön kontrolünün temelidir.
+
+Pi hostunda tek seferlik hazırlık:
+
+```bash
+sudo dpkg --add-architecture amd64
+sudo apt update
+sudo apt install -y \
+  qemu-user-binfmt \
+  libc6:amd64 \
+  libgcc-s1:amd64 \
+  libstdc++6:amd64 \
+  zlib1g:amd64
+```
+
+Bu paketler üç runner servisi tarafından ortak kullanılan kernel binfmt kaydını
+ve x64 dinamik runtime'ı sağlar; runner başına tekrar kurulmaz.
 
 GitHub runner uygulamasının ARM64 Linux desteği olması, job içindeki Flutter ve Android araçlarının da ARM64 olduğu anlamına gelmiyor. GitHub ARM64 Linux self-hosted runner'ı destekliyor; Docker tabanlı action/service kullanımı için Linux ve Docker istiyor. [GitHub self-hosted runner gereksinimleri](https://docs.github.com/en/actions/reference/runners/self-hosted-runners#requirements-for-self-hosted-runner-machines).
 
