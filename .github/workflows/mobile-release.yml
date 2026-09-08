@@ -25,11 +25,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+      - uses: ./.github/actions/setup-flutter-linux-arm64
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
-          cache: true
 
       - name: Bağımlılıkları indir
         run: flutter pub get
@@ -43,7 +41,7 @@ jobs:
         run: |
           dart format --output=none --set-exit-if-changed lib test tool
           flutter analyze --fatal-infos
-          flutter test --flavor staging --dart-define-from-file=config/staging.json
+          flutter test --flavor staging --dart-define-from-file=config/staging.json --concurrency=1
 
   android-internal:
     name: Play internal
@@ -53,17 +51,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Android SDK önbelleğini ayarla
+        run: |
+          echo "ANDROID_HOME=$RUNNER_TOOL_CACHE/android-sdk" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$RUNNER_TOOL_CACHE/android-sdk" >> "$GITHUB_ENV"
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
           cache: gradle
 
-      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+      - uses: ./.github/actions/setup-flutter-linux-arm64
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
-          cache: true
+
+      - uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
+        with:
+          packages: platform-tools platforms;android-37 build-tools;37.0.0
+          log-accepted-android-sdk-licenses: false
+
+      - name: x64 Android araç emülasyonunu doğrula
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! "$ANDROID_SDK_ROOT/build-tools/37.0.0/aapt2" version; then
+            echo "::error::Google'ın x64 Android aracı bu ARM64 runner'da çalışmadı. AAB'yi x64 bir runner'da ya da doğrulanmış amd64 konteynerde derle."
+            exit 1
+          fi
 
       - name: İmzalama sırlarını doğrula
         shell: bash
