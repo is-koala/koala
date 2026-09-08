@@ -391,7 +391,7 @@ class ApiClient {
     if (body is! Map<String, dynamic>) {
       return ApiException(
         message: 'Beklenmeyen bir hata oluştu.',
-        type: _typeForStatus(statusCode),
+        type: ApiErrorType.fromStatusCode(statusCode),
         statusCode: statusCode,
       );
     }
@@ -415,49 +415,15 @@ class ApiClient {
     );
   }
 
-  /// Hata tipini belirler: **önce zarftaki `errorCategory`**, o yoksa ya da
-  /// tanınmıyorsa durum kodu.
+  /// Zarfın taşıdığı kategori ile durum kodunu tipe çevirir.
   ///
-  /// Sıra bu yönde, çünkü durum kodu bilgi kaybediyor: sunucu `401` altında
-  /// üç, `409` altında iki ayrı kategori döndürüyor ve bunlar kullanıcıdan
-  /// farklı şeyler istiyor (is-koala/koala#82).
-  ///
-  /// Kategori tanınmadığında **istisna atılmıyor**: küme kapalı ama
-  /// büyüyebilir; sunucunun eklediği yeni bir değer uygulamayı düşürmemeli,
-  /// bugünkü durum kodu davranışına düşmeli.
+  /// Kuralın kendisi [ApiErrorType.classify]'da: `AuthInterceptor` de aynı
+  /// kararı vermek zorunda ve kural iki kopyaya bölünmemeli
+  /// (is-koala/koala#86).
   ApiErrorType _typeFor(ApiResponse<void> envelope, int? statusCode) {
-    return ApiErrorType.fromCategory(envelope.errorCategory) ??
-        _typeForStatus(statusCode);
-  }
-
-  /// Kategori gelmediğinde çalışan yedek.
-  ///
-  /// Eski sunucu, zarfı elle yazan filtreler ve gövdesi JSON olmayan yanıtlar
-  /// için tek bilgi kaynağı bu.
-  ///
-  /// **`409` iki kategoriden hangisi olduğunu söylemiyor.** Sunucu bu durum
-  /// kodunu iki ayrı yoldan üretiyor: `ConflictException` (bir
-  /// `KoalaException`) `categoryOf(CONFLICT)` üzerinden `DATA_CONFLICT`
-  /// veriyor, `IllegalStateException` ise `handleIllegalState` içinde
-  /// doğrudan `BUSINESS_RULE_VIOLATION` veriyor
-  /// (`GlobalExceptionHandler.java:86`). Buradaki
-  /// [ApiErrorType.dataConflict] bir olgu değil **seçim**: ikisi de aynı
-  /// gövdeyi taşıyabildiği için durum kodundan ayırt edilemiyorlar, ve
-  /// çağıranların çoğu ([ApiErrorType.serverStateMoved]) ikisine de aynı
-  /// tepkiyi veriyor.
-  ///
-  /// Ayrımı gerçekten önemseyen bir çağıran bu yedeğe güvenmemeli — zaten
-  /// güvenmiyor: kategoriden değil `errorCode`'dan karar veriyor.
-  ApiErrorType _typeForStatus(int? statusCode) {
-    if (statusCode == null) return ApiErrorType.unknown;
-    if (statusCode == 400 || statusCode == 422) return ApiErrorType.validation;
-    if (statusCode == 401) return ApiErrorType.unauthenticated;
-    if (statusCode == 403) return ApiErrorType.forbidden;
-    if (statusCode == 404) return ApiErrorType.notFound;
-    if (statusCode == 409) return ApiErrorType.dataConflict;
-    if (statusCode == 429) return ApiErrorType.tooManyRequests;
-    if (statusCode == 426) return ApiErrorType.upgradeRequired;
-    if (statusCode >= 500) return ApiErrorType.server;
-    return ApiErrorType.unknown;
+    return ApiErrorType.classify(
+      errorCategory: envelope.errorCategory,
+      statusCode: statusCode,
+    );
   }
 }

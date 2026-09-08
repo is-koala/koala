@@ -171,6 +171,163 @@ void main() {
       );
     });
 
+    // Issue'nun asıl bulgusu: yenileme kararı yalnızca `401` durum koduna
+    // bağlıyken `unauthenticated` tipinin **hiçbir okuyucusu yoktu**. Ayrım
+    // `ApiErrorType`'ta vardı ama oturumu yenileyen yol onu hiç okumuyordu;
+    // bağ yalnızca "sunucu bu kategorileri `401` ile gönderiyor" varsayımıyla
+    // ayakta duruyordu (is-koala/koala#86).
+    //
+    // Aşağıdaki iki durum kodu bilerek `401` **değil**: karar kategoriden
+    // gelmiyorsa hiçbiri yenilemez.
+    for (final (statusCode, category) in const [
+      // Durum kodu kategoriyle **çelişiyor**: `403`'ün yedeği `forbidden`,
+      // yani karar durum kodundan çıksa yenileme hiç denenmezdi.
+      (403, 'TOKEN_EXPIRED'),
+      // Tablonun hiç tanımadığı bir kod: yedek `unknown`'a düşüyor, yani bu
+      // satırın yeşil kalmasının tek yolu kategoriyi okumak.
+      (440, 'AUTHENTICATION_REQUIRED'),
+    ]) {
+      test('$statusCode + $category yenilemeyi tetikliyor', () async {
+        var businessCalls = 0;
+
+        final api = FakeApi(
+          handler: (options) {
+            if (options.path == ApiPaths.refreshToken) {
+              return const FakeApiResponse(
+                statusCode: 200,
+                body: {
+                  'success': true,
+                  'data': {'token': 'tazelenmis-erisim'},
+                },
+              );
+            }
+
+            businessCalls++;
+            if (businessCalls == 1) {
+              return FakeApiResponse(
+                statusCode: statusCode,
+                body: {
+                  'success': false,
+                  'message': 'Oturum süresi doldu.',
+                  'errorCategory': category,
+                },
+              );
+            }
+            return const FakeApiResponse(
+              statusCode: 200,
+              body: {'success': true, 'data': 'tamam'},
+            );
+          },
+          tokenStorage: FakeTokenStorage(
+            accessToken: 'suresi-dolmus',
+            refreshToken: 'gecerli-yenileme',
+          ),
+        );
+
+        final result = await api.client.get<String>(
+          ApiPaths.currentUser,
+          parse: (data) => data! as String,
+        );
+
+        expect(result, 'tamam');
+        expect(api.sessionExpired, isFalse);
+        expect(api.requests.map((request) => request.path), [
+          ApiPaths.currentUser,
+          ApiPaths.refreshToken,
+          ApiPaths.currentUser,
+        ]);
+      });
+    }
+
+    // Ayrımın ters yönü. Yukarıdaki iki test tek başına "kategori **ya da**
+    // `401`" kuralıyla da yeşil kalırdı; bu test kategorinin gerçekten
+    // birincil kapı olduğunu ölçüyor: `401` geliyor ama kategori oturumun
+    // bittiğini söylemiyor, yani yenilemenin çözeceği bir şey yok.
+    test('401 + ACCESS_DENIED yenileme denemiyor', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 401,
+          body: {
+            'success': false,
+            'message': 'Bu işlem için yetkin yok.',
+            'errorCategory': 'ACCESS_DENIED',
+          },
+        ),
+        tokenStorage: FakeTokenStorage(
+          accessToken: 'gecerli',
+          refreshToken: 'gecerli-yenileme',
+        ),
+      );
+
+      await expectLater(
+        api.client.get<String>(
+          ApiPaths.currentUser,
+          parse: (data) => data! as String,
+        ),
+        throwsA(
+          isA<ApiException>().having(
+            (error) => error.type,
+            'type',
+            ApiErrorType.forbidden,
+          ),
+        ),
+      );
+
+      expect(api.sessionExpired, isFalse);
+      expect(api.requests.map((request) => request.path), [
+        ApiPaths.currentUser,
+      ]);
+    });
+
+    // `401` **yedek** olarak duruyor: zarf kategori taşımıyorsa bugünkü
+    // davranış korunmalı. Gövdesi JSON olmayan bir hata sayfasında
+    // ayrıştırılacak kategori yok, karar durum koduna düşüyor.
+    test('kategorisiz 401 hata sayfasında yenileme sürüyor', () async {
+      var businessCalls = 0;
+
+      final api = FakeApi(
+        handler: (options) {
+          if (options.path == ApiPaths.refreshToken) {
+            return const FakeApiResponse(
+              statusCode: 200,
+              body: {
+                'success': true,
+                'data': {'token': 'tazelenmis-erisim'},
+              },
+            );
+          }
+
+          businessCalls++;
+          if (businessCalls == 1) {
+            return const FakeApiResponse.raw(
+              statusCode: 401,
+              body: '<html><body>Unauthorized</body></html>',
+            );
+          }
+          return const FakeApiResponse(
+            statusCode: 200,
+            body: {'success': true, 'data': 'tamam'},
+          );
+        },
+        tokenStorage: FakeTokenStorage(
+          accessToken: 'suresi-dolmus',
+          refreshToken: 'gecerli-yenileme',
+        ),
+      );
+
+      final result = await api.client.get<String>(
+        ApiPaths.currentUser,
+        parse: (data) => data! as String,
+      );
+
+      expect(result, 'tamam');
+      expect(api.requests.map((request) => request.path), [
+        ApiPaths.currentUser,
+        ApiPaths.refreshToken,
+        ApiPaths.currentUser,
+      ]);
+    });
+
     test('yenileme başarısızsa oturum sonlandırılıyor', () async {
       final api = FakeApi(
         handler: (options) {
