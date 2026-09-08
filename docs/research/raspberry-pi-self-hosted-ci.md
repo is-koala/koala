@@ -1,6 +1,6 @@
 # Raspberry Pi 5 üzerinde Flutter 3.47.1 CI
 
-Tarih: 8 Eylül 2026. Kapsam: `is-koala/koala` deposundaki format, analiz, test ve Android derleme işlerini ARM64 Raspberry Pi 5 self-hosted runner'ında çalıştırma seçenekleri. Bu not yalnız araştırmadır; workflow veya runner ayarı değiştirilmedi.
+Tarih: 8 Eylül 2026. Kapsam: `is-koala/koala` deposundaki format, analiz, test ve Android derleme işlerini ARM64 Raspberry Pi 5 self-hosted runner'ında çalıştırma seçenekleri ve gerçek Pi denemelerinin sonucu.
 
 ## Sonuç
 
@@ -9,17 +9,22 @@ Tek bir yöntem bütün mobil CI'ı hem native hem resmî destek sınırları i�
 | İş | Pi üzerinde önerilen yol | Durum |
 |---|---|---|
 | `dart format`, `flutter pub get`, `flutter analyze` | Flutter 3.47.1 kaynak checkout'u + native Linux ARM64 Dart/engine artifact'ları | Uygulanabilir |
-| `flutter test` | Aynı native SDK + hatalı frontend-server artifact'ını aynı revizyondaki ARM64 Dart SDK kopyasıyla düzeltme | Uygulanabilir; gerçek Pi koşusuyla doğrulanmalı |
-| Debug APK | Native Flutter + QEMU/binfmt ile x64 AAPT2 ve diğer Android host araçları | En hızlı Pi adayı; gerçek koşuyla doğrulanmalı |
-| Release AAB | Native Flutter + QEMU/binfmt ile x64 Android `gen_snapshot` ve paketleme araçları | Gerçek koşuyla doğrulanmalı; amd64 konteyner fallback |
+| `flutter test` | Aynı native SDK + hatalı frontend-server artifact'ını aynı revizyondaki ARM64 Dart SDK kopyasıyla düzeltme | Gerçek Pi'de 1.251 testle doğrulandı |
+| Debug APK | x64 runner veya doğrulanmış, organizasyonun yönettiği amd64 konteyner | Normal Pi CI'da kapalı; yalnız elle tetiklenir |
+| Release AAB | x64 runner veya doğrulanmış, organizasyonun yönettiği amd64 konteyner | Pi hostunda doğrulanmadı; yayın akışı fail-fast davranır |
 | iOS | `macos-latest` | Pi/Linux üzerinde yapılamaz |
 
 Bu araştırmanın ardından depoda seçilen uygulama şudur: format, analiz ve test
 işleri Pi üzerinde native ARM64 çalışır; Flutter 3.47.1 kaynak checkout'u ve
 frontend-server düzeltmesi yerel composite action içinde runner'a özel araç
-önbelleğine kurulur. Android APK/AAB işleri de aynı native Flutter SDK'yı
-kullanır; yalnız Google'ın x64 yayımladığı AAPT2 ve Android AOT host araçları
-Debian multiarch kütüphaneleriyle QEMU/binfmt üzerinden çalışır.
+önbelleğine kurulur. Gerçek Pi'de format, analiz ve 1.251 testlik tam suite
+geçti. Üç ağır runner'ın eşzamanlı kullanımı daha sonra runner iletişimini ve
+microSD yolunu kararsızlaştırdığı için tek runner ve `--concurrency=1` seçildi.
+
+Android APK/AAB işleri normal PR ve `main` koşularında otomatik çalışmaz.
+Google'ın x64 Android host araçları için job elle tetiklenebilir, fakat bunun
+yeşil olması ancak x64 runner ya da ayrıca doğrulanmış amd64 konteynerle
+beklenmelidir.
 
 Apple Silicon üzerindeki `linux/arm64` Docker doğrulamasında Flutter 3.47.1
 kaynaktan başarıyla hazırlandı; `flutter analyze --no-pub` ve Koala'nın 1.251
@@ -28,26 +33,17 @@ bu koşu, hatalı frontend-server dosyasının çıplak Pi'de de açılacağın�
 bu nedenle composite action yine aynı revizyondaki doğrulanmış ARM64 dosyayı
 yerine koyar. Gerçek cihaz kanıtı PR'ın self-hosted CI koşusudur.
 
-Google Maven'daki AGP 9.1 AAPT2 x64 binary'si ayrıca `linux/arm64` Debian
-Bookworm konteynerinde aşağıdaki amd64 runtime kütüphaneleriyle çalıştırıldı ve
-`Android Asset Packaging Tool (aapt) 2.20-14792394` çıktısı alındı. Bu deney,
-Android job'larındaki açık AAPT2 ön kontrolünün temelidir.
+Google Maven'daki AGP 9.1 AAPT2 x64 binary'si ayrıca izole bir `linux/arm64`
+Debian Bookworm konteynerinde amd64 runtime kütüphaneleriyle çalıştırıldı ve
+`Android Asset Packaging Tool (aapt) 2.20-14792394` çıktısı alındı. Bu yalnızca
+binary'nin QEMU altında açılabildiğini gösterir; Raspberry Pi OS hostunda paket
+kurulumunun güvenli veya destekli olduğunu göstermez.
 
-Pi hostunda tek seferlik hazırlık:
-
-```bash
-sudo dpkg --add-architecture amd64
-sudo apt update
-sudo apt install -y \
-  qemu-user-binfmt \
-  libc6:amd64 \
-  libgcc-s1:amd64 \
-  libstdc++6:amd64 \
-  zlib1g:amd64
-```
-
-Bu paketler üç runner servisi tarafından ortak kullanılan kernel binfmt kaydını
-ve x64 dinamik runtime'ı sağlar; runner başına tekrar kurulmaz.
+Gerçek Pi denemesinde Raspberry Pi OS'nin vendor sürümlü arm64 libc paketi ile
+Debian'ın amd64 libc adayı aynı sürüme eşlenemedi. `apt`, `libc6:amd64`
+kurulumunu bağımlılık çakışmasıyla reddetti; deneme sırasında kart yolu da
+`I/O error` ve `Card stuck being busy` kaydetti. Bu makinede hosta `amd64`
+mimarisi ve libc eklemek çözüm değildir; tekrar denenmemelidir.
 
 GitHub runner uygulamasının ARM64 Linux desteği olması, job içindeki Flutter ve Android araçlarının da ARM64 olduğu anlamına gelmiyor. GitHub ARM64 Linux self-hosted runner'ı destekliyor; Docker tabanlı action/service kullanımı için Linux ve Docker istiyor. [GitHub self-hosted runner gereksinimleri](https://docs.github.com/en/actions/reference/runners/self-hosted-runners#requirements-for-self-hosted-runner-machines).
 
@@ -112,27 +108,24 @@ Tam x64 Flutter SDK'yı emüle etmek zorunlu değil. Frontend-server artifact'ı
 
 Araştırmada Flutter 3.47.1'in `android-arm64-release/linux-x64.zip` içindeki `gen_snapshot` dosyası ile AGP 9.1.0 AAPT2 binary'sinin ELF bağımlılıkları ayrıca incelendi. İkisi de x86-64; `gen_snapshot` glibc bileşenlerine, AAPT2 bunlara ek olarak `libgcc_s.so.1` dosyasına bağlı. Debian'ın resmî QEMU user emulation akışı, yabancı mimari executable'ları transparan çalıştırmak için `qemu-user`, `qemu-user-binfmt`, `dpkg --add-architecture <architecture>` ve `libc6:<architecture>` kurulumunu tarif ediyor. [Debian QEMU user emulation](https://wiki.debian.org/QemuUserEmulation), [Debian Multiarch HOWTO](https://wiki.debian.org/Multiarch/HOWTO).
 
-Pi için ilk deney bu nedenle şu host hazırlığıdır:
+Bu hibrit yol izole Debian ortamında teknik olarak mümkün olsa da gerçek Koala
+Pi hostunda reddedildi. Raspberry Pi OS'nin arm64 libc paketi ile Debian amd64
+paketi exact-version multiarch şartını karşılamadı; hosta foreign libc kurmak
+uygulama CI'ı için kabul edilebilir bir bakım ve güvenilirlik sınırı değil.
 
-```bash
-sudo apt install -y qemu-user qemu-user-binfmt
-sudo dpkg --add-architecture amd64
-sudo apt update
-sudo apt install -y libc6:amd64 libgcc-s1:amd64
-```
-
-Exact build logu başka bir x64 kütüphane gösterirse yalnız o kütüphanenin `:amd64` varyantı eklenmeli; baştan geniş bir amd64 kullanıcı alanı kurulmamalı. Sık rastlanan adaylar `libstdc++6:amd64` ve `zlib1g:amd64`, fakat mevcut iki kesin binary bunları doğrudan istemediği için ilk komuta dahil edilmedi.
-
-Bu hibrit yol Android Studio/SDK açısından resmî ARM host desteği değildir; ölçülmesi gereken bir workaround'dur. Avantajı, CPU-ağır Dart analizi ve testlerin native kalmasıdır. Debug APK ve release AAB gerçek Pi'de yeşil olmazsa sınır büyütülmeden, Android job bütünüyle amd64 konteynere alınır.
+Bu nedenle Pi üzerinde yalnız native Flutter analiz/test yolu desteklenir.
+Android paketleme ya x64 bir makinede yapılmalı ya da bütün x64 kullanıcı alanını
+hosttan ayıran, sabitlenmiş bir amd64 konteyner önce küçük bir kabul koşusuyla
+doğrulanmalıdır. Normal PR akışı bu deneysel işi otomatik başlatmaz.
 
 ## Seçeneklerin karşılaştırması
 
 | Seçenek | Sağladığı | Bedeli / riski | Karar |
 |---|---|---|---|
 | Native ARM64 kaynak checkout'u | Format, pub, analiz; aynı revizyondaki native frontend-server ile test | Paketlenmiş stable SDK değil; cache artifact düzeltmesi gerekiyor | **Analiz/test için seç** |
-| Native Flutter + QEMU ile yalnız x64 Android araçları | Dart/test native kalırken AAPT2 ve Android `gen_snapshot` çalışabilir | Debian foreign-architecture libc kurulumu; Google açısından ARM host destek dışı; Pi deneyi şart | **Android için önce dene** |
+| Native Flutter + QEMU ile yalnız x64 Android araçları | Dart/test native kalırken AAPT2 ve Android `gen_snapshot` teorik olarak çalışabilir | Raspberry Pi OS multiarch libc sürümleri çakıştı; host kart yolu deneme sırasında hata verdi | **Bu Pi için reddet** |
 | Hostta tüm x64 Flutter'ı QEMU/binfmt ile çalıştırmak | Mevcut x64 Flutter ve Android araçlarını büyük ölçüde değiştirmeden kullanır | Hostta x64 loader/kütüphaneleri gerekir; bütün Dart/test yükü emüle edildiği için çok yavaş; hostu kirletir | Kullanma |
-| `docker run --platform linux/amd64` | x64 Flutter + Android SDK'yı izole ve tekrarlanabilir çalıştırır | QEMU derleme ve sıkıştırmada belirgin yavaştır; imajı organizasyon yönetmeli | **Android fallback'i** |
+| `docker run --platform linux/amd64` | x64 Flutter + Android SDK'yı izole ve tekrarlanabilir çalıştırır | QEMU derleme ve sıkıştırmada belirgin yavaştır; imajı organizasyon yönetmeli; gerçek Pi kabulü yapılmadı | **Gelecekteki Android fallback'i** |
 | Job seviyesinde `container:` | Bütün `run` adımlarını konteynere alır | GitHub yalnız seçenekleri `docker create`'e aktarmayı belgeler; ARM runner + amd64 job-container + JavaScript action runtime bileşimi destek garantisi taşımıyor | İlk tercih değil |
 | Flutter engine'i Pi'de yeniden derlemek | Eksik host artifact'larını teorik olarak üretme olanağı | `gclient sync`, GN ve Ninja ile ayrı engine checkout/build yaşam döngüsü; sürüm başına özel engine bakımına dönüşür | Reddet |
 
@@ -147,8 +140,8 @@ GitHub job container'ında `jobs.<job_id>.container.options` ek Docker create se
 1. **Native ARM64 hazırlık:** Flutter 3.47.1 tag'inden ayrı, kalıcı bir SDK dizini kullan. Flutter'ın Linux önkoşulları `curl`, `git`, `unzip`, `xz-utils`, `zip`, `libglu1-mesa`; test embedder'ı için gerekirse resmî Linux geliştirme paketlerini de kur. [Flutter Linux kurulum önkoşulları](https://docs.flutter.dev/install/manual#install-prerequisite-packages), [Linux toolchain paketleri](https://docs.flutter.dev/platform-integration/linux/setup#set-up-tooling).
 2. **Analyze job:** native SDK ile `dart format`, `flutter pub get`, `flutter analyze --fatal-infos`.
 3. **Test job:** SDK hazırlanırken yukarıdaki aynı-revizyon frontend-server düzeltmesini bir kez yap; ardından standart test komutunu çalıştır. Önce dar test, sonra tam suite.
-4. **Android job:** önce aynı native SDK ile, hostta QEMU/binfmt + minimal amd64 runtime kurulu halde debug APK ve release AAB'yi dene. İkisi de güvenilir biçimde geçmezse organizasyonun sabitlediği amd64 CI imajını explicit `docker run --platform linux/amd64` ile çağır. İmaj Flutter 3.47.1 x64, JDK 17 ve Koala'nın Android SDK/AGP gereksinimlerini içermeli. Çalışma alanı bind mount edilmeli; çıktıların root sahibi kalmaması için host UID/GID ile çalıştırılmalı.
-5. **Kapasite:** amd64/QEMU Android build'i aynı anda yalnız bir Pi runner'ında çalıştır. Üç ağır mobil jobu dört çekirdekte paralel çalıştırmak süreyi ve flake olasılığını artırır.
+4. **Android job:** normal PR ve `main` koşularında kapalı tut. x64 bir runner sağlandığında orada çalıştır; Pi seçeneği gerekiyorsa organizasyonun sabitlediği amd64 CI imajını explicit `docker run --platform linux/amd64` ile önce elle doğrula. İmaj Flutter 3.47.1 x64, JDK 17 ve Koala'nın Android SDK/AGP gereksinimlerini içermeli. Çalışma alanı bind mount edilmeli; çıktıların root sahibi kalmaması için host UID/GID ile çalıştırılmalı.
+5. **Kapasite:** aynı anda yalnız bir Pi runner'ı çalıştır. Üç ağır mobil jobu dört çekirdekte paralel çalıştırmak süreyi ve flake olasılığını artırdı.
 6. **Cache:** Self-hosted runner diski kalıcı olduğu için Flutter SDK ve pub/Gradle cache'lerini runner-local tut. Her koşuda büyük SDK cache'ini GitHub'a yüklemek gereksiz ağ ve microSD I/O'su yaratır. Üç runner aynı mutable SDK dizinine eşzamanlı yazmamalı; runner başına SDK/cache veya immutable CI imajı kullanılmalı.
 
 Android imajı için üçüncü taraf, sahibi belirsiz bir Flutter Docker imajı seçilmemeli. Flutter resmî bir CI Docker imajı yayımlamadığından, taban imaj + resmî Flutter x64 arşivi + resmî Android araçlarıyla Koala'nın kendi sabitlenmiş imajı oluşturulmalı.
@@ -185,7 +178,10 @@ flutter test test/product/network/api_config_test.dart --reporter expanded
 
 Beklenti: Dart, `flutter_tester`, kaynak frontend-server ve kopyalama sonrasındaki hedef frontend-server `file` çıktılarının tümü ARM aarch64; dar test yeşil. Kopyalama öncesindeki hedef frontend-server'ın x86-64 çıkması doğrulanan upstream hatadır. Ardından flavor/define parametreleriyle tam suite çalıştırılır.
 
-Android/QEMU kabulü önce host emülasyonuyla doğrulanmalı. Flutter'ın indirdiği x64 `gen_snapshot` ve Gradle cache'indeki AAPT2 üzerinde `file` çalıştırılmalı; ardından executable'ların `--help`/`version` komutları exit `0` vermeli. Son olarak gerçek build'ler:
+Android/QEMU kabulü hosta amd64 libc kurarak yapılmamalı. İleride izole amd64
+konteyner hazırlanırsa Flutter'ın indirdiği x64 `gen_snapshot` ve Gradle
+cache'indeki AAPT2 üzerinde `file` çalıştırılmalı; ardından executable'ların
+`--help`/`version` komutları exit `0` vermeli. Son olarak gerçek build'ler:
 
 ```bash
 flutter build apk --debug \
@@ -197,16 +193,16 @@ flutter build appbundle --release \
   --dart-define-from-file=config/staging.json
 ```
 
-Staging release AAB, x64 Android AOT araç yolunu production signing secret'ları olmadan kanıtlar. Gerçek production AAB ayrıca yalnız gerekli signing ve Maps secret'ları güvenli biçimde sağlanarak denenmeli; secret değerleri loga yazdırılmamalı. Hibrit yol başarısızsa amd64 konteyner emülasyonu ayrıca doğrulanır:
+Staging release AAB, x64 Android AOT araç yolunu production signing secret'ları olmadan kanıtlar. Gerçek production AAB ayrıca yalnız gerekli signing ve Maps secret'ları güvenli biçimde sağlanarak denenmeli; secret değerleri loga yazdırılmamalı. amd64 konteyner emülasyonu önce şu küçük kontrolle doğrulanır:
 
 ```bash
 docker run --rm --platform linux/amd64 debian:bookworm-slim uname -m
 ```
 
-Beklenti `x86_64`. Sonra sabit Koala Android CI imajında `flutter --version`, debug APK ve release AAB sırayla denenir. Native analiz, native tam test, debug APK ve release AAB gerçek Pi koşuları geçmeden çözüm tamamlandı sayılmamalı.
+Beklenti `x86_64`. Sonra sabit Koala Android CI imajında `flutter --version`, debug APK ve release AAB sırayla denenir. Native analiz ve native tam test gerçek Pi'de doğrulandı; Android paketleme ise ayrıca yeşil bir kabul koşusu görülmeden destekleniyor sayılmamalı.
 
 ## Güven sınırı
 
 - **Yüksek güven:** mevcut action hatasının manifest/mimari nedeni; Flutter 3.47.1 ARM64 Dart, `flutter_tester` ve genel engine artifact'larının varlığı; Android Linux ARM hostunun desteklenmemesi; amd64 AAPT2 ve Android AOT host araçlarının mimarisi.
-- **Orta güven, deney gerekli:** 3.47.1 native test suite'inin aynı-revizyon ARM64 frontend-server artifact düzeltmesiyle bütün Koala testlerinde geçmesi.
-- **Deney gerekli:** Pi 5'te hibrit QEMU altındaki debug APK/AAB başarısı ve süreleri, bellek kullanımı ve mevcut Android plugin setinin ek x64 native araç isteyip istememesi; gerekirse tam amd64 konteyner fallback'i.
+- **Yüksek güven, gerçek Pi ile doğrulandı:** 3.47.1 native test suite'inin aynı-revizyon ARM64 frontend-server artifact düzeltmesiyle bütün Koala testlerinde geçmesi.
+- **Deney gerekli:** Pi 5'te izole amd64 konteyner altındaki debug APK/AAB başarısı, süreleri, bellek kullanımı ve mevcut Android plugin setinin ek x64 native araç isteyip istememesi.

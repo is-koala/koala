@@ -76,7 +76,7 @@ jobs:
         run: |
           set -euo pipefail
           if ! "$ANDROID_SDK_ROOT/build-tools/37.0.0/aapt2" version; then
-            echo "::error::x64 Android aracı çalışmadı. Raspberry Pi QEMU/multiarch kurulumu için docs/research/raspberry-pi-self-hosted-ci.md dosyasına bak."
+            echo "::error::Google'ın x64 Android aracı bu ARM64 runner'da çalışmadı. AAB'yi x64 bir runner'da ya da doğrulanmış amd64 konteynerde derle."
             exit 1
           fi
 
