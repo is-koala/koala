@@ -86,6 +86,12 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
 
   /// İlana olan uzaklık, km. Konum izni yoksa ya da ilanın koordinatı
   /// yoksa `null` — mesafe satırı o zaman hiç çizilmiyor.
+  ///
+  /// Uzaklık, ilanın koordinatı hangi kesinlikte geldiyse o kesinliği
+  /// **devralıyor**: yaklaşık konumda sunucunun yuvarladığı noktadan
+  /// ölçülüyor, yani ±557 m taşıyor. Burada düzeltilecek bir şey yok — düzeltme
+  /// gösterimde: kartın satırını [Job.distanceLabel] yazıyor ve çözünürlüğü
+  /// bayrağa göre kısıyor. Ham değeri burada yuvarlamak sıralamayı da bozardı.
   double? _getDistance(Job job) {
     if (_currentPosition == null || !job.hasLocation) return null;
     final distance = Geolocator.distanceBetween(
@@ -106,6 +112,13 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
   /// kullanıcının çevresindeki kutuyla sınırlı olduğu için sıralama orada
   /// anlamlı; süzgeç kapalıyken sunucunun `createdAt DESC` sırası korunuyor,
   /// aksi hâlde liste sebepsiz yere gözün önünde karışırdı.
+  /// Sıralama ham uzaklıkla yapılıyor, yuvarlanmışla değil.
+  ///
+  /// Yuvarlanmış değerle sıralamak eşit kalan uzaklıkları rastgele bir düzene
+  /// sokardı; ham değer en azından sunucunun verdiği noktaya sadık. Yaklaşık
+  /// konumlu iki ilanın **birbirine göre** sırası hata payı kadar belirsiz
+  /// kalıyor, ama sıra bir uzaklık iddiası değil — iddiayı taşıyan metin
+  /// [Job.distanceLabel]'dan geçiyor.
   List<Job> _visibleJobs(List<Job> jobs) {
     if (_selection.radiusKm == null || _currentPosition == null) return jobs;
 

@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
@@ -270,6 +272,39 @@ enum JobStatus {
   }
 }
 
+/// Sunucunun ilan konumunu hangi kesinlikte gönderdiği. Backend
+/// `AddressPrecision` karşılığı.
+///
+/// Diğer enum'lardan bir farkı var: tanınmayan değer **yaklaşık**'a düşüyor,
+/// "normal" olana değil. Bilinmeyen bir bayrağı kesin saymak, yuvarlanmış bir
+/// koordinatı tam iş adresi gibi çizmek olurdu; eksik alan da aynı yere
+/// düşüyor, çünkü bu alanı hiç göndermeyen bir sunucu sürümü de yetkiyi
+/// kanıtlamıyor (ADR-0003).
+enum AddressPrecision {
+  approximate('APPROXIMATE'),
+  exact('EXACT');
+
+  const AddressPrecision(this.code);
+
+  final String code;
+
+  /// "Bu konum yaklaşık mı?" — arayüzün bu soruyu soracağı **tek** yer.
+  ///
+  /// Kutbu bilerek böyle: `!= exact`, `== approximate` değil. Sunucuya bir
+  /// üçüncü kesinlik eklenirse (`CITY_LEVEL` gibi) `== approximate` yazan her
+  /// çağıran onu sessizce **kesin** sayardı — daire çizilmez, başlık "Konum"
+  /// olur, pin ucundan bağlanır. Bilinmeyen kesinliğin güvenli tarafı
+  /// yaklaşıktır; [fromCode] de tanımadığı kodu oraya düşürüyor.
+  bool get isApproximate => this != AddressPrecision.exact;
+
+  static AddressPrecision fromCode(Object? value) {
+    return AddressPrecision.values.firstWhere(
+      (precision) => precision.code == value,
+      orElse: () => AddressPrecision.approximate,
+    );
+  }
+}
+
 /// Bir iş ilanının liste/harita görünümü.
 ///
 /// `GET /jobs` yanıtındaki `JobSummaryDto`'nun karşılığı. Açıklama, görevler,
@@ -298,6 +333,7 @@ class Job {
     this.applicationCount = 0,
     this.latitude,
     this.longitude,
+    this.addressPrecision = AddressPrecision.approximate,
   });
 
   final String id;
@@ -342,8 +378,93 @@ class Job {
   final double? latitude;
   final double? longitude;
 
+  /// [latitude]/[longitude] değerlerinin hangi kesinlikte geldiği.
+  ///
+  /// Koordinat yükte **her zaman** var: sunucu yetkisiz görüntüleyende onu
+  /// yuvarlıyor ama alanı boş bırakmıyor (`JobMapper` koordinatı daima
+  /// yazıyor, `JobAddressVisibility.protect` yalnız `EXACT`'te kesin değeri
+  /// üzerine koyuyor). Bu yüzden bayrağı okumamak, yuvarlanmış bir noktayı
+  /// kesin adres gibi çizmek demek — is-koala/koala#93 tam olarak buydu.
+  final AddressPrecision addressPrecision;
+
   /// Haritada pin çizilebilir mi.
   bool get hasLocation => latitude != null && longitude != null;
+
+  /// Yaklaşık koordinatın gerçek noktadan en fazla kaç metre uzakta
+  /// olabileceği.
+  ///
+  /// Sunucu koordinatı iki ondalığa yuvarlıyor (`HALF_UP`), yani gerçek nokta
+  /// her eksende gösterilen değerin ±0.005° içinde. Metreye çevrilip köşegeni
+  /// alınıyor: daire bu yarıçapta çizildiğinde gerçek konumu **kapsadığı**
+  /// garanti, kesin bir nokta iddiası taşımıyor.
+  ///
+  /// Bu bir istemci yuvarlaması **değil** — sunucudan gelen belirsizliğin
+  /// görselleştirilmesi. İstemcide yuvarlama `docs/research/location-and-map.md`
+  /// tarafından açıkça reddedilmiş bir yaklaşım.
+  ///
+  /// Kesin konumda **sıfır**: yuvarlama yok, belirsizlik de yok. Bayrağı
+  /// sormadan hesaplasaydı, çağıranın süzmeyi unuttuğu her yerde kesin bir
+  /// adresin çevresine 557 m'lik bir daire çizilirdi — olmayan bir
+  /// belirsizliği varmış gibi göstermek de bir okuma hatası.
+  double get approximateRadiusInMeters {
+    if (!addressPrecision.isApproximate) return 0;
+
+    const latitudeError = _roundingHalfStep * _metersPerLatitudeDegree;
+    final longitudeError = latitudeError * cos((latitude ?? 0) * pi / 180);
+    return sqrt(
+      latitudeError * latitudeError + longitudeError * longitudeError,
+    );
+  }
+
+  /// [kilometersAway] uzaklığının ekrana yazılacağı metin.
+  ///
+  /// Yaklaşık konumlu bir ilanda koordinat **±557 m** taşıyor. "2,3 km" yazmak
+  /// 100 m'lik bir çözünürlük iddia eder; veri onu taşımıyor, üstelik harita
+  /// aynı ilanı "yaklaşık" diye gösterirken liste ondalıklı bir sayı söylerdi.
+  /// is-koala/koala#93'ün şikâyeti tam olarak bu okuma hatasıydı — orada
+  /// pinin ucu, burada ondalık hane.
+  ///
+  /// Bu yüzden yaklaşık konumda tam kilometreye yuvarlanıyor ve önüne `~`
+  /// konuyor; hata payından küçük kalan uzaklık ise sayı olarak hiç
+  /// yazılmıyor, çünkü yuvarlaması "0 km" olurdu.
+  String distanceLabel(double kilometersAway) {
+    if (!addressPrecision.isApproximate) {
+      return '${kilometersAway.toStringAsFixed(1)} km';
+    }
+
+    final rounded = kilometersAway.round();
+    return rounded < 1 ? "1 km'den yakın" : '~$rounded km';
+  }
+
+  /// Ham koordinatın ekrana yazılacağı hâli.
+  ///
+  /// Ondalık hane sayısı kesinliğe bağlı: sunucu `APPROXIMATE` yanıtta iki
+  /// ondalığa yuvarlıyor, dördüncü haneye kadar yazmak olmayan iki hane
+  /// uydurup ±700 m'lik bir değeri ~11 m kesinlikte göstermek olurdu —
+  /// haritadaki dairenin anlattığının tam tersi.
+  String get coordinateLabel {
+    final fractionDigits = addressPrecision.isApproximate
+        ? _approximateFractionDigits
+        : _exactFractionDigits;
+
+    return '${latitude!.toStringAsFixed(fractionDigits)}, '
+        '${longitude!.toStringAsFixed(fractionDigits)}';
+  }
+
+  /// Sunucunun `setScale(2, HALF_UP)` adımı; yaklaşık koordinatta anlamlı olan
+  /// hane sayısı bu.
+  static const int _approximateFractionDigits = 2;
+
+  /// Kesin koordinatta yazılan hane sayısı (≈11 m).
+  static const int _exactFractionDigits = 4;
+
+  /// Sunucunun yuvarlama adımının yarısı: `setScale(2, HALF_UP)` sonrası
+  /// gerçek değer gösterilen değerin bu kadar yakınında.
+  static const double _roundingHalfStep = 0.005;
+
+  /// Bir enlem derecesinin metre karşılığı. Boylamda bu değer enlemin
+  /// kosinüsüyle daralıyor, o yüzden ayrı bir sabit yok.
+  static const double _metersPerLatitudeDegree = 111320;
 
   /// Kartın ikinci satırı.
   ///
@@ -389,6 +510,7 @@ class Job {
       applicationCount: (json['applicationCount'] as num?)?.toInt() ?? 0,
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
+      addressPrecision: AddressPrecision.fromCode(json['addressPrecision']),
     );
   }
 
@@ -415,6 +537,7 @@ class Job {
       'applicationCount': applicationCount,
       'latitude': latitude,
       'longitude': longitude,
+      'addressPrecision': addressPrecision.code,
     };
   }
 

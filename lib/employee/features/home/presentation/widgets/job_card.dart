@@ -106,7 +106,10 @@ class JobCard extends StatelessWidget {
         ),
         const SizedBox(width: AppSizes.spaceTiny),
         Text(
-          '${distance!.toStringAsFixed(1)} km',
+          // Çözünürlüğü ilanın kesinliği belirliyor: yuvarlanmış bir
+          // koordinattan çıkan uzaklığı ondalıklı yazmak, veride olmayan bir
+          // hassasiyeti iddia etmek olurdu.
+          job.distanceLabel(distance!),
           style: context.textTheme.labelMedium?.copyWith(
             color: context.accentColor,
           ),

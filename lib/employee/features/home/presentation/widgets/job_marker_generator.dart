@@ -8,25 +8,25 @@ import 'package:flutter_svg/flutter_svg.dart';
 class JobMarkerGenerator {
   static final Map<JobCategory, BitmapDescriptor> _iconCache = {};
 
-  static Future<Set<Marker>> generateMarkers({
-    required List<Job> jobs,
-    required void Function(Job job) onMarkerTap,
-  }) async {
-    final Set<Marker> markers = {};
+  /// Belirsizlik dairesinin dolgu saydamlığı. Altındaki harita okunur kalmalı;
+  /// daire bir alanı işaret ediyor, bir yüzeyi kaplamıyor.
+  static const double _areaFillAlpha = 0.14;
 
-    for (final job in jobs) {
-      // Backend enlem/boylamı opsiyonel döndürüyor: adresi koordinata
-      // çevrilmemiş ilan haritada gösterilemiyor, atlanıyor.
-      if (!job.hasLocation) continue;
+  /// Dairenin kenar saydamlığı. Dolgudan belirgin, ama pinin önüne geçmeyecek
+  /// kadar; kenar olmadan düşük alfalı dolgu açık haritada kayboluyor.
+  static const double _areaStrokeAlpha = 0.5;
 
-      final marker = await _createMarker(job, onMarkerTap);
-      markers.add(marker);
-    }
+  /// Belirsizlik dairesinin kenar kalınlığı (piksel).
+  static const int _areaStrokeWidth = 2;
 
-    return markers;
-  }
-
-  static Future<Marker> _createMarker(
+  /// Tek bir ilanın pini.
+  ///
+  /// Önbellekleme burada **yok**: hangi pinin saklanacağına ve ne zaman
+  /// düşürüleceğine `JobMarkerCache` karar veriyor. Bu sınıf pini nasıl
+  /// çizeceğini biliyor, ne kadar yaşayacağını değil.
+  ///
+  /// Çağıran `job.hasLocation`'ı doğrulamış olmalı.
+  static Future<Marker> markerFor(
     Job job,
     void Function(Job job) onMarkerTap,
   ) async {
@@ -37,9 +37,38 @@ class JobMarkerGenerator {
       position: LatLng(job.latitude!, job.longitude!),
       icon: icon,
       onTap: () => onMarkerTap(job),
-      anchor: const Offset(0.5, 1.0), // Pin'in alt noktası konumu göstersin
+      anchor: anchorFor(job.addressPrecision),
     );
   }
+
+  /// Yaklaşık konumlu ilanların belirsizlik daireleri.
+  ///
+  /// Yalnız `APPROXIMATE` ilanlar için çiziliyor: kesin konumda daire, olmayan
+  /// bir belirsizliği varmış gibi gösterirdi.
+  static Set<Circle> generateAreas({required List<Job> jobs}) {
+    return {
+      for (final job in jobs)
+        if (job.hasLocation && job.addressPrecision.isApproximate)
+          Circle(
+            circleId: CircleId(job.id),
+            center: LatLng(job.latitude!, job.longitude!),
+            radius: job.approximateRadiusInMeters,
+            fillColor: job.category.color.withValues(alpha: _areaFillAlpha),
+            strokeColor: job.category.color.withValues(alpha: _areaStrokeAlpha),
+            strokeWidth: _areaStrokeWidth,
+          ),
+    };
+  }
+
+  /// Pin'in konuma bağlandığı nokta.
+  ///
+  /// Kesin konumda pin **ucundan** bağlanıyor: uç "iş tam burada" demek.
+  /// Yaklaşık konumda **ortasından** bağlanıyor, yani pin artık tek bir noktayı
+  /// işaret etmiyor, dairenin ortasında duruyor. is-koala/koala#93'ün şikâyeti
+  /// tam olarak buydu: yuvarlanmış bir koordinatın ucu gösterilen noktaya
+  /// basıyordu.
+  static Offset anchorFor(AddressPrecision precision) =>
+      precision.isApproximate ? const Offset(0.5, 0.5) : const Offset(0.5, 1.0);
 
   static Future<BitmapDescriptor> _getOrCreateIcon(JobCategory category) async {
     if (_iconCache.containsKey(category)) {

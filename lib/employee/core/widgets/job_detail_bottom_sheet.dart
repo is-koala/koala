@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:koala/employee/core/widgets/job_location_card.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
@@ -31,6 +32,13 @@ class JobDetailBottomSheet extends StatefulWidget {
   final DraggableScrollableController? sheetController;
   final JobGalleryService? galleryService;
 
+  /// İlan detayının geldiği yer. Üretimde `null` — sheet kendi
+  /// [JobService]'ini kuruyor; test sahte bir sunucuya bağlı olanı veriyor.
+  ///
+  /// Konum satırının kesinliği **detaydan** geliyor, yani hangi kesinliğin
+  /// gösterildiği ancak detay yanıtı denetlenebildiğinde sınanabiliyor.
+  final JobService? jobService;
+
   const JobDetailBottomSheet({
     super.key,
     required this.job,
@@ -39,6 +47,7 @@ class JobDetailBottomSheet extends StatefulWidget {
     this.scrollController,
     this.sheetController,
     this.galleryService,
+    this.jobService,
   });
 
   /// Sheet'in kapalı ve tam açık yükseklikleri. Genişleme oranı bu ikisi
@@ -89,6 +98,8 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
   bool _detailLoading = true;
   String? _detailError;
 
+  late final JobService _jobService = widget.jobService ?? JobService();
+
   Future<void> _loadDetail() async {
     setState(() {
       _detailLoading = true;
@@ -96,7 +107,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     });
 
     try {
-      final detail = await JobService().getById(widget.job.id);
+      final detail = await _jobService.getById(widget.job.id);
       if (!mounted) return;
       setState(() {
         _detail = detail;
@@ -468,6 +479,18 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     AppToast.error(context, provider.errorMessage ?? 'İşlem tamamlanamadı.');
   }
 
+  /// Sunucunun konumu bu görüntüleyene hangi kesinlikte verdiği.
+  ///
+  /// Kural istemcide **yeniden kurulmuyor**: kimin yetkili olduğuna sunucu
+  /// karar veriyor ve cevabını bu bayrakla söylüyor. Yetkiyi burada tahmin
+  /// etmek (oturum var mı, atanmış mıyım) sunucunun kuralından sessizce
+  /// ayrışırdı — örneğin `isAddressPublic` işaretli bir şirket ilanında sunucu
+  /// **anonim** ziyaretçiye de `EXACT` döndürüyor.
+  ///
+  /// Detay geldiyse onunki geçerli; gelmeden önce özetteki bayrak kullanılıyor.
+  AddressPrecision get _addressPrecision =>
+      _detail?.addressPrecision ?? widget.job.addressPrecision;
+
   /// Konum satırı. Detay geldiyse açık adres, gelmediyse özetteki ilçe/il,
   /// o da yoksa ham koordinat yazılıyor.
   String _locationLabel() {
@@ -479,8 +502,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
 
     if (!widget.job.hasLocation) return 'Konum belirtilmemiş';
 
-    return '${widget.job.latitude!.toStringAsFixed(4)}, '
-        '${widget.job.longitude!.toStringAsFixed(4)}';
+    return widget.job.coordinateLabel;
   }
 
   String _formatDateTime(DateTime value) =>
@@ -692,36 +714,9 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
       duration: _animation,
       child: Padding(
         padding: const EdgeInsets.only(top: AppSizes.spaceLarge),
-        child: Container(
-          padding: AppPadding.primaryAll,
-          decoration: BoxDecoration(
-            color: context.tileColor,
-            borderRadius: AppRadius.innerCircular,
-          ),
-          child: Row(
-            children: [
-              Icon(
-                Icons.location_on,
-                color: context.accentColor,
-                size: AppSizes.icon,
-              ),
-              const SizedBox(width: AppSizes.space),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Konum', style: context.textTheme.labelMedium),
-                    Text(
-                      _locationLabel(),
-                      style: context.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+        child: JobLocationCard(
+          precision: _addressPrecision,
+          label: _locationLabel(),
         ),
       ),
     );

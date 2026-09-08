@@ -120,6 +120,7 @@ class JobDetail {
     this.startDateTime,
     this.endDateTime,
     this.address,
+    this.addressPrecision = AddressPrecision.approximate,
     this.creator,
     this.company,
     this.createdAt,
@@ -150,6 +151,15 @@ class JobDetail {
   final DateTime? startDateTime;
   final DateTime? endDateTime;
   final CanonicalAddress? address;
+
+  /// [address] alanlarının hangi kesinlikte geldiği.
+  ///
+  /// `APPROXIMATE` yanıtta sunucu sokak, bina, kat, daire ve posta kodunu
+  /// zaten siliyor, koordinatı da yuvarlıyor; yani bayrak bir sızıntıyı tek
+  /// başına engellemiyor. Ekranda ne yaptığı ayrı ve önemli: kalan metni
+  /// "Konum" diye sunmak, adresin bundan ibaret olduğunu ima ederdi.
+  final AddressPrecision addressPrecision;
+
   final JobCreator? creator;
   final JobCompany? company;
   final DateTime? createdAt;
@@ -201,6 +211,7 @@ class JobDetail {
       address: address is Map<String, dynamic>
           ? CanonicalAddress.fromJson(address)
           : null,
+      addressPrecision: AddressPrecision.fromCode(json['addressPrecision']),
       creator: creator is Map<String, dynamic>
           ? JobCreator.fromJson(creator)
           : null,
@@ -232,6 +243,7 @@ class JobDetail {
     'startDateTime': startDateTime?.toIso8601String(),
     'endDateTime': endDateTime?.toIso8601String(),
     'address': address?.toJson(),
+    'addressPrecision': addressPrecision.code,
     'creator': creator?.toJson(),
     'company': company?.toJson(),
     'createdAt': createdAt?.toIso8601String(),

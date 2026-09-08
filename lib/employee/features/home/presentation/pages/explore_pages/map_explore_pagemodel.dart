@@ -4,7 +4,13 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
     with AutomaticKeepAliveClientMixin<MapExplorePage> {
   GoogleMapController? _mapController;
   late LocationService _locationService;
-  late final MapExploreController _jobs = MapExploreController();
+
+  /// İlan durumu. Sayfa kendi kontrolcüsünü kuruyor; test onu
+  /// [MapExplorePage.controller] ile dışarıdan veriyor, çünkü pinlerin
+  /// kesinliğe göre yenilenmesi ancak gerçek ilan akışı üzerinden sınanabilir.
+  /// Kim kurarsa kursun sahibi sayfa: [dispose] onu kapatıyor.
+  late final MapExploreController _jobs =
+      widget.controller ?? MapExploreController();
 
   bool _loading = true;
   LatLng? _currentLatLng;
@@ -13,12 +19,19 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
 
   Set<Marker> _markers = {};
 
-  /// Üretilmiş marker'lar, ilan kimliğine göre.
+  /// Yaklaşık konumlu ilanların belirsizlik daireleri.
   ///
-  /// Her `onCameraIdle` sonrası bütün pinleri yeniden üretmek gereksiz: pin
-  /// görseli ilanla birlikte değişmiyor. Yeni gelen ilanlar için üretiliyor,
-  /// görünen alandan çıkanlar atılıyor.
-  final Map<String, Marker> _markerCache = {};
+  /// Marker'lardan ayrı tutuluyor: daire ilanın kendi verisinden hesaplanıyor,
+  /// üretimi asenkron değil, o yüzden önbelleğe de girmiyor.
+  Set<Circle> _areas = {};
+
+  /// Üretilmiş marker'lar.
+  ///
+  /// Her `onCameraIdle` sonrası bütün pinleri yeniden üretmek gereksiz; neyin
+  /// saklanabileceğine [JobMarkerCache] karar veriyor. Sayfa burada bir map
+  /// tutmuyor — tuttuğu gün onu ilan kimliğiyle indeksleyebilirdi, ki
+  /// is-koala/koala#10'un düşen maddesi tam olarak buydu.
+  final JobMarkerCache _markerCache = JobMarkerCache();
 
   /// Marker üretimi de asenkron; iki güncelleme üst üste gelirse eskisi
   /// yenisinin üzerine yazmasın diye jetonla korunuyor.
@@ -103,29 +116,16 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
     final jobs = _jobs.jobs;
     final token = ++_markerToken;
 
-    final missing = [
-      for (final job in jobs)
-        if (!_markerCache.containsKey(job.id)) job,
-    ];
-
-    if (missing.isNotEmpty) {
-      final generated = await JobMarkerGenerator.generateMarkers(
-        jobs: missing,
-        onMarkerTap: _onJobMarkerTap,
-      );
-      if (!mounted || token != _markerToken) return;
-
-      for (final marker in generated) {
-        _markerCache[marker.markerId.value] = marker;
-      }
-    }
-
-    // Görünen alandan çıkan ilanların marker'ı bellekte birikmesin.
-    final visibleIds = {for (final job in jobs) job.id};
-    _markerCache.removeWhere((id, _) => !visibleIds.contains(id));
+    final markers = await _markerCache.markersFor(
+      jobs: jobs,
+      onMarkerTap: _onJobMarkerTap,
+    );
 
     if (!mounted || token != _markerToken) return;
-    setState(() => _markers = _markerCache.values.toSet());
+    setState(() {
+      _markers = markers;
+      _areas = JobMarkerGenerator.generateAreas(jobs: jobs);
+    });
   }
 
   /// Haritada arama yap.
