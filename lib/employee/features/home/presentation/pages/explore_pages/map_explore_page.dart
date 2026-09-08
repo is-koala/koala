@@ -8,6 +8,7 @@ import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_map_bounds.dart';
 import 'package:koala/employee/features/home/presentation/providers/map_explore_controller.dart';
 import 'package:koala/employee/features/home/presentation/providers/search_provider.dart';
+import 'package:koala/employee/features/home/presentation/widgets/job_marker_cache.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_marker_generator.dart';
 import 'package:koala/employee/features/home/presentation/widgets/map_explore_overlay.dart';
 import 'package:koala/employee/features/home/services/location_service.dart';
@@ -23,7 +24,16 @@ import 'package:provider/provider.dart';
 part 'map_explore_pagemodel.dart';
 
 class MapExplorePage extends StatefulWidget {
-  const MapExplorePage({super.key});
+  const MapExplorePage({super.key, this.controller});
+
+  /// İlan durumunu dışarıdan vermek için tek dikiş.
+  ///
+  /// Üretimde `null`: sayfa kendi [MapExploreController]'ını kuruyor. Testte
+  /// sahte bir sunucuya bağlı bir kontrolcü veriliyor — pinlerin **yetki
+  /// değişince** yenilendiğini görebilmenin başka yolu yok, çünkü o karar
+  /// haritanın gerçek ilan akışında veriliyor. Verilen kontrolcünün sahipliği
+  /// de sayfaya geçer, `dispose` onu kapatır.
+  final MapExploreController? controller;
 
   @override
   State<MapExplorePage> createState() => _MapExplorePageState();

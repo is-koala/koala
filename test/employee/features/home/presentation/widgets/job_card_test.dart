@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_card.dart';
 
 import '../../../../../support/fixtures.dart';
@@ -33,6 +34,37 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(CircleAvatar), findsOneWidget);
+  });
+
+  testWidgets('kesin konumlu ilanda uzaklık ondalıklı yazılıyor', (
+    tester,
+  ) async {
+    await pumpInApp(
+      tester,
+      JobCard(
+        job: buildJob(addressPrecision: AddressPrecision.exact),
+        distance: 2.34,
+      ),
+    );
+
+    expect(find.text('2.3 km'), findsOneWidget);
+  });
+
+  testWidgets('yaklaşık konumlu ilanda uzaklık yuvarlanıp işaretleniyor', (
+    tester,
+  ) async {
+    // Harita aynı ilanı belirsizlik dairesiyle çizerken listenin "2.3 km"
+    // demesi, veride olmayan 100 m'lik bir çözünürlük iddia ederdi.
+    await pumpInApp(
+      tester,
+      JobCard(
+        job: buildJob(addressPrecision: AddressPrecision.approximate),
+        distance: 2.34,
+      ),
+    );
+
+    expect(find.text('~2 km'), findsOneWidget);
+    expect(find.text('2.3 km'), findsNothing);
   });
 
   testWidgets('390 piksel genişlikte kapaklı kart taşmıyor', (tester) async {

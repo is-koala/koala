@@ -321,6 +321,18 @@ void main() {
       );
     });
 
+    test('kesin konumda belirsizlik yarıçapı sıfır', () {
+      // Yuvarlama yoksa belirsizlik de yok; sıfırdan büyük bir yarıçap,
+      // kesin bir adresin çevresine olmayan bir daire çizerdi.
+      final job = buildJob(
+        latitude: 41.015137,
+        longitude: 28.979530,
+        addressPrecision: AddressPrecision.exact,
+      );
+
+      expect(job.approximateRadiusInMeters, 0);
+    });
+
     test('yaklaşık yarıçap yuvarlama hatasını kapsıyor', () {
       // ±0.005° enlem ≈ 557 m; boylam bunun kosinüsüyle daralıyor, köşegen
       // ikisinden de büyük olmalı.
@@ -328,6 +340,54 @@ void main() {
 
       expect(job.approximateRadiusInMeters, greaterThan(556));
       expect(job.approximateRadiusInMeters, lessThan(800));
+    });
+  });
+
+  group('Konum kesinliğinin ekrandaki çözünürlüğü', () {
+    test('kesin konumda uzaklık ondalıklı yazılıyor', () {
+      final job = buildJob(addressPrecision: AddressPrecision.exact);
+
+      expect(job.distanceLabel(2.34), '2.3 km');
+    });
+
+    test('yaklaşık konumda uzaklık tam kilometreye yuvarlanıyor', () {
+      // Koordinat ±557 m taşırken "2.3 km" yazmak 100 m çözünürlük iddia
+      // eder — harita "yaklaşık" derken listenin ondalık hane söylemesi
+      // is-koala/koala#93'ün şikâyetiyle aynı okuma hatası.
+      final job = buildJob(addressPrecision: AddressPrecision.approximate);
+
+      expect(job.distanceLabel(2.34), '~2 km');
+    });
+
+    test(
+      'yaklaşık konumda hata payından küçük uzaklık sayı olarak yazılmıyor',
+      () {
+        final job = buildJob(addressPrecision: AddressPrecision.approximate);
+
+        expect(job.distanceLabel(0.4), "1 km'den yakın");
+      },
+    );
+
+    test('kesin koordinat dört haneyle yazılıyor', () {
+      final job = buildJob(
+        latitude: 41.015137,
+        longitude: 28.979530,
+        addressPrecision: AddressPrecision.exact,
+      );
+
+      expect(job.coordinateLabel, '41.0151, 28.9795');
+    });
+
+    test('yaklaşık koordinat sunucunun yuvarladığı hane kadar yazılıyor', () {
+      // Dört hane yazmak, olmayan iki hane uydurup ±700 m'lik bir değeri
+      // ~11 m kesinlikte göstermek olurdu.
+      final job = buildJob(
+        latitude: 41.02,
+        longitude: 28.98,
+        addressPrecision: AddressPrecision.approximate,
+      );
+
+      expect(job.coordinateLabel, '41.02, 28.98');
     });
   });
 

@@ -19,26 +19,26 @@ class JobMarkerGenerator {
   /// Belirsizlik dairesinin kenar kalınlığı (piksel).
   static const int _areaStrokeWidth = 2;
 
-  /// Görünen ilanlar için marker'lar. Anahtar [cacheKeyFor].
+  /// Tek bir ilanın pini.
   ///
-  /// `Set` yerine `Map` dönüyor, çünkü çağıran önbelleği anahtarla tutuyor ve
-  /// anahtar marker'dan geri türetilemiyor — kesinlik bayrağı `Marker` üstünde
-  /// taşınan bir alan değil.
-  static Future<Map<String, Marker>> generateMarkers({
-    required List<Job> jobs,
-    required void Function(Job job) onMarkerTap,
-  }) async {
-    final Map<String, Marker> markers = {};
+  /// Önbellekleme burada **yok**: hangi pinin saklanacağına ve ne zaman
+  /// düşürüleceğine `JobMarkerCache` karar veriyor. Bu sınıf pini nasıl
+  /// çizeceğini biliyor, ne kadar yaşayacağını değil.
+  ///
+  /// Çağıran `job.hasLocation`'ı doğrulamış olmalı.
+  static Future<Marker> markerFor(
+    Job job,
+    void Function(Job job) onMarkerTap,
+  ) async {
+    final BitmapDescriptor icon = await _getOrCreateIcon(job.category);
 
-    for (final job in jobs) {
-      // Backend enlem/boylamı opsiyonel döndürüyor: adresi koordinata
-      // çevrilmemiş ilan haritada gösterilemiyor, atlanıyor.
-      if (!job.hasLocation) continue;
-
-      markers[cacheKeyFor(job)] = await _createMarker(job, onMarkerTap);
-    }
-
-    return markers;
+    return Marker(
+      markerId: MarkerId(job.id),
+      position: LatLng(job.latitude!, job.longitude!),
+      icon: icon,
+      onTap: () => onMarkerTap(job),
+      anchor: anchorFor(job.addressPrecision),
+    );
   }
 
   /// Yaklaşık konumlu ilanların belirsizlik daireleri.
@@ -48,8 +48,7 @@ class JobMarkerGenerator {
   static Set<Circle> generateAreas({required List<Job> jobs}) {
     return {
       for (final job in jobs)
-        if (job.hasLocation &&
-            job.addressPrecision == AddressPrecision.approximate)
+        if (job.hasLocation && job.addressPrecision.isApproximate)
           Circle(
             circleId: CircleId(job.id),
             center: LatLng(job.latitude!, job.longitude!),
@@ -69,45 +68,7 @@ class JobMarkerGenerator {
   /// tam olarak buydu: yuvarlanmış bir koordinatın ucu gösterilen noktaya
   /// basıyordu.
   static Offset anchorFor(AddressPrecision precision) =>
-      precision == AddressPrecision.exact
-      ? const Offset(0.5, 1.0)
-      : const Offset(0.5, 0.5);
-
-  /// Marker önbelleğinin anahtarı.
-  ///
-  /// Yalnız `job.id` yetmiyor: aynı ilan, yetki sona erdiğinde (atama
-  /// tamamlanınca ya da iptal olunca) aynı id ile ama `APPROXIMATE` bayrağı ve
-  /// yuvarlanmış koordinatla geri geliyor. Id'ye bakan bir önbellek eski
-  /// **kesin** pini ekranda tutardı — kabul maddesinin "önbellekte kalmış tam
-  /// adres yetki sona erdikten sonra gösterilmez" dediği durum budur
-  /// (ADR-0003, is-koala/koala#10).
-  static String cacheKeyFor(Job job) =>
-      '${job.id}|${job.addressPrecision.code}|${job.latitude}|${job.longitude}';
-
-  /// Artık geçerli olmayan marker'ları önbellekten düşürür.
-  ///
-  /// İki durumu birden kapatıyor: görünen alandan çıkan ilan ve kesinliği ya da
-  /// koordinatı değişen ilan. İkincisi anahtarın kendisinden geliyor — eski
-  /// anahtar yeni listede yok, o yüzden düşüyor.
-  static void evictStale(Map<String, Marker> cache, List<Job> visible) {
-    final keys = {for (final job in visible) cacheKeyFor(job)};
-    cache.removeWhere((key, _) => !keys.contains(key));
-  }
-
-  static Future<Marker> _createMarker(
-    Job job,
-    void Function(Job job) onMarkerTap,
-  ) async {
-    final BitmapDescriptor icon = await _getOrCreateIcon(job.category);
-
-    return Marker(
-      markerId: MarkerId(job.id),
-      position: LatLng(job.latitude!, job.longitude!),
-      icon: icon,
-      onTap: () => onMarkerTap(job),
-      anchor: anchorFor(job.addressPrecision),
-    );
-  }
+      precision.isApproximate ? const Offset(0.5, 0.5) : const Offset(0.5, 1.0);
 
   static Future<BitmapDescriptor> _getOrCreateIcon(JobCategory category) async {
     if (_iconCache.containsKey(category)) {

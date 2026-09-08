@@ -288,6 +288,15 @@ enum AddressPrecision {
 
   final String code;
 
+  /// "Bu konum yaklaşık mı?" — arayüzün bu soruyu soracağı **tek** yer.
+  ///
+  /// Kutbu bilerek böyle: `!= exact`, `== approximate` değil. Sunucuya bir
+  /// üçüncü kesinlik eklenirse (`CITY_LEVEL` gibi) `== approximate` yazan her
+  /// çağıran onu sessizce **kesin** sayardı — daire çizilmez, başlık "Konum"
+  /// olur, pin ucundan bağlanır. Bilinmeyen kesinliğin güvenli tarafı
+  /// yaklaşıktır; [fromCode] de tanımadığı kodu oraya düşürüyor.
+  bool get isApproximate => this != AddressPrecision.exact;
+
   static AddressPrecision fromCode(Object? value) {
     return AddressPrecision.values.firstWhere(
       (precision) => precision.code == value,
@@ -392,13 +401,62 @@ class Job {
   /// Bu bir istemci yuvarlaması **değil** — sunucudan gelen belirsizliğin
   /// görselleştirilmesi. İstemcide yuvarlama `docs/research/location-and-map.md`
   /// tarafından açıkça reddedilmiş bir yaklaşım.
+  ///
+  /// Kesin konumda **sıfır**: yuvarlama yok, belirsizlik de yok. Bayrağı
+  /// sormadan hesaplasaydı, çağıranın süzmeyi unuttuğu her yerde kesin bir
+  /// adresin çevresine 557 m'lik bir daire çizilirdi — olmayan bir
+  /// belirsizliği varmış gibi göstermek de bir okuma hatası.
   double get approximateRadiusInMeters {
+    if (!addressPrecision.isApproximate) return 0;
+
     const latitudeError = _roundingHalfStep * _metersPerLatitudeDegree;
     final longitudeError = latitudeError * cos((latitude ?? 0) * pi / 180);
     return sqrt(
       latitudeError * latitudeError + longitudeError * longitudeError,
     );
   }
+
+  /// [kilometersAway] uzaklığının ekrana yazılacağı metin.
+  ///
+  /// Yaklaşık konumlu bir ilanda koordinat **±557 m** taşıyor. "2,3 km" yazmak
+  /// 100 m'lik bir çözünürlük iddia eder; veri onu taşımıyor, üstelik harita
+  /// aynı ilanı "yaklaşık" diye gösterirken liste ondalıklı bir sayı söylerdi.
+  /// is-koala/koala#93'ün şikâyeti tam olarak bu okuma hatasıydı — orada
+  /// pinin ucu, burada ondalık hane.
+  ///
+  /// Bu yüzden yaklaşık konumda tam kilometreye yuvarlanıyor ve önüne `~`
+  /// konuyor; hata payından küçük kalan uzaklık ise sayı olarak hiç
+  /// yazılmıyor, çünkü yuvarlaması "0 km" olurdu.
+  String distanceLabel(double kilometersAway) {
+    if (!addressPrecision.isApproximate) {
+      return '${kilometersAway.toStringAsFixed(1)} km';
+    }
+
+    final rounded = kilometersAway.round();
+    return rounded < 1 ? "1 km'den yakın" : '~$rounded km';
+  }
+
+  /// Ham koordinatın ekrana yazılacağı hâli.
+  ///
+  /// Ondalık hane sayısı kesinliğe bağlı: sunucu `APPROXIMATE` yanıtta iki
+  /// ondalığa yuvarlıyor, dördüncü haneye kadar yazmak olmayan iki hane
+  /// uydurup ±700 m'lik bir değeri ~11 m kesinlikte göstermek olurdu —
+  /// haritadaki dairenin anlattığının tam tersi.
+  String get coordinateLabel {
+    final fractionDigits = addressPrecision.isApproximate
+        ? _approximateFractionDigits
+        : _exactFractionDigits;
+
+    return '${latitude!.toStringAsFixed(fractionDigits)}, '
+        '${longitude!.toStringAsFixed(fractionDigits)}';
+  }
+
+  /// Sunucunun `setScale(2, HALF_UP)` adımı; yaklaşık koordinatta anlamlı olan
+  /// hane sayısı bu.
+  static const int _approximateFractionDigits = 2;
+
+  /// Kesin koordinatta yazılan hane sayısı (≈11 m).
+  static const int _exactFractionDigits = 4;
 
   /// Sunucunun yuvarlama adımının yarısı: `setScale(2, HALF_UP)` sonrası
   /// gerçek değer gösterilen değerin bu kadar yakınında.

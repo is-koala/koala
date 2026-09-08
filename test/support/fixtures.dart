@@ -99,3 +99,38 @@ JobDetail buildJobDetail({
     addressPrecision: addressPrecision,
   );
 }
+
+/// Sunucunun `EXACT` yanıtta gönderdiği koordinat: **tam hassasiyetli**,
+/// yuvarlama yok.
+///
+/// Fikstürün ondalıkları burada önemli. Yuvarlanmış bir koordinatla kurulan
+/// `EXACT` durumu, yalnız o dalda kesin değeri sızdıran bir hatayı göremezdi:
+/// iki dal da aynı sayıyı taşırdı.
+const double exactLatitude = 41.015137;
+const double exactLongitude = 28.979530;
+
+/// Yetkisiz görüntüleyenin gördüğü koordinat: sunucu iki ondalığa yuvarlıyor.
+const double roundedLatitude = 41.02;
+const double roundedLongitude = 28.98;
+
+/// Aynı ilanın **yetkili** görünümü: kesin koordinat, `EXACT` bayrağı.
+///
+/// İsim aktör saymıyor, bilerek. Aktör → kesinlik eşlemesini **sunucu**
+/// kuruyor (`JobAddressVisibility`); mobilde onu bağlayan hiçbir şey yok. Bu
+/// yüzden istemci tarafında ölçülebilen tek şey iki durum: sunucu kesin verdi,
+/// ya da vermedi. "İşveren", "atanmış çalışan", "anonim ziyaretçi" diye dört
+/// isim koymak, testin ölçmediği bir eşlemeyi ölçüyormuş gibi gösterirdi.
+Job exactView() => buildJob(
+  id: 'job_ayni',
+  latitude: exactLatitude,
+  longitude: exactLongitude,
+  addressPrecision: AddressPrecision.exact,
+);
+
+/// Aynı ilanın **yetkisiz** görünümü: yuvarlanmış koordinat, `APPROXIMATE`.
+Job maskedView() => buildJob(
+  id: 'job_ayni',
+  latitude: roundedLatitude,
+  longitude: roundedLongitude,
+  addressPrecision: AddressPrecision.approximate,
+);

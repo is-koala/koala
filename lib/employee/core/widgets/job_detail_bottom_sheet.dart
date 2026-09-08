@@ -32,6 +32,13 @@ class JobDetailBottomSheet extends StatefulWidget {
   final DraggableScrollableController? sheetController;
   final JobGalleryService? galleryService;
 
+  /// İlan detayının geldiği yer. Üretimde `null` — sheet kendi
+  /// [JobService]'ini kuruyor; test sahte bir sunucuya bağlı olanı veriyor.
+  ///
+  /// Konum satırının kesinliği **detaydan** geliyor, yani hangi kesinliğin
+  /// gösterildiği ancak detay yanıtı denetlenebildiğinde sınanabiliyor.
+  final JobService? jobService;
+
   const JobDetailBottomSheet({
     super.key,
     required this.job,
@@ -40,6 +47,7 @@ class JobDetailBottomSheet extends StatefulWidget {
     this.scrollController,
     this.sheetController,
     this.galleryService,
+    this.jobService,
   });
 
   /// Sheet'in kapalı ve tam açık yükseklikleri. Genişleme oranı bu ikisi
@@ -90,6 +98,8 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
   bool _detailLoading = true;
   String? _detailError;
 
+  late final JobService _jobService = widget.jobService ?? JobService();
+
   Future<void> _loadDetail() async {
     setState(() {
       _detailLoading = true;
@@ -97,7 +107,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     });
 
     try {
-      final detail = await JobService().getById(widget.job.id);
+      final detail = await _jobService.getById(widget.job.id);
       if (!mounted) return;
       setState(() {
         _detail = detail;
@@ -492,8 +502,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
 
     if (!widget.job.hasLocation) return 'Konum belirtilmemiş';
 
-    return '${widget.job.latitude!.toStringAsFixed(4)}, '
-        '${widget.job.longitude!.toStringAsFixed(4)}';
+    return widget.job.coordinateLabel;
   }
 
   String _formatDateTime(DateTime value) =>

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/widgets/app_icon.dart';
 
 /// İlan detayındaki konum satırı.
 ///
@@ -29,7 +31,7 @@ class JobLocationCard extends StatelessWidget {
   /// sokağı, binayı ve daireyi zaten silmiş oluyor. Ama kalan ilçe/il metnini
   /// "Konum" diye sunmak, adresin bundan ibaret olduğunu ima ederdi; kullanıcı
   /// "iş burada" diye okur.
-  bool get _isApproximate => precision == AddressPrecision.approximate;
+  bool get _isApproximate => precision.isApproximate;
 
   @override
   Widget build(BuildContext context) {
@@ -42,8 +44,8 @@ class JobLocationCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.location_on,
+          AppIcon(
+            AppIcons.location,
             color: context.accentColor,
             size: AppSizes.icon,
           ),

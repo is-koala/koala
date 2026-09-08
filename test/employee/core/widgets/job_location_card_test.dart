@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/core/widgets/job_location_card.dart';
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/product/constants/app_icons.dart';
 
+import '../../../support/finders.dart';
 import '../../../support/pump.dart';
 
 /// Sunucunun `EXACT` yanıtta gönderdiği açık adres.
@@ -35,8 +37,15 @@ void main() {
   for (final brightness in Brightness.values) {
     final themeName = brightness == Brightness.dark ? 'koyu' : 'açık';
 
-    group('Konum kartı dört aktör için ($themeName tema)', () {
-      testWidgets('işveren kesin konum görüyor', (tester) async {
+    // İsimler iki durum sayıyor, dört aktör değil. Aktör → kesinlik eşlemesini
+    // sunucu kuruyor (`JobAddressVisibility`) ve mobilde onu bağlayan hiçbir
+    // şey yok; kartın gördüğü tek şey bayrak. "İşveren", "atanmış çalışan",
+    // "diğer kullanıcı", "anonim ziyaretçi" diye dört test yazmak, ölçülmeyen
+    // bir eşlemeyi ölçüyormuş gibi gösterirdi.
+    group('Konum kartı ($themeName tema)', () {
+      testWidgets('kesin konumda başlık "Konum" ve açık adres yazıyor', (
+        tester,
+      ) async {
         await _pumpCard(
           tester,
           precision: AddressPrecision.exact,
@@ -50,19 +59,9 @@ void main() {
         expect(_inCard(find.textContaining('Tam adres')), findsNothing);
       });
 
-      testWidgets('atanmış çalışan kesin konum görüyor', (tester) async {
-        await _pumpCard(
-          tester,
-          precision: AddressPrecision.exact,
-          label: _exactLabel,
-          brightness: brightness,
-        );
-
-        expect(_inCard(find.text('Konum')), findsOneWidget);
-        expect(_inCard(find.text('Yaklaşık konum')), findsNothing);
-      });
-
-      testWidgets('diğer kullanıcı yaklaşık konum görüyor', (tester) async {
+      testWidgets('yaklaşık konumda başlık "Yaklaşık konum" oluyor', (
+        tester,
+      ) async {
         await _pumpCard(
           tester,
           precision: AddressPrecision.approximate,
@@ -75,7 +74,9 @@ void main() {
         expect(_inCard(find.text(_maskedLabel)), findsOneWidget);
       });
 
-      testWidgets('anonim ziyaretçi yaklaşık konum görüyor', (tester) async {
+      testWidgets('ikonu katalogdan çiziyor', (tester) async {
+        // Yeni dosya: `Icons.*` değil `AppIcon` — `find.byIcon` de bu yüzden
+        // işe yaramaz, arama ikonun adı üzerinden yapılıyor.
         await _pumpCard(
           tester,
           precision: AddressPrecision.approximate,
@@ -83,8 +84,7 @@ void main() {
           brightness: brightness,
         );
 
-        expect(_inCard(find.text('Yaklaşık konum')), findsOneWidget);
-        expect(_inCard(find.text('Konum')), findsNothing);
+        expect(_inCard(findAppIcon(AppIcons.location)), findsOneWidget);
       });
 
       testWidgets('yaklaşık konumda tam adresin ne zaman açılacağı yazıyor', (
