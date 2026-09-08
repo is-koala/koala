@@ -229,7 +229,7 @@ void main() {
             'id': 'ver-1',
             'type': 'EMAIL',
             'sentTo': 'yeni@b.com',
-            'message': 'Doğrulama gönderildi',
+            'expiresAt': '2026-09-09T20:15:00Z',
           },
         ],
       );
@@ -242,8 +242,8 @@ void main() {
       expect(result.pendingVerifications.single.isEmail, isTrue);
       expect(result.pendingVerifications.single.sentTo, 'yeni@b.com');
       expect(
-        result.pendingVerifications.single.message,
-        'Doğrulama gönderildi',
+        result.pendingVerifications.single.expiresAt,
+        DateTime.utc(2026, 9, 9, 20, 15),
       );
     });
   });

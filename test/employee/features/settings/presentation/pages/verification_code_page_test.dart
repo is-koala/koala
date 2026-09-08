@@ -14,14 +14,12 @@ const PendingVerification _emailVerification = PendingVerification(
   id: 'ver-1',
   type: 'EMAIL',
   sentTo: 'yeni@ornek.com',
-  message: '{email.verification.message}',
 );
 
 const PendingVerification _phoneVerification = PendingVerification(
   id: 'ver-2',
   type: 'PHONE',
   sentTo: '5550000000',
-  message: '{phone.verification.message}',
 );
 
 /// `/users/me` yanıtının en küçük geçerli hâli.
@@ -40,6 +38,7 @@ void main() {
     PendingVerification verification = _emailVerification,
     void Function(bool)? onFinished,
     Brightness brightness = Brightness.light,
+    DateTime Function()? now,
   }) async {
     await tester.pumpWidget(
       ChangeNotifierProvider<UserProvider>(
@@ -51,6 +50,7 @@ void main() {
             verification: verification,
             verificationService: VerificationService.withClient(api.client),
             onFinished: onFinished,
+            now: now,
           ),
         ),
       ),
@@ -94,18 +94,67 @@ void main() {
     );
   });
 
-  // Sunucunun `message` alanı çözülmemiş bir i18n anahtarı taşıyor.
-  testWidgets('sunucunun ham i18n anahtarı hiçbir yerde gösterilmiyor', (
+  testWidgets('kalan süre sunucunun son kullanma anından hesaplanıyor', (
     tester,
   ) async {
+    var now = DateTime.utc(2026, 9, 9, 20);
+    final api = FakeApi(
+      handler: (_) =>
+          const FakeApiResponse(statusCode: 200, body: {'success': true}),
+    );
+    final verification = PendingVerification(
+      id: 'ver-1',
+      type: 'EMAIL',
+      sentTo: 'yeni@ornek.com',
+      expiresAt: now.add(const Duration(minutes: 2, seconds: 3)),
+    );
+
+    await pumpPage(tester, api, verification: verification, now: () => now);
+
+    expect(find.text('Kodun geçerlilik süresi: 02:03'), findsOneWidget);
+
+    now = now.add(const Duration(seconds: 64));
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.text('Kodun geçerlilik süresi: 00:59'), findsOneWidget);
+  });
+
+  testWidgets('kesirli son saniye erkenden dolmuş gösterilmiyor', (
+    tester,
+  ) async {
+    final now = DateTime.utc(2026, 9, 9, 20);
+    final api = FakeApi(
+      handler: (_) =>
+          const FakeApiResponse(statusCode: 200, body: {'success': true}),
+    );
+    final verification = PendingVerification(
+      id: 'ver-1',
+      type: 'EMAIL',
+      expiresAt: now.add(const Duration(milliseconds: 500)),
+    );
+
+    await pumpPage(tester, api, verification: verification, now: () => now);
+
+    expect(find.text('Kodun geçerlilik süresi: 00:01'), findsOneWidget);
+  });
+
+  testWidgets('eski sunucuda sayaç on beş dakikalık tahmine düşüyor', (
+    tester,
+  ) async {
+    var now = DateTime.utc(2026, 9, 9, 20);
     final api = FakeApi(
       handler: (_) =>
           const FakeApiResponse(statusCode: 200, body: {'success': true}),
     );
 
-    await pumpPage(tester, api);
+    await pumpPage(tester, api, now: () => now);
 
-    expect(find.textContaining('{email.verification.message}'), findsNothing);
+    expect(find.text('Kodun geçerlilik süresi: 15:00'), findsOneWidget);
+
+    now = now.add(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.text('Kodun geçerlilik süresi: 14:59'), findsOneWidget);
   });
 
   testWidgets('doğru kod confirm ucuna gönderiliyor ve ekran başarıyla '
@@ -232,6 +281,7 @@ void main() {
 
   testWidgets('kodu tekrar gönder aynı yeni değerle PATCH atıyor ve düğme '
       'kilitleniyor', (tester) async {
+    final now = DateTime.utc(2026, 9, 9, 20);
     final api = FakeApi(
       handler: (_) => FakeApiResponse(
         statusCode: 200,
@@ -244,7 +294,9 @@ void main() {
                 'id': 'ver-9',
                 'type': 'EMAIL',
                 'sentTo': 'yeni@ornek.com',
-                'message': '{email.verification.message}',
+                'expiresAt': now
+                    .add(const Duration(minutes: 2))
+                    .toIso8601String(),
               },
             ],
           },
@@ -252,7 +304,7 @@ void main() {
       ),
     );
 
-    await pumpPage(tester, api);
+    await pumpPage(tester, api, now: () => now);
 
     // Ekran açıldığında kod yeni gönderilmiş oluyor; soğuma süresi o andan
     // başlıyor, yani düğme baştan kapalı.
@@ -269,6 +321,7 @@ void main() {
     expect(patch.path, '/users/me');
     expect(patch.method, 'PATCH');
     expect(patch.data, {'email': 'yeni@ornek.com'});
+    expect(find.text('Kodun geçerlilik süresi: 02:00'), findsOneWidget);
 
     // Arka arkaya SMS/e-posta gitmesin diye düğme yeniden kilitleniyor.
     await tester.tap(find.text('Kodu tekrar gönder'), warnIfMissed: false);
@@ -390,7 +443,6 @@ void main() {
                       'id': 'ver-9',
                       'type': 'EMAIL',
                       'sentTo': 'yeni@ornek.com',
-                      'message': '{email.verification.message}',
                     },
                   ],
                 },

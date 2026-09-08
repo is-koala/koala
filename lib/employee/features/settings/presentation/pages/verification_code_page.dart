@@ -26,14 +26,15 @@ part 'verification_code_pagemodel.dart';
 /// gönderip bekleyen doğrulamayı döndürüyor. Bu ekran o kodun girildiği yer;
 /// onaylanana kadar eski değer geçerli kalıyor.
 ///
-/// Ekrandaki bütün metinler burada yazılı. [PendingVerification.message]
-/// **kullanılmıyor** — sunucu o alana çözülmemiş bir i18n anahtarı koyuyor.
+/// Ekrandaki bütün metinler uygulamada yazılı; sunucu yalnız doğrulamanın
+/// türünü, hedefini ve son kullanma anını taşıyor.
 class VerificationCodePage extends StatefulWidget {
   const VerificationCodePage({
     super.key,
     required this.verification,
     this.verificationService,
     this.onFinished,
+    this.now,
   });
 
   /// Onaylanacak bekleyen doğrulama. Tekrar gönderimde yerini yenisi alıyor.
@@ -47,6 +48,10 @@ class VerificationCodePage extends StatefulWidget {
   /// kendini `context.pop(sonuç)` ile kapatıyor — çağıran sıradaki
   /// doğrulamaya geçip geçmeyeceğine buna bakarak karar veriyor.
   final ValueChanged<bool>? onFinished;
+
+  /// Sayaç testlerinde zaman sınırını denetleyebilmek için kullanılan saat.
+  /// Uygulamada verilmediğinde cihazın güncel saati okunur.
+  final DateTime Function()? now;
 
   @override
   State<VerificationCodePage> createState() => _VerificationCodePageState();
@@ -90,9 +95,9 @@ class _VerificationCodePageState extends VerificationCodePagemodel {
     );
   }
 
-  /// Kalan süre. Bilgilendirme amaçlı: sunucu `expiresAt` döndürmediği için
-  /// sayaç ekranın açıldığı andan sayıyor, o yüzden süre bittiğinde kod
-  /// girişi kapatılmıyor — geçerliliğe sunucu karar veriyor.
+  /// Kalan süre sunucunun son kullanma anından hesaplanır. Eski sunucuda bu
+  /// alan yoksa ekran açılışından başlayan yaklaşık süre gösterilir. Her iki
+  /// durumda da geçerliliğe sunucu karar verdiği için giriş kapatılmaz.
   Widget _remainingLine() {
     return SettingsHint(
       hasTimeLeft

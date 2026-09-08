@@ -152,7 +152,7 @@ void main() {
             'id': 'ver-1',
             'type': 'EMAIL',
             'sentTo': 'yeni@ornek.com',
-            'message': '{email.verification.message}',
+            'expiresAt': '2026-09-09T20:15:00Z',
           },
         ]),
       ),
@@ -192,7 +192,7 @@ void main() {
             'id': 'ver-1',
             'type': 'PHONE',
             'sentTo': '5551112233',
-            'message': '{phone.verification.message}',
+            'expiresAt': '2026-09-09T20:15:00Z',
           },
         ]),
       ),
@@ -301,33 +301,6 @@ void main() {
       (lastPatch.data as Map<String, dynamic>).containsKey('email'),
       isFalse,
     );
-  });
-
-  // `VerificationInfoDto.message` çözülmemiş bir i18n anahtarı taşıyor;
-  // hiçbir ekranda gösterilmemeli.
-  testWidgets('sunucunun ham i18n anahtarı kullanıcıya gösterilmiyor', (
-    tester,
-  ) async {
-    final api = FakeApi(
-      handler: (_) => FakeApiResponse(
-        statusCode: 200,
-        body: _patchResponse(const [
-          {
-            'id': 'ver-1',
-            'type': 'EMAIL',
-            'sentTo': 'yeni@ornek.com',
-            'message': '{email.verification.message}',
-          },
-        ]),
-      ),
-    );
-
-    await pumpPage(tester, api);
-    await enterField(tester, 'E-posta', 'yeni@ornek.com');
-    await tester.tap(find.text('Kaydet'));
-    await tester.pumpAndSettle();
-
-    expect(find.textContaining('{email.verification.message}'), findsNothing);
   });
 
   testWidgets(
