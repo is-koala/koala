@@ -1,0 +1,83 @@
+name: iOS derleme
+
+# is-koala/koala-backend#91: "iOS derlemesi her PR'da koşmasın. Sürüm etiketine
+# ya da ios/ altını değiştiren PR'lara bağlansın."
+#
+# Bu iş eskiden ci.yml içindeydi. Ölçülen iki hâli de istenenin tersiydi:
+#   * ilk hâl  (if: github.event_name != 'pull_request')
+#       ios/ değiştiren PR -> ATLANIYOR ; main'e her push -> KOŞUYOR (10x fatura)
+#   * ikinci hâl (if: workflow_dispatch && inputs.build_ios)
+#       main push faturası kalktı, ama ios/ değiştiren PR HÂLÂ sıfır doğrulama
+#       alıyor; iş yalnız biri elle hatırlarsa koşuyor.
+# Yani #91'in istediği "ios/ dokunan PR'da koş" ekseni hiç sağlanmamıştı.
+#
+# NEDEN AYRI WORKFLOW DOSYASI, NEDEN dorny/paths-filter DEĞİL:
+#  1. `paths:` filtresi GitHub'da yalnız workflow seviyesinde var; iş
+#     seviyesinde karşılığı yok. `if:` içinde yol kontrolü de mümkün değil,
+#     çünkü ifade bağlamında değişen dosya listesi bulunmuyor.
+#  2. Geriye dorny/paths-filter kalıyordu: hem üçüncü taraf bağımlılık, hem de
+#     ci.yml'e fazladan bir "changes" işi. O iş `runs-on: self-hosted` olurdu.
+#     Yani macOS işini koşturup koşturmamaya karar vermek için, korumaya
+#     çalıştığımız TEK Pi iş kapasitesi harcanırdı — 4. maddenin (push: [main]
+#     kaldırma) amacıyla doğrudan çelişir. Ayrı dosya, GitHub'ın kendi
+#     mekanizmasını sıfır bağımlılıkla kullanıyor.
+#
+# SÜRÜM ETİKETİ EKSENİ BURADA TEKRARLANMIYOR:
+# mobile-release.yml zaten `mobile-v*` etiketinde macos-latest üzerinde imzalı
+# IPA derleyip TestFlight'a yüklüyor (ios-testflight işi). Aynı etikete ikinci,
+# imzasız ve daha zayıf bir iOS derlemesi eklemek macOS faturasını iki katına
+# çıkarıp yeni bilgi üretmezdi. Ayrıca #91'deki `v*` deseni deponun gerçek
+# sözleşmesi değil: tool/validate_release_tag.dart beklenen etiketi
+# 'mobile-v<pubspec sürümü>' olarak üretiyor.
+#
+# BİLEREK `needs:` YOK. Eski hâlinde iOS derlemesi Pi'deki test işine bağlıydı;
+# o iş eşzamanlılıktan öldürüldüğünde iOS hiç koşamıyordu. Karşılığında:
+# testleri düşen ve ios/ altına dokunan bir PR'da macOS dakikası harcanabilir.
+# ios/ altına dokunan PR seyrek olduğu için bu takas bilerek yapıldı.
+on:
+  pull_request:
+    paths:
+      - "ios/**"
+      # Bir plugin ios/ altına hiç dokunmadan native iOS derlemesini
+      # bozabiliyor; bağımlılık dosyaları da tetikleyici.
+      - "pubspec.yaml"
+      - "pubspec.lock"
+      - ".github/workflows/ios.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: 3.47.1
+
+jobs:
+  build-ios:
+    name: iOS derleme
+    # ci.yml'deki fork nöbeti burada YOK ve gerekmiyor: bu iş GitHub'ın
+    # barındırdığı macos-latest'te koşuyor, ev makinesinde yabancı kod
+    # çalıştırmıyor ve hiçbir secret kullanmıyor. Kalan tek risk macOS
+    # faturası; depo herkese açılırsa buraya da aynı `if:` eklenmeli.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Deponun konvansiyonu tam SHA. ci.yml'deki eski hâli hareketli `@v2`
+      # etiketine bağlıydı; mobile-release.yml'in kullandığı SHA'ya sabitlendi.
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Bağımlılıkları indir
+        run: flutter pub get
+
+      # İmzalama sertifikası olmadığı için --no-codesign; amaç native tarafın
+      # derlendiğini görmek.
+      - name: iOS derle (imzasız)
+        run: flutter build ios --no-codesign --flavor staging --dart-define-from-file=config/staging.json

@@ -1,18 +1,16 @@
 name: CI
 
+# push: [main] bilerek kaldırıldı (is-koala/koala-backend#91, 1. madde).
+# Self-hosted Pi'de bedel dakika değil, aynı anda koşabilen tek iş kapasitesi:
+# birleşen her commit, PR'da zaten yeşile dönmüş zinciri ikinci kez koşturup
+# başka bir deponun işini kuyrukta bekletiyordu. main'i elle doğrulamak
+# gerekirse workflow_dispatch duruyor.
 on:
   pull_request:
-  push:
-    branches: [main]
   workflow_dispatch:
     inputs:
       build_android:
         description: Android debug APK derlemesini de çalıştır
-        required: false
-        default: false
-        type: boolean
-      build_ios:
-        description: iOS imzasız derlemesini de çalıştır
         required: false
         default: false
         type: boolean
@@ -22,6 +20,11 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# mobile-release.yml'de vardı, burada yoktu. Bu zincirin hiçbir işi yazma
+# yetkisi kullanmıyor; varsayılan geniş token'ı daraltıyoruz.
+permissions:
+  contents: read
+
 env:
   FLUTTER_VERSION: 3.47.1
   JAVA_VERSION: 17
@@ -29,6 +32,19 @@ env:
 jobs:
   analyze:
     name: Format & Analiz
+    # Fork nöbeti. Bu zincir self-hosted Pi'de koşuyor: yabancı bir fork'tan
+    # gelen PR'ın kodu doğrudan ev makinesinde çalışırdı. Depo bugün private
+    # (ölçüldü) olduğu için risk düşük, ama herkese açıldığı gün fark edilmesi
+    # zor bir açık olurdu.
+    #
+    # İlk koşul şart: workflow_dispatch olayında github.event.pull_request yok,
+    # boş string github.repository'ye eşit olmadığı için ikinci koşul tek
+    # başına elle tetiklemeyi de kapatırdı.
+    #
+    # NÖBET TEK YERDE: test ve build-android bu işe `needs:` ile bağlı ve
+    # GitHub, `needs` bağı atlanmış bir işi de atlıyor. Pi'de koşan YENİ bir iş
+    # eklenirse bu zincire bağlanmalı, yoksa koruma sessizce kapsamaz.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
@@ -83,34 +99,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Android SDK önbelleğini ayarla
-        run: |
-          echo "ANDROID_HOME=$RUNNER_TOOL_CACHE/android-sdk" >> "$GITHUB_ENV"
-          echo "ANDROID_SDK_ROOT=$RUNNER_TOOL_CACHE/android-sdk" >> "$GITHUB_ENV"
-
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: ${{ env.JAVA_VERSION }}
-          cache: gradle
-
+      # Flutter önce kurulur: setup-android-x64-tools'un gen_snapshot yoklaması
+      # FLUTTER_ROOT istiyor. Burada debug APK derlendiği için o yoklama zaten
+      # kapalı, ama iki workflow'un adım sırası aynı kalsın.
       - uses: ./.github/actions/setup-flutter-linux-arm64
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
 
-      - uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
+      # JDK + Android SDK + x64 emülasyon nöbetçisi tek yerde. Aynı 19 satır
+      # eskiden mobile-release.yml'e birebir kopyalanmıştı.
+      - uses: ./.github/actions/setup-android-x64-tools
         with:
-          packages: platform-tools platforms;android-37 build-tools;37.0.0
-          log-accepted-android-sdk-licenses: false
-
-      - name: x64 Android araç emülasyonunu doğrula
-        shell: bash
-        run: |
-          set -euo pipefail
-          if ! "$ANDROID_SDK_ROOT/build-tools/37.0.0/aapt2" version; then
-            echo "::error::Google'ın x64 Android aracı bu ARM64 runner'da çalışmadı. APK'yı x64 bir runner'da ya da doğrulanmış amd64 konteynerde derle."
-            exit 1
-          fi
+          java-version: ${{ env.JAVA_VERSION }}
+          # Debug APK JIT'tir; Android AOT gen_snapshot'ını çalıştırmaz.
+          probe-gen-snapshot: "false"
 
       - name: Bağımlılıkları indir
         run: flutter pub get
@@ -126,25 +128,6 @@ jobs:
           path: build/app/outputs/flutter-apk/app-staging-debug.apk
           retention-days: 7
 
-  build-ios:
-    name: iOS derleme
-    needs: test
-    # iOS yalnız macOS'ta derlenebilir; normal Pi CI koşusundan ayrı tutulur.
-    if: github.event_name == 'workflow_dispatch' && inputs.build_ios
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
-          cache: true
-
-      - name: Bağımlılıkları indir
-        run: flutter pub get
-
-      # İmzalama sertifikası olmadığı için --no-codesign; amaç native tarafın
-      # derlendiğini görmek.
-      - name: iOS derle (imzasız)
-        run: flutter build ios --no-codesign --flavor staging --dart-define-from-file=config/staging.json
+  # iOS derlemesi buradan .github/workflows/ios.yml dosyasına taşındı.
+  # Gerekçe: `paths:` filtresi yalnız workflow seviyesinde çalışıyor, iş
+  # seviyesinde yok. Ayrıntı için o dosyanın başındaki nota bak.

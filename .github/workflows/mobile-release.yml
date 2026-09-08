@@ -51,34 +51,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Android SDK önbelleğini ayarla
-        run: |
-          echo "ANDROID_HOME=$RUNNER_TOOL_CACHE/android-sdk" >> "$GITHUB_ENV"
-          echo "ANDROID_SDK_ROOT=$RUNNER_TOOL_CACHE/android-sdk" >> "$GITHUB_ENV"
-
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: ${{ env.JAVA_VERSION }}
-          cache: gradle
-
+      # Flutter önce kurulur: setup-android-x64-tools'un gen_snapshot yoklaması
+      # FLUTTER_ROOT istiyor.
       - uses: ./.github/actions/setup-flutter-linux-arm64
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
 
-      - uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
+      # JDK + Android SDK + x64 emülasyon nöbetçisi tek yerde; aynı 19 satır
+      # eskiden ci.yml ile bayt bayt aynıydı.
+      - uses: ./.github/actions/setup-android-x64-tools
         with:
-          packages: platform-tools platforms;android-37 build-tools;37.0.0
-          log-accepted-android-sdk-licenses: false
-
-      - name: x64 Android araç emülasyonunu doğrula
-        shell: bash
-        run: |
-          set -euo pipefail
-          if ! "$ANDROID_SDK_ROOT/build-tools/37.0.0/aapt2" version; then
-            echo "::error::Google'ın x64 Android aracı bu ARM64 runner'da çalışmadı. AAB'yi x64 bir runner'da ya da doğrulanmış amd64 konteynerde derle."
-            exit 1
-          fi
+          java-version: ${{ env.JAVA_VERSION }}
+          # Bu iş release AAB derliyor: Android AOT yolu gerçekten çalışıyor,
+          # yani x86-64 gen_snapshot da yoklanmalı. Eski nöbetçi yalnız aapt2'ye
+          # bakıyordu ve yeşil verdikten sonra derleme emüle edilmemiş
+          # gen_snapshot'a çarpabiliyordu.
+          probe-gen-snapshot: "true"
 
       - name: İmzalama sırlarını doğrula
         shell: bash
