@@ -46,6 +46,17 @@ abstract class CompanyInformationsPagemodel
 
   void _onCompanyNameChanged() => setState(() {});
 
+  bool get canGoBack => context.canPop();
+
+  void goBack() {
+    if (canGoBack) {
+      context.pop();
+      return;
+    }
+
+    context.go(RegistrationRoutes.employerType);
+  }
+
   /// Logonun yerine gösterilen baş harfler.
   String get companyInitials {
     final text = companyNameController.text.trim();

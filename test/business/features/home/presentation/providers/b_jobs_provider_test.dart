@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
@@ -10,11 +12,12 @@ import '../../services/employer_job_service_test.dart' show buildRequest;
 /// `PageDto<JobSummaryDto>` biçiminde tek ilan.
 Map<String, dynamic> jobJson(
   String id, {
+  String? title,
   String status = 'OPEN',
   int applicationCount = 0,
 }) => {
   'id': id,
-  'title': 'İlan $id',
+  'title': title ?? 'İlan $id',
   'salary': 800,
   'status': status,
   'applicationCount': applicationCount,
@@ -198,23 +201,100 @@ void main() {
       },
     );
 
-    test('tek ilanın başvuruları gelmezse liste ayakta kalıyor', () async {
-      final api = buildApi(
-        jobs: [jobJson('a'), jobJson('b')],
-        applicantsByJob: {
-          'a': null,
-          'b': [applicantJson('app_1')],
+    test(
+      'başvuru hatası boş başarı değildir ve tekrar deneme düzelir',
+      () async {
+        var applicantRequestCount = 0;
+        final api = FakeApi(
+          handler: (options) {
+            if (options.path == '/users/me/jobs') {
+              return FakeApiResponse(
+                statusCode: 200,
+                body: {
+                  'success': true,
+                  'data': {
+                    'content': [jobJson('a')],
+                  },
+                },
+              );
+            }
+
+            applicantRequestCount++;
+            if (applicantRequestCount == 1) {
+              return const FakeApiResponse(
+                statusCode: 500,
+                body: {'success': false, 'message': 'Başvurular alınamadı'},
+              );
+            }
+            return FakeApiResponse(
+              statusCode: 200,
+              body: {
+                'success': true,
+                'data': [applicantJson('app_1')],
+              },
+            );
+          },
+        );
+        final provider = providerFor(api);
+
+        await provider.load();
+        await provider.ensureApplicants('a');
+
+        expect(provider.errorMessage, isNull);
+        expect(provider.applicantErrorFor('a'), 'Başvurular alınamadı');
+        expect(provider.getPostByJobId('a')!.applicantsLoaded, isFalse);
+        expect(provider.getPostByJobId('a')!.applicants, isEmpty);
+
+        await provider.ensureApplicants('a', force: true);
+
+        expect(provider.applicantErrorFor('a'), isNull);
+        expect(provider.getPostByJobId('a')!.applicantsLoaded, isTrue);
+        expect(provider.getPostByJobId('a')!.applicants, hasLength(1));
+      },
+    );
+
+    test('başarısız yenileme mevcut başvuru listesini koruyor', () async {
+      var applicantRequestCount = 0;
+      final api = FakeApi(
+        handler: (options) {
+          if (options.path == '/users/me/jobs') {
+            return FakeApiResponse(
+              statusCode: 200,
+              body: {
+                'success': true,
+                'data': {
+                  'content': [jobJson('a')],
+                },
+              },
+            );
+          }
+
+          applicantRequestCount++;
+          if (applicantRequestCount == 1) {
+            return FakeApiResponse(
+              statusCode: 200,
+              body: {
+                'success': true,
+                'data': [applicantJson('app_1')],
+              },
+            );
+          }
+          return const FakeApiResponse(
+            statusCode: 500,
+            body: {'success': false, 'message': 'Yenileme başarısız'},
+          );
         },
       );
       final provider = providerFor(api);
 
       await provider.load();
       await provider.ensureApplicants('a');
-      await provider.ensureApplicants('b');
+      await provider.ensureApplicants('a', force: true);
 
-      expect(provider.errorMessage, isNull);
-      expect(provider.getPostByJobId('a')!.applicants, isEmpty);
-      expect(provider.getPostByJobId('b')!.applicants, hasLength(1));
+      final post = provider.getPostByJobId('a')!;
+      expect(post.applicantsLoaded, isTrue);
+      expect(post.applicants.single.id, 'app_1');
+      expect(provider.applicantErrorFor('a'), 'Yenileme başarısız');
     });
 
     test('bir ilana birden çok aday kabul edilebiliyor', () async {
@@ -272,6 +352,19 @@ void main() {
       expect(provider.errorMessage, isNull);
     });
 
+    test('başvuru ucundaki 200 boş liste gerçek boş başarıdır', () async {
+      final provider = providerFor(buildApi(jobs: [jobJson('a')]));
+
+      await provider.load();
+      await provider.ensureApplicants('a');
+
+      final post = provider.getPostByJobId('a')!;
+      expect(post.applicantsLoaded, isTrue);
+      expect(post.applicantsLoading, isFalse);
+      expect(post.applicantsError, isNull);
+      expect(post.applications, isEmpty);
+    });
+
     test('ikinci çağrı ağa çıkmıyor, force ile çıkıyor', () async {
       final api = buildApi(jobs: [jobJson('a')]);
       final provider = providerFor(api);
@@ -283,6 +376,176 @@ void main() {
 
       await provider.load(force: true);
       expect(api.requests.length, greaterThan(afterFirst));
+    });
+
+    test(
+      'uçuştaki forced yenileme yenisini yutmaz ve eski yanıt kazanmaz',
+      () async {
+        final staleResponse = Completer<FakeApiResponse>();
+        addTearDown(() {
+          if (!staleResponse.isCompleted) {
+            staleResponse.complete(const FakeApiResponse.connectionError());
+          }
+        });
+        var listRequestCount = 0;
+        final api = FakeApi(
+          handler: (options) {
+            if (options.path != '/users/me/jobs') {
+              return const FakeApiResponse(statusCode: 404);
+            }
+
+            listRequestCount++;
+            if (listRequestCount == 2) return staleResponse.future;
+            final title = listRequestCount == 1 ? 'İlk' : 'En yeni';
+            return FakeApiResponse(
+              statusCode: 200,
+              body: {
+                'success': true,
+                'data': {
+                  'content': [jobJson('a', title: title)],
+                },
+              },
+            );
+          },
+        );
+        final provider = providerFor(api);
+        await provider.load();
+
+        final olderLoad = provider.load(force: true);
+        await api.requestsReach(2);
+        await provider.load(force: true);
+
+        expect(listRequestCount, 3);
+        expect(provider.getPostByJobId('a')!.job.title, 'En yeni');
+
+        staleResponse.complete(
+          FakeApiResponse(
+            statusCode: 200,
+            body: {
+              'success': true,
+              'data': {
+                'content': [jobJson('a', title: 'Eski')],
+              },
+            },
+          ),
+        );
+        await olderLoad;
+
+        expect(provider.getPostByJobId('a')!.job.title, 'En yeni');
+      },
+    );
+
+    test('liste yenilemesi bu arada gelen başvuruyu silmiyor', () async {
+      final listRefresh = Completer<FakeApiResponse>();
+      addTearDown(() {
+        if (!listRefresh.isCompleted) {
+          listRefresh.complete(const FakeApiResponse.connectionError());
+        }
+      });
+      var listRequestCount = 0;
+      final api = FakeApi(
+        handler: (options) {
+          if (options.path == '/users/me/jobs') {
+            listRequestCount++;
+            if (listRequestCount == 2) return listRefresh.future;
+            return FakeApiResponse(
+              statusCode: 200,
+              body: {
+                'success': true,
+                'data': {
+                  'content': [jobJson('a', title: 'İlk')],
+                },
+              },
+            );
+          }
+          return FakeApiResponse(
+            statusCode: 200,
+            body: {
+              'success': true,
+              'data': [applicantJson('app_1')],
+            },
+          );
+        },
+      );
+      final provider = providerFor(api);
+      await provider.load();
+
+      final loadingList = provider.load(force: true);
+      await api.requestsReach(2);
+      await provider.ensureApplicants('a', force: true);
+      listRefresh.complete(
+        FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {
+              'content': [jobJson('a', title: 'Güncel')],
+            },
+          },
+        ),
+      );
+      await loadingList;
+
+      final post = provider.getPostByJobId('a')!;
+      expect(post.job.title, 'Güncel');
+      expect(post.applicantsLoaded, isTrue);
+      expect(post.applicants.single.id, 'app_1');
+    });
+
+    test('eski başvuru hatası yeni tekrar deneme sonucunu ezmiyor', () async {
+      final firstResponse = Completer<FakeApiResponse>();
+      addTearDown(() {
+        if (!firstResponse.isCompleted) {
+          firstResponse.complete(const FakeApiResponse.connectionError());
+        }
+      });
+      var applicantRequestCount = 0;
+      final api = FakeApi(
+        handler: (options) {
+          if (options.path == '/users/me/jobs') {
+            return FakeApiResponse(
+              statusCode: 200,
+              body: {
+                'success': true,
+                'data': {
+                  'content': [jobJson('a')],
+                },
+              },
+            );
+          }
+
+          applicantRequestCount++;
+          if (applicantRequestCount == 1) return firstResponse.future;
+          return FakeApiResponse(
+            statusCode: 200,
+            body: {
+              'success': true,
+              'data': [applicantJson('new_applicant')],
+            },
+          );
+        },
+      );
+      final provider = providerFor(api);
+      await provider.load();
+
+      final olderLoad = provider.ensureApplicants('a');
+      await api.requestsReach(2);
+      await provider.ensureApplicants('a', force: true);
+
+      expect(applicantRequestCount, 2);
+      firstResponse.complete(
+        const FakeApiResponse(
+          statusCode: 500,
+          body: {'success': false, 'message': 'Eski istek hatası'},
+        ),
+      );
+      await olderLoad;
+
+      expect(
+        provider.getPostByJobId('a')!.applicants.single.id,
+        'new_applicant',
+      );
+      expect(provider.applicantErrorFor('a'), isNull);
     });
   });
 
@@ -344,6 +607,62 @@ void main() {
       // diğer ilanlar için istek atılmıyor.
       expect(paths, contains('/jobs/a/applications'));
     });
+
+    test(
+      'kabul sonrası başvuru yenilemesi bozulursa mevcut aday korunuyor',
+      () async {
+        var applicantRequestCount = 0;
+        final api = FakeApi(
+          handler: (options) {
+            if (options.path == '/users/me/jobs') {
+              return FakeApiResponse(
+                statusCode: 200,
+                body: {
+                  'success': true,
+                  'data': {
+                    'content': [jobJson('a')],
+                  },
+                },
+              );
+            }
+            if (options.path == '/jobs/a/applications') {
+              applicantRequestCount++;
+              if (applicantRequestCount == 1) {
+                return FakeApiResponse(
+                  statusCode: 200,
+                  body: {
+                    'success': true,
+                    'data': [applicantJson('app_1')],
+                  },
+                );
+              }
+              return const FakeApiResponse(
+                statusCode: 500,
+                body: {'success': false, 'message': 'Başvurular yenilenemedi'},
+              );
+            }
+            return const FakeApiResponse(
+              statusCode: 200,
+              body: {'success': true},
+            );
+          },
+        );
+        final provider = providerFor(api);
+        await provider.load();
+        await provider.ensureApplicants('a');
+
+        final approved = await provider.approveApplicant(
+          jobId: 'a',
+          applicationId: 'app_1',
+        );
+
+        final post = provider.getPostByJobId('a')!;
+        expect(approved, isTrue);
+        expect(post.applicantsLoaded, isTrue);
+        expect(post.applicants.single.id, 'app_1');
+        expect(provider.applicantErrorFor('a'), 'Başvurular yenilenemedi');
+      },
+    );
 
     test('ensureApplicants aynı ilan için ikinci kez ağa çıkmıyor', () async {
       final api = buildApi(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/models/agreement_version.dart';
 import 'package:koala/employee/features/auth/models/consent_decision.dart';
+import 'package:koala/employee/features/auth/presentation/registration_routes.dart';
 import 'package:koala/employee/features/auth/presentation/widgets/consent_checkbox.dart';
 import 'package:koala/employee/features/auth/services/auth_service.dart';
 import 'package:koala/employee/features/auth/services/legal_service.dart';
