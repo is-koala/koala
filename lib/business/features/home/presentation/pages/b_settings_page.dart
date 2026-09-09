@@ -10,6 +10,7 @@ import 'package:koala/employee/features/profile/presentation/providers/availabil
 import 'package:koala/product/network/realtime_client.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
+import 'package:koala/product/providers/notification_provider.dart';
 import 'package:koala/product/theme/theme_provider.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:koala/product/widgets/my_list_tile.dart';
@@ -17,7 +18,10 @@ import 'package:koala/product/widgets/theme_mode_sheet.dart';
 import 'package:provider/provider.dart';
 
 class BSettingsPage extends StatelessWidget {
-  const BSettingsPage({super.key});
+  const BSettingsPage({super.key, this.onLogout});
+
+  /// Çıkış sınırını ağ çağrısı olmadan widget testinde sürmek için.
+  final Future<void> Function()? onLogout;
 
   @override
   Widget build(BuildContext context) {
@@ -85,15 +89,24 @@ class BSettingsPage extends StatelessWidget {
           icon: AppIcons.logout,
           title: "Çıkış Yap",
           onTap: () async {
-            await context.read<TimesheetQueueProvider>().pause();
-            // Canlı bağlantı oturuma bağlı; token silinmeden önce
-            // kapatılıyor ki yeniden bağlanmaya çalışmasın. İşveren tarafı da
-            // aynı `RealtimeClient` örneğini kullanıyor.
-            await RealtimeClient().disconnect();
+            // İlk await'ten önce: eski hesabın bildirimi, çıkan istek
+            // gecikse veya hata verse bile yeni oturuma taşınmamalı.
+            context.read<NotificationProvider>().clear();
 
-            // Sunucudaki oturumu da kapatıyor; çağrı başarısız olsa bile
-            // token'lar cihazdan siliniyor.
-            await AuthService().logout();
+            final logout = onLogout;
+            if (logout != null) {
+              await logout();
+            } else {
+              await context.read<TimesheetQueueProvider>().pause();
+              // Canlı bağlantı oturuma bağlı; token silinmeden önce
+              // kapatılıyor ki yeniden bağlanmaya çalışmasın. İşveren tarafı da
+              // aynı `RealtimeClient` örneğini kullanıyor.
+              await RealtimeClient().disconnect();
+
+              // Sunucudaki oturumu da kapatıyor; çağrı başarısız olsa bile
+              // token'lar cihazdan siliniyor.
+              await AuthService().logout();
+            }
 
             if (!context.mounted) return;
 

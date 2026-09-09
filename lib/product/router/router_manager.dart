@@ -58,6 +58,7 @@ import 'package:koala/employee/features/auth/presentation/pages/email_verificati
 import 'package:koala/employee/features/auth/presentation/pages/email_verification_link_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/employer_type_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/forgot_password_page.dart';
+import 'package:koala/employee/features/auth/presentation/registration_routes.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/apply_page.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/settings/presentation/pages/account_info_page.dart';
@@ -260,12 +261,12 @@ class RouterManager {
       ),
 
       GoRoute(
-        path: '/employer-type',
+        path: RegistrationRoutes.employerType,
         pageBuilder: (context, state) => _page(state, const EmployerTypePage()),
       ),
 
       GoRoute(
-        path: '/company-informations',
+        path: RegistrationRoutes.companyInformations,
         pageBuilder: (context, state) =>
             _page(state, const CompanyInformationsPage()),
       ),
