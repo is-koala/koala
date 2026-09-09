@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -298,5 +299,102 @@ void main() {
       expect(provider.user, isNull);
       expect(provider.hasError, isFalse);
     });
+
+    test('geç eski yanıt yeni hesabın profilini ezmez', () async {
+      final accountAResponse = Completer<FakeApiResponse>();
+      final accountBResponse = Completer<FakeApiResponse>();
+      var call = 0;
+      final api = FakeApi(
+        handler: (_) {
+          call++;
+          if (call == 1) return accountAResponse.future;
+          return accountBResponse.future;
+        },
+      );
+      final provider = buildProvider(api);
+
+      final accountALoad = provider.load();
+      await api.requestsReach(1);
+
+      provider.clear();
+      final accountBLoad = provider.load();
+      final bStarted = await Future.any([
+        api.requestsReach(2).then((_) => true),
+        accountBLoad.then((_) => false),
+      ]);
+      expect(bStarted, isTrue, reason: 'Yeni oturumun isteği engellenmemeli');
+
+      accountAResponse.complete(
+        FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': userBody(firstName: 'A'),
+          },
+        ),
+      );
+      await accountALoad;
+
+      expect(provider.user, isNull);
+      expect(provider.isLoading, isTrue);
+      expect(provider.errorMessage, isNull);
+
+      accountBResponse.complete(
+        FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': userBody(firstName: 'B'),
+          },
+        ),
+      );
+      await accountBLoad;
+
+      expect(api.requests, hasLength(2));
+      expect(provider.user?.firstName, 'B');
+      expect(provider.isLoading, isFalse);
+      expect(provider.errorMessage, isNull);
+    });
+
+    test(
+      'eski fotoğraf yüklemesi yeni oturumla profil isteği başlatmaz',
+      () async {
+        final accountAUpload = Completer<FakeApiResponse>();
+        final api = FakeApi(
+          handler: (options) => options.method == 'PUT'
+              ? accountAUpload.future
+              : FakeApiResponse(
+                  statusCode: 200,
+                  body: {
+                    'success': true,
+                    'data': userBody(firstName: 'B'),
+                  },
+                ),
+        );
+        final provider = buildProvider(api);
+        final file = File(
+          '${Directory.systemTemp.path}/koala-stale-provider-avatar.jpg',
+        )..writeAsBytesSync(const [1, 2, 3]);
+        addTearDown(() => file.deleteSync());
+
+        final accountAUploadResult = provider.uploadProfilePicture(file.path);
+        await api.requestsReach(1);
+
+        provider.clear();
+        await provider.load();
+
+        accountAUpload.complete(
+          const FakeApiResponse(statusCode: 200, body: {'success': true}),
+        );
+
+        expect(await accountAUploadResult, isFalse);
+        expect(provider.user?.firstName, 'B');
+        expect(provider.errorMessage, isNull);
+        expect(api.requests.map((request) => request.method), [
+          'PUT',
+          'GET',
+        ], reason: 'Eski yükleme B oturumunda /users/me çağırmamalı');
+      },
+    );
   });
 }

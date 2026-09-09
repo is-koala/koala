@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/jobs/models/job_application.dart';
 import 'package:koala/employee/features/jobs/models/my_job.dart';
@@ -242,6 +244,108 @@ void main() {
 
       expect(provider.applications, isEmpty);
       expect(provider.hasLoaded, isFalse);
+    });
+
+    test('geç eski yanıt yeni hesabın başvurularını ezmez', () async {
+      final accountAResponse = Completer<FakeApiResponse>();
+      final accountBResponse = Completer<FakeApiResponse>();
+      var call = 0;
+      final api = FakeApi(
+        handler: (_) {
+          call++;
+          return call == 1 ? accountAResponse.future : accountBResponse.future;
+        },
+      );
+      final provider = buildProvider(api);
+
+      final accountALoad = provider.load();
+      await api.requestsReach(1);
+
+      provider.clear();
+      final accountBLoad = provider.load();
+      final bStarted = await Future.any([
+        api.requestsReach(2).then((_) => true),
+        accountBLoad.then((_) => false),
+      ]);
+      expect(bStarted, isTrue, reason: 'Yeni oturumun isteği engellenmemeli');
+
+      accountAResponse.complete(
+        FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {
+              'content': [applicationBody(id: 'hesap_a', jobId: 'is_a')],
+            },
+          },
+        ),
+      );
+      await accountALoad;
+
+      expect(provider.applications, isEmpty);
+      expect(provider.isLoading, isTrue);
+      expect(provider.hasLoaded, isFalse);
+      expect(provider.errorMessage, isNull);
+
+      accountBResponse.complete(
+        FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {
+              'content': [applicationBody(id: 'hesap_b', jobId: 'is_b')],
+            },
+          },
+        ),
+      );
+      await accountBLoad;
+
+      expect(provider.applications.map((application) => application.id), [
+        'hesap_b',
+      ]);
+      expect(provider.isLoading, isFalse);
+      expect(provider.hasLoaded, isTrue);
+      expect(provider.errorMessage, isNull);
+    });
+
+    test('eski başvuru yanıtı yeni hesabın listesine eklenmez', () async {
+      final accountAApply = Completer<FakeApiResponse>();
+      final api = FakeApi(
+        handler: (options) => options.method == 'POST'
+            ? accountAApply.future
+            : FakeApiResponse(
+                statusCode: 200,
+                body: {
+                  'success': true,
+                  'data': {
+                    'content': [applicationBody(id: 'hesap_b', jobId: 'is_b')],
+                  },
+                },
+              ),
+      );
+      final provider = buildProvider(api);
+
+      final accountAResult = provider.applyToJob(buildJob(id: 'is_a'));
+      await api.requestsReach(1);
+
+      provider.clear();
+      await provider.load();
+
+      accountAApply.complete(
+        FakeApiResponse(
+          statusCode: 201,
+          body: {
+            'success': true,
+            'data': applicationBody(id: 'hesap_a', jobId: 'is_a'),
+          },
+        ),
+      );
+
+      expect(await accountAResult, isFalse);
+      expect(provider.applications.map((application) => application.id), [
+        'hesap_b',
+      ]);
+      expect(provider.errorMessage, isNull);
     });
   });
 
@@ -527,6 +631,60 @@ void main() {
         api.requests.where((r) => r.path.endsWith('/withdraw')),
         hasLength(1),
       );
+    });
+
+    test('eski 409 yeni oturumda liste tazelemesi başlatmaz', () async {
+      final accountAWithdraw = Completer<FakeApiResponse>();
+      var listCall = 0;
+      final api = FakeApi(
+        handler: (options) {
+          if (options.path.endsWith('/withdraw')) {
+            return accountAWithdraw.future;
+          }
+
+          listCall++;
+          return FakeApiResponse(
+            statusCode: 200,
+            body: {
+              'success': true,
+              'data': {
+                'content': [
+                  applicationBody(
+                    id: listCall == 1 ? 'hesap_a' : 'hesap_b',
+                    jobId: listCall == 1 ? 'is_a' : 'is_b',
+                  ),
+                ],
+              },
+            },
+          );
+        },
+      );
+      final provider = buildProvider(api);
+      await provider.load();
+
+      final accountAResult = provider.withdraw('hesap_a');
+      await api.requestsReach(2);
+
+      provider.clear();
+      await provider.load();
+
+      accountAWithdraw.complete(
+        const FakeApiResponse(
+          statusCode: 409,
+          body: {
+            'success': false,
+            'message': 'Eski başvuru artık değiştirilemez',
+          },
+        ),
+      );
+
+      expect(await accountAResult, isFalse);
+      expect(provider.applications.map((application) => application.id), [
+        'hesap_b',
+      ]);
+      expect(provider.withdrawingId, isNull);
+      expect(provider.errorMessage, isNull);
+      expect(api.requests, hasLength(3));
     });
   });
 

@@ -333,6 +333,136 @@ void main() {
       expect(thread.blockedMessage, 'Bu kullanıcıyla mesajlaşamazsınız.');
     });
 
+    test('başarılı tekrar deneme geçmiş engeli ve hatayı temizler', () async {
+      var messageRequestCount = 0;
+      final thread = build(
+        FakeApi(
+          handler: (options) {
+            if (options.method != 'GET') {
+              return const FakeApiResponse(
+                statusCode: 200,
+                body: {'success': true},
+              );
+            }
+
+            messageRequestCount++;
+            if (messageRequestCount == 1) return blocked;
+
+            return const FakeApiResponse(
+              statusCode: 200,
+              body: {
+                'success': true,
+                'data': {'content': []},
+              },
+            );
+          },
+        ),
+      );
+
+      await thread.load(currentUserId: _me);
+      expect(thread.blockedMessage, isNotNull);
+      expect(thread.errorMessage, isNotNull);
+
+      await thread.load(currentUserId: _me);
+
+      expect(thread.blockedMessage, isNull);
+      expect(thread.errorMessage, isNull);
+    });
+
+    test(
+      'tekrar deneme tamamlanana kadar engel ve hata birlikte kalır',
+      () async {
+        final retryResponse = Completer<FakeApiResponse>();
+        var messageRequestCount = 0;
+        final thread = build(
+          FakeApi(
+            handler: (options) {
+              if (options.method != 'GET') {
+                return const FakeApiResponse(
+                  statusCode: 200,
+                  body: {'success': true},
+                );
+              }
+
+              messageRequestCount++;
+              return messageRequestCount == 1 ? blocked : retryResponse.future;
+            },
+          ),
+        );
+        await thread.load(currentUserId: _me);
+
+        final retry = thread.load(currentUserId: _me);
+
+        expect(thread.blockedMessage, isNotNull);
+        expect(thread.errorMessage, isNotNull);
+
+        retryResponse.complete(
+          const FakeApiResponse(
+            statusCode: 200,
+            body: {
+              'success': true,
+              'data': {'content': []},
+            },
+          ),
+        );
+        await retry;
+
+        expect(thread.blockedMessage, isNull);
+        expect(thread.errorMessage, isNull);
+      },
+    );
+
+    test('tekrar denemede 403 sürüyorsa engel korunur', () async {
+      final thread = build(FakeApi(handler: (_) => blocked));
+
+      await thread.load(currentUserId: _me);
+      await thread.load(currentUserId: _me);
+
+      expect(thread.blockedMessage, 'Bu kullanıcıyla mesajlaşamazsınız.');
+      expect(thread.errorMessage, 'Bu kullanıcıyla mesajlaşamazsınız.');
+    });
+
+    test('geç kalan eski istek yeni başarılı durumu bozamaz', () async {
+      final staleResponse = Completer<FakeApiResponse>();
+      var messageRequestCount = 0;
+      final api = FakeApi(
+        handler: (options) {
+          if (options.method != 'GET') {
+            return const FakeApiResponse(
+              statusCode: 200,
+              body: {'success': true},
+            );
+          }
+
+          messageRequestCount++;
+          if (messageRequestCount == 1) return staleResponse.future;
+
+          return FakeApiResponse(
+            statusCode: 200,
+            body: {
+              'success': true,
+              'data': {
+                'content': [messageBody(id: 'guncel', body: 'Güncel mesaj')],
+              },
+            },
+          );
+        },
+      );
+      final thread = build(api);
+
+      final staleLoad = thread.load(currentUserId: _me);
+      await api.requestsReach(1);
+      await thread.load(currentUserId: _me);
+
+      staleResponse.complete(blocked);
+      await staleLoad;
+
+      expect(thread.messages.single.body, 'Güncel mesaj');
+      expect(thread.blockedMessage, isNull);
+      expect(thread.errorMessage, isNull);
+      expect(thread.isLoading, isFalse);
+    });
+
     // Engelin `statusCode` yerine kategoriden tanındığını ölçen tek test
     // aşağıdaki. Bir ara "ACCESS_DENIED kategorisi sohbeti kilitliyor" diye
     // ikinci bir test daha vardı; `403` + `ACCESS_DENIED` kuruyordu, yani

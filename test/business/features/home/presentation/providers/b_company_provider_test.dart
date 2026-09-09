@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -273,6 +274,47 @@ void main() {
       expect(provider.errorMessage, 'E-posta geçersiz');
       expect(provider.company?.name, 'Kahve Durağı');
     });
+
+    test('eski güncelleme yanıtı yeni hesabın şirketini ezmez', () async {
+      final accountAUpdate = Completer<FakeApiResponse>();
+      final api = FakeApi(
+        handler: (options) {
+          if (options.method == 'PATCH') return accountAUpdate.future;
+
+          return FakeApiResponse(
+            statusCode: 200,
+            body: {
+              'success': true,
+              'data': options.path.startsWith('/companies/')
+                  ? companyJson(id: options.path.split('/').last)
+                  : statsJson(),
+            },
+          );
+        },
+      );
+      final provider = providerFor(api);
+      await provider.load(userId: 'hesap_a', companyId: 'hesap_a');
+
+      final accountAResult = provider.updateCompany(name: 'Eski şirket');
+      await api.requestsReach(3);
+
+      provider.clear();
+      await provider.load(userId: 'hesap_b', companyId: 'hesap_b');
+
+      accountAUpdate.complete(
+        FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {...companyJson(id: 'hesap_a'), 'name': 'Eski şirket'},
+          },
+        ),
+      );
+
+      expect(await accountAResult, isFalse);
+      expect(provider.company?.id, 'hesap_b');
+      expect(provider.errorMessage, isNull);
+    });
   });
 
   group('galeri', () {
@@ -465,6 +507,44 @@ void main() {
       expect(await provider.removeGalleryImage('img_1'), isFalse);
       expect(api.requests, hasLength(before));
     });
+
+    test('eski galeri hatası yeni hesabın durumuna taşınmaz', () async {
+      final accountARemove = Completer<FakeApiResponse>();
+      final api = FakeApi(
+        handler: (options) {
+          if (options.method == 'DELETE') return accountARemove.future;
+          return FakeApiResponse(
+            statusCode: 200,
+            body: {
+              'success': true,
+              'data': options.path.startsWith('/companies/')
+                  ? companyJson(id: options.path.split('/').last)
+                  : statsJson(),
+            },
+          );
+        },
+      );
+      final provider = providerFor(api);
+      await provider.load(userId: 'hesap_a', companyId: 'hesap_a');
+
+      final accountAResult = provider.removeGalleryImage('img_a');
+      await api.requestsReach(3);
+
+      provider.clear();
+      await provider.load(userId: 'hesap_b', companyId: 'hesap_b');
+
+      accountARemove.complete(
+        const FakeApiResponse(
+          statusCode: 500,
+          body: {'success': false, 'message': 'Eski galeri hatası'},
+        ),
+      );
+
+      expect(await accountAResult, isFalse);
+      expect(provider.company?.id, 'hesap_b');
+      expect(provider.galleryErrorMessage, isNull);
+      expect(provider.isGalleryBusy, isFalse);
+    });
   });
 
   test('clear çıkışta veriyi düşürüyor', () async {
@@ -476,5 +556,83 @@ void main() {
     expect(provider.company, isNull);
     expect(provider.stats, isNull);
     expect(provider.hasLoaded, isFalse);
+  });
+
+  test('geç eski yanıtlar yeni hesabın şirket durumunu ezmez', () async {
+    final accountACompany = Completer<FakeApiResponse>();
+    final accountAStats = Completer<FakeApiResponse>();
+    final accountBCompany = Completer<FakeApiResponse>();
+    final accountBStats = Completer<FakeApiResponse>();
+    final api = FakeApi(
+      handler: (options) {
+        return switch (options.path) {
+          '/companies/hesap_a' => accountACompany.future,
+          '/users/hesap_a/employer-stats' => accountAStats.future,
+          '/companies/hesap_b' => accountBCompany.future,
+          '/users/hesap_b/employer-stats' => accountBStats.future,
+          _ => throw StateError('Beklenmeyen istek: ${options.path}'),
+        };
+      },
+    );
+    final provider = providerFor(api);
+
+    final accountALoad = provider.load(userId: 'hesap_a', companyId: 'hesap_a');
+    await api.requestsReach(2);
+
+    provider.clear();
+    final accountBLoad = provider.load(userId: 'hesap_b', companyId: 'hesap_b');
+    final bStarted = await Future.any([
+      api.requestsReach(4).then((_) => true),
+      accountBLoad.then((_) => false),
+    ]);
+    expect(bStarted, isTrue, reason: 'Yeni oturumun istekleri engellenmemeli');
+
+    accountACompany.complete(
+      FakeApiResponse(
+        statusCode: 200,
+        body: {
+          'success': true,
+          'data': companyJson(id: 'hesap_a'),
+        },
+      ),
+    );
+    accountAStats.complete(
+      const FakeApiResponse(
+        statusCode: 500,
+        body: {'success': false, 'message': 'Eski istatistik hatası'},
+      ),
+    );
+    await accountALoad;
+
+    expect(provider.company, isNull);
+    expect(provider.stats, isNull);
+    expect(provider.isLoading, isTrue);
+    expect(provider.hasLoaded, isFalse);
+    expect(provider.errorMessage, isNull);
+    expect(provider.statsErrorMessage, isNull);
+
+    accountBCompany.complete(
+      FakeApiResponse(
+        statusCode: 200,
+        body: {
+          'success': true,
+          'data': companyJson(id: 'hesap_b'),
+        },
+      ),
+    );
+    accountBStats.complete(
+      FakeApiResponse(
+        statusCode: 200,
+        body: {'success': true, 'data': statsJson(jobsPosted: 22)},
+      ),
+    );
+    await accountBLoad;
+
+    expect(provider.company?.id, 'hesap_b');
+    expect(provider.stats?.jobsPosted, 22);
+    expect(provider.isLoading, isFalse);
+    expect(provider.hasLoaded, isTrue);
+    expect(provider.errorMessage, isNull);
+    expect(provider.statsErrorMessage, isNull);
   });
 }

@@ -38,6 +38,9 @@ class BCompanyProvider extends ChangeNotifier {
   /// eldeki veri geçersiz olsun diye.
   String? _loadedKey;
 
+  /// Çıkıştan sonra tamamlanan isteklerin yeni oturuma yazmasını engeller.
+  int _generation = 0;
+
   /// Şirket. İşveren bireyselse (şirket üyeliği yoksa) `null` — bu bir hata
   /// değil, profilin kişi olarak çizileceği anlamına geliyor.
   Company? get company => _company;
@@ -70,6 +73,7 @@ class BCompanyProvider extends ChangeNotifier {
     if (_isLoading) return;
     if (!force && _loadedKey == key && _errorMessage == null) return;
 
+    final generation = _generation;
     _isLoading = true;
     _errorMessage = null;
     _statsErrorMessage = null;
@@ -78,10 +82,11 @@ class BCompanyProvider extends ChangeNotifier {
     // İki istek paralel: biri diğerini beklemiyor ve biri düşerse öteki
     // yine de ekrana geliyor.
     await Future.wait([
-      _loadCompany(companyId, isApproved: isApproved),
-      _loadStats(userId),
+      _loadCompany(companyId, isApproved: isApproved, generation: generation),
+      _loadStats(userId, generation: generation),
     ]);
 
+    if (generation != _generation) return;
     _isLoading = false;
     _loadedKey = key;
     notifyListeners();
@@ -90,27 +95,35 @@ class BCompanyProvider extends ChangeNotifier {
   Future<void> _loadCompany(
     String? companyId, {
     required bool isApproved,
+    required int generation,
   }) async {
     if (companyId == null) {
-      _company = null;
+      if (generation == _generation) _company = null;
       return;
     }
 
     try {
       final company = await _companyService.fetchCompany(companyId);
+      if (generation != _generation) return;
       _company = company.copyWith(isApproved: isApproved);
     } on ApiException catch (error) {
-      _company = null;
-      _errorMessage = error.message;
+      if (generation == _generation) {
+        _company = null;
+        _errorMessage = error.message;
+      }
     }
   }
 
-  Future<void> _loadStats(String userId) async {
+  Future<void> _loadStats(String userId, {required int generation}) async {
     try {
-      _stats = await _service.fetchEmployerStats(userId);
+      final stats = await _service.fetchEmployerStats(userId);
+      if (generation != _generation) return;
+      _stats = stats;
     } on ApiException catch (error) {
-      _stats = null;
-      _statsErrorMessage = error.message;
+      if (generation == _generation) {
+        _stats = null;
+        _statsErrorMessage = error.message;
+      }
     }
   }
 
@@ -238,20 +251,28 @@ class BCompanyProvider extends ChangeNotifier {
     final current = _company;
     if (current == null || _isGalleryBusy) return false;
 
+    final generation = _generation;
     _isGalleryBusy = true;
     _galleryErrorMessage = null;
     notifyListeners();
 
     try {
       final images = await call(current.id);
+      if (generation != _generation || _company?.id != current.id) {
+        return false;
+      }
       _company = current.copyWith(images: images);
       return true;
     } on ApiException catch (error) {
-      _galleryErrorMessage = error.message;
+      if (generation == _generation && _company?.id == current.id) {
+        _galleryErrorMessage = error.message;
+      }
       return false;
     } finally {
-      _isGalleryBusy = false;
-      notifyListeners();
+      if (generation == _generation) {
+        _isGalleryBusy = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -262,26 +283,35 @@ class BCompanyProvider extends ChangeNotifier {
     final current = _company;
     if (current == null) return false;
 
+    final generation = _generation;
     _errorMessage = null;
 
     try {
       final updated = await call();
+      if (generation != _generation || _company?.id != current.id) {
+        return false;
+      }
       _company = updated.copyWith(
         isApproved: updated.isApproved || current.isApproved,
       );
       notifyListeners();
       return true;
     } on ApiException catch (error) {
-      _errorMessage = error.message;
-      notifyListeners();
+      if (generation == _generation && _company?.id == current.id) {
+        _errorMessage = error.message;
+        notifyListeners();
+      }
       return false;
     }
   }
 
   /// Çıkışta önceki işverenin şirketi kalmasın.
   void clear() {
+    _generation++;
     _company = null;
     _stats = null;
+    _isLoading = false;
+    _isGalleryBusy = false;
     _errorMessage = null;
     _statsErrorMessage = null;
     _galleryErrorMessage = null;

@@ -695,6 +695,130 @@ void main() {
     });
 
     test(
+      'eski başvuran isteği yeni oturumun aynı ilan isteğini bozmaz',
+      () async {
+        final accountAApplicants = Completer<FakeApiResponse>();
+        final accountBApplicants = Completer<FakeApiResponse>();
+        var applicantsCall = 0;
+        final api = FakeApi(
+          handler: (options) {
+            if (options.path == '/users/me/jobs') {
+              return FakeApiResponse(
+                statusCode: 200,
+                body: {
+                  'success': true,
+                  'data': {
+                    'content': [jobJson('ortak')],
+                  },
+                },
+              );
+            }
+
+            if (options.path == '/jobs/ortak/applications') {
+              applicantsCall++;
+              return applicantsCall == 1
+                  ? accountAApplicants.future
+                  : accountBApplicants.future;
+            }
+
+            throw StateError('Beklenmeyen istek: ${options.path}');
+          },
+        );
+        final provider = providerFor(api);
+        await provider.load();
+
+        final accountARequest = provider.ensureApplicants('ortak');
+        await api.requestsReach(2);
+
+        provider.clear();
+        await provider.load();
+        final accountBRequest = provider.ensureApplicants('ortak');
+        await api.requestsReach(4);
+
+        accountAApplicants.complete(
+          FakeApiResponse(
+            statusCode: 200,
+            body: {
+              'success': true,
+              'data': [applicantJson('hesap_a')],
+            },
+          ),
+        );
+        await accountARequest;
+
+        expect(provider.getPostByJobId('ortak')!.applications, isEmpty);
+        expect(provider.getPostByJobId('ortak')!.applicantsLoaded, isFalse);
+        // Normal yeniden çizim çağrısı, B oturumunun uçuşta olan isteğini
+        // paylaşmalı. `force: true` bilinçli olarak aynı oturumdaki eski
+        // isteği supersede eder ve bu invariantı ölçmez.
+        await provider.ensureApplicants('ortak');
+        expect(
+          api.requests,
+          hasLength(4),
+          reason: 'Eski istek B oturumunun pending kilidini kaldırmamalı',
+        );
+
+        accountBApplicants.complete(
+          FakeApiResponse(
+            statusCode: 200,
+            body: {
+              'success': true,
+              'data': [applicantJson('hesap_b')],
+            },
+          ),
+        );
+        await accountBRequest;
+
+        expect(
+          provider
+              .getPostByJobId('ortak')!
+              .applications
+              .map((application) => application.id),
+          ['hesap_b'],
+        );
+      },
+    );
+
+    test('eski ilan işlemi yeni oturumda zorunlu yükleme başlatmaz', () async {
+      final accountAClose = Completer<FakeApiResponse>();
+      final api = FakeApi(
+        handler: (options) {
+          if (options.path == '/jobs/hesap_a/close') {
+            return accountAClose.future;
+          }
+          if (options.path == '/users/me/jobs') {
+            return FakeApiResponse(
+              statusCode: 200,
+              body: {
+                'success': true,
+                'data': {
+                  'content': [jobJson('hesap_b')],
+                },
+              },
+            );
+          }
+          throw StateError('Beklenmeyen istek: ${options.path}');
+        },
+      );
+      final provider = providerFor(api);
+
+      final accountAResult = provider.closePost('hesap_a');
+      await api.requestsReach(1);
+
+      provider.clear();
+      await provider.load();
+
+      accountAClose.complete(
+        const FakeApiResponse(statusCode: 200, body: {'success': true}),
+      );
+
+      expect(await accountAResult, isFalse);
+      expect(provider.allPosts.map((post) => post.job.id), ['hesap_b']);
+      expect(provider.errorMessage, isNull);
+      expect(api.requests, hasLength(2));
+    });
+
+    test(
       'yanıtlanmış başvuru ikinci kez yanıtlanınca hata taşınıyor',
       () async {
         final api = FakeApi(
@@ -735,5 +859,65 @@ void main() {
     await provider.load();
 
     expect(() => provider.allPosts.clear(), throwsUnsupportedError);
+  });
+
+  test('geç eski yanıt yeni hesabın ilanlarını ezmez', () async {
+    final accountAResponse = Completer<FakeApiResponse>();
+    final accountBResponse = Completer<FakeApiResponse>();
+    var call = 0;
+    final api = FakeApi(
+      handler: (_) {
+        call++;
+        return call == 1 ? accountAResponse.future : accountBResponse.future;
+      },
+    );
+    final provider = providerFor(api);
+
+    final accountALoad = provider.load();
+    await api.requestsReach(1);
+
+    provider.clear();
+    final accountBLoad = provider.load();
+    final bStarted = await Future.any([
+      api.requestsReach(2).then((_) => true),
+      accountBLoad.then((_) => false),
+    ]);
+    expect(bStarted, isTrue, reason: 'Yeni oturumun isteği engellenmemeli');
+
+    accountAResponse.complete(
+      FakeApiResponse(
+        statusCode: 200,
+        body: {
+          'success': true,
+          'data': {
+            'content': [jobJson('hesap_a')],
+          },
+        },
+      ),
+    );
+    await accountALoad;
+
+    expect(provider.allPosts, isEmpty);
+    expect(provider.isLoading, isTrue);
+    expect(provider.hasLoaded, isFalse);
+    expect(provider.errorMessage, isNull);
+
+    accountBResponse.complete(
+      FakeApiResponse(
+        statusCode: 200,
+        body: {
+          'success': true,
+          'data': {
+            'content': [jobJson('hesap_b')],
+          },
+        },
+      ),
+    );
+    await accountBLoad;
+
+    expect(provider.allPosts.map((post) => post.job.id), ['hesap_b']);
+    expect(provider.isLoading, isFalse);
+    expect(provider.hasLoaded, isTrue);
+    expect(provider.errorMessage, isNull);
   });
 }

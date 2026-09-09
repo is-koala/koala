@@ -37,6 +37,9 @@ class ApplyProvider extends ChangeNotifier {
   /// çekiyor. Ekran satırın düğmesini buna bakarak kilitliyor.
   String? _withdrawingId;
 
+  /// Çıkıştan sonra tamamlanan isteklerin yeni oturuma yazmasını engeller.
+  int _generation = 0;
+
   List<JobApplication> get applications => List.unmodifiable(_applications);
 
   bool get isLoading => _isLoading;
@@ -76,6 +79,7 @@ class ApplyProvider extends ChangeNotifier {
     if (_isLoading) return;
     if (_hasLoaded && !force && _errorMessage == null) return;
 
+    final generation = _generation;
     _isLoading = true;
     _errorMessage = null;
     _errorCode = null;
@@ -83,16 +87,21 @@ class ApplyProvider extends ChangeNotifier {
 
     try {
       final page = await _service.fetchMyApplications();
+      if (generation != _generation) return;
       _applications
         ..clear()
         ..addAll(page.applications);
     } on ApiException catch (error) {
-      _errorMessage = error.message;
-      _errorCode = error.errorCode;
+      if (generation == _generation) {
+        _errorMessage = error.message;
+        _errorCode = error.errorCode;
+      }
     } finally {
-      _isLoading = false;
-      _hasLoaded = true;
-      notifyListeners();
+      if (generation == _generation) {
+        _isLoading = false;
+        _hasLoaded = true;
+        notifyListeners();
+      }
     }
   }
 
@@ -103,6 +112,7 @@ class ApplyProvider extends ChangeNotifier {
   Future<bool> applyToJob(Job job, {String? coverLetter}) async {
     if (hasApplied(job.id)) return false;
 
+    final generation = _generation;
     _isLoading = true;
     _errorMessage = null;
     _errorCode = null;
@@ -113,15 +123,20 @@ class ApplyProvider extends ChangeNotifier {
         jobId: job.id,
         notes: coverLetter,
       );
+      if (generation != _generation) return false;
       _applications.insert(0, application);
       return true;
     } on ApiException catch (error) {
-      _errorMessage = error.message;
-      _errorCode = error.errorCode;
+      if (generation == _generation) {
+        _errorMessage = error.message;
+        _errorCode = error.errorCode;
+      }
       return false;
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (generation == _generation) {
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -138,6 +153,7 @@ class ApplyProvider extends ChangeNotifier {
   Future<bool> withdraw(String applicationId) async {
     if (_withdrawingId != null) return false;
 
+    final generation = _generation;
     _withdrawingId = applicationId;
     _errorMessage = null;
     _errorCode = null;
@@ -145,6 +161,7 @@ class ApplyProvider extends ChangeNotifier {
 
     try {
       final withdrawn = await _service.withdraw(applicationId);
+      if (generation != _generation) return false;
       final index = _applications.indexWhere(
         (application) => application.id == applicationId,
       );
@@ -159,21 +176,28 @@ class ApplyProvider extends ChangeNotifier {
       // liste bayat. Tazeleme mesajdan **önce** çalışıyor: [load] başlarken
       // hata alanlarını temizliyor, ters sırada kullanıcıya gösterilecek
       // mesaj kaybolurdu.
+      if (generation != _generation) return false;
       if (error.type.serverStateMoved) await load(force: true);
+      if (generation != _generation) return false;
       _errorMessage = error.message;
       _errorCode = error.errorCode;
       return false;
     } finally {
-      _withdrawingId = null;
-      notifyListeners();
+      if (generation == _generation) {
+        _withdrawingId = null;
+        notifyListeners();
+      }
     }
   }
 
   /// Çıkışta önceki kullanıcının başvuruları kalmasın.
   void clear() {
+    _generation++;
     _applications.clear();
+    _isLoading = false;
     _errorMessage = null;
     _errorCode = null;
+    _withdrawingId = null;
     _hasLoaded = false;
     notifyListeners();
   }

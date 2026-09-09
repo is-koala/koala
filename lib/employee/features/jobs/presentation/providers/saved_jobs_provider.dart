@@ -19,6 +19,9 @@ class SavedJobsProvider extends ChangeNotifier {
   bool _hasLoaded = false;
   String? _errorMessage;
 
+  /// Çıkıştan sonra tamamlanan isteklerin yeni oturuma yazmasını engeller.
+  int _generation = 0;
+
   List<Job> get savedJobs => List.unmodifiable(_savedJobs);
 
   bool get isLoading => _isLoading;
@@ -37,21 +40,25 @@ class SavedJobsProvider extends ChangeNotifier {
     if (_isLoading) return;
     if (_hasLoaded && !force && _errorMessage == null) return;
 
+    final generation = _generation;
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
       final jobs = await _service.fetchSavedJobs();
+      if (generation != _generation) return;
       _savedJobs
         ..clear()
         ..addAll(jobs);
     } on ApiException catch (error) {
-      _errorMessage = error.message;
+      if (generation == _generation) _errorMessage = error.message;
     } finally {
-      _isLoading = false;
-      _hasLoaded = true;
-      notifyListeners();
+      if (generation == _generation) {
+        _isLoading = false;
+        _hasLoaded = true;
+        notifyListeners();
+      }
     }
   }
 
@@ -60,6 +67,7 @@ class SavedJobsProvider extends ChangeNotifier {
   /// Başarılıysa `true` döner. Başarısızsa liste eski hâline dönüyor ve mesaj
   /// [errorMessage]'a düşüyor.
   Future<bool> toggleSave(Job job) async {
+    final generation = _generation;
     final wasSaved = isSaved(job.id);
     _errorMessage = null;
 
@@ -77,8 +85,9 @@ class SavedJobsProvider extends ChangeNotifier {
       } else {
         await _service.save(job.id);
       }
-      return true;
+      return generation == _generation;
     } on ApiException catch (error) {
+      if (generation != _generation) return false;
       // Geri al: sunucu kabul etmediyse arayüz de göstermemeli.
       if (wasSaved) {
         _savedJobs.insert(0, job);
@@ -102,7 +111,9 @@ class SavedJobsProvider extends ChangeNotifier {
 
   /// Çıkışta önceki kullanıcının kayıtları kalmasın.
   void clear() {
+    _generation++;
     _savedJobs.clear();
+    _isLoading = false;
     _errorMessage = null;
     _hasLoaded = false;
     notifyListeners();
