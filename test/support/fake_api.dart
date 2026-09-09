@@ -41,9 +41,12 @@ class FakeApi {
   /// Beklenen istek sayısına göre bekleyenler; anahtar eşiğin kendisi.
   final Map<int, Completer<void>> _arrivals = {};
 
-  /// Oturum sonlandırma çağrıldı mı: yenileme başarısız olduğunda
-  /// `AuthInterceptor` bunu tetikliyor.
-  bool sessionExpired = false;
+  /// Yenileme başarısız olduğunda `AuthInterceptor`'ın oturum sonlandırmayı
+  /// kaç kez istediği. Eşzamanlı hataların aynı sonucu paylaştığı testlerde
+  /// yalnız bir kez çağrıldığını da ölçebilmek için sayaç tutuluyor.
+  int sessionExpirationCount = 0;
+
+  bool get sessionExpired => sessionExpirationCount > 0;
 
   /// Sahte katmana ulaşan istek sayısı [count] olana kadar bekler.
   ///
@@ -80,7 +83,7 @@ class FakeApi {
       dio,
       tokenStorage: tokenStorage,
       deviceIdentity: deviceIdentity,
-      onSessionExpired: () async => sessionExpired = true,
+      onSessionExpired: () async => sessionExpirationCount++,
     );
   }
 }
