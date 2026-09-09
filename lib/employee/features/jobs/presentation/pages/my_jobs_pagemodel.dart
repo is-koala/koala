@@ -157,12 +157,6 @@ abstract class MyJobsPagemodel extends State<MyJobsPage> {
     }
   }
 
-  /// Atamayı kabul eder ya da reddeder.
-  ///
-  /// Cevap `JobAssignmentDto` dönüyor; ödeme alanlarını taşımadığı için
-  /// listedeki kayıt cevaptan güncellenmiyor, atamalar yeniden çekiliyor.
-  /// Reddedilen atama listeden tamamen düşüyor: [MyJob.fromAssignment]
-  /// `REJECTED` için `null` döndürüyor.
   @override
   void dispose() {
     _timesheetQueue?.removeListener(_onTimesheetQueueChanged);

@@ -114,7 +114,7 @@ lib/
         └── presentation/{pages,widgets,providers}
 ```
 
-Employee features: `auth`, `home` (explore), `jobs`, `chat`, `profile`, `company_detail`, `settings`.
+Employee features: `auth`, `home` (explore), `jobs`, `chat`, `notifications`, `profile`, `company_detail`, `settings`.
 Business features: `home`, `chat`.
 
 A feature has at most three top-level folders: **`models/`** (plain data classes), **`services/`** (where the data comes from) and **`presentation/`**. There is no `data/` or `domain/` wrapper — a model sits directly under `models/`. Create only the folders a feature actually needs; `auth` and `settings`, for example, now carry their own models and services as well as presentation.
@@ -294,7 +294,7 @@ Things worth knowing:
 
 **The candidate profile** (`b_user_profile_page`) paints twice: the `JobApplicant` handed in through `state.extra` gives the name, photo, cover letter and date immediately, then `GET /users/{userId}` → `PublicProfile` fills in the profession, the "hakkında" text, the location and the CV. That endpoint deliberately returns **no full address** — city and district only — and it is open to signed-in users, not anonymous ones. If it fails the screen does not blank: a strip at the top offers *Tekrar dene* and the application data stays on screen. The CV opens in the external browser through `url_launcher`, because the URL is a redirect to a short-lived signed address rather than the file itself.
 
-**The employer's profile is real too.** `business/features/home/services/b_company_service.dart` reads `GET /companies/{id}`, writes `PATCH /companies/{id}` and reads `GET /users/{userId}/employer-stats`; `BCompanyProvider` (registered in `main.dart`) holds both for the profile, settings and company-info screens.
+**The employer's profile is real too.** Shared `CompanyService` reads `GET /companies/{id}`; `business/features/home/services/b_company_service.dart` creates and updates companies, manages logos and galleries, and reads `GET /users/{userId}/employer-stats`. `BCompanyProvider` (registered in `main.dart`) holds the company and its stats for the profile, settings and company-info screens.
 
 - **The profile has two valid shapes.** An employer with a company membership sees the **company**; one without sees **themselves** — name, e-mail, phone and address off `/users/me`. Being company-less is not a gap: `POST /users/me/jobs` posts individual jobs. `b_profile_page` renders both from the same widgets.
 - **Two different "company" getters on `CurrentUser`.** `activeCompany` is the first **approved** membership and decides which create-job endpoint is used; `primaryCompany` is the first membership regardless of approval and is what the profile shows — otherwise someone who just registered a company would never see it and would think they were an individual employer.
@@ -304,7 +304,7 @@ Things worth knowing:
 
 - **The logo is editable, the rest of the fixed fields are not.** `PUT /companies/{id}/logo` (multipart, part name `logo`, `ADMIN` only) and `DELETE` on the same path both return the company, so no second read is needed. The company-info screen picks from the gallery and checks extension and size **client-side** against the server's own limits (`png/jpg/jpeg/webp`, 10 MB, from `UploadProperties`) so the user is not left waiting for a rejection. The file is sent **unmodified** — re-encoding it would flatten a transparent PNG, which is visible on a logo.
 
-> Endpoints the profile could use but does not: the company gallery (`/companies/{id}/images`), the contact list and invitations (`/contacts`, `/contact-invitations`) and `followerCount` (parsed, not shown). Creating a company (`POST /companies`) is missing entirely — multipart with a logo, plus an identity-verification precondition; the company-info screen explains this instead of offering it (`TODO(backend)`).
+> Company creation is wired through multipart `POST /companies`, and the company-info screen manages `/companies/{id}/images` as a reorderable gallery. The contact list and invitations (`/contacts`, `/contact-invitations`) still have no app surface. `Company.followerCount` is parsed and adjusted after follow/unfollow but is not rendered on the company-detail screen; the followed-companies list renders its own `FollowedCompanyDto.followerCount` summary.
 
 **The worker's side of the assignment is on the real endpoints too.** `employee/features/jobs/services/assignment_service.dart` owns them: `GET /users/me/assignments` (moved off `JobApplicationService`, which now carries applications only) and `POST /job-assignments/{id}/respond`.
 
@@ -604,6 +604,10 @@ The server marks the calling session with `current`. That row gets a "Bu cihaz" 
 
 `qualifications` and `interests` are editable in *Hesabı Düzenle* and shown on the profile — but only when filled, unlike *Hakkımda* which always draws with a placeholder. Three empty headings in a row read as an unfinished profile.
 
+**CV upload** uses `file_picker` for PDF selection. `PUT /users/me/cv` sends multipart with the form field name **`file`** (not `image`), and `DELETE /users/me/cv` removes it. Upload and removal state stays in `UserProvider` so the card always reflects the server response.
+
+**Experience editing** uses `POST|PUT|DELETE /users/me/experiences`; the *Tecrübe* section supports add, edit and delete.
+
 **Worker availability is a weekly replacement, not a per-day patch.** The shared models and `AvailabilityService` live in `product/` because both employee and business profiles consume them; `AvailabilityProvider` owns the employee's seven-day editing draft. Every save sends all slots to `PUT /users/me/availability`, so a day editor must never issue its own request. Date exceptions use their separate PUT/DELETE endpoints. The shared read-only `AvailabilityView` appears on both the worker's own profile and an employer's candidate profile, where an empty schedule says “Müsaitlik bilgisi paylaşılmamış.”
 
 **Followed companies** live at `/followed-companies` (paged), reached from the profile app bar. `FollowedCompanyDto` is a trimmed summary whose id field is `companyId`, not `id`, so it has its own model rather than reusing `Company`. You cannot unfollow from that list on purpose — unfollowing belongs to the company screen, and two sources of truth for one flag invites drift.
@@ -618,15 +622,9 @@ A `426` is handled **once, globally**: `ApiClient` closes `AppUpdateGate` and `M
 
 Supported iOS flavors have explicit bundle identifiers: `com.iskoala.koala.dev`, `com.iskoala.koala.staging` and `com.iskoala.koala`. `project.pbxproj` still contains legacy unflavored build configurations with `com.example.koala`; the supported flavor schemes do not use them. When adding a scheme or configuration, bind it to the matching explicit identifier instead of inheriting that legacy default.
 
-**Not wired up:**
+**Known parked UI:**
 
 - `business/features/home/presentation/pages/b_home_page.dart` has a `_quickActionsSection` that nothing calls. It carries an `// ignore: unused_element` so analyze stays clean — it is a parked section, not dead code to delete without asking.
-- The applicant CV download and the "follow company" action render but write nowhere. (The business profile's stat numbers are real now — `GET /users/{id}/employer-stats`.)
-- ~~Rejected applications and cancelled assignments had no UI state.~~ Both are mapped now. `MyJobStatus.applicationRejected` is separate from `MyJobStatus.rejected` on purpose: one is the employer turning the worker down, the other is the worker declining the assignment, and giving them the same wording would hide who decided. The employer's `rejectionReason` replaces the job summary on that row (`MyJob.subtitle`) — it is the only thing the worker wants to read. **An accepted application is skipped entirely** in `ApplyProvider._toMyJob`: it is an assignment now, and the assignments endpoint already returns it, so mapping both drew the same job twice.
-- **CV upload** uses `file_picker` for PDF selection. `PUT /users/me/cv` sends multipart with the form field name **`file`** (not `image`), and `DELETE /users/me/cv` removes it. Keep upload and removal state in `UserProvider` so the card always reflects the server response.
-- **Experience editing** is done; the *Tecrübe* section has add / edit / delete through `/users/me/experiences`.
-- **Presence is not wired yet.** `GET /users/{userId}/presence` and the batch `POST /presence/lookup` exist; the chat UI still hardcodes `isOnline: false`.
-- ~~`b_create_page.dart` hardcodes the coordinates of every job.~~ Fixed: `CreateAddressRequestDto` makes `countryCode`, `cityName`, `addressLine`, `latitude` and `longitude` all mandatory, and the server never geocodes free text — so the create screen now collects the province and district from `/reference/countries → cities → districts` and the coordinate from `BLocationPickerPage`, a `google_maps_flutter` screen where the employer slides the map under a fixed centre pin. No new dependency; `geocoding` was rejected because it guesses at free-text addresses.
 
 
 **Onboarding** is shown once — `seen_onboarding`, owned by `SessionManager` and read by the redirect guard. `SplashPage` (`/`) is the app's single startup point: it reads the session, and the guard sends the user on from there. There is no `AuthGate` any more.

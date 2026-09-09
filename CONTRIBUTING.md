@@ -56,7 +56,7 @@ Bir feature en fazla **üç** üst klasör taşır:
 | `services/` | Gerçek API çağrılarını `ApiClient` üzerinden yapan servis sınıfları. |
 | `presentation/` | `pages/`, `widgets/`, `providers/` |
 
-`data/` ya da `domain/` diye bir ara katman **yok**; model doğrudan `models/` altında durur. Veri katmanı olmayan feature'lar (`auth`, `settings`) yalnızca `presentation/` taşır.
+`data/` ya da `domain/` diye bir ara katman **yok**; model doğrudan `models/` altında durur. Her feature yalnız ihtiyaç duyduğu klasörleri taşır; mevcut klasörleri kaynak ağacından doğrula.
 
 Servis sınıfı dosyasının adını alır: `job_service.dart` → `JobService`. `*Repository` adlandırması kullanılmıyor.
 
