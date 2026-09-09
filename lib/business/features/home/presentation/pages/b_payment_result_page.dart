@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/business/features/home/services/employer_job_service.dart';
 import 'package:koala/employee/features/jobs/models/assignment.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_sizes.dart';
@@ -21,10 +24,14 @@ class BPaymentResultPage extends StatefulWidget {
     super.key,
     required this.assignmentId,
     this.service,
+    this.now,
+    this.delay,
   });
 
   final String assignmentId;
   final EmployerJobService? service;
+  final DateTime Function()? now;
+  final Future<void> Function(Duration)? delay;
 
   @override
   State<BPaymentResultPage> createState() => _BPaymentResultPageState();
@@ -34,8 +41,27 @@ class _BPaymentResultPageState extends BPaymentResultPagemodel {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        body: Center(
+          child: Semantics(
+            container: true,
+            liveRegion: true,
+            label: 'Ödeme sonucu kontrol ediliyor.',
+            excludeSemantics: true,
+            child: const Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: AppSizes.spaceSmall),
+                Text('Ödeme sonucu kontrol ediliyor.'),
+              ],
+            ),
+          ),
+        ),
+      );
     }
+
+    final presentation = _presentation;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Ödeme Sonucu')),
@@ -45,43 +71,35 @@ class _BPaymentResultPageState extends BPaymentResultPagemodel {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              AppIcon(
-                _isSecured
-                    ? AppIcons.shield
-                    : _isFailed
-                    ? AppIcons.cancelCircle
-                    : AppIcons.info,
-                size: AppSizes.iconHuge,
-                color: _isSecured
-                    ? AppColors.success
-                    : _isFailed
-                    ? AppColors.danger
-                    : AppColors.warning,
-              ),
-              const SizedBox(height: AppSizes.spaceMedium),
-              Text(
-                _isSecured
-                    ? 'Ödeme Güvende'
-                    : _isFailed
-                    ? 'Ödeme Başarısız'
-                    : 'Ödeme Henüz Doğrulanmadı',
-                style: Theme.of(context).textTheme.headlineSmall,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: AppSizes.spaceSmall),
-              Text(
-                _error ??
-                    (_isSecured
-                        ? 'Ücret Koala güvencesinde tutuluyor. Çalışan artık '
-                              'mesaiye başlayabilir.'
-                        : _isFailed
-                        ? 'Ödeme tamamlanamadı. İlan detayına dönüp yeniden deneyebilirsin.'
-                        : 'Sağlayıcı sonucu işleniyor olabilir. Birkaç saniye '
-                              'sonra tekrar kontrol et.'),
-                textAlign: TextAlign.center,
+              Semantics(
+                key: const ValueKey('payment-result-status'),
+                container: true,
+                liveRegion: true,
+                label: '${presentation.title}. ${presentation.message}',
+                excludeSemantics: true,
+                child: Column(
+                  children: [
+                    AppIcon(
+                      presentation.icon,
+                      size: AppSizes.iconHuge,
+                      color: presentation.color,
+                    ),
+                    const SizedBox(height: AppSizes.spaceMedium),
+                    Text(
+                      presentation.title,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppSizes.spaceSmall),
+                    Text(presentation.message, textAlign: TextAlign.center),
+                  ],
+                ),
               ),
               const SizedBox(height: AppSizes.sectionSpace),
-              MyButton(onPressed: _load, title: 'TEKRAR KONTROL ET'),
+              MyButton(
+                onPressed: _isRefreshing ? null : _retry,
+                title: 'TEKRAR KONTROL ET',
+              ),
               if (_assignment != null) ...[
                 const SizedBox(height: AppSizes.spaceMedium),
                 MyButton(
