@@ -37,6 +37,7 @@ void main() {
     test('dolu alanların hepsi backend adlarıyla gidiyor', () {
       const query = JobSearchQuery(
         query: 'garson',
+        companyId: 'company-7',
         categoryId: 'cat-1',
         cityId: 'city-6',
         districtId: 'district-9',
@@ -58,6 +59,7 @@ void main() {
 
       expect(query.toQueryParameters(), {
         'query': 'garson',
+        'companyId': 'company-7',
         'categoryId': 'cat-1',
         'cityId': 'city-6',
         'districtId': 'district-9',
@@ -118,10 +120,15 @@ void main() {
     });
 
     test('null verilen alan temizleniyor', () {
-      const query = JobSearchQuery(query: 'garson', categoryId: 'cat-1');
+      const query = JobSearchQuery(
+        query: 'garson',
+        companyId: 'company-7',
+        categoryId: 'cat-1',
+      );
 
-      final updated = query.copyWith(categoryId: null);
+      final updated = query.copyWith(companyId: null, categoryId: null);
 
+      expect(updated.companyId, isNull);
       expect(updated.categoryId, isNull);
       expect(updated.query, 'garson');
     });
@@ -146,6 +153,12 @@ void main() {
       const query = JobSearchQuery(sort: JobSortOption.salaryAsc);
 
       expect(query.hasFilters, isFalse);
+    });
+
+    test('şirket kimliği süzgeç sayılıyor', () {
+      const query = JobSearchQuery(companyId: 'company-7');
+
+      expect(query.hasFilters, isTrue);
     });
 
     test('sınırlayıcı kutu süzgeç sayılıyor', () {
