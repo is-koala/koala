@@ -28,6 +28,17 @@ class EmployerJobService {
 
   final ApiClient _apiClient;
 
+  /// Bir atamayı kimliğiyle okur.
+  ///
+  /// Liste sayfalamasından bağımsızdır; ödeme dönüşü gibi elde doğrudan
+  /// atama kimliği bulunan akışlar bu ucu kullanır.
+  Future<Assignment> fetchAssignment(String assignmentId) {
+    return _apiClient.get<Assignment>(
+      ApiPaths.jobAssignment(assignmentId),
+      parse: (data) => Assignment.fromJson(data! as Map<String, dynamic>),
+    );
+  }
+
   /// CONFIRMED atama için Iyzico Checkout Form oturumu başlatır.
   Future<BPaymentSession> createPaymentSession(String assignmentId) {
     return _apiClient.post<BPaymentSession>(

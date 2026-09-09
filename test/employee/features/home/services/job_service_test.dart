@@ -41,8 +41,9 @@ void main() {
         ),
       );
 
-      final result = await JobService.withClient(api.client)
-          .search(const JobSearchQuery());
+      final result = await JobService.withClient(
+        api.client,
+      ).search(const JobSearchQuery());
 
       expect(api.requests.single.path, '/jobs');
       expect(result.jobs.single.title, 'Garson');
@@ -132,8 +133,9 @@ void main() {
         ),
       );
 
-      await JobService.withClient(api.client)
-          .search(const JobSearchQuery(), page: 2, size: 100);
+      await JobService.withClient(
+        api.client,
+      ).search(const JobSearchQuery(), page: 2, size: 100);
 
       final query = api.requests.single.queryParameters;
       expect(query['page'], 2);
@@ -151,8 +153,9 @@ void main() {
         ),
       );
 
-      await JobService.withClient(api.client)
-          .search(const JobSearchQuery(sort: JobSortOption.salaryDesc));
+      await JobService.withClient(
+        api.client,
+      ).search(const JobSearchQuery(sort: JobSortOption.salaryDesc));
 
       expect(api.requests.single.queryParameters['sort'], 'salary,desc');
     });
@@ -168,8 +171,9 @@ void main() {
         ),
       );
 
-      final result = await JobService.withClient(api.client)
-          .search(const JobSearchQuery());
+      final result = await JobService.withClient(
+        api.client,
+      ).search(const JobSearchQuery());
 
       expect(result.jobs, isEmpty);
     });
@@ -224,20 +228,27 @@ void main() {
         final api = FakeApi(
           handler: (request) {
             final page = request.queryParameters['page'] as int;
+            final firstIndex = page * 100;
+            final itemCount = page == 0 ? 100 : 1;
             return FakeApiResponse(
               statusCode: 200,
               body: {
                 'success': true,
                 'data': {
-                  'content': [
-                    {
+                  'content': List.generate(itemCount, (index) {
+                    final jobIndex = firstIndex + index;
+                    return {
                       ..._jobBody,
-                      'id': 'job-$page',
-                      'companyName': page == 0
+                      'id': 'job-$jobIndex',
+                      'companyName': jobIndex < 100
                           ? 'Aynı Ad'
                           : 'Farklı Sunucu Adı',
-                    },
-                  ],
+                    };
+                  }),
+                  'page': page,
+                  'size': 100,
+                  'totalElements': 101,
+                  'totalPages': 2,
                   'last': page == 1,
                 },
               },
@@ -245,11 +256,23 @@ void main() {
           },
         );
 
-        final jobs = await JobService.withClient(api.client)
-            .fetchByCompany('company-7');
+        final jobs = await JobService.withClient(
+          api.client,
+        ).fetchByCompany('company-7');
 
-        expect(jobs.map((job) => job.id), ['job-0', 'job-1']);
+        expect(jobs, hasLength(101));
+        expect(jobs.first.id, 'job-0');
+        expect(jobs.last.id, 'job-100');
+        expect(jobs.last.company, 'Farklı Sunucu Adı');
         expect(api.requests, hasLength(2));
+        expect(
+          api.requests.map((request) => request.path),
+          everyElement('/jobs'),
+        );
+        expect(
+          api.requests.map((request) => request.method),
+          everyElement('GET'),
+        );
         expect(
           api.requests.map((request) => request.queryParameters['companyId']),
           everyElement('company-7'),
@@ -261,6 +284,12 @@ void main() {
         expect(
           api.requests.map((request) => request.queryParameters['size']),
           everyElement(100),
+        );
+        expect(
+          api.requests.every(
+            (request) => !request.queryParameters.containsKey('query'),
+          ),
+          isTrue,
         );
       },
     );

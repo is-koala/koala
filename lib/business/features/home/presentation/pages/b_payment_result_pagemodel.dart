@@ -23,15 +23,11 @@ abstract class BPaymentResultPagemodel extends State<BPaymentResultPage> {
       _error = null;
     });
     try {
-      final page = await _service.fetchMyAssignments();
-      final assignment = page.assignments
-          .where((item) => item.id == widget.assignmentId)
-          .firstOrNull;
+      final assignment = await _service.fetchAssignment(widget.assignmentId);
       if (!mounted) return;
       setState(() {
         _assignment = assignment;
         _isLoading = false;
-        if (assignment == null) _error = 'İş kaydı bulunamadı.';
       });
     } on ApiException catch (error) {
       if (!mounted) return;

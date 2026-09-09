@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/home/models/job_page.dart';
 import 'package:koala/employee/features/home/models/job_search_query.dart';
@@ -49,6 +50,28 @@ class JobService {
       },
       parse: (data) => JobPage.fromJson(data! as Map<String, dynamic>),
     );
+  }
+
+  /// Bir şirketin açık ilanlarını bütün sayfalardan toplar.
+  ///
+  /// Sunucu şirket kimliğini arama sorgusunda süzer; istemci şirket adına
+  /// bakmaz. En büyük izinli sayfa boyutuyla başlanır, yine de yüzü aşan
+  /// şirketlerde sonraki sayfalar okunur.
+  Future<List<Job>> fetchByCompany(String companyId) async {
+    const pageSize = 100;
+    final jobs = <Job>[];
+    var pageNumber = 0;
+
+    while (true) {
+      final page = await search(
+        JobSearchQuery(companyId: companyId),
+        page: pageNumber,
+        size: pageSize,
+      );
+      jobs.addAll(page.jobs);
+      if (page.last) return jobs;
+      pageNumber++;
+    }
   }
 
   /// Tek bir ilanın tam hâli.
