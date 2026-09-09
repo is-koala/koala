@@ -196,6 +196,18 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     }
   }
 
+  /// Doğrudan bağlantıda ilan listesi de gelmemiş olabilir. Tekrar deneme
+  /// önce ilan özetini geri getirir, ancak ondan sonra bu ilana ait
+  /// başvuranları yeniler.
+  Future<void> _retryApplicants() async {
+    final provider = context.read<BJobsProvider>();
+    if (provider.getPostByJobId(widget.jobId) == null) {
+      await provider.load(force: true);
+      if (!mounted || provider.getPostByJobId(widget.jobId) == null) return;
+    }
+    await provider.ensureApplicants(widget.jobId, force: true);
+  }
+
   /// İlanın atamasını ve ona bağlı yardımcı kayıtları tek snapshot olarak
   /// yeniler.
   ///
