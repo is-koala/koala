@@ -53,6 +53,7 @@ enum JobSortOption {
 class JobSearchQuery {
   const JobSearchQuery({
     this.query,
+    this.companyId,
     this.categoryId,
     this.cityId,
     this.districtId,
@@ -69,6 +70,9 @@ class JobSearchQuery {
 
   /// Serbest metin araması: başlık, pozisyon, şirket ve konumda aranıyor.
   final String? query;
+
+  /// Şirketin **id**'si (UUID). Aynı adlı şirketlerin ilanlarını ayırır.
+  final String? companyId;
 
   /// Kategorinin **id**'si (UUID), kodu değil. Çizim tarafı `code`'a bakmayı
   /// sürdürüyor: kod addan bağımsız ve değişmez, id ise sorgunun anahtarı.
@@ -107,6 +111,7 @@ class JobSearchQuery {
   /// Boş sonuç ekranı "hiç ilan yok" ile "bu süzgece uyan ilan yok"u ayırmak
   /// için buna bakıyor.
   bool get hasFilters =>
+      companyId != null ||
       categoryId != null ||
       cityId != null ||
       districtId != null ||
@@ -131,6 +136,7 @@ class JobSearchQuery {
   Map<String, dynamic> toQueryParameters() {
     return {
       'query': ?(hasQuery ? query!.trim() : null),
+      'companyId': ?companyId,
       'categoryId': ?categoryId,
       'cityId': ?cityId,
       'districtId': ?districtId,
@@ -155,6 +161,7 @@ class JobSearchQuery {
   /// [CopyWith].
   JobSearchQuery copyWith({
     Object? query = CopyWith.unset,
+    Object? companyId = CopyWith.unset,
     Object? categoryId = CopyWith.unset,
     Object? cityId = CopyWith.unset,
     Object? districtId = CopyWith.unset,
@@ -170,6 +177,7 @@ class JobSearchQuery {
   }) {
     return JobSearchQuery(
       query: CopyWith.pick(query, this.query),
+      companyId: CopyWith.pick(companyId, this.companyId),
       categoryId: CopyWith.pick(categoryId, this.categoryId),
       cityId: CopyWith.pick(cityId, this.cityId),
       districtId: CopyWith.pick(districtId, this.districtId),

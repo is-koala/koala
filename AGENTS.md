@@ -346,7 +346,7 @@ Things worth knowing:
 - **One request, not three.** `CompanyDto` carries `images`, `followerCount` and `following` inline, so the screen never calls `/companies/{id}/images` or asks whether the user follows the company. The gallery endpoint stays in `ApiPaths` for managing a gallery, not for reading one.
 - **The page takes an id, not a `Company`.** It is reached from a job, a past job or a chat, and none of those hold the full record. Following is optimistic — the button flips immediately and rolls back if the request fails, because both endpoints are idempotent and the outcome is predictable.
 
-> Two things on that screen are still not real. Company jobs are filtered from `GET /jobs` **by company name** because no endpoint filters by company id, and messaging a company has no endpoint at all (a conversation always belongs to a job). Both are marked `TODO(backend)`.
+> Company jobs are read with `GET /jobs?companyId=...` and every result page is collected, so equal company names and the first-page boundary cannot alter the list. Direct company messaging is the one remaining unavailable action: a conversation still always belongs to a job, and that button remains marked `TODO(backend)`.
 
 **Experiences are editable.** `employee/features/profile/services/experience_service.dart` writes `POST|PUT|DELETE /users/me/experiences[/{id}]`; the list itself still arrives inside `/users/me`, so every change refreshes `UserProvider` rather than patching the local list. `PUT` replaces the whole record — a field left blank in the sheet is cleared on the server, which is why the form opens pre-filled. Dates go as `yyyy-MM-dd`: `toIso8601String` writes a time component and the server's `LocalDate` parser rejects it.
 

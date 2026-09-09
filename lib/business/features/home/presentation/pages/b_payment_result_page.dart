@@ -14,7 +14,7 @@ part 'b_payment_result_pagemodel.dart';
 
 /// Iyzico dönüş URL'sinin açtığı ekran.
 ///
-/// Gösterilen sonuç her zaman authenticated assignment listesinden yeniden
+/// Gösterilen sonuç her zaman kimlik doğrulamalı tekil atama ucundan yeniden
 /// okunur; yönlendirme URL'sindeki sağlayıcı durumu finansal kanıt değildir.
 class BPaymentResultPage extends StatefulWidget {
   const BPaymentResultPage({

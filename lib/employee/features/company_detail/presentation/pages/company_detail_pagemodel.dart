@@ -1,8 +1,9 @@
 part of 'company_detail_page.dart';
 
 abstract class CompanyDetailPagemodel extends State<CompanyDetailPage> {
-  final CompanyService _companyService = CompanyService();
-  final JobService _jobService = JobService();
+  CompanyService get _companyService =>
+      widget.companyService ?? CompanyService();
+  JobService get _jobService => widget.jobService ?? JobService();
   final ScrollController scrollController = ScrollController();
 
   /// Şirket. Yüklenene kadar `null`.
@@ -50,7 +51,7 @@ abstract class CompanyDetailPagemodel extends State<CompanyDetailPage> {
       if (!mounted) return;
       setState(() {
         company = fetched;
-        companyJobsFuture = _loadCompanyJobs(fetched.name);
+        companyJobsFuture = _loadCompanyJobs(fetched.id);
       });
     } on ApiException catch (error) {
       if (!mounted) return;
@@ -60,15 +61,9 @@ abstract class CompanyDetailPagemodel extends State<CompanyDetailPage> {
     }
   }
 
-  /// Şirketin ilanları.
-  ///
-  /// TODO(backend): Şirkete göre süzen bir uç yok — `GET /jobs` şirket
-  /// kimliği almıyor — o yüzden arama sonucu şirket **adına** göre eleniyor.
-  /// Aynı adı taşıyan iki şirket varsa ilanları karışır.
-  Future<List<Job>> _loadCompanyJobs(String companyName) async {
-    final allJobs = (await _jobService.search(const JobSearchQuery())).jobs;
-    return allJobs.where((job) => job.company == companyName).toList();
-  }
+  /// Şirketin açık ilanlarını kimlik üzerinden, bütün sayfalardan getirir.
+  Future<List<Job>> _loadCompanyJobs(String companyId) =>
+      _jobService.fetchByCompany(companyId);
 
   /// Appbar toplanırken başlığın belirme oranı.
   ///

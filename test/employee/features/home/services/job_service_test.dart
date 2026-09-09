@@ -220,4 +220,78 @@ void main() {
       );
     });
   });
+
+  group('JobService.fetchByCompany', () {
+    test(
+      'şirket kimliğini sunucuya gönderip bütün sayfaları koruyor',
+      () async {
+        final api = FakeApi(
+          handler: (request) {
+            final page = request.queryParameters['page'] as int;
+            final firstIndex = page * 100;
+            final itemCount = page == 0 ? 100 : 1;
+            return FakeApiResponse(
+              statusCode: 200,
+              body: {
+                'success': true,
+                'data': {
+                  'content': List.generate(itemCount, (index) {
+                    final jobIndex = firstIndex + index;
+                    return {
+                      ..._jobBody,
+                      'id': 'job-$jobIndex',
+                      'companyName': jobIndex < 100
+                          ? 'Aynı Ad'
+                          : 'Farklı Sunucu Adı',
+                    };
+                  }),
+                  'page': page,
+                  'size': 100,
+                  'totalElements': 101,
+                  'totalPages': 2,
+                  'last': page == 1,
+                },
+              },
+            );
+          },
+        );
+
+        final jobs = await JobService.withClient(
+          api.client,
+        ).fetchByCompany('company-7');
+
+        expect(jobs, hasLength(101));
+        expect(jobs.first.id, 'job-0');
+        expect(jobs.last.id, 'job-100');
+        expect(jobs.last.company, 'Farklı Sunucu Adı');
+        expect(api.requests, hasLength(2));
+        expect(
+          api.requests.map((request) => request.path),
+          everyElement('/jobs'),
+        );
+        expect(
+          api.requests.map((request) => request.method),
+          everyElement('GET'),
+        );
+        expect(
+          api.requests.map((request) => request.queryParameters['companyId']),
+          everyElement('company-7'),
+        );
+        expect(api.requests.map((request) => request.queryParameters['page']), [
+          0,
+          1,
+        ]);
+        expect(
+          api.requests.map((request) => request.queryParameters['size']),
+          everyElement(100),
+        );
+        expect(
+          api.requests.every(
+            (request) => !request.queryParameters.containsKey('query'),
+          ),
+          isTrue,
+        );
+      },
+    );
+  });
 }
