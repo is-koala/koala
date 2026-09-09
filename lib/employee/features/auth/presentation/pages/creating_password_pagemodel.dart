@@ -158,7 +158,7 @@ abstract class CreatingPasswordPagemodel extends State<CreatingPasswordPage> {
 
       // Hesap bu noktada oluştu ve oturum açıldı. İşveren bundan sonra
       // bireysel ilan veya gerçek şirket profili arasında seçim yapar.
-      context.go(isBusiness ? '/employer-type' : '/explore');
+      context.go(isBusiness ? RegistrationRoutes.employerType : '/explore');
     } on ApiException catch (error) {
       if (!mounted) return;
 
@@ -167,7 +167,7 @@ abstract class CreatingPasswordPagemodel extends State<CreatingPasswordPage> {
       // oluşmuştur; kullanıcıya hata göstermek başarılı kaydı başarısız
       // gibi sunar.
       if (SessionManager().isLoggedIn) {
-        context.go(isBusiness ? '/employer-type' : '/explore');
+        context.go(isBusiness ? RegistrationRoutes.employerType : '/explore');
         return;
       }
 

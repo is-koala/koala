@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:koala/business/features/home/services/b_company_service.dart';
+import 'package:koala/employee/features/auth/presentation/registration_routes.dart';
 import 'package:koala/employee/features/company_detail/models/company.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -57,7 +58,7 @@ class _CompanyInformationsPageState extends CompanyInformationsPagemodel {
   @override
   Widget build(BuildContext context) {
     return PopScope<Object?>(
-      canPop: Navigator.of(context).canPop(),
+      canPop: canGoBack,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) goBack();
       },

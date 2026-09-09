@@ -46,13 +46,15 @@ abstract class CompanyInformationsPagemodel
 
   void _onCompanyNameChanged() => setState(() {});
 
+  bool get canGoBack => context.canPop();
+
   void goBack() {
-    if (context.canPop()) {
+    if (canGoBack) {
       context.pop();
       return;
     }
 
-    context.go('/employer-type');
+    context.go(RegistrationRoutes.employerType);
   }
 
   /// Logonun yerine gösterilen baş harfler.

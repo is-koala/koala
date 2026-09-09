@@ -5,6 +5,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:koala/business/features/home/services/b_company_service.dart';
 import 'package:koala/employee/features/auth/presentation/pages/company_informations_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/employer_type_page.dart';
+import 'package:koala/employee/features/auth/presentation/registration_routes.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/theme/theme.dart';
 import 'package:koala/product/models/canonical_address.dart';
@@ -17,45 +18,55 @@ const _companyResponse = {
   'success': true,
   'data': {'id': 'company_1', 'name': 'Moda Kahve Atölyesi', 'approved': false},
 };
+const _companyDraft = 'Kaydedilmemiş taslak';
+const _originDraft = 'Korunan taslak';
+const _originDraftKey = ValueKey('origin-draft');
+const _originLocation = '/origin';
 
 void main() {
   Future<GoRouter> pumpRegistrationFlow(
     WidgetTester tester, {
-    String initialLocation = '/employer-type',
+    String initialLocation = RegistrationRoutes.employerType,
+    FakeApi? fakeApi,
+    CompanyInformationsPage Function(FakeApi api)? companyPageBuilder,
   }) async {
-    final api = FakeApi(
-      handler: (_) => const FakeApiResponse(
-        statusCode: 200,
-        body: {'success': true, 'data': <Object>[]},
-      ),
-    );
+    final api =
+        fakeApi ??
+        FakeApi(
+          handler: (_) => const FakeApiResponse(
+            statusCode: 200,
+            body: {'success': true, 'data': <Object>[]},
+          ),
+        );
     final router = GoRouter(
       initialLocation: initialLocation,
       routes: [
         GoRoute(
-          path: '/employer-type',
+          path: RegistrationRoutes.employerType,
           pageBuilder: (context, state) => MaterialPage<void>(
             key: state.pageKey,
             child: const EmployerTypePage(),
           ),
         ),
         GoRoute(
-          path: '/company-informations',
+          path: RegistrationRoutes.companyInformations,
           pageBuilder: (context, state) => MaterialPage<void>(
             key: state.pageKey,
-            child: CompanyInformationsPage(
-              service: BCompanyService.withClient(api.client),
-              referenceService: ReferenceLocationService.withClient(api.client),
-            ),
+            child:
+                companyPageBuilder?.call(api) ??
+                CompanyInformationsPage(
+                  service: BCompanyService.withClient(api.client),
+                  referenceService: ReferenceLocationService.withClient(
+                    api.client,
+                  ),
+                ),
           ),
         ),
         GoRoute(
-          path: '/origin',
+          path: _originLocation,
           pageBuilder: (context, state) => MaterialPage<void>(
             key: state.pageKey,
-            child: const Scaffold(
-              body: TextField(key: ValueKey('origin-draft')),
-            ),
+            child: const Scaffold(body: TextField(key: _originDraftKey)),
           ),
         ),
       ],
@@ -102,43 +113,58 @@ void main() {
         widget is TextField && widget.decoration?.labelText == 'Firma Adı*',
   );
 
-  testWidgets('boş stackte iOS geri oku önceki kayıt adımına döner', (
-    tester,
-  ) async {
+  Future<void> arrangeEmptyStackCompanyDraft(WidgetTester tester) async {
     final router = await pumpRegistrationFlow(tester);
     await goToCompany(tester);
-    await tester.enterText(companyNameField(), 'Kaydedilmemiş taslak');
-
+    await tester.enterText(companyNameField(), _companyDraft);
     expect(router.canPop(), isFalse);
+  }
 
-    await tester.tap(findAppIcon(AppIcons.arrowLeft));
-    await tester.pumpAndSettle();
-
+  Future<void> expectFallbackDiscardedCompanyDraft(WidgetTester tester) async {
     expect(find.text('Nasıl iş vermek istersin?'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     await goToCompany(tester);
     expect(companyNameController(tester).text, isEmpty);
+  }
+
+  Future<void> arrangePopulatedStackWithOriginDraft(WidgetTester tester) async {
+    final router = await pumpRegistrationFlow(
+      tester,
+      initialLocation: _originLocation,
+    );
+    await tester.enterText(find.byKey(_originDraftKey), _originDraft);
+    router.push(RegistrationRoutes.companyInformations);
+    await tester.pumpAndSettle();
+    expect(router.canPop(), isTrue);
+  }
+
+  void expectOriginDraftPreserved(WidgetTester tester) {
+    expect(find.byKey(_originDraftKey), findsOneWidget);
+    expect(textController(tester, _originDraftKey).text, _originDraft);
+  }
+
+  testWidgets('boş stackte iOS geri oku önceki kayıt adımına döner', (
+    tester,
+  ) async {
+    await arrangeEmptyStackCompanyDraft(tester);
+
+    await tester.tap(findAppIcon(AppIcons.arrowLeft));
+    await tester.pumpAndSettle();
+
+    await expectFallbackDiscardedCompanyDraft(tester);
   }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
   testWidgets('boş stackte Android geri eylemi önceki kayıt adımına döner', (
     tester,
   ) async {
-    final router = await pumpRegistrationFlow(tester);
-    await goToCompany(tester);
-    await tester.enterText(companyNameField(), 'Kaydedilmemiş taslak');
-
-    expect(router.canPop(), isFalse);
+    await arrangeEmptyStackCompanyDraft(tester);
 
     final handled = await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
 
     expect(handled, isTrue);
-    expect(find.text('Nasıl iş vermek istersin?'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-
-    await goToCompany(tester);
-    expect(companyNameController(tester).text, isEmpty);
+    await expectFallbackDiscardedCompanyDraft(tester);
   }, variant: TargetPlatformVariant.only(TargetPlatform.android));
 
   testWidgets(
@@ -147,44 +173,26 @@ void main() {
       final router = await pumpRegistrationFlow(tester);
       final previousHistoryEntry = router.routeInformationProvider.value;
       await goToCompany(tester);
-      await tester.enterText(companyNameField(), 'Kaydedilmemiş taslak');
+      await tester.enterText(companyNameField(), _companyDraft);
 
       await router.routeInformationProvider.didPushRouteInformation(
         previousHistoryEntry,
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Nasıl iş vermek istersin?'), findsOneWidget);
-
-      await goToCompany(tester);
-      expect(companyNameController(tester).text, isEmpty);
+      await expectFallbackDiscardedCompanyDraft(tester);
     },
   );
 
   testWidgets(
     'dolu stackte iOS kenar hareketi doğal pop yapıp önceki state\'i korur',
     (tester) async {
-      final router = await pumpRegistrationFlow(
-        tester,
-        initialLocation: '/origin',
-      );
-      await tester.enterText(
-        find.byKey(const ValueKey('origin-draft')),
-        'Korunan taslak',
-      );
-      router.push('/company-informations');
-      await tester.pumpAndSettle();
-
-      expect(router.canPop(), isTrue);
+      await arrangePopulatedStackWithOriginDraft(tester);
 
       await tester.dragFrom(const Offset(0, 300), const Offset(500, 0));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const ValueKey('origin-draft')), findsOneWidget);
-      expect(
-        textController(tester, const ValueKey('origin-draft')).text,
-        'Korunan taslak',
-      );
+      expectOriginDraftPreserved(tester);
     },
     variant: TargetPlatformVariant.only(TargetPlatform.iOS),
   );
@@ -192,28 +200,13 @@ void main() {
   testWidgets(
     'dolu stackte Android geri eylemi doğal pop yapıp önceki state\'i korur',
     (tester) async {
-      final router = await pumpRegistrationFlow(
-        tester,
-        initialLocation: '/origin',
-      );
-      await tester.enterText(
-        find.byKey(const ValueKey('origin-draft')),
-        'Korunan taslak',
-      );
-      router.push('/company-informations');
-      await tester.pumpAndSettle();
-
-      expect(router.canPop(), isTrue);
+      await arrangePopulatedStackWithOriginDraft(tester);
 
       final handled = await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
 
       expect(handled, isTrue);
-      expect(find.byKey(const ValueKey('origin-draft')), findsOneWidget);
-      expect(
-        textController(tester, const ValueKey('origin-draft')).text,
-        'Korunan taslak',
-      );
+      expectOriginDraftPreserved(tester);
     },
     variant: TargetPlatformVariant.only(TargetPlatform.android),
   );
@@ -255,33 +248,33 @@ void main() {
     );
     var saved = false;
 
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: lightTheme,
-        home: CompanyInformationsPage(
-          service: BCompanyService.withClient(api.client),
-          referenceService: ReferenceLocationService.withClient(api.client),
-          initialLocation: const LatLng(40.9819, 29.0263),
-          initialAddress: const CanonicalAddress(
-            id: 'address-1',
-            countryId: 'country-1',
-            countryName: 'TÜRKİYE',
-            countryCode: 'TR',
-            cityId: 'city-1',
-            cityName: 'İSTANBUL',
-            districtId: 'district-1',
-            districtName: 'KADIKÖY',
-            components: AddressComponents(
-              neighborhood: 'Caferağa Mahallesi',
-              thoroughfare: 'Moda Caddesi',
-              buildingNumber: '12',
-              postalCode: '34710',
-            ),
-            canonicalVersion: 1,
-            needsReview: false,
+    await pumpRegistrationFlow(
+      tester,
+      initialLocation: RegistrationRoutes.companyInformations,
+      fakeApi: api,
+      companyPageBuilder: (api) => CompanyInformationsPage(
+        service: BCompanyService.withClient(api.client),
+        referenceService: ReferenceLocationService.withClient(api.client),
+        initialLocation: const LatLng(40.9819, 29.0263),
+        initialAddress: const CanonicalAddress(
+          id: 'address-1',
+          countryId: 'country-1',
+          countryName: 'TÜRKİYE',
+          countryCode: 'TR',
+          cityId: 'city-1',
+          cityName: 'İSTANBUL',
+          districtId: 'district-1',
+          districtName: 'KADIKÖY',
+          components: AddressComponents(
+            neighborhood: 'Caferağa Mahallesi',
+            thoroughfare: 'Moda Caddesi',
+            buildingNumber: '12',
+            postalCode: '34710',
           ),
-          onSaved: () => saved = true,
+          canonicalVersion: 1,
+          needsReview: false,
         ),
+        onSaved: () => saved = true,
       ),
     );
 
