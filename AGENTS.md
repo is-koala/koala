@@ -48,13 +48,14 @@ flutter pub get
 
 `test/` mirrors `lib/`: a test for `lib/product/router/router_manager.dart` lives at `test/product/router/router_manager_test.dart`. Test names and `group` labels are Turkish like everything else.
 
-What is covered today: the router redirect guard, the `Job` model's JSON round-trip, `asPrice`, the `SavedJobs` / `Page` / `Search` / `Apply` / `Theme` / `BJobs` providers, and `MyButton` / `MyListTile` as widget tests. Most tests run headless. `integration_test/live_qa_login_test.dart` is the deliberate exception: it runs on a device or simulator against the configured real API and needs `QA_WORKER_EMAIL`, `QA_WORKER_PASSWORD`, `QA_EMPLOYER_EMAIL` and `QA_EMPLOYER_PASSWORD` as compile-time defines. Supply those credentials only at invocation time; keep the live check connected to real data.
+Coverage follows the same tree: models, services, providers, pages, widgets and the shared network/router layers all have focused tests beside their corresponding path. Inspect the matching `test/` subtree instead of relying on a feature count here; the suite grows with the product. Most tests run headless. `integration_test/live_qa_login_test.dart` is the deliberate exception: it runs on a device or simulator against the configured real API and needs `QA_WORKER_EMAIL`, `QA_WORKER_PASSWORD`, `QA_EMPLOYER_EMAIL` and `QA_EMPLOYER_PASSWORD` as compile-time defines. Supply those credentials only at invocation time; keep the live check connected to real data.
 
-Three shared helpers under `test/support/`, use them instead of rolling your own:
+Shared helpers under `test/support/`, use them instead of rolling your own:
 
 - **`fixtures.dart`** → `buildJob(...)`. `Job` has eight required fields; passing only the one the test cares about keeps the test readable.
 - **`pump.dart`** → `pumpInApp(tester, widget, brightness: ...)`. Product widgets read their colors from `context`, so they cannot be pumped bare — they need a `MaterialApp` with the real theme. The `brightness` parameter is there so a widget can be asserted in **both** themes, which is the project's core rule.
 - **`fake_api.dart`** → `FakeApi(handler: ...).client`. A fake HTTP layer plus an `ApiClient` that carries **the production interceptor chain** — `Authorization`, `X-Device-Id`, the session refresh and the retry all run in tests. That is what lets a test drive the refresh decision by handing back an envelope: `errorCategory` in the body reaches `AuthInterceptor` exactly as it would in production. Keychain and `SharedPreferences` do not exist there, so the client is fed `FakeTokenStorage` and `FakeDeviceIdentity` from the same file; pass your own `tokenStorage:` when a test needs to start with a token or read back the refreshed one, and check `sessionExpired` when it should end the session. `requests` holds the `RequestOptions` that reached the fake server — but note a retried request **mutates the options it already sent**, so capture headers inside the handler rather than reading them afterwards.
+- **`finders.dart`** → semantic finders for product widgets, including `findAppIcon`. Prefer these over reaching into a package widget's private rendering shape.
 
 CI runs the suite as `flutter test --flavor staging --dart-define-from-file=config/staging.json` on same-repository PRs and blocks the optional Android build behind it, so a red test stops that pipeline. The iOS build is a separate workflow: it runs only when a PR touches `ios/`, `pubspec.yaml`, `pubspec.lock` or its own workflow file, and is deliberately independent of the Pi test job. Private-fork workflows are disabled at repository level (`run_workflows_from_fork_pull_requests=false`); the matching YAML `if:` is defense in depth, not the security boundary, because a PR can edit its own workflow. Before enabling fork workflows or making the repository public, remove self-hosted `pull_request` execution or restrict the runner group to trusted default-branch workflows. The test job also runs `test/product/network/api_config_test.dart` on its own first.
 
@@ -73,7 +74,7 @@ CI runs the suite as `flutter test --flavor staging --dart-define-from-file=conf
 
 > ⚠️ **`pod install` / `pod update` are denied in `.claude/settings.json`.** `flutter build ios` triggers pod resolution itself and rewrites the tracked `ios/Podfile.lock`, so ask the user before the first iOS build of a session that changes dependencies.
 
-> `ios/Flutter/Debug.xcconfig` and `Release.xcconfig` include the gitignored `Secrets.xcconfig` with optional `#include?`, so a fresh checkout and the no-codesign CI build do not need a placeholder. A real map acceptance still needs `MAPS_API_KEY`; production release writes its separate `Secrets.production.xcconfig` from GitHub secrets.
+> Each flavor xcconfig optionally includes its gitignored `Secrets.<flavor>.xcconfig`, so a fresh checkout and the no-codesign CI build do not need a placeholder. A real map acceptance still needs `MAPS_API_KEY`; production release writes `Secrets.production.xcconfig` from GitHub secrets.
 
 > Running the app needs the Google Maps key to be in place — see *Secrets* below. Without it the map tab renders a blank grey area, which is a configuration problem, not a code bug.
 
@@ -113,10 +114,10 @@ lib/
         └── presentation/{pages,widgets,providers}
 ```
 
-Employee features: `auth`, `home` (explore), `jobs`, `chat`, `profile`, `company_detail`, `settings`.
+Employee features: `auth`, `home` (explore), `jobs`, `chat`, `notifications`, `profile`, `company_detail`, `settings`.
 Business features: `home`, `chat`.
 
-A feature has at most three top-level folders: **`models/`** (plain data classes), **`services/`** (where the data comes from) and **`presentation/`**. There is no `data/` or `domain/` wrapper — a model sits directly under `models/`. `auth` and `settings` have no data of their own, so they only carry `presentation/`.
+A feature has at most three top-level folders: **`models/`** (plain data classes), **`services/`** (where the data comes from) and **`presentation/`**. There is no `data/` or `domain/` wrapper — a model sits directly under `models/`. Create only the folders a feature actually needs; `auth` and `settings`, for example, now carry their own models and services as well as presentation.
 
 **Where does shared code go?** Used by both apps → `lib/product/`. Used by several features on one side only → that side's `core/`. Used by a single feature → that feature's own folder. Do not push employee-only code into `product/`.
 
@@ -161,8 +162,6 @@ A feature has at most three top-level folders: **`models/`** (plain data classes
 > ⚠️ **Every route must declare its own `pageBuilder`.** Left on `builder:`, go_router picks the page type by sniffing the app and — in this go_router/Flutter pair — falls through to `NoTransitionPage`, so the page opens with no animation and nothing warns you. Top-level routes go through `RouterManager._page` (a `MaterialPage`, i.e. the platform's own transition); the shell tabs keep theirs. `test/product/router/router_pages_test.dart` guards this.
 
 The decision itself lives in `RouterManager.resolveRedirect(initialized:, loggedIn:, userType:, seenOnboarding:, location:)`, a pure static function — the `redirect` callback only feeds it what `SessionManager` already holds. Change the rules there and cover them in `test/product/router/router_manager_test.dart`; this is the one piece of logic that keeps the two apps apart.
-
-> The guard is `async` and hits `SharedPreferences` on every route change. It works, but it means the redirect is not synchronous — do not assume the first frame of a route is already the final destination.
 
 **Two `ShellRoute`s**, one per app:
 
@@ -216,7 +215,7 @@ An error adds **five** fields on top of the base envelope, and **all five are co
 |---|---|
 | `api_config.dart` | Flavor, base URL, app-link scheme and timeouts. Both `--flavor` and `--dart-define=API_BASE_URL=...` are mandatory; an invalid or missing environment fails closed before networking starts. |
 | `api_paths.dart` | Endpoint paths, plus the set of paths that need no token. |
-| `api_client.dart` | The only place `dio` is touched: unwraps the envelope, turns `DioException` into `ApiException`. `putFile` is the multipart upload path — it builds the `FormData` and forces the content type, because the base options say `application/json`. |
+| `api_client.dart` | The application-facing request facade: unwraps the envelope and turns `DioException` into `ApiException`. Multipart entry points encode the HTTP and response contract: `postFile` is POST + one file + data, `putFile` is PUT + one file + data, `putFileWithoutData` is PUT + one file + no data, and `postMultipartJson` is POST + a JSON part + an optional file + data. All force `multipart/form-data`, because the base options say `application/json`. |
 | `api_exception.dart` | `ApiException` / `ApiErrorType` — the single error type services and pages see. It also owns the classification: `fromCategory` is the `errorCategory` → type mapping, `_fromStatusCode` the **library-private** fallback table, and `classify` the "category first, status second" rule both `ApiClient` and `AuthInterceptor` call — and the only way in. `serverStateMoved` is there for callers that mean exactly that — reload, because the record changed — regardless of which of the two conflict categories arrived. **A caller that needs to know *which* error arrived reads `errorCode`, not the category**: the category names a class of error, the code names the error itself (`ReviewProvider`, `JobAlertsProvider`). |
 | `api_response.dart` | The envelope. `errorCategoryOf` reads the category out of a **raw** body for the one caller that has no parsed envelope yet (`AuthInterceptor`); `fromJson` goes through it too, so the field has a single reader. |
 | `auth_interceptor.dart` | Attaches the bearer token, reads the raw envelope with `ApiResponse.errorCategoryOf`, and on an error that `ApiErrorType.classify` identifies as `unauthenticated` refreshes once and retries. The gate is the category, not the status code — `401` survives only as `classify`'s fallback, which is what keeps an old server, a hand-written filter envelope or a non-JSON error page behaving as before. |
@@ -225,7 +224,7 @@ An error adds **five** fields on top of the base envelope, and **all five are co
 | `device_identity.dart` | The per-install id sent as `X-Device-Id`, and the descriptive `User-Agent`. The backend binds sessions to the device, so the id must survive app updates — it lives in `SharedPreferences` and is **not** cleared on logout. |
 | `device_interceptor.dart` | Puts `X-Device-Id` on every request, signed in or not. |
 
-Two feature services are on real endpoints: `auth_service.dart` (registration in three steps, login, logout, forgot/reset password, `/users/me`) and `legal_service.dart` (agreements, consents, account deletion) — both under `employee/features/auth/services/`, because registration is where consents are collected.
+Authentication and legal flows use `auth_service.dart` (registration in three steps, login, logout, forgot/reset password, `/users/me`) and `legal_service.dart` (agreements, consents, account deletion). Both live under `employee/features/auth/services/`, because registration is where consents are collected; the rest of the app's real services sit with their own features.
 
 **Registration needs consents.** `/auth/complete-registration` rejects the request unless every mandatory agreement is granted, so the password screen first calls `GET /legal/agreements` (public) and sends `consents: [{agreementVersionId, granted}]` along with the password. Today the server seeds three mandatory agreements (terms, privacy, explicit consent) and one optional (commercial messages).
 
@@ -280,11 +279,9 @@ The same message arrives on **two channels** — the conversation topic and `/us
 
 > **Read receipts clear the badge across devices.** `RealtimePublisher.conversationRead` publishes to `/topic/conversations/{id}` **and** to every participant's `/user/queue/messages`, and `ChatListController._onUserEvent` now dispatches on the event type instead of dropping everything that is not a message. Only **your own** read clears the count — the counterpart reading is a receipt on messages you sent, which the list does not show, so treating it the same would zero a badge that still has unread messages behind it.
 
-**Still fake:**
-
 **The employer's job flow is real too.** `business/features/home/services/employer_job_service.dart` owns it: `GET /users/me/jobs` (own posts, individual and company alike — the server filters by `creatorId`), `POST /users/me/jobs` / `POST /companies/{id}/jobs` (open a post), `POST /jobs/{jobId}/close`, `GET /jobs/{jobId}/applications` and `POST /job-applications/{id}/respond`. `BJobsProvider` merges the first and the fourth into one list; `b_job_detail_page` fetches the richer `GET /jobs/{id}` itself.
 
-Four things worth knowing:
+Things worth knowing:
 
 - **The count is free, the people are not.** `JobSummaryDto.applicationCount` arrives with the list (the server fills it in the same pass as the cover images), so no screen fetches applicants just to show a number. Who actually applied comes from `GET /jobs/{id}/applications` and is fetched **per job, on demand**, through `BJobsProvider.ensureApplicants` — the detail screen for its own job, the home screen for the three posts its preview shows, and the posts list only for past posts, whose footer names the person who took the job. Never load them for the whole list; that was the old N+1.
 - **Insurance is a company-only concept, deliberately.** `CreateIndividualJobDto` has no `insuranceRequired`, the server forces it to `false`, and it rejects an individual job in any category whose `requiresInsurance` is set (`400`) — reporting SGK is the employer's legal duty and a one-day individual employer is not expected to carry it. So the create screen hides the switch for an individual employer, replaces it with a line saying why, **and filters those categories out of the picker** rather than letting the form fail on submit. Which endpoint is used comes from `CurrentUser.activeCompany` — the first **approved** membership.
@@ -297,28 +294,27 @@ Four things worth knowing:
 
 **The candidate profile** (`b_user_profile_page`) paints twice: the `JobApplicant` handed in through `state.extra` gives the name, photo, cover letter and date immediately, then `GET /users/{userId}` → `PublicProfile` fills in the profession, the "hakkında" text, the location and the CV. That endpoint deliberately returns **no full address** — city and district only — and it is open to signed-in users, not anonymous ones. If it fails the screen does not blank: a strip at the top offers *Tekrar dene* and the application data stays on screen. The CV opens in the external browser through `url_launcher`, because the URL is a redirect to a short-lived signed address rather than the file itself.
 
-**The employer's profile is real too.** `business/features/home/services/b_company_service.dart` reads `GET /companies/{id}`, writes `PATCH /companies/{id}` and reads `GET /users/{userId}/employer-stats`; `BCompanyProvider` (registered in `main.dart`) holds both for the profile, settings and company-info screens.
+**The employer's profile is real too.** Shared `CompanyService` reads `GET /companies/{id}`; `business/features/home/services/b_company_service.dart` creates and updates companies, manages logos and galleries, and reads `GET /users/{userId}/employer-stats`. `BCompanyProvider` (registered in `main.dart`) holds the company and its stats for the profile, settings and company-info screens.
 
 - **The profile has two valid shapes.** An employer with a company membership sees the **company**; one without sees **themselves** — name, e-mail, phone and address off `/users/me`. Being company-less is not a gap: `POST /users/me/jobs` posts individual jobs. `b_profile_page` renders both from the same widgets.
 - **Two different "company" getters on `CurrentUser`.** `activeCompany` is the first **approved** membership and decides which create-job endpoint is used; `primaryCompany` is the first membership regardless of approval and is what the profile shows — otherwise someone who just registered a company would never see it and would think they were an individual employer.
 - **`PATCH /companies/{id}` accepts five fields only** — name, e-mail, phone, website, description (`UpdateCompanyRequestDto`), and only from the company's `ADMIN`. Tax number, address, type and logo are fixed at creation, so the company-info screen keeps those fields visible but `enabled: false` with a note saying why. Fields left blank are omitted from the body rather than sent as `""`, which would clear them.
 - **The approval flag is spelled `approved`, not `isApproved`** — the same name `/users/me` → `CompanyMembershipDto.approved` uses, so the concept has one name across the API. `BCompany` parses `approved`; the Dart field stays `isApproved` because that is how a flag reads. `BCompanyProvider` still overwrites it from the membership after a fetch, which is now belt-and-braces rather than the only source.
-- **`BCompany` is the real `CompanyDto`;** `employee/features/company_detail/models/company.dart` is the fake one and its fields do not match the server (`logo` ↔ `logoUrl`, `address.city` ↔ `address.cityName`, and a two-value `CompanyType` where the server has eight). The `b_` prefix exists only to keep the two apart until company detail is wired.
 - **Employer stats are per person, not per company** (`StatisticsManager` counts by `creatorId`), so two admins of the same company see different numbers. Zero reviews come back as `averageRating: 0`; `EmployerStats.hasRating` separates that from an actual bad score so the card shows "—" instead of "0.0".
 
 - **The logo is editable, the rest of the fixed fields are not.** `PUT /companies/{id}/logo` (multipart, part name `logo`, `ADMIN` only) and `DELETE` on the same path both return the company, so no second read is needed. The company-info screen picks from the gallery and checks extension and size **client-side** against the server's own limits (`png/jpg/jpeg/webp`, 10 MB, from `UploadProperties`) so the user is not left waiting for a rejection. The file is sent **unmodified** — re-encoding it would flatten a transparent PNG, which is visible on a logo.
 
-> Endpoints the profile could use but does not: the company gallery (`/companies/{id}/images`), the contact list and invitations (`/contacts`, `/contact-invitations`) and `followerCount` (parsed, not shown). Creating a company (`POST /companies`) is missing entirely — multipart with a logo, plus an identity-verification precondition; the company-info screen explains this instead of offering it (`TODO(backend)`).
+> Company creation is wired through multipart `POST /companies`, and the company-info screen manages `/companies/{id}/images` as a reorderable gallery. The contact list and invitations (`/contacts`, `/contact-invitations`) still have no app surface. `Company.followerCount` is parsed and adjusted after follow/unfollow but is not rendered on the company-detail screen; the followed-companies list renders its own `FollowedCompanyDto.followerCount` summary.
 
 **The worker's side of the assignment is on the real endpoints too.** `employee/features/jobs/services/assignment_service.dart` owns them: `GET /users/me/assignments` (moved off `JobApplicationService`, which now carries applications only) and `POST /job-assignments/{id}/respond`.
 
-Accepting an application does not start the job — the server opens the assignment in `PENDING_CONFIRMATION` and **waits for the worker**. `MyJobStatus.awaitingApproval` is that state, and "İşlerim" shows it in its own section above everything else, with Kabul Et / Reddet. Rejecting asks for confirmation first: the answer is given once and `REJECTED` drops the row out of the list entirely (`MyJob.fromAssignment` returns `null` for it). Answering a second time is `409`; the screen shows the server's message and reloads, because a `409` means the local list is stale.
+Accepting an application does not start the job — the server opens the assignment in `PENDING_CONFIRMATION` and **waits for the worker**. `MyJobStatus.awaitingApproval` is that state, and "İşlerim" shows it in its own section above everything else, with Kabul Et / Reddet. Rejecting asks for confirmation first; the answer is given once and `REJECTED` moves to "Geçmiş" so the decision remains visible. Answering a second time is `409`; the screen shows the server's message and reloads, because a `409` means the local list is stale.
 
 > `MyJob.assignmentId` is `null` on rows that came from an application and carries the id on rows that came from an assignment. It duplicates `MyJob.id` on purpose — the assignment endpoints need an id that is definitely an assignment's.
 
 **The timesheet is wired on both sides.** `AssignmentService` gained `checkIn` / `checkOut` / `fetchWorkSessions`, and `EmployerJobService` gained `fetchMyAssignments` (with `asEmployer: true`) and `completeAssignment`.
 
-Four things worth knowing:
+Things worth knowing:
 
 - **Check-in and check-out are worker-only; complete is employer-only.** The server returns `403` for the wrong party, so the two live on opposite sides of the app on purpose. `fetchWorkSessions` is the exception — both parties may read it, so `b_job_detail_page` calls the employee-side `AssignmentService` for it, the same way both apps share `chat_service.dart`.
 - **The money gates the timesheet.** The server refuses a check-in unless `paymentStatus` is `HELD_IN_ESCROW`. `MyJob.isPaymentSecured` carries that, and the approved tile replaces the button with a line saying why rather than letting the user earn a `409`.
@@ -329,7 +325,7 @@ Four things worth knowing:
 
 **Cancellation and disputes are wired on both sides.** `AssignmentService` owns `cancel`, `fetchCancellation`, `openDispute` and `fetchDisputes` — all four are open to **both** parties, so the business side calls the employee-side service for them, as it already does for work sessions.
 
-Four things worth knowing:
+Things worth knowing:
 
 - **The fee is shown before the decision.** `GET /{id}/cancellation-preview` computes what would be deducted without creating anything, for the caller's own side; both dialogs fetch it on open and write the real figure. It is **not binding** — the deduction depends on how long is left before the job starts, and the server recomputes on cancel — so the text says so. If the preview call fails the flow continues with the rule stated in words: not knowing the fee must not remove the right to cancel.
 - **`cancellableNow` replaces an error.** On an assignment that can no longer be cancelled the endpoint returns the flag rather than a `409`, so the screen closes the door before the dialog opens. `CancellationPreview` defaults it to `false`: if the answer is unknown, do not assume cancelling is allowed.
@@ -346,7 +342,7 @@ Four things worth knowing:
 
 **Company detail is on the real endpoint, and the last fake service is gone.** `employee/features/company_detail/services/company_service.dart` now reads `GET /companies/{id}` and writes `POST|DELETE /companies/{id}/follow`.
 
-- **The two `Company` models merged.** The old fake one is deleted and `BCompany` moved to `employee/features/company_detail/models/company.dart` as `Company` — the shared domain model lives on the employee side and the business app imports it, the same arrangement chat already uses. `b_company_service.dart` keeps only the employer's **write** endpoints (update, logo) plus stats; reading a company is one endpoint for both apps, so `BCompanyProvider` takes a `CompanyService` too.
+- **The two `Company` models merged.** The old fake one is deleted and `BCompany` moved to `employee/features/company_detail/models/company.dart` as `Company` — the shared domain model lives on the employee side and the business app imports it, the same arrangement chat already uses. `b_company_service.dart` keeps only the employer's **write** endpoints (create, update, logo and gallery) plus stats; reading a company is one endpoint for both apps, so `BCompanyProvider` takes a `CompanyService` too.
 - **One request, not three.** `CompanyDto` carries `images`, `followerCount` and `following` inline, so the screen never calls `/companies/{id}/images` or asks whether the user follows the company. The gallery endpoint stays in `ApiPaths` for managing a gallery, not for reading one.
 - **The page takes an id, not a `Company`.** It is reached from a job, a past job or a chat, and none of those hold the full record. Following is optimistic — the button flips immediately and rolls back if the request fails, because both endpoints are idempotent and the outcome is predictable.
 
@@ -370,12 +366,12 @@ Three things worth knowing:
 
 Employer payment is wired through `POST /job-assignments/{id}/payment-session`. The hosted Iyzico checkout opens in the platform's in-app browser (`SFSafariViewController` on iOS, Custom Tabs on Android), never as an unrestricted embedded WebView. The return link only triggers a refresh; the app shows success from the backend assignment/payment state, not from query parameters.
 
-Endpoints that exist on the server and have no app surface yet: push-token registration (`/users/me/devices/push-token`); blocks and reports (`/users/me/blocks`, `/reports`); employer tools (`/users/me/talent-pool`, `/users/me/job-templates`).
+Endpoints that exist on the server and have no app surface yet: push-token registration (`/users/me/devices/push-token`) and the employer talent pool (`/users/me/talent-pool`). Blocks, reports and job templates have shared or business-facing pages and routes.
 
-> The orphaned fakes were deleted once the employer's job flow landed: `profile/services/fake_user.dart` and its `profile/models/user.dart`, `jobs/services/my_jobs_service.dart`, `business/features/chat/services/b_chat_service.dart`. `employee/features/profile/` and `business/features/chat/` are `presentation/` only now — a feature carries `models/` and `services/` only when it has data of its own.
+> The orphaned fakes were deleted once the employer's job flow landed: `profile/services/fake_user.dart` and its `profile/models/user.dart`, `jobs/services/my_jobs_service.dart`, `business/features/chat/services/b_chat_service.dart`. A feature carries `models/` and `services/` only when it has data of its own.
 - **Explore searches on the server.** `JobSearchQuery` (`employee/features/home/models/`) mirrors `JobSearchCriteriaDto` field for field — no invented fields — and `JobService.search` takes it, with `page`/`size` kept separate because they belong to pagination. `JobSortOption` carries only the four fields in the server's `SORTABLE_FIELDS`; an unlisted field is a `400` (`PAGE_SORT_FIELD_NOT_ALLOWED`), not an empty list, so sort strings are never written by hand. The default `createdAt,desc` sends no `sort` at all, since that is what the server already does.
 
-  Three things follow from that and are easy to get wrong:
+  These consequences are easy to get wrong:
 
   - **The query cannot be read backwards.** It holds a `categoryId`, not a name, and a bounding box, not the kilometres the user picked. `JobFilterSelection` is the UI's side of it and converts one way; the filter chips in the bar are drawn from the selection, never from the query.
   - **The category filter goes by id.** `code` stays what the icon, colour and map pin resolve from — the server pins that contract in `ReferenceDataController` — but the filter is `categoryId`. Comparing against `code` was the old bug.
@@ -396,12 +392,12 @@ When you add anything data-shaped, keep it behind the existing repository classe
 
 ### Secrets
 
-The Google Maps key is **not** in the repo. It is read from:
+The Google Maps key is **not** in the repo. Flavor builds read it from:
 
-- Android: `MAPS_API_KEY` in `android/local.properties` (consumed in `android/app/build.gradle.kts`)
-- iOS: `MAPS_API_KEY` in `ios/Flutter/Secrets.xcconfig` (read in `AppDelegate.swift`)
+- Android: `MAPS_API_KEY_DEV`, `MAPS_API_KEY_STAGING` or `MAPS_API_KEY_PRODUCTION` in `android/local.properties`. Staging and production may instead receive their matching `KOALA_ANDROID_MAPS_API_KEY_*` environment variable in CI.
+- iOS: `MAPS_API_KEY` inside `ios/Flutter/Secrets.dev.xcconfig`, `Secrets.staging.xcconfig` or `Secrets.production.xcconfig`; each flavor configuration includes only its matching file.
 
-Both files are gitignored, as is `.env`. Never print a key value into an answer, a comment or a committed file.
+These files are gitignored, as is `.env`. Never print a key value into an answer, a comment or a committed file.
 
 ### Platform toolchain
 
@@ -409,11 +405,12 @@ The native side sits at Flutter 3.47.1's own baseline; **the plugins pin most of
 
 **Android** (`android/settings.gradle.kts`, `gradle/wrapper/`, `app/build.gradle.kts`) — Gradle 9.3.1, AGP 9.1.0, Kotlin 2.4.0, Java 17. Below AGP 8.11.1 / Gradle 8.14 / KGP 2.2.20 the Flutter Gradle plugin fails the build outright, so this is a floor, not a preference.
 
+- The base **application id** is `com.iskoala.koala`; dev and staging append `.dev` and `.staging`, while production keeps the base id. The Gradle **namespace** is the distinct, still-default `com.example.koala`. Do not report the namespace as the installed app's identity, and do not change it as part of an application-id task.
 - `compileSdk = 37` is **hardcoded on purpose**: `permission_handler_android` 14 compiles against 37 while `flutter.compileSdkVersion` is still 36. Do not "restore" it to the Flutter default.
 - Kotlin comes from the **Kotlin Gradle plugin**, not AGP's built-in Kotlin: `android.builtInKotlin=false` and `app/build.gradle.kts` applies `kotlin-android`. This reverses an earlier decision and the reason is written in `android/gradle.properties`: `flutter_nfc_kit` — the NFC transport the identity-card chip read depends on — still applies `kotlin-android` in every published version, and with built-in Kotlin on, any module that does fails the build outright. **Do not set the flag back to `true` until `flutter_nfc_kit` migrates**; the flag and the plugin line move together. The jvmTarget stays in the top-level `kotlin { compilerOptions { … } }` block, which is valid under KGP too. `settings.gradle.kts` still declares the KGP version because the plugin modules resolve it from there — leave it.
 - `android.newDsl=false` is still set; that migration has not happened yet.
 
-**iOS** — deployment target 15.0. Dependencies are a **hybrid**: `app_links`, `geolocator_apple`, `package_info_plus`, `permission_handler_apple` and `shared_preferences_foundation` come through **Swift Package Manager** (on by default in Flutter 3.47), and CocoaPods is still there for one reason only — `google_maps_flutter_ios` ships no `Package.swift`. `ios/Podfile` exists solely for it and can be deleted outright the day that plugin adopts SPM. The build prints a "does not support Swift Package Manager" warning about it every time; that is expected, not something to fix.
+**iOS** — deployment target 15.5. Dependencies are a **hybrid**: `app_links`, `geolocator_apple`, `package_info_plus`, `permission_handler_apple` and `shared_preferences_foundation` come through **Swift Package Manager** (on by default in Flutter 3.47), and CocoaPods is still there for one reason only — `google_maps_flutter_ios` ships no `Package.swift`. `ios/Podfile` exists solely for it and can be deleted outright the day that plugin adopts SPM. The build prints a "does not support Swift Package Manager" warning about it every time; that is expected, not something to fix.
 
 - The app uses the **UIScene lifecycle**. Plugins are registered in `didInitializeImplicitFlutterEngine`, *not* in `didFinishLaunchingWithOptions` — putting them back would break plugin registration. `Info.plist` carries the matching `UIApplicationSceneManifest`, pointing at Flutter's own `FlutterSceneDelegate` (there is no `SceneDelegate.swift`, and adding one means editing `project.pbxproj`).
 - `GMSServices.provideAPIKey` stays in `didFinishLaunchingWithOptions`: it is an app-level service, unrelated to the engine.
@@ -506,7 +503,7 @@ Material **`Icons`** still appears in older files. Do not add new ones; when you
 **Filled icons exist**: `AppIcon(AppIcons.home, filled: true)` resolves `Reicon.filled`. Colour follows the surrounding `IconTheme` when `color` is omitted, falling back to `context.textPrimary`; size defaults to `AppSizes.icon`.
 
 
-> **`cupertino_icons` looks unused — do not remove it.** No file imports it. It is there because go_router 18 renders iOS page chrome through `cupertino_ui`, which draws `CupertinoIcons.back` from that font. Without the package the build warns about a missing font family and the glyph renders as an empty box. It costs 734 bytes in a release APK (the font is tree-shaken from 257 KB down to 848 bytes), and the icon cannot be swapped for a Huge Icons one because `cupertino_ui` hardcodes it.
+> **`cupertino_icons` looks unused — do not remove it.** No file imports it. It is there because go_router 18 renders iOS page chrome through `cupertino_ui`, which draws `CupertinoIcons.back` from that font. Without the package the build warns about a missing font family and the glyph renders as an empty box. It costs 734 bytes in a release APK (the font is tree-shaken from 257 KB down to 848 bytes), and it cannot be replaced through the app's `AppIcon`/Reicon catalogue because `cupertino_ui` hardcodes its own font.
 
 ---
 
@@ -514,7 +511,7 @@ Material **`Icons`** still appears in older files. Do not add new ones; when you
 
 **Employee (`employee/features/home/presentation/pages/shell_page.dart`)** — a floating navbar over a `PageView`. Two tabs have a second behaviour when you tap them while already selected: **Explore** toggles map ↔ list, **Jobs** toggles its own sub-view. That toggle lives in `PageProvider`, not in the page. Below the navbar there is a fade gradient drawn in a `Positioned`/`IgnorePointer`.
 
-**Business (`business/core/b_shell_page.dart`)** — a solid navbar filled with `AppColors.primaryColor`, four `BNavItem`s in a `Row`, and the bottom safe-area inset added as padding.
+**Business (`business/core/b_shell_page.dart`)** — a solid navbar filled with `AppColors.primaryColor`, five `BNavItem`s in a `Row`, and the bottom safe-area inset added as padding.
 
 Both shells use `extendBody: true` and `extendBodyBehindAppBar: true`, so page content runs under the bars. Lists need bottom padding of their own or the last item hides behind the navbar.
 
@@ -583,7 +580,7 @@ Do not build against these until the backend developer confirms they shipped.
 - Both settings pages expose account/company editing, sessions, **Görünüm**, **Hesabı Sil** and logout. Account deletion asks for explicit destructive confirmation, posts the optional reason through `LegalService`, and shows the queued state without pretending anonymization is immediate. Read `docs/release.md` when changing version/tag, signing, store upload or `APP_MINIMUM_VERSION`; read `docs/store-privacy-inventory.md` when a data flow or SDK changes.
 - The theme picker: Settings → **Görünüm** opens `ThemeModeSheet` (system / light / dark), applied immediately and persisted. The default is `ThemeMode.system`, so the app follows the device.
 
-**Notifications are live in both apps.** `GET /users/me/notifications` returns a page plus an `unreadCount`, and `POST /users/me/notifications/read` marks everything read. The whole thing is shared: `product/models/app_notification.dart`, `product/services/notification_service.dart`, `product/providers/notification_provider.dart`, and `product/widgets/notification_view.dart` — the two pages are just a `Scaffold` and an app bar around the same body. `NotificationBell` (also shared) is the entry point, and there is **one per app**: the worker's *İşlerim* app bar and the employer's home header. It briefly sat on the worker profile as well — two bells for one screen is clutter, and the profile app bar already carries two other actions. Five things to know before touching it:
+**Notifications are live in both apps.** `GET /users/me/notifications` returns a page plus an `unreadCount`, and `POST /users/me/notifications/read` marks everything read. The whole thing is shared: `product/models/app_notification.dart`, `product/services/notification_service.dart`, `product/providers/notification_provider.dart`, and `product/widgets/notification_view.dart` — the two pages are just a `Scaffold` and an app bar around the same body. `NotificationBell` (also shared) is the entry point, and there is **one per app**: the worker's *İşlerim* app bar and the employer's home header. It briefly sat on the worker profile as well — two bells for one screen is clutter, and the profile app bar already carries two other actions. Keep these rules together when touching it:
 
 - **`unreadCount` is not derived from the page.** The server counts separately, so the badge can be non-zero while the first page shows nothing unread. Never compute it from the list.
 - **`NotificationProvider` keeps two flags on purpose.** `_isFetching` says a first-page request is in flight; `_isLoading` only says whether to draw the spinner. Folding them into one left the silent path (`load(silent: true)`, which the bell uses) unguarded, so the bell's fetch and the screen's could rebuild the list at the same time.
@@ -597,7 +594,7 @@ Do not build against these until the backend developer confirms they shipped.
 
 The server marks the calling session with `current`. That row gets a "Bu cihaz" badge and **no close button** — closing your own session is logging out, and that already has a row in Settings which also clears the local providers and the realtime connection. Revoking never edits the list in place; it refetches, because closing one session can drop others.
 
-**The profile is fully wired, including the CV.** Education is the newest piece: `/users/me/educations` CRUD through `profile/services/education_service.dart`, with the university → faculty → department chain coming from `product/services/academic_reference_service.dart` (`/reference/universities`, `.../{id}/faculties`, `/reference/faculties/{id}/departments`). Those three endpoints need no auth and their lists barely change, so the service caches them per parent id for the session. Two things worth knowing before editing that form:
+**The profile is fully wired, including the CV.** Education is the newest piece: `/users/me/educations` CRUD through `profile/services/education_service.dart`, with the university → faculty → department chain coming from `product/services/academic_reference_service.dart` (`/reference/universities`, `.../{id}/faculties`, `/reference/faculties/{id}/departments`). Those three endpoints need no auth and their lists barely change, so the service caches them per parent id for the session. Things worth knowing before editing that form:
 
 - **The three pickers are a chain, not three independent fields.** Changing the university clears the faculty *and* the department; changing the faculty clears the department. Leaving a stale child selected would post another school's faculty id.
 - **A long list needs search, not a dropdown.** There are 200+ universities, so `AcademicPickerSheet` is a searchable sheet whose filter folds Turkish characters — typing "bogazici" has to find "Boğaziçi".
@@ -606,6 +603,10 @@ The server marks the calling session with `current`. That row gets a "Bu cihaz" 
 `ExperienceCard` became **`TimelineCard`** when education reused it; the parameters are neutral now (`subtitle`, `subtitleIcon`) because the same row renders a company for experience and a school for education.
 
 `qualifications` and `interests` are editable in *Hesabı Düzenle* and shown on the profile — but only when filled, unlike *Hakkımda* which always draws with a placeholder. Three empty headings in a row read as an unfinished profile.
+
+**CV upload** uses `file_picker` for document selection. `PUT /users/me/cv` sends multipart with the form field name **`file`** (not `image`), and `DELETE /users/me/cv` removes it. Upload and removal state stays in `UserProvider` so the card always reflects the server response.
+
+**Experience editing** uses `POST|PUT|DELETE /users/me/experiences`; the *Tecrübe* section supports add, edit and delete.
 
 **Worker availability is a weekly replacement, not a per-day patch.** The shared models and `AvailabilityService` live in `product/` because both employee and business profiles consume them; `AvailabilityProvider` owns the employee's seven-day editing draft. Every save sends all slots to `PUT /users/me/availability`, so a day editor must never issue its own request. Date exceptions use their separate PUT/DELETE endpoints. The shared read-only `AvailabilityView` appears on both the worker's own profile and an employer's candidate profile, where an empty schedule says “Müsaitlik bilgisi paylaşılmamış.”
 
@@ -619,17 +620,11 @@ A `426` is handled **once, globally**: `ApiClient` closes `AppUpdateGate` and `M
 
 > ⚠️ **How that broke is worth more than the fix: nobody broke it.** The old code fell through to the Play Store URL whenever the iOS branch failed, and while **both** ids were empty that was correct — neither branch could produce a link, the button stayed hidden, and the comment above it (*"a button that goes nowhere is worse than no button"*) described a real decision. Filling in **only** the Android id, in `85e5f84`, a commit that never opened `update_required_view.dart`, turned the same fallback into a wrong link: iOS failed its own branch, fell into Android's, and an iPhone user who tripped the `426` gate was shown a working button to Google Play (`is-koala/koala#77`). No commit introduced the defect; a value added somewhere else invalidated code that was already right, and nothing anywhere reported the loss. **This is the shape defects take in this codebase.** When you fill in a constant, a flag or a config value that used to be empty, go and read every branch that tests it for emptiness — that is where the meaning just changed.
 
-The iOS `PRODUCT_BUNDLE_IDENTIFIER` in `project.pbxproj` is also **still Flutter's default `com.example.koala`** and has to be changed before the first App Store upload.
+Supported iOS flavors have explicit bundle identifiers: `com.iskoala.koala.dev`, `com.iskoala.koala.staging` and `com.iskoala.koala`. `project.pbxproj` still contains legacy unflavored build configurations with `com.example.koala`; the supported flavor schemes do not use them. When adding a scheme or configuration, bind it to the matching explicit identifier instead of inheriting that legacy default.
 
-**Not wired up:**
+**Known parked UI:**
 
 - `business/features/home/presentation/pages/b_home_page.dart` has a `_quickActionsSection` that nothing calls. It carries an `// ignore: unused_element` so analyze stays clean — it is a parked section, not dead code to delete without asking.
-- The applicant CV download and the "follow company" action render but write nowhere. (The business profile's stat numbers are real now — `GET /users/{id}/employer-stats`.)
-- ~~Rejected applications and cancelled assignments had no UI state.~~ Both are mapped now. `MyJobStatus.applicationRejected` is separate from `MyJobStatus.rejected` on purpose: one is the employer turning the worker down, the other is the worker declining the assignment, and giving them the same wording would hide who decided. The employer's `rejectionReason` replaces the job summary on that row (`MyJob.subtitle`) — it is the only thing the worker wants to read. **An accepted application is skipped entirely** in `ApplyProvider._toMyJob`: it is an assignment now, and the assignments endpoint already returns it, so mapping both drew the same job twice.
-- **CV upload** uses `file_picker` for PDF selection. `PUT /users/me/cv` sends multipart with the form field name **`file`** (not `image`), and `DELETE /users/me/cv` removes it. Keep upload and removal state in `UserProvider` so the card always reflects the server response.
-- **Experience editing** is done; the *Tecrübe* section has add / edit / delete through `/users/me/experiences`.
-- **Presence is not wired yet.** `GET /users/{userId}/presence` and the batch `POST /presence/lookup` exist; the chat UI still hardcodes `isOnline: false`.
-- ~~`b_create_page.dart` hardcodes the coordinates of every job.~~ Fixed: `CreateAddressRequestDto` makes `countryCode`, `cityName`, `addressLine`, `latitude` and `longitude` all mandatory, and the server never geocodes free text — so the create screen now collects the province and district from `/reference/countries → cities → districts` and the coordinate from `BLocationPickerPage`, a `google_maps_flutter` screen where the employer slides the map under a fixed centre pin. No new dependency; `geocoding` was rejected because it guesses at free-text addresses.
 
 
 **Onboarding** is shown once — `seen_onboarding`, owned by `SessionManager` and read by the redirect guard. `SplashPage` (`/`) is the app's single startup point: it reads the session, and the guard sends the user on from there. There is no `AuthGate` any more.
