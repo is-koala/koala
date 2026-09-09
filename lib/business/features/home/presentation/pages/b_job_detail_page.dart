@@ -79,7 +79,8 @@ class BJobDetailPage extends StatefulWidget {
 class _BJobDetailPageState extends BJobDetailPageModel {
   @override
   Widget build(BuildContext context) {
-    final post = context.watch<BJobsProvider>().getPostByJobId(widget.jobId);
+    final jobsProvider = context.watch<BJobsProvider>();
+    final post = jobsProvider.getPostByJobId(widget.jobId);
     final company = context.watch<BCompanyProvider>().company;
 
     return Scaffold(
@@ -88,11 +89,23 @@ class _BJobDetailPageState extends BJobDetailPageModel {
         title: "İlan Detayı",
         actions: [?_saveAsTemplateAction()],
       ),
-      body: _body(post, companyImages: company?.images ?? const []),
+      body: _body(
+        post,
+        companyImages: company?.images ?? const [],
+        jobsError: jobsProvider.errorMessage,
+        jobsLoading: jobsProvider.isLoading,
+        jobsHaveLoaded: jobsProvider.hasLoaded,
+      ),
     );
   }
 
-  Widget _body(BJobPost? post, {required List<GalleryImage> companyImages}) {
+  Widget _body(
+    BJobPost? post, {
+    required List<GalleryImage> companyImages,
+    required String? jobsError,
+    required bool jobsLoading,
+    required bool jobsHaveLoaded,
+  }) {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -144,7 +157,13 @@ class _BJobDetailPageState extends BJobDetailPageModel {
                 _detailsCard(context, job),
                 const SizedBox(height: AppSizes.spaceLarge),
                 ..._timesheetSection(),
-                ..._peopleSection(post, isActive: isActive),
+                ..._peopleSection(
+                  post,
+                  isActive: isActive,
+                  jobsError: jobsError,
+                  jobsLoading: jobsLoading,
+                  jobsHaveLoaded: jobsHaveLoaded,
+                ),
                 const SizedBox(height: AppSizes.navBarClearance),
               ],
             ),
@@ -608,20 +627,54 @@ class _BJobDetailPageState extends BJobDetailPageModel {
   /// kapatmıyor (sunucu atama açıp çalışanın onayını bekliyor), o yüzden
   /// kabul edilen aday ilan açıkken de gösterilmeli; önceki hâlinde bekleyen
   /// listesinden düşüp görünmez oluyordu.
-  List<Widget> _peopleSection(BJobPost? post, {required bool isActive}) {
-    if (post == null || !post.applicantsLoaded) {
+  List<Widget> _peopleSection(
+    BJobPost? post, {
+    required bool isActive,
+    required String? jobsError,
+    required bool jobsLoading,
+    required bool jobsHaveLoaded,
+  }) {
+    final sectionTitle = isActive ? 'Başvuranlar' : 'Yapan Kişi';
+    if (post == null) {
       return [
-        _sectionTitle(context, isActive ? "Başvuranlar" : "Yapan Kişi"),
+        _sectionTitle(context, sectionTitle),
+        const SizedBox(height: AppSizes.space),
+        if (jobsError != null)
+          _applicantsErrorPanel(jobsError)
+        else if (jobsLoading || !jobsHaveLoaded)
+          const Center(child: CircularProgressIndicator())
+        else
+          _applicantsErrorPanel('Başvuran bilgisi bu ilan için alınamadı'),
+      ];
+    }
+
+    final errorMessage = post.applicantsError;
+    if (!post.applicantsLoaded && errorMessage == null) {
+      return [
+        _sectionTitle(context, sectionTitle),
         const SizedBox(height: AppSizes.space),
         const Center(child: CircularProgressIndicator()),
       ];
     }
 
+    if (!post.applicantsLoaded) {
+      return [
+        _sectionTitle(context, sectionTitle),
+        const SizedBox(height: AppSizes.space),
+        _applicantsErrorPanel(errorMessage!),
+      ];
+    }
+
     if (!isActive) {
       return [
-        _sectionTitle(context, "Yapan Kişi"),
+        _sectionTitle(context, sectionTitle),
         const SizedBox(height: AppSizes.space),
-        _workerSection(context, post.worker),
+        if (errorMessage != null) ...[
+          _applicantsErrorPanel(errorMessage),
+          const SizedBox(height: AppSizes.space),
+        ],
+        if (post.worker != null || errorMessage == null)
+          _workerSection(context, post.worker),
       ];
     }
 
@@ -632,6 +685,10 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     final unanswered = post.unansweredApplicants;
 
     return [
+      if (errorMessage != null) ...[
+        _applicantsErrorPanel(errorMessage),
+        const SizedBox(height: AppSizes.spaceLarge),
+      ],
       if (accepted.isNotEmpty) ...[
         _sectionTitle(context, "Onaylananlar (${accepted.length})"),
         const SizedBox(height: AppSizes.space),
@@ -639,10 +696,37 @@ class _BJobDetailPageState extends BJobDetailPageModel {
           _applicantCard(context, applicant, isAccepted: true),
         const SizedBox(height: AppSizes.spaceLarge),
       ],
-      _sectionTitle(context, "Başvuranlar (${unanswered.length})"),
-      const SizedBox(height: AppSizes.space),
-      _applicantsList(context, unanswered, hasAccepted: accepted.isNotEmpty),
+      if (unanswered.isNotEmpty || errorMessage == null) ...[
+        _sectionTitle(context, "Başvuranlar (${unanswered.length})"),
+        const SizedBox(height: AppSizes.space),
+        _applicantsList(
+          context,
+          unanswered,
+          hasAccepted: accepted.isNotEmpty,
+          canRespond: errorMessage == null && !post.applicantsLoading,
+        ),
+      ],
     ];
+  }
+
+  Widget _applicantsErrorPanel(String message) {
+    return Container(
+      width: double.infinity,
+      padding: AppPadding.card,
+      decoration: _panelDecoration(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(message, style: context.textTheme.bodyMedium),
+          const SizedBox(height: AppSizes.spaceSmall),
+          OutlinedButton(
+            key: const ValueKey('applicants-retry'),
+            onPressed: _retryApplicants,
+            child: const Text('Tekrar Dene'),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _errorState(String message) {
@@ -956,6 +1040,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     BuildContext context,
     List<JobApplicant> applicants, {
     bool hasAccepted = false,
+    bool canRespond = true,
   }) {
     if (applicants.isEmpty) {
       return _emptyPanel(
@@ -970,7 +1055,8 @@ class _BJobDetailPageState extends BJobDetailPageModel {
 
     return Column(
       children: [
-        for (final applicant in applicants) _applicantCard(context, applicant),
+        for (final applicant in applicants)
+          _applicantCard(context, applicant, canRespond: canRespond),
       ],
     );
   }
@@ -984,6 +1070,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     BuildContext context,
     JobApplicant applicant, {
     bool isAccepted = false,
+    bool canRespond = true,
   }) {
     final jobTitle = applicant.jobTitle;
 
@@ -1107,7 +1194,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
           // başvuruya basmak sunucudan `409` getirirdi. Bekleyenler listesi
           // zaten süzüyor, bu kartın kendi güvencesi.
           else if (applicant.isPending)
-            _applicantActions(context, applicant)
+            _applicantActions(context, applicant, enabled: canRespond)
           else
             _applicationStatusBadge(context, applicant.status),
         ],
@@ -1131,13 +1218,17 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     );
   }
 
-  Widget _applicantActions(BuildContext context, JobApplicant applicant) {
+  Widget _applicantActions(
+    BuildContext context,
+    JobApplicant applicant, {
+    required bool enabled,
+  }) {
     const padding = EdgeInsets.symmetric(vertical: AppSizes.spaceSmall);
     const shape = RoundedRectangleBorder(borderRadius: AppRadius.smallCircular);
 
     // Yanıt beklenirken bütün butonlar kapanıyor: aynı başvuru iki kez
     // yanıtlanırsa sunucu 400 döndürüyor.
-    final isBusy = _respondingApplicationId != null;
+    final isBusy = !enabled || _respondingApplicationId != null;
 
     return Row(
       children: [

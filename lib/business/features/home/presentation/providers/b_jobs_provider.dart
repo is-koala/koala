@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:koala/business/features/home/models/b_job_post.dart';
 import 'package:koala/business/features/home/models/create_job_request.dart';
-import 'package:koala/business/features/home/models/job_applicant.dart';
 import 'package:koala/business/features/home/services/employer_job_service.dart';
 import 'package:koala/product/network/api_exception.dart';
 
@@ -26,6 +25,8 @@ class BJobsProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool _hasLoaded = false;
   String? _errorMessage;
+  int _nextLoadRequestId = 0;
+  int? _latestLoadRequestId;
 
   List<BJobPost> get allPosts => List.unmodifiable(_jobPosts);
 
@@ -60,27 +61,50 @@ class BJobsProvider extends ChangeNotifier {
   ///
   /// Daha önce başarıyla çekildiyse ağa çıkmaz; [force] ile yenilenir.
   Future<void> load({bool force = false}) async {
-    if (_isLoading) return;
+    if (_isLoading && !force) return;
     if (_hasLoaded && !force && _errorMessage == null) return;
 
+    final requestId = ++_nextLoadRequestId;
+    _latestLoadRequestId = requestId;
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
       final page = await _service.fetchMyJobs();
-      _jobPosts = [for (final job in page.jobs) BJobPost(job: job)];
+      if (_latestLoadRequestId != requestId) return;
+
+      // Başvuran isteği liste isteğinden sonra tamamlanmış olabilir. Bir
+      // liste yanıtı, istek başlarken alınmış eski snapshot'ı değil tam
+      // yanıt anındaki başvuran durumunu yeni ilan özetiyle birleştirir.
+      final currentPosts = {for (final post in _jobPosts) post.job.id: post};
+      _jobPosts = [
+        for (final job in page.jobs)
+          currentPosts[job.id]?.withJob(job) ?? BJobPost(job: job),
+      ];
+      final retainedJobIds = {for (final post in _jobPosts) post.job.id};
+      _pendingApplicantRequests.removeWhere(
+        (jobId, _) => !retainedJobIds.contains(jobId),
+      );
     } on ApiException catch (error) {
+      if (_latestLoadRequestId != requestId) return;
       _errorMessage = error.message;
     } finally {
-      _isLoading = false;
-      _hasLoaded = true;
-      notifyListeners();
+      if (_latestLoadRequestId == requestId) {
+        _isLoading = false;
+        _hasLoaded = true;
+        notifyListeners();
+      }
     }
   }
 
-  /// Uçuşta olan başvuru istekleri; aynı ilan iki kez istenmesin diye.
-  final Set<String> _pendingApplicantRequests = {};
+  /// İlan başına güncel başvuru isteği. Değer, eski yanıtların yeni bir
+  /// tekrar deneme sonucunu ezmesini önleyen istek kimliğidir.
+  final Map<String, int> _pendingApplicantRequests = {};
+  int _nextApplicantRequestId = 0;
+
+  String? applicantErrorFor(String jobId) =>
+      getPostByJobId(jobId)?.applicantsError;
 
   /// Bir ilanın başvuranlarını, daha önce çekilmediyse çeker.
   ///
@@ -89,33 +113,43 @@ class BJobsProvider extends ChangeNotifier {
   /// listesindeki sayı ilanla birlikte geldiği için liste bu isteği hiç
   /// atmıyor.
   ///
-  /// Başvurular alınamazsa liste hataya düşmüyor: o ilan başvurusuz
-  /// görünüyor. Ekranı kaplayan bir hata elde duran ilanları da gizlerdi.
+  /// Başvurular alınamazsa eldeki liste korunur ve ilan bazındaki hata
+  /// çağıran ekranın tekrar deneme sunabilmesi için ayrıca tutulur.
   Future<void> ensureApplicants(String jobId, {bool force = false}) async {
     final index = _jobPosts.indexWhere((post) => post.job.id == jobId);
     if (index == -1) return;
     if (_jobPosts[index].applicantsLoaded && !force) return;
-    if (!_pendingApplicantRequests.add(jobId)) return;
+    if (_jobPosts[index].applicantsError != null && !force) return;
+    if (_pendingApplicantRequests.containsKey(jobId) && !force) return;
 
-    List<JobApplicant> applicants = const [];
-    try {
-      applicants = await _service.fetchApplicants(jobId);
-    } on ApiException {
-      // Yutuluyor: sayı zaten elde, eksik olan yalnızca kimlerin başvurduğu.
-    } finally {
-      _pendingApplicantRequests.remove(jobId);
-    }
+    final requestId = ++_nextApplicantRequestId;
+    _pendingApplicantRequests[jobId] = requestId;
 
-    // Bu arada liste yenilendiyse ilan yer değiştirmiş ya da düşmüş olabilir.
-    final current = _jobPosts.indexWhere((post) => post.job.id == jobId);
-    if (current == -1) return;
-
-    _jobPosts = [..._jobPosts];
-    _jobPosts[current] = _jobPosts[current].copyWith(
-      applications: applicants,
-      applicantsLoaded: true,
-    );
+    _updatePost(jobId, (post) => post.startApplicantLoad());
     notifyListeners();
+
+    try {
+      final applicants = await _service.fetchApplicants(jobId);
+      if (_pendingApplicantRequests[jobId] != requestId) return;
+
+      // Bu arada liste yenilendiyse ilan yer değiştirmiş ya da düşmüş olabilir.
+      _updatePost(jobId, (post) => post.completeApplicantLoad(applicants));
+    } on ApiException catch (error) {
+      if (_pendingApplicantRequests[jobId] != requestId) return;
+      _updatePost(jobId, (post) => post.failApplicantLoad(error.message));
+    } finally {
+      if (_pendingApplicantRequests[jobId] == requestId) {
+        _pendingApplicantRequests.remove(jobId);
+        notifyListeners();
+      }
+    }
+  }
+
+  void _updatePost(String jobId, BJobPost Function(BJobPost post) update) {
+    final index = _jobPosts.indexWhere((post) => post.job.id == jobId);
+    if (index == -1) return;
+    _jobPosts = [..._jobPosts];
+    _jobPosts[index] = update(_jobPosts[index]);
   }
 
   /// Yeni ilan açar. Başarılıysa liste yenilenir ve `true` döner.
@@ -205,6 +239,8 @@ class BJobsProvider extends ChangeNotifier {
   /// Çıkışta önceki işverenin ilanları kalmasın.
   void clear() {
     _jobPosts = const [];
+    _latestLoadRequestId = null;
+    _isLoading = false;
     _pendingApplicantRequests.clear();
     _errorMessage = null;
     _hasLoaded = false;
