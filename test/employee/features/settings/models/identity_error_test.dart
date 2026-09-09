@@ -21,6 +21,7 @@ const List<String> _serverCodes = [
   'IDENTITY_NAME_MISMATCH',
   'IDENTITY_CHIP_NOT_PRESENT',
   'IDENTITY_CHIP_KEY_UNREADABLE',
+  'IDENTITY_CHIP_KEY_UNSIGNED',
   'IDENTITY_CHALLENGE_INVALID',
   'IDENTITY_ACTIVE_AUTHENTICATION_REQUIRED',
   'TC_IDENTITY_NUMBER_ALREADY_IN_USE',
@@ -28,7 +29,17 @@ const List<String> _serverCodes = [
 
 void main() {
   group('IdentityError.fromErrorCode', () {
-    test('sunucunun her kimlik kodunun bir karşılığı var', () {
+    test('istemci kodları sunucunun açık kimlik kodu kümesiyle birebir', () {
+      final clientCodes = IdentityError.values
+          .map((error) => error.code)
+          .toSet();
+
+      expect(
+        clientCodes,
+        _serverCodes.toSet(),
+        reason: 'Sunucu ve istemci kimlik hata kodları ayrıştı',
+      );
+
       for (final code in _serverCodes) {
         expect(
           IdentityError.fromErrorCode(code),
@@ -88,6 +99,27 @@ void main() {
     test('tanınmayan imzalayan makam için tekrar okumak çözüm değil', () {
       expect(IdentityError.untrustedDocumentSigner.retryFromChip, isFalse);
     });
+
+    test(
+      'imzasız çip anahtarı güvenli biçimde yeniden okutmaya yönlendirir',
+      () {
+        final unsigned = IdentityError.fromErrorCode(
+          'IDENTITY_CHIP_KEY_UNSIGNED',
+        );
+
+        expect(unsigned, isNotNull);
+        if (unsigned == null) return;
+
+        expect(
+          unsigned.message,
+          'Karttan okunan doğrulama anahtarı güvenlik imzasıyla doğrulanamadı. '
+          'Doğrulama tamamlanmadı; kartını yeniden okut. Sorun sürerse destek '
+          'ekibimizle iletişime geç.',
+        );
+        expect(unsigned.retryFromChip, isTrue);
+        expect(unsigned.needsFreshChallenge, isFalse);
+      },
+    );
 
     test('challenge dışındaki hiçbir hata yeni sayı istemiyor', () {
       final needing = IdentityError.values
