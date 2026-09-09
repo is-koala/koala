@@ -179,7 +179,19 @@ class _BJobDetailPageState extends BJobDetailPageModel {
   /// takip edilecek bir iş yok.
   List<Widget> _timesheetSection() {
     final assignment = _assignment;
-    if (assignment == null) return const [];
+    if (assignment == null) {
+      if (_hasLoadedAssignments &&
+          !_isAssignmentLoading &&
+          _assignmentLoadError == null) {
+        return const [];
+      }
+      return [
+        _sectionTitle(context, 'İş Takibi'),
+        const SizedBox(height: AppSizes.space),
+        _assignmentLoadStatePanel(),
+        const SizedBox(height: AppSizes.spaceLarge),
+      ];
+    }
 
     return [
       _sectionTitle(context, 'İş Takibi'),
@@ -191,6 +203,10 @@ class _BJobDetailPageState extends BJobDetailPageModel {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (!_isAssignmentStateVerified) ...[
+              _assignmentLoadStatePanel(),
+              const SizedBox(height: AppSizes.spaceMedium),
+            ],
             if (_assignments.length > 1) ...[
               Text('Çalışan seç', style: context.textTheme.labelMedium),
               const SizedBox(height: AppSizes.spaceTiny),
@@ -209,7 +225,8 @@ class _BJobDetailPageState extends BJobDetailPageModel {
                       ),
                     ),
                 ],
-                onChanged: _isRunningAssignmentAction
+                onChanged:
+                    _isRunningAssignmentAction || !_isAssignmentListVerified
                     ? null
                     : (id) {
                         if (id != null) unawaited(_selectAssignment(id));
@@ -223,7 +240,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
               ..._workSessions.map(_workSessionRow),
               const SizedBox(height: AppSizes.spaceSmall),
               _totalWorkedRow(),
-            ] else ...[
+            ] else if (_workSessionsError == null) ...[
               const SizedBox(height: AppSizes.spaceSmall),
               Text(
                 'Çalışan henüz mesai başlatmadı.',
@@ -244,7 +261,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
               else
                 _paymentPendingPanel(),
             ],
-            if (_canComplete(assignment)) ...[
+            if (_canCompleteAssignment(assignment)) ...[
               const SizedBox(height: AppSizes.spaceMedium),
               _completeButton(),
             ],
@@ -265,13 +282,35 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     ];
   }
 
-  /// Tamamlama yalnızca bu iki durumdan yapılabiliyor; sunucu da aynı
-  /// kapıyı tutuyor ve dışından `409` döndürüyor.
-  bool _canComplete(Assignment assignment) =>
-      _isDisputeStateVerified &&
-      !_hasOpenDispute &&
-      (assignment.status == AssignmentStatus.confirmed ||
-          assignment.status == AssignmentStatus.inProgress);
+  Widget _assignmentLoadStatePanel() {
+    final error = _isAssignmentLoading ? null : _assignmentSnapshotError;
+    return Container(
+      key: error == null
+          ? const ValueKey('assignment-loading')
+          : const ValueKey('assignment-load-error'),
+      width: double.infinity,
+      padding: AppPadding.card,
+      decoration: _panelDecoration(context),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              error ?? 'Atama bilgileri güncelleniyor.',
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: context.textSecondary,
+              ),
+            ),
+          ),
+          if (error != null)
+            TextButton(
+              key: const ValueKey('retry-assignment-load'),
+              onPressed: _loadAssignment,
+              child: const Text('Tekrar Dene'),
+            ),
+        ],
+      ),
+    );
+  }
 
   Widget _disputeStatePanel(Assignment assignment) {
     return Container(
@@ -516,11 +555,8 @@ class _BJobDetailPageState extends BJobDetailPageModel {
   /// İptal yalnızca iş kapanmadan; sorun bildirme yalnızca para emanetteyken
   /// ve ortada açık bir bildirim yokken. İkisi de sunucunun tuttuğu kapı.
   List<Widget> _assignmentActions(Assignment assignment) {
-    final canCancel = _canComplete(assignment);
-    final canDispute =
-        _isDisputeStateVerified &&
-        assignment.paymentStatus == PaymentStatus.heldInEscrow &&
-        !_hasOpenDispute;
+    final canCancel = _canCompleteAssignment(assignment);
+    final canDispute = _canOpenDisputeFor(assignment);
 
     if (!canCancel && !canDispute) return const [];
 
