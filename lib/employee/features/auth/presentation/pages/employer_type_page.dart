@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:koala/employee/features/auth/presentation/registration_routes.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
@@ -57,7 +58,7 @@ class EmployerTypePage extends StatelessWidget {
                 title: 'Şirket Olarak Devam Et',
                 onPressed:
                     onCompanySelected ??
-                    () => context.go('/company-informations'),
+                    () => context.go(RegistrationRoutes.companyInformations),
               ),
               const SizedBox(height: AppSizes.spaceLarge),
             ],
