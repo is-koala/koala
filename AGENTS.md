@@ -342,7 +342,7 @@ Things worth knowing:
 
 **Company detail is on the real endpoint, and the last fake service is gone.** `employee/features/company_detail/services/company_service.dart` now reads `GET /companies/{id}` and writes `POST|DELETE /companies/{id}/follow`.
 
-- **The two `Company` models merged.** The old fake one is deleted and `BCompany` moved to `employee/features/company_detail/models/company.dart` as `Company` — the shared domain model lives on the employee side and the business app imports it, the same arrangement chat already uses. `b_company_service.dart` keeps only the employer's **write** endpoints (update, logo) plus stats; reading a company is one endpoint for both apps, so `BCompanyProvider` takes a `CompanyService` too.
+- **The two `Company` models merged.** The old fake one is deleted and `BCompany` moved to `employee/features/company_detail/models/company.dart` as `Company` — the shared domain model lives on the employee side and the business app imports it, the same arrangement chat already uses. `b_company_service.dart` keeps only the employer's **write** endpoints (create, update, logo and gallery) plus stats; reading a company is one endpoint for both apps, so `BCompanyProvider` takes a `CompanyService` too.
 - **One request, not three.** `CompanyDto` carries `images`, `followerCount` and `following` inline, so the screen never calls `/companies/{id}/images` or asks whether the user follows the company. The gallery endpoint stays in `ApiPaths` for managing a gallery, not for reading one.
 - **The page takes an id, not a `Company`.** It is reached from a job, a past job or a chat, and none of those hold the full record. Following is optimistic — the button flips immediately and rolls back if the request fails, because both endpoints are idempotent and the outcome is predictable.
 
@@ -604,7 +604,7 @@ The server marks the calling session with `current`. That row gets a "Bu cihaz" 
 
 `qualifications` and `interests` are editable in *Hesabı Düzenle* and shown on the profile — but only when filled, unlike *Hakkımda* which always draws with a placeholder. Three empty headings in a row read as an unfinished profile.
 
-**CV upload** uses `file_picker` for PDF selection. `PUT /users/me/cv` sends multipart with the form field name **`file`** (not `image`), and `DELETE /users/me/cv` removes it. Upload and removal state stays in `UserProvider` so the card always reflects the server response.
+**CV upload** uses `file_picker` for document selection. `PUT /users/me/cv` sends multipart with the form field name **`file`** (not `image`), and `DELETE /users/me/cv` removes it. Upload and removal state stays in `UserProvider` so the card always reflects the server response.
 
 **Experience editing** uses `POST|PUT|DELETE /users/me/experiences`; the *Tecrübe* section supports add, edit and delete.
 
