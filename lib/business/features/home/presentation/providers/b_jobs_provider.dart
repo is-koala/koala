@@ -27,6 +27,9 @@ class BJobsProvider extends ChangeNotifier {
   bool _hasLoaded = false;
   String? _errorMessage;
 
+  /// Çıkıştan sonra tamamlanan isteklerin yeni oturuma yazmasını engeller.
+  int _generation = 0;
+
   List<BJobPost> get allPosts => List.unmodifiable(_jobPosts);
 
   /// Yürürlükteki ilanlar — "Aktif" sekmesi.
@@ -63,19 +66,23 @@ class BJobsProvider extends ChangeNotifier {
     if (_isLoading) return;
     if (_hasLoaded && !force && _errorMessage == null) return;
 
+    final generation = _generation;
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
       final page = await _service.fetchMyJobs();
+      if (generation != _generation) return;
       _jobPosts = [for (final job in page.jobs) BJobPost(job: job)];
     } on ApiException catch (error) {
-      _errorMessage = error.message;
+      if (generation == _generation) _errorMessage = error.message;
     } finally {
-      _isLoading = false;
-      _hasLoaded = true;
-      notifyListeners();
+      if (generation == _generation) {
+        _isLoading = false;
+        _hasLoaded = true;
+        notifyListeners();
+      }
     }
   }
 
@@ -97,15 +104,19 @@ class BJobsProvider extends ChangeNotifier {
     if (_jobPosts[index].applicantsLoaded && !force) return;
     if (!_pendingApplicantRequests.add(jobId)) return;
 
+    final generation = _generation;
     List<JobApplicant> applicants = const [];
     try {
       applicants = await _service.fetchApplicants(jobId);
     } on ApiException {
       // Yutuluyor: sayı zaten elde, eksik olan yalnızca kimlerin başvurduğu.
     } finally {
-      _pendingApplicantRequests.remove(jobId);
+      if (generation == _generation) {
+        _pendingApplicantRequests.remove(jobId);
+      }
     }
 
+    if (generation != _generation) return;
     // Bu arada liste yenilendiyse ilan yer değiştirmiş ya da düşmüş olabilir.
     final current = _jobPosts.indexWhere((post) => post.job.id == jobId);
     if (current == -1) return;
@@ -138,15 +149,19 @@ class BJobsProvider extends ChangeNotifier {
 
   /// İlan listesini değiştiren işlemlerin ortak sarmalayıcısı.
   Future<bool> _mutate(Future<void> Function() call) async {
+    final generation = _generation;
     _errorMessage = null;
 
     try {
       await call();
+      if (generation != _generation) return false;
       await load(force: true);
-      return true;
+      return generation == _generation;
     } on ApiException catch (error) {
-      _errorMessage = error.message;
-      notifyListeners();
+      if (generation == _generation) {
+        _errorMessage = error.message;
+        notifyListeners();
+      }
       return false;
     }
   }
@@ -178,18 +193,23 @@ class BJobsProvider extends ChangeNotifier {
   }
 
   Future<bool> _respond(String jobId, Future<void> Function() call) async {
+    final generation = _generation;
     _errorMessage = null;
 
     try {
       await call();
+      if (generation != _generation) return false;
       // İlanın durumu da değişmiş olabilir; liste ve o ilanın başvuranları
       // birlikte tazeleniyor.
       await load(force: true);
+      if (generation != _generation) return false;
       await ensureApplicants(jobId, force: true);
-      return true;
+      return generation == _generation;
     } on ApiException catch (error) {
-      _errorMessage = error.message;
-      notifyListeners();
+      if (generation == _generation) {
+        _errorMessage = error.message;
+        notifyListeners();
+      }
       return false;
     }
   }
@@ -204,8 +224,10 @@ class BJobsProvider extends ChangeNotifier {
 
   /// Çıkışta önceki işverenin ilanları kalmasın.
   void clear() {
+    _generation++;
     _jobPosts = const [];
     _pendingApplicantRequests.clear();
+    _isLoading = false;
     _errorMessage = null;
     _hasLoaded = false;
     notifyListeners();

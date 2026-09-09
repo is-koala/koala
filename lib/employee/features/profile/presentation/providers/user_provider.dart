@@ -24,6 +24,9 @@ class UserProvider extends ChangeNotifier {
   /// kaldığı için tekrarı ayrı bir bayrakla engellemek gerekiyor.
   bool _isRequestInFlight = false;
 
+  /// Çıkıştan sonra tamamlanan isteklerin yeni oturuma yazmasını engeller.
+  int _generation = 0;
+
   /// Güncel kullanıcı. İlk yükleme bitene kadar `null`.
   CurrentUser? get user => _user;
 
@@ -42,6 +45,7 @@ class UserProvider extends ChangeNotifier {
   /// için ödenecek makul bir bedel değil.
   Future<void> load({bool silent = false}) async {
     if (_isRequestInFlight) return;
+    final generation = _generation;
     _isRequestInFlight = true;
 
     _isLoading = !silent || _user == null;
@@ -49,13 +53,17 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _user = await _userService.fetchCurrentUser();
+      final user = await _userService.fetchCurrentUser();
+      if (generation != _generation) return;
+      _user = user;
     } on ApiException catch (error) {
-      _errorMessage = error.message;
+      if (generation == _generation) _errorMessage = error.message;
     } finally {
-      _isRequestInFlight = false;
-      _isLoading = false;
-      notifyListeners();
+      if (generation == _generation) {
+        _isRequestInFlight = false;
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -77,6 +85,7 @@ class UserProvider extends ChangeNotifier {
     String? interests,
     String? iban,
   }) async {
+    final generation = _generation;
     _isRequestInFlight = true;
     _isLoading = true;
     _errorMessage = null;
@@ -97,84 +106,75 @@ class UserProvider extends ChangeNotifier {
         iban: iban,
       );
 
+      if (generation != _generation) return null;
       _user = result.user;
       return result.pendingVerifications;
     } on ApiException catch (error) {
-      _errorMessage = error.message;
+      if (generation == _generation) _errorMessage = error.message;
       return null;
     } finally {
-      _isRequestInFlight = false;
-      _isLoading = false;
-      notifyListeners();
+      if (generation == _generation) {
+        _isRequestInFlight = false;
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
   /// Profil fotoğrafını yükleyip `/users/me` yanıtını yeniler.
-  Future<bool> uploadProfilePicture(String filePath) async {
-    _isRequestInFlight = true;
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    try {
-      await _userService.uploadProfilePicture(filePath);
-      _user = await _userService.fetchCurrentUser();
-      return true;
-    } on ApiException catch (error) {
-      _errorMessage = error.message;
-      return false;
-    } finally {
-      _isRequestInFlight = false;
-      _isLoading = false;
-      notifyListeners();
-    }
+  Future<bool> uploadProfilePicture(String filePath) {
+    return _mutateAndReloadCurrentUser(
+      () => _userService.uploadProfilePicture(filePath),
+    );
   }
 
   /// Özgeçmişi yükleyip profil kartındaki durumu tazeler.
-  Future<bool> uploadCv(String filePath) async {
-    _isRequestInFlight = true;
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    try {
+  Future<bool> uploadCv(String filePath) {
+    return _mutateAndReloadCurrentUser(() async {
       await _userService.uploadCv(filePath);
-      _user = await _userService.fetchCurrentUser();
-      return true;
-    } on ApiException catch (error) {
-      _errorMessage = error.message;
-      return false;
-    } finally {
-      _isRequestInFlight = false;
-      _isLoading = false;
-      notifyListeners();
-    }
+    });
   }
 
-  Future<bool> deleteCv() async {
+  Future<bool> deleteCv() {
+    return _mutateAndReloadCurrentUser(_userService.deleteCv);
+  }
+
+  /// Profili etkileyen dosya işlemini yapıp güncel kullanıcıyı yeniden okur.
+  Future<bool> _mutateAndReloadCurrentUser(
+    Future<void> Function() action,
+  ) async {
+    final generation = _generation;
     _isRequestInFlight = true;
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      await _userService.deleteCv();
-      _user = await _userService.fetchCurrentUser();
+      await action();
+      if (generation != _generation) return false;
+      final user = await _userService.fetchCurrentUser();
+      if (generation != _generation) return false;
+      _user = user;
       return true;
     } on ApiException catch (error) {
-      _errorMessage = error.message;
+      if (generation == _generation) _errorMessage = error.message;
       return false;
     } finally {
-      _isRequestInFlight = false;
-      _isLoading = false;
-      notifyListeners();
+      if (generation == _generation) {
+        _isRequestInFlight = false;
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
   /// Çıkış yapıldığında eldeki kullanıcıyı düşürür; bir sonraki oturum
   /// öncekinin profilini görmesin.
   void clear() {
+    _generation++;
     _user = null;
+    _isRequestInFlight = false;
+    _isLoading = false;
     _errorMessage = null;
     notifyListeners();
   }
