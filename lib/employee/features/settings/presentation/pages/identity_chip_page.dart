@@ -42,7 +42,21 @@ part 'identity_chip_pagemodel.dart';
 /// > onun altında kalıyor — bu yüzden ilerleme metni hem burada hem
 /// > [ChipReader] üzerinden sistem sayfasında yazılıyor.
 class IdentityChipPage extends StatefulWidget {
-  const IdentityChipPage({super.key});
+  const IdentityChipPage({
+    super.key,
+    this.userService,
+    this.chipReader,
+    this.mrzScanner,
+  });
+
+  /// Testlerde gerçek API yerine sahte sunucuya bağlı servis kullanılabilir.
+  final UserService? userService;
+
+  /// Testlerde NFC platform sınırı cihaz olmadan çalıştırılabilir.
+  final ChipReader? chipReader;
+
+  /// Testlerde kamera ve ML Kit platform sınırı cihaz olmadan çalıştırılabilir.
+  final MrzScanner? mrzScanner;
 
   @override
   State<IdentityChipPage> createState() => _IdentityChipPageState();
@@ -64,6 +78,7 @@ class _IdentityChipPageState extends IdentityChipPagemodel {
     return switch (stage) {
       IdentityChipStage.intro => _intro(),
       IdentityChipStage.manual => _manualForm(),
+      IdentityChipStage.recognizing => _recognizing(),
       IdentityChipStage.reading => _reading(),
       IdentityChipStage.failure => _failure(),
     };
@@ -81,6 +96,7 @@ class _IdentityChipPageState extends IdentityChipPagemodel {
         onPressed: canReadManually ? readManually : null,
         title: 'Kartı Okut',
       ),
+      IdentityChipStage.recognizing => null,
       IdentityChipStage.reading => null,
       IdentityChipStage.failure => null,
     };
@@ -99,6 +115,13 @@ class _IdentityChipPageState extends IdentityChipPagemodel {
             'bilgileri elle yazman gerekmiyor ve doğrulama çok daha güvenilir '
             'oluyor.',
           ),
+          if (Theme.of(context).platform == TargetPlatform.android) ...[
+            const SizedBox(height: AppSizes.spaceMedium),
+            _infoCard(
+              'Metin tanıma modeli ilk taramada internet üzerinden '
+              'hazırlanabilir. Hazırlanamazsa bilgileri elle girebilirsin.',
+            ),
+          ],
           const SizedBox(height: AppSizes.spaceLarge),
           const IdentityStepRow(
             order: 1,
@@ -134,6 +157,38 @@ class _IdentityChipPageState extends IdentityChipPagemodel {
             fontWeight: FontWeight.w600,
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _recognizing() {
+    final isAndroid = Theme.of(context).platform == TargetPlatform.android;
+
+    return Padding(
+      padding: AppPadding.primaryAll,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const CircularProgressIndicator(),
+          const SizedBox(height: AppSizes.spaceLarge),
+          Text(
+            isAndroid
+                ? 'Metin tanıma modeli hazırlanıyor'
+                : 'Kartın arka yüzü okunuyor',
+            textAlign: TextAlign.center,
+            style: context.textTheme.titleSmall,
+          ),
+          const SizedBox(height: AppSizes.spaceSmall),
+          Text(
+            isAndroid
+                ? 'İlk taramadaysan internet bağlantını açık tut.'
+                : 'Bu işlem birkaç saniye sürebilir.',
+            textAlign: TextAlign.center,
+            style: context.textTheme.bodyMedium?.copyWith(
+              color: context.textSecondary,
+            ),
+          ),
+        ],
       ),
     );
   }

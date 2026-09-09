@@ -551,6 +551,27 @@ This is *more* than KPS did: KPS only answered "are these five fields consistent
 
 Data groups: `SOD` and `DG1` are required; `DG15` (chip public key) and `DG11` should be sent when present; `DG2` is deliberately **not** sent — face matching stays on the device. `DG11` matters more than it looks: the MRZ is folded to ASCII, so a card reading **ÇAĞRI** carries **CAGRI** in `DG1`, truncated at 30 characters. Taking the name from `DG1` would corrupt it. `DG11` is hashed in the SOD too, so it is no less trustworthy — just correct.
 
+#### Android Latin OCR modeli Play Services üzerinden gelir
+
+`google_mlkit_text_recognition 0.17.1` Latin modelini
+`com.google.mlkit:text-recognition:16.0.1` ile APK'ya gömüyor. Koala Android'de
+yalnız bu modülü Gradle dependency substitution ile
+`com.google.android.gms:play-services-mlkit-text-recognition:19.0.1` sürümüne
+çevirir; diğer alfabe modüllerine dokunmaz. `AndroidManifest.xml` içindeki
+`com.google.mlkit.vision.DEPENDENCIES=ocr` metadata'sı modelin kurulum sırasında
+hazırlanmasını ister.
+
+Karar tahmine değil aynı production all-ABI release build'lerinin ölçümüne
+dayanır: paketli APK **130.210.232 bayt**, Play Services varyantı
+**99.325.146 bayt**; kazanç **30.885.086 bayt (%23,72)**. Google Play hedefi
+için bu kazanç, Play Services bulunmayan ya da modeli çevrimdışı indiremeyen
+Android cihazlarda MRZ'nin elle girilmesi karşılığında kabul edildi. Kimlik
+ekranı ilk taramada internet gerekebileceğini önceden söyler; ML Kit çağrısı
+30 saniyede tamamlanmazsa kullanıcıyı sonsuz yüklemede bırakmaz ve açıkça elle
+girişe yönlendirir. Eklenti doğrudan paket seçimi sunarsa substitution
+kaldırılıp resmi seçenek kullanılmalı. Ölçüm ve kaynaklar
+`docs/research/ml-kit-unbundled-text-recognition.md` dosyasındadır.
+
 Everything new is optional and both flags are off, so a request without the evidence still behaves the old way. Error codes all return `400` except `TC_IDENTITY_NUMBER_ALREADY_IN_USE`, which is `409`; `IDENTITY_CHALLENGE_INVALID` means fetch a fresh challenge and start over.
 
 The trust boundary moves with it, and that is the part to keep in mind while building. Layers 1–3 defend against a user cheating with someone else's card or a photo — the common case, and they defend it well. They do **not** defend against someone repackaging the app, because that attacker skips the checks entirely and posts the result straight to the endpoint; the server sees no evidence either way. The fix is not to move all three layers server-side: sending layer 1's evidence (`sod` + `dg1`) is enough, because producing that signature requires physically touching a real chip. Face match and liveness stay on device. This has been requested; see `KIMLIK_DOGRULAMA_RAPORU.md` at the repo root for the whole analysis.
