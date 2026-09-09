@@ -424,13 +424,18 @@ void main() {
       ]);
     });
 
-    test('aynı anda 401 alan iki isteğin yenilemesi sıraya giriyor', () async {
+    test('aynı anda 401 alan iki istek tek yenilemeyi paylaşıyor', () async {
       final unauthorized = <String>{};
       final sent = <String>[];
+      final sentTokens = <String, List<String?>>{};
 
-      final api = FakeApi(
+      late final FakeApi api;
+      api = FakeApi(
         handler: (options) async {
           sent.add(options.path);
+          (sentTokens[options.path] ??= []).add(
+            options.headers['Authorization'] as String?,
+          );
 
           if (options.path == ApiPaths.refreshToken) {
             return const FakeApiResponse(
@@ -444,6 +449,9 @@ void main() {
 
           // Her iş isteği yalnızca ilk denemesinde 401 alıyor.
           if (unauthorized.add(options.path)) {
+            // İki eski-token isteği de adaptöre ulaşmadan ilk 401'i bırakma;
+            // test gerçekten eşzamanlı bir yenileme kohortu kursun.
+            await api.requestsReach(2);
             return const FakeApiResponse(
               statusCode: 401,
               body: {'success': false, 'message': 'Oturum bulunamadı'},
@@ -474,22 +482,181 @@ void main() {
 
       expect(results, ['tamam', 'tamam']);
       expect(api.sessionExpired, isFalse);
-
-      // `QueuedInterceptor` yalnızca **sıraya alıyor**: ikinci isteğin 401'i,
-      // birincisinin yenileme + tekrar deneme çifti bitmeden ele alınmıyor.
-      // Yenilemeyi paylaştırmıyor — ikinci istek de kendi yenilemesini
-      // yapıyor, çünkü `AuthInterceptor` isteğin taşıdığı token'ın bu arada
-      // tazelenip tazelenmediğine bakmıyor. Davranış bugün budur; ikinci
-      // yenilemeyi gereksiz kılmak ayrı bir iş.
-      expect(sent, [
-        ApiPaths.currentUser,
-        ApiPaths.currentUserSessions,
-        ApiPaths.refreshToken,
-        ApiPaths.currentUser,
-        ApiPaths.refreshToken,
-        ApiPaths.currentUserSessions,
+      expect(sent, hasLength(5));
+      expect(sent.where((path) => path == ApiPaths.refreshToken), hasLength(1));
+      expect(sentTokens[ApiPaths.refreshToken], ['Bearer suresi-dolmus']);
+      expect(sentTokens[ApiPaths.currentUser], [
+        'Bearer suresi-dolmus',
+        'Bearer tazelenmis-erisim',
       ]);
+      expect(sentTokens[ApiPaths.currentUserSessions], [
+        'Bearer suresi-dolmus',
+        'Bearer tazelenmis-erisim',
+      ]);
+      expect(
+        (api.tokenStorage as FakeTokenStorage).accessToken,
+        'tazelenmis-erisim',
+      );
     });
+
+    test(
+      'eşzamanlı 401 yenilenemezse oturum bir kez sonlandırılıyor',
+      () async {
+        final sent = <String>[];
+        late final FakeApi api;
+        api = FakeApi(
+          handler: (options) async {
+            sent.add(options.path);
+            if (options.path == ApiPaths.refreshToken) {
+              return const FakeApiResponse(
+                statusCode: 401,
+                body: {'success': false, 'message': 'Yenileme reddedildi'},
+              );
+            }
+
+            await api.requestsReach(2);
+            return const FakeApiResponse(
+              statusCode: 401,
+              body: {'success': false, 'message': 'Oturum bulunamadı'},
+            );
+          },
+          tokenStorage: FakeTokenStorage(
+            accessToken: 'suresi-dolmus',
+            refreshToken: 'gecersiz-yenileme',
+          ),
+        );
+
+        final client = api.client;
+        await expectLater(
+          Future.wait([
+            client.get<String>(
+              ApiPaths.currentUser,
+              parse: (data) => data! as String,
+            ),
+            client.get<String>(
+              ApiPaths.currentUserSessions,
+              parse: (data) => data! as String,
+            ),
+          ]),
+          throwsA(
+            isA<ApiException>().having(
+              (error) => error.type,
+              'type',
+              ApiErrorType.unauthenticated,
+            ),
+          ),
+        );
+
+        expect(sent, hasLength(3));
+        expect(
+          sent.where((path) => path == ApiPaths.refreshToken),
+          hasLength(1),
+        );
+        expect(api.sessionExpirationCount, 1);
+      },
+    );
+
+    test('eski istek yeni kullanıcı tokenıyla tekrar oynatılmıyor', () async {
+      final storage = FakeTokenStorage(
+        accessToken: 'eski-hesap',
+        refreshToken: 'eski-yenileme',
+      );
+      var businessCalls = 0;
+      final api = FakeApi(
+        handler: (options) {
+          if (options.path == ApiPaths.refreshToken) {
+            fail('Yeni oturum için yenileme yapılmamalı.');
+          }
+
+          businessCalls++;
+          if (businessCalls == 1) {
+            storage
+              ..accessToken = 'yeni-hesap'
+              ..refreshToken = 'yeni-yenileme';
+            return const FakeApiResponse(
+              statusCode: 401,
+              body: {'success': false, 'message': 'Eski oturum kapandı'},
+            );
+          }
+          return const FakeApiResponse(
+            statusCode: 200,
+            body: {'success': true, 'data': 'yanlis-hesap'},
+          );
+        },
+        tokenStorage: storage,
+      );
+
+      await expectLater(
+        api.client.get<String>(
+          ApiPaths.currentUser,
+          parse: (data) => data! as String,
+        ),
+        throwsA(
+          isA<ApiException>().having(
+            (error) => error.type,
+            'type',
+            ApiErrorType.unauthenticated,
+          ),
+        ),
+      );
+
+      expect(businessCalls, 1);
+      expect(api.sessionExpired, isFalse);
+    });
+
+    test(
+      'sonraki token nesli gerektiğinde kendi yenilemesini başlatıyor',
+      () async {
+        var businessCalls = 0;
+        var refreshCalls = 0;
+        final storage = FakeTokenStorage(
+          accessToken: 'erisim-0',
+          refreshToken: 'gecerli-yenileme',
+        );
+        final api = FakeApi(
+          handler: (options) {
+            if (options.path == ApiPaths.refreshToken) {
+              refreshCalls++;
+              return FakeApiResponse(
+                statusCode: 200,
+                body: {
+                  'success': true,
+                  'data': {'token': 'erisim-$refreshCalls'},
+                },
+              );
+            }
+
+            businessCalls++;
+            if (businessCalls.isOdd) {
+              return const FakeApiResponse(
+                statusCode: 401,
+                body: {'success': false, 'message': 'Oturum bulunamadı'},
+              );
+            }
+            return const FakeApiResponse(
+              statusCode: 200,
+              body: {'success': true, 'data': 'tamam'},
+            );
+          },
+          tokenStorage: storage,
+        );
+
+        final client = api.client;
+        for (var request = 0; request < 2; request++) {
+          expect(
+            await client.get<String>(
+              ApiPaths.currentUser,
+              parse: (data) => data! as String,
+            ),
+            'tamam',
+          );
+        }
+
+        expect(refreshCalls, 2);
+        expect(storage.accessToken, 'erisim-2');
+        expect(api.sessionExpired, isFalse);
+      },
+    );
   });
 
   group('multipart tekrar denemesi', () {
