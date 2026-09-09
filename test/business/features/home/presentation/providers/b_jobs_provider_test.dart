@@ -748,7 +748,10 @@ void main() {
 
         expect(provider.getPostByJobId('ortak')!.applications, isEmpty);
         expect(provider.getPostByJobId('ortak')!.applicantsLoaded, isFalse);
-        await provider.ensureApplicants('ortak', force: true);
+        // Normal yeniden çizim çağrısı, B oturumunun uçuşta olan isteğini
+        // paylaşmalı. `force: true` bilinçli olarak aynı oturumdaki eski
+        // isteği supersede eder ve bu invariantı ölçmez.
+        await provider.ensureApplicants('ortak');
         expect(
           api.requests,
           hasLength(4),
