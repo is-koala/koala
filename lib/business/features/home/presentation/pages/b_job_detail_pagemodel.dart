@@ -58,6 +58,29 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
   List<Assignment> _assignments = const [];
   Assignment? _assignment;
 
+  /// Atama listesiyle ona bağlı iş takibi verisinin son yenileme durumu.
+  ///
+  /// Başarılı boş yanıt gerçek "atama yok" hâlidir. Hata ise mevcut güvenilir
+  /// snapshot'ı korur ama bu doğruluk kapısını kapatır; para ve durum değiştiren
+  /// eylemler eski veriyle çalışamaz.
+  bool _hasLoadedAssignments = false;
+  bool _isAssignmentLoading = false;
+  String? _assignmentLoadError;
+  String? _workSessionsError;
+  int _assignmentLoadGeneration = 0;
+  String? _pendingAssignmentId;
+
+  String? get _assignmentSnapshotError =>
+      _assignmentLoadError ?? _workSessionsError;
+
+  bool get _isAssignmentListVerified =>
+      _hasLoadedAssignments &&
+      !_isAssignmentLoading &&
+      _assignmentLoadError == null;
+
+  bool get _isAssignmentStateVerified =>
+      _isAssignmentListVerified && _workSessionsError == null;
+
   /// Atamanın mesai oturumları, girişten çıkışa.
   List<WorkSession> _workSessions = const [];
 
@@ -78,9 +101,7 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
   bool get _hasOpenDispute => _disputes.any((dispute) => dispute.isOpen);
 
   bool get _canStartPayment =>
-      !_arePaymentAttemptsLoading &&
-      _paymentAttemptsError == null &&
-      !_hasActivePaymentAttempt;
+      _isAssignmentSnapshotVerified && !_hasActivePaymentAttempt;
 
   /// Atamanın uyuşmazlıkları; kart üzerinde açık olan gösteriliyor.
   List<Dispute> _disputes = const [];
@@ -89,6 +110,25 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
 
   bool get _isDisputeStateVerified =>
       !_areDisputesLoading && _disputesError == null;
+
+  bool get _isPaymentAttemptStateVerified =>
+      !_arePaymentAttemptsLoading && _paymentAttemptsError == null;
+
+  bool get _isAssignmentSnapshotVerified =>
+      _isAssignmentStateVerified &&
+      _isDisputeStateVerified &&
+      _isPaymentAttemptStateVerified;
+
+  bool _canCompleteAssignment(Assignment assignment) =>
+      _isAssignmentSnapshotVerified &&
+      !_hasOpenDispute &&
+      (assignment.status == AssignmentStatus.confirmed ||
+          assignment.status == AssignmentStatus.inProgress);
+
+  bool _canOpenDisputeFor(Assignment assignment) =>
+      _isAssignmentSnapshotVerified &&
+      assignment.paymentStatus == PaymentStatus.heldInEscrow &&
+      !_hasOpenDispute;
 
   /// İptal ya da uyuşmazlık isteği sunucuya gitti mi.
   bool _isRunningAssignmentAction = false;
@@ -156,17 +196,30 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     }
   }
 
-  /// İlanın atamasını ve ona bağlı yardımcı kayıtları çeker.
+  /// İlanın atamasını ve ona bağlı yardımcı kayıtları tek snapshot olarak
+  /// yeniler.
   ///
-  /// Bölüm ilanın ön koşulu değil: çekilemezse sessiz geçiliyor ve ekranın
-  /// geri kalanı yerinde kalıyor. Ataması olmayan ilanda zaten hiç
-  /// çizilmiyor.
-  Future<void> _loadAssignment() async {
+  /// Atama listesi çekilemezse son güvenilir snapshot korunur ve hata görünür
+  /// kalır. Başarılı boş yanıt ise bütün ilişkili alanları gerçekten temizler.
+  /// Aynı anda başlayan yenilemelerde yalnızca en yeni istek state yazabilir.
+  Future<void> _loadAssignment({String? selectedAssignmentId}) async {
+    final generation = ++_assignmentLoadGeneration;
+    if (mounted) {
+      setState(() {
+        if (selectedAssignmentId != null) {
+          _pendingAssignmentId = selectedAssignmentId;
+        }
+        _isAssignmentLoading = true;
+        _assignmentLoadError = null;
+      });
+    }
+
     try {
       final matches = await _employerJobService.fetchAssignmentsForJob(
         widget.jobId,
       );
-      final selectedId = _assignment?.id;
+      final selectedId =
+          selectedAssignmentId ?? _pendingAssignmentId ?? _assignment?.id;
       final match = matches.isEmpty
           ? null
           : matches.firstWhere(
@@ -174,52 +227,66 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
               orElse: () => matches.first,
             );
 
-      if (!mounted) return;
+      if (!mounted || generation != _assignmentLoadGeneration) return;
       if (match == null) {
         setState(() {
           _assignment = null;
           _assignments = const [];
           _workSessions = const [];
+          _workSessionsError = null;
           _disputes = const [];
           _areDisputesLoading = false;
           _disputesError = null;
           _paymentAttempts = const [];
           _paymentAttemptsError = null;
           _arePaymentAttemptsLoading = false;
+          _hasLoadedAssignments = true;
+          _isAssignmentLoading = false;
+          _assignmentLoadError = null;
+          _pendingAssignmentId = null;
         });
         return;
       }
 
-      if (!mounted) return;
+      final (
+        workSessionsResult,
+        disputesResult,
+        paymentAttemptsResult,
+      ) = await (
+        _capture(_assignmentService.fetchWorkSessions(match.id)),
+        _capture(_assignmentService.fetchDisputes(match.id)),
+        _capture(_paymentService.fetchAttempts(match.id)),
+      ).wait;
+
+      if (!mounted || generation != _assignmentLoadGeneration) return;
+      final keepsRelatedSnapshot = _assignment?.id == match.id;
       setState(() {
         _assignments = matches;
         _assignment = match;
-        _workSessions = const [];
-        _disputes = const [];
-        _areDisputesLoading = true;
-        _disputesError = null;
-        _paymentAttempts = const [];
-        _paymentAttemptsError = null;
-        _arePaymentAttemptsLoading = false;
-      });
-
-      await Future.wait([
-        _loadWorkSessions(match.id),
-        _loadDisputes(match.id),
-        _loadPaymentAttempts(match.id),
-      ]);
-    } on ApiException {
-      if (!mounted) return;
-      setState(() {
-        _assignment = null;
-        _assignments = const [];
-        _workSessions = const [];
-        _disputes = const [];
+        _workSessions =
+            workSessionsResult.value ??
+            (keepsRelatedSnapshot ? _workSessions : const []);
+        _workSessionsError = workSessionsResult.error?.message;
+        _disputes =
+            disputesResult.value ??
+            (keepsRelatedSnapshot ? _disputes : const []);
         _areDisputesLoading = false;
-        _disputesError = null;
-        _paymentAttempts = const [];
-        _paymentAttemptsError = null;
+        _disputesError = disputesResult.error?.message;
+        _paymentAttempts =
+            paymentAttemptsResult.value ??
+            (keepsRelatedSnapshot ? _paymentAttempts : const []);
         _arePaymentAttemptsLoading = false;
+        _paymentAttemptsError = paymentAttemptsResult.error?.message;
+        _hasLoadedAssignments = true;
+        _isAssignmentLoading = false;
+        _assignmentLoadError = null;
+        _pendingAssignmentId = null;
+      });
+    } on ApiException catch (error) {
+      if (!mounted || generation != _assignmentLoadGeneration) return;
+      setState(() {
+        _isAssignmentLoading = false;
+        _assignmentLoadError = error.message;
       });
     }
   }
@@ -228,37 +295,18 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     final match = _assignments
         .where((item) => item.id == assignmentId)
         .firstOrNull;
-    if (match == null || match.id == _assignment?.id) return;
-
-    setState(() {
-      _assignment = match;
-      _workSessions = const [];
-      _disputes = const [];
-      _areDisputesLoading = true;
-      _disputesError = null;
-      _paymentAttempts = const [];
-      _paymentAttemptsError = null;
-    });
-
-    await Future.wait([
-      _loadWorkSessions(match.id),
-      _loadDisputes(match.id),
-      _loadPaymentAttempts(match.id),
-    ]);
-  }
-
-  Future<void> _loadWorkSessions(String assignmentId) async {
-    try {
-      final sessions = await _assignmentService.fetchWorkSessions(assignmentId);
-      if (mounted && _assignment?.id == assignmentId) {
-        setState(() => _workSessions = sessions);
-      }
-    } on ApiException {
-      // Mesai kaydı yardımcı bölümdür; ilanın kalanını kapatmaz.
+    if (match == null ||
+        match.id == _assignment?.id ||
+        !_isAssignmentListVerified) {
+      return;
     }
+
+    await _loadAssignment(selectedAssignmentId: assignmentId);
   }
 
   Future<void> _loadDisputes(String assignmentId) async {
+    if (_isAssignmentLoading) return;
+    final generation = _assignmentLoadGeneration;
     if (mounted && _assignment?.id == assignmentId) {
       setState(() {
         _areDisputesLoading = true;
@@ -268,28 +316,34 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
 
     try {
       final disputes = await _assignmentService.fetchDisputes(assignmentId);
-      if (mounted && _assignment?.id == assignmentId) {
+      if (mounted &&
+          generation == _assignmentLoadGeneration &&
+          _assignment?.id == assignmentId) {
         setState(() {
           _disputes = disputes;
           _disputesError = null;
         });
       }
     } on ApiException catch (error) {
-      if (mounted && _assignment?.id == assignmentId) {
+      if (mounted &&
+          generation == _assignmentLoadGeneration &&
+          _assignment?.id == assignmentId) {
         setState(() {
-          _disputes = const [];
           _disputesError = error.message;
         });
       }
     } finally {
-      if (mounted && _assignment?.id == assignmentId) {
+      if (mounted &&
+          generation == _assignmentLoadGeneration &&
+          _assignment?.id == assignmentId) {
         setState(() => _areDisputesLoading = false);
       }
     }
   }
 
   Future<void> _loadPaymentAttempts([String? assignmentId]) async {
-    if (!mounted) return;
+    if (!mounted || _isAssignmentLoading) return;
+    final generation = _assignmentLoadGeneration;
     final id = assignmentId ?? _assignment?.id;
     if (id == null) return;
 
@@ -300,13 +354,23 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
 
     try {
       final attempts = await _paymentService.fetchAttempts(id);
-      if (!mounted || _assignment?.id != id) return;
+      if (!mounted ||
+          generation != _assignmentLoadGeneration ||
+          _assignment?.id != id) {
+        return;
+      }
       setState(() => _paymentAttempts = attempts);
     } on ApiException catch (error) {
-      if (!mounted || _assignment?.id != id) return;
+      if (!mounted ||
+          generation != _assignmentLoadGeneration ||
+          _assignment?.id != id) {
+        return;
+      }
       setState(() => _paymentAttemptsError = error.message);
     } finally {
-      if (mounted && _assignment?.id == id) {
+      if (mounted &&
+          generation == _assignmentLoadGeneration &&
+          _assignment?.id == id) {
         setState(() => _arePaymentAttemptsLoading = false);
       }
     }
@@ -321,6 +385,7 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
         !_canStartPayment) {
       return;
     }
+    final generation = _assignmentLoadGeneration;
 
     final breakdown = assignment.pricing;
     if (breakdown == null) {
@@ -331,9 +396,18 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     setState(() => _isStartingPayment = true);
     try {
       final confirmed = await _confirmPayment(breakdown);
-      if (confirmed != true || !mounted) return;
+      final currentAssignment = _assignment;
+      if (confirmed != true ||
+          !mounted ||
+          generation != _assignmentLoadGeneration ||
+          currentAssignment?.id != assignment.id ||
+          currentAssignment == null ||
+          !currentAssignment.needsEmployerPayment ||
+          !_canStartPayment) {
+        return;
+      }
 
-      await _startPayment(assignment);
+      await _startPayment(currentAssignment);
     } on ApiException catch (error) {
       if (mounted) AppToast.error(context, error.message);
     } finally {
@@ -375,7 +449,12 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
   /// Önizleme alınamazsa akış durmuyor; kutu kuralı kelimeyle anlatıyor.
   Future<void> _cancelAssignment() async {
     final assignment = _assignment;
-    if (assignment == null || _isRunningAssignmentAction) return;
+    if (assignment == null ||
+        _isRunningAssignmentAction ||
+        !_canCompleteAssignment(assignment)) {
+      return;
+    }
+    final generation = _assignmentLoadGeneration;
 
     setState(() => _isRunningAssignmentAction = true);
     CancellationPreview? preview;
@@ -389,7 +468,14 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
       if (mounted) setState(() => _isRunningAssignmentAction = false);
     }
 
-    if (!mounted) return;
+    var currentAssignment = _assignment;
+    if (!mounted ||
+        generation != _assignmentLoadGeneration ||
+        currentAssignment?.id != assignment.id ||
+        currentAssignment == null ||
+        !_canCompleteAssignment(currentAssignment)) {
+      return;
+    }
 
     if (preview != null && !preview.cancellableNow) {
       AppToast.error(context, 'Bu iş artık iptal edilemez');
@@ -405,17 +491,30 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
       confirmLabel: 'İptal Et',
     );
 
-    if (reason == null || !mounted) return;
+    currentAssignment = _assignment;
+    if (reason == null ||
+        !mounted ||
+        generation != _assignmentLoadGeneration ||
+        currentAssignment?.id != assignment.id ||
+        currentAssignment == null ||
+        !_canCompleteAssignment(currentAssignment)) {
+      return;
+    }
 
-    await _runAssignmentAction((id) async {
-      final cancellation = await _assignmentService.cancel(
-        assignmentId: id,
-        reason: reason,
-      );
-      return cancellation.hasFee
-          ? 'İş iptal edildi · %${cancellation.feePercent} kesinti uygulandı'
-          : 'İş iptal edildi, kesinti uygulanmadı';
-    });
+    await _runAssignmentAction(
+      (id) async {
+        final cancellation = await _assignmentService.cancel(
+          assignmentId: id,
+          reason: reason,
+        );
+        return cancellation.hasFee
+            ? 'İş iptal edildi · %${cancellation.feePercent} kesinti uygulandı'
+            : 'İş iptal edildi, kesinti uygulanmadı';
+      },
+      expectedAssignmentId: assignment.id,
+      expectedGeneration: generation,
+      isEligible: _canCompleteAssignment,
+    );
   }
 
   /// İptal kutusunun gövdesi.
@@ -455,7 +554,8 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
   /// çalışana ödeme yapılmıyor, sunucunun kendiliğinden tamamlaması duruyor.
   Future<void> _openDispute() async {
     final assignment = _assignment;
-    if (assignment == null) return;
+    if (assignment == null || !_canOpenDisputeFor(assignment)) return;
+    final generation = _assignmentLoadGeneration;
 
     final reason = await ReasonDialog.show(
       context,
@@ -469,12 +569,25 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
       isDestructive: false,
     );
 
-    if (reason == null || !mounted) return;
+    final currentAssignment = _assignment;
+    if (reason == null ||
+        !mounted ||
+        generation != _assignmentLoadGeneration ||
+        currentAssignment?.id != assignment.id ||
+        currentAssignment == null ||
+        !_canOpenDisputeFor(currentAssignment)) {
+      return;
+    }
 
-    await _runAssignmentAction((id) async {
-      await _assignmentService.openDispute(assignmentId: id, reason: reason);
-      return 'Sorun bildirildi, Koala inceleyecek';
-    });
+    await _runAssignmentAction(
+      (id) async {
+        await _assignmentService.openDispute(assignmentId: id, reason: reason);
+        return 'Sorun bildirildi, Koala inceleyecek';
+      },
+      expectedAssignmentId: assignment.id,
+      expectedGeneration: generation,
+      isEligible: _canOpenDisputeFor,
+    );
   }
 
   // ------------------------------------------------------------ Şablonlar
@@ -546,10 +659,19 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
 
   /// İptal ve uyuşmazlığın ortak gövdesi: kilit, hata ve tazeleme.
   Future<void> _runAssignmentAction(
-    Future<String> Function(String assignmentId) action,
-  ) async {
+    Future<String> Function(String assignmentId) action, {
+    required String expectedAssignmentId,
+    required int expectedGeneration,
+    required bool Function(Assignment assignment) isEligible,
+  }) async {
     final assignment = _assignment;
-    if (assignment == null || _isRunningAssignmentAction) return;
+    if (assignment == null ||
+        assignment.id != expectedAssignmentId ||
+        _assignmentLoadGeneration != expectedGeneration ||
+        _isRunningAssignmentAction ||
+        !isEligible(assignment)) {
+      return;
+    }
 
     setState(() => _isRunningAssignmentAction = true);
 
@@ -574,15 +696,28 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
   /// önce onay soruluyor, hele ki çalışan hâlâ mesaideyken.
   Future<void> _completeAssignment() async {
     final assignment = _assignment;
-    if (assignment == null || _isCompleting) return;
+    if (assignment == null ||
+        _isCompleting ||
+        !_canCompleteAssignment(assignment)) {
+      return;
+    }
+    final generation = _assignmentLoadGeneration;
 
     final confirmed = await _confirmCompletion(assignment);
-    if (confirmed != true || !mounted) return;
+    final currentAssignment = _assignment;
+    if (confirmed != true ||
+        !mounted ||
+        generation != _assignmentLoadGeneration ||
+        currentAssignment?.id != assignment.id ||
+        currentAssignment == null ||
+        !_canCompleteAssignment(currentAssignment)) {
+      return;
+    }
 
     setState(() => _isCompleting = true);
 
     try {
-      await _employerJobService.completeAssignment(assignment.id);
+      await _employerJobService.completeAssignment(currentAssignment.id);
       if (!mounted) return;
       AppToast.success(context, 'İş tamamlandı olarak işaretlendi');
       // Tamamlama ilanın durumunu da değiştiriyor.
@@ -684,4 +819,21 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
   /// Gerekçeyi soran kutu. İptal edilirse `null`, boş bırakılırsa boş metin
   /// dönüyor — ikisi farklı: boş metin "gerekçesiz reddet" demek.
   Future<String?> _askRejectionReason(JobApplicant applicant);
+
+  Future<_RelatedLoadResult<T>> _capture<T>(Future<T> operation) async {
+    try {
+      return _RelatedLoadResult.success(await operation);
+    } on ApiException catch (error) {
+      return _RelatedLoadResult.failure(error);
+    }
+  }
+}
+
+class _RelatedLoadResult<T> {
+  const _RelatedLoadResult.success(this.value) : error = null;
+
+  const _RelatedLoadResult.failure(this.error) : value = null;
+
+  final T? value;
+  final ApiException? error;
 }
