@@ -9,11 +9,12 @@ import 'package:koala/employee/features/jobs/models/job_application.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
-/// İşverenin ilan uçları.
+/// İşveren ilan ve atama akışlarının uçları.
 ///
 /// Çalışan tarafındaki `JobService` ilan **arıyor**; burası ilan **açıyor,
-/// kapatıyor ve başvuruları yanıtlıyor**. İkisi ayrı duruyor çünkü yetki de
-/// ayrı: bu sınıfın çağırdığı her uç ilan sahipliğini doğruluyor.
+/// kapatıyor ve başvuruları yanıtlıyor**. Ödeme sonucu gibi işveren
+/// ekranlarının ihtiyaç duyduğu katılımcıya açık atama okumaları da burada
+/// tutuluyor; her uç kendi sahiplik veya katılımcı yetkisini doğruluyor.
 class EmployerJobService {
   EmployerJobService._(this._apiClient);
 
