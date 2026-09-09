@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/product/network/api_exception.dart';
@@ -604,6 +606,54 @@ void main() {
       expect(api.sessionExpired, isFalse);
     });
 
+    test('retry doğrulanan tokenı hesap değişse de koruyor', () async {
+      final sentTokens = <String?>[];
+      var businessCalls = 0;
+      final storage = _PausingTokenStorage(
+        accessToken: 'eski-hesap',
+        refreshToken: 'eski-yenileme',
+        pauseOnAccessToken: 'tazelenmis-erisim',
+      );
+      final api = FakeApi(
+        handler: (options) {
+          if (options.path == ApiPaths.refreshToken) {
+            return const FakeApiResponse(
+              statusCode: 200,
+              body: {
+                'success': true,
+                'data': {'token': 'tazelenmis-erisim'},
+              },
+            );
+          }
+
+          sentTokens.add(options.headers['Authorization'] as String?);
+          businessCalls++;
+          if (businessCalls == 1) {
+            return const FakeApiResponse(
+              statusCode: 401,
+              body: {'success': false, 'message': 'Eski oturum kapandı'},
+            );
+          }
+          return const FakeApiResponse(
+            statusCode: 200,
+            body: {'success': true, 'data': 'tamam'},
+          );
+        },
+        tokenStorage: storage,
+      );
+
+      final request = api.client.get<String>(
+        ApiPaths.currentUser,
+        parse: (data) => data! as String,
+      );
+      await storage.paused;
+      storage.accessToken = 'yeni-hesap';
+      storage.resume();
+
+      expect(await request, 'tamam');
+      expect(sentTokens, ['Bearer eski-hesap', 'Bearer tazelenmis-erisim']);
+    });
+
     test(
       'sonraki token nesli gerektiğinde kendi yenilemesini başlatıyor',
       () async {
@@ -712,4 +762,34 @@ void main() {
       },
     );
   });
+}
+
+/// Yenilenmiş token'ın ilk doğrulama okumasında çağrıyı durdurur; test bu
+/// aralıkta storage'ı başka bir oturuma taşıyabilir.
+class _PausingTokenStorage extends FakeTokenStorage {
+  _PausingTokenStorage({
+    required super.accessToken,
+    required super.refreshToken,
+    required this.pauseOnAccessToken,
+  });
+
+  final String pauseOnAccessToken;
+  final Completer<void> _paused = Completer<void>();
+  final Completer<void> _resume = Completer<void>();
+  bool _didPause = false;
+
+  Future<void> get paused => _paused.future;
+
+  void resume() => _resume.complete();
+
+  @override
+  Future<String?> readAccessToken() async {
+    final value = accessToken;
+    if (!_didPause && value == pauseOnAccessToken) {
+      _didPause = true;
+      _paused.complete();
+      await _resume.future;
+    }
+    return value;
+  }
 }

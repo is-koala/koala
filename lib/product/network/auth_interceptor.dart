@@ -105,7 +105,7 @@ class AuthInterceptor extends QueuedInterceptor {
     }
 
     try {
-      handler.resolve(await _retry(err.requestOptions));
+      handler.resolve(await _retry(err.requestOptions, refreshedAccessToken));
     } on DioException catch (retryError) {
       handler.next(retryError);
     }
@@ -206,9 +206,10 @@ class AuthInterceptor extends QueuedInterceptor {
   /// kopyaladığı için tekrar denenen istek dosyayı yine taşıyor — kopyalamak
   /// yerine `FormData`'yı burada yeniden kurmak, isteği kimin kurduğunu
   /// bilmeyi gerektirirdi.
-  Future<Response<dynamic>> _retry(RequestOptions options) async {
-    final accessToken = await _tokenStorage.readAccessToken();
-
+  Future<Response<dynamic>> _retry(
+    RequestOptions options,
+    String accessToken,
+  ) async {
     final body = options.data;
     if (body is FormData) {
       options.data = body.clone();
