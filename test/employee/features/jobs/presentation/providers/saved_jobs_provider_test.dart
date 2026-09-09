@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/saved_jobs_provider.dart';
 import 'package:koala/employee/features/jobs/services/saved_jobs_service.dart';
@@ -165,6 +167,34 @@ void main() {
       expect(provider.isSaved('job_1'), isTrue);
       expect(provider.isSaved('job_2'), isTrue);
     });
+
+    test('eski kaldırma hatası yeni hesabın listesine geri alınmaz', () async {
+      final accountARemove = Completer<FakeApiResponse>();
+      var listCall = 0;
+      final api = FakeApi(
+        handler: (options) {
+          if (options.method == 'DELETE') return accountARemove.future;
+
+          listCall++;
+          return okList([jobBody(id: listCall == 1 ? 'hesap_a' : 'hesap_b')]);
+        },
+      );
+      final provider = buildProvider(api);
+      await provider.load();
+
+      final accountARemoval = provider.toggleSave(provider.savedJobs.single);
+      await api.requestsReach(2);
+
+      provider.clear();
+      await provider.load();
+
+      accountARemove.complete(_fail);
+      expect(await accountARemoval, isFalse);
+
+      expect(provider.savedJobs.map((job) => job.id), ['hesap_b']);
+      expect(provider.errorMessage, isNull);
+      expect(api.requests, hasLength(3));
+    });
   });
 
   group('SavedJobsProvider.removeJob', () {
@@ -209,6 +239,46 @@ void main() {
 
       expect(provider.savedJobs, isEmpty);
       expect(provider.hasLoaded, isFalse);
+    });
+
+    test('geç eski yanıt yeni hesabın kayıtlı ilanlarını ezmez', () async {
+      final accountAResponse = Completer<FakeApiResponse>();
+      final accountBResponse = Completer<FakeApiResponse>();
+      var call = 0;
+      final api = FakeApi(
+        handler: (_) {
+          call++;
+          return call == 1 ? accountAResponse.future : accountBResponse.future;
+        },
+      );
+      final provider = buildProvider(api);
+
+      final accountALoad = provider.load();
+      await api.requestsReach(1);
+
+      provider.clear();
+      final accountBLoad = provider.load();
+      final bStarted = await Future.any([
+        api.requestsReach(2).then((_) => true),
+        accountBLoad.then((_) => false),
+      ]);
+      expect(bStarted, isTrue, reason: 'Yeni oturumun isteği engellenmemeli');
+
+      accountAResponse.complete(okList([jobBody(id: 'hesap_a')]));
+      await accountALoad;
+
+      expect(provider.savedJobs, isEmpty);
+      expect(provider.isLoading, isTrue);
+      expect(provider.hasLoaded, isFalse);
+      expect(provider.errorMessage, isNull);
+
+      accountBResponse.complete(okList([jobBody(id: 'hesap_b')]));
+      await accountBLoad;
+
+      expect(provider.savedJobs.map((job) => job.id), ['hesap_b']);
+      expect(provider.isLoading, isFalse);
+      expect(provider.hasLoaded, isTrue);
+      expect(provider.errorMessage, isNull);
     });
   });
 }
