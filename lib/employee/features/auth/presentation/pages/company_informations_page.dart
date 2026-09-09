@@ -56,29 +56,35 @@ class _CompanyInformationsPageState extends CompanyInformationsPagemodel {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: AppIcon(AppIcons.arrowLeft, color: context.textPrimary),
-          onPressed: () => context.pop(),
+    return PopScope<Object?>(
+      canPop: Navigator.of(context).canPop(),
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) goBack();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: AppIcon(AppIcons.arrowLeft, color: context.textPrimary),
+            onPressed: goBack,
+          ),
         ),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: AppPadding.authContent,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _formSection(),
-                MyButton(
-                  key: const ValueKey('company-save'),
-                  onPressed: saveCompanyInformation,
-                  title: "KAYDET",
-                  isLoading: isSaving,
-                ),
-                const SizedBox(height: AppSizes.spaceLarge),
-              ],
+        body: SafeArea(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: AppPadding.authContent,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _formSection(),
+                  MyButton(
+                    key: const ValueKey('company-save'),
+                    onPressed: saveCompanyInformation,
+                    title: "KAYDET",
+                    isLoading: isSaving,
+                  ),
+                  const SizedBox(height: AppSizes.spaceLarge),
+                ],
+              ),
             ),
           ),
         ),
