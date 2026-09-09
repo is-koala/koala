@@ -119,6 +119,17 @@ enum IdentityError {
     retryFromChip: true,
   ),
 
+  /// Gönderilen DG15 anahtarı kartın SOD güvenlik imzasında yer almıyor.
+  /// Doğrulanmamış anahtarı kabul etmek yerine okuma baştan yapılmalı.
+  chipKeyUnsigned(
+    code: 'IDENTITY_CHIP_KEY_UNSIGNED',
+    message:
+        'Karttan okunan doğrulama anahtarı güvenlik imzasıyla doğrulanamadı. '
+        'Doğrulama tamamlanmadı; kartını yeniden okut. Sorun sürerse destek '
+        'ekibimizle iletişime geç.',
+    retryFromChip: true,
+  ),
+
   /// Tek kullanımlık sayı tükenmiş ya da süresi dolmuş. **Yeni bir
   /// challenge alıp okumayı baştan yapmak gerekiyor**; eski okumayı tekrar
   /// göndermek aynı hatayı verir.
