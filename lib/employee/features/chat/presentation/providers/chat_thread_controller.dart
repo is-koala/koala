@@ -44,6 +44,7 @@ class ChatThreadController extends ChangeNotifier {
   DateTime? _lastTypingSentAt;
 
   bool _disposed = false;
+  int _loadGeneration = 0;
 
   List<Message> get messages => List.unmodifiable(_messages);
 
@@ -80,9 +81,9 @@ class ChatThreadController extends ChangeNotifier {
 
   /// Mesajları çeker, sohbeti okundu işaretler ve canlı akışa bağlanır.
   Future<void> load({required String currentUserId}) async {
+    final generation = ++_loadGeneration;
     _currentUserId = currentUserId;
     _isLoading = _messages.isEmpty;
-    _errorMessage = null;
     _safeNotify();
 
     try {
@@ -90,8 +91,10 @@ class ChatThreadController extends ChangeNotifier {
         conversationId: conversationId,
         currentUserId: currentUserId,
       );
-      if (_disposed) return;
+      if (_disposed || generation != _loadGeneration) return;
       _messages = page.messages;
+      _errorMessage = null;
+      _blockedMessage = null;
       _listenToRealtime();
 
       // Okundu işaretlemek listedeki sayacı sıfırlıyor; başarısız olması
@@ -102,11 +105,14 @@ class ChatThreadController extends ChangeNotifier {
         // Yut: bir sonraki açılışta tekrar denenecek.
       }
     } on ApiException catch (error) {
+      if (_disposed || generation != _loadGeneration) return;
       _errorMessage = error.message;
       _captureBlock(error);
     } finally {
-      _isLoading = false;
-      _safeNotify();
+      if (!_disposed && generation == _loadGeneration) {
+        _isLoading = false;
+        _safeNotify();
+      }
     }
   }
 
