@@ -36,6 +36,38 @@ enum ChipReadFailure {
     canRetry: true,
   ),
 
+  /// Paketlenmeyen OCR modeli indirilemedi ya da platform çağrısı tamamlanmadı.
+  ocrModelUnavailable(
+    title: 'Metin tanıma modeli hazırlanamadı',
+    message:
+        'İnternet bağlantını kontrol edip tekrar dene. Android cihazlarda '
+        'Google Play Hizmetleri kullanılabilir olmalı. İstersen kimlik '
+        'bilgilerini elle girebilirsin.',
+    canRetry: true,
+  ),
+
+  /// OCR çağrısı platformdan bağımsız zaman sınırını aştı.
+  ocrTimedOut(
+    title: 'Metin tanıma tamamlanamadı',
+    message:
+        'Kartın arka yüzünü işlerken beklenenden uzun sürdü. Tekrar dene; '
+        'sorun devam ederse kimlik bilgilerini elle girebilirsin.',
+    canRetry: true,
+  ),
+
+  /// Boş OCR sonucu ilk kullanımda henüz hazır olmayan indirilebilir modelden
+  /// de tamamen okunamayan görüntüden de gelebilir. Eklenti bu iki durumu
+  /// ayıran bir sinyal vermediği için kullanıcıya iki olasılık da anlatılır.
+  ocrUnavailableOrUnreadable(
+    title: 'Kartın arka yüzü henüz okunamadı',
+    message:
+        'İlk taramada metin tanıma bileşeni hâlâ hazırlanıyor olabilir. '
+        'İnternet bağlantını açık tutup tekrar dene; Android cihazlarda '
+        'Google Play Hizmetleri kullanılabilir olmalı. Ayrıca kartı düz bir '
+        'zemine koyup alt kısmındaki üç satırın tamamını kadraja alabilirsin.',
+    canRetry: true,
+  ),
+
   /// OCR MRZ'yi bulamadı ya da kontrol hanesi tutmadı.
   mrzUnreadable(
     title: 'Kartın arka yüzü okunamadı',

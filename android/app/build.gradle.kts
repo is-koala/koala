@@ -40,6 +40,58 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+configurations.configureEach {
+    resolutionStrategy.dependencySubstitution {
+        // Flutter eklentisi Latin modelini APK'ya gömüyor. Yalnız bu modülü
+        // Play Services varyantına çevirerek diğer alfabelerin sözleşmesine
+        // dokunmadan production APK'sındaki yaklaşık 31 MB'ı kaldırıyoruz.
+        // Kaynak sürüm de sözleşmenin parçası. Eklenti yeni bir bundled sürüme
+        // geçerse onu sessizce eski Play Services sürümüne zorlamak yerine
+        // aşağıdaki graph doğrulaması açıkça hata vermeli.
+        substitute(module("com.google.mlkit:text-recognition:16.0.1"))
+            .using(module("com.google.android.gms:play-services-mlkit-text-recognition:19.0.1"))
+            .because("Latin OCR modeli Google Play Services üzerinden indirilir")
+    }
+}
+
+val verifyUnbundledMlKitTextRecognition by tasks.registering {
+    group = "verification"
+    description = "Production runtime graph uses only the unbundled Latin ML Kit model"
+
+    doLast {
+        val runtime = configurations.getByName("productionReleaseRuntimeClasspath")
+        val modules = runtime.incoming.resolutionResult.allComponents
+            .mapNotNull { it.moduleVersion }
+
+        val bundled = modules.filter {
+            it.group == "com.google.mlkit" && it.name == "text-recognition"
+        }
+        check(bundled.isEmpty()) {
+            "Bundled ML Kit text-recognition production graph'a geri döndü: $bundled"
+        }
+
+        val unbundled = modules.filter {
+            it.group == "com.google.android.gms" &&
+                it.name == "play-services-mlkit-text-recognition"
+        }
+        check(unbundled.size == 1 && unbundled.single().version == "19.0.1") {
+            "Production graph exact unbundled ML Kit 19.0.1 bekliyor: $unbundled"
+        }
+    }
+}
+
+tasks.named("check") {
+    dependsOn(verifyUnbundledMlKitTextRecognition)
+}
+
+// Flutter CI `check` çağırmadan doğrudan assemble/bundle çalıştırıyor. Model
+// graph sözleşmesi gerçek APK/AAB kapısından da geçmeden artefact üretilmesin.
+tasks.matching {
+    it.name.startsWith("assemble") || it.name.startsWith("bundle")
+}.configureEach {
+    dependsOn(verifyUnbundledMlKitTextRecognition)
+}
+
 android {
     namespace = "com.example.koala"
     // permission_handler_android 14 compileSdk 37 ile derleniyor; Flutter'ın

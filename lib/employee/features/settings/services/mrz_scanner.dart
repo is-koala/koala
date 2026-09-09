@@ -1,3 +1,7 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:koala/employee/features/settings/models/chip_read_failure.dart';
@@ -15,13 +19,27 @@ import 'package:koala/employee/features/settings/models/mrz_key.dart';
 /// `image_picker` zaten bağımlılık listesinde ve tek karelik bir çekim bu
 /// akış için yeterli — canlı akış taraması ayrı bir iş.
 class MrzScanner {
-  MrzScanner({ImagePicker? picker, TextRecognizer? recognizer})
-    : _picker = picker ?? ImagePicker(),
-      _recognizer =
-          recognizer ?? TextRecognizer(script: TextRecognitionScript.latin);
+  MrzScanner({
+    ImagePicker? picker,
+    TextRecognizer? recognizer,
+    this.recognitionTimeout = const Duration(seconds: 30),
+    bool? usesDownloadableModel,
+  }) : _picker = picker ?? ImagePicker(),
+       _recognizer =
+           recognizer ?? TextRecognizer(script: TextRecognitionScript.latin),
+       _usesDownloadableModel =
+           usesDownloadableModel ??
+           defaultTargetPlatform == TargetPlatform.android;
 
   final ImagePicker _picker;
   final TextRecognizer _recognizer;
+  final bool _usesDownloadableModel;
+
+  /// Play Services modelinin ilk kullanımda hazırlanmasını bekleme sınırı.
+  ///
+  /// Model indirilemezse platform çağrısı yanıtsız kalabilir. Otuz saniye ilk
+  /// indirmeye alan tanırken kullanıcıyı sonsuz yüklemede bırakmaz.
+  final Duration recognitionTimeout;
 
   /// Kartın arka yüzünü çekip MRZ'yi ayrıştırır.
   ///
@@ -56,11 +74,30 @@ class MrzScanner {
   Future<MrzKey> recognize(String imagePath) async {
     final RecognizedText recognized;
     try {
-      recognized = await _recognizer.processImage(
-        InputImage.fromFilePath(imagePath),
-      );
+      recognized = await _recognizer
+          .processImage(InputImage.fromFilePath(imagePath))
+          .timeout(recognitionTimeout);
+    } on TimeoutException catch (error) {
+      throw ChipReadException(ChipReadFailure.ocrTimedOut, cause: error);
+    } on PlatformException catch (error) {
+      if (_isModelDeliveryFailure(error)) {
+        // Paketlenmeyen model ağ ya da Play Services yüzünden hazırlanamadı.
+        // Görüntünün okunup MRZ üretmemesinden farklı bir çözümü var.
+        throw ChipReadException(
+          ChipReadFailure.ocrModelUnavailable,
+          cause: error,
+        );
+      }
+      throw ChipReadException(ChipReadFailure.mrzUnreadable, cause: error);
     } on Object catch (error) {
       throw ChipReadException(ChipReadFailure.mrzUnreadable, cause: error);
+    }
+
+    if (recognized.text.trim().isEmpty && _usesDownloadableModel) {
+      // İndirilebilir Android modeli kurulurken ilk istek boş sonuç verebilir.
+      // Eklenti bu durumu boş bir görüntüden ayırmadığı için yanlış bir kesinlik
+      // vermek yerine kullanıcıya iki kurtarma yolunu da sunuyoruz.
+      throw const ChipReadException(ChipReadFailure.ocrUnavailableOrUnreadable);
     }
 
     final key = MrzKey.parseTd1(recognized.text);
@@ -68,6 +105,26 @@ class MrzScanner {
       throw const ChipReadException(ChipReadFailure.mrzUnreadable);
     }
     return key;
+  }
+
+  /// Eklenti bütün ML Kit hatalarını aynı `TextRecognizerError` koduyla
+  /// döndürüyor. Bu yüzden yalnız model/modül teslimini açıkça söyleyen
+  /// mesajlar indirme hatasıdır; bozuk görüntü gibi diğer yerel hatalar
+  /// mevcut MRZ-okunamadı davranışında kalır.
+  static bool _isModelDeliveryFailure(PlatformException error) {
+    if (error.code != 'TextRecognizerError') return false;
+
+    final message = (error.message ?? '').toLowerCase();
+    if (message.contains('google play services')) return true;
+
+    final namesModel = message.contains('model') || message.contains('module');
+    final describesDelivery =
+        message.contains('download') ||
+        message.contains('not available') ||
+        message.contains('unavailable') ||
+        message.contains('cannot load') ||
+        message.contains('failed to load');
+    return namesModel && describesDelivery;
   }
 
   /// Yerel tanıyıcıyı kapatır. Ekran kapanırken çağrılmalı; açık kalan

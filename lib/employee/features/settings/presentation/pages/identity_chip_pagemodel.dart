@@ -8,6 +8,9 @@ enum IdentityChipStage {
   /// MRZ okunamadığında (ya da kullanıcı istediğinde) üç kısa alan.
   manual,
 
+  /// Fotoğraftaki MRZ ve gerekirse paketlenmeyen Android modeli hazırlanıyor.
+  recognizing,
+
   /// Kart okunuyor.
   reading,
 
@@ -16,9 +19,9 @@ enum IdentityChipStage {
 }
 
 abstract class IdentityChipPagemodel extends State<IdentityChipPage> {
-  final UserService _userService = UserService();
-  final MrzScanner _scanner = MrzScanner();
-  final ChipReader _reader = ChipReader();
+  late final UserService _userService;
+  late final MrzScanner _scanner;
+  late final ChipReader _reader;
 
   final TextEditingController documentNumber = TextEditingController();
 
@@ -51,6 +54,9 @@ abstract class IdentityChipPagemodel extends State<IdentityChipPage> {
   @override
   void initState() {
     super.initState();
+    _userService = widget.userService ?? UserService();
+    _scanner = widget.mrzScanner ?? MrzScanner();
+    _reader = widget.chipReader ?? ChipReader();
     _prepare();
   }
 
@@ -102,6 +108,7 @@ abstract class IdentityChipPagemodel extends State<IdentityChipPage> {
   /// Kartın arka yüzünü tarar, sonra çipe gider.
   Future<void> scanAndRead() async {
     _retryStage = IdentityChipStage.intro;
+    setState(() => stage = IdentityChipStage.recognizing);
 
     final MrzKey? key;
     try {
@@ -112,8 +119,13 @@ abstract class IdentityChipPagemodel extends State<IdentityChipPage> {
       return;
     }
 
+    if (!mounted) return;
+
     // Kullanıcı çekimden vazgeçti; hata değil, ekran olduğu gibi kalıyor.
-    if (key == null) return;
+    if (key == null) {
+      setState(() => stage = IdentityChipStage.intro);
+      return;
+    }
 
     await _read(key);
   }
