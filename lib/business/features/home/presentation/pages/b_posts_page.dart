@@ -36,6 +36,9 @@ class _BPostsPageState extends State<BPostsPage>
   /// Geçmiş ilanlardaki çalışan avatarının ölçüsü.
   static const double _workerAvatarSize = 24;
 
+  /// Dar alt satırdaki yükleme halkasını okunur tutan ince çizgi.
+  static const double _spinnerStroke = 2;
+
   @override
   void initState() {
     super.initState();
@@ -87,7 +90,9 @@ class _BPostsPageState extends State<BPostsPage>
     }
 
     final message = provider.errorMessage;
-    if (message != null && !provider.hasLoaded) return _errorState(message);
+    if (message != null && provider.allPosts.isEmpty) {
+      return _errorState(message);
+    }
 
     return TabBarView(
       controller: _tabController,
@@ -177,7 +182,10 @@ class _BPostsPageState extends State<BPostsPage>
                 // sayı zaten ilanla geliyor.
                 if (!isActive) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (mounted) {
+                    if (mounted &&
+                        !post.applicantsLoaded &&
+                        !post.applicantsLoading &&
+                        post.applicantsError == null) {
                       context.read<BJobsProvider>().ensureApplicants(
                         post.job.id,
                       );
@@ -519,6 +527,56 @@ class _BPostsPageState extends State<BPostsPage>
   }
 
   Widget _workerRow(BJobPost post) {
+    final errorMessage = post.applicantsError;
+    if (errorMessage != null) {
+      return _footerRow(
+        isFilled: false,
+        children: [
+          AppIcon(
+            AppIcons.alert,
+            size: AppSizes.iconSmall,
+            color: context.textTertiary,
+          ),
+          const SizedBox(width: AppSizes.spaceSmall),
+          Expanded(
+            child: Text(
+              errorMessage,
+              style: context.textTheme.bodySmall?.copyWith(
+                color: context.textSecondary,
+              ),
+            ),
+          ),
+          TextButton(
+            key: ValueKey('post-applicants-retry-${post.job.id}'),
+            onPressed: () => context.read<BJobsProvider>().ensureApplicants(
+              post.job.id,
+              force: true,
+            ),
+            child: const Text('Tekrar Dene'),
+          ),
+        ],
+      );
+    }
+
+    if (!post.applicantsLoaded) {
+      return _footerRow(
+        isFilled: false,
+        children: [
+          const SizedBox.square(
+            dimension: AppSizes.iconSmall,
+            child: CircularProgressIndicator(strokeWidth: _spinnerStroke),
+          ),
+          const SizedBox(width: AppSizes.spaceSmall),
+          Text(
+            'Yapan kişi bilgisi yükleniyor',
+            style: context.textTheme.bodySmall?.copyWith(
+              color: context.textTertiary,
+            ),
+          ),
+        ],
+      );
+    }
+
     final worker = post.worker;
 
     return _footerRow(

@@ -482,10 +482,20 @@ class _BHomePageState extends State<BHomePage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       for (final post in previewPosts) {
-        provider.ensureApplicants(post.job.id);
+        if (!post.applicantsLoaded &&
+            !post.applicantsLoading &&
+            post.applicantsError == null) {
+          provider.ensureApplicants(post.job.id);
+        }
       }
     });
 
+    final failedPosts = previewPosts
+        .where((post) => post.applicantsError != null)
+        .toList();
+    final waitingForApplicants = previewPosts.any(
+      (post) => !post.applicantsLoaded && post.applicantsError == null,
+    );
     final recentApplicants = [
       for (final post in previewPosts)
         for (final applicant in post.applicants)
@@ -497,18 +507,55 @@ class _BHomePageState extends State<BHomePage> {
       children: [
         _sectionHeader(context, 'Son Başvurular'),
         const SizedBox(height: AppSizes.space),
-        if (recentApplicants.isEmpty)
+        if (failedPosts.isNotEmpty) ...[
+          _recentApplicantsErrorPanel(context, provider, failedPosts),
+          if (recentApplicants.isNotEmpty)
+            const SizedBox(height: AppSizes.spaceSmall),
+        ],
+        if (recentApplicants.isNotEmpty)
+          ...recentApplicants
+              .take(_previewCount)
+              .map((ra) => _recentApplicantCard(context, ra))
+        else if (failedPosts.isEmpty && waitingForApplicants)
+          const Center(child: CircularProgressIndicator())
+        else if (failedPosts.isEmpty)
           _emptyPanel(
             context,
             icon: AppIcons.userMultiple,
             title: 'Henüz başvuru yok',
             subtitle: 'İlanlara başvuru geldiğinde burada görünecek',
-          )
-        else
-          ...recentApplicants
-              .take(_previewCount)
-              .map((ra) => _recentApplicantCard(context, ra)),
+          ),
       ],
+    );
+  }
+
+  Widget _recentApplicantsErrorPanel(
+    BuildContext context,
+    BJobsProvider provider,
+    List<BJobPost> failedPosts,
+  ) {
+    return Container(
+      width: double.infinity,
+      padding: AppPadding.card,
+      decoration: _cardDecoration(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            failedPosts.first.applicantsError!,
+            style: context.textTheme.bodyMedium,
+          ),
+          const SizedBox(height: AppSizes.spaceSmall),
+          OutlinedButton(
+            key: const ValueKey('recent-applicants-retry'),
+            onPressed: () => Future.wait([
+              for (final post in failedPosts)
+                provider.ensureApplicants(post.job.id, force: true),
+            ]),
+            child: const Text('Tekrar Dene'),
+          ),
+        ],
+      ),
     );
   }
 

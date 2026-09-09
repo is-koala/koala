@@ -17,6 +17,8 @@ class BJobPost {
     required this.job,
     this.applications = const [],
     this.applicantsLoaded = false,
+    this.applicantsLoading = false,
+    this.applicantsError,
   });
 
   final Job job;
@@ -26,6 +28,16 @@ class BJobPost {
   final List<JobApplicant> applications;
 
   final bool applicantsLoaded;
+
+  /// Başvuranlar için uçuşta istek var mı.
+  ///
+  /// Yenilemede daha önceki [applications] korunabildiği için bu değer,
+  /// [applicantsLoaded]'dan bağımsızdır.
+  final bool applicantsLoading;
+
+  /// Yalnızca bu ilanın başvuranlarını yükleme/yenileme hatası.
+  /// İlan listesinin hatasıyla karışmaz ve mevcut [applications]'ı silmez.
+  final String? applicantsError;
 
   /// İlan hâlâ yürürlükte mi. "Aktif" ve "Geçmiş" sekmelerini bu ayırıyor;
   /// karar sunucudaki [JobStatus]'a ait, uygulamanın kendi bayrağına değil.
@@ -67,15 +79,36 @@ class BJobPost {
     return accepted.isEmpty ? null : accepted.first;
   }
 
-  BJobPost copyWith({
-    Job? job,
-    List<JobApplicant>? applications,
-    bool? applicantsLoaded,
-  }) {
+  /// Liste yenilemesindeki yeni ilan özetini alırken başvuran durumunu korur.
+  BJobPost withJob(Job value) {
     return BJobPost(
-      job: job ?? this.job,
-      applications: applications ?? this.applications,
-      applicantsLoaded: applicantsLoaded ?? this.applicantsLoaded,
+      job: value,
+      applications: applications,
+      applicantsLoaded: applicantsLoaded,
+      applicantsLoading: applicantsLoading,
+      applicantsError: applicantsError,
+    );
+  }
+
+  BJobPost startApplicantLoad() {
+    return BJobPost(
+      job: job,
+      applications: applications,
+      applicantsLoaded: applicantsLoaded,
+      applicantsLoading: true,
+    );
+  }
+
+  BJobPost completeApplicantLoad(List<JobApplicant> value) {
+    return BJobPost(job: job, applications: value, applicantsLoaded: true);
+  }
+
+  BJobPost failApplicantLoad(String message) {
+    return BJobPost(
+      job: job,
+      applications: applications,
+      applicantsLoaded: applicantsLoaded,
+      applicantsError: message,
     );
   }
 }
