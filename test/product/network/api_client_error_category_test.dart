@@ -3,6 +3,7 @@ import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/network/api_paths.dart';
 import 'package:koala/product/network/app_update_gate.dart';
 
+import '../../support/backend_error_categories.dart';
 import '../../support/fake_api.dart';
 
 /// Hata sınıflandırmasının kaynağı: backend'in `errorCategory` alanı
@@ -12,9 +13,8 @@ void main() {
   tearDown(() => AppUpdateGate().reset());
 
   group('errorCategory tipi belirliyor', () {
-    // Backend'in `ErrorCategory` enum'unun tamamı. Kapalı kümenin her elemanı
-    // burada: yeni bir değer eklendiğinde eşlemenin bilinçli olarak yazılması
-    // gerekiyor. Eksiksiz olduğu aşağıdaki `serverCategories` ile ölçülüyor.
+    // Backend'in `ErrorCategory` kümesi. Tip beklentisi burada; eksiksizlik
+    // yayımlanan Java/OpenAPI kaynağına karşı ölçülüyor (is-koala/koala#85).
     const mapping = <String, ApiErrorType>{
       'VALIDATION_FAILED': ApiErrorType.validation,
       'REQUEST_MALFORMED': ApiErrorType.validation,
@@ -43,47 +43,29 @@ void main() {
       });
     });
 
-    // Sunucunun `ErrorCategory.java`'sındaki değerler, bildirim sırasıyla ve
-    // birebir. Eşlemenin karşılaştırıldığı yer burası.
-    const serverCategories = <String>[
-      'RESOURCE_NOT_FOUND',
-      'ENDPOINT_NOT_FOUND',
-      'VALIDATION_FAILED',
-      'REQUEST_MALFORMED',
-      'PARAMETER_MISSING',
-      'METHOD_NOT_ALLOWED',
-      'MEDIA_TYPE_NOT_SUPPORTED',
-      'BUSINESS_RULE_VIOLATION',
-      'DATA_CONFLICT',
-      'AUTHENTICATION_REQUIRED',
-      'INVALID_CREDENTIALS',
-      'TOKEN_EXPIRED',
-      'ACCESS_DENIED',
-      'RATE_LIMITED',
-      'CLIENT_TOO_OLD',
-      'UPSTREAM_FAILED',
-      'UNEXPECTED',
-    ];
+    test('eşleme yayımlanan backend kümesiyle birebir', () {
+      // Kaynak OpenAPI belgesi (`KOALA_OPENAPI_PATH`) ya da kardeş
+      // `koala-backend` içindeki `ErrorCategory.java` — aynı Dart dosyasındaki
+      // ikinci bir liste değil (is-koala/koala#85).
+      final published = BackendErrorCategories.load();
 
-    test('eşleme sunucunun kapalı kümesiyle birebir', () {
-      // Eskiden bu `expect(mapping, hasLength(17))`'di ve kendi sabitini
-      // ölçüyordu: tablodan bir satır düşerse yakalıyor, ama bir anahtar
-      // yanlış yazılsa ya da sunucuya yeni bir değer eklense hiçbir şey
-      // söylemiyordu — sayı tutmaya devam ederdi.
-      //
-      // İddia artık kümenin **hangi** değerlerden oluştuğuna bakıyor. Bu
-      // liste de Java kaynağını otomatik okumuyor (Dart testinin erişimi
-      // yok), ama beklenen değerler açıkça yazılı olduğu için sunucu tarafı
-      // değiştiğinde diff'te görünüyor. Karşılaştırmanın gerçekten
-      // otomatikleşmesi ayrı bir iş: is-koala/koala#85.
       expect(
         mapping.keys.toSet(),
-        serverCategories.toSet(),
+        published,
         reason:
-            'Eşleme ile ErrorCategory.java ayrıştı. Sunucuya değer '
-            'eklendiyse eşlemeye de ekle; kaldırıldıysa iki listeden de '
-            'çıkar.',
+            'Eşleme ile backend ErrorCategory kümesi ayrıştı. Sunucuya '
+            'değer eklendiyse `fromCategory` ve bu tabloya da ekle; '
+            'kaldırıldıysa ikisinden de çıkar.',
       );
+
+      for (final category in published) {
+        expect(
+          ApiErrorType.fromCategory(category),
+          isNotNull,
+          reason:
+              'Backend `$category` yayımlıyor ama fromCategory onu tanımıyor.',
+        );
+      }
     });
   });
 
