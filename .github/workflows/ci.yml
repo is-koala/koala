@@ -86,10 +86,20 @@ jobs:
       - name: Eksik ortamın sessiz API seçmediğini doğrula
         run: flutter test test/product/network/api_config_test.dart --reporter expanded
 
+      # Yayımlanan ErrorCategory kümesi (is-koala/koala#85). Canlı API yok;
+      # kardeş depo checkout'undaki Java/şema kaynağı okunuyor.
+      - name: Backend ErrorCategory kaynağını al
+        uses: actions/checkout@v4
+        with:
+          repository: is-koala/koala-backend
+          path: koala-backend
+
       # Staging testleri de gerçek runtime ortam seçimini kullanır.
       - name: Testleri çalıştır
         # Tek Pi runner'ında Flutter'ın kendi test paralelliğini ve microSD
         # yazma yükünü sınırlı tut; coverage bu iş akışının kalite kapısı değil.
+        env:
+          KOALA_BACKEND_ROOT: ${{ github.workspace }}/koala-backend
         run: flutter test --flavor staging --dart-define-from-file=config/staging.json --reporter expanded --concurrency=1
 
   build-android:
