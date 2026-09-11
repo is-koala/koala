@@ -12,6 +12,7 @@ import 'package:koala/business/features/home/presentation/pages/b_company_galler
 import 'package:koala/business/features/home/presentation/pages/b_company_info_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_job_detail_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_job_templates_page.dart';
+import 'package:koala/business/features/home/presentation/pages/b_talent_pool_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_user_profile_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_notifications_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_payment_result_page.dart';
@@ -25,7 +26,6 @@ import 'package:koala/employee/features/settings/presentation/pages/reports_page
 import 'package:koala/employee/features/settings/presentation/pages/sessions_page.dart';
 import 'package:koala/business/features/chat/presentation/pages/b_chat_list_page.dart';
 import 'package:koala/business/features/chat/presentation/pages/b_chat_page.dart';
-import 'package:koala/business/features/home/models/job_applicant.dart';
 import 'package:koala/business/features/home/presentation/pages/b_location_picker_page.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/presentation/pages/splash_page.dart';
@@ -500,6 +500,11 @@ class RouterManager {
       ),
 
       GoRoute(
+        path: '/business/talent-pool',
+        pageBuilder: (context, state) => _page(state, const BTalentPoolPage()),
+      ),
+
+      GoRoute(
         path: '/business/job-detail',
         pageBuilder: (context, state) {
           final jobId = state.extra as String;
@@ -510,8 +515,7 @@ class RouterManager {
       GoRoute(
         path: '/business/user-profile',
         pageBuilder: (context, state) {
-          final applicant = state.extra as JobApplicant;
-          return _page(state, BUserProfilePage(applicant: applicant));
+          return _page(state, BUserProfilePage.fromExtra(state.extra));
         },
       ),
 

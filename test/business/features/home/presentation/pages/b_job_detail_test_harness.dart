@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/business/features/home/presentation/pages/b_job_detail_page.dart';
 import 'package:koala/business/features/home/presentation/providers/b_company_provider.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
+import 'package:koala/business/features/home/presentation/providers/b_talent_pool_provider.dart';
 import 'package:koala/business/features/home/services/b_company_service.dart';
 import 'package:koala/business/features/home/services/b_payment_browser.dart';
 import 'package:koala/business/features/home/services/b_payment_service.dart';
@@ -252,6 +253,7 @@ pumpPage(
             userService: UserService.withClient(assignmentApi.client),
           ),
         ),
+        ChangeNotifierProvider(create: (_) => BTalentPoolProvider()),
       ],
       child: BJobDetailPage(
         jobId: 'job-1',

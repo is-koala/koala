@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:koala/business/features/home/models/job_applicant.dart';
+import 'package:koala/business/features/home/presentation/widgets/b_talent_pool_button.dart';
 import 'package:koala/employee/features/auth/models/public_profile.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
+import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/profile_avatar.dart';
 import 'package:koala/product/models/availability.dart';
 import 'package:koala/product/services/availability_service.dart';
@@ -30,14 +32,36 @@ part 'b_user_profile_pagemodel.dart';
 /// Üç kaynaktan besleniyor: [applicant] başvuru listesinden geliyor ve ekran
 /// açılır açılmaz ad, fotoğraf, ön yazı ve tarihi çizebiliyor; meslek,
 /// hakkında, konum ve özgeçmiş `GET /users/{userId}`'den, müsaitlik ise
-/// `GET /users/{userId}/availability`'den arkadan doluyor.
+/// `GET /users/{userId}/availability`'den arkadan doluyor. Havuz satırından
+/// açılışta [applicant] boştur; kimlik [userId]'den alınır ve başvuruya
+/// bağlı bölümler çizilmez.
 ///
 /// Sunucu bu uçta tam adres döndürmüyor — yalnızca il/ilçe — ve `cvUrl`'i
 /// sadece bu ilanın işverenine veriyor.
 class BUserProfilePage extends StatefulWidget {
-  const BUserProfilePage({super.key, required this.applicant});
+  const BUserProfilePage({super.key, this.applicant, this.userId})
+    : assert(
+        applicant != null || userId != null,
+        'applicant veya userId gerekli',
+      );
 
-  final JobApplicant applicant;
+  /// Rota `extra`'sından sayfayı kurar: başvuran kaydı ya da kullanıcı kimliği.
+  factory BUserProfilePage.fromExtra(Object? extra) {
+    if (extra is JobApplicant) {
+      return BUserProfilePage(applicant: extra);
+    }
+    if (extra is String) {
+      return BUserProfilePage(userId: extra);
+    }
+    throw ArgumentError.value(
+      extra,
+      'extra',
+      'JobApplicant veya kullanıcı kimliği bekleniyor',
+    );
+  }
+
+  final JobApplicant? applicant;
+  final String? userId;
 
   @override
   State<BUserProfilePage> createState() => _BUserProfilePageState();
@@ -50,7 +74,11 @@ class _BUserProfilePageState extends BUserProfilePageModel {
       backgroundColor: context.backgroundColor,
       appBar: MyAppbar(
         title: "Profil",
-        actions: [?_reportAction(), ?_blockAction()],
+        actions: [
+          if (_poolWorker != null) BTalentPoolButton(worker: _poolWorker!),
+          ?_reportAction(),
+          ?_blockAction(),
+        ],
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -66,8 +94,10 @@ class _BUserProfilePageState extends BUserProfilePageModel {
                     _errorNotice(),
                     const SizedBox(height: AppSizes.spaceLarge),
                   ],
-                  _coverLetterSection(context),
-                  const SizedBox(height: AppSizes.spaceLarge),
+                  if (_isFromApplication) ...[
+                    _coverLetterSection(context),
+                    const SizedBox(height: AppSizes.spaceLarge),
+                  ],
                   _aboutSection(context),
                   const SizedBox(height: AppSizes.spaceLarge),
                   _infoSection(context),
@@ -78,8 +108,10 @@ class _BUserProfilePageState extends BUserProfilePageModel {
                     errorMessage: _availabilityErrorMessage,
                     onRetry: _loadAvailability,
                   ),
-                  const SizedBox(height: AppSizes.spaceLarge),
-                  _cvSection(context),
+                  if (_showsCvSection) ...[
+                    const SizedBox(height: AppSizes.spaceLarge),
+                    _cvSection(context),
+                  ],
                   const SizedBox(height: AppSizes.navBarClearance),
                 ],
               ),
@@ -173,15 +205,13 @@ class _BUserProfilePageState extends BUserProfilePageModel {
               ),
             ),
             child: ProfileAvatar(
-              imageUrl:
-                  _profile?.profilePictureUrl ??
-                  widget.applicant.profilePictureUrl,
+              imageUrl: _photoUrl,
               size: BUserProfilePageModel._avatarSize,
             ),
           ),
           const SizedBox(height: AppSizes.spaceMedium),
           Text(
-            _profile?.fullName ?? widget.applicant.fullName,
+            _displayName,
             style: context.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.w700,
               color: AppColors.onAccent,
@@ -242,7 +272,7 @@ class _BUserProfilePageState extends BUserProfilePageModel {
 
   /// Adayın bu ilana yazdığı ön yazı. Uydurulmuyor: boşsa öyle yazıyor.
   Widget _coverLetterSection(BuildContext context) {
-    final notes = widget.applicant.notes;
+    final notes = widget.applicant?.notes;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -306,25 +336,21 @@ class _BUserProfilePageState extends BUserProfilePageModel {
           decoration: _panelDecoration(context),
           child: Column(
             children: [
-              _infoRow(
-                context,
-                AppIcons.user,
-                'Ad Soyad',
-                _profile?.fullName ?? widget.applicant.fullName,
-              ),
+              _infoRow(context, AppIcons.user, 'Ad Soyad', _displayName),
               _infoRow(
                 context,
                 AppIcons.work,
                 'Meslek',
                 _jobTitle ?? BUserProfilePageModel._missing,
               ),
-              _infoRow(
-                context,
-                AppIcons.calendar,
-                'Başvuru Tarihi',
-                widget.applicant.applicationDateTime?.asShortDate ??
-                    BUserProfilePageModel._missing,
-              ),
+              if (_isFromApplication)
+                _infoRow(
+                  context,
+                  AppIcons.calendar,
+                  'Başvuru Tarihi',
+                  widget.applicant!.applicationDateTime?.asShortDate ??
+                      BUserProfilePageModel._missing,
+                ),
               _infoRow(
                 context,
                 AppIcons.location,

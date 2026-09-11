@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
@@ -32,6 +33,8 @@ class ReasonDialog extends StatefulWidget {
     required this.fieldLabel,
     required this.confirmLabel,
     this.isDestructive = true,
+    this.initialText,
+    this.maxLength,
   });
 
   final String title;
@@ -46,6 +49,12 @@ class ReasonDialog extends StatefulWidget {
   /// kırmızı; nötr bir talepte (uyuşmazlık açma) değil.
   final bool isDestructive;
 
+  /// Alanı açıkken doldurmak için. Not güncellemede önceki metin burada.
+  final String? initialText;
+
+  /// İstemci tarafı uzunluk tavanı. Sunucu da ayrıca doğrular.
+  final int? maxLength;
+
   /// Kutuyu açar. Vazgeçilirse `null`, onaylanırsa girilen gerekçe döner.
   static Future<String?> show(
     BuildContext context, {
@@ -54,6 +63,8 @@ class ReasonDialog extends StatefulWidget {
     required String fieldLabel,
     required String confirmLabel,
     bool isDestructive = true,
+    String? initialText,
+    int? maxLength,
   }) {
     return showDialog<String>(
       context: context,
@@ -63,6 +74,8 @@ class ReasonDialog extends StatefulWidget {
         fieldLabel: fieldLabel,
         confirmLabel: confirmLabel,
         isDestructive: isDestructive,
+        initialText: initialText,
+        maxLength: maxLength,
       ),
     );
   }
@@ -72,7 +85,9 @@ class ReasonDialog extends StatefulWidget {
 }
 
 class _ReasonDialogState extends State<ReasonDialog> {
-  final TextEditingController _controller = TextEditingController();
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initialText ?? '',
+  );
 
   /// Açıklama metninin satır aralığı; çok satırlı gövde sıkışık duruyordu.
   static const double _lineHeight = 1.4;
@@ -108,6 +123,10 @@ class _ReasonDialogState extends State<ReasonDialog> {
             labelText: widget.fieldLabel,
             controller: _controller,
             onChanged: (_) => setState(() {}),
+            inputFormatters: [
+              if (widget.maxLength != null)
+                LengthLimitingTextInputFormatter(widget.maxLength),
+            ],
           ),
         ],
       ),

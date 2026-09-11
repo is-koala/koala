@@ -50,7 +50,7 @@ abstract class BUserProfilePageModel extends State<BUserProfilePage> {
 
     try {
       final availability = await _availabilityService.fetchForUser(
-        widget.applicant.user.id,
+        _profileUserId,
       );
       if (!mounted) return;
       setState(() {
@@ -73,9 +73,7 @@ abstract class BUserProfilePageModel extends State<BUserProfilePage> {
     });
 
     try {
-      final profile = await _userService.fetchPublicProfile(
-        widget.applicant.user.id,
-      );
+      final profile = await _userService.fetchPublicProfile(_profileUserId);
       if (!mounted) return;
       setState(() {
         _profile = profile;
@@ -118,8 +116,10 @@ abstract class BUserProfilePageModel extends State<BUserProfilePage> {
   ///
   /// İki kaynaktan da gelebiliyor: başvuru listesi (`JobApplicantDto.cvUrl`)
   /// ve profil ucu. İlki elde zaten var, o yüzden profil gelmeden de açılabilir.
+  /// Havuzdan açılışta başvuru `cvUrl`'i yoktur; yalnız profildeki adres
+  /// kullanılır, boş yer tutucu çizilmez.
   String? get _cvUrl {
-    final fromApplication = widget.applicant.cvUrl;
+    final fromApplication = widget.applicant?.cvUrl;
     if (fromApplication != null && fromApplication.isNotEmpty) {
       return fromApplication;
     }
@@ -127,7 +127,39 @@ abstract class BUserProfilePageModel extends State<BUserProfilePage> {
   }
 
   /// Meslek: profil geldiyse oradan, gelmediyse başvurudakinden.
-  String? get _jobTitle => _profile?.jobTitle ?? widget.applicant.jobTitle;
+  String? get _jobTitle => _profile?.jobTitle ?? widget.applicant?.jobTitle;
+
+  bool get _isFromApplication => widget.applicant != null;
+
+  String get _profileUserId => widget.applicant?.user.id ?? widget.userId ?? '';
+
+  String get _displayName =>
+      _profile?.fullName ?? widget.applicant?.fullName ?? '';
+
+  String? get _photoUrl =>
+      _profile?.profilePictureUrl ?? widget.applicant?.profilePictureUrl;
+
+  /// Havuzdan açılışta boş özgeçmiş kartı çizilmez.
+  bool get _showsCvSection =>
+      _isFromApplication || (_cvUrl?.isNotEmpty ?? false);
+
+  JobCreator? get _poolWorker {
+    final applicant = widget.applicant;
+    if (applicant != null) return applicant.user;
+    final userId = widget.userId;
+    if (userId == null || userId.isEmpty) return null;
+    final profile = _profile;
+    if (profile == null) {
+      return JobCreator(id: userId, firstName: '', lastName: '');
+    }
+    return JobCreator(
+      id: profile.id,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      username: profile.username,
+      profilePictureUrl: profile.profilePictureUrl,
+    );
+  }
 
   /// Başlık çubuğundaki şikayet düğmesi.
   ///
@@ -135,7 +167,7 @@ abstract class BUserProfilePageModel extends State<BUserProfilePage> {
   /// sunucudan `400` alırdı, basıldığında hata veren bir düğme göstermek
   /// yerine düğme hiç olmuyor.
   Widget? _reportAction() {
-    final userId = widget.applicant.user.id;
+    final userId = _profileUserId;
     if (userId.isEmpty) return null;
 
     return IconButton(
@@ -143,7 +175,7 @@ abstract class BUserProfilePageModel extends State<BUserProfilePage> {
       icon: AppIcon(AppIcons.flag, color: context.textPrimary),
       onPressed: () => ReportSheet.show(
         context,
-        ReportTarget.user(userId: userId, name: widget.applicant.fullName),
+        ReportTarget.user(userId: userId, name: _displayName),
       ),
     );
   }
@@ -157,7 +189,7 @@ abstract class BUserProfilePageModel extends State<BUserProfilePage> {
   /// Şikayetten farklı olarak ekran kapanmıyor — sohbet değil profil, iş
   /// başvurusu duruyor ve işveren başvuruyu görmeye devam edebilmeli.
   Widget? _blockAction() {
-    final userId = widget.applicant.user.id;
+    final userId = _profileUserId;
     if (userId.isEmpty) return null;
 
     return IconButton(
@@ -166,7 +198,7 @@ abstract class BUserProfilePageModel extends State<BUserProfilePage> {
       onPressed: () => BlockUserAction.confirmAndBlock(
         context,
         userId: userId,
-        name: widget.applicant.fullName,
+        name: _displayName,
       ),
     );
   }

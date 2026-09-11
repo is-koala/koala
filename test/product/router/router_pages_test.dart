@@ -43,6 +43,15 @@ void main() {
     expect(gallery.single.pageBuilder, isNotNull);
   });
 
+  test('yetenek havuzu shell dışında, kendi rotasıyla açılıyor', () {
+    final pool = allGoRoutes(
+      RouterManager.router.configuration.routes,
+    ).where((route) => route.path == '/business/talent-pool');
+
+    expect(pool, hasLength(1));
+    expect(pool.single.pageBuilder, isNotNull);
+  });
+
   test('kazançlar ekranı shell dışında, kendi rotasıyla açılıyor', () {
     final earnings = allGoRoutes(
       RouterManager.router.configuration.routes,
