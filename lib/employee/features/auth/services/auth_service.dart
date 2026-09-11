@@ -8,18 +8,27 @@ import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/network/api_paths.dart';
 import 'package:koala/product/network/session_manager.dart';
+import 'package:koala/product/services/push_token_lifecycle.dart';
+import 'package:koala/product/services/push_token_service.dart';
+import 'package:koala/product/services/push_token_source.dart';
 
 /// Kimlik doğrulama uçlarının tek sarmalayıcısı.
 ///
 /// Token'ların saklanması ve oturum bayraklarının yazılması da burada:
 /// sayfalar `SharedPreferences`'a doğrudan yazmak yerine bu servisi çağırıyor.
 class AuthService {
-  AuthService._(this._apiClient, this._sessionManager, this._userService);
+  AuthService._(
+    this._apiClient,
+    this._sessionManager,
+    this._userService,
+    this._pushTokens,
+  );
 
   static final AuthService _instance = AuthService._(
     ApiClient(),
     SessionManager(),
     UserService(),
+    PushTokenLifecycle(),
   );
 
   factory AuthService() => _instance;
@@ -29,17 +38,26 @@ class AuthService {
     ApiClient apiClient, {
     SessionManager? sessionManager,
     UserService? userService,
+    PushTokenLifecycle? pushTokens,
   }) {
+    final session = sessionManager ?? SessionManager();
     return AuthService._(
       apiClient,
-      sessionManager ?? SessionManager(),
+      session,
       userService ?? UserService.withClient(apiClient),
+      pushTokens ??
+          PushTokenLifecycle.withDependencies(
+            service: PushTokenService.withClient(apiClient),
+            source: const UnavailablePushTokenSource(),
+            session: session,
+          ),
     );
   }
 
   final ApiClient _apiClient;
   final SessionManager _sessionManager;
   final UserService _userService;
+  final PushTokenLifecycle _pushTokens;
 
   /// Kayıt akışının ilk adımı: backend doğrulama e-postası gönderiyor.
   ///
@@ -100,6 +118,7 @@ class AuthService {
     );
 
     await _startSession(tokens, isEmployer: isEmployer);
+    await _pushTokens.syncQuietly();
   }
 
   /// E-posta ve şifreyle giriş yapar, oturumu açar.
@@ -128,6 +147,7 @@ class AuthService {
           return user.isEmployer;
         },
       );
+      await _pushTokens.syncQuietly();
       return user;
     } catch (error, stackTrace) {
       if (error is ApiException) rethrow;
@@ -154,6 +174,7 @@ class AuthService {
   /// kapatmaktan daha önemli.
   Future<void> logout() async {
     try {
+      await _pushTokens.clearQuietly();
       await _apiClient.postWithoutData(ApiPaths.logout);
     } on ApiException {
       // Yut: yerel temizlik aşağıda yapılıyor.
