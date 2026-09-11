@@ -268,6 +268,10 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
             const SizedBox(height: AppSizes.space),
             _galleryRow(company),
             const SizedBox(height: AppSizes.spaceLarge),
+            _sectionLabel("Şirket Yetkilileri"),
+            const SizedBox(height: AppSizes.space),
+            _contactsRow(),
+            const SizedBox(height: AppSizes.spaceLarge),
             _sectionLabel("Firma Bilgileri"),
             const SizedBox(height: AppSizes.spaceMedium),
             MyTextfield(labelText: "Firma Adı", controller: _nameController),
@@ -419,6 +423,63 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
                           ? 'Henüz görsel yok'
                           : '$count görsel · en fazla '
                                 '${UploadLimits.maxGalleryImages}',
+                      style: context.textTheme.bodySmall?.copyWith(
+                        color: context.textTertiary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              AppIcon(
+                AppIcons.arrowRight,
+                size: AppSizes.iconMedium,
+                color: context.textTertiary,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _contactsRow() {
+    return Material(
+      color: context.tileColor,
+      borderRadius: AppRadius.innerCircular,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context.push('/business/company-contacts'),
+        child: Padding(
+          padding: AppPadding.card,
+          child: Row(
+            children: [
+              SizedBox.square(
+                dimension: _galleryCoverSize,
+                child: ColoredBox(
+                  color: context.elevatedColor,
+                  child: Center(
+                    child: AppIcon(
+                      AppIcons.userMultiple,
+                      size: AppSizes.iconMedium,
+                      color: context.textTertiary,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSizes.spaceMedium),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Şirket Yetkilileri',
+                      style: context.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: AppSizes.smallGap),
+                    Text(
+                      'Davet gönderin veya yetkili çıkarın',
                       style: context.textTheme.bodySmall?.copyWith(
                         color: context.textTertiary,
                       ),

@@ -45,6 +45,15 @@ class AppLinkDestination {
       ).toString();
     }
 
+    if (destination == 'company-invitation') {
+      final id = _parameter(uri, 'id');
+      if (id == null) return null;
+      return Uri(
+        path: '/company-invitation',
+        queryParameters: {'id': id},
+      ).toString();
+    }
+
     return null;
   }
 

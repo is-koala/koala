@@ -43,6 +43,24 @@ void main() {
     expect(gallery.single.pageBuilder, isNotNull);
   });
 
+  test('şirket yetkilileri shell dışında, kendi rotasıyla açılıyor', () {
+    final contacts = allGoRoutes(
+      RouterManager.router.configuration.routes,
+    ).where((route) => route.path == '/business/company-contacts');
+
+    expect(contacts, hasLength(1));
+    expect(contacts.single.pageBuilder, isNotNull);
+  });
+
+  test('şirket daveti shell dışında, kendi rotasıyla açılıyor', () {
+    final invitation = allGoRoutes(
+      RouterManager.router.configuration.routes,
+    ).where((route) => route.path == '/company-invitation');
+
+    expect(invitation, hasLength(1));
+    expect(invitation.single.pageBuilder, isNotNull);
+  });
+
   test('yetenek havuzu shell dışında, kendi rotasıyla açılıyor', () {
     final pool = allGoRoutes(
       RouterManager.router.configuration.routes,
