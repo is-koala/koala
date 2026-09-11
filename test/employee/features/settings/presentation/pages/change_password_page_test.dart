@@ -51,6 +51,14 @@ void main() {
     );
   }
 
+  testWidgets('üç parola alanı gizli açılır', (tester) async {
+    await pumpPage(tester, successApi());
+
+    final fields = tester.widgetList<TextField>(find.byType(TextField));
+    expect(fields, hasLength(3));
+    expect(fields.every((field) => field.obscureText), isTrue);
+  });
+
   testWidgets('kural sağlanmayan yeni şifrede sunucuya istek gitmiyor', (
     tester,
   ) async {

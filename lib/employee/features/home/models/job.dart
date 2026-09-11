@@ -248,13 +248,12 @@ enum JobEmployerType {
   }
 }
 
-/// İlanın durumu. Backend `JobStatus` karşılığı.
+/// İlanın durumu. Backend `JobStatus` karşılığı. Üç değer (#115);
+/// atama yaşam döngüsü [MyJobStatus] / `AssignmentStatus`.
 enum JobStatus {
   open('OPEN', 'Açık'),
-  inProgress('IN_PROGRESS', 'Devam ediyor'),
   closed('CLOSED', 'Kapalı'),
-  cancelled('CANCELLED', 'İptal edildi'),
-  completed('COMPLETED', 'Tamamlandı');
+  cancelled('CANCELLED', 'İptal edildi');
 
   const JobStatus(this.code, this.displayName);
 
@@ -267,7 +266,7 @@ enum JobStatus {
   static JobStatus fromCode(Object? value) {
     return JobStatus.values.firstWhere(
       (status) => status.code == value,
-      orElse: () => JobStatus.open,
+      orElse: () => JobStatus.closed,
     );
   }
 }

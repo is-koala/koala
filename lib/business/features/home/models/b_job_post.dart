@@ -41,8 +41,7 @@ class BJobPost {
 
   /// İlan hâlâ yürürlükte mi. "Aktif" ve "Geçmiş" sekmelerini bu ayırıyor;
   /// karar sunucudaki [JobStatus]'a ait, uygulamanın kendi bayrağına değil.
-  bool get isActive =>
-      job.status == JobStatus.open || job.status == JobStatus.inProgress;
+  bool get isActive => job.status == JobStatus.open;
 
   /// Yanıt bekleyen başvurular — işverenin kabul/ret göstereceği liste.
   ///

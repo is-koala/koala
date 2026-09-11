@@ -17,7 +17,7 @@ class PasswordField extends StatelessWidget {
     super.key,
     required this.labelText,
     required this.controller,
-    required this.isHidden,
+    this.isHidden = true,
     required this.onToggle,
     this.onChanged,
   });

@@ -88,17 +88,17 @@ void main() {
       final api = buildApi(
         jobs: [
           jobJson('a'),
-          jobJson('b', status: 'IN_PROGRESS'),
+          jobJson('b', status: 'CANCELLED'),
           jobJson('c', status: 'CLOSED'),
-          jobJson('d', status: 'COMPLETED'),
+          jobJson('d', status: 'CANCELLED'),
         ],
       );
       final provider = providerFor(api);
 
       await provider.load();
 
-      expect(provider.activePosts.map((p) => p.job.id), ['a', 'b']);
-      expect(provider.pastPosts.map((p) => p.job.id), ['c', 'd']);
+      expect(provider.activePosts.map((p) => p.job.id), ['a']);
+      expect(provider.pastPosts.map((p) => p.job.id), ['b', 'c', 'd']);
     });
 
     test('liste yüklenirken başvuru isteği atılmıyor', () async {

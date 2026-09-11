@@ -124,7 +124,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     // İlan yürürlükte mi: karar sunucudaki duruma ait. Provider'daki kayıt
     // henüz gelmemiş olabilir, o yüzden detayın durumuna bakılıyor.
     final isActive =
-        job.status == JobStatus.open || job.status == JobStatus.inProgress;
+        job.status == JobStatus.open;
 
     return SingleChildScrollView(
       child: Column(
@@ -884,10 +884,9 @@ class _BJobDetailPageState extends BJobDetailPageModel {
   /// İlanın sunucudaki durumu. "Aktif / Geçmiş" yerine gerçek durum
   /// yazılıyor: kapanmış bir ilanla iptal edilmiş bir ilan aynı şey değil.
   Widget _statusBadge(BuildContext context, JobStatus status) {
-    final isLive = status == JobStatus.open || status == JobStatus.inProgress;
+    final isLive = status == JobStatus.open;
     final color = switch (status) {
       JobStatus.open => AppColors.success,
-      JobStatus.inProgress => AppColors.info,
       JobStatus.cancelled => AppColors.danger,
       _ => context.textTertiary,
     };

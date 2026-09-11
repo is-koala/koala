@@ -17,7 +17,7 @@ void main() {
         category: JobCategorySeeds.barista,
         salaryType: SalaryType.hourly,
         employerType: JobEmployerType.individual,
-        status: JobStatus.inProgress,
+        status: JobStatus.closed,
         insuranceRequired: true,
         experienceRequired: true,
         coverImageUrl: 'https://cdn.local/job_42-cover.webp',
@@ -87,6 +87,12 @@ void main() {
       expect(job.companyId, isNull);
     });
 
+    test('sözleşmeden düşen ilan durumu açık sayılmaz', () {
+      expect(JobStatus.fromCode('IN_PROGRESS'), JobStatus.closed);
+      expect(JobStatus.fromCode('COMPLETED'), JobStatus.closed);
+      expect(JobStatus.fromCode('DRAFT'), JobStatus.closed);
+    });
+
     // JobSummaryDto.companyId (koala-backend#187) — şirket detayına giden
     // İşlerim satırı bunu okur. companyName tek başına tıklanabilir satır
     // üretmez.
@@ -134,7 +140,7 @@ void main() {
       expect(job.latitude, isNull);
     });
 
-    test('tanınmayan tip/durum varsayılana düşer', () {
+    test('tanınmayan tip varsayılana, durum kapalıya düşer', () {
       final job = Job.fromJson({
         'id': 'job_1',
         'title': 'Garson',
@@ -147,7 +153,7 @@ void main() {
 
       expect(job.type, JobType.oneTime);
       expect(job.salaryType, SalaryType.daily);
-      expect(job.status, JobStatus.open);
+      expect(job.status, JobStatus.closed);
     });
 
     // Backend'de `subtitle` diye bir alan yok; en açıklayıcıdan en genele
