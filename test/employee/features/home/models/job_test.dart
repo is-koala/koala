@@ -21,6 +21,7 @@ void main() {
         insuranceRequired: true,
         experienceRequired: true,
         coverImageUrl: 'https://cdn.local/job_42-cover.webp',
+        companyId: 'comp_42',
       );
 
       final restored = Job.fromJson(job.toJson());
@@ -37,6 +38,7 @@ void main() {
       expect(restored.experienceRequired, isTrue);
       expect(restored.latitude, job.latitude);
       expect(restored.company, job.company);
+      expect(restored.companyId, job.companyId);
       expect(restored.coverImageUrl, job.coverImageUrl);
     });
 
@@ -82,6 +84,39 @@ void main() {
       expect(job.locationLabel, 'Kızılay/Ankara');
       expect(job.hasLocation, isTrue);
       expect(job.coverImageUrl, 'https://cdn.local/job_1-cover.webp');
+      expect(job.companyId, isNull);
+    });
+
+    // JobSummaryDto.companyId (koala-backend#187) — şirket detayına giden
+    // İşlerim satırı bunu okur. companyName tek başına tıklanabilir satır
+    // üretmez.
+    test('şirket ilanında companyId okunur', () {
+      final job = Job.fromJson({
+        'id': 'job_1',
+        'title': 'Garson',
+        'category': {'id': 'cat-1', 'code': 'WAITER', 'name': 'Garsonluk'},
+        'employerType': 'COMPANY',
+        'type': 'ONE_TIME',
+        'salary': 500,
+        'companyName': 'Koala Cafe',
+        'companyId': 'comp_7',
+      });
+
+      expect(job.companyId, 'comp_7');
+    });
+
+    test('bireysel ilanda companyId yoksa null kalır', () {
+      final job = Job.fromJson({
+        'id': 'job_1',
+        'title': 'Garson',
+        'category': {'id': 'cat-1', 'code': 'WAITER', 'name': 'Garsonluk'},
+        'employerType': 'INDIVIDUAL',
+        'type': 'ONE_TIME',
+        'salary': 500,
+      });
+
+      expect(job.companyId, isNull);
+      expect(job.company, isNull);
     });
 
     // Backend enlem/boylamı opsiyonel döndürüyor; koordinatsız ilan haritada

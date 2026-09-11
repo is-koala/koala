@@ -531,8 +531,7 @@ abstract class MyJobsPagemodel extends State<MyJobsPage> {
   /// Şirket detayına gider.
   ///
   /// TODO(backend): `MyAssignmentDto.job` şirket kimliği taşımıyor (yalnızca
-  /// `companyName`), o yüzden [MyJob.companyId] hep boş ve satır tıklanabilir
-  /// değil. `JobSummaryDto`'ya `companyId` eklenirse burası çalışır.
+  /// `companyId` bireysel ilanda boş kalır; satır o zaman tıklanmaz.
   void navigateToCompany(MyJob job) {
     final companyId = job.companyId;
     if (companyId == null) return;
