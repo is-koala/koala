@@ -274,6 +274,16 @@ void main() {
       final myJob = MyJob.fromAssignment(Assignment.fromJson(body));
 
       expect(myJob.company, 'Bireysel İlan');
+      expect(myJob.companyId, isNull);
+    });
+
+    test('şirket ilanında companyId kopyalanır', () {
+      final body = assignmentBody();
+      (body['job'] as Map<String, dynamic>)['companyId'] = 'comp_7';
+
+      final myJob = MyJob.fromAssignment(Assignment.fromJson(body));
+
+      expect(myJob.companyId, 'comp_7');
     });
 
     test('tarih gg.aa.yyyy biçiminde yazılır', () {

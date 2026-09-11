@@ -192,7 +192,7 @@ class MyJob {
       jobId: job.id,
       title: job.title,
       company: job.company ?? 'Bireysel İlan',
-      companyId: null,
+      companyId: job.companyId,
       description: job.subtitle,
       date: assignment.assignmentDateTime?.asShortDate ?? '',
       // Çalışanın eline geçecek tutar komisyon düşülmüş hâli; ilandaki ücret

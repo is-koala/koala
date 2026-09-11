@@ -329,6 +329,7 @@ class Job {
     this.cityName,
     this.districtName,
     this.company,
+    this.companyId,
     this.coverImageUrl,
     this.applicationCount = 0,
     this.latitude,
@@ -359,6 +360,12 @@ class Job {
 
   /// İlanı açan şirketin adı. Bireysel ilanlarda `null`.
   final String? company;
+
+  /// İlanı açan şirketin kimliği. Bireysel ilanlarda `null`.
+  ///
+  /// Ad (`company`) tıklanabilir satır üretmez; şirket detayı bu kimliği
+  /// ister. `JobSummaryDto.companyId` (koala-backend#187).
+  final String? companyId;
 
   /// Arama/listeme kartında gösterilen ilan galerisi kapağı.
   ///
@@ -506,6 +513,7 @@ class Job {
       cityName: json['cityName'] as String?,
       districtName: json['districtName'] as String?,
       company: json['companyName'] as String?,
+      companyId: json['companyId'] as String?,
       coverImageUrl: json['coverImageUrl'] as String?,
       applicationCount: (json['applicationCount'] as num?)?.toInt() ?? 0,
       latitude: (json['latitude'] as num?)?.toDouble(),
@@ -533,6 +541,7 @@ class Job {
       'cityName': cityName,
       'districtName': districtName,
       'companyName': company,
+      'companyId': companyId,
       'coverImageUrl': coverImageUrl,
       'applicationCount': applicationCount,
       'latitude': latitude,
