@@ -161,6 +161,17 @@ class ApiPaths {
   static String currentUserJobTemplate(String templateId) =>
       '$currentUserJobTemplates/$templateId';
 
+  /// İşverenin yetenek havuzu. Sayfalı; sıralama yalnızca `createdAt`.
+  ///
+  /// Havuz işveren **kullanıcı** bazlıdır, şirket bazlı değil. `PUT`
+  /// upsert'tir: aynı işçiyi ikinci kez eklemek yeni satır açmaz, var olan
+  /// kaydın notunu günceller. **Gövdesiz `PUT` var olan notu siler.**
+  /// `DELETE` havuzda olmayan biri için sessizce geçer, `404` atmaz.
+  static const String currentUserTalentPool = '/users/me/talent-pool';
+
+  static String currentUserTalentPoolEntry(String workerId) =>
+      '$currentUserTalentPool/$workerId';
+
   // ----------------------------------------------------------------- Atama
 
   static const String jobAssignments = '/job-assignments';

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:koala/business/features/home/presentation/providers/b_company_provider.dart';
 import 'package:koala/business/features/home/presentation/providers/b_job_templates_provider.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
+import 'package:koala/business/features/home/presentation/providers/b_talent_pool_provider.dart';
 import 'package:koala/employee/features/auth/services/auth_service.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/timesheet_queue_provider.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
@@ -53,6 +54,11 @@ class BSettingsPage extends StatelessWidget {
           icon: AppIcons.fileText,
           title: "İlan Şablonlarım",
           onTap: () => context.push('/business/job-templates'),
+        ),
+        MyListTile(
+          icon: AppIcons.bookmark,
+          title: "Yetenek Havuzum",
+          onTap: () => context.push('/business/talent-pool'),
         ),
         MyListTile(
           icon: AppIcons.shield,
@@ -117,6 +123,7 @@ class BSettingsPage extends StatelessWidget {
             context.read<BJobsProvider>().clear();
             context.read<BCompanyProvider>().clear();
             context.read<BJobTemplatesProvider>().clear();
+            context.read<BTalentPoolProvider>().clear();
 
             context.go('/auth');
           },

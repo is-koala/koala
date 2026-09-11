@@ -15,6 +15,7 @@ import 'package:koala/employee/features/jobs/presentation/providers/review_provi
 import 'package:koala/business/features/home/presentation/providers/b_company_provider.dart';
 import 'package:koala/business/features/home/presentation/providers/b_job_templates_provider.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
+import 'package:koala/business/features/home/presentation/providers/b_talent_pool_provider.dart';
 import 'package:koala/product/providers/notification_provider.dart';
 import 'package:koala/product/theme/theme_provider.dart';
 import 'package:koala/product/app.dart';
@@ -46,6 +47,7 @@ void main() {
         ChangeNotifierProvider(create: (_) => BJobsProvider()),
         ChangeNotifierProvider(create: (_) => BCompanyProvider()),
         ChangeNotifierProvider(create: (_) => BJobTemplatesProvider()),
+        ChangeNotifierProvider(create: (_) => BTalentPoolProvider()),
       ],
       child: App(),
     ),

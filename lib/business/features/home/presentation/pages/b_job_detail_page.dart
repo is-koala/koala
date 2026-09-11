@@ -11,6 +11,7 @@ import 'package:koala/business/features/home/presentation/providers/b_company_pr
 import 'package:koala/business/features/home/presentation/providers/b_job_templates_provider.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
 import 'package:koala/business/features/home/presentation/widgets/b_job_gallery_section.dart';
+import 'package:koala/business/features/home/presentation/widgets/b_talent_pool_button.dart';
 import 'package:koala/business/features/home/presentation/widgets/b_payment_attempts_section.dart';
 import 'package:koala/business/features/home/presentation/widgets/b_pricing_breakdown_card.dart';
 import 'package:koala/business/features/home/services/employer_job_service.dart';
@@ -1153,6 +1154,10 @@ class _BJobDetailPageState extends BJobDetailPageModel {
                         Text(jobTitle, style: context.textTheme.bodySmall),
                     ],
                   ),
+                ),
+                BTalentPoolButton(
+                  worker: applicant.user,
+                  iconSize: AppSizes.iconSmall,
                 ),
                 Text(
                   applicant.applicationDateTime?.asShortDate ?? '',
