@@ -118,15 +118,16 @@ class BJobTemplatesProvider extends ChangeNotifier {
   /// Sunucunun makine okunur kodunu Türkçe bir cümleye çeviriyor.
   ///
   /// Kod mesaja değil `errorCode` alanına bakılarak ayrılıyor: sunucu mesajı
-  /// yerelleştiriliyor, kod sabit. Üç kodun üçü de `404` dönüyor ve düz
+  /// yerelleştiriliyor, kod sabit. İki kod da `404` dönüyor ve düz
   /// "bulunamadı" metni kullanıcıya neyin yanlış gittiğini anlatmıyor.
+  /// Başkasının şablonu `Concealment` ile `JOB_TEMPLATE_NOT_FOUND` olur;
+  /// `JOB_TEMPLATE_NOT_OWNER` diye bir anahtar yok.
   String _messageFor(ApiException error) {
     switch (error.errorCode) {
       case 'JOB_TEMPLATE_JOB_NOT_FOUND':
         return 'Bu ilandan şablon çıkaramazsınız. Yalnızca kendi '
             'ilanlarınızdan şablon oluşturulabilir.';
       case 'JOB_TEMPLATE_NOT_FOUND':
-      case 'JOB_TEMPLATE_NOT_OWNER':
         return 'Şablon bulunamadı. Listeyi yenileyip tekrar deneyin.';
     }
     return error.message;
