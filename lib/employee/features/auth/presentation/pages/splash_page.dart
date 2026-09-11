@@ -3,6 +3,7 @@ import 'package:koala/product/constants/app_assets.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/network/session_manager.dart';
+import 'package:koala/product/services/push_token_lifecycle.dart';
 
 /// Uygulamanın açılış ekranı ve tek başlatma noktası.
 ///
@@ -32,6 +33,9 @@ class _SplashPageState extends State<SplashPage> {
 
   Future<void> _initialize() async {
     await SessionManager().load();
+    final pushTokens = PushTokenLifecycle();
+    pushTokens.listen();
+    await pushTokens.syncQuietly();
   }
 
   @override

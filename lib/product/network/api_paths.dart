@@ -101,6 +101,12 @@ class ApiPaths {
   static String currentUserNotificationRead(String notificationId) =>
       '$currentUserNotifications/$notificationId/read';
 
+  /// Bu cihazın FCM/APNs token'ı. Oturum ister; `publicPaths`'e girmez.
+  ///
+  /// Kaynak #29 bitene kadar boş olabilir. Yaşam döngüsü yine de bu ucu
+  /// kullanır: token gelince yazar, çıkışta siler.
+  static const String currentUserPushToken = '/users/me/devices/push-token';
+
   // -------------------------------------------------------------------- Users
 
   /// Oturum sahibinin iş deneyimleri.
