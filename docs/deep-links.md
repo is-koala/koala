@@ -93,3 +93,10 @@ koala://payment-result?status=success&assignmentId=<assignment-id>
 `koala:///payment/result?...` biçimi bu sözleşmeye uymaz: host boş, path
 doludur. Backend ödeme dönüş adresini yukarıdaki `payment-result` host'una göre
 üretmelidir.
+
+## Paket 1 — in-repo bitti, mailbox insan
+
+Flavor kimliği, fail-closed API hedefi, landing yönlendirmesi ve sıkı
+`AppLinkDestination` depodadır (#131). Gerçek SMTP gelen kutusu, iki QA hesabı
+ve mağaza imzalı Universal Links `ready-for-human` (#7, #27). Apple $99 / NFC
+(#129) bu paketi bloklamaz.
