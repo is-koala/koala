@@ -94,6 +94,7 @@ enum NotificationTargetType {
   jobAssignment('JOB_ASSIGNMENT'),
   conversation('CONVERSATION'),
   user('USER'),
+  companyContactInvitation('COMPANY_CONTACT_INVITATION'),
 
   /// Hedefi olmayan ya da tanınmayan tür. Satır tıklanamaz kalıyor.
   none('');

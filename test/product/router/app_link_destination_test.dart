@@ -243,6 +243,49 @@ void main() {
   });
 
   test(
+    'company-invitation bağlantısı davet kimliğiyle authenticated rotaya dönüşür',
+    () {
+      final route = AppLinkDestination.routeFor(
+        Uri.parse(
+          'koala://company-invitation?id=11111111-1111-1111-1111-111111111111'
+          '&utm_source=mail',
+        ),
+        appScheme: 'koala',
+      );
+
+      expect(
+        route,
+        '/company-invitation?id=11111111-1111-1111-1111-111111111111',
+      );
+      expect(
+        AppLinkDestination.routeFor(
+          Uri.parse('koala://company-invitation?id=ilk&id=ikinci'),
+          appScheme: 'koala',
+        ),
+        isNull,
+      );
+    },
+  );
+
+  test('company-invitation kimliği yoksa veya boşsa reddedilir', () {
+    for (final link in [
+      'koala://company-invitation',
+      'koala://company-invitation?id=',
+      'koala://company-invitation?utm_source=mail',
+      'koala://company-invitation?id=ilk&id=ikinci',
+      'koala://user@company-invitation?id=invite-1',
+      'koala://company-invitation:443?id=invite-1',
+      'koala://company-invitation/path?id=invite-1',
+      'koala://company-invitation?id=invite-1#fragment',
+    ]) {
+      expect(
+        AppLinkDestination.routeFor(Uri.parse(link), appScheme: 'koala'),
+        isNull,
+      );
+    }
+  });
+
+  test(
     'payment-result linki atama ve durumla authenticated rotaya dönüşür',
     () {
       final route = AppLinkDestination.routeFor(

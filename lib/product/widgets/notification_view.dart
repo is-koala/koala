@@ -146,10 +146,21 @@ class _NotificationViewState extends State<NotificationView> {
         isEmployer ? '/business/chat' : '/chat',
       NotificationTargetType.user =>
         isEmployer ? '/business/profile' : '/profile',
+      NotificationTargetType.companyContactInvitation => Uri(
+        path: '/company-invitation',
+        queryParameters: {'id': notification.targetId},
+      ).toString(),
       NotificationTargetType.none => null,
     };
 
     if (route == null) return;
+
+    // Davet bir yığın sayfası: sekmeye `go` etmek geri dönüşü silerdi.
+    if (notification.targetType ==
+        NotificationTargetType.companyContactInvitation) {
+      context.push(route);
+      return;
+    }
 
     // Sekmeler `go` ile değişiyor: kabuk açık kalsın, üstüne yeni bir
     // kopya yığılmasın.

@@ -339,9 +339,31 @@ class ApiPaths {
   static String jobImage(String jobId, String imageId) =>
       '${jobImages(jobId)}/$imageId';
 
-  /// Şirketin yetkilileri.
+  /// Şirketin yetkilileri. `GET` şirketin yetkilisine açık.
+  ///
+  /// `DELETE` [companyContact] üzerinden; son `ADMIN` çıkarılamaz (`409`
+  /// `COMPANY_LAST_ADMIN_CANNOT_BE_REMOVED`).
   static String companyContacts(String companyId) =>
       '${company(companyId)}/contacts';
+
+  /// Tek bir yetkiliyi çıkarma. [userId] yetkili kaydının değil
+  /// **kullanıcının** kimliği.
+  static String companyContact(String companyId, String userId) =>
+      '${companyContacts(companyId)}/$userId';
+
+  /// Şirkete yetkili daveti gönderme (`POST`) ve şirketin davetlerini
+  /// listeleme (`GET`). İkisi de şirketin `ADMIN` yetkilisine açık;
+  /// diğer herkes `404` `USER_NOT_ASSOCIATED_WITH_COMPANY` alır.
+  static String companyContactInvitations(String companyId) =>
+      '${company(companyId)}/contact-invitations';
+
+  /// Davet detayı (`GET`) ve cevap (`POST { accepted }`).
+  ///
+  /// Okuma: davetli, davet eden, şirket ADMIN'i. Cevap: yalnız davetli.
+  /// Diğer herkes `404` `COMPANY_CONTACT_INVITATION_NOT_FOUND` alır —
+  /// "var ama senin değil" ile "yok" ayrımı yok.
+  static String contactInvitation(String invitationId) =>
+      '/contact-invitations/$invitationId';
 
   /// Şirket logosu: `PUT` ile değiştiriliyor, `DELETE` ile kaldırılıyor.
   /// Yalnızca şirketin `ADMIN` yetkilisi çağırabiliyor.

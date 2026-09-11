@@ -208,6 +208,22 @@ void main() {
       expect(notification.targetType, NotificationTargetType.none);
       expect(notification.hasTarget, isFalse);
     });
+
+    test('şirket daveti bildirimi dokunulabilir', () {
+      final notification = AppNotification.fromJson(
+        notificationBody(
+          category: 'COMPANY_UPDATES',
+          targetType: 'COMPANY_CONTACT_INVITATION',
+          targetId: 'invite-1',
+        ),
+      );
+
+      expect(
+        notification.targetType,
+        NotificationTargetType.companyContactInvitation,
+      );
+      expect(notification.hasTarget, isTrue);
+    });
   });
 
   group('copyWithRead', () {

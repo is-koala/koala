@@ -10,6 +10,7 @@ import 'package:koala/business/features/home/presentation/pages/b_profile_page.d
 import 'package:koala/business/features/home/presentation/pages/b_settings_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_company_gallery_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_company_info_page.dart';
+import 'package:koala/business/features/home/presentation/pages/b_company_contacts_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_job_detail_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_job_templates_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_talent_pool_page.dart';
@@ -20,6 +21,7 @@ import 'package:koala/business/features/home/presentation/pages/b_blocked_users_
 import 'package:koala/business/features/home/presentation/pages/b_reports_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_sessions_page.dart';
 import 'package:koala/employee/features/notifications/presentation/pages/notifications_page.dart';
+import 'package:koala/employee/features/notifications/presentation/pages/company_invitation_page.dart';
 import 'package:koala/employee/features/profile/presentation/pages/followed_companies_page.dart';
 import 'package:koala/employee/features/settings/presentation/pages/blocked_users_page.dart';
 import 'package:koala/employee/features/settings/presentation/pages/reports_page.dart';
@@ -488,6 +490,12 @@ class RouterManager {
       ),
 
       GoRoute(
+        path: '/business/company-contacts',
+        pageBuilder: (context, state) =>
+            _page(state, const BCompanyContactsPage()),
+      ),
+
+      GoRoute(
         path: '/business/company-gallery',
         pageBuilder: (context, state) =>
             _page(state, const BCompanyGalleryPage()),
@@ -594,6 +602,16 @@ class RouterManager {
         path: '/business/notifications',
         pageBuilder: (context, state) =>
             _page(state, const BNotificationsPage()),
+      ),
+
+      GoRoute(
+        path: '/company-invitation',
+        pageBuilder: (context, state) => _page(
+          state,
+          CompanyInvitationPage(
+            invitationId: state.uri.queryParameters['id'] ?? '',
+          ),
+        ),
       ),
 
       GoRoute(
