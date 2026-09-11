@@ -1,8 +1,9 @@
 part of 'creating_password_page.dart';
 
 abstract class CreatingPasswordPagemodel extends State<CreatingPasswordPage> {
-  bool isPasswordHidden = false;
-  bool isConfirmPasswordHidden = false;
+  /// #58: giriş ve şifre değiştir ile aynı; göz düğmesi açar.
+  bool isPasswordHidden = true;
+  bool isConfirmPasswordHidden = true;
 
   /// Kayıt tipi. İş veren, şifreden sonra bir de şirket bilgileri adımına
   /// gidiyor; çalışan doğrudan uygulamaya giriyor.
