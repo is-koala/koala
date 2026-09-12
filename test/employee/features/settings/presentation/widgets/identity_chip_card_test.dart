@@ -1,28 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:koala/employee/features/auth/models/chip_evidence.dart';
 import 'package:koala/employee/features/settings/models/identity_chip_result.dart';
-import 'package:koala/employee/features/settings/models/mrz_key.dart';
 import 'package:koala/employee/features/settings/presentation/widgets/identity_chip_card.dart';
 
+import '../../../../../support/chip_fixtures.dart';
 import '../../../../../support/pump.dart';
 
-IdentityChipResult _result({required bool withChipProof}) {
-  return IdentityChipResult(
-    evidence: ChipEvidence(
-      sod: 'c29k',
-      dg1: 'ZGcx',
-      dg15: withChipProof ? 'ZGcxNQ==' : null,
-      challenge: withChipProof ? 'Y2hhbGxlbmdl' : null,
-      activeAuthenticationSignature: withChipProof ? 'c2ln' : null,
-    ),
-    key: MrzKey.manual(
-      documentNumber: 'A01B23456',
-      birthDate: DateTime(1998, 4, 7),
-      expiryDate: DateTime(2030, 1, 1),
-    ),
-  );
-}
+IdentityChipResult _result({required bool withChipProof}) =>
+    buildChipResult(withChipProof: withChipProof);
 
 void main() {
   group('IdentityChipCard okumadan önce', () {

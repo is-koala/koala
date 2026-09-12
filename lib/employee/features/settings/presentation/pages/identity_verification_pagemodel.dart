@@ -72,14 +72,9 @@ abstract class IdentityVerificationPagemodel
 
     setState(() {
       chip = result;
-      tcDocument.text = result.key.documentNumber;
-      birthDate = result.key.birthDate;
-
-      // TCKN MRZ'nin isteğe bağlı veri alanından geliyor ve BAC anahtarının
-      // parçası **değil** — yani oturumun açılması onu kanıtlamıyor. Bu
-      // yüzden yalnızca ön dolduruluyor, kilitlenmiyor.
-      final identityNumber = result.key.nationalIdentityNumber;
-      if (identityNumber != null) tcIdentity.text = identityNumber;
+      tcDocument.text = result.holder.documentNumber;
+      birthDate = result.holder.birthDate;
+      tcIdentity.text = result.holder.nationalIdentityNumber;
     });
   }
 

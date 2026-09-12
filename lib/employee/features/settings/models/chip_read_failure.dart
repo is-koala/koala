@@ -107,6 +107,19 @@ enum ChipReadFailure {
     canRetry: true,
   ),
 
+  /// Çip açıldı ve okundu ama DG1'deki MRZ kimlik bilgilerini (TCKN, ad,
+  /// doğum tarihi, belge no) beklenen TD1 biçiminde taşımıyor. Sunucu aynı
+  /// alanları okuyup `MRZ_UNREADABLE` ile reddedecekti; kullanıcıyı boş bir
+  /// gidiş dönüşe sokmak yerine okuma burada duruyor.
+  holderUnreadable(
+    title: 'Kart bilgileri çözümlenemedi',
+    message:
+        'Kartın çipindeki kimlik bilgileri beklenen biçimde değil. Çipli '
+        'yeni tip kimlik kartını kullandığından emin olup tekrar dene; '
+        'olmazsa bilgileri elle girebilirsin.',
+    canRetry: true,
+  ),
+
   /// Sunucudan tek kullanımlık sayı alınamadı; ağ ya da oturum sorunu.
   challengeUnavailable(
     title: 'Doğrulama başlatılamadı',
