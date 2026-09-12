@@ -74,11 +74,27 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final user = context.read<UserProvider>().user;
-      if (user != null) context.read<BCompanyProvider>().loadFor(user);
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  /// Kullanıcıyı, ardından şirketini çeker.
+  ///
+  /// Sıra zorunlu: hangi şirketin isteneceği `/users/me` yanıtındaki üyelik
+  /// listesinden çıkıyor. Kullanıcı daha okunmamışsa (ana sayfanın sessiz
+  /// yüklemesi düşmüş, ya da buraya doğrudan gelinmiş) önce o okunuyor;
+  /// yoksa ekran "firmanız yok" deyip şirketi olan işverene kurma düğmesi
+  /// gösterirdi.
+  Future<void> _load({bool force = false}) async {
+    if (!mounted) return;
+
+    final userProvider = context.read<UserProvider>();
+    if (userProvider.user == null) await userProvider.load(silent: true);
+
+    if (!mounted) return;
+    final user = userProvider.user;
+    if (user == null) return;
+
+    await context.read<BCompanyProvider>().loadFor(user, force: force);
   }
 
   @override
@@ -212,6 +228,7 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
 
   @override
   Widget build(BuildContext context) {
+    final userProvider = context.watch<UserProvider>();
     final provider = context.watch<BCompanyProvider>();
     final company = provider.company;
 
@@ -227,34 +244,39 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
               title: "Kaydet",
               isLoading: _isSaving,
             ),
-      body: _body(provider, company),
+      body: _body(userProvider, provider, company),
     );
   }
 
-  Widget _body(BCompanyProvider provider, Company? company) {
+  Widget _body(
+    UserProvider userProvider,
+    BCompanyProvider provider,
+    Company? company,
+  ) {
+    // Şirketin olup olmadığını `/users/me`'deki üyelik söylüyor, sağlayıcının
+    // varsayılan `null`'ı değil. Kullanıcı gelmeden karar verilmiyor.
+    final user = userProvider.user;
+    if (user == null) {
+      final userError = userProvider.errorMessage;
+      if (userError != null) return _errorState(userError);
+      return const Center(child: CircularProgressIndicator());
+    }
+
     if (provider.isLoading && company == null) {
       return const Center(child: CircularProgressIndicator());
     }
 
     final message = provider.errorMessage;
-    if (message != null && company == null) {
-      return EmptyState(
-        icon: AppIcons.alert,
-        title: 'Firma bilgileri alınamadı',
-        description: message,
-        action: OutlinedButton(
-          onPressed: () {
-            final user = context.read<UserProvider>().user;
-            if (user != null) {
-              context.read<BCompanyProvider>().loadFor(user, force: true);
-            }
-          },
-          child: const Text('Tekrar Dene'),
-        ),
-      );
-    }
+    if (message != null && company == null) return _errorState(message);
 
-    if (company == null) return _noCompanyState();
+    if (company == null) {
+      // Üyelik var ama şirket kaydı daha gelmedi (istek henüz atılmadı):
+      // bu "firmanız yok" değil, bekleme.
+      if (user.primaryCompany != null) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      return _noCompanyState();
+    }
 
     return SingleChildScrollView(
       child: Padding(
@@ -563,6 +585,20 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
       AppIcons.building,
       size: AppSizes.iconLarge,
       color: context.textTertiary,
+    );
+  }
+
+  /// Kullanıcı ya da şirket okunamadığında gösterilen ekran; yeniden deneme
+  /// ikisini de sırayla çekiyor.
+  Widget _errorState(String message) {
+    return EmptyState(
+      icon: AppIcons.alert,
+      title: 'Firma bilgileri alınamadı',
+      description: message,
+      action: OutlinedButton(
+        onPressed: () => _load(force: true),
+        child: const Text('Tekrar Dene'),
+      ),
     );
   }
 

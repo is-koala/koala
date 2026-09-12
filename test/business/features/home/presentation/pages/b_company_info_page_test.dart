@@ -37,10 +37,14 @@ const _membership = {
 /// karşılayan sahte sunucu: `POST /companies` başarınca `/users/me` üyeliği
 /// taşımaya başlıyor.
 class _Server {
-  _Server({required this.identityVerified});
+  _Server({required this.identityVerified, this.companies = const []});
 
   bool identityVerified;
-  List<Map<String, dynamic>> companies = const [];
+  List<Map<String, dynamic>> companies;
+
+  /// `/users/me`'nin daha kaç kez `500` döneceği; ana sayfanın sessiz
+  /// yüklemesi düşmüş bir kullanıcıyı canlandırıyor.
+  int meFailuresLeft = 0;
 
   late final FakeApi api = FakeApi(handler: handle);
 
@@ -50,6 +54,17 @@ class _Server {
 
     switch (request.path) {
       case '/users/me':
+        if (meFailuresLeft > 0) {
+          meFailuresLeft--;
+          return const FakeApiResponse(
+            statusCode: 500,
+            body: {
+              'success': false,
+              'message': 'Sunucu hatası',
+              'errorCategory': 'INTERNAL_ERROR',
+            },
+          );
+        }
         return FakeApiResponse(
           statusCode: 200,
           body: employerMeResponse(
@@ -87,13 +102,27 @@ class _Server {
 Future<_Server> _pumpCompanyInfo(
   WidgetTester tester, {
   required bool identityVerified,
+  List<Map<String, dynamic>> companies = const [],
   Brightness brightness = Brightness.light,
+
+  /// `false`: sayfa `/users/me` hiç okunmamışken açılıyor — ana sayfanın
+  /// sessiz yüklemesi düşmüş ya da kullanıcı doğrudan buraya gelmiş.
+  bool preloadUser = true,
+
+  /// `/users/me` ilk kaç istekte düşsün.
+  int meFailures = 0,
+
+  /// `false`: ilk kareden sonra durup ara durumu incelemek için.
+  bool settle = true,
 }) async {
-  final server = _Server(identityVerified: identityVerified);
+  final server = _Server(
+    identityVerified: identityVerified,
+    companies: companies,
+  )..meFailuresLeft = meFailures;
   final userProvider = UserProvider(
     userService: UserService.withClient(server.api.client),
   );
-  await tester.runAsync(userProvider.load);
+  if (preloadUser) await tester.runAsync(userProvider.load);
 
   final router = GoRouter(
     initialLocation: '/business/company-info',
@@ -159,7 +188,7 @@ Future<_Server> _pumpCompanyInfo(
       ),
     ),
   );
-  await tester.pumpAndSettle();
+  if (settle) await tester.pumpAndSettle();
   return server;
 }
 
@@ -169,6 +198,69 @@ Future<void> _tapCreateCompany(WidgetTester tester) async {
 }
 
 void main() {
+  group('kullanıcı yüklenmemişken', () {
+    testWidgets(
+      'şirketi olan işverene kurma düğmesi gösterilmez, şirket gelir',
+      (tester) async {
+        await _pumpCompanyInfo(
+          tester,
+          identityVerified: true,
+          companies: const [_membership],
+          preloadUser: false,
+          settle: false,
+        );
+
+        // İlk kare: kullanıcı daha okunmadı. "Firmanız yok" demek, şirketi
+        // olan işverene ikinci bir şirket kurdurmak olur.
+        expect(find.text('Firma Kaydı Oluştur'), findsNothing);
+        expect(find.text('Kayıtlı firmanız yok'), findsNothing);
+
+        await tester.pump();
+        expect(find.text('Firma Kaydı Oluştur'), findsNothing);
+
+        await tester.pumpAndSettle();
+
+        expect(find.text('Firma Kaydı Oluştur'), findsNothing);
+        expect(find.text('Kayıtlı firmanız yok'), findsNothing);
+        expect(
+          tester
+              .widget<TextField>(
+                find.byWidgetPredicate(
+                  (widget) =>
+                      widget is TextField &&
+                      widget.decoration?.labelText == 'Firma Adı',
+                ),
+              )
+              .controller
+              ?.text,
+          'Moda Kahve Atölyesi',
+        );
+      },
+    );
+
+    testWidgets(
+      '/users/me düşerse tekrar dene gösterilir, kurma düğmesi değil',
+      (tester) async {
+        await _pumpCompanyInfo(
+          tester,
+          identityVerified: true,
+          preloadUser: false,
+          meFailures: 1,
+        );
+
+        expect(find.text('Firma Kaydı Oluştur'), findsNothing);
+        expect(find.text('Tekrar Dene'), findsOneWidget);
+
+        // Sunucu toparladı: kullanıcı okunuyor, şirketi yok, düğme şimdi doğru.
+        await tester.tap(find.text('Tekrar Dene'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Kayıtlı firmanız yok'), findsOneWidget);
+        expect(find.text('Firma Kaydı Oluştur'), findsOneWidget);
+      },
+    );
+  });
+
   group('şirketi olmayan işveren', () {
     for (final brightness in Brightness.values) {
       testWidgets('${brightness.name} temada firma kaydı düğmesini görür', (
