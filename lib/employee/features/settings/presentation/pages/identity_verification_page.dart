@@ -5,8 +5,10 @@ import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/employee/features/settings/models/identity_chip_result.dart';
+import 'package:koala/employee/features/settings/models/identity_declaration.dart';
 import 'package:koala/employee/features/settings/models/identity_error.dart';
 import 'package:koala/employee/features/settings/presentation/widgets/identity_chip_card.dart';
+import 'package:koala/employee/features/settings/presentation/widgets/locked_field.dart';
 import 'package:koala/employee/features/settings/presentation/widgets/settings_hint.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
@@ -37,12 +39,26 @@ part 'identity_verification_pagemodel.dart';
 ///    okunmayan kart ya da vazgeçen kullanıcı birinci yola düşüyor; çip bir
 ///    kapı değil.
 ///
+/// Çip okunduğunda beş alan da **kanıttan türüyor ve salt okunur**: ad,
+/// soyad, TCKN, seri no ve doğum tarihi DG1/DG11'den geliyor, ekranda
+/// yazılabilir bir alan kalmıyor. Elle düzenlemeye dönüşün tek yolu
+/// okumayı kaldırmak; o da kanıtı ve türeyen alanları birlikte bırakıyor.
+/// Böylece gönderilen beyan, ekranın kanıtın yanında gösterdiğinin birebir
+/// aynısı (is-koala/koala#136).
+///
 /// Doğrulama başarılı olduğunda ad ve soyad **kilitleniyor** — hesap
 /// bilgileri ekranı da o noktadan sonra ikisini düzenletmiyor.
 class IdentityVerificationPage extends StatefulWidget {
-  const IdentityVerificationPage({super.key, required this.user});
+  const IdentityVerificationPage({
+    super.key,
+    required this.user,
+    this.userService,
+  });
 
   final CurrentUser user;
+
+  /// Testlerde gerçek API yerine sahte sunucuya bağlı servis kullanılabilir.
+  final UserService? userService;
 
   @override
   State<IdentityVerificationPage> createState() =>
@@ -66,51 +82,80 @@ class _IdentityVerificationPageState extends IdentityVerificationPagemodel {
           children: [
             _intro(),
             const SizedBox(height: AppSizes.spaceMedium),
-            IdentityChipCard(result: chip, onRead: readChip),
+            IdentityChipCard(
+              result: chip,
+              onRead: readChip,
+              onRemove: removeChip,
+            ),
             const SizedBox(height: AppSizes.spaceLarge),
-            MyTextfield(
-              labelText: 'Ad',
-              controller: firstName,
-              onChanged: (_) => setState(() {}),
-            ),
-            const SizedBox(height: AppSizes.spaceMedium),
-            MyTextfield(
-              labelText: 'Soyad',
-              controller: lastName,
-              onChanged: (_) => setState(() {}),
-            ),
-            const SizedBox(height: AppSizes.spaceMedium),
-            MyTextfield(
-              labelText: 'TC Kimlik No',
-              controller: tcIdentity,
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(
-                  IdentityVerificationPagemodel.tcIdentityLength,
-                ),
-              ],
-              onChanged: (_) => setState(() {}),
-            ),
-            const SizedBox(height: AppSizes.spaceMedium),
-            MyTextfield(
-              labelText: 'Seri No',
-              controller: tcDocument,
-              enabled: !isLockedByChip,
-              onChanged: (_) => setState(() {}),
-            ),
-            SettingsHint(
-              isLockedByChip
-                  ? 'Kartın çipinden okundu, değiştirilemez.'
-                  : 'Kimlik kartının ön yüzündeki seri numarası.',
-            ),
-            const SizedBox(height: AppSizes.spaceMedium),
-            _birthDateField(),
+            // Hangi form çizileceğine beyanın tipi karar veriyor; ayrı bir
+            // "kilitli mi" bayrağı yok, olsaydı beyanla ayrışabilirdi.
+            ...switch (declaration) {
+              ManualDeclaration() => _manualFields(),
+              ChipDeclaration(:final chip) => _lockedFields(chip),
+            },
             const SizedBox(height: AppSizes.navBarClearance),
           ],
         ),
       ),
     );
+  }
+
+  /// Elle beyan: dört metin alanı ve doğum tarihi seçici.
+  List<Widget> _manualFields() {
+    return [
+      MyTextfield(
+        labelText: 'Ad',
+        controller: firstName,
+        onChanged: (_) => setState(() {}),
+      ),
+      const SizedBox(height: AppSizes.spaceMedium),
+      MyTextfield(
+        labelText: 'Soyad',
+        controller: lastName,
+        onChanged: (_) => setState(() {}),
+      ),
+      const SizedBox(height: AppSizes.spaceMedium),
+      MyTextfield(
+        labelText: 'TC Kimlik No',
+        controller: tcIdentity,
+        keyboardType: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(ManualDeclaration.tcIdentityLength),
+        ],
+        onChanged: (_) => setState(() {}),
+      ),
+      const SizedBox(height: AppSizes.spaceMedium),
+      MyTextfield(
+        labelText: 'Seri No',
+        controller: tcDocument,
+        onChanged: (_) => setState(() {}),
+      ),
+      const SettingsHint('Kimlik kartının ön yüzündeki seri numarası.'),
+      const SizedBox(height: AppSizes.spaceMedium),
+      _birthDateField(),
+    ];
+  }
+
+  /// Çipten türeyen beyan: beş satır, hepsi salt okunur ve değerleri
+  /// doğrudan kanıttan. Denetleyicilere hiç bakılmıyor.
+  List<Widget> _lockedFields(IdentityChipResult read) {
+    final holder = read.holder;
+    return [
+      LockedField(label: 'Ad', value: holder.firstName),
+      const SizedBox(height: AppSizes.spaceMedium),
+      LockedField(label: 'Soyad', value: holder.lastName),
+      const SizedBox(height: AppSizes.spaceMedium),
+      LockedField(label: 'TC Kimlik No', value: holder.nationalIdentityNumber),
+      const SizedBox(height: AppSizes.spaceMedium),
+      LockedField(label: 'Seri No', value: holder.documentNumber),
+      const SizedBox(height: AppSizes.spaceMedium),
+      LockedField(label: 'Doğum tarihi', value: holder.birthDate.asShortDate),
+      const SettingsHint(
+        'Bu bilgiler kartın çipinden okundu; değiştirmek için okumayı kaldır.',
+      ),
+    ];
   }
 
   Widget _intro() {
@@ -139,12 +184,9 @@ class _IdentityVerificationPageState extends IdentityVerificationPagemodel {
 
   Widget _birthDateField() {
     final selected = birthDate;
-    // Çip oturumu açıldıysa tarih kanıtlanmış; dokundurmak yalnızca
-    // kanıtla çelişen bir değer üretebilirdi.
-    final onTap = isLockedByChip ? null : pickBirthDate;
 
     return InkWell(
-      onTap: onTap,
+      onTap: pickBirthDate,
       borderRadius: AppRadius.innerCircular,
       child: Container(
         width: double.infinity,
