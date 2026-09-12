@@ -51,9 +51,11 @@ class _FakeDeviceCameraController implements MrzDeviceCameraController {
   bool disposed = false;
   bool streaming = false;
   int disposeCount = 0;
+  DeviceOrientation orientation = DeviceOrientation.portraitUp;
+  Completer<void>? disposeGate;
 
   @override
-  DeviceOrientation get deviceOrientation => DeviceOrientation.portraitUp;
+  DeviceOrientation get deviceOrientation => orientation;
 
   @override
   CameraLensDirection get lensDirection => CameraLensDirection.back;
@@ -88,12 +90,31 @@ class _FakeDeviceCameraController implements MrzDeviceCameraController {
 
   @override
   Future<void> dispose() async {
+    final gate = disposeGate;
+    if (gate != null) await gate.future;
     disposed = true;
     disposeCount++;
   }
 }
 
 void main() {
+  test('portrait kilidi cihaz yataya dönünce OCR dönüşünü değiştirmez', () {
+    final controller = _FakeDeviceCameraController(Future<void>.value());
+
+    final portrait = DeviceMrzCameraSession.rotationForCamera(
+      controller,
+      isIOS: false,
+    );
+    controller.orientation = DeviceOrientation.landscapeLeft;
+    final landscape = DeviceMrzCameraSession.rotationForCamera(
+      controller,
+      isIOS: false,
+    );
+
+    expect(portrait, InputImageRotation.rotation90deg);
+    expect(landscape, portrait);
+  });
+
   test('dispose, geç dönen factory controllerını stale bırakmaz', () async {
     final factory = _PendingCreationFactory();
     final session = DeviceMrzCameraSession(
@@ -102,9 +123,11 @@ void main() {
     );
 
     final starting = session.start();
-    await session.dispose();
+    await Future<void>.delayed(Duration.zero);
+    final disposing = session.dispose();
     factory.release.complete();
     await starting;
+    await disposing;
 
     expect(factory.controller.disposed, isTrue);
     expect(factory.controller.streaming, isFalse);
@@ -122,9 +145,10 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     expect(factory.controllers, hasLength(1));
 
-    await session.pause();
+    final pausing = session.pause();
     factory.initialization.single.complete();
     await starting;
+    await pausing;
 
     expect(factory.controllers.single.disposed, isTrue);
     expect(factory.controllers.single.streaming, isFalse);
@@ -168,4 +192,34 @@ void main() {
       expect(factory.controllers[1].disposed, isTrue);
     },
   );
+
+  test('hızlı pause-resume eski dispose bitmeden yeni kamera açmaz', () async {
+    final factory = _FakeDeviceCameraFactory();
+    final session = DeviceMrzCameraSession(
+      cameraFactory: factory,
+      scanner: MrzScanner(recognizer: _NoopTextRecognizer()),
+    );
+    final firstStart = session.start();
+    await Future<void>.delayed(Duration.zero);
+    factory.initialization[0].complete();
+    await firstStart;
+    final disposeGate = Completer<void>();
+    factory.controllers[0].disposeGate = disposeGate;
+
+    final pausing = session.pause();
+    await Future<void>.delayed(Duration.zero);
+    final resuming = session.resume();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(factory.controllers, hasLength(1));
+
+    disposeGate.complete();
+    await pausing;
+    await Future<void>.delayed(Duration.zero);
+    expect(factory.controllers, hasLength(2));
+    factory.initialization[1].complete();
+    await resuming;
+
+    await session.dispose();
+  });
 }

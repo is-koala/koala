@@ -27,13 +27,13 @@ void main() {
           'tools:node="remove"',
         ),
       );
-    expect(
-      manifest,
-      contains(
-        'android:name="android.hardware.camera.any" '
-        'android:required="false" tools:replace="android:required"',
-      ),
-    );
+      expect(
+        manifest,
+        contains(
+          'android:name="android.hardware.camera.any" '
+          'android:required="false" tools:replace="android:required"',
+        ),
+      );
     },
   );
 }

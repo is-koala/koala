@@ -122,9 +122,14 @@ class DeviceMrzCameraSession implements MrzCameraSession {
   bool _isDisposed = false;
   int _generation = 0;
   DateTime? _lastAnalysisAt;
+  Future<void> _operationTail = Future<void>.value();
 
   /// Kamera akışını düşük cihazlarda da akıcı tutan analiz aralığı.
   static const Duration _analysisInterval = Duration(milliseconds: 180);
+
+  /// Önizleme, sensör dönüşümü ve OCR metadata'sı aynı kilidi kullanır.
+  static const DeviceOrientation _captureOrientation =
+      DeviceOrientation.portraitUp;
 
   static const Map<DeviceOrientation, int> _orientationDegrees = {
     DeviceOrientation.portraitUp: 0,
@@ -144,11 +149,18 @@ class DeviceMrzCameraSession implements MrzCameraSession {
       _controller?.buildPreview() ?? const SizedBox.shrink();
 
   @override
-  Future<void> start() async {
-    if (_isDisposed || (_controller != null && !_isPaused)) return;
+  Future<void> start() {
+    if (_isDisposed || (_controller != null && !_isPaused)) {
+      return Future<void>.value();
+    }
 
     _isPaused = false;
     final generation = ++_generation;
+    return _enqueue(() => _start(generation));
+  }
+
+  Future<void> _start(int generation) async {
+    if (!_isCurrent(generation) || _controller != null) return;
     MrzDeviceCameraController? candidate;
     try {
       candidate = await _cameraFactory.createRearCamera();
@@ -157,7 +169,7 @@ class DeviceMrzCameraSession implements MrzCameraSession {
       await candidate.initialize();
       if (!await _keepOrDispose(candidate, generation)) return;
 
-      await candidate.lockCaptureOrientation(DeviceOrientation.portraitUp);
+      await candidate.lockCaptureOrientation(_captureOrientation);
       if (!await _keepOrDispose(candidate, generation)) return;
 
       await candidate.startImageStream(
@@ -195,21 +207,29 @@ class DeviceMrzCameraSession implements MrzCameraSession {
       !_isDisposed && !_isPaused && generation == _generation;
 
   @override
-  Future<void> pause() async {
-    if (_isDisposed) return;
+  Future<void> pause() {
+    if (_isDisposed) return Future<void>.value();
     _isPaused = true;
     _generation++;
     _lastAnalysisAt = null;
+    return _enqueue(_releaseController);
+  }
 
+  Future<void> _releaseController() async {
     final controller = _controller;
-    _controller = null;
-    await _disposeCandidate(controller);
+    try {
+      await _disposeCandidate(controller);
+    } finally {
+      if (identical(_controller, controller)) _controller = null;
+    }
   }
 
   @override
-  Future<void> resume() async {
-    if (_isDisposed || (!_isPaused && _controller != null)) return;
-    await start();
+  Future<void> resume() {
+    if (_isDisposed || (!_isPaused && _controller != null)) {
+      return Future<void>.value();
+    }
+    return start();
   }
 
   void _onFrame(
@@ -263,7 +283,7 @@ class DeviceMrzCameraSession implements MrzCameraSession {
         : InputImageFormat.bgra8888;
     if (format != expected) return null;
 
-    final rotation = _rotationFor(controller);
+    final rotation = rotationForCamera(controller, isIOS: Platform.isIOS);
     if (rotation == null) return null;
     final plane = frame.planes.single;
     final cropped = MrzFrameCropper.crop(
@@ -290,12 +310,17 @@ class DeviceMrzCameraSession implements MrzCameraSession {
     );
   }
 
-  InputImageRotation? _rotationFor(MrzDeviceCameraController controller) {
-    if (Platform.isIOS) {
+  /// Capture portrait kilitliyken cihazın anlık yönü OCR dönüşünü değiştirmez.
+  @visibleForTesting
+  static InputImageRotation? rotationForCamera(
+    MrzDeviceCameraController controller, {
+    required bool isIOS,
+  }) {
+    if (isIOS) {
       return InputImageRotationValue.fromRawValue(controller.sensorOrientation);
     }
 
-    final deviceRotation = _orientationDegrees[controller.deviceOrientation];
+    final deviceRotation = _orientationDegrees[_captureOrientation];
     if (deviceRotation == null) return null;
     final degrees = controller.lensDirection == CameraLensDirection.front
         ? (controller.sensorOrientation + deviceRotation) % 360
@@ -326,16 +351,26 @@ class DeviceMrzCameraSession implements MrzCameraSession {
         : ChipReadFailure.unknown;
   }
 
+  Future<void> _enqueue(Future<void> Function() operation) {
+    final next = _operationTail.then((_) => operation());
+    _operationTail = next.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace _) {},
+    );
+    return next;
+  }
+
   @override
-  Future<void> dispose() async {
-    if (_isDisposed) return;
+  Future<void> dispose() {
+    if (_isDisposed) return _operationTail;
     _isDisposed = true;
     _isPaused = true;
     _generation++;
+    return _enqueue(_disposeResources);
+  }
 
-    final controller = _controller;
-    _controller = null;
-    await _disposeCandidate(controller);
+  Future<void> _disposeResources() async {
+    await _releaseController();
     await _scanner.dispose();
     await _observations.close();
   }

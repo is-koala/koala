@@ -70,6 +70,25 @@ class _BrokenResumeCameraSession extends _FakeCameraSession {
   }
 }
 
+class _SlowLifecycleCameraSession extends _FakeCameraSession {
+  final Completer<void> pauseGate = Completer<void>();
+  int pauseCalls = 0;
+  int resumeCalls = 0;
+
+  @override
+  Future<void> pause() async {
+    pauseCalls++;
+    paused = true;
+    await pauseGate.future;
+  }
+
+  @override
+  Future<void> resume() async {
+    resumeCalls++;
+    paused = false;
+  }
+}
+
 void main() {
   testWidgets('kamera açılırken hazırlık durumu gösterilir', (tester) async {
     final camera = _PendingCameraSession();
@@ -214,6 +233,39 @@ void main() {
     });
   }
 
+  testWidgets('hızlı lifecycle geçişleri dispose arkasında birleştirilir', (
+    tester,
+  ) async {
+    final camera = _SlowLifecycleCameraSession();
+
+    await pumpInApp(
+      tester,
+      LiveMrzScanner(
+        camera: camera,
+        onCaptured: (_) {},
+        onFailure: (_) {},
+        onManualEntry: () {},
+      ),
+    );
+    await tester.pump();
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    await tester.pump();
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+
+    expect(camera.pauseCalls, 1);
+    expect(camera.resumeCalls, 0);
+
+    camera.pauseGate.complete();
+    await tester.pump();
+    await tester.pump();
+
+    expect(camera.pauseCalls, 1);
+    expect(camera.resumeCalls, 1);
+  });
+
   testWidgets('kamera açılırken arka plana geçilirse akış duraklatılır', (
     tester,
   ) async {
@@ -350,4 +402,63 @@ void main() {
       expect(find.text('Kartı kadraja yaklaştır'), findsOneWidget);
     });
   }
+
+  testWidgets('amber ve yeşil yönergeler en az 4.5:1 kontrast taşır', (
+    tester,
+  ) async {
+    final camera = _FakeCameraSession();
+    final key = MrzKey.manual(
+      documentNumber: 'A01B23456',
+      birthDate: DateTime(1998, 4, 7),
+      expiryDate: DateTime(2030, 1, 1),
+    );
+
+    await pumpInApp(
+      tester,
+      LiveMrzScanner(
+        camera: camera,
+        onCaptured: (_) {},
+        onFailure: (_) {},
+        onManualEntry: () {},
+        successHold: const Duration(days: 1),
+      ),
+    );
+    await tester.pump();
+
+    expect(
+      _contrast(AppColors.onLightSurface, AppColors.warning),
+      greaterThanOrEqualTo(4.5),
+    );
+    expect(
+      tester.widget<Text>(find.text('MRZ • 3 SATIR')).style?.color,
+      AppColors.onLightSurface,
+    );
+
+    for (var index = 0; index < 3; index++) {
+      camera.controller.add(MrzFrameObservation.valid(key));
+      await tester.pump();
+    }
+
+    expect(
+      _contrast(AppColors.onLightSurface, AppColors.success),
+      greaterThanOrEqualTo(4.5),
+    );
+    expect(
+      tester
+          .widget<Text>(find.text('MRZ geçerli, çip okumaya hazır'))
+          .style
+          ?.color,
+      AppColors.onLightSurface,
+    );
+  });
+}
+
+double _contrast(Color foreground, Color background) {
+  final lighter = foreground.computeLuminance() > background.computeLuminance()
+      ? foreground.computeLuminance()
+      : background.computeLuminance();
+  final darker = foreground.computeLuminance() > background.computeLuminance()
+      ? background.computeLuminance()
+      : foreground.computeLuminance();
+  return (lighter + 0.05) / (darker + 0.05);
 }

@@ -47,6 +47,8 @@ class _LiveMrzScannerState extends State<LiveMrzScanner>
   late AppLifecycleState _lifecycleState;
   final MrzScanSession _scan = MrzScanSession(requiredStableFrames: 3);
   late final StreamSubscription<MrzFrameObservation> _observations;
+  Future<void>? _lifecycleSync;
+  AppLifecycleState? _syncedLifecycleState;
   MrzScanState _state = const MrzScanState(guidance: MrzScanGuidance.preparing);
 
   @override
@@ -72,20 +74,46 @@ class _LiveMrzScannerState extends State<LiveMrzScanner>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _lifecycleState = state;
     if (!_started || _completed) return;
-    unawaited(_syncCameraWithLifecycle(state));
+    _requestLifecycleSync();
   }
 
-  Future<void> _syncCameraWithLifecycle(AppLifecycleState state) async {
-    try {
-      if (state == AppLifecycleState.resumed) {
-        await widget.camera.resume();
-      } else {
-        await widget.camera.pause();
+  /// Hızlı `inactive → paused → resumed` zincirini tek seri kuyruğa indirger.
+  void _requestLifecycleSync() {
+    if (_lifecycleSync != null) return;
+    final operation = _drainLifecycleChanges();
+    _lifecycleSync = operation;
+    unawaited(
+      operation.whenComplete(() {
+        if (identical(_lifecycleSync, operation)) _lifecycleSync = null;
+        if (mounted &&
+            _started &&
+            !_completed &&
+            _syncedLifecycleState != _lifecycleState) {
+          _requestLifecycleSync();
+        }
+      }),
+    );
+  }
+
+  Future<void> _drainLifecycleChanges() async {
+    while (mounted && _started && !_completed) {
+      final target = _lifecycleState;
+      if (_syncedLifecycleState == target) return;
+      try {
+        if (target == AppLifecycleState.resumed) {
+          await widget.camera.resume();
+        } else {
+          await widget.camera.pause();
+        }
+      } on ChipReadException catch (error) {
+        _fail(error.reason);
+        return;
+      } on Object {
+        _fail(ChipReadFailure.unknown);
+        return;
       }
-    } on ChipReadException catch (error) {
-      _fail(error.reason);
-    } on Object {
-      _fail(ChipReadFailure.unknown);
+      _syncedLifecycleState = target;
+      if (target == _lifecycleState) return;
     }
   }
 
@@ -110,6 +138,8 @@ class _LiveMrzScannerState extends State<LiveMrzScanner>
     // Başarı kesinleştiği anda yeni ham kare almayı kesiyoruz; yeşil durum
     // ekranda kalırken kamera gereksiz kişisel veri üretmesin.
     try {
+      final lifecycleSync = _lifecycleSync;
+      if (lifecycleSync != null) await lifecycleSync;
       await widget.camera.pause();
     } on Object {
       // Akış zaten tamamlandı; kameranın kapanış hatası sonucu değiştirmez.
@@ -128,12 +158,13 @@ class _LiveMrzScannerState extends State<LiveMrzScanner>
     try {
       await widget.camera.start();
       if (mounted) {
+        _syncedLifecycleState = AppLifecycleState.resumed;
         setState(() {
           _started = true;
           _state = const MrzScanState(guidance: MrzScanGuidance.moveCloser);
         });
         if (_lifecycleState != AppLifecycleState.resumed) {
-          await widget.camera.pause();
+          _requestLifecycleSync();
         }
       }
     } on ChipReadException catch (error) {
@@ -184,7 +215,7 @@ class _LiveMrzScannerState extends State<LiveMrzScanner>
                         _state.message,
                         textAlign: TextAlign.center,
                         style: context.textTheme.titleSmall?.copyWith(
-                          color: AppColors.onAccent,
+                          color: AppColors.onLightSurface,
                         ),
                       ),
                     ),
@@ -256,7 +287,7 @@ class _LiveMrzScannerState extends State<LiveMrzScanner>
                     child: Text(
                       'MRZ • 3 SATIR',
                       style: context.textTheme.labelSmall?.copyWith(
-                        color: AppColors.onAccent,
+                        color: AppColors.onLightSurface,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
