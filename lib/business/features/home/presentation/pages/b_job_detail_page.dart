@@ -123,7 +123,8 @@ class _BJobDetailPageState extends BJobDetailPageModel {
 
     // İlan yürürlükte mi: karar sunucudaki duruma ait. Provider'daki kayıt
     // henüz gelmemiş olabilir, o yüzden detayın durumuna bakılıyor.
-    final isActive = job.status == JobStatus.open;
+    final isActive =
+        job.status == JobStatus.open;
 
     return SingleChildScrollView(
       child: Column(

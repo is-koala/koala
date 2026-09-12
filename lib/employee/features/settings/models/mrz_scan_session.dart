@@ -69,6 +69,8 @@ class MrzScanSession {
   }
 
   String _signatureOf(MrzKey key) =>
+      key.normalizedTd1 ??
       '${key.documentNumber}|${key.birthDate.toIso8601String()}|'
-      '${key.expiryDate.toIso8601String()}|${key.nationalIdentityNumber ?? ''}';
+          '${key.expiryDate.toIso8601String()}|'
+          '${key.nationalIdentityNumber ?? ''}';
 }

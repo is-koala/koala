@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/settings/models/chip_read_failure.dart';
 import 'package:koala/employee/features/settings/models/mrz_key.dart';
+import 'package:koala/employee/features/settings/models/mrz_scan_region.dart';
 import 'package:koala/employee/features/settings/models/mrz_scan_session.dart';
 import 'package:koala/employee/features/settings/presentation/widgets/live_mrz_scanner.dart';
 import 'package:koala/employee/features/settings/services/mrz_camera_session.dart';
@@ -26,6 +27,9 @@ class _FakeCameraSession implements MrzCameraSession {
 
   @override
   Stream<MrzFrameObservation> get observations => controller.stream;
+
+  @override
+  Size? get previewSize => const Size(720, 1280);
 
   @override
   Future<void> start() async => started = true;
@@ -121,6 +125,17 @@ void main() {
     );
     final decoration = frame.decoration! as BoxDecoration;
     expect(decoration.border!.top.color, AppColors.warning);
+
+    final preview = tester.getRect(
+      find.byKey(const ValueKey('fake-camera-preview')),
+    );
+    final expected = MrzScanRegion.pixelRegion(
+      preview.size,
+    ).shift(preview.topLeft);
+    expect(
+      tester.getRect(find.byKey(const ValueKey('mrz-scan-frame'))),
+      expected,
+    );
     semantics.dispose();
   });
 
@@ -168,30 +183,36 @@ void main() {
     expect(captured?.documentNumber, 'A01B23456');
   });
 
-  testWidgets('uygulama arka plandayken kamera durur ve dönüşte açılır', (
-    tester,
-  ) async {
-    final camera = _FakeCameraSession();
-
-    await pumpInApp(
+  for (final lifecycle in const [
+    AppLifecycleState.inactive,
+    AppLifecycleState.paused,
+    AppLifecycleState.detached,
+  ]) {
+    testWidgets('${lifecycle.name} kamerayı kapatır ve dönüşte yeniden açar', (
       tester,
-      LiveMrzScanner(
-        camera: camera,
-        onCaptured: (_) {},
-        onFailure: (_) {},
-        onManualEntry: () {},
-      ),
-    );
-    await tester.pump();
+    ) async {
+      final camera = _FakeCameraSession();
 
-    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
-    await tester.pump();
-    expect(camera.paused, isTrue);
+      await pumpInApp(
+        tester,
+        LiveMrzScanner(
+          camera: camera,
+          onCaptured: (_) {},
+          onFailure: (_) {},
+          onManualEntry: () {},
+        ),
+      );
+      await tester.pump();
 
-    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-    await tester.pump();
-    expect(camera.paused, isFalse);
-  });
+      tester.binding.handleAppLifecycleStateChanged(lifecycle);
+      await tester.pump();
+      expect(camera.paused, isTrue);
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+      expect(camera.paused, isFalse);
+    });
+  }
 
   testWidgets('kamera açılırken arka plana geçilirse akış duraklatılır', (
     tester,

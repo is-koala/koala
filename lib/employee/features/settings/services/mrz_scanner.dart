@@ -15,7 +15,7 @@ import 'package:koala/employee/features/settings/models/mrz_scan_session.dart';
 /// - **Ayrıştırma ve kontrol hanesi doğrulaması** [MrzKey]'de, saf Dart.
 ///
 /// Kamera kareleri yalnız bellekte işlenir. Bu servis dosya, ham kare veya
-/// kişisel veri logu üretmez; kadraj dışındaki OCR satırlarını da yok sayar.
+/// kişisel veri logu üretmez; bu sınıfa yalnız önceden kırpılmış kadraj girer.
 class MrzScanner {
   MrzScanner({
     TextRecognizer? recognizer,
@@ -61,47 +61,19 @@ class MrzScanner {
     );
   }
 
-  /// Canlı karenin yalnız ekrandaki MRZ kadrajına düşen satırlarını işler.
+  /// Canlı karenin OCR öncesi kırpılmış MRZ kadrajını işler.
   ///
   /// ML Kit kamera baytını bellekte okur; bu yol dosya üretmez. Kadrajın
   /// dışındaki ad, başlık ve belge metinleri TD1 adayına karışmaz.
   Future<MrzFrameObservation> analyzeLiveFrame(
     InputImage image, {
-    required Size uprightSize,
     required double meanLuminance,
   }) async {
     final recognized = await _process(image);
     return interpretFrame(
-      roiText: _textInsideScanRegion(recognized, uprightSize),
+      roiText: recognized.text,
       meanLuminance: meanLuminance,
     );
-  }
-
-  /// Kamera önizlemesindeki MRZ kutusunun normalize edilmiş dikey aralığı.
-  /// Kartın arka yüzü bu alana getirildiğinde üç TD1 satırı kutuyu doldurur.
-  static Rect scanRegionFor(Size size) => Rect.fromLTRB(
-    size.width * 0.06,
-    size.height * 0.42,
-    size.width * 0.94,
-    size.height * 0.72,
-  );
-
-  String _textInsideScanRegion(RecognizedText recognized, Size imageSize) {
-    final region = scanRegionFor(imageSize);
-    final lines =
-        recognized.blocks
-            .expand((block) => block.lines)
-            .where((line) => region.contains(line.boundingBox.center))
-            .toList()
-          ..sort((first, second) {
-            final vertical = first.boundingBox.top.compareTo(
-              second.boundingBox.top,
-            );
-            return vertical != 0
-                ? vertical
-                : first.boundingBox.left.compareTo(second.boundingBox.left);
-          });
-    return lines.map((line) => line.text).join('\n');
   }
 
   Future<RecognizedText> _process(InputImage image) async {

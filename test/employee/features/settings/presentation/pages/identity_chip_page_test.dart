@@ -37,6 +37,9 @@ class _LiveCameraSession implements MrzCameraSession {
   Stream<MrzFrameObservation> get observations => controller.stream;
 
   @override
+  Size? get previewSize => const Size(720, 1280);
+
+  @override
   Future<void> start() async {
     final pending = startCompleter;
     if (pending != null) await pending.future;

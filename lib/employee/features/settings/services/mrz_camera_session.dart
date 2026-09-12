@@ -5,6 +5,9 @@ import 'package:koala/employee/features/settings/models/mrz_scan_session.dart';
 abstract interface class MrzCameraSession {
   Stream<MrzFrameObservation> get observations;
 
+  /// Dik önizleme alanı; UI kadrajını kamera pikseliyle aynı geometriye bağlar.
+  Size? get previewSize;
+
   Widget buildPreview();
 
   Future<void> start();

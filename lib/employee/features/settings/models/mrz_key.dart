@@ -26,6 +26,7 @@ class MrzKey {
     required this.birthDate,
     required this.expiryDate,
     this.nationalIdentityNumber,
+    this.normalizedTd1,
   });
 
   /// Belge (seri) numarası; `<` dolgusu temizlenmiş hâli. TCKK'da dokuz
@@ -41,6 +42,10 @@ class MrzKey {
   /// olabilir; formu önden doldurmak dışında bir yerde güvenilmiyor —
   /// numaranın kartla eşleştiğini sunucu çipten okuyup kendisi doğruluyor.
   final String? nationalIdentityNumber;
+
+  /// Canlı taramada kararlılığı ölçen, düzeltilmiş üç TD1 satırının tamamı.
+  /// Elle girişte ham MRZ olmadığı için `null` kalır.
+  final String? normalizedTd1;
 
   /// Elle girişten gelen anahtar.
   ///
@@ -215,6 +220,7 @@ class MrzKey {
       birthDate: birthDate,
       expiryDate: expiryDate,
       nationalIdentityNumber: _optionalIdentityNumber(first),
+      normalizedTd1: '$first\n$second\n$third',
     );
   }
 

@@ -75,7 +75,7 @@ void main() {
     expect(observation.guidance, MrzScanGuidance.moveCloser);
   });
 
-  test('MRZ kadrajının dışındaki metin tarama sonucuna katılmaz', () async {
+  test('OCR öncesi kırpılmış karenin bütün metni ayrıştırılır', () async {
     const mrz =
         'I<TURA01B23456612345678950<<<<\n'
         '9804072F3001019TUR<<<<<<<<<<<8\n'
@@ -108,12 +108,10 @@ void main() {
 
     final observation = await scanner.analyzeLiveFrame(
       InputImage.fromFilePath('/tmp/kullanilmayan.jpg'),
-      uprightSize: const Size(1000, 1000),
       meanLuminance: 120,
     );
 
-    expect(observation.guidance, MrzScanGuidance.moveCloser);
-    expect(observation.key, isNull);
+    expect(observation.key?.documentNumber, 'A01B23456');
   });
 
   test('kadraj içindeki geçerli üç TD1 satırı anahtar üretir', () async {
@@ -154,7 +152,6 @@ void main() {
 
     final observation = await scanner.analyzeLiveFrame(
       InputImage.fromFilePath('/tmp/kullanilmayan.jpg'),
-      uprightSize: const Size(1000, 1000),
       meanLuminance: 120,
     );
 
@@ -174,7 +171,6 @@ void main() {
       scanner
           .analyzeLiveFrame(
             InputImage.fromFilePath('/tmp/kullanilmayan.jpg'),
-            uprightSize: const Size(1000, 1000),
             meanLuminance: 120,
           )
           .then<void>(
@@ -205,7 +201,6 @@ void main() {
       await expectLater(
         scanner.analyzeLiveFrame(
           InputImage.fromFilePath('/tmp/kullanilmayan.jpg'),
-          uprightSize: const Size(1000, 1000),
           meanLuminance: 120,
         ),
         throwsA(
@@ -234,7 +229,6 @@ void main() {
     await expectLater(
       scanner.analyzeLiveFrame(
         InputImage.fromFilePath('/tmp/kullanilmayan.jpg'),
-        uprightSize: const Size(1000, 1000),
         meanLuminance: 120,
       ),
       throwsA(

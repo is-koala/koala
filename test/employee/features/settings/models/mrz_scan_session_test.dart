@@ -42,4 +42,27 @@ void main() {
     expect(afterReset.isReady, isFalse);
     expect(stillWaiting.isReady, isFalse);
   });
+
+  test(
+    'aynı çip anahtarına rağmen değişen üçüncü satır kararlılığı sıfırlar',
+    () {
+      const first = 'I<TURA01B23456612345678950<<<<';
+      const second = '9804072F3001019TUR<<<<<<<<<<<8';
+      const ada = 'KAYA<<ADA<<<<<<<<<<<<<<<<<<<<<';
+      const ece = 'KAYA<<ECE<<<<<<<<<<<<<<<<<<<<<';
+      final adaKey = MrzKey.parseTd1('$first\n$second\n$ada')!;
+      final eceKey = MrzKey.parseTd1('$first\n$second\n$ece')!;
+      final session = MrzScanSession(requiredStableFrames: 3);
+
+      session.observe(MrzFrameObservation.valid(adaKey));
+      session.observe(MrzFrameObservation.valid(adaKey));
+      final changed = session.observe(MrzFrameObservation.valid(eceKey));
+      final secondEce = session.observe(MrzFrameObservation.valid(eceKey));
+      final thirdEce = session.observe(MrzFrameObservation.valid(eceKey));
+
+      expect(changed.isReady, isFalse);
+      expect(secondEce.isReady, isFalse);
+      expect(thirdEce.isReady, isTrue);
+    },
+  );
 }

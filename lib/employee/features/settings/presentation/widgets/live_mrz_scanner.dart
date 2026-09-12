@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:koala/employee/features/settings/models/chip_read_failure.dart';
 import 'package:koala/employee/features/settings/models/mrz_key.dart';
+import 'package:koala/employee/features/settings/models/mrz_scan_region.dart';
 import 'package:koala/employee/features/settings/models/mrz_scan_session.dart';
 import 'package:koala/employee/features/settings/services/mrz_camera_session.dart';
 import 'package:koala/product/constants/app_colors.dart';
@@ -41,9 +42,6 @@ class LiveMrzScanner extends StatefulWidget {
 
 class _LiveMrzScannerState extends State<LiveMrzScanner>
     with WidgetsBindingObserver {
-  /// MRZ satırları kartın alt bölümünde yatay ve dar bir alan kaplıyor.
-  static const double _frameAspectRatio = 3.2;
-
   bool _started = false;
   bool _completed = false;
   late AppLifecycleState _lifecycleState;
@@ -162,49 +160,7 @@ class _LiveMrzScannerState extends State<LiveMrzScanner>
       child: Stack(
         fit: StackFit.expand,
         children: [
-          if (_started)
-            widget.camera.buildPreview()
-          else
-            const Center(child: CircularProgressIndicator()),
-          Align(
-            alignment: const Alignment(0, 0.15),
-            child: Padding(
-              padding: AppPadding.primaryHorizontal,
-              child: AspectRatio(
-                aspectRatio: _frameAspectRatio,
-                child: Semantics(
-                  container: true,
-                  excludeSemantics: true,
-                  label:
-                      'TCKK arka yüzündeki üç satırlık MRZ alanı için '
-                      'tarama çerçevesi',
-                  child: AnimatedContainer(
-                    key: const ValueKey('mrz-scan-frame'),
-                    duration: const Duration(milliseconds: 180),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: statusColor, width: 3),
-                      borderRadius: AppRadius.innerCircular,
-                    ),
-                    alignment: Alignment.topCenter,
-                    child: Container(
-                      padding: AppPadding.chip,
-                      decoration: BoxDecoration(
-                        color: statusColor,
-                        borderRadius: AppRadius.smallCircular,
-                      ),
-                      child: Text(
-                        'MRZ • 3 SATIR',
-                        style: context.textTheme.labelSmall?.copyWith(
-                          color: AppColors.onAccent,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
+          _buildCameraLayer(context, statusColor),
           Positioned(
             left: AppSizes.spaceMedium,
             right: AppSizes.spaceMedium,
@@ -244,6 +200,73 @@ class _LiveMrzScannerState extends State<LiveMrzScanner>
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildCameraLayer(BuildContext context, Color statusColor) {
+    if (!_started) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    final previewSize = widget.camera.previewSize;
+    if (previewSize == null || previewSize.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final surface = Size(constraints.maxWidth, constraints.maxHeight);
+        final fitted = applyBoxFit(BoxFit.contain, previewSize, surface);
+        final previewRect = Alignment.center.inscribe(
+          fitted.destination,
+          Offset.zero & surface,
+        );
+        final scanRect = MrzScanRegion.pixelRegion(
+          previewRect.size,
+        ).shift(previewRect.topLeft);
+
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            Positioned.fromRect(
+              rect: previewRect,
+              child: widget.camera.buildPreview(),
+            ),
+            Positioned.fromRect(
+              rect: scanRect,
+              child: Semantics(
+                container: true,
+                excludeSemantics: true,
+                label:
+                    'TCKK arka yüzündeki üç satırlık MRZ alanı için '
+                    'tarama çerçevesi',
+                child: AnimatedContainer(
+                  key: const ValueKey('mrz-scan-frame'),
+                  duration: const Duration(milliseconds: 180),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: statusColor, width: 3),
+                    borderRadius: AppRadius.innerCircular,
+                  ),
+                  alignment: Alignment.topCenter,
+                  child: Container(
+                    padding: AppPadding.chip,
+                    decoration: BoxDecoration(
+                      color: statusColor,
+                      borderRadius: AppRadius.smallCircular,
+                    ),
+                    child: Text(
+                      'MRZ • 3 SATIR',
+                      style: context.textTheme.labelSmall?.copyWith(
+                        color: AppColors.onAccent,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
