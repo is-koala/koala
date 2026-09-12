@@ -6,6 +6,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:koala/employee/features/company_detail/models/company.dart';
 import 'package:koala/product/models/gallery_image.dart';
 import 'package:koala/business/features/home/presentation/providers/b_company_provider.dart';
+import 'package:koala/employee/features/auth/presentation/company_identity_gate.dart';
+import 'package:koala/employee/features/auth/presentation/registration_routes.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -566,18 +568,32 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
 
   /// Şirketi olmayan işverenin gördüğü ekran.
   ///
-  /// TODO(backend): Şirket kurma akışı henüz yok. `POST /companies` multipart
-  /// bir istek (şirket bilgileri + logo) ve kullanıcının kimliğinin
-  /// doğrulanmış olmasını şart koşuyor; dosya seçici de gerektirdiği için
-  /// ayrı bir ekran olarak planlanmalı.
+  /// Bireysel devam eden işveren şirketini buradan kuruyor; kayıt akışındaki
+  /// formun aynısı açılıyor ve o form kaydedince sağlayıcıları tazeleyip geri
+  /// dönüyor, bu ekran da yeni şirketi çiziyor.
   Widget _noCompanyState() {
-    return const EmptyState(
+    return EmptyState(
       icon: AppIcons.building,
       title: 'Kayıtlı firmanız yok',
       description:
-          'Bireysel işveren olarak ilan yayınlıyorsunuz. Firma kaydı '
-          'oluşturma uygulamaya henüz eklenmedi.',
+          'Bireysel işveren olarak ilan yayınlıyorsunuz. Şirket adına ilan '
+          'vermek için firma kaydı oluşturabilirsiniz.',
+      action: OutlinedButton(
+        onPressed: _createCompany,
+        child: const Text('Firma Kaydı Oluştur'),
+      ),
     );
+  }
+
+  /// Şirket kurma formunu açar.
+  ///
+  /// `POST /companies` doğrulanmamış kullanıcıyı reddettiği için form, kimlik
+  /// kapısından geçmeden açılmıyor; vazgeçen kullanıcı burada kalıyor.
+  Future<void> _createCompany() async {
+    final verified = await CompanyIdentityGate.ensureVerified(context);
+    if (!verified || !mounted) return;
+
+    await context.push(RegistrationRoutes.companyInformations);
   }
 
   /// Neden bazı alanların kapalı olduğunu anlatan kutu.
