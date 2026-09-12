@@ -46,8 +46,8 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
   /// Kapaktaki şirket logosunun kenar uzunluğu.
   static const double _logoSize = 80;
 
-  /// Eylem butonlarının yüksekliği; sayfa butonlarından alçak çünkü yan
-  /// yana iki tane duruyorlar.
+  /// Takip düğmesinin yüksekliği; kapak altındaki tek eylem olduğu için
+  /// tam genişlikte durur.
   static const double _actionButtonHeight = 48;
 
   /// Kapak üstündeki tür rozetinin zemin opaklığı.
@@ -212,13 +212,7 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
       child: Container(
         padding: AppPadding.primaryAll,
         color: context.backgroundColor,
-        child: Row(
-          children: [
-            Expanded(child: _followButton(company)),
-            const SizedBox(width: AppSizes.space),
-            Expanded(child: _messageButton(company)),
-          ],
-        ),
+        child: _followButton(company),
       ),
     );
   }
@@ -247,25 +241,6 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
             side: company.isFollowing
                 ? BorderSide(color: context.dividerColor)
                 : BorderSide.none,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _messageButton(Company company) {
-    return SizedBox(
-      height: _actionButtonHeight,
-      child: OutlinedButton.icon(
-        onPressed: openChat,
-        icon: const AppIcon(AppIcons.message, size: AppSizes.iconSmall),
-        label: const Text('Mesaj At'),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: context.accentColor,
-          side: BorderSide(color: context.accentColor, width: 1.5),
-          textStyle: context.textTheme.labelLarge,
-          shape: const RoundedRectangleBorder(
-            borderRadius: AppRadius.innerCircular,
           ),
         ),
       ),
