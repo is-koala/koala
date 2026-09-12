@@ -1,11 +1,10 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:koala/employee/features/settings/models/chip_read_failure.dart';
 import 'package:koala/employee/features/settings/models/mrz_key.dart';
+import 'package:koala/employee/features/settings/models/mrz_scan_session.dart';
 
 /// Kimlik kartının **arka yüzündeki** MRZ'yi kamerayla okur.
 ///
@@ -15,25 +14,20 @@ import 'package:koala/employee/features/settings/models/mrz_key.dart';
 ///   sık yapılan hata.
 /// - **Ayrıştırma ve kontrol hanesi doğrulaması** [MrzKey]'de, saf Dart.
 ///
-/// Görüntü `image_picker` ile alınıyor. Yeni bir kamera paketi eklenmedi:
-/// `image_picker` zaten bağımlılık listesinde ve tek karelik bir çekim bu
-/// akış için yeterli — canlı akış taraması ayrı bir iş.
+/// Kamera kareleri yalnız bellekte işlenir. Bu servis dosya, ham kare veya
+/// kişisel veri logu üretmez; kadraj dışındaki OCR satırlarını da yok sayar.
 class MrzScanner {
   MrzScanner({
-    ImagePicker? picker,
     TextRecognizer? recognizer,
     this.recognitionTimeout = const Duration(seconds: 30),
-    bool? usesDownloadableModel,
-  }) : _picker = picker ?? ImagePicker(),
-       _recognizer =
-           recognizer ?? TextRecognizer(script: TextRecognitionScript.latin),
-       _usesDownloadableModel =
-           usesDownloadableModel ??
-           defaultTargetPlatform == TargetPlatform.android;
+  }) : _recognizer =
+           recognizer ?? TextRecognizer(script: TextRecognitionScript.latin);
 
-  final ImagePicker _picker;
   final TextRecognizer _recognizer;
-  final bool _usesDownloadableModel;
+
+  /// Bu seviyenin altındaki görüntüde küçük MRZ karakterleri güvenilir
+  /// ayrışmadığı için kullanıcıdan ışığı artırmasını istiyoruz.
+  static const double minimumMeanLuminance = 48;
 
   /// Play Services modelinin ilk kullanımda hazırlanmasını bekleme sınırı.
   ///
@@ -41,42 +35,78 @@ class MrzScanner {
   /// indirmeye alan tanırken kullanıcıyı sonsuz yüklemede bırakmaz.
   final Duration recognitionTimeout;
 
-  /// Kartın arka yüzünü çekip MRZ'yi ayrıştırır.
-  ///
-  /// Kullanıcı çekimden vazgeçerse `null` döner — bu bir hata değil.
-  /// Okuma yapılıp da MRZ çıkarılamazsa [ChipReadException] yükselir
-  /// ([ChipReadFailure.mrzUnreadable]); kontrol hanesi tutmayan bir tarama
-  /// da buraya düşer, çünkü yanlış anahtarla çipe gitmek kullanıcıya
-  /// anlaşılmaz bir "kart okunamadı" gösterirdi.
-  Future<MrzKey?> scanCardBack() async {
-    final XFile? photo;
-    try {
-      photo = await _picker.pickImage(
-        source: ImageSource.camera,
-        // Arka kamera: kart telefonun arkasına tutuluyor.
-        preferredCameraDevice: CameraDevice.rear,
-        // MRZ küçük punto; küçültmek satırları okunmaz hâle getiriyor, o
-        // yüzden çözünürlük kırpılmıyor.
-        imageQuality: 100,
-      );
-    } on Object catch (error) {
-      throw ChipReadException(ChipReadFailure.cameraDenied, cause: error);
+  /// OCR'ın yalnız kadraj içinden ürettiği metni eyleme dönük sonuca çevirir.
+  MrzFrameObservation interpretFrame({
+    required String roiText,
+    required double meanLuminance,
+  }) {
+    if (meanLuminance < minimumMeanLuminance) {
+      return const MrzFrameObservation.invalid(MrzScanGuidance.improveLighting);
     }
 
-    if (photo == null) return null;
-    return recognize(photo.path);
+    final key = MrzKey.parseTd1(roiText);
+    if (key != null) return MrzFrameObservation.valid(key);
+
+    // En az bir MRZ satırına benzeyen uzunluk ve dolgu işareti varsa kart
+    // kadrajda ama kare henüz kararlı değildir. Hiç iz yoksa daha çok alan
+    // kaplaması için yaklaştırmak, aynı yerde beklemekten daha yararlıdır.
+    final compact = roiText.toUpperCase().replaceAll(
+      RegExp(r'[^A-Z0-9<«‹〈]'),
+      '',
+    );
+    final hasMrzTrace =
+        compact.length >= 30 && RegExp(r'[<«‹〈]').hasMatch(compact);
+    return MrzFrameObservation.invalid(
+      hasMrzTrace ? MrzScanGuidance.holdSteady : MrzScanGuidance.moveCloser,
+    );
   }
 
-  /// Verilen görüntüden MRZ'yi çıkarır.
+  /// Canlı karenin yalnız ekrandaki MRZ kadrajına düşen satırlarını işler.
   ///
-  /// Ayrı bir metot çünkü tarama yolunun çekim dışındaki yarısı budur ve
-  /// hazır bir dosyayla da çağrılabilmesi gerekiyor.
-  Future<MrzKey> recognize(String imagePath) async {
-    final RecognizedText recognized;
+  /// ML Kit kamera baytını bellekte okur; bu yol dosya üretmez. Kadrajın
+  /// dışındaki ad, başlık ve belge metinleri TD1 adayına karışmaz.
+  Future<MrzFrameObservation> analyzeLiveFrame(
+    InputImage image, {
+    required Size uprightSize,
+    required double meanLuminance,
+  }) async {
+    final recognized = await _process(image);
+    return interpretFrame(
+      roiText: _textInsideScanRegion(recognized, uprightSize),
+      meanLuminance: meanLuminance,
+    );
+  }
+
+  /// Kamera önizlemesindeki MRZ kutusunun normalize edilmiş dikey aralığı.
+  /// Kartın arka yüzü bu alana getirildiğinde üç TD1 satırı kutuyu doldurur.
+  static Rect scanRegionFor(Size size) => Rect.fromLTRB(
+    size.width * 0.06,
+    size.height * 0.42,
+    size.width * 0.94,
+    size.height * 0.72,
+  );
+
+  String _textInsideScanRegion(RecognizedText recognized, Size imageSize) {
+    final region = scanRegionFor(imageSize);
+    final lines =
+        recognized.blocks
+            .expand((block) => block.lines)
+            .where((line) => region.contains(line.boundingBox.center))
+            .toList()
+          ..sort((first, second) {
+            final vertical = first.boundingBox.top.compareTo(
+              second.boundingBox.top,
+            );
+            return vertical != 0
+                ? vertical
+                : first.boundingBox.left.compareTo(second.boundingBox.left);
+          });
+    return lines.map((line) => line.text).join('\n');
+  }
+
+  Future<RecognizedText> _process(InputImage image) async {
     try {
-      recognized = await _recognizer
-          .processImage(InputImage.fromFilePath(imagePath))
-          .timeout(recognitionTimeout);
+      return await _recognizer.processImage(image).timeout(recognitionTimeout);
     } on TimeoutException catch (error) {
       throw ChipReadException(ChipReadFailure.ocrTimedOut, cause: error);
     } on PlatformException catch (error) {
@@ -92,19 +122,6 @@ class MrzScanner {
     } on Object catch (error) {
       throw ChipReadException(ChipReadFailure.mrzUnreadable, cause: error);
     }
-
-    if (recognized.text.trim().isEmpty && _usesDownloadableModel) {
-      // İndirilebilir Android modeli kurulurken ilk istek boş sonuç verebilir.
-      // Eklenti bu durumu boş bir görüntüden ayırmadığı için yanlış bir kesinlik
-      // vermek yerine kullanıcıya iki kurtarma yolunu da sunuyoruz.
-      throw const ChipReadException(ChipReadFailure.ocrUnavailableOrUnreadable);
-    }
-
-    final key = MrzKey.parseTd1(recognized.text);
-    if (key == null) {
-      throw const ChipReadException(ChipReadFailure.mrzUnreadable);
-    }
-    return key;
   }
 
   /// Eklenti bütün ML Kit hatalarını aynı `TextRecognizerError` koduyla

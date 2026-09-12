@@ -5,10 +5,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
 import 'package:koala/employee/features/settings/models/chip_read_failure.dart';
-import 'package:koala/employee/features/settings/models/mrz_key.dart';
+import 'package:koala/employee/features/settings/models/mrz_scan_session.dart';
 import 'package:koala/employee/features/settings/presentation/pages/identity_chip_page.dart';
 import 'package:koala/employee/features/settings/services/chip_reader.dart';
-import 'package:koala/employee/features/settings/services/mrz_scanner.dart';
+import 'package:koala/employee/features/settings/services/mrz_camera_session.dart';
 import 'package:koala/product/theme/theme.dart';
 
 import '../../../../../support/fake_api.dart';
@@ -18,24 +18,42 @@ class _AvailableChipReader extends ChipReader {
   Future<NfcAvailability> availability() async => NfcAvailability.available;
 }
 
-class _UnavailableModelScanner extends MrzScanner {
+class _LiveCameraSession implements MrzCameraSession {
+  _LiveCameraSession({this.startCompleter});
+
+  final StreamController<MrzFrameObservation> controller =
+      StreamController<MrzFrameObservation>.broadcast();
+  final Completer<void>? startCompleter;
+  bool started = false;
+  bool disposed = false;
+
   @override
-  Future<MrzKey?> scanCardBack() async {
-    throw const ChipReadException(ChipReadFailure.ocrModelUnavailable);
+  Widget buildPreview() => const ColoredBox(
+    key: ValueKey('live-camera-preview'),
+    color: Colors.black,
+  );
+
+  @override
+  Stream<MrzFrameObservation> get observations => controller.stream;
+
+  @override
+  Future<void> start() async {
+    final pending = startCompleter;
+    if (pending != null) await pending.future;
+    started = true;
   }
 
   @override
-  Future<void> dispose() async {}
-}
-
-class _PendingModelScanner extends MrzScanner {
-  final Completer<MrzKey?> pending = Completer<MrzKey?>();
+  Future<void> pause() async {}
 
   @override
-  Future<MrzKey?> scanCardBack() => pending.future;
+  Future<void> resume() async {}
 
   @override
-  Future<void> dispose() async {}
+  Future<void> dispose() async {
+    disposed = true;
+    await controller.close();
+  }
 }
 
 /// Testte NFC eklentisinin yerli tarafı yok, yani `nfcAvailability` çağrısı
@@ -98,6 +116,33 @@ void main() {
     expect(find.textContaining('elle girebilirsin'), findsOneWidget);
   });
 
+  testWidgets('tarama uygulama içindeki canlı arka kamerayı açar', (
+    tester,
+  ) async {
+    final api = FakeApi(
+      handler: (_) => const FakeApiResponse(
+        statusCode: 200,
+        body: {'success': true, 'data': 'q83vEjRWeJA='},
+      ),
+    );
+    final camera = _LiveCameraSession();
+
+    await pumpPage(
+      tester,
+      page: IdentityChipPage(
+        userService: UserService.withClient(api.client),
+        chipReader: _AvailableChipReader(),
+        mrzCamera: camera,
+      ),
+    );
+    await tester.tap(find.text('Kartın Arka Yüzünü Tara'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(camera.started, isTrue);
+    expect(find.byKey(const ValueKey('live-camera-preview')), findsOneWidget);
+  });
+
   testWidgets('model hazırlanamazsa nedenini ve elle giriş yolunu gösterir', (
     tester,
   ) async {
@@ -108,15 +153,20 @@ void main() {
       ),
     );
 
+    final camera = _LiveCameraSession();
     await pumpPage(
       tester,
       page: IdentityChipPage(
         userService: UserService.withClient(api.client),
         chipReader: _AvailableChipReader(),
-        mrzScanner: _UnavailableModelScanner(),
+        mrzCamera: camera,
       ),
     );
     await tester.tap(find.text('Kartın Arka Yüzünü Tara'));
+    await tester.pump();
+    camera.controller.addError(
+      const ChipReadException(ChipReadFailure.ocrModelUnavailable),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Metin tanıma modeli hazırlanamadı'), findsOneWidget);
@@ -124,49 +174,48 @@ void main() {
     expect(find.text('Bilgileri Elle Doğrula'), findsOneWidget);
   });
 
-  testWidgets('OCR sürerken modelin hazırlandığını gösterir', (tester) async {
+  testWidgets('kamera açılırken hazırlık durumunu gösterir', (tester) async {
     final api = FakeApi(
       handler: (_) => const FakeApiResponse(
         statusCode: 200,
         body: {'success': true, 'data': 'q83vEjRWeJA='},
       ),
     );
-    final scanner = _PendingModelScanner();
+    final pending = Completer<void>();
+    final camera = _LiveCameraSession(startCompleter: pending);
 
     await pumpPage(
       tester,
       page: IdentityChipPage(
         userService: UserService.withClient(api.client),
         chipReader: _AvailableChipReader(),
-        mrzScanner: scanner,
+        mrzCamera: camera,
       ),
     );
     await tester.tap(find.text('Kartın Arka Yüzünü Tara'));
     await tester.pump();
 
-    expect(find.text('Metin tanıma modeli hazırlanıyor'), findsOneWidget);
-    expect(find.textContaining('internet bağlantını açık tut'), findsOneWidget);
+    expect(find.text('Kamera hazırlanıyor'), findsOneWidget);
 
-    scanner.pending.complete(null);
+    pending.complete();
     await tester.pumpAndSettle();
   });
 
-  testWidgets('geç tamamlanan tarama kapanmış sayfayı güncellemez', (
-    tester,
-  ) async {
+  testWidgets('geç açılan kamera kapanmış sayfayı güncellemez', (tester) async {
     final api = FakeApi(
       handler: (_) => const FakeApiResponse(
         statusCode: 200,
         body: {'success': true, 'data': 'q83vEjRWeJA='},
       ),
     );
-    final scanner = _PendingModelScanner();
+    final pending = Completer<void>();
+    final camera = _LiveCameraSession(startCompleter: pending);
     final router = await pumpPage(
       tester,
       page: IdentityChipPage(
         userService: UserService.withClient(api.client),
         chipReader: _AvailableChipReader(),
-        mrzScanner: scanner,
+        mrzCamera: camera,
       ),
     );
 
@@ -175,16 +224,11 @@ void main() {
     router.pop();
     await tester.pumpAndSettle();
 
-    scanner.pending.complete(
-      MrzKey.manual(
-        documentNumber: 'A12B34567',
-        birthDate: DateTime(1990, 1, 1),
-        expiryDate: DateTime(2030, 1, 1),
-      ),
-    );
+    pending.complete();
     await tester.pump();
 
     expect(tester.takeException(), isNull);
+    expect(camera.disposed, isTrue);
     expect(find.text('kimlik formu'), findsOneWidget);
   });
 

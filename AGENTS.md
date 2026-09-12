@@ -33,6 +33,8 @@ Flutter 3.47.1 (stable), Dart SDK `^3.8.1`. The font is Poppins.
 
 > `image_picker` and `url_launcher` were added on the user's explicit approval, both from `flutter/packages`. The first picks a company logo from the gallery, the second opens an applicant's CV. `image_picker` brought one native change with it: `NSPhotoLibraryUsageDescription` in `ios/Runner/Info.plist` (Android needs nothing — the gallery goes through the system photo picker).
 
+> `camera` was added on the user's explicit approval for the TCKK MRZ flow. The official `flutter/packages` plugin supplies a live rear-camera preview; MRZ frames stay in memory, one frame is analysed at a time, and the flow creates neither image files nor frame logs.
+
 ---
 
 ## Commands
@@ -527,7 +529,7 @@ This is the product pipeline and how much of it the server actually enforces tod
 >
 > **What replaced it is built but not switched on yet, deliberately.** Chip verification shipped behind `IDENTITY_PASSIVE_AUTH_ENABLED`, which defaults to `false` — the backend developer left it off on purpose, because turning it on before any client sends chip evidence would lock everyone out. With the flag off, `verifyChipEvidence` returns immediately and the server writes what the request contains, so a hand-typed TCKN becomes `identityVerified`; uniqueness (`TC_IDENTITY_NUMBER_ALREADY_IN_USE`, `409`) is the only guard in the meantime. Both sides know this and the flag flips once the app sends `sod`/`dg1`.
 >
-> **The NFC work is deliberately deferred** — the user plans to pick it up later, so do not start it, and do not treat the current identity screen as a bug. It is the agreed interim state.
+> **The NFC client and live MRZ capture are implemented.** The identity-chip page reads the TCKK back through a framed live camera stream, requires a stable valid TD1 result, then opens the NFC session. The server flag `IDENTITY_PASSIVE_AUTH_ENABLED` still defaults to `false`; enabling that production gate remains a separate cutover decision after real-device evidence is accepted.
 
 1. **Sign-up is deliberately thin.** `POST /auth/start-registration` takes only `firstName`, `lastName`, `email`, `isEmployer`. The emailed token goes to `POST /auth/verify-registration-token`, then `POST /auth/complete-registration` sets the password and records the legal consents. No identity, no address, no IBAN. ✓
 2. **Browsing needs no account at all.** `GET /jobs`, `GET /jobs/{jobId}` and the job/company image endpoints are `permitAll` in `SecurityConfig`, so search works before login. Nothing about discovery has to sit behind sign-up. ✓

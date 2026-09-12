@@ -8,8 +8,8 @@ enum IdentityChipStage {
   /// MRZ okunamadığında (ya da kullanıcı istediğinde) üç kısa alan.
   manual,
 
-  /// Fotoğraftaki MRZ ve gerekirse paketlenmeyen Android modeli hazırlanıyor.
-  recognizing,
+  /// Arka kameradaki MRZ canlı ve kararlı biçimde aranıyor.
+  scanning,
 
   /// Kart okunuyor.
   reading,
@@ -20,8 +20,8 @@ enum IdentityChipStage {
 
 abstract class IdentityChipPagemodel extends State<IdentityChipPage> {
   late final UserService _userService;
-  late final MrzScanner _scanner;
   late final ChipReader _reader;
+  MrzCameraSession? _liveCamera;
 
   final TextEditingController documentNumber = TextEditingController();
 
@@ -48,6 +48,9 @@ abstract class IdentityChipPagemodel extends State<IdentityChipPage> {
   ChipReadFailure? failure;
   ChipReadStep? readStep;
 
+  MrzCameraSession get liveCamera =>
+      _liveCamera ??= widget.mrzCamera ?? DeviceMrzCameraSession();
+
   /// Hatadan sonra "Tekrar Dene" kullanıcıyı geldiği adıma döndürsün diye.
   IdentityChipStage _retryStage = IdentityChipStage.intro;
 
@@ -55,7 +58,6 @@ abstract class IdentityChipPagemodel extends State<IdentityChipPage> {
   void initState() {
     super.initState();
     _userService = widget.userService ?? UserService();
-    _scanner = widget.mrzScanner ?? MrzScanner();
     _reader = widget.chipReader ?? ChipReader();
     _prepare();
   }
@@ -63,8 +65,6 @@ abstract class IdentityChipPagemodel extends State<IdentityChipPage> {
   @override
   void dispose() {
     documentNumber.dispose();
-    // Yerli metin tanıyıcı kapanmazsa bellekte kalıyor.
-    unawaited(_scanner.dispose());
     super.dispose();
   }
 
@@ -108,26 +108,19 @@ abstract class IdentityChipPagemodel extends State<IdentityChipPage> {
   /// Kartın arka yüzünü tarar, sonra çipe gider.
   Future<void> scanAndRead() async {
     _retryStage = IdentityChipStage.intro;
-    setState(() => stage = IdentityChipStage.recognizing);
+    setState(() => stage = IdentityChipStage.scanning);
+  }
 
-    final MrzKey? key;
-    try {
-      key = await _scanner.scanCardBack();
-    } on ChipReadException catch (error) {
-      if (!mounted) return;
-      _fail(error.reason);
-      return;
-    }
+  void onLiveMrzCaptured(MrzKey key) {
+    // Widget sahneden çıkarken kendi oturumunu kapatır; sonraki denemede
+    // kapatılmış kamerayı yeniden kullanmamak için referansı bırakıyoruz.
+    _liveCamera = null;
+    unawaited(_read(key));
+  }
 
-    if (!mounted) return;
-
-    // Kullanıcı çekimden vazgeçti; hata değil, ekran olduğu gibi kalıyor.
-    if (key == null) {
-      setState(() => stage = IdentityChipStage.intro);
-      return;
-    }
-
-    await _read(key);
+  void onLiveMrzFailure(ChipReadFailure reason) {
+    _liveCamera = null;
+    _fail(reason);
   }
 
   /// Elle girilen üç alanla çipe gider.
@@ -197,6 +190,7 @@ abstract class IdentityChipPagemodel extends State<IdentityChipPage> {
   }
 
   void openManualEntry() {
+    _liveCamera = null;
     setState(() {
       failure = null;
       stage = IdentityChipStage.manual;

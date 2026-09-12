@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:koala/employee/features/settings/models/chip_read_failure.dart';
+import 'package:koala/employee/features/settings/models/mrz_scan_session.dart';
 import 'package:koala/employee/features/settings/services/mrz_scanner.dart';
 
 class _PendingTextRecognizer extends TextRecognizer {
@@ -40,7 +42,125 @@ class _EmptyTextRecognizer extends TextRecognizer {
   Future<void> close() async {}
 }
 
+class _StaticTextRecognizer extends TextRecognizer {
+  _StaticTextRecognizer(this.result);
+
+  final RecognizedText result;
+
+  @override
+  Future<RecognizedText> processImage(InputImage inputImage) async => result;
+
+  @override
+  Future<void> close() async {}
+}
+
 void main() {
+  test('karanlık kare kullanıcıyı ışığı artırmaya yönlendirir', () {
+    final scanner = MrzScanner(recognizer: _EmptyTextRecognizer());
+
+    final observation = scanner.interpretFrame(roiText: '', meanLuminance: 24);
+
+    expect(observation.guidance, MrzScanGuidance.improveLighting);
+    expect(observation.key, isNull);
+  });
+
+  test('kadrajda MRZ izi yoksa kullanıcı kartı yaklaştırır', () {
+    final scanner = MrzScanner(recognizer: _EmptyTextRecognizer());
+
+    final observation = scanner.interpretFrame(
+      roiText: 'TÜRKİYE CUMHURİYETİ',
+      meanLuminance: 120,
+    );
+
+    expect(observation.guidance, MrzScanGuidance.moveCloser);
+  });
+
+  test('MRZ kadrajının dışındaki metin tarama sonucuna katılmaz', () async {
+    const mrz =
+        'I<TURA01B23456612345678950<<<<\n'
+        '9804072F3001019TUR<<<<<<<<<<<8\n'
+        'KAYA<<ADA<<<<<<<<<<<<<<<<<<<<<';
+    final outside = TextBlock(
+      text: mrz,
+      lines: mrz
+          .split('\n')
+          .map(
+            (text) => TextLine(
+              text: text,
+              elements: const [],
+              boundingBox: const Rect.fromLTWH(20, 20, 900, 30),
+              recognizedLanguages: const [],
+              cornerPoints: const <Point<int>>[],
+              confidence: 1,
+              angle: 0,
+            ),
+          )
+          .toList(),
+      boundingBox: const Rect.fromLTWH(20, 20, 900, 110),
+      recognizedLanguages: const [],
+      cornerPoints: const <Point<int>>[],
+    );
+    final scanner = MrzScanner(
+      recognizer: _StaticTextRecognizer(
+        RecognizedText(text: mrz, blocks: [outside]),
+      ),
+    );
+
+    final observation = await scanner.analyzeLiveFrame(
+      InputImage.fromFilePath('/tmp/kullanilmayan.jpg'),
+      uprightSize: const Size(1000, 1000),
+      meanLuminance: 120,
+    );
+
+    expect(observation.guidance, MrzScanGuidance.moveCloser);
+    expect(observation.key, isNull);
+  });
+
+  test('kadraj içindeki geçerli üç TD1 satırı anahtar üretir', () async {
+    const mrz =
+        'I<TURA01B23456612345678950<<<<\n'
+        '9804072F3001019TUR<<<<<<<<<<<8\n'
+        'KAYA<<ADA<<<<<<<<<<<<<<<<<<<<<';
+    final lines = <TextLine>[];
+    for (final (index, text) in mrz.split('\n').indexed) {
+      lines.add(
+        TextLine(
+          text: text,
+          elements: const [],
+          boundingBox: Rect.fromLTWH(20, 450 + (index * 45), 900, 30),
+          recognizedLanguages: const [],
+          cornerPoints: const <Point<int>>[],
+          confidence: 1,
+          angle: 0,
+        ),
+      );
+    }
+    final scanner = MrzScanner(
+      recognizer: _StaticTextRecognizer(
+        RecognizedText(
+          text: mrz,
+          blocks: [
+            TextBlock(
+              text: mrz,
+              lines: lines,
+              boundingBox: const Rect.fromLTWH(20, 450, 900, 120),
+              recognizedLanguages: const [],
+              cornerPoints: const <Point<int>>[],
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final observation = await scanner.analyzeLiveFrame(
+      InputImage.fromFilePath('/tmp/kullanilmayan.jpg'),
+      uprightSize: const Size(1000, 1000),
+      meanLuminance: 120,
+    );
+
+    expect(observation.key?.documentNumber, 'A01B23456');
+  });
+
   testWidgets('indirilemeyen OCR modeli taramayı sonsuza kadar bekletmez', (
     tester,
   ) async {
@@ -52,7 +172,11 @@ void main() {
 
     unawaited(
       scanner
-          .recognize('/tmp/kimlik.jpg')
+          .analyzeLiveFrame(
+            InputImage.fromFilePath('/tmp/kullanilmayan.jpg'),
+            uprightSize: const Size(1000, 1000),
+            meanLuminance: 120,
+          )
           .then<void>(
             (_) {},
             onError: (Object error, StackTrace stackTrace) {
@@ -64,42 +188,6 @@ void main() {
     await tester.pump();
 
     expect(failure?.reason, ChipReadFailure.ocrTimedOut);
-  });
-
-  test(
-    'ilk kullanımda boş OCR sonucu model ve görüntü ihtimallerini ayırmaz',
-    () async {
-      final scanner = MrzScanner(recognizer: _EmptyTextRecognizer());
-
-      await expectLater(
-        scanner.recognize('/tmp/kimlik.jpg'),
-        throwsA(
-          isA<ChipReadException>().having(
-            (error) => error.reason,
-            'sebep',
-            ChipReadFailure.ocrUnavailableOrUnreadable,
-          ),
-        ),
-      );
-    },
-  );
-
-  test('iOS boş OCR sonucunu Android model sorunu diye göstermez', () async {
-    final scanner = MrzScanner(
-      recognizer: _EmptyTextRecognizer(),
-      usesDownloadableModel: false,
-    );
-
-    await expectLater(
-      scanner.recognize('/tmp/kimlik.jpg'),
-      throwsA(
-        isA<ChipReadException>().having(
-          (error) => error.reason,
-          'sebep',
-          ChipReadFailure.mrzUnreadable,
-        ),
-      ),
-    );
   });
 
   test(
@@ -115,7 +203,11 @@ void main() {
       );
 
       await expectLater(
-        scanner.recognize('/tmp/kimlik.jpg'),
+        scanner.analyzeLiveFrame(
+          InputImage.fromFilePath('/tmp/kullanilmayan.jpg'),
+          uprightSize: const Size(1000, 1000),
+          meanLuminance: 120,
+        ),
         throwsA(
           isA<ChipReadException>().having(
             (error) => error.reason,
@@ -140,7 +232,11 @@ void main() {
     );
 
     await expectLater(
-      scanner.recognize('/tmp/kimlik.jpg'),
+      scanner.analyzeLiveFrame(
+        InputImage.fromFilePath('/tmp/kullanilmayan.jpg'),
+        uprightSize: const Size(1000, 1000),
+        meanLuminance: 120,
+      ),
       throwsA(
         isA<ChipReadException>().having(
           (error) => error.reason,
