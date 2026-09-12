@@ -4,9 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:koala/business/features/home/presentation/providers/b_company_provider.dart';
 import 'package:koala/business/features/home/services/b_company_service.dart';
+import 'package:koala/employee/features/auth/presentation/company_identity_gate.dart';
 import 'package:koala/employee/features/auth/presentation/registration_routes.dart';
 import 'package:koala/employee/features/company_detail/models/company.dart';
+import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -20,6 +23,7 @@ import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/canonical_address_form.dart';
 import 'package:koala/product/widgets/my_button.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
+import 'package:provider/provider.dart';
 
 part 'company_informations_pagemodel.dart';
 
