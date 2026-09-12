@@ -250,7 +250,7 @@ Every call takes a `currentUserId`, because the server does not say who the coun
 
 Three things worth knowing:
 
-- **A conversation always belongs to a job**, opened with `POST /jobs/{jobId}/conversation` (the employer passes `?workerId=` to pick the applicant). There is still no company-level conversation, so the company detail page's message button explains that instead of navigating — `TODO(backend)` in `company_detail_pagemodel.dart`.
+- **A conversation always belongs to a job**, opened with `POST /jobs/{jobId}/conversation` (the employer passes `?workerId=` to pick the applicant). There is no company-level conversation and none is offered on company detail — the misleading Mesaj At action was removed rather than left as a toast-only primary button (is-koala/koala#138).
 - **The server returns newest-first**; `MessagePage.fromJson` sorts ascending because the UI draws oldest to newest.
 - **Presence is a separate call.** `ConversationDto` carries no online flag; the list fetches it in one batch (`POST /presence/lookup`) and merges it in with `copyWith`. That call failing does not block the list — a missing green dot must not hide the conversations.
 
@@ -350,7 +350,7 @@ Things worth knowing:
 - **One request, not three.** `CompanyDto` carries `images`, `followerCount` and `following` inline, so the screen never calls `/companies/{id}/images` or asks whether the user follows the company. The gallery endpoint stays in `ApiPaths` for managing a gallery, not for reading one.
 - **The page takes an id, not a `Company`.** It is reached from a job, a past job or a chat, and none of those hold the full record. Following is optimistic — the button flips immediately and rolls back if the request fails, because both endpoints are idempotent and the outcome is predictable.
 
-> Company jobs are read with `GET /jobs?companyId=...` and every result page is collected, so equal company names and the first-page boundary cannot alter the list. Direct company messaging is the one remaining unavailable action: a conversation still always belongs to a job, and that button remains marked `TODO(backend)`.
+> Company jobs are read with `GET /jobs?companyId=...` and every result page is collected, so equal company names and the first-page boundary cannot alter the list. Company-level chat is not a product surface: company detail has no message action, and a conversation still always belongs to a job.
 
 **Experiences are editable.** `employee/features/profile/services/experience_service.dart` writes `POST|PUT|DELETE /users/me/experiences[/{id}]`; the list itself still arrives inside `/users/me`, so every change refreshes `UserProvider` rather than patching the local list. `PUT` replaces the whole record — a field left blank in the sheet is cleared on the server, which is why the form opens pre-filled. Dates go as `yyyy-MM-dd`: `toIso8601String` writes a time component and the server's `LocalDate` parser rejects it.
 
