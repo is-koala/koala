@@ -40,7 +40,10 @@ dependencies:
   # Media & dış bağlantı
   # image_picker: şirket logosu galeriden seçiliyor.
   # url_launcher: adayın özgeçmişi imzalı bir adrese yönlendiriliyor, tarayıcıda açılıyor.
+  # camera: TCKK MRZ'si uygulama içindeki canlı önizlemede, ham kareyi
+  # diske yazmadan ve yalnız kadraj alanını kullanarak okunuyor.
   image_picker: ^1.2.0
+  camera: ^0.12.1
   url_launcher: ^6.3.2
 
   # Kimlik kartı çipi (NFC) ve MRZ okuma

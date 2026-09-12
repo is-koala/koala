@@ -8,8 +8,10 @@ import 'package:koala/employee/features/settings/models/chip_read_failure.dart';
 import 'package:koala/employee/features/settings/models/identity_chip_result.dart';
 import 'package:koala/employee/features/settings/models/mrz_key.dart';
 import 'package:koala/employee/features/settings/presentation/widgets/identity_step_row.dart';
+import 'package:koala/employee/features/settings/presentation/widgets/live_mrz_scanner.dart';
 import 'package:koala/employee/features/settings/services/chip_reader.dart';
-import 'package:koala/employee/features/settings/services/mrz_scanner.dart';
+import 'package:koala/employee/features/settings/services/device_mrz_camera_session.dart';
+import 'package:koala/employee/features/settings/services/mrz_camera_session.dart';
 import 'package:koala/employee/features/settings/presentation/widgets/settings_hint.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -46,7 +48,7 @@ class IdentityChipPage extends StatefulWidget {
     super.key,
     this.userService,
     this.chipReader,
-    this.mrzScanner,
+    this.mrzCamera,
   });
 
   /// Testlerde gerçek API yerine sahte sunucuya bağlı servis kullanılabilir.
@@ -55,8 +57,8 @@ class IdentityChipPage extends StatefulWidget {
   /// Testlerde NFC platform sınırı cihaz olmadan çalıştırılabilir.
   final ChipReader? chipReader;
 
-  /// Testlerde kamera ve ML Kit platform sınırı cihaz olmadan çalıştırılabilir.
-  final MrzScanner? mrzScanner;
+  /// Canlı kamera sınırı testte yerli eklenti olmadan değiştirilebilir.
+  final MrzCameraSession? mrzCamera;
 
   @override
   State<IdentityChipPage> createState() => _IdentityChipPageState();
@@ -78,7 +80,7 @@ class _IdentityChipPageState extends IdentityChipPagemodel {
     return switch (stage) {
       IdentityChipStage.intro => _intro(),
       IdentityChipStage.manual => _manualForm(),
-      IdentityChipStage.recognizing => _recognizing(),
+      IdentityChipStage.scanning => _scanning(),
       IdentityChipStage.reading => _reading(),
       IdentityChipStage.failure => _failure(),
     };
@@ -96,7 +98,7 @@ class _IdentityChipPageState extends IdentityChipPagemodel {
         onPressed: canReadManually ? readManually : null,
         title: 'Kartı Okut',
       ),
-      IdentityChipStage.recognizing => null,
+      IdentityChipStage.scanning => null,
       IdentityChipStage.reading => null,
       IdentityChipStage.failure => null,
     };
@@ -161,35 +163,12 @@ class _IdentityChipPageState extends IdentityChipPagemodel {
     );
   }
 
-  Widget _recognizing() {
-    final isAndroid = Theme.of(context).platform == TargetPlatform.android;
-
-    return Padding(
-      padding: AppPadding.primaryAll,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const CircularProgressIndicator(),
-          const SizedBox(height: AppSizes.spaceLarge),
-          Text(
-            isAndroid
-                ? 'Metin tanıma modeli hazırlanıyor'
-                : 'Kartın arka yüzü okunuyor',
-            textAlign: TextAlign.center,
-            style: context.textTheme.titleSmall,
-          ),
-          const SizedBox(height: AppSizes.spaceSmall),
-          Text(
-            isAndroid
-                ? 'İlk taramadaysan internet bağlantını açık tut.'
-                : 'Bu işlem birkaç saniye sürebilir.',
-            textAlign: TextAlign.center,
-            style: context.textTheme.bodyMedium?.copyWith(
-              color: context.textSecondary,
-            ),
-          ),
-        ],
-      ),
+  Widget _scanning() {
+    return LiveMrzScanner(
+      camera: liveCamera,
+      onCaptured: onLiveMrzCaptured,
+      onFailure: onLiveMrzFailure,
+      onManualEntry: openManualEntry,
     );
   }
 
