@@ -6,6 +6,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:koala/employee/features/company_detail/models/company.dart';
 import 'package:koala/product/models/gallery_image.dart';
 import 'package:koala/business/features/home/presentation/providers/b_company_provider.dart';
+import 'package:koala/employee/features/auth/presentation/company_identity_gate.dart';
+import 'package:koala/employee/features/auth/presentation/registration_routes.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -72,11 +74,27 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final user = context.read<UserProvider>().user;
-      if (user != null) context.read<BCompanyProvider>().loadFor(user);
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  /// Kullanıcıyı, ardından şirketini çeker.
+  ///
+  /// Sıra zorunlu: hangi şirketin isteneceği `/users/me` yanıtındaki üyelik
+  /// listesinden çıkıyor. Kullanıcı daha okunmamışsa (ana sayfanın sessiz
+  /// yüklemesi düşmüş, ya da buraya doğrudan gelinmiş) önce o okunuyor;
+  /// yoksa ekran "firmanız yok" deyip şirketi olan işverene kurma düğmesi
+  /// gösterirdi.
+  Future<void> _load({bool force = false}) async {
+    if (!mounted) return;
+
+    final userProvider = context.read<UserProvider>();
+    if (userProvider.user == null) await userProvider.load(silent: true);
+
+    if (!mounted) return;
+    final user = userProvider.user;
+    if (user == null) return;
+
+    await context.read<BCompanyProvider>().loadFor(user, force: force);
   }
 
   @override
@@ -210,6 +228,7 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
 
   @override
   Widget build(BuildContext context) {
+    final userProvider = context.watch<UserProvider>();
     final provider = context.watch<BCompanyProvider>();
     final company = provider.company;
 
@@ -225,34 +244,39 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
               title: "Kaydet",
               isLoading: _isSaving,
             ),
-      body: _body(provider, company),
+      body: _body(userProvider, provider, company),
     );
   }
 
-  Widget _body(BCompanyProvider provider, Company? company) {
+  Widget _body(
+    UserProvider userProvider,
+    BCompanyProvider provider,
+    Company? company,
+  ) {
+    // Şirketin olup olmadığını `/users/me`'deki üyelik söylüyor, sağlayıcının
+    // varsayılan `null`'ı değil. Kullanıcı gelmeden karar verilmiyor.
+    final user = userProvider.user;
+    if (user == null) {
+      final userError = userProvider.errorMessage;
+      if (userError != null) return _errorState(userError);
+      return const Center(child: CircularProgressIndicator());
+    }
+
     if (provider.isLoading && company == null) {
       return const Center(child: CircularProgressIndicator());
     }
 
     final message = provider.errorMessage;
-    if (message != null && company == null) {
-      return EmptyState(
-        icon: AppIcons.alert,
-        title: 'Firma bilgileri alınamadı',
-        description: message,
-        action: OutlinedButton(
-          onPressed: () {
-            final user = context.read<UserProvider>().user;
-            if (user != null) {
-              context.read<BCompanyProvider>().loadFor(user, force: true);
-            }
-          },
-          child: const Text('Tekrar Dene'),
-        ),
-      );
-    }
+    if (message != null && company == null) return _errorState(message);
 
-    if (company == null) return _noCompanyState();
+    if (company == null) {
+      // Üyelik var ama şirket kaydı daha gelmedi (istek henüz atılmadı):
+      // bu "firmanız yok" değil, bekleme.
+      if (user.primaryCompany != null) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      return _noCompanyState();
+    }
 
     return SingleChildScrollView(
       child: Padding(
@@ -564,20 +588,48 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
     );
   }
 
+  /// Kullanıcı ya da şirket okunamadığında gösterilen ekran; yeniden deneme
+  /// ikisini de sırayla çekiyor.
+  Widget _errorState(String message) {
+    return EmptyState(
+      icon: AppIcons.alert,
+      title: 'Firma bilgileri alınamadı',
+      description: message,
+      action: OutlinedButton(
+        onPressed: () => _load(force: true),
+        child: const Text('Tekrar Dene'),
+      ),
+    );
+  }
+
   /// Şirketi olmayan işverenin gördüğü ekran.
   ///
-  /// TODO(backend): Şirket kurma akışı henüz yok. `POST /companies` multipart
-  /// bir istek (şirket bilgileri + logo) ve kullanıcının kimliğinin
-  /// doğrulanmış olmasını şart koşuyor; dosya seçici de gerektirdiği için
-  /// ayrı bir ekran olarak planlanmalı.
+  /// Bireysel devam eden işveren şirketini buradan kuruyor; kayıt akışındaki
+  /// formun aynısı açılıyor ve o form kaydedince sağlayıcıları tazeleyip geri
+  /// dönüyor, bu ekran da yeni şirketi çiziyor.
   Widget _noCompanyState() {
-    return const EmptyState(
+    return EmptyState(
       icon: AppIcons.building,
       title: 'Kayıtlı firmanız yok',
       description:
-          'Bireysel işveren olarak ilan yayınlıyorsunuz. Firma kaydı '
-          'oluşturma uygulamaya henüz eklenmedi.',
+          'Bireysel işveren olarak ilan yayınlıyorsunuz. Şirket adına ilan '
+          'vermek için firma kaydı oluşturabilirsiniz.',
+      action: OutlinedButton(
+        onPressed: _createCompany,
+        child: const Text('Firma Kaydı Oluştur'),
+      ),
     );
+  }
+
+  /// Şirket kurma formunu açar.
+  ///
+  /// `POST /companies` doğrulanmamış kullanıcıyı reddettiği için form, kimlik
+  /// kapısından geçmeden açılmıyor; vazgeçen kullanıcı burada kalıyor.
+  Future<void> _createCompany() async {
+    final verified = await CompanyIdentityGate.ensureVerified(context);
+    if (!verified || !mounted) return;
+
+    await context.push(RegistrationRoutes.companyInformations);
   }
 
   /// Neden bazı alanların kapalı olduğunu anlatan kutu.

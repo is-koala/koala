@@ -126,17 +126,53 @@ abstract class CompanyInformationsPagemodel
       );
 
       if (!mounted) return;
+      await _refreshMembership();
+
+      if (!mounted) return;
       AppToast.success(context, 'Şirket bilgileri başarıyla kaydedildi');
       final onSaved = widget.onSaved;
       if (onSaved != null) {
         onSaved();
+      } else if (context.canPop()) {
+        // Ayarlardan `push` ile açıldı: açan ekran tazelenmiş sağlayıcıyı
+        // zaten izliyor, yeni şirketi göstermesi için geri dönmek yetiyor.
+        context.pop(true);
       } else {
+        // Kayıt akışı: yığında bu formdan başka sayfa yok.
         context.go('/business/home');
       }
     } on ApiException catch (error) {
-      if (mounted) AppToast.error(context, error.message);
+      if (!mounted) return;
+
+      // Sunucu son sözü söylüyor: yerel bayrak doğrulanmış görünse de ret
+      // gelirse aynı onarım akışı açılıyor. Form arkada kalıyor, doğrulama
+      // bitince kullanıcı taslağıyla buraya dönüp yeniden kaydediyor.
+      if (CompanyIdentityGate.isIdentityRequired(error)) {
+        // Kutu ve kimlik ekranı açıkken düğme dönmesin.
+        setState(() => isSaving = false);
+        await CompanyIdentityGate.startVerification(context);
+        return;
+      }
+
+      AppToast.error(context, error.message);
     } finally {
       if (mounted) setState(() => isSaving = false);
     }
+  }
+
+  /// Yeni şirketin üyeliğini ve şirket kaydını sağlayıcılara işler.
+  ///
+  /// Üyelik listesi `/users/me`'de duruyor; tazelenmezse işveren ana sayfası
+  /// ve profil, kullanıcıyı hâlâ bireysel sanır. `BCompanyProvider` kimlik
+  /// çiftine göre önbellekliyor, yeni şirket kimliği için zorla okunuyor.
+  Future<void> _refreshMembership() async {
+    final userProvider = context.read<UserProvider>();
+    await userProvider.load(silent: true);
+
+    if (!mounted) return;
+    final user = userProvider.user;
+    if (user == null) return;
+
+    await context.read<BCompanyProvider>().loadFor(user, force: true);
   }
 }

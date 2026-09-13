@@ -47,7 +47,13 @@ void main() {
       // Kaynak OpenAPI belgesi (`KOALA_OPENAPI_PATH`) ya da kardeş
       // `koala-backend` içindeki `ErrorCategory.java` — aynı Dart dosyasındaki
       // ikinci bir liste değil (is-koala/koala#85).
-      final published = BackendErrorCategories.load();
+      late final Set<String> published;
+      try {
+        published = BackendErrorCategories.load();
+      } on StateError catch (error) {
+        markTestSkipped(error.message);
+        return;
+      }
 
       expect(
         mapping.keys.toSet(),

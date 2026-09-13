@@ -86,20 +86,31 @@ jobs:
       - name: Eksik ortamın sessiz API seçmediğini doğrula
         run: flutter test test/product/network/api_config_test.dart --reporter expanded
 
-      # Yayımlanan ErrorCategory kümesi (is-koala/koala#85). Canlı API yok;
-      # kardeş depo checkout'undaki Java/şema kaynağı okunuyor.
-      - name: Backend ErrorCategory kaynağını al
-        uses: actions/checkout@v4
-        with:
-          repository: is-koala/koala-backend
-          path: koala-backend
+      # GITHUB_TOKEN başka bir private depoyu okuyamaz (PR 144: Not Found).
+      # Aynı Pi'deki koala-backend işinin checkout'u ya da geliştirici ağacı
+      # varsa ona bağlanır; yoksa sözleşme testleri skip olur, suite durmaz.
+      - name: Backend sözleşmesini bağla
+        run: |
+          set -euo pipefail
+          java_rel='src/main/java/com/exskylab/koala/core/utilities/results/ErrorCategory.java'
+          candidates=(
+            "${GITHUB_WORKSPACE}/../koala-backend/koala-backend"
+            "${RUNNER_TOOL_CACHE}/koala-backend"
+            "${HOME}/Projects/koala/koala-backend"
+          )
+          for c in "${candidates[@]}"; do
+            if [ -f "$c/$java_rel" ]; then
+              echo "KOALA_BACKEND_ROOT=$(cd "$c" && pwd)" >> "$GITHUB_ENV"
+              echo "backend contract root: $c"
+              exit 0
+            fi
+          done
+          echo "koala-backend not beside this runner; category/code contract tests skip"
 
       # Staging testleri de gerçek runtime ortam seçimini kullanır.
       - name: Testleri çalıştır
         # Tek Pi runner'ında Flutter'ın kendi test paralelliğini ve microSD
         # yazma yükünü sınırlı tut; coverage bu iş akışının kalite kapısı değil.
-        env:
-          KOALA_BACKEND_ROOT: ${{ github.workspace }}/koala-backend
         run: flutter test --flavor staging --dart-define-from-file=config/staging.json --reporter expanded --concurrency=1
 
   build-android:
