@@ -107,10 +107,31 @@ public enum ErrorCategory {
       _writeJava(backend, const ['RESOURCE_NOT_FOUND', 'UNEXPECTED']);
       final mobile = Directory('${scratch.path}/koala-mobile')..createSync();
 
-      expect(BackendErrorCategories.load(from: mobile), {
+      expect(BackendErrorCategories.load(from: mobile, environment: const {}), {
         'RESOURCE_NOT_FOUND',
         'UNEXPECTED',
       });
+    });
+
+    test('from verilince üst atalardaki backend ağacına kaçmaz', () {
+      final ancestor = Directory('${scratch.path}/koala-backend')..createSync();
+      _writeJava(ancestor, const ['RESOURCE_NOT_FOUND']);
+      final nested = Directory('${scratch.path}/a/b/mobile')
+        ..createSync(recursive: true);
+
+      expect(
+        () => BackendErrorCategories.load(from: nested, environment: const {}),
+        throwsA(isA<StateError>()),
+      );
+    });
+
+    test('from verilince süreç ortamındaki KOALA_BACKEND_ROOT kullanılmaz', () {
+      final nested = Directory('${scratch.path}/lonely')..createSync();
+
+      expect(
+        () => BackendErrorCategories.load(from: nested),
+        throwsA(isA<StateError>()),
+      );
     });
 
     test('KOALA_OPENAPI_PATH Java dosyasından önce gelir', () {
@@ -152,7 +173,11 @@ public enum ErrorCategory {
           isA<StateError>().having(
             (error) => error.message,
             'message',
-            contains('KOALA_BACKEND_ROOT'),
+            allOf(
+              contains('KOALA_BACKEND_ROOT'),
+              contains('KOALA_OPENAPI_PATH'),
+              contains('koala-backend'),
+            ),
           ),
         ),
       );

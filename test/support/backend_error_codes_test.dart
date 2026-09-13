@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import 'backend_contract_root.dart';
 import 'backend_error_codes.dart';
 
 void main() {
@@ -90,6 +91,35 @@ case 'JOB_TEMPLATE_NOT_FOUND':
         ),
         {'JOB_ALERT_TOO_MANY'},
       );
+    });
+
+    test('from verilince üst atalardaki properties dosyasına kaçmaz', () {
+      final ancestor = Directory('${scratch.path}/koala-backend')..createSync();
+      File('${ancestor.path}/${BackendErrorCodes.propertiesRelativePath}')
+        ..parent.createSync(recursive: true)
+        ..writeAsStringSync('job.alert.too.many=quota\n');
+      File('${ancestor.path}/${BackendContractRoot.identityRelativePath}')
+        ..parent.createSync(recursive: true)
+        ..writeAsStringSync('public enum ErrorCategory { UNEXPECTED }');
+      final nested = Directory('${scratch.path}/a/b/mobile')
+        ..createSync(recursive: true);
+
+      expect(
+        () => BackendErrorCodes.load(from: nested, environment: const {}),
+        throwsA(isA<StateError>()),
+      );
+    });
+  });
+
+  group('paket kökü', () {
+    test('lib kaynaklarını çalışma dizini değil paket kökünden okur', () {
+      final original = Directory.current;
+      Directory.current = Directory('${original.path}/test/support');
+      try {
+        expect(BackendErrorCodes.routedCodesFromLib(), isNotEmpty);
+      } finally {
+        Directory.current = original;
+      }
     });
   });
 }

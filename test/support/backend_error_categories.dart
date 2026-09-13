@@ -1,17 +1,20 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'backend_contract_root.dart';
+
 /// Backend'in yayımladığı `ErrorCategory` kümesini okur.
 ///
-/// Önce `KOALA_OPENAPI_PATH` (OpenAPI belgesi), yoksa kardeş
-/// `koala-backend` checkout'undaki `ErrorCategory.java`. İkinci bir Dart
+/// Önce `KOALA_OPENAPI_PATH` (OpenAPI belgesi), yoksa
+/// [BackendContractRoot] üzerinden `ErrorCategory.java`. İkinci bir Dart
 /// listesi değil; Java/şema eklenince eşleme testi kırmızıya döner.
 class BackendErrorCategories {
-  static const javaRelativePath =
-      'src/main/java/com/exskylab/koala/core/utilities/results/ErrorCategory.java';
+  static const javaRelativePath = BackendContractRoot.identityRelativePath;
 
   static Set<String> load({Directory? from, Map<String, String>? environment}) {
-    final env = environment ?? Platform.environment;
+    final env =
+        environment ??
+        (from == null ? Platform.environment : const <String, String>{});
     final openApiPath = env['KOALA_OPENAPI_PATH'];
     if (openApiPath != null && openApiPath.isNotEmpty) {
       final file = File(openApiPath);
@@ -21,43 +24,19 @@ class BackendErrorCategories {
       return parseOpenApi(file.readAsStringSync());
     }
 
-    final root = resolveBackendRoot(from: from, environment: env);
+    final root = BackendContractRoot.resolve(
+      from: from,
+      environment: environment,
+    );
     final javaFile = File('${root.path}/$javaRelativePath');
     if (!javaFile.existsSync()) {
       throw StateError(
         'ErrorCategory.java bulunamadı: ${javaFile.path}. '
-        'KOALA_BACKEND_ROOT veya kardeş koala-backend checkout gerekli.',
+        'KOALA_BACKEND_ROOT, KOALA_OPENAPI_PATH veya kardeş '
+        'koala-backend fixture gerekli.',
       );
     }
     return parseJava(javaFile.readAsStringSync());
-  }
-
-  static Directory resolveBackendRoot({
-    Directory? from,
-    Map<String, String>? environment,
-  }) {
-    final env = environment ?? Platform.environment;
-    final fromEnv = env['KOALA_BACKEND_ROOT'] ?? env['KOALA_BACKEND_PATH'];
-    if (fromEnv != null && fromEnv.isNotEmpty) {
-      return Directory(fromEnv);
-    }
-
-    var dir = from ?? Directory.current;
-    for (var i = 0; i < 8; i++) {
-      if (_looksLikeBackend(dir)) return dir;
-      final nested = Directory('${dir.path}/koala-backend');
-      if (_looksLikeBackend(nested)) return nested;
-      final sibling = Directory('${dir.parent.path}/koala-backend');
-      if (_looksLikeBackend(sibling)) return sibling;
-      if (dir.parent.path == dir.path) break;
-      dir = dir.parent;
-    }
-
-    throw StateError(
-      'koala-backend bulunamadı (cwd: ${(from ?? Directory.current).path}). '
-      'KOALA_BACKEND_ROOT ile checkout yolunu verin veya '
-      '../koala-backend kardeş dizinini koyun.',
-    );
   }
 
   static Set<String> parseJava(String source) {
@@ -103,10 +82,6 @@ class BackendErrorCategories {
       throw StateError('OpenAPI belgesinde ErrorCategory enum listesi yok.');
     }
     return named;
-  }
-
-  static bool _looksLikeBackend(Directory dir) {
-    return File('${dir.path}/$javaRelativePath').existsSync();
   }
 
   static Object? _at(Object? node, List<String> path) {
