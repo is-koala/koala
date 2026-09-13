@@ -91,6 +91,33 @@ void main() {
 
       expect(address.toJson()['candidateToken'], 'opaque-candidate-token');
     });
+
+    test('pin koordinatını gövdeye altı ondalıkla yazar', () {
+      // Haritadan gelen ham `LatLng`; sunucu `@Digits(fraction = 6)` ile
+      // fazlasını reddediyor.
+      const address = AddressWrite(
+        countryId: 'country-1',
+        cityId: 'city-1',
+        districtId: 'district-1',
+        components: AddressComponents(
+          neighborhood: 'Caferağa Mahallesi',
+          thoroughfare: 'Moda Caddesi',
+          buildingNumber: '12',
+          postalCode: '34710',
+        ),
+        position: AddressPosition(
+          latitude: 41.01234567891,
+          longitude: 28.97654321098,
+          source: AddressPositionSource.userConfirmedPin,
+        ),
+      );
+
+      expect(address.toJson()['position'], {
+        'latitude': 41.012346,
+        'longitude': 28.976543,
+        'source': 'USER_CONFIRMED_PIN',
+      });
+    });
   });
 
   test('adres adayı iç referansları ve yapılandırılmış bileşenleri okur', () {

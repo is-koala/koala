@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:koala/product/models/canonical_address.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
+import 'package:koala/product/utils/coordinate_precision.dart';
 
 abstract interface class AddressSearchGateway {
   Future<AddressSearchSession> startSession();
@@ -60,11 +61,16 @@ class AddressSearchService implements AddressSearchGateway {
     );
   }
 
+  /// Pin koordinatını altı ondalığa yuvarlayarak gönderir; ham harita değeri
+  /// sunucunun `@Digits(fraction = 6)` kuralına takılıp 400 dönüyordu.
   @override
   Future<AddressCandidate> reverse(double latitude, double longitude) {
     return _apiClient.post<AddressCandidate>(
       ApiPaths.reverseAddressCandidate,
-      body: {'latitude': latitude, 'longitude': longitude},
+      body: {
+        'latitude': CoordinatePrecision.round6(latitude),
+        'longitude': CoordinatePrecision.round6(longitude),
+      },
       parse: (data) => AddressCandidate.fromJson(data as Map<String, dynamic>),
     );
   }

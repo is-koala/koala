@@ -1,3 +1,5 @@
+import 'package:koala/product/utils/coordinate_precision.dart';
+
 enum AddressPositionSource {
   autocompleteConfirmed('AUTOCOMPLETE_CONFIRMED'),
   reverseGeocodeConfirmed('REVERSE_GEOCODE_CONFIRMED'),
@@ -89,9 +91,12 @@ class AddressPosition {
     );
   }
 
+  /// Koordinat gövdeye altı ondalıkla yazılır: adres yazımı (`AddressWrite`)
+  /// ilan, şirket ve çalışan adresinin hepsinde bu yoldan geçiyor ve sunucu
+  /// `AddressPositionRequestDto` üzerinde `@Digits(fraction = 6)` uyguluyor.
   Map<String, dynamic> toJson() => {
-    'latitude': latitude,
-    'longitude': longitude,
+    'latitude': CoordinatePrecision.round6(latitude),
+    'longitude': CoordinatePrecision.round6(longitude),
     'source': source.code,
   };
 }
