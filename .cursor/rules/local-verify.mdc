@@ -1,10 +1,10 @@
 ---
-description: Doğrula bu Mac'te; CI Hetzner'de; Mac GitHub runner değil
+description: Doğrula bu Mac'te; GitHub PR testi koşmaz; Mac GitHub runner değil
 alwaysApply: true
 ---
 
 # Yerel doğrulama
 
-Ajanın kendi kapısı Yusuf'un Mac'inde: `flutter analyze --no-pub` ve `flutter test --flavor staging --dart-define-from-file=config/staging.json`. GitHub kuyruğunu bekleme.
+Ajanın kendi kapısı Yusuf'un Mac'inde: `flutter analyze --no-pub`, `flutter test --flavor staging --dart-define-from-file=config/staging.json` ve `dart format --output=none --set-exit-if-changed lib test`. GitHub kuyruğunu bekleme.
 
-Mac'i org GitHub Actions runner kaydetme. Store/APK üretim imajını Mac'ten GitHub'a runner diye basma. PR yeşil tiki `self-hosted` Hetzner'de kalır.
+Mac'i org GitHub Actions runner kaydetme. Store/APK üretim imajını Mac'ten GitHub'a runner diye basma. GitHub PR ve `main` push'ta kalite ve iOS derlemesi koşmaz. Hetzner `self-hosted` ve `macos-latest` yalnız `workflow_dispatch` (ve store için `mobile-v*` etiketi) ile kalır.
