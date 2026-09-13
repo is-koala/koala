@@ -34,6 +34,8 @@ Android sözleşmesi de iki taraflıdır: manifestte `http`/`https`, host ve yol
 
 Koala için sonuçlar:
 
+> 13 Eylül 2026 güncellemesi (#155): ayrı staging web'i kurulmadığı ve e-postalar `iskoala.com` ürettiği için staging bugün `iskoala.com` → `com.iskoala.koala.staging` eşlemesini kullanır; host `config/staging.json` `WEB_HOSTS` anahtarından gelir. Uygulama adımları `docs/android-app-links.md`.
+
 - Production eşlemesi `iskoala.com` → `com.iskoala.koala`; staging eşlemesi `staging.iskoala.com` → `com.iskoala.koala.staging` olmalıdır. `www.iskoala.com` manifestte yer alacaksa onun `assetlinks.json` dosyası da aynı hostta HTTPS/200 ile yönlendirmesiz sunulmalıdır. Android doğrulama rehberi hostlar arası yönlendirmeyi kabul etmiyor. [Android — Troubleshoot App Links](https://developer.android.com/training/app-links/troubleshoot)
 - `assetlinks.json` içindeki fingerprint, AAB'yi CI'ın yüklediği **upload key** sertifikası değil, kullanıcı cihazına kurulan APK'yı imzalayan **app signing key** sertifikasıdır. Play App Signing kullanıldığında yerel `keytool` çıktısı çoğu zaman farklıdır; doğru SHA-256 ve hazır Digital Asset Links JSON'u Play Console'daki App signing sayfasından alınmalıdır. [Android — Configure website associations](https://developer.android.com/training/app-links/configure-assetlinks)
 - Play App Signing iki anahtarı ayırır: geliştirici upload key'i saklar ve AAB'yi onunla imzalar; Google dağıtılan APK'ları app signing key ile imzalar. Private upload key CI sırrıdır; sertifika ve SHA-256 parmak izi gizli değildir. [Android — Sign your app](https://developer.android.com/studio/publish/app-signing)

@@ -2,9 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- config/staging.json WEB_HOSTS ile birebir: staging bugün production
+	     web'ini kullanıyor, ayrı staging alan adı yok (#155). Apple üyeliği
+	     gelene kadar etkisiz; test/product/router/platform_link_configuration_test.dart
+	     listeyi yapılandırmayla karşılaştırır. -->
 	<key>com.apple.developer.associated-domains</key>
 	<array>
-		<string>applinks:staging.iskoala.com</string>
+		<string>applinks:iskoala.com</string>
 	</array>
 	<!-- Bunun yeri .entitlements: iso7816.select-identifiers'ın aksine bu
 	     gerçekten bir entitlement ve provisioning profile'da bulunmalı. -->

@@ -5,7 +5,10 @@ void main() {
   test(
     'cold-start linki oturum okunana kadar bekletilir ve bir kez açılır',
     () {
-      final coordinator = AppLinkCoordinator(appScheme: 'koala-staging');
+      final coordinator = AppLinkCoordinator(
+        appScheme: 'koala-staging',
+        webHosts: const {'iskoala.com'},
+      );
       final navigations = <String>[];
 
       coordinator.handle(
@@ -23,7 +26,10 @@ void main() {
   );
 
   test('hazır oturumda gelen link beklemeden açılır', () {
-    final coordinator = AppLinkCoordinator(appScheme: 'koala-staging');
+    final coordinator = AppLinkCoordinator(
+      appScheme: 'koala-staging',
+      webHosts: const {'iskoala.com'},
+    );
     final navigations = <String>[];
 
     coordinator.handle(
@@ -36,7 +42,10 @@ void main() {
   });
 
   test('beklerken son gelen geçerli link açılır', () {
-    final coordinator = AppLinkCoordinator(appScheme: 'koala-staging');
+    final coordinator = AppLinkCoordinator(
+      appScheme: 'koala-staging',
+      webHosts: const {'iskoala.com'},
+    );
     final navigations = <String>[];
 
     coordinator.handle(
@@ -55,7 +64,10 @@ void main() {
   });
 
   test('geçersiz link bekleyen geçerli linki silmez', () {
-    final coordinator = AppLinkCoordinator(appScheme: 'koala-staging');
+    final coordinator = AppLinkCoordinator(
+      appScheme: 'koala-staging',
+      webHosts: const {'iskoala.com'},
+    );
     final navigations = <String>[];
 
     coordinator.handle(

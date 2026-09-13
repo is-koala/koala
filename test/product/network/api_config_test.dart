@@ -84,6 +84,81 @@ void main() {
     );
   });
 
+  test('web hostları virgülle ayrılmış yapılandırmadan okunur', () {
+    expect(
+      ApiConfig.resolveWebHosts(
+        flavor: 'production',
+        configuredHosts: 'iskoala.com, www.iskoala.com',
+      ),
+      {'iskoala.com', 'www.iskoala.com'},
+    );
+    expect(
+      ApiConfig.resolveWebHosts(
+        flavor: 'staging',
+        configuredHosts: 'iskoala.com',
+      ),
+      {'iskoala.com'},
+    );
+  });
+
+  test('web hostu yalnız çıplak küçük harfli alan adı olabilir', () {
+    for (final hosts in [
+      'https://iskoala.com',
+      'iskoala.com/hesap-dogrula',
+      'iskoala.com:443',
+      'user@iskoala.com',
+      'iskoala.com?token=x',
+      'iskoala.com#fragment',
+      'ISKOALA.com',
+      'iskoala com',
+    ]) {
+      expect(
+        () => ApiConfig.resolveWebHosts(
+          flavor: 'production',
+          configuredHosts: hosts,
+        ),
+        throwsStateError,
+        reason: hosts,
+      );
+    }
+  });
+
+  test('staging ve production boş web host listesiyle açılmaz', () {
+    for (final flavor in ['staging', 'production']) {
+      expect(
+        () => ApiConfig.resolveWebHosts(flavor: flavor, configuredHosts: ''),
+        throwsStateError,
+        reason: flavor,
+      );
+    }
+    expect(
+      ApiConfig.resolveWebHosts(flavor: 'dev', configuredHosts: ''),
+      isEmpty,
+    );
+    expect(
+      () => ApiConfig.resolveWebHosts(
+        flavor: null,
+        configuredHosts: 'iskoala.com',
+      ),
+      throwsStateError,
+    );
+  });
+
+  test('derleme yapılandırması web hostlarını da doğrular', () {
+    const configuredHosts = String.fromEnvironment('WEB_HOSTS');
+    if (appFlavor == null) {
+      expect(() => ApiConfig.webHosts, throwsStateError);
+    } else {
+      expect(
+        ApiConfig.webHosts,
+        ApiConfig.resolveWebHosts(
+          flavor: appFlavor,
+          configuredHosts: configuredHosts,
+        ),
+      );
+    }
+  });
+
   test('her flavor yalnız kendi native bağlantı şemasını kullanır', () {
     expect(ApiConfig.resolveAppUrlScheme(flavor: 'dev'), 'koala-dev');
     expect(ApiConfig.resolveAppUrlScheme(flavor: 'staging'), 'koala-staging');

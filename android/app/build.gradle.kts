@@ -1,3 +1,4 @@
+import groovy.json.JsonSlurper
 import java.util.Properties
 
 val localProperties = Properties()
@@ -39,6 +40,29 @@ plugins {
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
     id("com.google.gms.google-services")
+}
+
+// App Links host'u Dart tarafıyla tek kaynaktan gelir: config/<flavor>.json
+// içindeki WEB_HOSTS. İlk host flavor manifestinin `appLinkHost`, ikincisi
+// `appLinkHostAlias` placeholder'ını doldurur. Manifestteki satır sayısı ile
+// yapılandırmadaki host sayısı ayrışırsa derleme sessizce eksik host'la
+// çıkmak yerine burada durur (#155).
+fun appLinkPlaceholders(flavor: String, manifestHostLines: Int): Map<String, String> {
+    val configFile = rootProject.file("../config/$flavor.json")
+    check(configFile.exists()) { "config/$flavor.json bulunamadı; App Links host'u okunamıyor." }
+    val config = JsonSlurper().parse(configFile) as Map<*, *>
+    val hosts = (config["WEB_HOSTS"] as? String).orEmpty()
+        .split(',')
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
+    check(hosts.size == manifestHostLines) {
+        "config/$flavor.json WEB_HOSTS ${hosts.size} host taşıyor, " +
+            "android/app/src/$flavor/AndroidManifest.xml $manifestHostLines host satırı bekliyor: $hosts"
+    }
+    return buildMap {
+        put("appLinkHost", hosts[0])
+        if (hosts.size > 1) put("appLinkHostAlias", hosts[1])
+    }
 }
 
 configurations.configureEach {
@@ -155,6 +179,7 @@ android {
                         ?: ""
                 ),
             )
+            manifestPlaceholders += appLinkPlaceholders("staging", manifestHostLines = 1)
         }
         create("production") {
             dimension = "environment"
@@ -168,6 +193,7 @@ android {
                         ?: ""
                 ),
             )
+            manifestPlaceholders += appLinkPlaceholders("production", manifestHostLines = 2)
         }
     }
 

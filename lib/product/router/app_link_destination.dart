@@ -2,9 +2,31 @@
 class AppLinkDestination {
   const AppLinkDestination._();
 
-  static String? routeFor(Uri uri, {required String appScheme}) {
-    final destination = _destination(uri, appScheme: appScheme);
-    if (destination == null) return null;
+  /// Android manifest'in ve web `appLinkPaths` listesinin sahiplendiği HTTPS
+  /// yol önekleri. `test/product/router/platform_link_configuration_test.dart`
+  /// flavor manifestlerini bu listeyle karşılaştırır; buraya eklenen yol
+  /// manifest'e de girmeden bağlantı uygulamaya ulaşmaz.
+  static const List<String> httpsPathPrefixes = [
+    '/hesap-dogrula',
+    '/sifre-belirle',
+    '/sifre-sifirla',
+    '/eposta-onayla',
+    '/payment/result',
+    '/davet',
+  ];
+
+  /// [uri]'yi uygulama rotasına çevirir; sözleşmeye uymayan bağlantıda `null`.
+  ///
+  /// [appScheme] çalışan flavor'ın özel şeması, [webHosts] aynı flavor'ın
+  /// `WEB_HOSTS` yapılandırmasından gelen doğrulanmış HTTPS hostlarıdır.
+  static String? routeFor(
+    Uri uri, {
+    required String appScheme,
+    required Set<String> webHosts,
+  }) {
+    final link = _resolve(uri, appScheme: appScheme, webHosts: webHosts);
+    if (link == null) return null;
+    final destination = link.destination;
 
     if (destination == 'hesap-dogrula' ||
         destination == 'sifre-belirle' ||
@@ -46,7 +68,9 @@ class AppLinkDestination {
     }
 
     if (destination == 'company-invitation') {
-      final id = _parameter(uri, 'id');
+      // HTTPS'te kimlik web'in `/davet/<id>` yolundan okunur ve sorgu alanı
+      // yok sayılır; özel şemada yol boş olduğu için `id` sorgu alanındadır.
+      final id = link.invitationId ?? _parameter(uri, 'id');
       if (id == null) return null;
       return Uri(
         path: '/company-invitation',
@@ -57,40 +81,45 @@ class AppLinkDestination {
     return null;
   }
 
-  static String? _destination(Uri uri, {required String appScheme}) {
+  static _ResolvedLink? _resolve(
+    Uri uri, {
+    required String appScheme,
+    required Set<String> webHosts,
+  }) {
     if (uri.userInfo.isNotEmpty || uri.hasPort || uri.fragment.isNotEmpty) {
       return null;
     }
 
     if (uri.scheme == appScheme) {
-      return uri.path.isEmpty ? uri.host : null;
+      return uri.path.isEmpty ? _ResolvedLink(uri.host) : null;
     }
 
     if (uri.scheme != 'https' ||
-        !_httpsHosts(appScheme).contains(uri.host) ||
+        !webHosts.contains(uri.host) ||
         uri.pathSegments.isEmpty) {
       return null;
     }
 
-    if (uri.pathSegments.length == 2 &&
-        uri.pathSegments[0] == 'payment' &&
-        uri.pathSegments[1] == 'result') {
-      return 'payment-result';
+    final segments = uri.pathSegments;
+
+    if (segments.length == 2 &&
+        segments[0] == 'payment' &&
+        segments[1] == 'result') {
+      return const _ResolvedLink('payment-result');
     }
 
-    if (uri.pathSegments.length == 1 &&
-        _httpsDestinations.contains(uri.pathSegments.single)) {
-      return uri.pathSegments.single;
+    if (segments.length == 2 &&
+        segments[0] == 'davet' &&
+        segments[1].trim().isNotEmpty) {
+      return _ResolvedLink('company-invitation', invitationId: segments[1]);
+    }
+
+    if (segments.length == 1 && _httpsDestinations.contains(segments.single)) {
+      return _ResolvedLink(segments.single);
     }
 
     return null;
   }
-
-  static Set<String> _httpsHosts(String appScheme) => switch (appScheme) {
-    'koala' => const {'iskoala.com', 'www.iskoala.com'},
-    'koala-staging' => const {'staging.iskoala.com'},
-    _ => const {},
-  };
 
   static const Set<String> _httpsDestinations = {
     'hesap-dogrula',
@@ -106,4 +135,12 @@ class AppLinkDestination {
     }
     return values.single;
   }
+}
+
+/// Doğrulanmış bağlantının kanonik hedefi ve yoldan okunan davet kimliği.
+class _ResolvedLink {
+  const _ResolvedLink(this.destination, {this.invitationId});
+
+  final String destination;
+  final String? invitationId;
 }

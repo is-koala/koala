@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 
 /// Ortam ve API hedefi açıkça seçilmeden ağ istemcisi kurulmaz.
 class ApiConfig {
+  static const Set<String> _flavors = {'dev', 'staging', 'production'};
+
   static const Map<String, String> _appUrlSchemes = {
     'dev': 'koala-dev',
     'staging': 'koala-staging',
@@ -14,7 +16,7 @@ class ApiConfig {
     required String? flavor,
     required String configuredUrl,
   }) {
-    if (!const {'dev', 'staging', 'production'}.contains(flavor)) {
+    if (!_flavors.contains(flavor)) {
       throw StateError('Uygulama ortamı seçilmedi. --flavor kullanmalısın.');
     }
     final uri = Uri.tryParse(configuredUrl);
@@ -59,6 +61,52 @@ class ApiConfig {
     return scheme;
   }
 
+  /// Flavor'ın doğrulanmış web hostları; `https://<host>/...` bağlantıları
+  /// yalnız bu hostlardan kabul edilir.
+  ///
+  /// Değer `config/<flavor>.json` içindeki `WEB_HOSTS` anahtarından gelir;
+  /// Android `build.gradle.kts` aynı dosyayı okuyup manifest'in
+  /// `appLinkHost` placeholder'ını doldurur, iOS entitlements aynı listeyi
+  /// taşır. Böylece Dart tarafının kabul ettiği host ile işletim sisteminin
+  /// uygulamaya verdiği host tek kaynaktan gelir; staging'in production
+  /// web'ini kullandığı bugünkü durumda şemadan türetilen sabit liste
+  /// `iskoala.com` bağlantısını sessizce reddediyordu (#155).
+  static Set<String> get webHosts => resolveWebHosts(
+    flavor: appFlavor,
+    configuredHosts: const String.fromEnvironment('WEB_HOSTS'),
+  );
+
+  /// Virgülle ayrılmış `WEB_HOSTS` değerini doğrulanmış host kümesine çevirir.
+  ///
+  /// Yalnız çıplak alan adı kabul edilir; dev ortamı public HTTPS host
+  /// sahiplenmediği için boş liste yalnız orada geçerlidir.
+  @visibleForTesting
+  static Set<String> resolveWebHosts({
+    required String? flavor,
+    required String configuredHosts,
+  }) {
+    if (!_flavors.contains(flavor)) {
+      throw StateError('Uygulama ortamı seçilmedi. --flavor kullanmalısın.');
+    }
+    final hosts = configuredHosts
+        .split(',')
+        .map((host) => host.trim())
+        .where((host) => host.isNotEmpty)
+        .toSet();
+    for (final host in hosts) {
+      // Uri host'u normalize eder: şema, port, yol, kullanıcı bilgisi veya
+      // büyük harf taşıyan bir giriş geri okunduğunda kendisine eşit çıkmaz.
+      final uri = Uri.tryParse('https://$host/');
+      if (uri == null || uri.host != host) {
+        throw StateError('WEB_HOSTS yalnız küçük harfli alan adları taşır.');
+      }
+    }
+    if (hosts.isEmpty && flavor != 'dev') {
+      throw StateError('WEB_HOSTS bu ortam için boş olamaz.');
+    }
+    return hosts;
+  }
+
   /// Yanlış yapılandırma ilk ağ isteğine veya oturum yüklemeye ertelenmez.
   static void validateBuildConfiguration() {
     resolveBaseUrl(
@@ -66,6 +114,10 @@ class ApiConfig {
       configuredUrl: const String.fromEnvironment('API_BASE_URL'),
     );
     resolveAppUrlScheme(flavor: appFlavor);
+    resolveWebHosts(
+      flavor: appFlavor,
+      configuredHosts: const String.fromEnvironment('WEB_HOSTS'),
+    );
   }
 
   /// STOMP/WebSocket adresi.

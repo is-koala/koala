@@ -1,20 +1,26 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
         <activity android:name=".MainActivity">
-            <!-- Production App Links yalnız kanonik web hostlarını ve uygulamanın
-                 gerçekten karşılayabildiği yolları sahiplenir. -->
+            <!-- Doğrulanmış App Links. Hostlar sabit değil: build.gradle.kts
+                 config/production.json içindeki WEB_HOSTS anahtarını okuyup
+                 appLinkHost (kanonik alan adı) ve appLinkHostAlias (www)
+                 placeholder'larını doldurur; Dart tarafı (ApiConfig.webHosts)
+                 aynı anahtarı okur. Yollar web appLinkPaths ve
+                 AppLinkDestination.httpsPathPrefixes ile birebir; yeni yol
+                 üçüne birden girer. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" />
-                <data android:host="iskoala.com" />
-                <data android:host="www.iskoala.com" />
+                <data android:host="${appLinkHost}" />
+                <data android:host="${appLinkHostAlias}" />
                 <data android:pathPrefix="/hesap-dogrula" />
                 <data android:pathPrefix="/sifre-belirle" />
                 <data android:pathPrefix="/sifre-sifirla" />
                 <data android:pathPrefix="/eposta-onayla" />
                 <data android:pathPrefix="/payment/result" />
+                <data android:pathPrefix="/davet" />
             </intent-filter>
         </activity>
     </application>

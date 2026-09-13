@@ -13,20 +13,25 @@ Gelen kutu ve Apple $99 bu belgenin kapsamında değildir.
 - Reset JWT'si `passwordResetTokenService.consume` ile bir kez kullanılır;
   `PasswordResetIT` ikinci kullanımı reddeder. Şablon
   `password-reset-request-template`.
-- `AppLinkDestination` yalnız çalışan flavor şemasını ve o flavor'ın HTTPS
-  hostunu kabul eder: production `iskoala.com` / `www.iskoala.com`, staging
-  `staging.iskoala.com`. User-info, port, fragment, yinelenen token reddedilir.
-  Sözleşme: `docs/deep-links.md`, test: `test/product/router/app_link_destination_test.dart`.
+- `AppLinkDestination` yalnız çalışan flavor şemasını ve `config/<flavor>.json`
+  içindeki `WEB_HOSTS` hostlarını kabul eder: production
+  `iskoala.com,www.iskoala.com`, staging `iskoala.com` (13 Eylül, #155 —
+  şemadan türetilen `staging.iskoala.com` sabiti e-postadaki `iskoala.com`
+  bağlantısını reddediyordu). User-info, port, fragment, yinelenen token
+  reddedilir. Sözleşme: `docs/deep-links.md`, test:
+  `test/product/router/app_link_destination_test.dart`.
 - Flavor seçilmeden internet API'sine bağlanılmaz (`ApiConfig`). `config/*.json`
-  yalnız `API_BASE_URL` taşır; QA e-posta/parola gömülmez. Canlı giriş
-  `integration_test/live_qa_login_test.dart` kimlikleri
+  yalnız `API_BASE_URL` ve `WEB_HOSTS` taşır; QA e-posta/parola gömülmez. Canlı
+  giriş `integration_test/live_qa_login_test.dart` kimlikleri
   `String.fromEnvironment` ile alır.
 
 ## Hâlâ insan (mailbox / mağaza)
 
 - İki kontrollü QA gelen kutusuna gerçek SMTP ve o bağlantıyla login/refresh.
 - Universal Links / Play App Links imza ve AASA production hostunda 200
-  (`iskoala.com/.well-known/…`). Apple $99 ve NFC #129 beklenmez.
+  (`iskoala.com/.well-known/…`). Android manifest tarafı depoda (#155); paket
+  adı + SHA-256 env adımı `docs/android-app-links.md`. Apple $99 ve NFC #129
+  beklenmez.
 - Ayrı staging API hostu backend #19.
 
 ## Kurulu eklenti

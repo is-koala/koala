@@ -6,9 +6,12 @@ import 'package:koala/product/router/app_link_destination.dart';
 /// gezinmek muhafız tarafından splash'a geri çevrilir. Bu sınıf son geçerli
 /// bağlantıyı bellekte tutar ve oturum hazır olduğunda yalnız bir kez açar.
 class AppLinkCoordinator {
-  AppLinkCoordinator({required this.appScheme});
+  AppLinkCoordinator({required this.appScheme, required this.webHosts});
 
   final String appScheme;
+
+  /// Çalışan flavor'ın `WEB_HOSTS` yapılandırmasından gelen HTTPS hostları.
+  final Set<String> webHosts;
 
   String? _pendingRoute;
 
@@ -19,7 +22,11 @@ class AppLinkCoordinator {
     required bool sessionInitialized,
     required void Function(String route) navigate,
   }) {
-    final route = AppLinkDestination.routeFor(uri, appScheme: appScheme);
+    final route = AppLinkDestination.routeFor(
+      uri,
+      appScheme: appScheme,
+      webHosts: webHosts,
+    );
     if (route == null) return;
 
     if (!sessionInitialized) {

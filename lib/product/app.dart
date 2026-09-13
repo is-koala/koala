@@ -28,13 +28,17 @@ class _AppState extends State<App> {
   void initState() {
     super.initState();
     _sessionManager = SessionManager();
-    _appLinkCoordinator = AppLinkCoordinator(appScheme: ApiConfig.appUrlScheme);
+    _appLinkCoordinator = AppLinkCoordinator(
+      appScheme: ApiConfig.appUrlScheme,
+      webHosts: ApiConfig.webHosts,
+    );
     _sessionManager.addListener(_flushPendingDeepLink);
     _appLinkSubscription = AppLinks().uriLinkStream.listen(_handleDeepLink);
   }
 
   /// Backend'in ürettiği kayıt, şifre ve ödeme bağlantılarını çalışan
-  /// flavor'ın özel şemasıyla doğrulayıp oturum hazır olduğunda açar.
+  /// flavor'ın özel şeması ve yapılandırılmış web hostlarıyla doğrulayıp
+  /// oturum hazır olduğunda açar.
   void _handleDeepLink(Uri uri) {
     _appLinkCoordinator.handle(
       uri,
