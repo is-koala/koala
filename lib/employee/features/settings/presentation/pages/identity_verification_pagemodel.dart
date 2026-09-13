@@ -87,8 +87,14 @@ abstract class IdentityVerificationPagemodel
   }
 
   /// Okumayı bırakır: kanıt ve ondan türeyen beş alan **tek geçişte**
-  /// gidiyor, form elle düzenlemeye dönüyor. Elle düzenlemeye dönüşün
-  /// başka yolu yok.
+  /// gidiyor, form elle düzenlemeye dönüyor.
+  ///
+  /// Elle düzenlemeye dönüşün tek geçişi bu ve iki yerden tetikleniyor:
+  /// kullanıcının karttaki "Okumayı Kaldır"ı ve sunucunun eldeki kanıtı
+  /// artık kabul etmeyeceğini söylediği `IDENTITY_CHALLENGE_INVALID` yanıtı
+  /// ([_showFailure]). İkincisi de aynı yoldan geçiyor, çünkü geçersiz
+  /// kanıtın türevlerini kilitli beyan diye göstermek, kanıtla beyanın
+  /// ayrışmasına izin vermek olurdu.
   void removeChip() => setState(() => chip = null);
 
   Future<void> pickBirthDate() async {
@@ -157,9 +163,13 @@ abstract class IdentityVerificationPagemodel
     if (known == null) return;
 
     // Süresi dolmuş tek kullanımlık sayıyla ikinci kez denemek aynı hatayı
-    // verir; elde tutulan kanıt artık geçersiz, baştan okunmalı. Kanıtla
-    // birlikte ondan türeyen alanlar da gidiyor — kanıtsız kalan değerleri
-    // beyan diye göstermek, kilidin kapattığı açığı geri açmak olurdu.
+    // verir: `challenge` ve imzası kanıtın parçası, kanıt bir bütün olarak
+    // geçersiz ve baştan okunmalı. Bu, elle düzenlemeye dönüşün kullanıcı
+    // eylemi olmayan tek yolu ve bilerek [removeChip] ile aynı geçiş —
+    // sunucunun az önce reddettiği kanıtı "doğrulandı" diye ekranda tutmak,
+    // kilidin kapattığı açığı (kanıtla ayrışan beyan) geri açmak olurdu.
+    // Yalnız bu kodda: imza ya da makam hatası kanıtı geçersiz kılmıyor,
+    // kullanıcı toast'taki yönlendirmeyle yeniden okutur ya da desteğe yazar.
     if (known.needsFreshChallenge) removeChip();
   }
 }

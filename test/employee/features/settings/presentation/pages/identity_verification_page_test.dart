@@ -5,6 +5,7 @@ import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/employee/features/settings/models/identity_chip_result.dart';
+import 'package:koala/employee/features/settings/models/identity_error.dart';
 import 'package:koala/employee/features/settings/presentation/pages/identity_verification_page.dart';
 import 'package:koala/product/theme/theme.dart';
 import 'package:provider/provider.dart';
@@ -12,14 +13,16 @@ import 'package:provider/provider.dart';
 import '../../../../../support/chip_fixtures.dart';
 import '../../../../../support/fake_api.dart';
 
-/// Kayıtta girilen ad-soyad kimliktekiyle **aynı değil**: çip okununca
-/// hangisinin gönderildiği buradan ayırt ediliyor.
+/// Kayıtta girilen ad-soyad ve doğum tarihi kimliktekiyle **aynı değil**:
+/// çip okununca hangisinin gönderildiği buradan ayırt ediliyor. Karttaki
+/// doğum tarihi 07.04.1998; kayıttaki başka bir gün, yoksa doğum tarihi
+/// ayağı hiçbir şeyi kanıtlamazdı.
 final CurrentUser _user = CurrentUser.fromJson(const {
   'id': 'user-1',
   'firstName': 'Cagri',
   'lastName': 'Kaya',
   'email': 'cagri@ornek.com',
-  'birthDate': '1998-04-07',
+  'birthDate': '1990-01-15',
   'isEmployer': false,
 });
 
@@ -68,6 +71,30 @@ void main() {
           );
         }
         return const FakeApiResponse(statusCode: 200, body: {'success': true});
+      },
+    );
+  }
+
+  /// Kimlik doğrulama isteğini verilen `IDENTITY_*` koduyla reddeden sunucu;
+  /// geri kalan her şey (`/users/me` dahil) başarılı.
+  FakeApi rejectingApi(String errorCode) {
+    return FakeApi(
+      handler: (options) {
+        if (options.path == '/users/me/identity-verification') {
+          return FakeApiResponse(
+            statusCode: 400,
+            body: {
+              'success': false,
+              'message': 'sunucu metni',
+              'errorCode': errorCode,
+              'errorCategory': 'VALIDATION_FAILED',
+            },
+          );
+        }
+        return FakeApiResponse(
+          statusCode: 200,
+          body: {'success': true, 'data': _user.toJson()},
+        );
       },
     );
   }
@@ -166,7 +193,7 @@ void main() {
       expect(body['lastName'], 'Kaya');
       expect(body['tcIdentityNumber'], '12345678950');
       expect(body['tcDocumentNumber'], 'A01B23456');
-      expect(body['birthDate'], '1998-04-07');
+      expect(body['birthDate'], '1990-01-15');
       expect(body.keys, {
         'firstName',
         'lastName',
@@ -261,6 +288,7 @@ void main() {
       expect(body['lastName'], 'KAYA');
       expect(body['tcIdentityNumber'], '12345678950');
       expect(body['tcDocumentNumber'], 'A01B23456');
+      // Kayıttaki 1990-01-15 değil, karttaki tarih.
       expect(body['birthDate'], '1998-04-07');
       expect(body['sod'], chip.evidence.sod);
       expect(body['dg1'], chip.evidence.dg1);
@@ -274,6 +302,7 @@ void main() {
       expect(body.values, isNot(contains('Zeynep')));
       expect(body.values, isNot(contains('Cagri')));
       expect(body.values, isNot(contains('99999999990')));
+      expect(body.values, isNot(contains('1990-01-15')));
     });
 
     testWidgets('okumayı kaldırmak kanıtı ve türetilen alanları birlikte '
@@ -331,6 +360,63 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('ÇAĞRI'), findsOneWidget);
+      expect(textFieldLabeled('Ad'), findsNothing);
+    });
+
+    testWidgets('sunucu challenge\'ı geçersiz sayınca kanıt bırakılıyor ve '
+        'sebebi söyleniyor', (tester) async {
+      // Elle düzenlemeye dönüşün kullanıcı eylemi olmayan tek yolu. Süresi
+      // dolmuş tek kullanımlık sayıyla imzalanan kanıt bir daha kabul
+      // edilmeyecek; kartı "doğrulandı" diye göstermeye devam etmek, sunucunun
+      // az önce reddettiği kanıtı ekranda tutmak olurdu. Kanıtla birlikte
+      // ondan türeyen beş alan da gidiyor ve kullanıcı neden baştan
+      // okutacağını toast'tan öğreniyor.
+      final api = rejectingApi(IdentityError.challengeInvalid.code);
+      await pumpPage(tester, api, chipResult: () => _chipResult());
+      await readChip(tester);
+
+      await tester.tap(find.text('Doğrula'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.descendant(
+          of: find.byType(SnackBar),
+          matching: find.text(IdentityError.challengeInvalid.message),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Kimlik kartını telefona okut'), findsOneWidget);
+      expect(find.text('Okumayı Kaldır'), findsNothing);
+      expect(find.text('ÇAĞRI'), findsNothing);
+      expect(find.text('A01B23456'), findsNothing);
+      // Okuma öncesindeki taslak olduğu gibi geri geliyor.
+      final field = tester.widget<TextField>(textFieldLabeled('Ad'));
+      expect(field.enabled, isTrue);
+      expect(field.controller?.text, 'Cagri');
+    });
+
+    testWidgets('challenge dışındaki bir ret kanıtı yerinde bırakıyor', (
+      tester,
+    ) async {
+      // Bozuk imza ya da tanınmayan makam kanıtı geçersiz kılmıyor; kullanıcı
+      // metindeki yönlendirmeye göre yeniden okutur ya da desteğe yazar.
+      // Kanıtı her hatada atmak, kartı boşuna yeniden okutmak olurdu.
+      final api = rejectingApi(IdentityError.signatureInvalid.code);
+      await pumpPage(tester, api, chipResult: () => _chipResult());
+      await readChip(tester);
+
+      await tester.tap(find.text('Doğrula'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.descendant(
+          of: find.byType(SnackBar),
+          matching: find.text(IdentityError.signatureInvalid.message),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('ÇAĞRI'), findsOneWidget);
+      expect(find.text('Okumayı Kaldır'), findsOneWidget);
       expect(textFieldLabeled('Ad'), findsNothing);
     });
   });

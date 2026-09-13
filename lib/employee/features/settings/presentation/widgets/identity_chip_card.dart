@@ -19,9 +19,11 @@ import 'package:koala/product/widgets/app_icon.dart';
 ///
 /// Özet iki eylem taşıyor ve ikisi ayrı: **Yeniden Oku** kanıtı yenisiyle
 /// değiştiriyor, **Okumayı Kaldır** kanıtı ve ondan türeyen beş alanı
-/// birlikte bırakıp formu elle düzenlemeye açıyor. Elle düzenlemeye dönüşün
-/// başka yolu yok — kanıt dururken alanlara dokunmak, ekrandaki beyanı
-/// kanıttan ayrıştırmak olurdu.
+/// birlikte bırakıp formu elle düzenlemeye açıyor. Kullanıcının elle
+/// düzenlemeye dönmesinin başka yolu yok — kanıt dururken alanlara
+/// dokunmak, ekrandaki beyanı kanıttan ayrıştırmak olurdu. (Sunucunun
+/// kanıtı `IDENTITY_CHALLENGE_INVALID` ile reddetmesi de aynı geçişten
+/// geçiyor; o kararı sayfa veriyor, kart yalnız sonucu çiziyor.)
 class IdentityChipCard extends StatelessWidget {
   const IdentityChipCard({
     super.key,

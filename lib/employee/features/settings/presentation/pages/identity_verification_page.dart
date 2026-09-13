@@ -43,9 +43,10 @@ part 'identity_verification_pagemodel.dart';
 /// Çip okunduğunda beş alan da **kanıttan türüyor ve salt okunur**: ad,
 /// soyad, TCKN, seri no ve doğum tarihi DG1/DG11'den geliyor, ekranda
 /// yazılabilir bir alan kalmıyor. Elle düzenlemeye dönüşün tek yolu
-/// okumayı kaldırmak; o da kanıtı ve türeyen alanları birlikte bırakıyor.
-/// Böylece gönderilen beyan, ekranın kanıtın yanında gösterdiğinin birebir
-/// aynısı (is-koala/koala#136).
+/// okumayı bırakmak — kullanıcı "Okumayı Kaldır" der ya da sunucu kanıtı
+/// `IDENTITY_CHALLENGE_INVALID` ile reddeder — ve o geçiş kanıtı ile
+/// türeyen alanları birlikte bırakıyor. Böylece gönderilen beyan, ekranın
+/// kanıtın yanında gösterdiğinin birebir aynısı (is-koala/koala#136).
 ///
 /// Doğrulama başarılı olduğunda ad ve soyad **kilitleniyor** — hesap
 /// bilgileri ekranı da o noktadan sonra ikisini düzenletmiyor.
