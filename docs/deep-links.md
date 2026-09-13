@@ -62,8 +62,8 @@ https://iskoala.com/davet/<invitation-id>
 iOS Associated Domains ve Android `autoVerify` yalnız bu ortam hostlarını
 sahiplenir; Android tarafının insan adımları `docs/android-app-links.md`
 dosyasındadır. Web tarafındaki AASA/`assetlinks.json` da aynı yolları
-yayımlar (`/davet` web `appLinkPaths` listesinde henüz yok; iOS için oraya
-eklenmesi koala-web işidir). Uygulama kurulu değilse HTTPS adresi web formunda
+yayımlar; `/davet` dahil liste web `appLinkPaths` ile birebir tutulur
+(is-koala/koala-web#158 ile eşitlendi). Uygulama kurulu değilse HTTPS adresi web formunda
 kalır; mağazaya zorlanmaz. Ödeme dönüşünün HTTPS yolu `/payment/result`, özel
 şema hedefi ise geriye dönük uyumluluk için `payment-result` olarak kalır.
 Eski özel şema alias'ları yalnız daha önce gönderilmiş e-postalar içindir ve
