@@ -23,7 +23,7 @@ class BackendContractRoot {
     }
 
     if (from != null) {
-      final found = _near(from);
+      final found = _backendBeside(from);
       if (found != null) return found;
       throw _missing(from);
     }
@@ -31,7 +31,7 @@ class BackendContractRoot {
     final start = packageRoot();
     var dir = start;
     for (var i = 0; i < 8; i++) {
-      final found = _near(dir);
+      final found = _backendBeside(dir);
       if (found != null) return found;
       if (dir.parent.path == dir.path) break;
       dir = dir.parent;
@@ -41,20 +41,20 @@ class BackendContractRoot {
   }
 
   /// `pubspec.yaml` görene kadar çalışma dizininden yukarı çıkar.
-  static Directory packageRoot({Directory? from}) {
-    var dir = from ?? Directory.current;
+  static Directory packageRoot() {
+    var dir = Directory.current;
     for (var i = 0; i < 16; i++) {
       if (File('${dir.path}/pubspec.yaml').existsSync()) return dir;
       if (dir.parent.path == dir.path) break;
       dir = dir.parent;
     }
     throw StateError(
-      'pubspec.yaml bulunamadı (cwd: ${(from ?? Directory.current).path}). '
+      'pubspec.yaml bulunamadı (cwd: ${Directory.current.path}). '
       'Testleri paket kökünden çalıştırın.',
     );
   }
 
-  static Directory? _near(Directory anchor) {
+  static Directory? _backendBeside(Directory anchor) {
     for (final candidate in [
       anchor,
       Directory('${anchor.path}/koala-backend'),

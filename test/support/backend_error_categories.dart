@@ -24,7 +24,10 @@ class BackendErrorCategories {
       return parseOpenApi(file.readAsStringSync());
     }
 
-    final root = resolveBackendRoot(from: from, environment: environment);
+    final root = BackendContractRoot.resolve(
+      from: from,
+      environment: environment,
+    );
     final javaFile = File('${root.path}/$javaRelativePath');
     if (!javaFile.existsSync()) {
       throw StateError(
@@ -34,13 +37,6 @@ class BackendErrorCategories {
       );
     }
     return parseJava(javaFile.readAsStringSync());
-  }
-
-  static Directory resolveBackendRoot({
-    Directory? from,
-    Map<String, String>? environment,
-  }) {
-    return BackendContractRoot.resolve(from: from, environment: environment);
   }
 
   static Set<String> parseJava(String source) {
