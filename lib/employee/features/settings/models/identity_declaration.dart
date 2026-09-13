@@ -1,5 +1,6 @@
 import 'package:koala/employee/features/auth/models/chip_evidence.dart';
 import 'package:koala/employee/features/settings/models/identity_chip_result.dart';
+import 'package:koala/employee/features/settings/models/national_identity_number.dart';
 
 /// Kimlik doğrulama isteğinin beş beyan alanı ve varsa yanına eklenen kanıt.
 ///
@@ -46,9 +47,6 @@ final class ManualDeclaration extends IdentityDeclaration {
     this.birthDate,
   });
 
-  /// TC kimlik numarası tam 11 hane.
-  static const int tcIdentityLength = 11;
-
   @override
   final String firstName;
 
@@ -71,7 +69,7 @@ final class ManualDeclaration extends IdentityDeclaration {
   bool get isComplete =>
       firstName.isNotEmpty &&
       lastName.isNotEmpty &&
-      tcIdentityNumber.length == tcIdentityLength &&
+      NationalIdentityNumber.isValid(tcIdentityNumber) &&
       tcDocumentNumber.isNotEmpty &&
       birthDate != null;
 }

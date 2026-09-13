@@ -101,6 +101,9 @@ void main() {
       expect(build(firstName: '').isComplete, isFalse);
       expect(build(lastName: '').isComplete, isFalse);
       expect(build(tcIdentityNumber: '1234567895').isComplete, isFalse);
+      // Kural `NationalIdentityNumber` ile ortak: on bir karakter yetmiyor,
+      // on bir **rakam** gerekiyor.
+      expect(build(tcIdentityNumber: '1234567895A').isComplete, isFalse);
       expect(build(tcDocumentNumber: '').isComplete, isFalse);
       expect(build(withBirthDate: false).isComplete, isFalse);
     });

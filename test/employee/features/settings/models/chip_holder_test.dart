@@ -96,6 +96,56 @@ void main() {
       );
     });
 
+    test('TCKN isteğe bağlı alanın başındayken okunuyor', () {
+      // `12345678950<<<<`: numara önde, dolgu arkada. Sabit fikstürün düzeni
+      // bu; ikinci satırın hanesi hesaplanan hâliyle de aynı çıkıyor.
+      final evidence = buildChipEvidence(
+        dg1: encodeDg1(
+          line1: tckkMrzLine1,
+          line2: tckkMrzLine2For(tckkMrzLine1),
+        ),
+      );
+
+      expect(
+        ChipHolder.fromEvidence(evidence)!.nationalIdentityNumber,
+        '12345678950',
+      );
+    });
+
+    test('TCKN ayırıcı `<` ile başlayan düzende de okunuyor', () {
+      // `<12345678950<<<`: TCKK'nın sahadaki ikinci düzeni. `dmrtd` yalnız
+      // sondaki dolguyu atıyor, baştaki ayırıcı `optionalData`'da kalıyor.
+      // Sunucu iki düzeni de kabul ediyor; burada okunamaz saymak, geçerli
+      // kartı "MRZ okunamadı" ile geri çevirmek olurdu.
+      final evidence = buildChipEvidence(
+        dg1: encodeDg1(
+          line1: tckkMrzLine1SeparatorFirst,
+          line2: tckkMrzLine2For(tckkMrzLine1SeparatorFirst),
+        ),
+      );
+
+      final holder = ChipHolder.fromEvidence(evidence);
+
+      expect(holder, isNotNull);
+      expect(holder!.nationalIdentityNumber, '12345678950');
+      expect(holder.documentNumber, 'A01B23456');
+    });
+
+    test('dolgu atıldıktan sonra on birden fazla hane kalırsa sonuç yok', () {
+      // Sunucunun kuralı: dolgu atıldıktan sonra **tam** on bir hane. On iki
+      // haneyi kırpıp göstermek, kartta olmayan bir numarayı beyan etmek
+      // olurdu.
+      const twelveDigits = 'I<TURA01B234566123456789501<<<';
+      final evidence = buildChipEvidence(
+        dg1: encodeDg1(
+          line1: twelveDigits,
+          line2: tckkMrzLine2For(twelveDigits),
+        ),
+      );
+
+      expect(ChipHolder.fromEvidence(evidence), isNull);
+    });
+
     test('DG1 TCKN taşımıyorsa sonuç üretilmiyor', () {
       // Sunucu aynı durumda `MRZ_UNREADABLE` ile reddediyor; kullanıcıyı
       // reddedilecek bir gidiş dönüşe sokmak yerine burada duruyoruz.

@@ -13,6 +13,8 @@
 /// doğrulaması cihaz olmadan test edilebilmeli.
 library;
 
+import 'package:koala/employee/features/settings/models/national_identity_number.dart';
+
 /// TD1 MRZ'sinin bir satırındaki karakter sayısı.
 const int _lineLength = 30;
 
@@ -39,8 +41,15 @@ class MrzKey {
 
   /// TCKK'da TC kimlik numarası MRZ'nin birinci satırındaki isteğe bağlı
   /// veri alanında taşınıyor. Her belgede dolu olmadığı için `null`
-  /// olabilir; formu önden doldurmak dışında bir yerde güvenilmiyor —
-  /// numaranın kartla eşleştiğini sunucu çipten okuyup kendisi doğruluyor.
+  /// olabilir.
+  ///
+  /// Formu **doldurmuyor**: ekrandaki TCKN çip okunduğunda DG1'den
+  /// (`ChipHolder`) geliyor, okunmadığında kullanıcı yazıyor — taramanın
+  /// sonucu beyana hiç karışmıyor, çünkü OCR'ın okuduğu değer kanıt değil.
+  /// Alanın burada durmasının sebebi canlı taramanın kararlılık imzası:
+  /// `MrzScanSession` ardışık karelerin aynı kartı okuduğuna satırın tamamı
+  /// (ya da ham satır yokken bu üç-dört alan) üzerinden karar veriyor.
+  /// Kural [NationalIdentityNumber] ile ortak; çip yolu da aynı yere bakıyor.
   final String? nationalIdentityNumber;
 
   /// Canlı taramada kararlılığı ölçen, düzeltilmiş üç TD1 satırının tamamı.
@@ -251,11 +260,9 @@ class MrzKey {
   }
 
   /// TD1'in birinci satırındaki isteğe bağlı veri alanından TC kimlik
-  /// numarası. Alan 11 haneli sayı taşımıyorsa `null`.
-  static String? _optionalIdentityNumber(String first) {
-    final optional = first.substring(15).replaceAll('<', '');
-    return RegExp(r'^\d{11}$').hasMatch(optional) ? optional : null;
-  }
+  /// numarası; kural [NationalIdentityNumber]'da, çipteki DG1 ile ortak.
+  static String? _optionalIdentityNumber(String first) =>
+      NationalIdentityNumber.fromMrzOptionalData(first.substring(15));
 
   /// `YYMMDD`'yi tarihe çevirir.
   ///

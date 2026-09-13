@@ -7,6 +7,7 @@ import 'package:koala/employee/features/profile/presentation/providers/user_prov
 import 'package:koala/employee/features/settings/models/identity_chip_result.dart';
 import 'package:koala/employee/features/settings/models/identity_declaration.dart';
 import 'package:koala/employee/features/settings/models/identity_error.dart';
+import 'package:koala/employee/features/settings/models/national_identity_number.dart';
 import 'package:koala/employee/features/settings/presentation/widgets/identity_chip_card.dart';
 import 'package:koala/employee/features/settings/presentation/widgets/locked_field.dart';
 import 'package:koala/employee/features/settings/presentation/widgets/settings_hint.dart';
@@ -122,7 +123,7 @@ class _IdentityVerificationPageState extends IdentityVerificationPagemodel {
         keyboardType: TextInputType.number,
         inputFormatters: [
           FilteringTextInputFormatter.digitsOnly,
-          LengthLimitingTextInputFormatter(ManualDeclaration.tcIdentityLength),
+          LengthLimitingTextInputFormatter(NationalIdentityNumber.length),
         ],
         onChanged: (_) => setState(() {}),
       ),

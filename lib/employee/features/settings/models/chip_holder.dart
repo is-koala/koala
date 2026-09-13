@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:dmrtd/dmrtd.dart';
 import 'package:koala/employee/features/auth/models/chip_evidence.dart';
+import 'package:koala/employee/features/settings/models/national_identity_number.dart';
 
 /// Çipin söylediği kart sahibi: beyan formunun beş alanı, **yalnızca**
 /// sunucuya gidecek veri gruplarından türetilmiş hâlde.
@@ -36,16 +37,13 @@ class ChipHolder {
 
   final String lastName;
 
-  /// TC kimlik numarası, on bir hane.
+  /// TC kimlik numarası, on bir hane ([NationalIdentityNumber]).
   final String nationalIdentityNumber;
 
   final DateTime birthDate;
 
   /// Belge (seri) numarası; `<` dolgusu temizlenmiş.
   final String documentNumber;
-
-  /// TC kimlik numarası tam 11 hane; sunucu da bu deseni arıyor.
-  static final RegExp _identityNumberPattern = RegExp(r'^\d{11}$');
 
   /// Kanıttan kart sahibini çıkarır; DG1 çözümlenemiyor ya da TCKN
   /// taşımıyorsa `null`.
@@ -67,8 +65,14 @@ class ChipHolder {
       return null;
     }
 
-    final identityNumber = mrz.optionalData.trim();
-    if (!_identityNumberPattern.hasMatch(identityNumber)) return null;
+    // Kural `MrzKey` ile ortak: dolgu (`<` ve boşluk) atılıp tam on bir hane
+    // aranıyor. `dmrtd` yalnız sondaki `<`'leri temizlediği için ayırıcıyla
+    // başlayan düzende (`<12345678950<<<`) alan `<12345678950` olarak
+    // geliyor; yalnız kırpmak o kartı okunamaz sayardı.
+    final identityNumber = NationalIdentityNumber.fromMrzOptionalData(
+      mrz.optionalData,
+    );
+    if (identityNumber == null) return null;
 
     final documentNumber = mrz.documentNumber.trim();
     if (documentNumber.isEmpty) return null;

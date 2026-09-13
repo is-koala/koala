@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:dmrtd/dmrtd.dart';
 import 'package:koala/employee/features/auth/models/chip_evidence.dart';
 import 'package:koala/employee/features/settings/models/identity_chip_result.dart';
+import 'package:koala/employee/features/settings/models/mrz_key.dart';
 
 /// Gerçek bir TCKK düzeninde, kontrol haneleri hesaplanmış TD1 MRZ satırları.
 ///
@@ -14,6 +15,34 @@ import 'package:koala/employee/features/settings/models/identity_chip_result.dar
 const String tckkMrzLine1 = 'I<TURA01B23456612345678950<<<<';
 const String tckkMrzLine2 = '9804072F3001019TUR<<<<<<<<<<<8';
 const String tckkMrzLine3 = 'KAYA<<ADA<<<<<<<<<<<<<<<<<<<<<';
+
+/// Aynı kartın birinci satırı, isteğe bağlı veri alanı ayırıcı `<` ile
+/// **başlayan** düzende: `<12345678950<<<`.
+///
+/// TCKK sahada iki düzenle geliyor ve sunucu ikisini de kabul ediyor
+/// (`MachineReadableZone.nationalIdentityNumber` bütün `<`'leri atıp on bir
+/// hane arıyor). `dmrtd` yalnız **sondaki** dolguyu temizlediği için bu
+/// düzende `optionalData` `<12345678950` olarak kalıyor; ayırıcıyı atmayan
+/// bir ayrıştırıcı kartı okunamaz sayardı. İkinci satırı [tckkMrzLine2For]
+/// veriyor — bileşik kontrol hanesi birinci satıra bağlı.
+const String tckkMrzLine1SeparatorFirst = 'I<TURA01B234566<12345678950<<<';
+
+/// [line1] ile tutarlı ikinci satır: bileşik kontrol hanesi **hesaplanmış**.
+///
+/// Bileşik hane birinci satırın 6-30. konumlarını da kapsıyor, yani birinci
+/// satırı değiştiren her test ikinci satırın son hanesini de değiştirmek
+/// zorunda. Elle yazmak yerine `MrzKey.checkDigit` ile hesaplanıyor; `dmrtd`
+/// aynı haneyi doğruluyor ve tutmayan bir MRZ DG1 olarak hiç çözülmüyor,
+/// yani yanlış hane "TCKN okunamadı" ile karışırdı.
+String tckkMrzLine2For(String line1) {
+  const stem = '9804072F3001019TUR<<<<<<<<<<<';
+  final composite =
+      line1.substring(5, 30) +
+      stem.substring(0, 7) +
+      stem.substring(8, 15) +
+      stem.substring(18, 29);
+  return '$stem${MrzKey.checkDigit(composite)}';
+}
 
 /// `EF.DG1` dosyasının base64 hâli: `61 { 5F1F { 90 baytlık MRZ } }`.
 ///
