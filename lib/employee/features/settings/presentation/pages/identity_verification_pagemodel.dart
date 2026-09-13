@@ -2,8 +2,11 @@ part of 'identity_verification_page.dart';
 
 abstract class IdentityVerificationPagemodel
     extends State<IdentityVerificationPage> {
-  final UserService _userService = UserService();
+  late final UserService _userService;
 
+  /// Elle beyanın taslağı. Çip okunduğunda **dokunulmuyor**: kilitli ekran
+  /// bu denetleyicileri hiç okumuyor, okuma kaldırıldığında da taslak
+  /// olduğu gibi geri geliyor.
   late final TextEditingController firstName;
   late final TextEditingController lastName;
   late final TextEditingController tcIdentity;
@@ -12,13 +15,14 @@ abstract class IdentityVerificationPagemodel
   DateTime? birthDate;
   bool isSubmitting = false;
 
-  /// Çipten okunan kanıt. `null` ise akış **eskisi gibi** çalışıyor: beyan
-  /// formu doldurulup gönderiliyor ve sunucu bayrağı kapalı olduğu için
-  /// istek aynen kabul ediliyor.
+  /// Çipten okunan kanıt ve ondan türeyen kart sahibi. `null` ise akış
+  /// **eskisi gibi** çalışıyor: beyan formu doldurulup gönderiliyor ve
+  /// sunucu bayrağı kapalı olduğu için istek aynen kabul ediliyor.
+  ///
+  /// Çipten türeyen beş alan **ayrıca saklanmıyor**; hepsi bu nesnenin
+  /// görünümü. Bu yüzden "kanıt gitti ama kilitli değerler kaldı" ya da
+  /// tersi bir durum yazılamıyor: `chip = null` ikisini birden bırakıyor.
   IdentityChipResult? chip;
-
-  /// TC kimlik numarası tam 11 hane.
-  static const int tcIdentityLength = 11;
 
   /// Doğum tarihi seçicinin gidebileceği en eski yıl.
   static const int earliestYear = 1920;
@@ -29,6 +33,7 @@ abstract class IdentityVerificationPagemodel
   @override
   void initState() {
     super.initState();
+    _userService = widget.userService ?? UserService();
     // Kayıtta girilen ad ve soyad çoğu kullanıcıda kimliktekiyle aynı;
     // form boş açılırsa gereksiz yere yeniden yazdırmış oluruz.
     firstName = TextEditingController(text: widget.user.firstName);
@@ -47,41 +52,50 @@ abstract class IdentityVerificationPagemodel
     super.dispose();
   }
 
-  /// Çip oturumu açıldıysa belge numarası ve doğum tarihi **kanıtlanmış**
-  /// demektir: BAC/PACE anahtarı bu ikisinden (ve son geçerlilik
-  /// tarihinden) türüyor ve yanlışlarsa oturum hiç açılmıyor. Kullanıcıya
-  /// yeniden yazdırmak, yalnızca yanlış yazma fırsatı vermek olurdu.
-  bool get isLockedByChip => chip != null;
+  /// Ekranın gösterdiği ve göndereceği beyan — **tek kaynak**.
+  ///
+  /// Çip varsa [ChipDeclaration]: beş alan kanıttan türüyor ve
+  /// denetleyicilerdeki taslak hiç okunmuyor. Yoksa [ManualDeclaration]:
+  /// denetleyicilerin o anki metni. Hangi hâlde olunduğu ayrı bir bayrakla
+  /// değil beyanın tipiyle belli; `build` ve [submit] aynı nesneye bakıyor.
+  IdentityDeclaration get declaration {
+    return switch (chip) {
+      null => ManualDeclaration(
+        firstName: firstName.text.trim(),
+        lastName: lastName.text.trim(),
+        tcIdentityNumber: tcIdentity.text.trim(),
+        tcDocumentNumber: tcDocument.text.trim(),
+        birthDate: birthDate,
+      ),
+      final read => ChipDeclaration(read),
+    };
+  }
 
-  /// Gönderilebilir mi. Sunucunun deseni ayrıca doğruluyor; buradaki kontrol
-  /// kullanıcıyı boşuna bir gidiş dönüşten kurtarıyor.
-  bool get canSubmit =>
-      firstName.text.trim().isNotEmpty &&
-      lastName.text.trim().isNotEmpty &&
-      tcIdentity.text.trim().length == tcIdentityLength &&
-      tcDocument.text.trim().isNotEmpty &&
-      birthDate != null;
+  bool get canSubmit => declaration.isComplete;
 
-  /// Çip okuma ekranını açar ve dönen kanıtı forma işler.
+  /// Çip okuma ekranını açar ve dönen sonucu forma işler.
   ///
   /// Ekran `null` ile kapanırsa hiçbir şey değişmiyor: kullanıcı vazgeçmiş
-  /// ya da NFC yokmuş demektir ve beyan formu olduğu gibi duruyor.
+  /// ya da NFC yokmuş demektir ve eldeki durum — beyan formu ya da önceki
+  /// okuma — olduğu gibi duruyor. Geçerli bir okumayı, ikinci denemeden
+  /// vazgeçildi diye atmak kartı boşuna yeniden okutmak olurdu.
   Future<void> readChip() async {
     final result = await context.push<IdentityChipResult>('/identity-chip');
     if (!mounted || result == null) return;
 
-    setState(() {
-      chip = result;
-      tcDocument.text = result.key.documentNumber;
-      birthDate = result.key.birthDate;
-
-      // TCKN MRZ'nin isteğe bağlı veri alanından geliyor ve BAC anahtarının
-      // parçası **değil** — yani oturumun açılması onu kanıtlamıyor. Bu
-      // yüzden yalnızca ön dolduruluyor, kilitlenmiyor.
-      final identityNumber = result.key.nationalIdentityNumber;
-      if (identityNumber != null) tcIdentity.text = identityNumber;
-    });
+    setState(() => chip = result);
   }
+
+  /// Okumayı bırakır: kanıt ve ondan türeyen beş alan **tek geçişte**
+  /// gidiyor, form elle düzenlemeye dönüyor.
+  ///
+  /// Elle düzenlemeye dönüşün tek geçişi bu ve iki yerden tetikleniyor:
+  /// kullanıcının karttaki "Okumayı Kaldır"ı ve sunucunun eldeki kanıtı
+  /// artık kabul etmeyeceğini söylediği `IDENTITY_CHALLENGE_INVALID` yanıtı
+  /// ([_showFailure]). İkincisi de aynı yoldan geçiyor, çünkü geçersiz
+  /// kanıtın türevlerini kilitli beyan diye göstermek, kanıtla beyanın
+  /// ayrışmasına izin vermek olurdu.
+  void removeChip() => setState(() => chip = null);
 
   Future<void> pickBirthDate() async {
     final now = DateTime.now();
@@ -99,18 +113,24 @@ abstract class IdentityVerificationPagemodel
   }
 
   Future<void> submit() async {
+    // Gövde ekrandaki beyandan kuruluyor, denetleyicilerden değil: çip
+    // varken denetleyicilerde ne yazdığının bir önemi yok.
+    final declaration = this.declaration;
+    final birthDate = declaration.birthDate;
+    if (birthDate == null) return;
+
     setState(() => isSubmitting = true);
 
     try {
       await _userService.verifyIdentity(
-        firstName: firstName.text.trim(),
-        lastName: lastName.text.trim(),
-        birthDate: birthDate!,
-        tcIdentityNumber: tcIdentity.text.trim(),
-        tcDocumentNumber: tcDocument.text.trim(),
+        firstName: declaration.firstName,
+        lastName: declaration.lastName,
+        birthDate: birthDate,
+        tcIdentityNumber: declaration.tcIdentityNumber,
+        tcDocumentNumber: declaration.tcDocumentNumber,
         // Kanıt varsa aynı istekte gidiyor; yoksa gövde eskisiyle birebir
         // aynı kalıyor.
-        evidence: chip?.evidence,
+        evidence: declaration.evidence,
       );
 
       if (!mounted) return;
@@ -143,9 +163,13 @@ abstract class IdentityVerificationPagemodel
     if (known == null) return;
 
     // Süresi dolmuş tek kullanımlık sayıyla ikinci kez denemek aynı hatayı
-    // verir; elde tutulan kanıt artık geçersiz, baştan okunmalı.
-    if (known.needsFreshChallenge) {
-      setState(() => chip = null);
-    }
+    // verir: `challenge` ve imzası kanıtın parçası, kanıt bir bütün olarak
+    // geçersiz ve baştan okunmalı. Bu, elle düzenlemeye dönüşün kullanıcı
+    // eylemi olmayan tek yolu ve bilerek [removeChip] ile aynı geçiş —
+    // sunucunun az önce reddettiği kanıtı "doğrulandı" diye ekranda tutmak,
+    // kilidin kapattığı açığı (kanıtla ayrışan beyan) geri açmak olurdu.
+    // Yalnız bu kodda: imza ya da makam hatası kanıtı geçersiz kılmıyor,
+    // kullanıcı toast'taki yönlendirmeyle yeniden okutur ya da desteğe yazar.
+    if (known.needsFreshChallenge) removeChip();
   }
 }

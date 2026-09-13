@@ -49,6 +49,23 @@ void main() {
       expect(MrzKey.parseTd1(_mrz)!.nationalIdentityNumber, '12345678950');
     });
 
+    test('ayırıcı `<` ile başlayan TCKN düzeni de okunuyor', () {
+      // TCKK'nın sahadaki ikinci düzeni; kural çipteki DG1 ile ortak
+      // (`NationalIdentityNumber`) ve iki yol aynı numarayı vermeli.
+      const line1 = 'I<TURA01B234566<12345678950<<<';
+      final composite =
+          line1.substring(5, 30) +
+          _line2.substring(0, 7) +
+          _line2.substring(8, 15) +
+          _line2.substring(18, 29);
+      final line2 = _line2.replaceRange(29, 30, _checkDigit(composite));
+
+      expect(
+        MrzKey.parseTd1('$line1\n$line2\n$_line3')?.nationalIdentityNumber,
+        '12345678950',
+      );
+    });
+
     test('OCR gürültüsü ve boşluklar temizleniyor', () {
       // MRZ satırlarını çevreleyen başka metin ve `<` yerine okunan `«`.
       final noisy =

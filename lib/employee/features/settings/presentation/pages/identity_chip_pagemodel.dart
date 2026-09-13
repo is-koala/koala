@@ -158,7 +158,16 @@ abstract class IdentityChipPagemodel extends State<IdentityChipPage> {
       );
 
       if (!mounted) return;
-      context.pop(IdentityChipResult(evidence: evidence, key: key));
+
+      // Formun beş alanı bu sonuçtan okunacak. Kanıt var ama DG1 kimlik
+      // bilgisi vermiyorsa sonuç yok: sunucu da reddedecekti ve formu boş
+      // bir kanıtla kilitlemek kullanıcıya çıkış bırakmazdı.
+      final result = IdentityChipResult.parse(evidence);
+      if (result == null) {
+        _fail(ChipReadFailure.holderUnreadable);
+        return;
+      }
+      context.pop(result);
     } on ChipReadException catch (error) {
       if (!mounted) return;
       _fail(error.reason);

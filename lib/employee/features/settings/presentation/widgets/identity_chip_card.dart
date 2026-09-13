@@ -16,17 +16,30 @@ import 'package:koala/product/widgets/app_icon.dart';
 ///
 /// Davet metni "zorunlu" demiyor, çünkü değil: çip okunmadan da doğrulama
 /// tamamlanıyor.
+///
+/// Özet iki eylem taşıyor ve ikisi ayrı: **Yeniden Oku** kanıtı yenisiyle
+/// değiştiriyor, **Okumayı Kaldır** kanıtı ve ondan türeyen beş alanı
+/// birlikte bırakıp formu elle düzenlemeye açıyor. Kullanıcının elle
+/// düzenlemeye dönmesinin başka yolu yok — kanıt dururken alanlara
+/// dokunmak, ekrandaki beyanı kanıttan ayrıştırmak olurdu. (Sunucunun
+/// kanıtı `IDENTITY_CHALLENGE_INVALID` ile reddetmesi de aynı geçişten
+/// geçiyor; o kararı sayfa veriyor, kart yalnız sonucu çiziyor.)
 class IdentityChipCard extends StatelessWidget {
   const IdentityChipCard({
     super.key,
     required this.result,
     required this.onRead,
+    required this.onRemove,
   });
 
   /// Okuma tamamlandıysa sonuç; `null` ise henüz okunmadı.
   final IdentityChipResult? result;
 
+  /// Kartı (yeniden) okut.
   final VoidCallback onRead;
+
+  /// Eldeki okumayı bırak; form elle düzenlemeye dönüyor.
+  final VoidCallback onRemove;
 
   /// Bilgilendirme metinlerinin satır aralığı; ekranın geri kalanıyla aynı.
   static const double _lineHeight = 1.4;
@@ -120,33 +133,43 @@ class IdentityChipCard extends StatelessWidget {
                 const SizedBox(height: AppSizes.smallGap),
                 Text(
                   proved
-                      ? 'Kartın çipi doğrulandı. Seri numarası ve doğum '
-                            'tarihi karttan geldi.'
-                      : 'Kart bilgileri okundu. Bu kart canlı çip '
-                            'doğrulamasını desteklemiyor; doğrulaman yine de '
-                            'tamamlanabilir.',
+                      ? 'Kartın çipi doğrulandı. Ad, soyad, TC kimlik no, '
+                            'seri no ve doğum tarihi karttan geldi; '
+                            'değiştirmek için okumayı kaldır.'
+                      : 'Kart bilgileri okundu. Ad, soyad, TC kimlik no, '
+                            'seri no ve doğum tarihi karttan geldi; '
+                            'değiştirmek için okumayı kaldır. Bu kart canlı '
+                            'çip doğrulamasını desteklemiyor; doğrulaman '
+                            'yine de tamamlanabilir.',
                   style: context.textTheme.bodyMedium?.copyWith(
                     color: context.textSecondary,
                     height: _lineHeight,
                   ),
                 ),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton(
-                    onPressed: onRead,
-                    child: Text(
-                      'Yeniden Oku',
-                      style: context.textTheme.bodyMedium?.copyWith(
-                        color: context.accentColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
+                Row(
+                  children: [
+                    _action(context, 'Yeniden Oku', onRead),
+                    const SizedBox(width: AppSizes.spaceSmall),
+                    _action(context, 'Okumayı Kaldır', onRemove),
+                  ],
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _action(BuildContext context, String title, VoidCallback onPressed) {
+    return TextButton(
+      onPressed: onPressed,
+      child: Text(
+        title,
+        style: context.textTheme.bodyMedium?.copyWith(
+          color: context.accentColor,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }

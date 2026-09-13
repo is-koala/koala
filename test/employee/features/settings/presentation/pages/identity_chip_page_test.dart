@@ -1,21 +1,40 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:koala/employee/features/auth/models/chip_evidence.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
 import 'package:koala/employee/features/settings/models/chip_read_failure.dart';
+import 'package:koala/employee/features/settings/models/identity_chip_result.dart';
+import 'package:koala/employee/features/settings/models/mrz_key.dart';
 import 'package:koala/employee/features/settings/models/mrz_scan_session.dart';
 import 'package:koala/employee/features/settings/presentation/pages/identity_chip_page.dart';
 import 'package:koala/employee/features/settings/services/chip_reader.dart';
 import 'package:koala/employee/features/settings/services/mrz_camera_session.dart';
 import 'package:koala/product/theme/theme.dart';
 
+import '../../../../../support/chip_fixtures.dart';
 import '../../../../../support/fake_api.dart';
 
 class _AvailableChipReader extends ChipReader {
   @override
   Future<NfcAvailability> availability() async => NfcAvailability.available;
+}
+
+/// Kartı okumuş gibi verilen kanıtı döndüren okuyucu; NFC yok.
+class _ReadingChipReader extends _AvailableChipReader {
+  _ReadingChipReader(this.evidence);
+
+  final ChipEvidence evidence;
+
+  @override
+  Future<ChipEvidence> read({
+    required MrzKey key,
+    required String challenge,
+    void Function(ChipReadStep step)? onStep,
+  }) async => evidence;
 }
 
 class _LiveCameraSession implements MrzCameraSession {
@@ -276,4 +295,111 @@ void main() {
       expect(find.text('Kimlik Kartını Okut'), findsOneWidget);
     });
   }
+
+  group('okunan kanıt', () {
+    /// Kamerayı üç kararlı kareyle geçip çipe gider; sonucu formun aldığı
+    /// `Future` üzerinden döndürür.
+    Future<IdentityChipResult?> scanAndRead(
+      WidgetTester tester, {
+      required ChipEvidence evidence,
+    }) async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 200,
+          body: {'success': true, 'data': 'q83vEjRWeJA='},
+        ),
+      );
+      final camera = _LiveCameraSession();
+      IdentityChipResult? popped;
+
+      // Başarı titreşimi platform kanalına gidiyor; testte karşılık veren
+      // yerli taraf olmadığı için çağrı burada tamamlanıyor.
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async => null,
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+
+      final router = GoRouter(
+        initialLocation: '/identity-verification',
+        routes: [
+          GoRoute(
+            path: '/identity-verification',
+            builder: (context, state) =>
+                const Scaffold(body: Text('kimlik formu')),
+          ),
+          GoRoute(
+            path: '/identity-chip',
+            builder: (context, state) => IdentityChipPage(
+              userService: UserService.withClient(api.client),
+              chipReader: _ReadingChipReader(evidence),
+              mrzCamera: camera,
+            ),
+          ),
+        ],
+      );
+      await tester.pumpWidget(
+        MaterialApp.router(theme: lightTheme, routerConfig: router),
+      );
+      unawaited(
+        router.push<IdentityChipResult>('/identity-chip').then((result) {
+          popped = result;
+        }),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Kartın Arka Yüzünü Tara'));
+      await tester.pump();
+      await tester.pump();
+      final key = MrzKey.parseTd1(
+        '$tckkMrzLine1\n$tckkMrzLine2\n$tckkMrzLine3',
+      )!;
+      for (var index = 0; index < 3; index++) {
+        camera.controller.add(MrzFrameObservation.valid(key));
+        await tester.pump();
+      }
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pumpAndSettle();
+
+      return popped;
+    }
+
+    testWidgets('kimlik bilgileriyle birlikte forma dönüyor', (tester) async {
+      // Form beş alanı bu sonuçtan okuyor; kanıt ile kart sahibi aynı
+      // nesnede taşındığı için ayrı ayrı temizlenemez ya da değişemezler.
+      final evidence = buildChipEvidence(
+        dg11: encodeDg11(nameOfHolder: 'KAYA<<ÇAĞRI'),
+      );
+
+      final result = await scanAndRead(tester, evidence: evidence);
+
+      expect(result, isNotNull);
+      expect(identical(result!.evidence, evidence), isTrue);
+      expect(result.holder.firstName, 'ÇAĞRI');
+      expect(result.holder.documentNumber, 'A01B23456');
+      expect(find.text('kimlik formu'), findsOneWidget);
+    });
+
+    testWidgets('kimlik bilgisi taşımıyorsa okuma hatası olarak kalıyor', (
+      tester,
+    ) async {
+      // Kanıt var ama DG1 çözümlenemiyor: sunucu da reddedecekti. Formu
+      // boş bir kanıtla kilitlemek yerine kullanıcıya ne yapacağı söyleniyor
+      // ve elle giriş yolu açık kalıyor.
+      final result = await scanAndRead(
+        tester,
+        evidence: buildChipEvidence(dg1: 'ZGcx'),
+      );
+
+      expect(result, isNull);
+      expect(find.text('Kart bilgileri çözümlenemedi'), findsOneWidget);
+      expect(find.text('Bilgileri Elle Doğrula'), findsOneWidget);
+      expect(find.text('kimlik formu'), findsNothing);
+    });
+  });
 }
