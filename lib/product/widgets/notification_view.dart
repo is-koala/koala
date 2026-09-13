@@ -13,6 +13,7 @@ import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/models/app_notification.dart';
 import 'package:koala/product/network/session_manager.dart';
 import 'package:koala/product/providers/notification_provider.dart';
+import 'package:koala/product/services/push_messaging.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/empty_state.dart';
 import 'package:provider/provider.dart';
@@ -49,7 +50,9 @@ class _NotificationViewState extends State<NotificationView> {
     super.initState();
     _controller.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<NotificationProvider>().load();
+      if (!mounted) return;
+      context.read<NotificationProvider>().load();
+      unawaited(PushMessaging.requestPermissionOnInboxOpen());
     });
   }
 

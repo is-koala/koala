@@ -119,16 +119,4 @@ abstract class CompanyDetailPagemodel extends State<CompanyDetailPage> {
       if (mounted) setState(() => isTogglingFollow = false);
     }
   }
-
-  /// TODO(backend): Şirketle doğrudan sohbetin karşılığı yok. Sunucuda bir
-  /// konuşma daima bir ilana bağlı (`POST /jobs/{jobId}/conversation`) ve
-  /// arada başvuru şartı var; şirket düzeyinde ayrı bir konuşma türü gerekiyor.
-  /// Buton yerinde duruyor, uç gelene kadar durumu açıklıyor.
-  void openChat() {
-    AppToast.info(
-      context,
-      'Şirketle doğrudan mesajlaşma henüz açık değil. '
-      'İlana başvurduğunda sohbet açılıyor.',
-    );
-  }
 }

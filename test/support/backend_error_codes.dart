@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'backend_error_categories.dart';
+import 'backend_contract_root.dart';
 
 /// Backend `errorCode` kümesi: `messages_tr.properties` anahtarlarından
 /// `KoalaException.deriveErrorCode` ile aynı dönüşüm.
@@ -24,7 +24,7 @@ class BackendErrorCodes {
   static final _quotedCode = RegExp(r"'([A-Z][A-Z0-9_]{2,})'");
 
   static Set<String> load({Directory? from, Map<String, String>? environment}) {
-    final root = BackendErrorCategories.resolveBackendRoot(
+    final root = BackendContractRoot.resolve(
       from: from,
       environment: environment,
     );
@@ -32,7 +32,7 @@ class BackendErrorCodes {
     if (!file.existsSync()) {
       throw StateError(
         'messages_tr.properties bulunamadı: ${file.path}. '
-        'KOALA_BACKEND_ROOT veya kardeş koala-backend checkout gerekli.',
+        'KOALA_BACKEND_ROOT veya kardeş koala-backend fixture gerekli.',
       );
     }
     return parseProperties(file.readAsStringSync());
@@ -68,7 +68,7 @@ class BackendErrorCodes {
   }
 
   static Set<String> routedCodesFromLib({Directory? from}) {
-    final root = from ?? Directory.current;
+    final root = from ?? BackendContractRoot.packageRoot();
     final codes = <String>{};
     for (final relative in routingSources) {
       final file = File('${root.path}/$relative');
