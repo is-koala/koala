@@ -12,6 +12,11 @@ import 'package:koala/product/extensions/context_extensions.dart';
 /// beyandan bağımsız değiştirebilirdi; burada değer doğrudan geçiliyor ve
 /// başka bir kaynağı yok. Görünüm doğum tarihi satırıyla aynı — beş alan
 /// birlikte "karttan okunan özet" gibi okunsun diye.
+///
+/// Ekran okuyucuya **tek düğüm** olarak gidiyor: etiket `label`, değer
+/// `value`, salt okunur. İki `Text` iki ayrı düğüm olsaydı okuyucu "Ad" ve
+/// "ÇAĞRI"yı birbirinden bağımsız iki öğe gibi duyurur, hangisinin neyin
+/// değeri olduğu kaybolurdu.
 class LockedField extends StatelessWidget {
   const LockedField({super.key, required this.label, required this.value});
 
@@ -21,34 +26,42 @@ class LockedField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: AppPadding.primaryAll,
-      decoration: BoxDecoration(
-        borderRadius: AppRadius.innerCircular,
-        border: Border.all(color: context.dividerColor),
-      ),
-      child: Row(
-        children: [
-          Text(
-            label,
-            style: context.textTheme.bodyMedium?.copyWith(
-              color: context.textSecondary,
-            ),
-          ),
-          const SizedBox(width: AppSizes.spaceSmall),
-          // Kalan genişliğin tamamı değere: uzun bir ad taşmak yerine sağa
-          // yaslı biçimde alt satıra iniyor.
-          Expanded(
-            child: Text(
-              value,
-              textAlign: TextAlign.end,
+    return Semantics(
+      label: label,
+      value: value,
+      readOnly: true,
+      // İki `Text`'in kendi düğümleri yukarıdakinin altına ayrıca eklenmesin;
+      // ekran okuyucu aynı şeyi iki kez duymasın.
+      excludeSemantics: true,
+      child: Container(
+        width: double.infinity,
+        padding: AppPadding.primaryAll,
+        decoration: BoxDecoration(
+          borderRadius: AppRadius.innerCircular,
+          border: Border.all(color: context.dividerColor),
+        ),
+        child: Row(
+          children: [
+            Text(
+              label,
               style: context.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
+                color: context.textSecondary,
               ),
             ),
-          ),
-        ],
+            const SizedBox(width: AppSizes.spaceSmall),
+            // Kalan genişliğin tamamı değere: uzun bir ad taşmak yerine sağa
+            // yaslı biçimde alt satıra iniyor.
+            Expanded(
+              child: Text(
+                value,
+                textAlign: TextAlign.end,
+                style: context.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
