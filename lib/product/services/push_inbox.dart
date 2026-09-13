@@ -25,8 +25,9 @@ class PushInbox {
 
   Future<void> handleForeground(Map<String, String> data) async {
     final notificationId = data['notificationId'];
-    if (notificationId == null || notificationId.isEmpty) return;
-    if (!await dedupe.claim(notificationId)) return;
+    if (notificationId != null && notificationId.isNotEmpty) {
+      if (!await dedupe.claim(notificationId)) return;
+    }
     await onForeground();
   }
 

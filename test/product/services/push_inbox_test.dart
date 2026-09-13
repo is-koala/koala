@@ -41,6 +41,13 @@ void main() {
     expect(opened, isEmpty);
   });
 
+  test('notificationId olmayan ön plan yine listeyi tazeler', () async {
+    await inbox.handleForeground({'other': 'x'});
+
+    expect(foreground, ['refresh']);
+    expect(routes, isEmpty);
+  });
+
   test('aynı ön plan bildirimi ikinci teslimatta işlenmez', () async {
     await inbox.handleForeground({'notificationId': 'ntf-1'});
     await inbox.handleForeground({'notificationId': 'ntf-1'});
@@ -67,9 +74,9 @@ void main() {
     expect(opened, ['ntf-wait']);
   });
 
-  test('notificationId olmayan yük yok sayılır', () async {
-    await inbox.handleForeground({'other': 'x'});
+  test('notificationId olmayan dokunma yok sayılır', () async {
     await inbox.handleOpened({});
+    await inbox.handleOpened({'other': 'x'});
 
     expect(foreground, isEmpty);
     expect(routes, isEmpty);

@@ -11,6 +11,7 @@ import 'package:koala/product/services/notification_service.dart';
 import 'package:koala/product/services/push_inbox.dart';
 import 'package:koala/product/services/push_notification_dedupe.dart';
 import 'package:koala/product/services/push_token_lifecycle.dart';
+import 'package:koala/product/services/firebase_messaging_push_token_source.dart';
 
 /// Firebase ve FCM dinleyicilerinin tek giriş noktası.
 ///
@@ -97,15 +98,17 @@ class PushMessaging {
   static Future<void> requestPermissionOnInboxOpen() async {
     if (!_initialized) return;
     try {
-      await FirebaseMessaging.instance.requestPermission();
+      final settings = await FirebaseMessaging.instance.requestPermission();
+      if (!isPushDeliveryAllowed(settings.authorizationStatus)) {
+        await PushTokenLifecycle().clearQuietly();
+        return;
+      }
       await PushTokenLifecycle().syncQuietly();
     } catch (error, stackTrace) {
       debugPrint('Push izni istenemedi: $error');
       debugPrintStack(stackTrace: stackTrace);
     }
   }
-
-  static Future<void> flushPending() => _inbox?.flush() ?? Future<void>.value();
 
   static void _navigate(String route) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
