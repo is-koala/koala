@@ -48,7 +48,11 @@
             </intent-filter>
 
             <meta-data android:name="flutter_deeplinking_enabled" android:value="false" />
-            <!-- Her ortam kendi bağlantı şemasını sahiplenir. -->
+            <!-- Her ortam kendi bağlantı şemasını sahiplenir. Doğrulanmış
+                 https App Links filtresi flavor manifestlerindedir
+                 (src/staging, src/production; host config/<flavor>.json
+                 WEB_HOSTS'tan gelir). Dev public host sahiplenmediği için
+                 burada https filtresi yoktur. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

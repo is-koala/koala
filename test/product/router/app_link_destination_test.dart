@@ -1,11 +1,32 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:koala/product/network/api_config.dart';
 import 'package:koala/product/router/app_link_destination.dart';
+
+/// Birim testlerin kullandığı örnek host kümeleri; gerçek yapılandırma
+/// `configuredWebHosts` ile okunur.
+const productionHosts = {'iskoala.com', 'www.iskoala.com'};
+const stagingHosts = {'iskoala.com'};
+
+/// `config/<flavor>.json` dosyasındaki `WEB_HOSTS`, uygulamanın okuduğu yoldan.
+Set<String> configuredWebHosts(String flavor) {
+  final decoded =
+      jsonDecode(File('config/$flavor.json').readAsStringSync())
+          as Map<String, dynamic>;
+  return ApiConfig.resolveWebHosts(
+    flavor: flavor,
+    configuredHosts: decoded['WEB_HOSTS'] as String,
+  );
+}
 
 void main() {
   test('hesap-dogrula bağlantısı kayıt tamamlama rotasına dönüşür', () {
     final route = AppLinkDestination.routeFor(
       Uri.parse('koala://hesap-dogrula?token=registration-123&utm_source=mail'),
       appScheme: 'koala',
+      webHosts: productionHosts,
     );
 
     expect(
@@ -17,6 +38,7 @@ void main() {
       AppLinkDestination.routeFor(
         Uri.parse('koala://hesap-dogrula?token=ilk&token=ikinci'),
         appScheme: 'koala',
+        webHosts: productionHosts,
       ),
       isNull,
     );
@@ -26,6 +48,7 @@ void main() {
     final route = AppLinkDestination.routeFor(
       Uri.parse('koala://sifre-belirle?token=set-password-123'),
       appScheme: 'koala',
+      webHosts: productionHosts,
     );
 
     expect(
@@ -37,6 +60,7 @@ void main() {
       AppLinkDestination.routeFor(
         Uri.parse('koala://sifre-belirle?token=ilk&token=ikinci'),
         appScheme: 'koala',
+        webHosts: productionHosts,
       ),
       isNull,
     );
@@ -46,6 +70,7 @@ void main() {
     final route = AppLinkDestination.routeFor(
       Uri.parse('koala://reset-password?token=reset-123'),
       appScheme: 'koala',
+      webHosts: productionHosts,
     );
 
     expect(route, '/reset-password?token=reset-123');
@@ -53,6 +78,7 @@ void main() {
       AppLinkDestination.routeFor(
         Uri.parse('koala://sifre-sifirla?token=ilk&token=ikinci'),
         appScheme: 'koala',
+        webHosts: productionHosts,
       ),
       isNull,
     );
@@ -62,6 +88,7 @@ void main() {
     final route = AppLinkDestination.routeFor(
       Uri.parse('koala://sifre-sifirla?token=reset-123&utm_medium=email'),
       appScheme: 'koala',
+      webHosts: productionHosts,
     );
 
     expect(route, '/reset-password?token=reset-123');
@@ -71,6 +98,7 @@ void main() {
     final route = AppLinkDestination.routeFor(
       Uri.parse('koala://eposta-onayla?token=email-123&utm_campaign=verify'),
       appScheme: 'koala',
+      webHosts: productionHosts,
     );
 
     expect(route, '/email-verification?token=email-123');
@@ -78,6 +106,7 @@ void main() {
       AppLinkDestination.routeFor(
         Uri.parse('koala://eposta-onayla?token=ilk&token=ikinci'),
         appScheme: 'koala',
+        webHosts: productionHosts,
       ),
       isNull,
     );
@@ -88,6 +117,7 @@ void main() {
       AppLinkDestination.routeFor(
         Uri.parse('https://iskoala.com/sifre-belirle?token=set-password-123'),
         appScheme: 'koala',
+        webHosts: productionHosts,
       ),
       '/auth/register-type/register/creating-password'
       '?token=set-password-123',
@@ -96,6 +126,7 @@ void main() {
       AppLinkDestination.routeFor(
         Uri.parse('https://www.iskoala.com/sifre-sifirla?token=reset-123'),
         appScheme: 'koala',
+        webHosts: productionHosts,
       ),
       '/reset-password?token=reset-123',
     );
@@ -106,33 +137,124 @@ void main() {
           '&assignmentId=assignment-1',
         ),
         appScheme: 'koala',
+        webHosts: productionHosts,
       ),
       '/payment-result?status=success&assignmentId=assignment-1',
     );
   });
 
-  test('staging yalnız staging HTTPS hostunu kabul eder', () {
+  test(
+    'iki flavor da e-postadaki iskoala.com kayıt bağlantısını aynı rotaya çevirir',
+    () {
+      // Backend e-postaya https://iskoala.com/hesap-dogrula?token=… yazıyor;
+      // staging de production web'ini kullandığı için ikisi de açmalı (#155).
+      for (final (flavor, scheme) in [
+        ('staging', 'koala-staging'),
+        ('production', 'koala'),
+      ]) {
+        expect(
+          AppLinkDestination.routeFor(
+            Uri.parse('https://iskoala.com/hesap-dogrula?token=x'),
+            appScheme: scheme,
+            webHosts: configuredWebHosts(flavor),
+          ),
+          '/auth/register-type/register/creating-password?token=x',
+          reason: flavor,
+        );
+      }
+    },
+  );
+
+  test('HTTPS hostu şemadan değil yapılandırmadan gelir', () {
     expect(
       AppLinkDestination.routeFor(
-        Uri.parse('https://staging.iskoala.com/eposta-onayla?token=email-123'),
+        Uri.parse('https://iskoala.com/eposta-onayla?token=email-123'),
         appScheme: 'koala-staging',
+        webHosts: stagingHosts,
       ),
       '/email-verification?token=email-123',
     );
     expect(
       AppLinkDestination.routeFor(
-        Uri.parse('https://iskoala.com/eposta-onayla?token=email-123'),
+        Uri.parse('https://staging.iskoala.com/eposta-onayla?token=email-123'),
         appScheme: 'koala-staging',
+        webHosts: stagingHosts,
       ),
       isNull,
     );
     expect(
       AppLinkDestination.routeFor(
         Uri.parse('https://staging.iskoala.com/eposta-onayla?token=email-123'),
-        appScheme: 'koala',
+        appScheme: 'koala-staging',
+        webHosts: const {'staging.iskoala.com'},
+      ),
+      '/email-verification?token=email-123',
+    );
+    expect(
+      AppLinkDestination.routeFor(
+        Uri.parse('https://www.iskoala.com/eposta-onayla?token=email-123'),
+        appScheme: 'koala-staging',
+        webHosts: stagingHosts,
       ),
       isNull,
     );
+  });
+
+  test('host listesi boşken hiçbir HTTPS bağlantısı kabul edilmez', () {
+    expect(
+      AppLinkDestination.routeFor(
+        Uri.parse('https://iskoala.com/hesap-dogrula?token=x'),
+        appScheme: 'koala-dev',
+        webHosts: const {},
+      ),
+      isNull,
+    );
+    expect(
+      AppLinkDestination.routeFor(
+        Uri.parse('koala-dev://hesap-dogrula?token=x'),
+        appScheme: 'koala-dev',
+        webHosts: const {},
+      ),
+      '/auth/register-type/register/creating-password?token=x',
+    );
+  });
+
+  test('davet HTTPS yolu kimliği yoldan okuyup davet rotasına çevirir', () {
+    const id = '11111111-1111-1111-1111-111111111111';
+    expect(
+      AppLinkDestination.routeFor(
+        Uri.parse('https://iskoala.com/davet/$id?utm_source=mail'),
+        appScheme: 'koala',
+        webHosts: productionHosts,
+      ),
+      '/company-invitation?id=$id',
+    );
+    expect(
+      AppLinkDestination.routeFor(
+        Uri.parse('https://iskoala.com/davet/$id?id=baska'),
+        appScheme: 'koala',
+        webHosts: productionHosts,
+      ),
+      '/company-invitation?id=$id',
+    );
+    for (final link in [
+      'https://iskoala.com/davet',
+      'https://iskoala.com/davet/',
+      'https://iskoala.com/davet/%20',
+      'https://iskoala.com/davet/$id/ek',
+      'https://iskoala.com/davet?id=$id',
+      'https://iskoala.com/company-invitation?id=$id',
+    ]) {
+      expect(
+        AppLinkDestination.routeFor(
+          Uri.parse(link),
+          appScheme: 'koala',
+          webHosts: productionHosts,
+        ),
+        isNull,
+        reason: link,
+      );
+    }
   });
 
   test('HTTPS sözleşmesi bilinmeyen host ve yolları reddeder', () {
@@ -146,7 +268,11 @@ void main() {
       'koala://reset-password.attacker.example?token=reset-123',
     ]) {
       expect(
-        AppLinkDestination.routeFor(Uri.parse(link), appScheme: 'koala'),
+        AppLinkDestination.routeFor(
+          Uri.parse(link),
+          appScheme: 'koala',
+          webHosts: productionHosts,
+        ),
         isNull,
       );
     }
@@ -160,7 +286,11 @@ void main() {
       'koala://reset-password?token=reset-123#fragment',
     ]) {
       expect(
-        AppLinkDestination.routeFor(Uri.parse(link), appScheme: 'koala'),
+        AppLinkDestination.routeFor(
+          Uri.parse(link),
+          appScheme: 'koala',
+          webHosts: productionHosts,
+        ),
         isNull,
       );
     }
@@ -172,7 +302,11 @@ void main() {
       'koala://reset-password?token=ilk&token=ikinci',
     ]) {
       expect(
-        AppLinkDestination.routeFor(Uri.parse(link), appScheme: 'koala'),
+        AppLinkDestination.routeFor(
+          Uri.parse(link),
+          appScheme: 'koala',
+          webHosts: productionHosts,
+        ),
         isNull,
       );
     }
@@ -188,7 +322,11 @@ void main() {
       'koala://payment-result?assignmentId=assignment-1',
     ]) {
       expect(
-        AppLinkDestination.routeFor(Uri.parse(link), appScheme: 'koala'),
+        AppLinkDestination.routeFor(
+          Uri.parse(link),
+          appScheme: 'koala',
+          webHosts: productionHosts,
+        ),
         isNull,
       );
     }
@@ -199,6 +337,7 @@ void main() {
       AppLinkDestination.routeFor(
         Uri.parse('koala-staging://reset-password?token=reset-123'),
         appScheme: 'koala-staging',
+        webHosts: stagingHosts,
       ),
       '/reset-password?token=reset-123',
     );
@@ -206,6 +345,7 @@ void main() {
       AppLinkDestination.routeFor(
         Uri.parse('koala://reset-password?token=reset-123'),
         appScheme: 'koala-staging',
+        webHosts: stagingHosts,
       ),
       isNull,
     );
@@ -216,6 +356,7 @@ void main() {
       AppLinkDestination.routeFor(
         Uri.parse('koala://complete-registration?token=registration-123'),
         appScheme: 'koala',
+        webHosts: productionHosts,
       ),
       '/auth/register-type/register/creating-password'
       '?token=registration-123',
@@ -226,6 +367,7 @@ void main() {
           'koala://complete-registration?token=registration-123&next=/profile',
         ),
         appScheme: 'koala',
+        webHosts: productionHosts,
       ),
       '/auth/register-type/register/creating-password'
       '?token=registration-123',
@@ -237,6 +379,7 @@ void main() {
       AppLinkDestination.routeFor(
         Uri.parse('koala://reset-password?token=reset-123&utm_source=legacy'),
         appScheme: 'koala',
+        webHosts: productionHosts,
       ),
       '/reset-password?token=reset-123',
     );
@@ -251,6 +394,7 @@ void main() {
           '&utm_source=mail',
         ),
         appScheme: 'koala',
+        webHosts: productionHosts,
       );
 
       expect(
@@ -261,6 +405,7 @@ void main() {
         AppLinkDestination.routeFor(
           Uri.parse('koala://company-invitation?id=ilk&id=ikinci'),
           appScheme: 'koala',
+          webHosts: productionHosts,
         ),
         isNull,
       );
@@ -279,7 +424,11 @@ void main() {
       'koala://company-invitation?id=invite-1#fragment',
     ]) {
       expect(
-        AppLinkDestination.routeFor(Uri.parse(link), appScheme: 'koala'),
+        AppLinkDestination.routeFor(
+          Uri.parse(link),
+          appScheme: 'koala',
+          webHosts: productionHosts,
+        ),
         isNull,
       );
     }
@@ -294,6 +443,7 @@ void main() {
           '&utm_source=iyzico',
         ),
         appScheme: 'koala',
+        webHosts: productionHosts,
       );
 
       expect(route, '/payment-result?status=success&assignmentId=assignment-1');
@@ -304,6 +454,7 @@ void main() {
             '&assignmentId=assignment-1',
           ),
           appScheme: 'koala',
+          webHosts: productionHosts,
         ),
         isNull,
       );

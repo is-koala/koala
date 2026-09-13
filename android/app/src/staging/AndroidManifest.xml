@@ -1,18 +1,26 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
         <activity android:name=".MainActivity">
-            <!-- Staging doğrulaması production alan adından tamamen ayrıdır. -->
+            <!-- Doğrulanmış App Links. Host sabit değil: build.gradle.kts
+                 config/staging.json içindeki WEB_HOSTS anahtarını okuyup
+                 appLinkHost placeholder'ını doldurur; Dart tarafı
+                 (ApiConfig.webHosts) aynı anahtarı okur. Staging bugün
+                 production web'ini kullandığı için e-postadaki
+                 https://iskoala.com/... bağlantısı bu build'e de düşer (#155).
+                 Yollar web appLinkPaths ve AppLinkDestination.httpsPathPrefixes
+                 ile birebir; yeni yol üçüne birden girer. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" />
-                <data android:host="staging.iskoala.com" />
+                <data android:host="${appLinkHost}" />
                 <data android:pathPrefix="/hesap-dogrula" />
                 <data android:pathPrefix="/sifre-belirle" />
                 <data android:pathPrefix="/sifre-sifirla" />
                 <data android:pathPrefix="/eposta-onayla" />
                 <data android:pathPrefix="/payment/result" />
+                <data android:pathPrefix="/davet" />
             </intent-filter>
         </activity>
     </application>
