@@ -42,6 +42,22 @@ void main() {
     );
   });
 
+  test('PR ve main GitHub kuyruğunu doldurmaz; kapı Mac’tedir', () {
+    final ci = File('.github/workflows/ci.yml').readAsStringSync();
+    final ios = File('.github/workflows/ios.yml').readAsStringSync();
+
+    expect(ci, isNot(contains('pull_request:')));
+    expect(ios, isNot(contains('pull_request:')));
+    expect(ci, contains('workflow_dispatch:'));
+    expect(ios, contains('workflow_dispatch:'));
+    expect(
+      ci,
+      contains(
+        'flutter test --flavor staging --dart-define-from-file=config/staging.json',
+      ),
+    );
+  });
+
   test('mobil release workflow etiketten iki iç test kanalını yükler', () {
     final workflow = File(
       '.github/workflows/mobile-release.yml',

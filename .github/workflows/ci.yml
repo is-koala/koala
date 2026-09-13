@@ -1,12 +1,9 @@
 name: CI
 
-# push: [main] bilerek kaldırıldı (is-koala/koala-backend#91, 1. madde).
-# Self-hosted Pi'de bedel dakika değil, aynı anda koşabilen tek iş kapasitesi:
-# birleşen her commit, PR'da zaten yeşile dönmüş zinciri ikinci kez koşturup
-# başka bir deponun işini kuyrukta bekletiyordu. main'i elle doğrulamak
-# gerekirse workflow_dispatch duruyor.
+# PR ve main GitHub kuyruğunu doldurmaz. Kapı Yusuf'un Mac'indedir.
+# Hetzner self-hosted işleri yalnız elle workflow_dispatch ile koşar.
+# Store/TestFlight hâlâ mobile-release.yml içinde mobile-v* etiketindedir.
 on:
-  pull_request:
   workflow_dispatch:
     inputs:
       build_android:
@@ -15,7 +12,6 @@ on:
         default: false
         type: boolean
 
-# Aynı PR'a arka arkaya push atılırsa önceki çalışmayı iptal et.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -32,22 +28,6 @@ env:
 jobs:
   analyze:
     name: Format & Analiz
-    # Savunma derinliği: bu koşul fork PR'ını Pi'den uzak tutar, ama güvenlik
-    # sınırı değildir; PR kendi workflow dosyasını değiştirebilir. Asıl sınır
-    # private depo Actions ayarındaki
-    # run_workflows_from_fork_pull_requests=false değeridir (2026-09-09'da
-    # REST API ile doğrulandı). O ayar açılmadan veya depo public yapılmadan
-    # önce self-hosted pull_request akışı kaldırılmalı ya da runner group yalnız
-    # default branch'teki güvenilir workflow'larla sınırlandırılmalıdır.
-    #
-    # İlk koşul şart: workflow_dispatch olayında github.event.pull_request yok,
-    # boş string github.repository'ye eşit olmadığı için ikinci koşul tek
-    # başına elle tetiklemeyi de kapatırdı.
-    #
-    # KOŞUL TEK YERDE: test ve build-android bu işe `needs:` ile bağlı ve
-    # GitHub, `needs` bağı atlanmış bir işi de atlıyor. Pi'de koşan YENİ bir iş
-    # eklenirse bu zincire bağlanmalı, yoksa koruma sessizce kapsamaz.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
