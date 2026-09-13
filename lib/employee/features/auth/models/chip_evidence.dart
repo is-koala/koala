@@ -17,6 +17,7 @@ class ChipEvidence {
     required this.sod,
     required this.dg1,
     this.dg11,
+    this.dg14,
     this.dg15,
     this.challenge,
     this.activeAuthenticationSignature,
@@ -33,6 +34,13 @@ class ChipEvidence {
   /// **CAGRI** yazıyor; DG11 de SOD'da özetlendiği için daha az güvenilir
   /// değil, yalnızca doğru. Kartta yoksa `null`.
   final String? dg11;
+
+  /// Çipin güvenlik bilgileri (ICAO 9303 Part 11 `SecurityInfos`). Sunucu
+  /// için önemli olan `ActiveAuthenticationInfo.signatureAlgorithm`: imzayı
+  /// hangi algoritmayla doğrulayacağını tahmin etmek yerine buradan
+  /// okuyor. Kartta yoksa ya da okunamadıysa `null`; sunucu o zaman
+  /// algoritma yelpazesini kendi geniş tutuyor.
+  final String? dg14;
 
   /// Çipin açık anahtarı. Yoksa Active Authentication adımı atlanıyor ve
   /// akış yine tamamlanıyor — sunucu bugün bunu kabul ediyor.
@@ -64,6 +72,7 @@ class ChipEvidence {
       'sod': sod,
       'dg1': dg1,
       'dg11': ?dg11,
+      'dg14': ?dg14,
       'dg15': ?dg15,
       'challenge': ?challenge,
       'activeAuthenticationSignature': ?activeAuthenticationSignature,

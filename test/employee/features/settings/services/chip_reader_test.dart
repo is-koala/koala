@@ -71,6 +71,62 @@ void main() {
     });
   });
 
+  group('ChipReader.readOptional', () {
+    // DG14 yardımcı bilgi: sunucu onsuz da doğruluyor. EF.COM'da listelenip
+    // yine de okunamayan bir dosya, bu PR öncesinde doğrulanabilen bir
+    // kartı doğrulanamaz hâle getirmemeli.
+    test('okunan dosya olduğu gibi dönüyor', () async {
+      final result = await ChipReader.readOptional(() async => 'dg14');
+
+      expect(result, 'dg14');
+    });
+
+    test('kartın vermediği dosya akışı bozmuyor', () async {
+      // Kart dosyayı reddetti (ör. 6A82 dosya yok). Güvenli kanal sayacı
+      // hatalı yanıtta da ilerlediği için sonraki okuma normal sürüyor.
+      final result = await ChipReader.readOptional<String>(
+        () async =>
+            throw PassportError('no file', code: StatusWord.fileNotFound),
+      );
+
+      expect(result, isNull);
+    });
+
+    test('çözülemeyen içerik akışı bozmuyor', () async {
+      final result = await ChipReader.readOptional<String>(
+        () async => throw EfParseError('bad tag'),
+      );
+
+      expect(result, isNull);
+    });
+
+    test('kartın uzaklaşması yutulmuyor', () async {
+      // Bağlantı koptuysa bir sonraki dosya da okunamayacak; sebebi burada
+      // gizlemek kullanıcıya yanlış bir hata gösterirdi.
+      await expectLater(
+        ChipReader.readOptional<String>(
+          () async => throw const ComProviderError('tag lost'),
+        ),
+        throwsA(isA<ComProviderError>()),
+      );
+    });
+
+    test('zaten sınıflandırılmış hata olduğu gibi yükseliyor', () async {
+      await expectLater(
+        ChipReader.readOptional<String>(
+          () async => throw const ChipReadException(ChipReadFailure.cardMoved),
+        ),
+        throwsA(
+          isA<ChipReadException>().having(
+            (error) => error.reason,
+            'reason',
+            ChipReadFailure.cardMoved,
+          ),
+        ),
+      );
+    });
+  });
+
   group('ChipReader.availability', () {
     testWidgets('yanıtsız kalan sorgu sonsuza kadar beklenmiyor', (
       tester,
