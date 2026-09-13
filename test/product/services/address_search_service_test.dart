@@ -41,36 +41,10 @@ void main() {
               request.path.endsWith('/resolve')) {
             final reverse =
                 request.path == '/locations/address-candidates/reverse';
-            return FakeApiResponse(
-              statusCode: 200,
-              body: {
-                'success': true,
-                'data': {
-                  'countryId': 'country-1',
-                  'countryName': 'TÜRKİYE',
-                  'countryCode': 'TR',
-                  'cityId': 'city-1',
-                  'cityName': 'İSTANBUL',
-                  'districtId': 'district-1',
-                  'districtName': 'KADIKÖY',
-                  'components': {
-                    'neighborhood': 'Caferağa Mahallesi',
-                    'thoroughfare': 'Moda Caddesi',
-                    'buildingNumber': '12',
-                    'postalCode': '34710',
-                  },
-                  'position': {
-                    'latitude': 40.982512,
-                    'longitude': 29.025411,
-                    'source': reverse
-                        ? 'REVERSE_GEOCODE_CONFIRMED'
-                        : 'AUTOCOMPLETE_CONFIRMED',
-                  },
-                  'candidateToken': 'opaque-token',
-                  'needsUserReview': false,
-                  'attribution': 'Google Maps',
-                },
-              },
+            return _candidateResponse(
+              source: reverse
+                  ? 'REVERSE_GEOCODE_CONFIRMED'
+                  : 'AUTOCOMPLETE_CONFIRMED',
             );
           }
           throw StateError('Beklenmeyen istek: ${request.path}');
@@ -99,6 +73,57 @@ void main() {
         reverseCandidate.position.source,
         AddressPositionSource.reverseGeocodeConfirmed,
       );
+    },
+  );
+
+  test(
+    'ters geokodlama gövdesinde koordinatı altı ondalığa yuvarlar',
+    () async {
+      // Harita kamerasından gelen ham `LatLng`; sunucu altı ondalıktan
+      // fazlasını `LATITUDE_PRECISION` ile 400 döndürüyor.
+      final api = FakeApi(
+        handler: (request) =>
+            _candidateResponse(source: 'REVERSE_GEOCODE_CONFIRMED'),
+      );
+      final service = AddressSearchService.withClient(api.client);
+
+      await service.reverse(41.01234567891, 28.97654321098);
+
+      final request = api.requests.single;
+      expect(request.path, '/locations/address-candidates/reverse');
+      expect(request.data, {'latitude': 41.012346, 'longitude': 28.976543});
+    },
+  );
+}
+
+FakeApiResponse _candidateResponse({required String source}) {
+  return FakeApiResponse(
+    statusCode: 200,
+    body: {
+      'success': true,
+      'data': {
+        'countryId': 'country-1',
+        'countryName': 'TÜRKİYE',
+        'countryCode': 'TR',
+        'cityId': 'city-1',
+        'cityName': 'İSTANBUL',
+        'districtId': 'district-1',
+        'districtName': 'KADIKÖY',
+        'components': {
+          'neighborhood': 'Caferağa Mahallesi',
+          'thoroughfare': 'Moda Caddesi',
+          'buildingNumber': '12',
+          'postalCode': '34710',
+        },
+        'position': {
+          'latitude': 40.982512,
+          'longitude': 29.025411,
+          'source': source,
+        },
+        'candidateToken': 'opaque-token',
+        'needsUserReview': false,
+        'attribution': 'Google Maps',
+      },
     },
   );
 }

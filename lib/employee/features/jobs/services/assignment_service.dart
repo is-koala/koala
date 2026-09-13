@@ -5,6 +5,7 @@ import 'package:koala/employee/features/jobs/models/dispute.dart';
 import 'package:koala/employee/features/jobs/models/work_session.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
+import 'package:koala/product/utils/coordinate_precision.dart';
 
 /// Atama uçları.
 ///
@@ -101,13 +102,18 @@ class AssignmentService {
       throw ArgumentError('clientEventId ve capturedAt birlikte verilmelidir.');
     }
 
+    // Konum varsa altı ondalıkla gider: sunucu koordinatı o kesinlikte
+    // saklayıp geri veriyor, kuyruğun eşleştirmesi de aynı kesinliğe bakıyor.
     return {
-      'latitude': ?latitude,
-      'longitude': ?longitude,
+      'latitude': ?_rounded(latitude),
+      'longitude': ?_rounded(longitude),
       'clientEventId': ?clientEventId,
       'capturedAt': ?capturedAt?.toUtc().toIso8601String(),
     };
   }
+
+  static double? _rounded(double? coordinate) =>
+      coordinate == null ? null : CoordinatePrecision.round6(coordinate);
 
   /// Atamanın mesai oturumları, girişten çıkışa.
   ///

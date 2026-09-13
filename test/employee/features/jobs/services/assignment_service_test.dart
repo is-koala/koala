@@ -163,6 +163,21 @@ void main() {
       expect(session.isOpen, isTrue);
     });
 
+    test('giriş konumu altı ondalığa yuvarlanarak gönderilir', () async {
+      final api = sessionApi();
+
+      await AssignmentService.withClient(api.client).checkIn(
+        assignmentId: 'asg_1',
+        latitude: 41.01234567891,
+        longitude: 28.97654321098,
+      );
+
+      expect(api.requests.single.data, {
+        'latitude': 41.012346,
+        'longitude': 28.976543,
+      });
+    });
+
     test(
       'çevrimdışı olay kimliği ve yakalanma anı birlikte gönderilir',
       () async {
