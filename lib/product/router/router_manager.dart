@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:koala/business/core/b_shell_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_account_deletion_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_create_page.dart';
@@ -28,7 +27,6 @@ import 'package:koala/employee/features/settings/presentation/pages/reports_page
 import 'package:koala/employee/features/settings/presentation/pages/sessions_page.dart';
 import 'package:koala/business/features/chat/presentation/pages/b_chat_list_page.dart';
 import 'package:koala/business/features/chat/presentation/pages/b_chat_page.dart';
-import 'package:koala/business/features/home/presentation/pages/b_location_picker_page.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/presentation/pages/splash_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/auth_page.dart';
@@ -70,7 +68,9 @@ import 'package:koala/employee/features/settings/presentation/pages/change_passw
 import 'package:koala/employee/features/settings/presentation/pages/verification_code_page.dart';
 import 'package:koala/employee/features/settings/presentation/pages/identity_chip_page.dart';
 import 'package:koala/employee/features/settings/presentation/pages/identity_verification_page.dart';
+import 'package:koala/product/models/confirmed_address.dart';
 import 'package:koala/product/network/session_manager.dart';
+import 'package:koala/product/widgets/map_first_address_page.dart';
 
 class RouterManager {
   /// Kullanıcı tipinin ana sayfası.
@@ -372,17 +372,19 @@ class RouterManager {
         },
       ),
 
-      // Harita seçici iki uygulamanın da işine yarıyor: işveren ilanın
-      // yerini, çalışan adresini buradan seçiyor. Sayfa hâlâ business
-      // klasöründe; taşınana kadar iki yol aynı ekrana çıkıyor.
+      // Harita-öncelikli adres seçici iki uygulamanın da işine yarıyor:
+      // işveren ilan ve şirket adresini buradan seçiyor (çalışan adresi
+      // `/address` üzerinden aynı ekrana `PUT` bağlanmış hâliyle gidiyor).
+      // `context.push<ConfirmedAddress>` ile çağrılır; `extra` daha önce
+      // onaylanmış adres olabilir, ekran ona açılır.
       GoRoute(
-        path: '/pick-location',
+        path: '/pick-address',
         pageBuilder: (context, state) {
           final initial = state.extra;
           return _page(
             state,
-            BLocationPickerPage(
-              initialLocation: initial is LatLng ? initial : null,
+            MapFirstAddressPage(
+              initialAddress: initial is ConfirmedAddress ? initial : null,
             ),
           );
         },
@@ -524,21 +526,6 @@ class RouterManager {
         path: '/business/user-profile',
         pageBuilder: (context, state) {
           return _page(state, BUserProfilePage.fromExtra(state.extra));
-        },
-      ),
-
-      // İlan oluşturma ekranından açılıyor ve seçilen `LatLng`'i geri
-      // döndürüyor; `context.push<LatLng>` ile çağrılmalı.
-      GoRoute(
-        path: '/business/pick-location',
-        pageBuilder: (context, state) {
-          final initial = state.extra;
-          return _page(
-            state,
-            BLocationPickerPage(
-              initialLocation: initial is LatLng ? initial : null,
-            ),
-          );
         },
       ),
 

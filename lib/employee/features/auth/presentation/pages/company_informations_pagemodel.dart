@@ -10,7 +10,9 @@ abstract class CompanyInformationsPagemodel
   final TextEditingController descriptionController = TextEditingController();
 
   late final BCompanyService companyService;
-  late final CanonicalAddressFormController addressController;
+
+  /// Haritada onaylanan şirket adresi; seçilene kadar `null`.
+  late ConfirmedAddress? address = widget.initialAddress;
   CompanyType companyType = CompanyType.limited;
   String? logoPath;
   bool isSaving = false;
@@ -19,13 +21,6 @@ abstract class CompanyInformationsPagemodel
   void initState() {
     super.initState();
     companyService = widget.service ?? BCompanyService();
-    addressController = CanonicalAddressFormController(
-      initialAddress: widget.initialAddress,
-    );
-    final initialLocation = widget.initialLocation;
-    if (initialLocation != null) {
-      addressController.selectPosition(initialLocation);
-    }
     // Avatar hem rengini hem baş harflerini firma adından türetiyor; ad
     // değiştikçe yeniden çizilmesi gerekiyor.
     companyNameController.addListener(_onCompanyNameChanged);
@@ -35,7 +30,6 @@ abstract class CompanyInformationsPagemodel
   void dispose() {
     companyNameController.removeListener(_onCompanyNameChanged);
     companyNameController.dispose();
-    addressController.dispose();
     taxNumberController.dispose();
     companyPhoneController.dispose();
     companyEmailController.dispose();
@@ -76,12 +70,14 @@ abstract class CompanyInformationsPagemodel
     setState(() => logoPath = image.path);
   }
 
-  Future<LatLng?> pickPosition(LatLng? initialPosition) async {
-    final result = await context.push<LatLng>(
-      '/pick-location',
-      extra: initialPosition,
+  /// Harita-öncelikli adres ekranını açar; kullanıcı onaylarsa özet güncellenir.
+  Future<void> pickAddress() async {
+    final picked = await context.push<ConfirmedAddress>(
+      '/pick-address',
+      extra: address,
     );
-    return result;
+    if (picked == null || !mounted) return;
+    setState(() => address = picked);
   }
 
   Future<void> saveCompanyInformation() async {
@@ -98,12 +94,9 @@ abstract class CompanyInformationsPagemodel
       }
     }
 
-    final address = addressController.value;
-    if (address == null) {
-      AppToast.error(
-        context,
-        addressController.validationMessage ?? 'Lütfen adresi tamamlayınız',
-      );
+    final confirmedAddress = address;
+    if (confirmedAddress == null) {
+      AppToast.error(context, 'Lütfen şirket adresini haritadan seçiniz');
       return;
     }
 
@@ -115,7 +108,7 @@ abstract class CompanyInformationsPagemodel
         phoneNumber: companyPhoneController.text.trim(),
         taxNumber: taxNumberController.text.trim(),
         type: companyType,
-        address: address,
+        address: confirmedAddress.toWrite(),
         website: websiteController.text.trim().isEmpty
             ? null
             : websiteController.text.trim(),

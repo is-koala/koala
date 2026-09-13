@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:koala/business/features/home/models/create_job_request.dart';
 import 'package:koala/business/features/home/models/job_template.dart';
 import 'package:koala/business/features/home/models/b_pricing_breakdown.dart';
@@ -23,11 +22,11 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
+import 'package:koala/product/models/confirmed_address.dart';
 import 'package:koala/product/network/api_exception.dart';
-import 'package:koala/product/services/reference_location_service.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/confirm_dialog.dart';
-import 'package:koala/product/widgets/canonical_address_form.dart';
+import 'package:koala/product/widgets/confirmed_address_field.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/button_navbar.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
@@ -37,10 +36,13 @@ import 'package:provider/provider.dart';
 part 'b_create_pagemodel.dart';
 
 class BCreatePage extends StatefulWidget {
-  const BCreatePage({super.key, this.paymentService, this.referenceService});
+  const BCreatePage({super.key, this.paymentService, this.initialAddress});
 
   final BPaymentService? paymentService;
-  final ReferenceLocationService? referenceService;
+
+  /// Formun açılışta taşıdığı adres; testler harita ekranını atlamak için
+  /// verir, üretimde işveren adresi haritadan seçer.
+  final ConfirmedAddress? initialAddress;
 
   @override
   State<BCreatePage> createState() => _BCreatePageState();
@@ -363,11 +365,13 @@ class _BCreatePageState extends BCreatePageModel {
 
   // ----------------------------------------------------------------- Konum
 
+  /// İlanın adresi haritada seçiliyor; burada yalnız özeti ve giriş kapısı
+  /// var.
   Widget _locationSection() {
-    return CanonicalAddressForm(
-      controller: _addressController,
-      pickPosition: _pickAddressPosition,
-      referenceService: widget.referenceService,
+    return ConfirmedAddressField(
+      value: _address,
+      label: 'İlan adresi *',
+      onTap: _pickAddress,
     );
   }
 

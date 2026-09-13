@@ -70,6 +70,22 @@ void main() {
     expect(pool.single.pageBuilder, isNotNull);
   });
 
+  test('adres seçici tek rotayla iki uygulamaya da açık', () {
+    final routes = allGoRoutes(RouterManager.router.configuration.routes);
+
+    // Harita-öncelikli adres ekranı: işveren ilan ve şirket adresini,
+    // çalışan `/address` üzerinden kendi adresini aynı bileşenle seçiyor.
+    // `/business/` öneki taşımıyor ki yönlendirme kapısı çalışanı geri
+    // çevirmesin; eski `pick-location` rotaları kalktı.
+    final picker = routes.where((route) => route.path == '/pick-address');
+    expect(picker, hasLength(1));
+    expect(picker.single.pageBuilder, isNotNull);
+    expect(
+      routes.where((route) => route.path.endsWith('pick-location')),
+      isEmpty,
+    );
+  });
+
   test('kazançlar ekranı shell dışında, kendi rotasıyla açılıyor', () {
     final earnings = allGoRoutes(
       RouterManager.router.configuration.routes,

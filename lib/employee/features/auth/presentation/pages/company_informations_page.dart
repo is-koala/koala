@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:koala/business/features/home/presentation/providers/b_company_provider.dart';
 import 'package:koala/business/features/home/services/b_company_service.dart';
@@ -16,11 +15,10 @@ import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/network/api_exception.dart';
-import 'package:koala/product/models/canonical_address.dart';
-import 'package:koala/product/services/reference_location_service.dart';
+import 'package:koala/product/models/confirmed_address.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
-import 'package:koala/product/widgets/canonical_address_form.dart';
+import 'package:koala/product/widgets/confirmed_address_field.dart';
 import 'package:koala/product/widgets/my_button.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
 import 'package:provider/provider.dart';
@@ -31,16 +29,15 @@ class CompanyInformationsPage extends StatefulWidget {
   const CompanyInformationsPage({
     super.key,
     this.service,
-    this.initialLocation,
     this.initialAddress,
-    this.referenceService,
     this.onSaved,
   });
 
   final BCompanyService? service;
-  final LatLng? initialLocation;
-  final CanonicalAddress? initialAddress;
-  final ReferenceLocationService? referenceService;
+
+  /// Formun açılışta taşıdığı adres; testler harita ekranını atlamak için
+  /// verir, üretimde işveren adresi haritadan seçer.
+  final ConfirmedAddress? initialAddress;
   final VoidCallback? onSaved;
 
   @override
@@ -115,10 +112,10 @@ class _CompanyInformationsPageState extends CompanyInformationsPagemodel {
             keyboardType: TextInputType.text,
           ),
           const SizedBox(height: AppSizes.spaceMedium),
-          CanonicalAddressForm(
-            controller: addressController,
-            referenceService: widget.referenceService,
-            pickPosition: pickPosition,
+          ConfirmedAddressField(
+            value: address,
+            label: 'Şirket adresi *',
+            onTap: pickAddress,
           ),
           const SizedBox(height: AppSizes.spaceMedium),
           MyTextfield(
