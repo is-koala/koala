@@ -1,0 +1,10 @@
+---
+description: Doğrula bu Mac'te; CI Hetzner'de; Mac GitHub runner değil
+alwaysApply: true
+---
+
+# Yerel doğrulama
+
+Ajanın kendi kapısı Yusuf'un Mac'inde: `flutter analyze --no-pub` ve `flutter test --flavor staging --dart-define-from-file=config/staging.json`. GitHub kuyruğunu bekleme.
+
+Mac'i org GitHub Actions runner kaydetme. Store/APK üretim imajını Mac'ten GitHub'a runner diye basma. PR yeşil tiki `self-hosted` Hetzner'de kalır.
