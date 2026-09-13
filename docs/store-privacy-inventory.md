@@ -38,6 +38,11 @@ doğrulandıktan sonra hesap sahibi tarafından mağaza konsollarında yayımlan
   veya Google'a görüntü yüklenmez. Kullanılmayan dört dil modeli R8
   kurallarıyla dışarıda bırakıldı (`android/app/proguard-rules.pro`).
 - `flutter_secure_storage`: tokenları Keychain/Keystore'da yerel saklar.
+- `firebase_core` / `firebase_messaging`: Android FCM cihaz token'ı ve
+  bildirim teslimi. Token `PUT /users/me/devices/push-token` ile Koala
+  backend'ine gider; mesaj gövdesi FCM üzerinden cihaza düşer. Ön planda
+  yerel bildirim çizilmez. İzin bildirim kutusuna ilk girişte sorulur.
+  Servis hesabı JSON'u depoya girmez (Dokploy). iOS APNs ayrı issue.
 - `sqflite`: gönderilemeyen mesai olaylarını kullanıcıya göre bölümlenmiş yerel
   kuyrukta saklar; makullük inceleme bayrağı taşıyanlar dahil başarılı sunucu
   onayı alan kayıtlar silinir. Reddedilen/uzlaştırılamayan kayıtlar destek

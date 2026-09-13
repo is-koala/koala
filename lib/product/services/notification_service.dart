@@ -10,8 +10,9 @@ import 'package:koala/product/network/api_paths.dart';
 /// servis `product/` altında.
 ///
 /// Akış yalnızca `IN_APP` kanalını döndürüyor; e-posta ve push kayıtları
-/// sunucuda gönderim kaydı olarak duruyor ama listeye girmiyor. Push'u
-/// cihaza düşürmek ayrı bir iş ve bugün sunucuda da yapılandırılmamış.
+/// sunucuda gönderim kaydı olarak duruyor ama listeye girmiyor. Cihaz
+/// token'ı [PushTokenLifecycle] ile yazılır; ön plan FCM olayı bu listeyi
+/// tazeler.
 class NotificationService {
   NotificationService._(this._apiClient);
 

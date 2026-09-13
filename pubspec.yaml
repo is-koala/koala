@@ -80,6 +80,12 @@ dependencies:
   stomp_dart_client: ^3.0.1
   file_picker: ^12.2.0
 
+  # Push. flutter/packages dışı; Yusuf 2026-09-12 onayladı (#141).
+  # Sürüm FlutterFire 3.47 hattına sabit. flutter_local_notifications yok:
+  # ön planda yerel bildirim çizilmez, arka planı FCM sistem tepsisi taşır.
+  firebase_core: 4.14.0
+  firebase_messaging: 16.6.0
+
 # dmrtd `archive: ^3.6.1` istiyor, lottie 3.5.1 ise `archive: ^4.0.0`; ikisi
 # aynı anda çözülemiyor ve pub'ın önerdiği çıkış yolu lottie'yi 3.3.0'a
 # düşürmek — yani zaten yayında olan bir paketi geriye almak.
