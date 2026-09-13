@@ -3,6 +3,9 @@
     <!-- Uygulama İzinleri -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Android 13+ bildirim izni. Açılışta sorulmaz; FCM,
+         bildirim kutusuna ilk girişte requestPermission ile ister. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Kamera yalnız sessiz, bellek içi MRZ kareleri üretir. Eklentinin
          genel manifestinden gelen ses ve eski haricî depolama izinleri bu
          akışta kullanılmadığı için birleşmiş manifestten çıkarılır. -->

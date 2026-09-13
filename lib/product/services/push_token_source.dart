@@ -2,9 +2,9 @@ import 'package:flutter/foundation.dart';
 
 /// Push token'ının nereden geldiği.
 ///
-/// #29 FCM/APNs kurulumu bitene kadar üretim [UnavailablePushTokenSource]
-/// kullanır: token yoktur, yenileme akışı boştur. Yaşam döngüsü (#30) yine
-/// de yazılır; kaynak bağlanınca aynı kancalar gerçek token'ı taşır.
+/// Üretim tekili Firebase ayağa kalkana kadar [UnavailablePushTokenSource]
+/// ile doğar; splash başarılı başlatınca [FirebaseMessagingPushTokenSource]
+/// bağlanır. Testler [FakePushTokenSource] enjekte eder.
 abstract class PushTokenSource {
   Future<String?> currentToken();
 

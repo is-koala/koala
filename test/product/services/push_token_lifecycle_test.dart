@@ -210,4 +210,33 @@ void main() {
 
     expect(api.requests, isEmpty);
   });
+
+  test('useSource dinleyiciyi yeni yenileme akışına bağlar', () async {
+    final refreshes = StreamController<String>.broadcast();
+    addTearDown(refreshes.close);
+    final api = FakeApi(
+      handler: (_) =>
+          const FakeApiResponse(statusCode: 200, body: {'success': true}),
+    );
+    await session.start(
+      accessToken: 'access',
+      refreshToken: 'refresh',
+      isEmployer: false,
+    );
+    final lifecycle = PushTokenLifecycle.withDependencies(
+      service: PushTokenService.withClient(api.client),
+      source: const UnavailablePushTokenSource(),
+      session: session,
+    );
+    lifecycle.listen();
+    lifecycle.useSource(
+      FakePushTokenSource(token: 'first', refreshes: refreshes.stream),
+    );
+    lifecycle.listen();
+
+    refreshes.add('rotated-token');
+    await pumpEventQueue(times: 20);
+
+    expect(api.requests.single.data, {'pushToken': 'rotated-token'});
+  });
 }

@@ -3,7 +3,11 @@ import 'package:koala/product/constants/app_assets.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/network/session_manager.dart';
+import 'package:koala/product/providers/notification_provider.dart';
+import 'package:koala/product/services/firebase_messaging_push_token_source.dart';
+import 'package:koala/product/services/push_messaging.dart';
 import 'package:koala/product/services/push_token_lifecycle.dart';
+import 'package:provider/provider.dart';
 
 /// Uygulamanın açılış ekranı ve tek başlatma noktası.
 ///
@@ -33,9 +37,17 @@ class _SplashPageState extends State<SplashPage> {
 
   Future<void> _initialize() async {
     await SessionManager().load();
+    await PushMessaging.ensureInitialized();
     final pushTokens = PushTokenLifecycle();
+    if (PushMessaging.isReady) {
+      pushTokens.useSource(FirebaseMessagingPushTokenSource());
+    }
     pushTokens.listen();
     await pushTokens.syncQuietly();
+    if (!mounted) return;
+    await PushMessaging.bindListeners(
+      notifications: context.read<NotificationProvider>(),
+    );
   }
 
   @override

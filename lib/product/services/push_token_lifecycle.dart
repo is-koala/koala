@@ -36,11 +36,22 @@ class PushTokenLifecycle {
   }
 
   final PushTokenService _service;
-  final PushTokenSource _source;
+  PushTokenSource _source;
   final SessionManager _session;
 
   String? _pending;
   StreamSubscription<String>? _refreshSub;
+
+  /// Firebase ayağa kalktıktan sonra gerçek FCM kaynağına geçmek için.
+  ///
+  /// Üretim tekili [AuthService] yüklenirken kurulur; o anda Firebase
+  /// henüz yok. Splash başlatınca kaynak değişir, dinleyici yeniden bağlanır.
+  void useSource(PushTokenSource source) {
+    _source = source;
+    final subscription = _refreshSub;
+    _refreshSub = null;
+    if (subscription != null) unawaited(subscription.cancel());
+  }
 
   Future<void> syncQuietly() async {
     final token = _pending ?? await _source.currentToken();
