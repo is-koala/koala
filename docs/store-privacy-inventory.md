@@ -10,7 +10,7 @@ doğrulandıktan sonra hesap sahibi tarafından mağaza konsollarında yayımlan
 | --- | --- | --- | --- | --- |
 | İletişim ve hesap | Ad, soyad, e-posta, telefon, kullanıcı kimliği | Hesap, güvenlik ve iletişim | Koala backend; e-posta/SMS sağlayıcıları gerçek üretim ayarına göre doğrulanır | Contact Info, User ID |
 | Konum | Yaklaşık konum, onaylı adres, iş konumu ve gerekli akışlarda koordinat | Yakındaki ilan, adres ve mesai güvenliği | Cihaz izni + Koala backend + Google Maps SDK; precise/approximate ayrımı trafikle doğrulanır | Location |
-| Kimlik belgesi | TCKN, belge no, doğum tarihi; çip okunduğunda SOD/DG1 ve varsa DG11/DG15 + imza | Kimlik doğrulama ve dolandırıcılık önleme | Backend saklama/anonimleştirme kapsamı ayrıca onaylanır; **DG2 hiç gönderilmez**, çip kanıtı isteğe bağlı ve kart okunmadan da doğrulama tamamlanıyor | Other Personal Info, Sensitive Info |
+| Kimlik belgesi | TCKN, belge no, doğum tarihi; çip okunduğunda SOD/DG1 ve varsa DG11/DG14/DG15 + imza | Kimlik doğrulama ve dolandırıcılık önleme | Backend saklama/anonimleştirme kapsamı ayrıca onaylanır; **DG2 hiç gönderilmez**, çip kanıtı isteğe bağlı ve kart okunmadan da doğrulama tamamlanıyor | Other Personal Info, Sensitive Info |
 | Kamera görüntüsü | Kimlik kartının arka yüzünün canlı kamera kareleri | Kartın makine okunabilir alanını (MRZ) okumak | **Cihazdan çıkmıyor**: yalnız kadraj bölgesi yerel ML Kit modeliyle, sırayla tek kare işlenir; yalnız türetilen belge no / doğum / son geçerlilik çipi açmak için kullanılır. Ham kare dosyaya, geçici alana veya loga yazılmaz; backend'e gönderilmez ve saklanmaz | Photos (yalnız cihaz içi işleme) |
 | Özgeçmiş ve profil | CV dosyası, profil resmi, deneyim, eğitim, nitelik ve ilgi alanı | İş başvurusu ve profil | Koala dosya deposu/backend; yetkili işveren erişimi | Files and Docs, Photos, User Content |
 | Mesaj ve başvuru içeriği | Sohbet metni, ön yazı, değerlendirme, uyuşmazlık gerekçesi | Pazaryeri iletişimi ve işlem desteği | Koala backend; yetki ve saklama süresi ayrıca doğrulanır | Messages, Other User Content |
@@ -29,7 +29,8 @@ doğrulandıktan sonra hesap sahibi tarafından mağaza konsollarında yayımlan
   kare akışı; ham kare saklanmaz, loglanmaz veya ağ üzerinden gönderilmez.
 - `flutter_nfc_kit` ve `dmrtd`: kimlik kartının çipini ICAO 9303 üzerinden
   okur. Trafik yalnız cihaz ile kart arasında; okunan veri gruplarından
-  **yalnız** SOD, DG1 ve varsa DG11/DG15 doğrulama isteğine eklenir. Ağ
+  **yalnız** SOD, DG1 ve varsa DG11/DG14/DG15 doğrulama isteğine eklenir
+  (DG14 çipin güvenlik bilgileri, kişisel veri taşımaz). Ağ
   bağlantısı yok, üçüncü tarafa aktarım yok. `dmrtd` LGPL-3.0/ticari ikili
   lisanslı — mağaza yayınından önce hukuk onayı gerekiyor.
 - `google_mlkit_text_recognition`: MRZ okuması için **cihaz içi** metin

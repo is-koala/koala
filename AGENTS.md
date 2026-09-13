@@ -560,7 +560,7 @@ This is *more* than KPS did: KPS only answered "are these five fields consistent
 - **Order matters.** Fetch the challenge from `POST /users/me/identity-verification/challenge` *before* opening the card session — it is what gets signed. Valid for 10 minutes, single use.
 - **We must send `INTERNAL AUTHENTICATE`,** not just read data groups. Whichever NFC library we pick has to support it. If the card has no `DG15`, the step is skipped and the flow still works.
 
-Data groups: `SOD` and `DG1` are required; `DG15` (chip public key) and `DG11` should be sent when present; `DG2` is deliberately **not** sent — face matching stays on the device. `DG11` matters more than it looks: the MRZ is folded to ASCII, so a card reading **ÇAĞRI** carries **CAGRI** in `DG1`, truncated at 30 characters. Taking the name from `DG1` would corrupt it. `DG11` is hashed in the SOD too, so it is no less trustworthy — just correct.
+Data groups: `SOD` and `DG1` are required; `DG15` (chip public key), `DG14` (`SecurityInfos` — tells the server which Active Authentication signature algorithm to verify with; read before AA, optional, a failed read does not break the flow) and `DG11` should be sent when present; `DG2` is deliberately **not** sent — face matching stays on the device. `DG11` matters more than it looks: the MRZ is folded to ASCII, so a card reading **ÇAĞRI** carries **CAGRI** in `DG1`, truncated at 30 characters. Taking the name from `DG1` would corrupt it. `DG11` is hashed in the SOD too, so it is no less trustworthy — just correct.
 
 #### Android Latin OCR modeli Play Services üzerinden gelir
 

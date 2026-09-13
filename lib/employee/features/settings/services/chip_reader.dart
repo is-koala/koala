@@ -131,6 +131,22 @@ class ChipReader {
           ? await passport.readEfDG11()
           : null;
 
+      // DG14 çipin güvenlik bilgilerini taşıyor; sunucu Active
+      // Authentication imzasını hangi algoritmayla doğrulayacağını buradan
+      // öğreniyor (`ActiveAuthenticationInfo.signatureAlgorithm`). AA'dan
+      // **önce** okunuyor ki imza kanıtla birlikte tam gitsin. Yardımcı
+      // bilgi olduğu için okunamaması akışı bozmuyor: bu PR öncesinde
+      // doğrulanabilen bir kart, DG14 yüzünden doğrulanamaz hâle gelmemeli.
+      //
+      // Süre maliyeti (gerçek kartta ölçülmedi, APDU sayısından hesap):
+      // `dmrtd` dosyayı 112 baytlık parçalarla okuyor; tek EC anahtarlı
+      // tipik bir DG14 (~300–600 bayt) 4–7 APDU ediyor, telefon NFC'sinde
+      // güvenli kanalda APDU başına ~40–80 ms → toplam **~0,2–0,6 sn**.
+      // Adım metni değişmiyor; bu süre "Kart bilgileri okunuyor" altında.
+      final dg14 = available.contains(EfDG14.TAG)
+          ? await readOptional(passport.readEfDG14)
+          : null;
+
       EfDG15? dg15;
       Uint8List? signature;
       if (available.contains(EfDG15.TAG)) {
@@ -152,6 +168,7 @@ class ChipReader {
         sod: base64Encode(sod.toBytes()),
         dg1: base64Encode(dg1.toBytes()),
         dg11: dg11 == null ? null : base64Encode(dg11.toBytes()),
+        dg14: dg14 == null ? null : base64Encode(dg14.toBytes()),
         dg15: dg15 == null ? null : base64Encode(dg15.toBytes()),
         challenge: signature == null ? null : challenge,
         activeAuthenticationSignature: signature == null
@@ -230,6 +247,26 @@ class ChipReader {
       throw const ChipReadException(ChipReadFailure.challengeUnavailable);
     }
     return bytes;
+  }
+
+  /// Yokluğu akışı bozmayacak bir dosyayı okur; okunamazsa `null` döner.
+  ///
+  /// Yalnız **dosya düzeyindeki** hatalar yutuluyor: kart dosyayı vermedi
+  /// ([PassportError]) ya da içerik çözülemedi ([EfParseError]). Güvenli
+  /// kanal hatalı bir yanıtta da sayaç ilerlettiği için oturum bozulmuyor,
+  /// bir sonraki dosya normal okunuyor. Bağlantı kopması
+  /// ([ComProviderError], [ChipReadException]) yutulmuyor — o durumda
+  /// sonraki okuma da başarısız olacak ve kullanıcı doğru sebebi görmeli.
+  ///
+  /// Statik çünkü cihaz olmadan test edilebilmesi gerekiyor.
+  static Future<T?> readOptional<T>(Future<T> Function() read) async {
+    try {
+      return await read();
+    } on PassportError {
+      return null;
+    } on EfParseError {
+      return null;
+    }
   }
 
   /// `dmrtd`'nin hatasını kullanıcıya ne yapacağını söyleyen bir sebebe

@@ -314,6 +314,7 @@ void main() {
           sod: 'c29k',
           dg1: 'ZGcx',
           dg11: 'ZGcxMQ==',
+          dg14: 'ZGcxNA==',
           dg15: 'ZGcxNQ==',
           challenge: 'Y2hhbGxlbmdl',
           activeAuthenticationSignature: 'c2ln',
@@ -327,6 +328,7 @@ void main() {
       expect(body['sod'], 'c29k');
       expect(body['dg1'], 'ZGcx');
       expect(body['dg11'], 'ZGcxMQ==');
+      expect(body['dg14'], 'ZGcxNA==');
       expect(body['dg15'], 'ZGcxNQ==');
       expect(body['challenge'], 'Y2hhbGxlbmdl');
       expect(body['activeAuthenticationSignature'], 'c2ln');
@@ -356,6 +358,7 @@ void main() {
       expect(body.containsKey('challenge'), isFalse);
       expect(body.containsKey('activeAuthenticationSignature'), isFalse);
       expect(body.containsKey('dg11'), isFalse);
+      expect(body.containsKey('dg14'), isFalse);
     });
 
     test('bilgiler doğrulanamazsa hata yükselir', () async {
