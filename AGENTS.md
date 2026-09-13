@@ -27,6 +27,8 @@ Flutter 3.47.1 (stable), Dart SDK `^3.8.1`. The font is Poppins.
 
 **Work through feature branches and pull requests.** Create focused commits, push the feature branch and open a pull request. Never push directly to `main`; keep unrelated changes out of each commit and report every commit hash. Merging remains a separate release decision.
 
+**Verify on this Mac; do not wait for the GitHub queue.** After a change, run `flutter analyze --no-pub` and the flavored `flutter test` here. The Mac is not an org GitHub Actions runner. PR checks stay on the Hetzner `self-hosted` machine.
+
 **Visual verification is done by the user.** They are the one who runs the app, sends screenshots and asks for fixes. A green `flutter analyze` plus a green `flutter build` mean "it compiles", never "it looks right" — do not conflate the two. If you made a visual change, say explicitly that you did not verify it on screen and point out what to look at.
 
 **Do not add dependencies or invent new patterns.** Reuse what is already in `lib/product/constants` and `lib/product/widgets` first. If a value is missing from a constant file, add it there with a meaningful name instead of hard-coding it. The one kind of addition that does not need asking is a package an existing dependency already requires — `cupertino_icons` is in `pubspec.yaml` for exactly that reason; say so when you add one.
