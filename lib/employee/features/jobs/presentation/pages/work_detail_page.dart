@@ -80,7 +80,8 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
   /// Buton içindeki bekleme halkasının kalınlığı.
   static const double _spinnerStroke = 2;
 
-  /// İptal tutarları TRY; `CancellationDto` para birimi taşımıyor.
+  /// Fiyat snapshot'ı (`pricing`) gelmediğinde tutarın para birimi; ilan
+  /// ücreti `salary` birim taşımıyor ve uygulama yalnız TRY'de çalışıyor.
   static const String _defaultCurrency = 'TRY';
 
   @override
@@ -494,7 +495,8 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
           summaryJob?.companyLogoUrl;
     } else {
       final person = assignment?.employer ?? detail?.creator;
-      name = person?.fullName.isEmpty ?? true ? null : person!.fullName;
+      final fullName = person?.fullName;
+      name = fullName == null || fullName.isEmpty ? null : fullName;
       imageUrl = person?.profilePictureUrl;
     }
 
