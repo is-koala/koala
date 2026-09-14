@@ -18,7 +18,6 @@ class JobApplicant {
     this.cvUrl,
     this.answeredDateTime,
     this.assignmentId,
-    this.rejectionReason,
   });
 
   /// Başvurunun kimliği. Kabul/ret bu kimlikle gönderiliyor
@@ -55,14 +54,13 @@ class JobApplicant {
   final DateTime? answeredDateTime;
 
   /// Kabulle doğan atamanın kimliği; kabul edilmediyse ya da sunucu alanı
-  /// göndermiyorsa `null`. Atama panelinden bağımsız bir eşleşme anahtarı:
+  /// göndermiyorsa `null`. Aday kartı atamasını önce bununla buluyor;
   /// çalışan kimliğiyle eşlemek iptal sonrası yeniden kabulde en yeni atamayı
-  /// seçmeyi gerektiriyor, bu alan doğrudan doğru kaydı söylüyor.
+  /// tahmin etmeyi gerektiriyor, bu alan doğrudan doğru kaydı söylüyor.
+  ///
+  /// `JobApplicantDto.rejectionReason` bilerek okunmuyor: işveren ekranı
+  /// reddedilmiş başvuruyu çizmiyor, okunup gösterilmeyen alan olurdu.
   final String? assignmentId;
-
-  /// İşverenin yazdığı ret gerekçesi; reddedilmediyse ya da gerekçe
-  /// yazılmadıysa `null`.
-  final String? rejectionReason;
 
   String get fullName => user.fullName;
 
@@ -98,7 +96,6 @@ class JobApplicant {
         final String value when value.isNotEmpty => value,
         _ => null,
       },
-      rejectionReason: json['rejectionReason'] as String?,
     );
   }
 

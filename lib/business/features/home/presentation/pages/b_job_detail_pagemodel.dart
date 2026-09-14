@@ -20,12 +20,9 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
   /// dolu bir daire gibi görünüyor.
   static const double _spinnerStroke = 2;
 
-  /// Onay kutusundaki çok satırlı gövdenin satır aralığı.
-  static const double _dialogLineHeight = 1.4;
-
-  /// Zaman çizelgesi satırı dar ekranda üç dört satıra sarıyor; sıkışık
-  /// dizilmesin diye açılmış satır aralığı.
-  static const double _timelineLineHeight = 1.4;
+  /// Birden çok satıra sarabilen gövde metinlerinin satır aralığı: onay
+  /// kutusunun açıklaması ve atama panelindeki zaman çizelgesi satırı.
+  static const double _multilineHeight = 1.4;
 
   JobService get _jobService => widget.jobService ?? JobService();
 
@@ -61,13 +58,6 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
   /// Bu ilanın atamaları ve ekranda açıkça seçilmiş olanı.
   List<Assignment> _assignments = const [];
   Assignment? _assignment;
-
-  /// Atama kimliğine göre zaman çizelgesi; atama listesiyle birlikte
-  /// okunuyor ve onunla birlikte değişiyor.
-  Map<String, BAssignmentTimeline> _timelines = const {};
-
-  BAssignmentTimeline _timelineOf(Assignment assignment) =>
-      _timelines[assignment.id] ?? BAssignmentTimeline.empty;
 
   /// Atama listesiyle ona bağlı iş takibi verisinin son yenileme durumu.
   ///
@@ -238,10 +228,9 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     }
 
     try {
-      final entries = await _employerJobService.fetchAssignmentsForJob(
+      final matches = await _employerJobService.fetchAssignmentsForJob(
         widget.jobId,
       );
-      final matches = [for (final entry in entries) entry.assignment];
       final selectedId =
           selectedAssignmentId ?? _pendingAssignmentId ?? _assignment?.id;
       final match = matches.isEmpty
@@ -256,7 +245,6 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
         setState(() {
           _assignment = null;
           _assignments = const [];
-          _timelines = const {};
           _workSessions = const [];
           _workSessionsError = null;
           _disputes = const [];
@@ -278,18 +266,15 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
         disputesResult,
         paymentAttemptsResult,
       ) = await (
-        _capture(_assignmentService.fetchWorkSessions(match.id)),
-        _capture(_assignmentService.fetchDisputes(match.id)),
-        _capture(_paymentService.fetchAttempts(match.id)),
+        LoadResult.capture(_assignmentService.fetchWorkSessions(match.id)),
+        LoadResult.capture(_assignmentService.fetchDisputes(match.id)),
+        LoadResult.capture(_paymentService.fetchAttempts(match.id)),
       ).wait;
 
       if (!mounted || generation != _assignmentLoadGeneration) return;
       final keepsRelatedSnapshot = _assignment?.id == match.id;
       setState(() {
         _assignments = matches;
-        _timelines = {
-          for (final entry in entries) entry.assignment.id: entry.timeline,
-        };
         _assignment = match;
         _workSessions =
             workSessionsResult.value ??
@@ -773,10 +758,20 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
 
   /// Adayın bu ilandaki ataması; yoksa `null`.
   ///
-  /// Aynı çalışanın birden fazla ataması olabilir (iptal sonrası yeniden
-  /// kabul); sunucunun `closed` hesabıyla aynı seçim yapılıyor: en yeni
-  /// atama tarihi olan. Tarihsiz kayıt en eski sayılıyor.
+  /// Sunucu başvuruyla birlikte atamanın kimliğini gönderiyorsa
+  /// (`JobApplicantDto.assignmentId`, koala-backend#282) doğrudan o kayıt.
+  /// Göndermiyorsa çalışan kimliğiyle eşleniyor: aynı çalışanın birden
+  /// fazla ataması olabilir (iptal sonrası yeniden kabul) ve sunucunun
+  /// `closed` hesabıyla aynı seçim yapılıyor — en yeni atama tarihi olan.
+  /// Tarihsiz kayıt en eski sayılıyor.
   Assignment? _assignmentOf(JobApplicant applicant) {
+    final byId = applicant.assignmentId == null
+        ? null
+        : _assignments
+              .where((assignment) => assignment.id == applicant.assignmentId)
+              .firstOrNull;
+    if (byId != null) return byId;
+
     Assignment? latest;
     for (final assignment in _assignments) {
       if (assignment.worker?.id != applicant.user.id) continue;
@@ -929,21 +924,4 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
   /// Gerekçeyi soran kutu. İptal edilirse `null`, boş bırakılırsa boş metin
   /// dönüyor — ikisi farklı: boş metin "gerekçesiz reddet" demek.
   Future<String?> _askRejectionReason(JobApplicant applicant);
-
-  Future<_RelatedLoadResult<T>> _capture<T>(Future<T> operation) async {
-    try {
-      return _RelatedLoadResult.success(await operation);
-    } on ApiException catch (error) {
-      return _RelatedLoadResult.failure(error);
-    }
-  }
-}
-
-class _RelatedLoadResult<T> {
-  const _RelatedLoadResult.success(this.value) : error = null;
-
-  const _RelatedLoadResult.failure(this.error) : value = null;
-
-  final T? value;
-  final ApiException? error;
 }

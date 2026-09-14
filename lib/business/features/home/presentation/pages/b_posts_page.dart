@@ -289,9 +289,9 @@ class _BPostsPageState extends State<BPostsPage>
             ),
             const SizedBox(height: AppSizes.space),
             _priceAndLocationRow(job),
-            if (job.startDateTime != null || post.staffing.isKnown) ...[
+            if (job.startDateTime != null || job.headcount != null) ...[
               const SizedBox(height: AppSizes.spaceSmall),
-              _scheduleAndStaffingRow(post),
+              _scheduleAndStaffingRow(job),
             ],
             const SizedBox(height: AppSizes.space),
             if (isActive) _applicantsRow(post) else _workerRow(post),
@@ -334,14 +334,16 @@ class _BPostsPageState extends State<BPostsPage>
   /// İş tarihi ve kontenjan: "10.09.2026 09:00 - 17:00 · 2/3 dolu".
   ///
   /// Bitiş aynı güne düşüyorsa yalnızca saati yazılıyor; başka güne taşan
-  /// işte iki tarih de tam. Kontenjan sunucudan gelmediyse o parça yok.
-  Widget _scheduleAndStaffingRow(BJobPost post) {
-    final staffing = post.staffing;
-    final schedule = _scheduleLabel(post.job);
-    final staffingLabel = staffing.label;
-    final color = staffing.isFull
-        ? AppColors.successStrong
-        : context.textTertiary;
+  /// işte iki tarih de tam. Kontenjan (`headcount`) sunucudan gelmediyse o
+  /// parça yok — "2/— dolu" bir bilgi değil; dolunca yeşil.
+  Widget _scheduleAndStaffingRow(Job job) {
+    final headcount = job.headcount;
+    final schedule = _scheduleLabel(job);
+    final staffingLabel = headcount == null
+        ? null
+        : '${job.hiredCount}/$headcount dolu';
+    final isFull = headcount != null && job.hiredCount >= headcount;
+    final color = isFull ? AppColors.successStrong : context.textTertiary;
 
     return Row(
       children: [
@@ -355,7 +357,7 @@ class _BPostsPageState extends State<BPostsPage>
           Expanded(
             child: Text(
               schedule,
-              key: ValueKey('post-schedule-${post.job.id}'),
+              key: ValueKey('post-schedule-${job.id}'),
               style: context.textTheme.bodySmall?.copyWith(
                 color: context.textTertiary,
               ),
@@ -371,7 +373,7 @@ class _BPostsPageState extends State<BPostsPage>
           const SizedBox(width: AppSizes.spaceTiny),
           Text(
             staffingLabel,
-            key: ValueKey('post-staffing-${post.job.id}'),
+            key: ValueKey('post-staffing-${job.id}'),
             style: context.textTheme.bodySmall?.copyWith(
               fontWeight: FontWeight.w500,
               color: color,

@@ -85,9 +85,8 @@ class BJobsProvider extends ChangeNotifier {
       // yanıt anındaki başvuran durumunu yeni ilan özetiyle birleştirir.
       final currentPosts = {for (final post in _jobPosts) post.job.id: post};
       _jobPosts = [
-        for (final entry in page.entries)
-          currentPosts[entry.job.id]?.withEntry(entry) ??
-              BJobPost(job: entry.job, staffing: entry.staffing),
+        for (final job in page.jobs)
+          currentPosts[job.id]?.withJob(job) ?? BJobPost(job: job),
       ];
       final retainedJobIds = {for (final post in _jobPosts) post.job.id};
       _pendingApplicantRequests.removeWhere(

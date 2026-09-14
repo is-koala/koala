@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:koala/business/features/home/models/b_badge.dart';
+import 'package:koala/business/core/load_result.dart';
 import 'package:koala/business/features/home/models/b_candidate_profile.dart';
 import 'package:koala/business/features/home/models/job_applicant.dart';
 import 'package:koala/business/features/home/presentation/widgets/b_candidate_reputation_section.dart';
 import 'package:koala/business/features/home/presentation/widgets/b_talent_pool_button.dart';
 import 'package:koala/business/features/home/services/b_candidate_profile_service.dart';
 import 'package:koala/employee/features/auth/models/public_profile.dart';
+import 'package:koala/employee/features/auth/models/user_badge.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/jobs/models/rating_summary.dart';
 import 'package:koala/employee/features/jobs/models/review.dart';
@@ -132,8 +133,10 @@ class _BUserProfilePageState extends BUserProfilePageModel {
                   const SizedBox(height: AppSizes.spaceLarge),
                   BCandidateReputationSection(
                     summary: _effectiveRatingSummary,
+                    summaryFailed: _ratingSummaryFailed,
                     reviews: _reviews,
                     badges: _effectiveBadges,
+                    badgesFailed: _badgesFailed,
                     completedJobCount: _candidate?.completedJobCount,
                     isLoading: _isReputationLoading,
                     errorMessage: _reputationErrorMessage,

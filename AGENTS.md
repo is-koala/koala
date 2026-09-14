@@ -344,7 +344,7 @@ Accepting an application does not start the job — the server opens the assignm
 
 > `MyJob.assignmentId` is `null` on rows that came from an application and carries the id on rows that came from an assignment. It duplicates `MyJob.id` on purpose — the assignment endpoints need an id that is definitely an assignment's.
 
-**The timesheet is wired on both sides.** `AssignmentService` gained `checkIn` / `checkOut` / `fetchWorkSessions`, and `EmployerJobService` gained `fetchMyAssignments` (with `asEmployer: true`) and `completeAssignment`.
+**The timesheet is wired on both sides.** `AssignmentService` gained `checkIn` / `checkOut` / `fetchWorkSessions`, and `EmployerJobService` gained `fetchJobAssignments` (`GET /jobs/{jobId}/assignments`), `fetchMyAssignments` (with `asEmployer: true`, kept as the fallback below) and `completeAssignment`.
 
 Things worth knowing:
 
@@ -353,7 +353,7 @@ Things worth knowing:
 - **`IN_PROGRESS` is now its own screen state.** `MyJobStatus.inProgress` sits at the very top of "İşlerim" in its own teal section (`AppColors.progress`, the only hue the other four sections had not taken), because a worker mid-shift wants the check-out button first. Open sessions are fetched **only** for in-progress assignments — nobody has two shifts running at once, so this is not the N+1 that applicant loading used to be.
 - **The elapsed time ticks.** `WorkSession.elapsed` computes from `DateTime.now()` on an open session, so `my_jobs_pagemodel` runs a one-minute `Timer` while any session is open and cancels it when none is. Without it the screen would show a frozen duration, which on a timesheet is worse than showing nothing.
 
-> There is no endpoint that returns the assignment for a given job — `JobDetailDto` does not carry one — so `b_job_detail_page` fetches the employer's assignment page and filters by `job.id`. If a per-job endpoint ever lands, that is the one call to replace.
+> **The assignments of one job come from `GET /jobs/{jobId}/assignments`** (koala-backend#282; owner or current company officer only, anyone else and an unknown job get the same `404 JOB_NOT_FOUND`). `EmployerJobService.fetchAssignmentsForJob` walks every page of that endpoint. It falls back to the old path — page through `/users/me/assignments?asEmployer=true` and filter by `job.id` — **only** when the server answers `404` with `errorCode: ENDPOINT_NOT_FOUND`, i.e. a server that predates the endpoint; `JOB_NOT_FOUND` and every other error are rethrown, because the scan would find nothing there either. The distinction is made on `errorCode`, never on the type: `ApiErrorType.notFound` merges `RESOURCE_NOT_FOUND` and `ENDPOINT_NOT_FOUND` into one value. `ENDPOINT_NOT_FOUND` is checked against the backend catalog by `backend_error_codes_test` (`endpoint.not.found` derives to the same string the category fallback produces).
 
 **Cancellation and disputes are wired on both sides.** `AssignmentService` owns `cancel`, `fetchCancellation`, `openDispute` and `fetchDisputes` — all four are open to **both** parties, so the business side calls the employee-side service for them, as it already does for work sessions.
 

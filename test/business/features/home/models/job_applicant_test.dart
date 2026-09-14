@@ -17,25 +17,23 @@ void main() {
         ...base,
         'answeredDateTime': '2026-09-09T12:00:00Z',
         'assignmentId': 'asg-1',
-        'rejectionReason': null,
       });
 
       expect(applicant.status, ApplicationStatus.accepted);
       expect(applicant.answeredDateTime, DateTime.utc(2026, 9, 9, 12));
       expect(applicant.assignmentId, 'asg-1');
-      expect(applicant.rejectionReason, isNull);
       expect(applicant.hasCv, isTrue);
     });
 
-    test('ret gerekçesini taşır', () {
+    test('reddedilmiş başvuruda atama kimliği yok', () {
       final applicant = JobApplicant.fromJson({
         ...base,
         'status': 'REJECTED',
         'answeredDateTime': '2026-09-09T12:00:00Z',
-        'rejectionReason': 'Deneyim yetersiz',
+        'assignmentId': null,
       });
 
-      expect(applicant.rejectionReason, 'Deneyim yetersiz');
+      expect(applicant.answeredDateTime, DateTime.utc(2026, 9, 9, 12));
       expect(applicant.assignmentId, isNull);
     });
 
@@ -45,7 +43,6 @@ void main() {
 
       expect(applicant.answeredDateTime, isNull);
       expect(applicant.assignmentId, isNull);
-      expect(applicant.rejectionReason, isNull);
     });
 
     test('boş özgeçmiş adresi yok sayılır', () {

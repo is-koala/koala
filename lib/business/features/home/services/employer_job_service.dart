@@ -1,10 +1,9 @@
 import 'package:flutter/foundation.dart';
-import 'package:koala/business/features/home/models/b_assignment_timeline.dart';
-import 'package:koala/business/features/home/models/b_job_staffing.dart';
 import 'package:koala/business/features/home/models/create_job_request.dart';
 import 'package:koala/business/features/home/models/job_applicant.dart';
 import 'package:koala/business/features/home/models/b_payment_session.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
+import 'package:koala/employee/features/home/models/job_page.dart';
 import 'package:koala/employee/features/jobs/models/assignment.dart';
 import 'package:koala/employee/features/jobs/models/job_application.dart';
 import 'package:koala/product/network/api_client.dart';
@@ -46,13 +45,12 @@ class EmployerJobService {
   /// İşverenin açtığı ilanlar, yeniden eskiye.
   ///
   /// Bireysel ve kurumsal ilanların ikisi de burada: backend `creatorId`'ye
-  /// bakıyor, dolayısıyla şirket kimliği geçmeye gerek yok. Her satır ilan
-  /// özetiyle birlikte kontenjanı da taşıyor ([BJobListEntry]).
-  Future<BJobListPage> fetchMyJobs({int page = 0, int size = defaultPageSize}) {
-    return _apiClient.get<BJobListPage>(
+  /// bakıyor, dolayısıyla şirket kimliği geçmeye gerek yok.
+  Future<JobPage> fetchMyJobs({int page = 0, int size = defaultPageSize}) {
+    return _apiClient.get<JobPage>(
       ApiPaths.myJobs,
       queryParameters: {'page': page, 'size': size},
-      parse: (data) => BJobListPage.fromJson(data! as Map<String, dynamic>),
+      parse: (data) => JobPage.fromJson(data! as Map<String, dynamic>),
     );
   }
 
@@ -118,15 +116,14 @@ class EmployerJobService {
   ///
   /// Tek ilanın ataması için asıl yol [fetchJobAssignments]; burası o ucu
   /// tanımayan eski sunucuda [fetchAssignmentsForJob]'un düştüğü tarama.
-  Future<BEmployerAssignmentPage> fetchMyAssignments({
+  Future<AssignmentPage> fetchMyAssignments({
     int page = 0,
     int size = defaultPageSize,
   }) {
-    return _apiClient.get<BEmployerAssignmentPage>(
+    return _apiClient.get<AssignmentPage>(
       ApiPaths.myAssignments,
       queryParameters: {'asEmployer': true, 'page': page, 'size': size},
-      parse: (data) =>
-          BEmployerAssignmentPage.fromJson(data! as Map<String, dynamic>),
+      parse: (data) => AssignmentPage.fromJson(data! as Map<String, dynamic>),
     );
   }
 
@@ -135,16 +132,15 @@ class EmployerJobService {
   ///
   /// Yalnızca ilan sahibi ya da şirket ilanının güncel yetkilisi okuyabiliyor;
   /// başkası ve olmayan ilan aynı `404 JOB_NOT_FOUND` yanıtını alıyor.
-  Future<BEmployerAssignmentPage> fetchJobAssignments(
+  Future<AssignmentPage> fetchJobAssignments(
     String jobId, {
     int page = 0,
     int size = defaultPageSize,
   }) {
-    return _apiClient.get<BEmployerAssignmentPage>(
+    return _apiClient.get<AssignmentPage>(
       ApiPaths.assignmentsOfJob(jobId),
       queryParameters: {'page': page, 'size': size},
-      parse: (data) =>
-          BEmployerAssignmentPage.fromJson(data! as Map<String, dynamic>),
+      parse: (data) => AssignmentPage.fromJson(data! as Map<String, dynamic>),
     );
   }
 
@@ -163,7 +159,7 @@ class EmployerJobService {
   /// süzülüyor — bu ucun gelmesinden önceki yol. `JOB_NOT_FOUND` dâhil diğer
   /// hatalar olduğu gibi yükseliyor: ilan gerçekten yoksa ya da yetki yoksa
   /// tarama da bir şey bulmaz, hatayı gizlemenin anlamı yok.
-  Future<List<BEmployerAssignment>> fetchAssignmentsForJob(String jobId) async {
+  Future<List<Assignment>> fetchAssignmentsForJob(String jobId) async {
     try {
       return await _collectPages(
         (pageNumber) => fetchJobAssignments(jobId, page: pageNumber),
@@ -175,20 +171,20 @@ class EmployerJobService {
 
     return _collectPages(
       (pageNumber) => fetchMyAssignments(page: pageNumber),
-      (entry) => entry.assignment.job.id == jobId,
+      (assignment) => assignment.job.id == jobId,
     );
   }
 
-  Future<List<BEmployerAssignment>> _collectPages(
-    Future<BEmployerAssignmentPage> Function(int pageNumber) fetchPage,
-    bool Function(BEmployerAssignment entry) matches,
+  Future<List<Assignment>> _collectPages(
+    Future<AssignmentPage> Function(int pageNumber) fetchPage,
+    bool Function(Assignment assignment) matches,
   ) async {
-    final collected = <BEmployerAssignment>[];
+    final collected = <Assignment>[];
     var pageNumber = 0;
 
     while (true) {
       final page = await fetchPage(pageNumber);
-      collected.addAll(page.entries.where(matches));
+      collected.addAll(page.assignments.where(matches));
       if (page.last) return collected;
       pageNumber++;
     }

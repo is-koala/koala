@@ -41,13 +41,16 @@ abstract class BUserProfilePageModel extends State<BUserProfilePage> {
   bool _isLoading = true;
   String? _errorMessage;
 
-  /// İtibar bölümü: puan özeti, son yorumlar ve rozetler. Üç uç birbirinden
-  /// bağımsız; biri düşünce diğerleri yine çiziliyor.
-  RatingSummary? _ratingSummary;
-  List<Review> _reviews = const [];
-  List<BBadge>? _badges;
+  /// İtibar bölümünün ham sonuçları: puan özeti, son yorumlar ve rozetler.
+  /// Üç uç birbirinden bağımsız; biri düşünce diğerleri yine çiziliyor.
+  /// Ekranda görünen değerler ham sonuçlardan **türetiliyor**
+  /// ([_effectiveRatingSummary], [_effectiveBadges], [_reputationErrorMessage])
+  /// ki profil yanıtındaki yedek kopya, profil sonradan gelse de devreye
+  /// girsin.
+  LoadResult<RatingSummary?>? _ratingSummaryResult;
+  LoadResult<ReviewPage>? _reviewsResult;
+  LoadResult<List<UserBadge>>? _badgesResult;
   bool _isReputationLoading = true;
-  String? _reputationErrorMessage;
 
   Availability? _availability;
   bool _isAvailabilityLoading = true;
@@ -70,47 +73,57 @@ abstract class BUserProfilePageModel extends State<BUserProfilePage> {
   /// kopya (`PublicProfileDto.averageRating/reviewCount/badges`) yedek; o da
   /// yoksa şerit ve tekrar deneme. Yorumların profil yanıtında karşılığı yok.
   Future<void> _loadReputation() async {
-    setState(() {
-      _isReputationLoading = true;
-      _reputationErrorMessage = null;
-    });
+    setState(() => _isReputationLoading = true);
 
     final userId = _profileUserId;
     final (summaryResult, reviewsResult, badgesResult) = await (
-      _capture(_reviewService.fetchRatingSummary(userId)),
-      _capture(
+      LoadResult.capture(_reviewService.fetchRatingSummary(userId)),
+      LoadResult.capture(
         _reviewService.fetchReviewsAbout(userId, size: _visibleReviewCount),
       ),
-      _capture(_profileService.fetchBadges(userId)),
+      LoadResult.capture(_profileService.fetchBadges(userId)),
     ).wait;
     if (!mounted) return;
 
     setState(() {
-      _ratingSummary = summaryResult.error == null
-          ? summaryResult.value
-          : _candidate?.ratingSummary;
-      _reviews = reviewsResult.value?.reviews ?? const [];
-      _badges = badgesResult.value ?? _candidate?.badges;
-      _reputationErrorMessage =
-          reviewsResult.error?.message ??
-          (_ratingSummary == null ? summaryResult.error?.message : null) ??
-          (_badges == null ? badgesResult.error?.message : null);
+      _ratingSummaryResult = summaryResult;
+      _reviewsResult = reviewsResult;
+      _badgesResult = badgesResult;
       _isReputationLoading = false;
     });
   }
 
-  /// Puan özetinin son hâli: uçtan geldiyse o, gelmediyse profildeki kopya.
-  RatingSummary? get _effectiveRatingSummary =>
-      _ratingSummary ?? _candidate?.ratingSummary;
+  /// Puan özeti: uç başarılıysa onun değeri (boş da olabilir), düştüyse
+  /// profil yanıtındaki kopya.
+  RatingSummary? get _effectiveRatingSummary {
+    final result = _ratingSummaryResult;
+    if (result == null || result.failed) return _candidate?.ratingSummary;
+    return result.value;
+  }
 
-  List<BBadge>? get _effectiveBadges => _badges ?? _candidate?.badges;
+  /// Rozetler: uç başarılıysa onun listesi, düştüyse ya da henüz gelmediyse
+  /// profil yanıtındaki kopya; ikisi de yoksa `null` (bilinmiyor).
+  List<UserBadge>? get _effectiveBadges =>
+      _badgesResult?.value ?? _candidate?.badges;
 
-  Future<_ReputationResult<T>> _capture<T>(Future<T> operation) async {
-    try {
-      return _ReputationResult.success(await operation);
-    } on ApiException catch (error) {
-      return _ReputationResult.failure(error);
-    }
+  List<Review> get _reviews => _reviewsResult?.value?.reviews ?? const [];
+
+  /// Puan özeti ucu düştü ve yedek de yoksa.
+  bool get _ratingSummaryFailed =>
+      _ratingSummaryResult?.failed == true && _candidate?.ratingSummary == null;
+
+  /// Rozet ucu düştü ve yedek de yoksa.
+  bool get _badgesFailed =>
+      _badgesResult?.failed == true && _effectiveBadges == null;
+
+  /// Şeritte gösterilen hata: yorumlar alınamadıysa o, değilse yedeği de
+  /// olmayan puan ya da rozet hatası. Yedeği olan hata şerit üretmiyor.
+  String? get _reputationErrorMessage {
+    final reviewsError = _reviewsResult?.error?.message;
+    if (reviewsError != null) return reviewsError;
+    if (_ratingSummaryFailed) return _ratingSummaryResult?.error?.message;
+    if (_badgesFailed) return _badgesResult?.error?.message;
+    return null;
   }
 
   Future<void> _loadAvailability() async {
@@ -274,13 +287,4 @@ abstract class BUserProfilePageModel extends State<BUserProfilePage> {
       ),
     );
   }
-}
-
-class _ReputationResult<T> {
-  const _ReputationResult.success(this.value) : error = null;
-
-  const _ReputationResult.failure(this.error) : value = null;
-
-  final T? value;
-  final ApiException? error;
 }

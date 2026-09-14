@@ -185,6 +185,43 @@ void main() {
     expect(find.text('Özgeçmiş açılamadı'), findsOneWidget);
   });
 
+  // Aynı çalışanın iki ataması (iptal sonrası yeniden kabul): sunucu
+  // başvuruya atama kimliğini yazıyorsa kart o kaydı kullanır, en yeniyi
+  // tahmin etmez.
+  testWidgets('aday kartı atamasını assignmentId ile bulur', (tester) async {
+    final closed = {
+      ..._timelineAssignment,
+      'id': 'assignment-old',
+      'status': 'CANCELLED',
+      'assignmentDateTime': '2026-09-01T10:00:00Z',
+      'messagingAvailable': false,
+      'messagingAvailableReason': 'CLOSED',
+    };
+    final open = {
+      ..._timelineAssignment,
+      'id': 'assignment-new',
+      'status': 'CONFIRMED',
+      'assignmentDateTime': '2026-09-09T10:00:00Z',
+      'messagingAvailable': true,
+      'messagingAvailableReason': 'AVAILABLE',
+    };
+
+    await pumpPage(
+      tester,
+      // En yeni atama listede önce; kimlik olmasa karta bu düşerdi.
+      assignments: [open, closed],
+      applicants: [
+        {..._acceptedApplicant, 'assignmentId': 'assignment-old'},
+      ],
+    );
+
+    expect(
+      find.byKey(const ValueKey('applicant-chat-note-worker-1')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('applicant-chat-worker-1')), findsNothing);
+  });
+
   testWidgets('ilan başına atama ucunu kullanır', (tester) async {
     final harness = await pumpPage(tester);
 

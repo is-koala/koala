@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:koala/business/features/home/models/b_badge.dart';
 import 'package:koala/business/features/home/presentation/widgets/b_candidate_reputation_section.dart';
+import 'package:koala/employee/features/auth/models/user_badge.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/jobs/models/rating_summary.dart';
 import 'package:koala/employee/features/jobs/models/review.dart';
@@ -29,8 +29,13 @@ void main() {
     const Review(id: 'review-2', rating: 3, isAnonymous: true),
   ];
   const badges = [
-    BBadge(code: 'GEZGIN_GOLD', name: 'Gezgin', tier: 'GOLD'),
-    BBadge(code: 'IDENTITY', name: 'Kimliği Doğrulandı', tier: 'NONE'),
+    UserBadge(
+      code: 'RATING_GOLD',
+      name: 'Beş Yıldız',
+      family: BadgeFamily.rating,
+      tier: BadgeTier.gold,
+    ),
+    UserBadge(code: 'IDENTITY', name: 'Kimliği Doğrulandı'),
   ];
 
   for (final brightness in Brightness.values) {
@@ -59,7 +64,7 @@ void main() {
         expect(find.text('4.5'), findsOneWidget);
         expect(find.text('(12)'), findsOneWidget);
         expect(find.text('Tamamlanan iş: 7'), findsOneWidget);
-        expect(find.text('Gezgin · Altın'), findsOneWidget);
+        expect(find.text('Beş Yıldız · Altın'), findsOneWidget);
         expect(find.text('Kimliği Doğrulandı'), findsOneWidget);
         expect(find.text('Mehmet Kaya'), findsOneWidget);
         expect(find.text('Çok titiz çalıştı.'), findsOneWidget);
@@ -121,10 +126,53 @@ void main() {
 
     expect(find.text('Değerlendirmeler alınamadı.'), findsOneWidget);
     expect(find.text('4.5'), findsOneWidget);
-    expect(find.text('Gezgin · Altın'), findsOneWidget);
+    expect(find.text('Beş Yıldız · Altın'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('candidate-reputation-retry')));
     expect(retries, 1);
+  });
+
+  // Uç düştü ve yedek yok: "puan yok" / "rozet yok" demek yanlış olurdu.
+  testWidgets('puan ve rozet ucu düşünce alınamadı yazar', (tester) async {
+    await pumpInApp(
+      tester,
+      SingleChildScrollView(
+        child: BCandidateReputationSection(
+          summaryFailed: true,
+          badgesFailed: true,
+          isLoading: false,
+          errorMessage: 'Sunucu hatası.',
+          onRetry: () {},
+        ),
+      ),
+    );
+
+    expect(
+      find.byKey(const ValueKey('candidate-rating-failed')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('candidate-no-rating')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('candidate-badges-failed')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('candidate-no-badges')), findsNothing);
+    expect(find.text('Rozetler yükleniyor...'), findsNothing);
+  });
+
+  testWidgets('rozetler yalnızca yüklenirken yükleniyor yazar', (tester) async {
+    await pumpInApp(
+      tester,
+      SingleChildScrollView(
+        child: BCandidateReputationSection(
+          reviews: reviews,
+          isLoading: true,
+          onRetry: () {},
+        ),
+      ),
+    );
+
+    expect(find.text('Rozetler yükleniyor...'), findsOneWidget);
   });
 
   testWidgets('yüklenirken bekleme halkası gösterir', (tester) async {

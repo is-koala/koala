@@ -75,43 +75,6 @@ void main() {
 
       expect(api.requests.single.path, '/users/me/jobs');
       expect(page.jobs.single.id, 'job_1');
-      // Kontenjan alanı göndermeyen sunucuda bilinmiyor; "0/— dolu" yok.
-      expect(page.entries.single.staffing.isKnown, isFalse);
-    });
-
-    test('kontenjan alanları ilan özetiyle birlikte okunur', () async {
-      final api = FakeApi(
-        handler: (_) => const FakeApiResponse(
-          statusCode: 200,
-          body: {
-            'success': true,
-            'data': {
-              'content': [
-                {
-                  'id': 'job_1',
-                  'title': 'Garson',
-                  'salary': 800,
-                  'status': 'OPEN',
-                  'headcount': 3,
-                  'hiredCount': 2,
-                  'category': {'id': 'c', 'code': 'WAITER', 'name': 'Garson'},
-                },
-              ],
-              'last': true,
-            },
-          },
-        ),
-      );
-
-      final page = await EmployerJobService.withClient(
-        api.client,
-      ).fetchMyJobs();
-
-      final staffing = page.entries.single.staffing;
-      expect(staffing.headcount, 3);
-      expect(staffing.hiredCount, 2);
-      expect(staffing.label, '2/3 dolu');
-      expect(staffing.isFull, isFalse);
     });
   });
 
@@ -363,7 +326,7 @@ void main() {
       final request = api.requests.single;
       expect(request.path, '/users/me/assignments');
       expect(request.queryParameters['asEmployer'], isTrue);
-      expect(page.entries.single.assignment.job.id, 'job_1');
+      expect(page.assignments.single.job.id, 'job_1');
     });
 
     test('tamamlama doğru yola gider', () async {
@@ -441,15 +404,15 @@ void main() {
           },
         );
 
-        final entries = await EmployerJobService.withClient(
+        final assignments = await EmployerJobService.withClient(
           api.client,
         ).fetchAssignmentsForJob('job_1');
 
-        expect(entries.map((entry) => entry.assignment.id), [
+        expect(assignments.map((assignment) => assignment.id), [
           'target-0',
           'target-1',
         ]);
-        expect(entries.first.assignment.worker?.fullName, 'Ayşe Çalışan');
+        expect(assignments.first.worker?.fullName, 'Ayşe Çalışan');
         expect(api.requests.map((request) => request.path), [
           '/jobs/job_1/assignments',
           '/jobs/job_1/assignments',
@@ -501,17 +464,21 @@ void main() {
         ),
       );
 
-      final entries = await EmployerJobService.withClient(
+      final assignment = await EmployerJobService.withClient(
         api.client,
-      ).fetchAssignmentsForJob('job_1');
+      ).fetchAssignmentsForJob('job_1').then((list) => list.single);
 
-      final timeline = entries.single.timeline;
-      expect(timeline.appliedAt, DateTime.utc(2026, 9, 10, 8));
-      expect(timeline.acceptedAt, DateTime.utc(2026, 9, 10, 9, 30));
-      expect(timeline.confirmedAt, DateTime.utc(2026, 9, 10, 10));
-      expect(timeline.paymentSecuredAt, DateTime.utc(2026, 9, 10, 11));
-      expect(timeline.expectedCompletionAt, DateTime.utc(2026, 9, 12, 18));
-      expect(timeline.payout?.completedAt, DateTime.utc(2026, 9, 13, 12));
+      expect(
+        assignment.application?.applicationDateTime,
+        DateTime.utc(2026, 9, 10, 8),
+      );
+      expect(
+        assignment.application?.answeredDateTime,
+        DateTime.utc(2026, 9, 10, 9, 30),
+      );
+      expect(assignment.confirmedAt, DateTime.utc(2026, 9, 10, 10));
+      expect(assignment.paymentSecuredAt, DateTime.utc(2026, 9, 10, 11));
+      expect(assignment.payout?.completedAt, DateTime.utc(2026, 9, 13, 12));
     });
 
     // Eski sunucu ilan başına ucu tanımıyor; o zaman işverenin bütün
@@ -553,12 +520,12 @@ void main() {
           },
         );
 
-        final entries = await EmployerJobService.withClient(
+        final assignments = await EmployerJobService.withClient(
           api.client,
         ).fetchAssignmentsForJob('job_1');
 
-        expect(entries.map((entry) => entry.assignment.id), ['target-1']);
-        expect(entries.single.assignment.worker?.fullName, 'Ayşe Çalışan');
+        expect(assignments.map((assignment) => assignment.id), ['target-1']);
+        expect(assignments.single.worker?.fullName, 'Ayşe Çalışan');
         expect(api.requests.map((request) => request.path), [
           '/jobs/job_1/assignments',
           '/users/me/assignments',

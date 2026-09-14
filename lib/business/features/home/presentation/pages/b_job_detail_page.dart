@@ -6,7 +6,7 @@ import 'package:koala/employee/features/chat/models/messaging_availability.dart'
 import 'package:koala/product/router/business_routes.dart';
 import 'package:koala/product/widgets/messaging_gate_note.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
-import 'package:koala/business/features/home/models/b_assignment_timeline.dart';
+import 'package:koala/business/core/load_result.dart';
 import 'package:koala/business/features/home/models/b_job_post.dart';
 import 'package:koala/business/features/home/models/b_payment_attempt.dart';
 import 'package:koala/business/features/home/models/b_pricing_breakdown.dart';
@@ -453,14 +453,17 @@ class _BJobDetailPageState extends BJobDetailPageModel {
   /// Atamanın zaman çizelgesi tek satırda: başvuru, kabul, ödeme durumu ve
   /// tamamlanma.
   ///
-  /// Damgalar sunucudan geliyor ([BAssignmentTimeline]); göndermeyen sunucuda
-  /// değerin yerine "—" yazılıyor ki satırın hangi bilgiyi taşıdığı yine
-  /// okunsun. Ödeme sütunu durumun metniyle birlikte emanete alınma anını,
-  /// para çalışana geçtiyse hesaba ulaştığı anı söylüyor.
+  /// Damgalar `MyAssignmentDto`'nun koala-backend#282 alanları
+  /// ([Assignment.application], [Assignment.paymentSecuredAt],
+  /// [Assignment.payout]); göndermeyen sunucuda değerin yerine "—" yazılıyor
+  /// ki satırın hangi bilgiyi taşıdığı yine okunsun. Kabul anı sözleşmedeki
+  /// gibi başvurunun `answeredDateTime`'ı. Ödeme sütunu durumun metniyle
+  /// birlikte emanete alınma anını, para çalışana geçtiyse hesaba ulaştığı
+  /// anı söylüyor.
   Widget _assignmentTimelineRow(Assignment assignment) {
-    final timeline = _timelineOf(assignment);
-    final securedAt = timeline.paymentSecuredAt;
-    final paidOutAt = timeline.payout?.completedAt;
+    final application = assignment.application;
+    final securedAt = assignment.paymentSecuredAt;
+    final paidOutAt = assignment.payout?.completedAt;
     final paymentDetail = assignment.paymentStatus.isPaid && paidOutAt != null
         ? ' (hesaba geçti: ${paidOutAt.toLocal().asShortDateTime})'
         : securedAt != null
@@ -468,14 +471,14 @@ class _BJobDetailPageState extends BJobDetailPageModel {
         : '';
 
     return Text(
-      'Başvuru: ${_stamp(timeline.appliedAt)}'
-      ' · Kabul: ${_stamp(timeline.acceptedAt)}'
+      'Başvuru: ${_stamp(application?.applicationDateTime)}'
+      ' · Kabul: ${_stamp(application?.answeredDateTime)}'
       ' · Ödeme: ${assignment.paymentStatus.displayName}$paymentDetail'
       ' · Tamamlandı: ${_stamp(assignment.actualCompletionDateTime)}',
       key: const ValueKey('assignment-timeline'),
       style: context.textTheme.bodySmall?.copyWith(
         color: context.textSecondary,
-        height: BJobDetailPageModel._timelineLineHeight,
+        height: BJobDetailPageModel._multilineHeight,
       ),
     );
   }
@@ -688,7 +691,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
                     'İşin bittiğinden emin misin?',
           style: dialogContext.textTheme.bodyMedium?.copyWith(
             color: dialogContext.textSecondary,
-            height: BJobDetailPageModel._dialogLineHeight,
+            height: BJobDetailPageModel._multilineHeight,
           ),
         ),
         actions: [

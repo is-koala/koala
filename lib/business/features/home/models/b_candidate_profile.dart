@@ -1,5 +1,5 @@
-import 'package:koala/business/features/home/models/b_badge.dart';
 import 'package:koala/employee/features/auth/models/public_profile.dart';
+import 'package:koala/employee/features/auth/models/user_badge.dart';
 import 'package:koala/employee/features/jobs/models/rating_summary.dart';
 
 /// Adayın herkese açık profili, işverenin ihtiyaç duyduğu özet alanlarla.
@@ -32,7 +32,7 @@ class BCandidateProfile {
 
   /// Profil yanıtındaki rozetler; alan yoksa `null`, boş listeyse `[]`.
   /// "Rozeti yok" ile "sunucu göndermedi" farklı şeyler.
-  final List<BBadge>? badges;
+  final List<UserBadge>? badges;
 
   factory BCandidateProfile.fromJson(Map<String, dynamic> json) {
     final profile = PublicProfile.fromJson(json);
@@ -49,9 +49,12 @@ class BCandidateProfile {
               averageRating: _decimal(json['averageRating']),
             )
           : null,
-      badges: badges is List ? BBadge.listFromJson(badges) : null,
+      badges: badges is List ? _badges(badges) : null,
     );
   }
+
+  static List<UserBadge> _badges(List<dynamic> data) =>
+      data.whereType<Map<String, dynamic>>().map(UserBadge.fromJson).toList();
 
   /// `averageRating` sunucuda `BigDecimal`; JSON'da sayı ya da dize olarak
   /// gelebiliyor. İkisi de okunuyor, tanınmayan değer 0.

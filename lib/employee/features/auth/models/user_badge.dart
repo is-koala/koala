@@ -31,6 +31,14 @@ enum BadgeTier {
 
   final String code;
 
+  /// Kademenin adı; kademesiz rozette `null`, ad tek başına yazılıyor.
+  String? get label => switch (this) {
+    BadgeTier.bronze => 'Bronz',
+    BadgeTier.silver => 'Gümüş',
+    BadgeTier.gold => 'Altın',
+    BadgeTier.none => null,
+  };
+
   static BadgeTier fromCode(Object? value) {
     return BadgeTier.values.firstWhere(
       (tier) => tier.code == value,

@@ -1,4 +1,6 @@
 import 'package:dio/dio.dart';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/business/features/home/models/job_applicant.dart';
@@ -48,7 +50,8 @@ Future<FakeApi> _pumpProfile(
   WidgetTester tester, {
   required Brightness brightness,
   Map<String, Object?> profile = _profileJson,
-  FakeApiResponse? Function(RequestOptions request)? override,
+  FutureOr<FakeApiResponse>? Function(RequestOptions request)? override,
+  bool settle = true,
 }) async {
   final api = FakeApi(
     handler: (request) {
@@ -103,7 +106,9 @@ Future<FakeApi> _pumpProfile(
   for (var index = 0; index < 20; index++) {
     await tester.pump(const Duration(milliseconds: 10));
   }
-  await tester.pumpAndSettle();
+  // Profil yanıtı bekletilen testte yükleme halkası dönmeye devam ediyor;
+  // orada `pumpAndSettle` hiç dönmez.
+  if (settle) await tester.pumpAndSettle();
   return api;
 }
 
@@ -183,6 +188,52 @@ void main() {
       200,
     );
     expect(find.text('Gezgin · Altın'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('candidate-reputation-retry')),
+      findsNothing,
+    );
+  });
+
+  // Yarış: rozet ucu düştü, profil ondan SONRA geldi. Yedek kopya profil
+  // gelince devreye girmeli; ilk değerlendirme anına takılı kalmamalı.
+  testWidgets('profil rozet hatasından sonra gelse de kopyaya düşer', (
+    tester,
+  ) async {
+    final profileResponse = Completer<FakeApiResponse>();
+    await _pumpProfile(
+      tester,
+      brightness: Brightness.light,
+      settle: false,
+      override: (request) {
+        if (request.path == '/users/worker-1') return profileResponse.future;
+        if (request.path.endsWith('/badges')) return _failed;
+        return null;
+      },
+    );
+
+    // Profil hâlâ yolda: rozet için ne yedek var ne uç; "alınamadı".
+    expect(
+      find.byKey(
+        const ValueKey('candidate-badges-failed'),
+        skipOffstage: false,
+      ),
+      findsOneWidget,
+    );
+
+    profileResponse.complete(
+      _ok(const {
+        ..._profileJson,
+        'badges': [_badgeJson],
+      }),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('candidate-badge-GEZGIN_GOLD')),
+      200,
+    );
+    expect(find.text('Gezgin · Altın'), findsOneWidget);
+    expect(find.byKey(const ValueKey('candidate-badges-failed')), findsNothing);
     expect(
       find.byKey(const ValueKey('candidate-reputation-retry')),
       findsNothing,
