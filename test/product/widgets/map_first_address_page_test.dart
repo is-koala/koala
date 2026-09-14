@@ -409,10 +409,12 @@ void main() {
             find.text('Kaydetmek için pini İstanbul içine taşıyın.'),
             findsOneWidget,
           );
-          expect(
-            find.bySemanticsLabel(RegExp('Adresi kaydet')),
-            findsOneWidget,
-          );
+          // Ekran okuyucu düğmeye odaklanınca gerekçeyi de duyar: ipucu
+          // ayrı bir üst düğümde değil, düğmenin kendi düğümünde.
+          final semantics = tester.getSemantics(find.text('Adresi kaydet'));
+          expect(semantics.label, 'Adresi kaydet');
+          expect(semantics.hint, 'Kaydetmek için pini İstanbul içine taşıyın.');
+          expect(semantics.flagsCollection.isButton, isTrue);
 
           await tester.tap(save, warnIfMissed: false);
           await tester.pump();
@@ -456,6 +458,7 @@ void main() {
         ),
       );
       expect(button.onPressed, isNotNull);
+      expect(tester.getSemantics(find.text('Adresi kaydet')).hint, isEmpty);
       expect(find.textContaining('Google Maps önerisi'), findsOneWidget);
     });
 

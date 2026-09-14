@@ -311,19 +311,17 @@ class _MapFirstAddressPageState extends MapFirstAddressPagemodel {
   ///
   /// Hizmet alanı dışındaki pinle düğme kapalı: sunucu aynı pini yine
   /// reddederdi. Gerekçe düğmenin altında görünür metin olarak ve düğmenin
-  /// erişilebilirlik ipucu olarak durur; kullanıcı pini taşıyınca ikisi de
-  /// kalkar.
+  /// kendi semantik düğümünde ipucu olarak durur ([MyButton.semanticHint]);
+  /// kullanıcı pini taşıyınca ikisi de kalkar.
   List<Widget> _saveSection() {
     final blockedReason = controller.saveBlockedReason;
     return [
-      Semantics(
-        hint: blockedReason,
-        child: MyButton(
-          key: const ValueKey('address-save'),
-          onPressed: blockedReason == null ? save : null,
-          title: 'Adresi kaydet',
-          isLoading: isSaving,
-        ),
+      MyButton(
+        key: const ValueKey('address-save'),
+        onPressed: blockedReason == null ? save : null,
+        title: 'Adresi kaydet',
+        isLoading: isSaving,
+        semanticHint: blockedReason,
       ),
       if (blockedReason != null) ...[
         const SizedBox(height: AppSizes.spaceSmall),
