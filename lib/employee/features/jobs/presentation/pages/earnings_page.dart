@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/jobs/models/assignment.dart';
+import 'package:koala/employee/features/jobs/models/my_job.dart';
 import 'package:koala/employee/features/jobs/models/payout.dart';
 import 'package:koala/employee/features/jobs/services/assignment_service.dart';
 import 'package:koala/employee/features/jobs/services/payout_service.dart';
@@ -16,6 +18,7 @@ import 'package:koala/product/formatters/turkish_money_formatter.dart';
 import 'package:koala/product/formatters/financial_failure_message.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/empty_state.dart';
+import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 
 part 'earnings_pagemodel.dart';
@@ -32,6 +35,10 @@ class EarningsPage extends StatefulWidget {
 }
 
 class _EarningsPageState extends EarningsPagemodel {
+  /// Satırdaki bekleme halkasının kalınlığı; varsayılan bu boyutta dolu
+  /// görünüyor.
+  static const double _spinnerStroke = 2;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -149,56 +156,79 @@ class _EarningsPageState extends EarningsPagemodel {
     );
   }
 
+  /// Ödeme satırı; dokununca işin detayı açılıyor.
+  ///
+  /// Atama etiketi ikinci istekle ve yalnızca ilk sayfa için geliyor; ödeme
+  /// o sayfada olmayan bir atamaya aitse satır yine tıklanabilir — kayıt
+  /// dokunma anında kimliğiyle çekiliyor ([_openWork]).
   Widget _payoutCard(Payout payout) {
     final assignment = _assignments[payout.jobAssignmentId];
+    final isOpening = _openingPayoutId == payout.id;
 
     return Material(
       color: context.tileColor,
       borderRadius: AppRadius.innerCircular,
-      child: Padding(
-        padding: AppPadding.card,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    TurkishMoneyFormatter.format(
-                      payout.amount,
-                      payout.currency,
-                    ),
-                    style: context.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                _statusBadge(payout.status),
-              ],
-            ),
-            if (assignment != null) ...[
-              const SizedBox(height: AppSizes.spaceSmall),
-              Text(assignment.job.title, style: context.textTheme.bodyMedium),
-            ],
-            const SizedBox(height: AppSizes.spaceSmall),
-            Text(
-              payout.createdAt.toLocal().asShortDate,
-              style: context.textTheme.bodySmall?.copyWith(
-                color: context.textTertiary,
-              ),
-            ),
-            if (payout.status == PayoutStatus.failed) ...[
-              const SizedBox(height: AppSizes.spaceSmall),
-              Text(
-                FinancialFailureMessage.payout(payout.failureReason),
-                style: context.textTheme.bodySmall?.copyWith(
-                  color: AppColors.danger,
-                ),
-              ),
-            ],
-          ],
+      child: InkWell(
+        key: ValueKey('payout-${payout.id}'),
+        borderRadius: AppRadius.innerCircular,
+        onTap: _openingPayoutId != null ? null : () => _openWork(payout),
+        child: Padding(
+          padding: AppPadding.card,
+          child: _payoutBody(payout, assignment, isOpening: isOpening),
         ),
       ),
+    );
+  }
+
+  Widget _payoutBody(
+    Payout payout,
+    Assignment? assignment, {
+    required bool isOpening,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                TurkishMoneyFormatter.format(payout.amount, payout.currency),
+                style: context.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            if (isOpening) ...[
+              const SizedBox.square(
+                dimension: AppSizes.iconSmall,
+                child: CircularProgressIndicator(strokeWidth: _spinnerStroke),
+              ),
+              const SizedBox(width: AppSizes.spaceSmall),
+            ],
+            _statusBadge(payout.status),
+          ],
+        ),
+        if (assignment != null) ...[
+          const SizedBox(height: AppSizes.spaceSmall),
+          Text(assignment.job.title, style: context.textTheme.bodyMedium),
+        ],
+        const SizedBox(height: AppSizes.spaceSmall),
+        Text(
+          payout.createdAt.toLocal().asShortDate,
+          style: context.textTheme.bodySmall?.copyWith(
+            color: context.textTertiary,
+          ),
+        ),
+        if (payout.status == PayoutStatus.failed) ...[
+          const SizedBox(height: AppSizes.spaceSmall),
+          Text(
+            FinancialFailureMessage.payout(payout.failureReason),
+            style: context.textTheme.bodySmall?.copyWith(
+              color: AppColors.danger,
+            ),
+          ),
+        ],
+      ],
     );
   }
 

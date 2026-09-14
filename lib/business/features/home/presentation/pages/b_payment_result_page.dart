@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:koala/business/features/home/services/employer_job_service.dart';
 import 'package:koala/employee/features/jobs/models/assignment.dart';
+import 'package:koala/employee/features/jobs/services/assignment_service.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -29,7 +29,11 @@ class BPaymentResultPage extends StatefulWidget {
   });
 
   final String assignmentId;
-  final EmployerJobService? service;
+
+  /// Tekil atama okuması çalışan tarafındaki servisten geliyor: uç iki
+  /// tarafa da açık ve mesai oturumları gibi tek servis iki kabuğa hizmet
+  /// ediyor. Testler için; verilmezse üretimdeki tekil servis.
+  final AssignmentService? service;
   final DateTime Function()? now;
   final Future<void> Function(Duration)? delay;
 

@@ -2,12 +2,16 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:koala/employee/features/jobs/models/my_job.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/earnings_page.dart';
 import 'package:koala/employee/features/jobs/services/assignment_service.dart';
 import 'package:koala/employee/features/jobs/services/payout_service.dart';
+import 'package:koala/product/theme/theme.dart';
 
 import '../../../../../support/fake_api.dart';
 import '../../../../../support/pump.dart';
+import '../../../../../support/work_test_support.dart';
 
 Future<void> pumpPage(WidgetTester tester, FakeApi api) {
   final assignmentsApi = FakeApi(
@@ -191,5 +195,126 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('{payout.settlement.failed}'), findsNothing);
+  });
+
+  // Kazançlar satırı da ölüydü (is-koala/koala#177): ödeme hangi işin
+  // ödemesiyse onun detayına açılmalı.
+  group('ödeme satırı → iş detayı', () {
+    const payoutBody = {
+      'id': 'payout-1',
+      'jobAssignmentId': 'assignment-1',
+      'amount': '950.00',
+      'currency': 'TRY',
+      'status': 'COMPLETED',
+      'completedAt': '2026-09-11T09:00:00Z',
+      'createdAt': '2026-09-11T08:00:00Z',
+    };
+    final completedAssignment = assignmentJson(
+      status: 'COMPLETED',
+      paymentStatus: 'RELEASED_TO_WORKER',
+    );
+
+    Future<({FakeApi assignmentsApi, List<MyJob> opened})> pumpEarnings(
+      WidgetTester tester, {
+      required FakeApiResponse Function(String path) assignmentHandler,
+    }) async {
+      final payoutApi = FakeApi(
+        handler: (_) => dataResponse(const [payoutBody]),
+      );
+      final assignmentsApi = FakeApi(
+        handler: (request) => assignmentHandler(request.path),
+      );
+      final opened = <MyJob>[];
+      final router = GoRouter(
+        initialLocation: '/earnings',
+        routes: [
+          GoRoute(
+            path: '/earnings',
+            pageBuilder: (context, state) => MaterialPage<void>(
+              key: state.pageKey,
+              child: EarningsPage(
+                service: PayoutService.withClient(payoutApi.client),
+                assignmentService: AssignmentService.withClient(
+                  assignmentsApi.client,
+                ),
+              ),
+            ),
+          ),
+          stubWorkDetailRoute(onOpened: opened.add),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp.router(theme: lightTheme, routerConfig: router),
+      );
+      await tester.pumpAndSettle();
+      return (assignmentsApi: assignmentsApi, opened: opened);
+    }
+
+    testWidgets('atama listede varsa doğrudan açılır', (tester) async {
+      final harness = await pumpEarnings(
+        tester,
+        assignmentHandler: (path) => path == '/users/me/assignments'
+            ? pageResponse([completedAssignment])
+            : throw StateError('tekil atama istenmemeli: $path'),
+      );
+
+      expect(find.text('Barista'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('payout-payout-1')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(workDetailStubTitle), findsOneWidget);
+      expect(harness.opened.single.assignmentId, 'assignment-1');
+      expect(harness.opened.single.status, MyJobStatus.past);
+    });
+
+    // Atama listesi ilk 20 kaydı getiriyor; eski bir ödemenin ataması orada
+    // olmayabilir. Satır yine tıklanır, kayıt dokununca kimliğiyle çekilir.
+    testWidgets('atama listede yoksa dokununca kimliğiyle çekilir', (
+      tester,
+    ) async {
+      final harness = await pumpEarnings(
+        tester,
+        assignmentHandler: (path) => path == '/users/me/assignments'
+            ? pageResponse(const [])
+            : dataResponse(completedAssignment),
+      );
+
+      // Etiket yok: liste bu atamayı tanımıyor.
+      expect(find.text('Barista'), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('payout-payout-1')));
+      await tester.pumpAndSettle();
+
+      expect(
+        harness.assignmentsApi.requests.map((request) => request.path),
+        contains('/job-assignments/assignment-1'),
+      );
+      expect(find.text(workDetailStubTitle), findsOneWidget);
+      expect(harness.opened.single.assignmentId, 'assignment-1');
+    });
+
+    testWidgets('tekil atama çekilemezse toast, detay açılmaz', (tester) async {
+      final harness = await pumpEarnings(
+        tester,
+        assignmentHandler: (path) => path == '/users/me/assignments'
+            ? pageResponse(const [])
+            : const FakeApiResponse(
+                statusCode: 404,
+                body: {
+                  'success': false,
+                  'message': 'Atama bulunamadı.',
+                  'errorCategory': 'RESOURCE_NOT_FOUND',
+                },
+              ),
+      );
+
+      await tester.tap(find.byKey(const ValueKey('payout-payout-1')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Atama bulunamadı.'), findsOneWidget);
+      expect(find.text(workDetailStubTitle), findsNothing);
+      expect(harness.opened, isEmpty);
+    });
   });
 }

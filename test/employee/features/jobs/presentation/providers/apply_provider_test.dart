@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/jobs/models/job_application.dart';
 import 'package:koala/employee/features/jobs/models/my_job.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
@@ -15,7 +16,9 @@ Map<String, dynamic> applicationBody({
   String status = 'APPLIED',
   String? notes,
   String company = 'Koala Cafe',
+  String? companyId = 'comp_1',
   String? rejectionReason,
+  String? answeredDateTime,
 }) {
   return {
     'id': id,
@@ -23,6 +26,7 @@ Map<String, dynamic> applicationBody({
     'notes': notes,
     'rejectionReason': rejectionReason,
     'applicationDateTime': '2026-03-05T10:00:00Z',
+    'answeredDateTime': ?answeredDateTime,
     'job': {
       'id': jobId,
       'title': 'Deneyimli Barista',
@@ -31,6 +35,7 @@ Map<String, dynamic> applicationBody({
       'type': 'ONE_TIME',
       'salary': 15000,
       'companyName': company,
+      'companyId': ?companyId,
     },
   };
 }
@@ -80,6 +85,40 @@ void main() {
       expect(myJob.description, 'Barista');
       expect(myJob.price, 15000);
       expect(myJob.date, '05.03.2026');
+    });
+
+    // Sabit `null` şirket bağlantısını her başvuru satırında öldürüyordu
+    // (is-koala/koala#177); `MyApplicationDto.job` bir `JobSummaryDto` ve
+    // `companyId` taşıyor.
+    test('başvuru satırı gerçek companyId ve işveren türünü taşır', () async {
+      final api = FakeApi(
+        handler: (_) => FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {
+              'content': [
+                applicationBody(
+                  status: 'REJECTED',
+                  answeredDateTime: '2026-03-06T12:00:00Z',
+                ),
+              ],
+            },
+          },
+        ),
+      );
+      final provider = buildProvider(api);
+
+      await provider.load();
+
+      final myJob = provider.appliedJobs.single;
+      expect(myJob.companyId, 'comp_1');
+      expect(myJob.employerType, JobEmployerType.company);
+      expect(myJob.applicationDateTime, DateTime.utc(2026, 3, 5, 10));
+      expect(myJob.answeredDateTime, DateTime.utc(2026, 3, 6, 12));
+      expect(myJob.paymentStatus, isNull);
+      expect(myJob.assignment, isNull);
+      expect(myJob.application?.id, 'app_1');
     });
 
     test('bireysel ilanda şirket yerine yer tutucu yazılır', () async {

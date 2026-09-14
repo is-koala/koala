@@ -74,10 +74,13 @@ class Cancellation {
   /// Kesinti oranının yüzde karşılığı; "%50" diye yazmak için.
   int get feePercent => _roundedPercent(feeRate);
 
+  /// `GET .../cancellation` tam kaydı, `MyAssignmentDto.cancellation`
+  /// (koala-backend#282) ise kimliksiz bir özeti gönderiyor; kimlikler bu
+  /// yüzden eksik olabiliyor ve boş dizeye düşüyor.
   factory Cancellation.fromJson(Map<String, dynamic> json) {
     return Cancellation(
-      id: '${json['id']}',
-      assignmentId: '${json['jobAssignmentId']}',
+      id: '${json['id'] ?? ''}',
+      assignmentId: '${json['jobAssignmentId'] ?? ''}',
       cancelledByParty: CancellationParty.fromCode(json['cancelledByParty']),
       reason: json['reason'] as String?,
       noticeMinutes: (json['noticeMinutes'] as num?)?.toInt() ?? 0,

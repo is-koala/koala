@@ -34,6 +34,7 @@ import 'package:koala/employee/features/jobs/presentation/pages/job_alert_form_p
 import 'package:koala/employee/features/jobs/presentation/pages/earnings_page.dart';
 import 'package:koala/employee/features/jobs/models/job_alert.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/review_page.dart';
+import 'package:koala/employee/features/jobs/presentation/pages/work_detail_page.dart';
 import 'package:koala/employee/features/jobs/models/my_job.dart';
 import 'package:koala/employee/features/chat/presentation/pages/chat_list_page.dart';
 import 'package:koala/employee/features/chat/presentation/pages/chat_page.dart';
@@ -301,6 +302,16 @@ class RouterManager {
         pageBuilder: (context, state) {
           final job = state.extra as Job;
           return _page(state, ApplyPage(job: job));
+        },
+      ),
+
+      GoRoute(
+        path: '/work-detail',
+        pageBuilder: (context, state) {
+          // İşlerim satırı ya da Kazançlar satırı; kayıt `MyJob.assignment`
+          // veya `MyJob.application` ile birlikte geliyor.
+          final job = state.extra as MyJob;
+          return _page(state, WorkDetailPage(job: job));
         },
       ),
 

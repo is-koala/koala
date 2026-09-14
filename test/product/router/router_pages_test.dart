@@ -109,6 +109,17 @@ void main() {
     expect(earnings.single.pageBuilder, isNotNull);
   });
 
+  test('iş detayı shell dışında, kendi rotasıyla açılıyor', () {
+    final detail = allGoRoutes(
+      RouterManager.router.configuration.routes,
+    ).where((route) => route.path == '/work-detail');
+
+    // İşlerim satırı ve Kazançlar satırı navbar'ın üstünü kaplayan tam
+    // sayfaya açılıyor (is-koala/koala#177).
+    expect(detail, hasLength(1));
+    expect(detail.single.pageBuilder, isNotNull);
+  });
+
   test('hesap modülünün rotaları tek, /business/ kopyaları yok', () {
     final routes = allGoRoutes(RouterManager.router.configuration.routes);
     final paths = routes.map((route) => route.path).toList();

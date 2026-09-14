@@ -124,6 +124,8 @@ class JobDetail {
     this.creator,
     this.company,
     this.createdAt,
+    this.headcount,
+    this.hiredCount = 0,
   });
 
   final String id;
@@ -163,6 +165,12 @@ class JobDetail {
   final JobCreator? creator;
   final JobCompany? company;
   final DateTime? createdAt;
+
+  /// Aranan kişi sayısı; sunucu göndermediyse `null` ve satır çizilmiyor.
+  final int? headcount;
+
+  /// Şimdiye kadar işe alınan kişi sayısı.
+  final int hiredCount;
 
   /// Kartın ikinci satırı; [Job.subtitle] ile aynı kural.
   String get subtitle {
@@ -219,6 +227,8 @@ class JobDetail {
           ? JobCompany.fromJson(company)
           : null,
       createdAt: _parseDate(json['createdAt']),
+      headcount: (json['headcount'] as num?)?.toInt(),
+      hiredCount: (json['hiredCount'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -247,6 +257,8 @@ class JobDetail {
     'creator': creator?.toJson(),
     'company': company?.toJson(),
     'createdAt': createdAt?.toIso8601String(),
+    'headcount': headcount,
+    'hiredCount': hiredCount,
   };
 
   static int? _ageOrNull(Object? value) =>

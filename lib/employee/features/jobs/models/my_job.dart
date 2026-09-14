@@ -1,5 +1,7 @@
 import 'package:koala/employee/features/chat/models/messaging_availability.dart';
+import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/jobs/models/assignment.dart';
+import 'package:koala/employee/features/jobs/models/job_application.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
 
 enum MyJobStatus {
@@ -122,6 +124,28 @@ class MyJob {
   /// belli ediyor.
   final String? assignmentId;
 
+  /// İlanı kimin açtığı: şirket mi, bireysel işveren mi. Satırdaki rozet ve
+  /// detaydaki işveren kartı buna bakıyor.
+  final JobEmployerType employerType;
+
+  /// Başvurunun yapıldığı an; başvurudan **ve** atamadan gelen satırlarda
+  /// (atama `application.applicationDateTime` gönderiyorsa) dolu.
+  final DateTime? applicationDateTime;
+
+  /// İşverenin başvuruyu yanıtladığı an. Yanıtlanmamış başvuruda `null`.
+  final DateTime? answeredDateTime;
+
+  /// Ödemenin sunucudaki durumu; başvurudan gelen satırlarda `null` — ortada
+  /// atama, dolayısıyla ödeme yok. [isPaymentSecured] bunun tek bir sorusuna
+  /// cevap; detay sayfası dört durumun her birini ayrı yazıyor.
+  final PaymentStatus? paymentStatus;
+
+  /// Satırın türediği kayıt. İkisinden **tam biri** dolu: atamadan gelen
+  /// satırda [assignment], başvurudan gelende [application]. Detay sayfası
+  /// satırı değil kaydı okuyor — çizelge, işveren ve iptal bilgisi burada.
+  final Assignment? assignment;
+  final JobApplication? application;
+
   const MyJob({
     required this.id,
     this.jobId,
@@ -136,6 +160,12 @@ class MyJob {
     this.isPaymentSecured = false,
     this.rejectionReason,
     this.messaging = MessagingAvailability.paymentRequired,
+    this.employerType = JobEmployerType.company,
+    this.applicationDateTime,
+    this.answeredDateTime,
+    this.paymentStatus,
+    this.assignment,
+    this.application,
   });
 
   /// İş kapandı mı: üzerinde yapılacak bir şey kalmayan her satır.
@@ -159,6 +189,51 @@ class MyJob {
     MyJobStatus.inProgress ||
     MyJobStatus.completed => false,
   };
+
+  /// Bu kayıtta sohbet teklif ediliyor mu — kapalı işlerde hiç edilmiyor.
+  ///
+  /// Kapının açık olup olmadığı ayrı bir soru ([messaging]); burası yalnızca
+  /// kaydın durumuna bakıyor. İşlerim satırı ve iş detayı aynı kararı
+  /// veriyor, o yüzden tek yerde.
+  bool get offersChat =>
+      jobId != null &&
+      switch (status) {
+        MyJobStatus.pending ||
+        MyJobStatus.awaitingApproval ||
+        MyJobStatus.approved ||
+        MyJobStatus.inProgress ||
+        MyJobStatus.completed => true,
+        MyJobStatus.past ||
+        MyJobStatus.rejected ||
+        MyJobStatus.applicationRejected ||
+        MyJobStatus.cancelled ||
+        MyJobStatus.withdrawn ||
+        MyJobStatus.unknown => false,
+      };
+
+  /// Çalışan bu atamayı iptal edebilir mi.
+  ///
+  /// Sunucu `PENDING_CONFIRMATION`, `CONFIRMED` ve `IN_PROGRESS` dışından
+  /// `409` döndürüyor; cevap bekleyen atamada iptal yerine "Reddet" var, o
+  /// yüzden burada yalnız onaylanmış ve süren iş. İşlerim menüsü ve iş
+  /// detayı aynı kuralı buradan okuyor.
+  bool get canCancel =>
+      assignmentId != null &&
+      (status == MyJobStatus.approved || status == MyJobStatus.inProgress);
+
+  /// Sorun bildirilebilir mi: yalnızca para emanetteyken ve iş sürerken ya
+  /// da bitip ödeme beklerken. Sunucu emanette para yoksa `409` döndürüyor.
+  bool get canDispute =>
+      assignmentId != null &&
+      isPaymentSecured &&
+      (status == MyJobStatus.inProgress || status == MyJobStatus.completed);
+
+  /// Başvuru geri çekilebilir mi.
+  ///
+  /// Sunucu yalnızca `APPLIED` durumdan kabul ediyor; atamadan gelen satır
+  /// eleniyor çünkü geri çekme **başvurunun** kimliğini istiyor ve o
+  /// satırlarda [id] atamanın kimliği olur.
+  bool get canWithdraw => status == MyJobStatus.pending && assignmentId == null;
 
   /// Satırın alt satırında gösterilecek metin.
   ///
@@ -202,8 +277,10 @@ class MyJob {
       id: assignment.id,
       jobId: job.id,
       title: job.title,
-      company: job.company ?? 'Bireysel İlan',
-      companyId: job.companyId,
+      company: assignment.company?.name ?? job.company ?? 'Bireysel İlan',
+      // Şirket kimliği iki yerden gelebiliyor: atamanın kendi `company`
+      // alanı (koala-backend#282) ya da ilan özetinin `companyId`'si.
+      companyId: assignment.company?.id ?? job.companyId,
       description: job.subtitle,
       date: assignment.assignmentDateTime?.asShortDate ?? '',
       // Çalışanın eline geçecek tutar komisyon düşülmüş hâli; ilandaki ücret
@@ -213,6 +290,60 @@ class MyJob {
       assignmentId: assignment.id,
       isPaymentSecured: assignment.paymentStatus == PaymentStatus.heldInEscrow,
       messaging: assignment.messaging,
+      employerType: job.employerType,
+      applicationDateTime: assignment.application?.applicationDateTime,
+      answeredDateTime: assignment.application?.answeredDateTime,
+      paymentStatus: assignment.paymentStatus,
+      assignment: assignment,
+    );
+  }
+
+  /// Bir başvuruyu ekranın bildiği [MyJob] durumlarına çevirir; listede yeri
+  /// yoksa `null` döner.
+  ///
+  /// Her başvuru durumunun ekranda ne olacağına **tek bir exhaustive
+  /// `switch`** karar veriyor: `null` "listede yeri yok" demek. Eleme ayrı bir
+  /// `if` olarak dursaydı switch'te ulaşılamaz bir dal kalır, o dal da bir
+  /// gün eleme kalktığında sessizce yanlış durumu çizerdi.
+  static MyJob? fromApplication(JobApplication application) {
+    final status = switch (application.status) {
+      ApplicationStatus.applied => MyJobStatus.pending,
+      ApplicationStatus.rejected => MyJobStatus.applicationRejected,
+      ApplicationStatus.withdrawn => MyJobStatus.withdrawn,
+      // **Bilinmeyen durum kararı.** Satır listeden düşürülmüyor: sunucuda
+      // kullanıcının bir kaydı var ve onu gizlemek "başvurum kayboldu"
+      // demek olurdu. Ama bilinen bir durum gibi de çizilmiyor; kapalı
+      // sayılıp geçmişe konuyor, çünkü ne olduğunu bilmediğimiz bir kayıt
+      // üzerinde önerebileceğimiz hiçbir eylem yok.
+      ApplicationStatus.unknown => MyJobStatus.unknown,
+      // **Kabul edilen başvuru atlanıyor.** O başvuru artık bir atama ve
+      // atamalar uçtan ayrıca geliyor; ikisini birden çizmek aynı işi
+      // listede iki kez gösterirdi.
+      ApplicationStatus.accepted => null,
+    };
+
+    if (status == null) return null;
+
+    final job = application.job;
+
+    return MyJob(
+      id: application.id,
+      jobId: job.id,
+      title: job.title,
+      company: job.company ?? 'Bireysel İlan',
+      // `MyApplicationDto.job` bir `JobSummaryDto`, yani `companyId`
+      // taşıyor; sabit `null` yazmak şirket bağlantısını her satırda
+      // öldürüyordu (is-koala/koala#177).
+      companyId: job.companyId,
+      description: job.subtitle,
+      date: application.applicationDateTime?.asShortDate ?? '',
+      price: job.price,
+      status: status,
+      rejectionReason: application.rejectionReason,
+      employerType: job.employerType,
+      applicationDateTime: application.applicationDateTime,
+      answeredDateTime: application.answeredDateTime,
+      application: application,
     );
   }
 }

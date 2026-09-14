@@ -329,8 +329,11 @@ class Job {
     this.districtName,
     this.company,
     this.companyId,
+    this.companyLogoUrl,
     this.coverImageUrl,
     this.applicationCount = 0,
+    this.headcount,
+    this.hiredCount = 0,
     this.latitude,
     this.longitude,
     this.addressPrecision = AddressPrecision.approximate,
@@ -366,6 +369,10 @@ class Job {
   /// ister. `JobSummaryDto.companyId` (koala-backend#187).
   final String? companyId;
 
+  /// İlanı açan şirketin logosu. `JobSummaryDto.companyLogoUrl`
+  /// (koala-backend#282); eski sunucuda ve bireysel ilanda `null`.
+  final String? companyLogoUrl;
+
   /// Arama/listeme kartında gösterilen ilan galerisi kapağı.
   ///
   /// Tam galeri ayrı uçtan yüklenir; özet yanıtı kart için yalnızca bu
@@ -378,6 +385,12 @@ class Job {
   /// sayıyı ilan listesiyle aynı geçişte doldurduğu için başvuru sayısını
   /// göstermek ayrı bir istek gerektirmiyor.
   final int applicationCount;
+
+  /// Aranan kişi sayısı; sunucu göndermediyse `null`.
+  final int? headcount;
+
+  /// Şimdiye kadar işe alınan kişi sayısı.
+  final int hiredCount;
 
   /// Konum. Backend bu iki alanı **opsiyonel** döndürüyor; adresi
   /// koordinata çevrilmemiş ilanlar haritada gösterilemiyor — bkz. [hasLocation].
@@ -513,8 +526,11 @@ class Job {
       districtName: json['districtName'] as String?,
       company: json['companyName'] as String?,
       companyId: json['companyId'] as String?,
+      companyLogoUrl: json['companyLogoUrl'] as String?,
       coverImageUrl: json['coverImageUrl'] as String?,
       applicationCount: (json['applicationCount'] as num?)?.toInt() ?? 0,
+      headcount: (json['headcount'] as num?)?.toInt(),
+      hiredCount: (json['hiredCount'] as num?)?.toInt() ?? 0,
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
       addressPrecision: AddressPrecision.fromCode(json['addressPrecision']),
@@ -541,8 +557,11 @@ class Job {
       'districtName': districtName,
       'companyName': company,
       'companyId': companyId,
+      'companyLogoUrl': companyLogoUrl,
       'coverImageUrl': coverImageUrl,
       'applicationCount': applicationCount,
+      'headcount': headcount,
+      'hiredCount': hiredCount,
       'latitude': latitude,
       'longitude': longitude,
       'addressPrecision': addressPrecision.code,

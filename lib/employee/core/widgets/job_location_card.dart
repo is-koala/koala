@@ -17,6 +17,7 @@ class JobLocationCard extends StatelessWidget {
     super.key,
     required this.precision,
     required this.label,
+    this.directions,
   });
 
   /// Sunucunun konumu bu görüntüleyene hangi kesinlikte verdiği.
@@ -24,6 +25,11 @@ class JobLocationCard extends StatelessWidget {
 
   /// Konumun tek satırlık metni.
   final String label;
+
+  /// İşverenin yazdığı tarif (`components.additionalDirections`); sunucu
+  /// bunu yalnızca `EXACT` yanıtta gönderiyor. Yaklaşık konumda çizilmiyor
+  /// — açık adresin parçası olduğu için kendi başına bir sızıntı olurdu.
+  final String? directions;
 
   /// Yaklaşık konumda başlık ve alt açıklama değişiyor.
   ///
@@ -69,6 +75,14 @@ class JobLocationCard extends StatelessWidget {
                   Text(
                     'Tam adres, başvurun kabul edilip atama kurulduğunda '
                     'paylaşılır.',
+                    style: context.textTheme.labelSmall?.copyWith(
+                      color: context.textSecondary,
+                    ),
+                  ),
+                ] else if (directions != null && directions!.isNotEmpty) ...[
+                  const SizedBox(height: AppSizes.spaceSmall),
+                  Text(
+                    'Tarif: ${directions!}',
                     style: context.textTheme.labelSmall?.copyWith(
                       color: context.textSecondary,
                     ),

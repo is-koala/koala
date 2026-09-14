@@ -1,39 +1,31 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
-import 'package:koala/employee/features/chat/models/messaging_availability.dart';
+import 'package:koala/employee/core/widgets/employer_type_badge.dart';
 import 'package:koala/product/widgets/messaging_gate_note.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
-import 'package:koala/employee/features/jobs/models/cancellation.dart';
 import 'package:koala/employee/features/jobs/models/my_job.dart';
 import 'package:koala/employee/features/jobs/models/timesheet_event.dart';
 import 'package:koala/employee/features/jobs/models/work_session.dart';
 import 'package:koala/employee/features/jobs/services/assignment_service.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/review_provider.dart';
+import 'package:koala/employee/features/jobs/presentation/pages/work_actions_pagemodel.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/timesheet_queue_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/widgets/timesheet_queue_status.dart';
-import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/network/api_exception.dart';
-import 'package:koala/product/models/report.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
-import 'package:koala/product/formatters/turkish_money_formatter.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/empty_state.dart';
-import 'package:koala/product/widgets/app_toast.dart';
-import 'package:koala/product/widgets/confirm_dialog.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:koala/product/widgets/notification_bell.dart';
-import 'package:koala/product/widgets/reason_dialog.dart';
-import 'package:koala/product/widgets/report_sheet.dart';
 import 'package:provider/provider.dart';
 
 part 'my_jobs_pagemodel.dart';
@@ -69,9 +61,6 @@ class _MyJobsPageState extends MyJobsPagemodel {
   /// Buton içindeki bekleme halkasının kalınlığı; varsayılan 4 bu boyutta
   /// dolu bir daire gibi görünüyor.
   static const double _spinnerStroke = 2;
-
-  /// Uyarı metninin satır aralığı; çok satırlı gövde sıkışık duruyordu.
-  static const double _dialogLineHeight = 1.4;
 
   @override
   Widget build(BuildContext context) {
@@ -439,27 +428,30 @@ class _MyJobsPageState extends MyJobsPagemodel {
 
   // --------------------------------------------------------- Ortak parçalar
 
+  /// Bölüm kartı. Zemin bir `Material`: satırlar artık dokunulabilir
+  /// `ListTile` ve mürekkep dalgasını en yakın `Material`'a boyuyorlar —
+  /// renkli bir `DecoratedBox` altında kalsaydı dalga görünmez, Flutter da
+  /// bunu çalışma zamanında bildirirdi (AGENTS.md, bottom sheet notu).
   Widget _sectionCard({
     required Color background,
     required Color foreground,
     required Widget header,
     required Widget child,
   }) {
-    return Container(
-      width: double.infinity,
-      padding: AppPadding.primaryAll,
-      decoration: BoxDecoration(
-        borderRadius: AppRadius.secondaryCircular,
-        color: background,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          header,
-          const SizedBox(height: AppSizes.space),
-          child,
-        ],
+    return Material(
+      color: background,
+      borderRadius: AppRadius.secondaryCircular,
+      child: Padding(
+        padding: AppPadding.primaryAll,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            header,
+            const SizedBox(height: AppSizes.space),
+            child,
+          ],
+        ),
       ),
     );
   }
@@ -552,11 +544,26 @@ class _MyJobsPageState extends MyJobsPagemodel {
     style: context.textTheme.titleSmall?.copyWith(color: foreground),
   );
 
+  /// Satırın alt kısmı: işveren (adı + türü), özet ve varsa yanıt tarihi.
+  ///
+  /// `answeredDateTime` yalnızca başvurudan gelen satırda yazılıyor: orada
+  /// satırın tarihi başvuru günü, yanıtın ne zaman geldiği ayrı bir bilgi.
   Widget _tileSubtitle(MyJob job, Color foreground, {int? maxLines}) {
+    final answeredAt = job.application == null ? null : job.answeredDateTime;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _tappableCompanyName(job, foreground),
+        Row(
+          children: [
+            Flexible(child: _tappableCompanyName(job, foreground)),
+            const SizedBox(width: AppSizes.spaceSmall),
+            EmployerTypeBadge(
+              type: job.employerType,
+              color: foreground.withValues(alpha: _linkAlpha),
+            ),
+          ],
+        ),
         const SizedBox(height: AppSizes.smallGap),
         Text(
           job.subtitle,
@@ -566,6 +573,14 @@ class _MyJobsPageState extends MyJobsPagemodel {
           maxLines: maxLines,
           overflow: maxLines == null ? null : TextOverflow.ellipsis,
         ),
+        if (answeredAt != null)
+          Text(
+            'Yanıtlandı: ${answeredAt.toLocal().asShortDate}',
+            key: ValueKey('job-answered-${job.id}'),
+            style: context.textTheme.labelSmall?.copyWith(
+              color: foreground.withValues(alpha: _mutedAlpha),
+            ),
+          ),
       ],
     );
   }
@@ -586,13 +601,14 @@ class _MyJobsPageState extends MyJobsPagemodel {
     ),
     Widget? menu,
   }) {
-    final offersChat = _canChat(job);
+    final offersChat = job.offersChat;
     final gateNote = offersChat
         ? job.messaging.noteFor(asEmployer: false)
         : null;
 
     final tile = ListTile(
       contentPadding: contentPadding,
+      onTap: () => openDetail(job),
       title: _tileTitle(job.title, foreground),
       subtitle: _tileSubtitle(job, foreground, maxLines: 1),
       trailing: Row(
@@ -641,22 +657,6 @@ class _MyJobsPageState extends MyJobsPagemodel {
     );
   }
 
-  /// Bu satırda sohbet teklif ediliyor mu — kapalı işlerde hiç edilmiyor.
-  ///
-  /// Kapının açık olup olmadığı ayrı bir soru ([MyJob.messaging]); burası
-  /// yalnızca satırın durumuna bakıyor.
-  bool _canChat(MyJob job) {
-    return job.jobId != null &&
-        switch (job.status) {
-          MyJobStatus.pending ||
-          MyJobStatus.awaitingApproval ||
-          MyJobStatus.approved ||
-          MyJobStatus.inProgress ||
-          MyJobStatus.completed => true,
-          _ => false,
-        };
-  }
-
   Widget _priceAndDate(MyJob job, Color foreground) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -685,16 +685,9 @@ class _MyJobsPageState extends MyJobsPagemodel {
   /// İkisi de nadir ve geri dönüşü zor; birincil butonların yanında değil
   /// menünün içinde duruyorlar. Kapanmış işlerde menü hiç çıkmıyor.
   Widget? _assignmentMenu(MyJob job, Color foreground) {
-    final canCancel =
-        job.status == MyJobStatus.approved ||
-        job.status == MyJobStatus.inProgress;
-    // Uyuşmazlık yalnızca para emanetteyken açılabiliyor.
-    final canDispute =
-        job.isPaymentSecured &&
-        (job.status == MyJobStatus.inProgress ||
-            job.status == MyJobStatus.completed);
-
-    if (job.assignmentId == null || (!canCancel && !canDispute)) return null;
+    final canCancel = job.canCancel;
+    final canDispute = job.canDispute;
+    if (!canCancel && !canDispute) return null;
 
     return PopupMenuButton<_AssignmentAction>(
       enabled: assignmentActionId == null,
@@ -725,9 +718,7 @@ class _MyJobsPageState extends MyJobsPagemodel {
   /// satırlar eleniyor: geri çekme **başvurunun** kimliğini istiyor ve o
   /// satırlarda [MyJob.id] atamanın kimliği olur.
   Widget? _applicationMenu(MyJob job, Color foreground) {
-    if (job.status != MyJobStatus.pending || job.assignmentId != null) {
-      return null;
-    }
+    if (!job.canWithdraw) return null;
 
     return PopupMenuButton<_ApplicationAction>(
       // Bir başvuru geri çekilirken diğerlerinin menüsü de kapanıyor:
@@ -764,6 +755,7 @@ class _MyJobsPageState extends MyJobsPagemodel {
         children: [
           ListTile(
             contentPadding: AppPadding.zero,
+            onTap: () => openDetail(job),
             title: _tileTitle(job.title, foreground),
             subtitle: _tileSubtitle(job, foreground, maxLines: 1),
             trailing: Column(
@@ -794,7 +786,7 @@ class _MyJobsPageState extends MyJobsPagemodel {
                 child: SizedBox(
                   height: _inlineButtonHeight,
                   child: OutlinedButton(
-                    onPressed: isLocked ? null : () => _confirmReject(job),
+                    onPressed: isLocked ? null : () => confirmReject(job),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.danger,
                       side: const BorderSide(color: AppColors.danger),
@@ -848,41 +840,6 @@ class _MyJobsPageState extends MyJobsPagemodel {
         ],
       ),
     );
-  }
-
-  /// Reddetme geri alınamıyor: atama kapanıyor ve iş başkasına gidiyor.
-  Future<void> _confirmReject(MyJob job) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: const RoundedRectangleBorder(
-          borderRadius: AppRadius.secondaryCircular,
-        ),
-        title: Text('İşi reddet', style: dialogContext.textTheme.titleMedium),
-        content: Text(
-          '"${job.title}" işini reddedersen bu iş sana kapanır ve geri '
-          'alamazsın. İşveren başka birini seçebilir.',
-          style: dialogContext.textTheme.bodyMedium?.copyWith(
-            color: dialogContext.textSecondary,
-            height: _dialogLineHeight,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Vazgeç'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-            child: const Text('Reddet'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true || !mounted) return;
-    await respondToAssignment(job, accepted: false);
   }
 
   /// Onaylanmış iş: satırın altında mesai başlatma butonu.
@@ -1093,6 +1050,7 @@ class _MyJobsPageState extends MyJobsPagemodel {
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(vertical: AppSizes.spaceTiny),
+      onTap: () => openDetail(job),
       title: _tileTitle(job.title, foreground),
       subtitle: _tileSubtitle(job, foreground),
       trailing: Row(
@@ -1200,6 +1158,7 @@ class _MyJobsPageState extends MyJobsPagemodel {
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(vertical: AppSizes.spaceTiny),
+      onTap: () => openDetail(job),
       title: _tileTitle(job.title, foreground),
       subtitle: _tileSubtitle(job, foreground, maxLines: 1),
       trailing: Column(

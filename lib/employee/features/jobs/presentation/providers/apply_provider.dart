@@ -3,7 +3,6 @@ import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/jobs/models/job_application.dart';
 import 'package:koala/employee/features/jobs/models/my_job.dart';
 import 'package:koala/employee/features/jobs/services/job_application_service.dart';
-import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/network/api_exception.dart';
 
 /// Kullanıcının başvuruları.
@@ -57,9 +56,9 @@ class ApplyProvider extends ChangeNotifier {
   ///
   /// Ekran hâlâ [MyJob] üzerinden çiziliyor. Kabul edilmiş başvuru bir
   /// atamaya dönüştüğü için buraya girmiyor; kalan dört durumun her birinin
-  /// kendi satırı var — bkz. [_toMyJob].
+  /// kendi satırı var — bkz. [MyJob.fromApplication].
   List<MyJob> get appliedJobs =>
-      _applications.map(_toMyJob).nonNulls.toList(growable: false);
+      _applications.map(MyJob.fromApplication).nonNulls.toList(growable: false);
 
   /// Bu ilana yeniden başvurmayı engelleyen bir kayıt var mı.
   ///
@@ -200,47 +199,5 @@ class ApplyProvider extends ChangeNotifier {
     _withdrawingId = null;
     _hasLoaded = false;
     notifyListeners();
-  }
-
-  /// Başvuruyu ekranın satırına çevirir; listede yeri yoksa `null` döner.
-  ///
-  /// Her başvuru durumunun ekranda ne olacağına **tek bir exhaustive
-  /// `switch`** karar veriyor: `null` "listede yeri yok" demek. Eleme ayrı bir
-  /// `if` olarak dursaydı switch'te ulaşılamaz bir dal kalır, o dal da bir
-  /// gün eleme kalktığında sessizce yanlış durumu çizerdi.
-  static MyJob? _toMyJob(JobApplication application) {
-    final status = switch (application.status) {
-      ApplicationStatus.applied => MyJobStatus.pending,
-      ApplicationStatus.rejected => MyJobStatus.applicationRejected,
-      ApplicationStatus.withdrawn => MyJobStatus.withdrawn,
-      // **Bilinmeyen durum kararı.** Satır listeden düşürülmüyor: sunucuda
-      // kullanıcının bir kaydı var ve onu gizlemek "başvurum kayboldu"
-      // demek olurdu. Ama bilinen bir durum gibi de çizilmiyor; kapalı
-      // sayılıp geçmişe konuyor, çünkü ne olduğunu bilmediğimiz bir kayıt
-      // üzerinde önerebileceğimiz hiçbir eylem yok.
-      ApplicationStatus.unknown => MyJobStatus.unknown,
-      // **Kabul edilen başvuru atlanıyor.** O başvuru artık bir atama ve
-      // atamalar uçtan ayrıca geliyor; ikisini birden çizmek aynı işi
-      // listede iki kez gösterirdi.
-      ApplicationStatus.accepted => null,
-    };
-
-    if (status == null) return null;
-
-    final job = application.job;
-    final date = application.applicationDateTime;
-
-    return MyJob(
-      id: application.id,
-      jobId: job.id,
-      title: job.title,
-      company: job.company ?? 'Bireysel İlan',
-      companyId: null,
-      description: job.subtitle,
-      date: date?.asShortDate ?? '',
-      price: job.price,
-      status: status,
-      rejectionReason: application.rejectionReason,
-    );
   }
 }

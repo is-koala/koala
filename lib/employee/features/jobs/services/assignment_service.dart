@@ -40,6 +40,20 @@ class AssignmentService {
     );
   }
 
+  /// Tek bir atamayı kimliğiyle okur.
+  ///
+  /// Sunucu yalnızca atamanın taraflarına açıyor; taraf olmayan `404`
+  /// alıyor. Uç iki tarafa da açık, o yüzden tek servis: çalışanın iş
+  /// detayı bir eylemden sonra bu kaydı tazeliyor, Kazançlar listede
+  /// olmayan atamayı buradan getiriyor, işverenin ödeme sonucu ekranı da
+  /// aynı metodu çağırıyor — mesai oturumlarında olduğu gibi.
+  Future<Assignment> fetchAssignment(String assignmentId) {
+    return _apiClient.get<Assignment>(
+      ApiPaths.jobAssignment(assignmentId),
+      parse: (data) => Assignment.fromJson(data! as Map<String, dynamic>),
+    );
+  }
+
   /// Mesaiye başlar ve açılan oturumu döndürür.
   ///
   /// Konum isteğe bağlı: sunucu gövdesiz isteği de kabul ediyor, o yüzden
