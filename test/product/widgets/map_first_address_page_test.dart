@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:koala/product/constants/app_icons.dart';
+import 'package:koala/product/constants/app_map.dart';
 import 'package:koala/product/models/canonical_address.dart';
 import 'package:koala/product/models/confirmed_address.dart';
 import 'package:koala/product/models/reference_location.dart';
@@ -16,6 +17,7 @@ import 'package:koala/product/widgets/map_first_address_page.dart';
 
 import '../../support/fake_address_search_gateway.dart';
 import '../../support/fake_api.dart';
+import '../../support/fake_maps_availability.dart';
 import '../../support/finders.dart';
 import '../../support/reference_location_fixtures.dart';
 
@@ -34,6 +36,7 @@ class _Harness {
     FakeDeviceLocationSource? location,
     this.initialAddress,
     this.onSave,
+    this.mapsAvailable = true,
   }) : gateway = gateway ?? FakeAddressSearchGateway(),
        location = location ?? FakeDeviceLocationSource() {
     final api = FakeApi(
@@ -53,6 +56,10 @@ class _Harness {
   final FakeDeviceLocationSource location;
   final ConfirmedAddress? initialAddress;
   final Future<void> Function(ConfirmedAddress address)? onSave;
+
+  /// Harita bayrağı (is-koala/koala#172); `false` ise ekran `GoogleMap`
+  /// yerine yer tutucu çizer ve pin haritasız kurala göre belirlenir.
+  final bool mapsAvailable;
   late final MapFirstAddressController controller;
 
   /// Çağıran ekranın aldığı sonuç; sayfa `pop` ile döndürünce dolar.
@@ -89,9 +96,12 @@ class _Harness {
     );
     addTearDown(router.dispose);
     await tester.pumpWidget(
-      MaterialApp.router(
-        theme: brightness == Brightness.dark ? darkTheme : lightTheme,
-        routerConfig: router,
+      withMapsAvailability(
+        MaterialApp.router(
+          theme: brightness == Brightness.dark ? darkTheme : lightTheme,
+          routerConfig: router,
+        ),
+        available: mapsAvailable,
       ),
     );
     router.push<ConfirmedAddress>(_pickerLocation).then((value) {
@@ -136,7 +146,10 @@ class _Harness {
     );
     addTearDown(router.dispose);
     await tester.pumpWidget(
-      MaterialApp.router(theme: lightTheme, routerConfig: router),
+      withMapsAvailability(
+        MaterialApp.router(theme: lightTheme, routerConfig: router),
+        available: mapsAvailable,
+      ),
     );
     await tester.pumpAndSettle();
   }
@@ -723,6 +736,185 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Haritadan seçin'), findsNothing);
+    });
+  });
+
+  group('harita anahtarı yokken', () {
+    // is-koala/koala#172: iOS'ta anahtar boşken `GoogleMap` kurulduğu an
+    // uygulama çöküyordu. Bayrak kapalıysa harita hiç kurulmaz; ekran
+    // arama + il/ilçe ile çalışır, pin şehir merkezi ya da son bilinen
+    // konumdur, ters geokod istenmez.
+    for (final brightness in Brightness.values) {
+      testWidgets(
+        '${brightness.name} temada harita yerine yer tutucu çizer, pin '
+        'İstanbul merkezi olur, ters geokod istenmez',
+        (tester) async {
+          final harness = _Harness(mapsAvailable: false);
+          await harness.pump(tester, brightness: brightness);
+          await harness.settle(tester);
+
+          expect(find.byType(GoogleMap), findsNothing);
+          expect(find.byKey(const ValueKey('map-unavailable')), findsOneWidget);
+          expect(
+            find.text('Harita bu derlemede kullanılamıyor'),
+            findsOneWidget,
+          );
+          expect(harness.controller.mapless, isTrue);
+          expect(harness.controller.pin, AppMap.istanbulCenter);
+          expect(
+            harness.controller.maplessPinOrigin,
+            MaplessPinOrigin.cityCenter,
+          );
+          expect(harness.gateway.reverseCalls, isEmpty);
+          expect(harness.location.requestCalls, 0, reason: 'izin istenmez');
+          expect(
+            find.textContaining('Konum İstanbul merkezi olarak kaydedilecek'),
+            findsOneWidget,
+          );
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+
+    testWidgets('düzenlenen adresin konumu korunur', (tester) async {
+      final harness = _Harness(
+        mapsAvailable: false,
+        initialAddress: _initialAddress(),
+      );
+      await harness.pump(tester);
+      await harness.settle(tester);
+
+      expect(harness.controller.pin, const LatLng(40.99, 29.03));
+      expect(harness.controller.maplessPinOrigin, MaplessPinOrigin.saved);
+      expect(harness.location.currentIfGrantedCalls, 0);
+      expect(harness.gateway.reverseCalls, isEmpty);
+      expect(
+        find.text('Kayıtlı adresinizin konumu korunuyor.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('açılışta izin zaten varsa pin cihaz olur, ters geokod yok', (
+      tester,
+    ) async {
+      const device = LatLng(41.04, 29.0);
+      final harness = _Harness(
+        mapsAvailable: false,
+        location: FakeDeviceLocationSource(granted: device),
+      );
+      await harness.pump(tester);
+      await harness.settle(tester);
+
+      expect(harness.controller.pin, device);
+      expect(harness.controller.maplessPinOrigin, MaplessPinOrigin.device);
+      expect(harness.gateway.reverseCalls, isEmpty);
+      expect(find.text('Konum cihazınızdan alındı.'), findsOneWidget);
+    });
+
+    testWidgets('"Konumumu kullan" pini taşır, ters geokod istemez', (
+      tester,
+    ) async {
+      const device = LatLng(41.04, 29.0);
+      final harness = _Harness(
+        mapsAvailable: false,
+        location: FakeDeviceLocationSource(
+          requestResult: const DeviceLocationResult.located(device),
+        ),
+      );
+      await harness.pump(tester);
+      await harness.settle(tester);
+
+      await tester.tap(findAppIcon(AppIcons.myLocation));
+      await tester.pump();
+      await harness.settle(tester);
+
+      expect(harness.location.requestCalls, 1);
+      expect(harness.controller.pin, device);
+      expect(harness.controller.maplessPinOrigin, MaplessPinOrigin.device);
+      expect(harness.gateway.reverseCalls, isEmpty);
+    });
+
+    testWidgets('izin reddedilirse mesaj haritasız yolu gösterir', (
+      tester,
+    ) async {
+      final harness = _Harness(mapsAvailable: false);
+      await harness.pump(tester);
+      await harness.settle(tester);
+
+      await tester.tap(findAppIcon(AppIcons.myLocation));
+      await tester.pump();
+      await tester.pump();
+
+      expect(
+        find.text('Konum izni olmadan da adresinizi arayarak girebilirsiniz.'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('pini elle'), findsNothing);
+      expect(harness.controller.pin, AppMap.istanbulCenter);
+    });
+
+    testWidgets('arama sonucu alanları doldurur ve pini adaydan alır', (
+      tester,
+    ) async {
+      final harness = _Harness(mapsAvailable: false);
+      await harness.pump(tester);
+      await harness.settle(tester);
+
+      await tester.enterText(
+        _field('Adres ara (mahalle, cadde, bina)'),
+        'Moda Caddesi',
+      );
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pump();
+      await tester.tap(find.text('Moda Caddesi 12'));
+      await tester.pump();
+      await tester.pump();
+
+      expect(harness.controller.neighborhood.text, 'Caferağa Mahallesi');
+      expect(harness.controller.candidateToken, 'search-proof');
+      expect(harness.controller.pin, const LatLng(40.987654, 29.031111));
+      expect(harness.controller.maplessPinOrigin, MaplessPinOrigin.search);
+      expect(find.text('Konum arama sonucundan alındı.'), findsOneWidget);
+      expect(harness.gateway.reverseCalls, isEmpty);
+
+      // "Sadece pini kullan" aday metinlerini düşürür; pin ve kaynağı kalır.
+      await tester.ensureVisible(find.text('Sadece pini kullan'));
+      await tester.tap(find.text('Sadece pini kullan'));
+      await tester.pump();
+
+      expect(harness.controller.candidateToken, isNull);
+      expect(harness.controller.pin, const LatLng(40.987654, 29.031111));
+      expect(harness.controller.maplessPinOrigin, MaplessPinOrigin.search);
+      expect(find.text('Konum arama sonucundan alındı.'), findsOneWidget);
+    });
+
+    testWidgets('il/ilçe seçip alanları elle doldurunca kaydedilir', (
+      tester,
+    ) async {
+      final harness = _Harness(mapsAvailable: false);
+      await harness.pump(tester);
+      await harness.settle(tester);
+
+      await _pickOption(tester, 'İl *', 'İSTANBUL');
+      await _pickOption(tester, 'İlçe *', 'KADIKÖY');
+      await tester.enterText(_field('Mahalle *'), 'Caferağa Mahallesi');
+      await tester.enterText(_field('Cadde / Sokak *'), 'Moda Caddesi');
+      await tester.enterText(_field('Bina No'), '12');
+      await tester.enterText(_field('Posta Kodu *'), '34710');
+
+      await _tapSave(tester);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MapFirstAddressPage), findsNothing);
+      final body = harness.popped!.toWrite().toJson();
+      expect(body['cityId'], 'city-1');
+      expect(body['districtId'], 'district-1');
+      expect(body['candidateToken'], isNull);
+      expect(body['position'], {
+        'latitude': AppMap.istanbulCenter.latitude,
+        'longitude': AppMap.istanbulCenter.longitude,
+        'source': 'USER_CONFIRMED_PIN',
+      });
     });
   });
 }

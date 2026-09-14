@@ -18,9 +18,11 @@ import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/providers/map_first_address_controller.dart';
 import 'package:koala/product/services/address_search_service.dart';
 import 'package:koala/product/services/device_location_source.dart';
+import 'package:koala/product/services/maps_availability.dart';
 import 'package:koala/product/services/reference_location_service.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
+import 'package:koala/product/widgets/empty_state.dart';
 import 'package:koala/product/widgets/my_button.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
 import 'package:koala/product/widgets/option_sheet.dart';
@@ -103,11 +105,29 @@ class _MapFirstAddressPageState extends MapFirstAddressPagemodel {
       resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
-          Positioned.fill(child: _map()),
-          _centerPin(),
+          Positioned.fill(child: mapsAvailable ? _map() : _mapPlaceholder()),
+          if (mapsAvailable) _centerPin(),
           _topBar(),
           Positioned.fill(child: _card()),
         ],
+      ),
+    );
+  }
+
+  /// Harita anahtarı olmayan derlemede haritanın yerine geçen zemin
+  /// (is-koala/koala#172). [EmptyState] kendi üst payıyla kartın üstünde
+  /// kalan alana düşüyor; kart açılınca altında kalması sorun değil, kart
+  /// zaten adres girişinin yolu.
+  Widget _mapPlaceholder() {
+    return ColoredBox(
+      key: const ValueKey('map-unavailable'),
+      color: context.recessedColor,
+      child: const EmptyState(
+        icon: AppIcons.location,
+        title: 'Harita bu derlemede kullanılamıyor',
+        description:
+            'Adresinizi arayarak ya da il/ilçe seçip alanları doldurarak '
+            'girebilirsiniz.',
       ),
     );
   }
@@ -370,8 +390,11 @@ class _MapFirstAddressPageState extends MapFirstAddressPagemodel {
         if (search.errorMessage != null) ...[
           const SizedBox(height: AppSizes.spaceSmall),
           _strip(
-            '${search.errorMessage} Haritada pini bırakıp alanları elle '
-            'doldurmaya devam edebilirsiniz.',
+            mapsAvailable
+                ? '${search.errorMessage} Haritada pini bırakıp alanları elle '
+                      'doldurmaya devam edebilirsiniz.'
+                : '${search.errorMessage} Alanları elle doldurmaya devam '
+                      'edebilirsiniz.',
             actionLabel: 'Tekrar dene',
             onAction: () => search.retry(controller.searchText.text),
           ),
@@ -463,7 +486,18 @@ class _MapFirstAddressPageState extends MapFirstAddressPagemodel {
   /// [ReverseGeocodeFailure]'dan gelir; hizmet alanı dışında eylem yok.
   List<Widget> _pinStatus() {
     final failure = controller.reverseFailure;
+    final maplessOrigin = controller.maplessPinOrigin;
     return [
+      if (maplessOrigin != null) ...[
+        Text(
+          _maplessPinNote(maplessOrigin),
+          key: const ValueKey('mapless-pin-note'),
+          style: context.textTheme.bodySmall?.copyWith(
+            color: context.textSecondary,
+          ),
+        ),
+        const SizedBox(height: AppSizes.spaceMedium),
+      ],
       if (controller.reverseGeocoding) ...[
         Row(
           children: [
@@ -520,6 +554,18 @@ class _MapFirstAddressPageState extends MapFirstAddressPagemodel {
       ],
     ];
   }
+
+  /// Haritasız kipte kaydedilecek konumun nereden geldiği. Kullanıcı pini
+  /// göremediği için söylenmesi gerekiyor; şehir merkezi seçiliyken arama
+  /// daha kesin bir konum verir.
+  String _maplessPinNote(MaplessPinOrigin origin) => switch (origin) {
+    MaplessPinOrigin.saved => 'Kayıtlı adresinizin konumu korunuyor.',
+    MaplessPinOrigin.device => 'Konum cihazınızdan alındı.',
+    MaplessPinOrigin.search => 'Konum arama sonucundan alındı.',
+    MaplessPinOrigin.cityCenter =>
+      'Konum İstanbul merkezi olarak kaydedilecek; daha kesin bir konum için '
+          'adresinizi arayın ya da "Konumumu kullan" deyin.',
+  };
 
   /// Bilgi şeridi; [actionLabel] `null` ise yalnız metin.
   Widget _strip(

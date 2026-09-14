@@ -22,6 +22,12 @@ abstract class MapFirstAddressPagemodel extends State<MapFirstAddressPage> {
   late final MapFirstAddressController controller;
   late final bool _ownsController;
 
+  /// Harita bu derlemede çizilebilir mi (is-koala/koala#172). Kapalıysa
+  /// `GoogleMap` hiç kurulmaz — iOS'ta kurulduğu an çöküyordu — ekran arama
+  /// ve il/ilçe seçimiyle çalışır, pin [MapFirstAddressController.openWithoutMap]
+  /// kuralıyla belirlenir.
+  late final bool mapsAvailable = MapsAvailability.of(context).isAvailable;
+
   /// Haritanın açıldığı kare: düzenlenen adres varsa sokak ölçeğinde onun
   /// pini, yoksa şehir ölçeğinde merkez. Harita kurulduktan sonra
   /// değişmez; sonraki hareketler kameraya animasyonla verilir.
@@ -55,7 +61,11 @@ abstract class MapFirstAddressPagemodel extends State<MapFirstAddressPage> {
     );
     controller.addListener(_onControllerChanged);
     searchFocus.addListener(_onSearchFocusChanged);
-    controller.locateOnOpen();
+    if (mapsAvailable) {
+      controller.locateOnOpen();
+    } else {
+      controller.openWithoutMap();
+    }
   }
 
   @override

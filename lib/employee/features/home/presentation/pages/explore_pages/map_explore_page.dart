@@ -7,7 +7,9 @@ import 'package:koala/employee/core/widgets/job_detail_bottom_sheet.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_map_bounds.dart';
 import 'package:koala/employee/features/home/presentation/providers/map_explore_controller.dart';
+import 'package:koala/employee/features/home/presentation/providers/page_provider.dart';
 import 'package:koala/employee/features/home/presentation/providers/search_provider.dart';
+import 'package:koala/employee/features/home/presentation/widgets/explore_brand_title.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_marker_cache.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_marker_generator.dart';
 import 'package:koala/employee/features/home/presentation/widgets/map_explore_overlay.dart';
@@ -18,7 +20,9 @@ import 'package:koala/product/constants/app_map.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/services/maps_availability.dart';
 import 'package:koala/product/widgets/app_icon.dart';
+import 'package:koala/product/widgets/empty_state.dart';
 import 'package:provider/provider.dart';
 
 part 'map_explore_pagemodel.dart';
@@ -43,9 +47,14 @@ class _MapExplorePageState extends MapExplorePageModel {
   /// Konum butonunun alttan yüksekliği: navbar'ın üstünde kalmalı.
   static const double _locationButtonBottom = 110;
 
+  /// Harita yokken gösterilen metin; testler ve diğer harita ekranı aynı
+  /// cümleyi kullanıyor.
+  static const String unavailableTitle = 'Harita bu derlemede kullanılamıyor';
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    if (!mapsAvailable) return unavailableView();
     final searchProvider = context.watch<SearchProvider>();
 
     final isSearching =
@@ -79,6 +88,31 @@ class _MapExplorePageState extends MapExplorePageModel {
 
           currentPositionButton(),
         ],
+      ),
+    );
+  }
+
+  /// Harita anahtarı olmayan derlemede haritanın yerine geçen ekran
+  /// (is-koala/koala#172). `GoogleMap` hiç kurulmuyor — iOS'ta kurulduğu an
+  /// çöküyordu. İlanlar liste görünümünde; düğme oraya götürüyor.
+  Scaffold unavailableView() {
+    return Scaffold(
+      backgroundColor: context.backgroundColor,
+      appBar: AppBar(
+        backgroundColor: context.backgroundColor,
+        elevation: 0,
+        title: const ExploreBrandTitle(),
+        centerTitle: false,
+      ),
+      body: EmptyState(
+        key: const ValueKey('map-unavailable'),
+        icon: AppIcons.location,
+        title: unavailableTitle,
+        description: 'İlanları liste görünümünden görebilirsiniz.',
+        action: TextButton(
+          onPressed: context.read<PageProvider>().setExploreViewToList,
+          child: const Text('Listeye geç'),
+        ),
       ),
     );
   }
@@ -237,13 +271,7 @@ class _MapExplorePageState extends MapExplorePageModel {
       systemOverlayStyle: overMapStyle,
       backgroundColor: Colors.transparent,
       elevation: 0,
-      title: Text(
-        'KOALA',
-        style: context.textTheme.displaySmall?.copyWith(
-          fontWeight: FontWeight.w800,
-          color: context.accentColor,
-        ),
-      ),
+      title: const ExploreBrandTitle(),
       centerTitle: false,
       actions: [
         IconButton(

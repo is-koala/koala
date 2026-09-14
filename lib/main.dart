@@ -18,6 +18,7 @@ import 'package:koala/business/features/home/presentation/providers/b_job_templa
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
 import 'package:koala/business/features/home/presentation/providers/b_talent_pool_provider.dart';
 import 'package:koala/product/providers/notification_provider.dart';
+import 'package:koala/product/services/maps_availability.dart';
 import 'package:koala/product/theme/theme_provider.dart';
 import 'package:koala/product/app.dart';
 import 'package:provider/provider.dart';
@@ -28,6 +29,11 @@ void main() {
   runApp(
     MultiProvider(
       providers: [
+        // Harita anahtarı derlemede var mı: nesne burada okunmadan kuruluyor,
+        // cevabı açılış ekranı alıyor (`SplashPage._initialize`) — `main`
+        // senkron kalır. Kapalıysa harita ekranları yer tutucu gösterir
+        // (is-koala/koala#172).
+        ChangeNotifierProvider(create: (_) => MapsAvailability()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => IdentityReviewProvider()),

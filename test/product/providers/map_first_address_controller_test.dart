@@ -689,6 +689,72 @@ void main() {
     });
   });
 
+  group('haritasız açılış', () {
+    // is-koala/koala#172: harita anahtarı yokken `GoogleMap` kurulmuyor;
+    // kamera olayı gelmez, pin şu sırayla belirlenir — kayıtlı adres, izin
+    // zaten verilmişse cihaz, yoksa şehir merkezi — ve ters geokod istenmez.
+    testWidgets('izin yoksa şehir merkezi pin olur, ters geokod istenmez', (
+      tester,
+    ) async {
+      final gateway = FakeAddressSearchGateway();
+      final location = FakeDeviceLocationSource();
+      final controller = _controller(gateway: gateway, location: location);
+
+      await controller.openWithoutMap();
+      await tester.pump(_debounce);
+      await tester.pump();
+
+      expect(controller.mapless, isTrue);
+      expect(controller.pin, AppMap.istanbulCenter);
+      expect(controller.maplessPinOrigin, MaplessPinOrigin.cityCenter);
+      expect(controller.positionSource, AddressPositionSource.userConfirmedPin);
+      expect(controller.pendingCameraTarget, isNull);
+      expect(location.requestCalls, 0);
+      expect(gateway.reverseCalls, isEmpty);
+      expect(controller.reverseGeocoding, isFalse);
+
+      controller.dispose();
+    });
+
+    testWidgets('hizmet alanı dışındaki cihaz konumu şehir merkezine düşer', (
+      tester,
+    ) async {
+      final gateway = FakeAddressSearchGateway();
+      final location = FakeDeviceLocationSource(
+        granted: const LatLng(39.92, 32.85),
+      );
+      final controller = _controller(gateway: gateway, location: location);
+
+      await controller.openWithoutMap();
+      await tester.pump(_debounce);
+      await tester.pump();
+
+      expect(controller.pin, AppMap.istanbulCenter);
+      expect(controller.maplessPinOrigin, MaplessPinOrigin.cityCenter);
+      expect(controller.locationGranted, isTrue);
+      expect(gateway.reverseCalls, isEmpty);
+
+      controller.dispose();
+    });
+
+    testWidgets('haritalı kip etkilenmez: locateOnOpen ters geokod ister', (
+      tester,
+    ) async {
+      final gateway = FakeAddressSearchGateway();
+      final controller = _controller(gateway: gateway);
+
+      await controller.locateOnOpen();
+      await tester.pump(_debounce);
+      await tester.pump();
+
+      expect(controller.mapless, isFalse);
+      expect(controller.maplessPinOrigin, isNull);
+      expect(gateway.reverseCalls, [AppMap.istanbulCenter]);
+
+      controller.dispose();
+    });
+  });
+
   group('referans listeleri', () {
     test('il seçenekleri tek ülkeyi kendiliğinden seçer', () async {
       final controller = _controller();

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:koala/employee/features/home/presentation/providers/page_provider.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/employee/features/settings/presentation/providers/identity_review_provider.dart';
 import 'package:koala/product/constants/app_assets.dart';
@@ -9,6 +10,7 @@ import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/network/session_manager.dart';
 import 'package:koala/product/providers/notification_provider.dart';
 import 'package:koala/product/services/firebase_messaging_push_token_source.dart';
+import 'package:koala/product/services/maps_availability.dart';
 import 'package:koala/product/services/push_messaging.dart';
 import 'package:koala/product/services/push_token_lifecycle.dart';
 import 'package:provider/provider.dart';
@@ -40,6 +42,17 @@ class _SplashPageState extends State<SplashPage> {
   }
 
   Future<void> _initialize() async {
+    // Harita bayrağı oturumdan **önce** okunuyor: oturum okunur okunmaz
+    // muhafız kullanıcıyı ana ekrana (haritaya) yolluyor, o ana kadar cevabın
+    // gelmiş olması gerek. Tek kanal gidiş-dönüşü, milisaniyeler; bayrak
+    // kapalıysa keşif listeyle açılsın (is-koala/koala#172).
+    final maps = context.read<MapsAvailability>();
+    await maps.resolve();
+    if (!mounted) return;
+    if (!maps.isAvailable) {
+      context.read<PageProvider>().setExploreViewToList();
+    }
+
     final session = SessionManager();
     await session.load();
     if (!mounted) return;

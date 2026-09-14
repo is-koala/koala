@@ -104,6 +104,22 @@ class ReverseGeocodeFailure {
   bool get blocksSave => kind == ReverseGeocodeFailureKind.outsideServiceArea;
 }
 
+/// Harita yokken pinin nereden geldiği; kart bunu kullanıcıya söyler
+/// (is-koala/koala#172). Haritalı akışta anlamsız, `null` kalır.
+enum MaplessPinOrigin {
+  /// Düzenlenen adresin kayıtlı konumu korunuyor.
+  saved,
+
+  /// İzin zaten verilmişti ya da kullanıcı "Konumumu kullan" dedi.
+  device,
+
+  /// Kullanıcı arama sonucunu seçti; konum adaydan geldi.
+  search,
+
+  /// Hiçbiri yok: İstanbul merkezi ([AppMap.istanbulCenter]).
+  cityCenter,
+}
+
 /// Harita-öncelikli adres ekranının durumu ve iş mantığı.
 ///
 /// Tek gerçek **pin**dir: kullanıcı haritayı kaydırıp bıraktığında kamera
@@ -268,6 +284,46 @@ class MapFirstAddressController extends ChangeNotifier {
   /// Haritanın açıldığı nokta: düzenlenen adresin pini, yoksa şehir merkezi.
   LatLng get initialCameraTarget => pin ?? AppMap.istanbulCenter;
 
+  // ------------------------------------------------------------ Harita yok
+
+  bool _mapless = false;
+  MaplessPinOrigin? _maplessPinOrigin;
+
+  /// Ekran haritasız açıldı ([openWithoutMap]): kamera olayı gelmez, ters
+  /// geokod istenmez, pin arama sonucundan, cihazdan ya da şehir merkezinden
+  /// gelir.
+  bool get mapless => _mapless;
+
+  /// Haritasız kipte pinin kaynağı; haritalı kipte `null`. "Sadece pini
+  /// kullan" adayı düşürse de pin adayın konumunda kalır, kaynak da öyle.
+  MaplessPinOrigin? get maplessPinOrigin => _mapless ? _maplessPinOrigin : null;
+
+  /// Haritasız açılış (is-koala/koala#172): harita çizilemediği için pin
+  /// kullanıcının kaydırmasıyla değil şuradan gelir — düzenlenen adresin
+  /// konumu, o yoksa izin zaten verilmişse cihaz, o da yoksa İstanbul
+  /// merkezi. Ters geokod **atlanır**: kullanıcı pinin nerede durduğunu
+  /// göremediği için sağlayıcının o noktaya yazacağı adresi de doğrulayamaz;
+  /// alanlar aramadan ya da elle dolar. İzin istenmez.
+  Future<void> openWithoutMap() async {
+    _mapless = true;
+    if (pin != null) {
+      _maplessPinOrigin = MaplessPinOrigin.saved;
+      notifyListeners();
+      return;
+    }
+
+    final located = await _locationSource.currentIfGranted();
+    if (_disposed) return;
+
+    if (located != null) _locationGranted = true;
+    final usable = located != null && AppMap.istanbulBounds.contains(located);
+    _maplessPinOrigin = usable
+        ? MaplessPinOrigin.device
+        : MaplessPinOrigin.cityCenter;
+    _cameraTarget = usable ? located : AppMap.istanbulCenter;
+    _selectPin(_cameraTarget);
+  }
+
   /// Haritanın gitmesi istenen nokta. Sayfa okuyup kamerayı oraya taşır ve
   /// [takePendingCameraTarget] ile tüketir.
   LatLng? get pendingCameraTarget => _pendingCameraTarget;
@@ -305,6 +361,13 @@ class MapFirstAddressController extends ChangeNotifier {
 
   void _settleAt(LatLng target) {
     _selectPin(target);
+    if (_mapless) {
+      // Buraya yalnız "Konumumu kullan" getirir; kullanıcı pini göremiyor,
+      // ters geokodun yazacağı adresi de doğrulayamaz.
+      _maplessPinOrigin = MaplessPinOrigin.device;
+      notifyListeners();
+      return;
+    }
     _scheduleReverse(target);
   }
 
@@ -424,6 +487,7 @@ class MapFirstAddressController extends ChangeNotifier {
     buildingNumber.text = candidate.components.buildingNumber ?? '';
     postalCode.text = candidate.components.postalCode;
     pin = LatLng(candidate.position.latitude, candidate.position.longitude);
+    if (_mapless) _maplessPinOrigin = MaplessPinOrigin.search;
     positionSource = candidate.position.source;
     candidateToken = candidate.candidateToken;
     providerAttribution = candidate.attribution;
@@ -515,11 +579,18 @@ class MapFirstAddressController extends ChangeNotifier {
           _moveCameraTo(position);
           return null;
         case DeviceLocationStatus.serviceDisabled:
-          return 'Cihaz konum servisi kapalı. Pini elle seçebilirsiniz.';
+          return _mapless
+              ? 'Cihaz konum servisi kapalı. Adresinizi arayarak '
+                    'girebilirsiniz.'
+              : 'Cihaz konum servisi kapalı. Pini elle seçebilirsiniz.';
         case DeviceLocationStatus.denied:
-          return 'Konum izni olmadan da pini elle seçebilirsiniz.';
+          return _mapless
+              ? 'Konum izni olmadan da adresinizi arayarak girebilirsiniz.'
+              : 'Konum izni olmadan da pini elle seçebilirsiniz.';
         case DeviceLocationStatus.unavailable:
-          return 'Konum alınamadı. Pini elle seçebilirsiniz.';
+          return _mapless
+              ? 'Konum alınamadı. Adresinizi arayarak girebilirsiniz.'
+              : 'Konum alınamadı. Pini elle seçebilirsiniz.';
       }
     } finally {
       if (!_disposed) {

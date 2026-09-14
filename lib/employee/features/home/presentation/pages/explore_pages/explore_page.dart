@@ -18,7 +18,14 @@ class _ExplorePageState extends State<ExplorePage>
   @override
   void initState() {
     super.initState();
-    _pageController = PageController();
+    // Sağlayıcı listeyle başlıyorsa (harita bu derlemede yok) ilk kare de
+    // liste olsun; aşağıdaki kare-sonrası atlama yalnız sonraki geçişler için.
+    _pageController = PageController(
+      initialPage:
+          context.read<PageProvider>().exploreViewType == ExploreViewType.map
+          ? 0
+          : 1,
+    );
   }
 
   @override
