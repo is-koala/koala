@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/chat/presentation/providers/chat_list_controller.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
@@ -51,7 +52,25 @@ class FakeRealtimeClient implements RealtimeClient {
   Future<void> disconnect() async {}
 
   @override
-  bool get isConnected => true;
+  bool get isConnected => connected;
+
+  /// Abonelik anında bağlantı var mı; `false` verilirse denetleyici ilk
+  /// `connected`'da boşluğu tamamlamalı.
+  bool connected = true;
+
+  final _connection = StreamController<RealtimeConnectionEvent>.broadcast();
+  final List<bool> resumeCalls = [];
+
+  void emitConnection(RealtimeConnectionEvent event) => _connection.add(event);
+
+  @override
+  Stream<RealtimeConnectionEvent> get connectionEvents => _connection.stream;
+
+  @override
+  void resume({bool suspectStale = false}) => resumeCalls.add(suspectStale);
+
+  @override
+  Future<void> reconnect() async {}
 }
 
 Map<String, dynamic> conversationBody({
@@ -93,10 +112,33 @@ RealtimeEvent messageEvent({
 
 void main() {
   late FakeRealtimeClient realtime;
+  late FakeApi api;
 
-  ChatListController build(List<Map<String, dynamic>> conversations) {
-    realtime = FakeRealtimeClient();
-    final api = FakeApi(
+  /// Sunucuya ulaşan `GET /conversations` sayısı; canlı akışın çekme yerine
+  /// geçtiğini ve tamamlamanın gerçekten çektiğini bununla ölçüyoruz.
+  int listFetches() =>
+      api.requests.where((request) => request.path == '/conversations').length;
+
+  /// Denetleyicinin bir sonraki `notifyListeners` çağrısı. Tamamlama sessiz
+  /// bir istek olduğu için bitişini ancak dinleyiciden anlıyoruz; süreye
+  /// bağlı bekleme makine yükünde yalancı kırmızı üretiyor.
+  Future<void> nextNotify(ChatListController controller) {
+    final completer = Completer<void>();
+    late final VoidCallback listener;
+    listener = () {
+      if (!completer.isCompleted) completer.complete();
+      controller.removeListener(listener);
+    };
+    controller.addListener(listener);
+    return completer.future;
+  }
+
+  ChatListController build(
+    List<Map<String, dynamic>> conversations, {
+    bool connected = true,
+  }) {
+    realtime = FakeRealtimeClient()..connected = connected;
+    api = FakeApi(
       handler: (options) => options.path == '/presence/lookup'
           ? const FakeApiResponse(
               statusCode: 200,
@@ -279,6 +321,20 @@ void main() {
       expect(controller.conversations, hasLength(2));
     });
 
+    // Yeniden abonelik ya da iki kanal aynı mesajı ikinci kez getirebilir;
+    // rozet bir mesaj için bir kez artmalı.
+    test('aynı mesaj ikinci kez gelince sayaç bir daha artmaz', () async {
+      final controller = build([conversationBody(unreadCount: 0)]);
+      await controller.load(currentUserId: _me);
+
+      realtime.emitMessage(messageEvent(id: 'msg_dup'));
+      realtime.emitMessage(messageEvent(id: 'msg_dup'));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(controller.conversations.single.unreadCount, 1);
+      expect(listFetches(), 1);
+    });
+
     test('presence dışı olaylar listeyi bozmaz', () async {
       final controller = build([conversationBody()]);
       await controller.load(currentUserId: _me);
@@ -289,6 +345,84 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(controller.conversations.single.lastMessage, 'Merhaba');
+    });
+  });
+
+  group('bağlantı geçişleri', () {
+    // Sunucunun `since` parametresi yok; kopukken gelenler listeyi yeniden
+    // çekerek tamamlanıyor ve sayaç sunucunun değeriyle geliyor.
+    test('kopup gelen bağlantı listeyi sunucudan tamamlar', () async {
+      final conversations = [conversationBody(unreadCount: 0)];
+      final controller = build(conversations);
+      await controller.load(currentUserId: _me);
+      expect(listFetches(), 1);
+
+      conversations[0] = conversationBody(
+        unreadCount: 2,
+        lastMessageBody: 'Kopukken gelen',
+      );
+      final refreshed = nextNotify(controller);
+      realtime.emitConnection(RealtimeConnectionEvent.disconnected);
+      realtime.emitConnection(RealtimeConnectionEvent.connected);
+      await refreshed;
+
+      expect(listFetches(), 2);
+      expect(controller.conversations.single.unreadCount, 2);
+      expect(controller.conversations.single.lastMessage, 'Kopukken gelen');
+    });
+
+    test('kesintisiz bağlantıda connected tazeleme yapmaz', () async {
+      final controller = build([conversationBody()]);
+      await controller.load(currentUserId: _me);
+
+      realtime.emitConnection(RealtimeConnectionEvent.connected);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(listFetches(), 1);
+    });
+
+    // REST yanıtı ile SUBSCRIBE arasına düşen mesaj için: abonelik bağlantı
+    // yokken açıldıysa ilk `connected` boşluğu kapatıyor.
+    test(
+      'bağlantı yokken açılan abonelik ilk connected ile tamamlanır',
+      () async {
+        final controller = build([conversationBody()], connected: false);
+        await controller.load(currentUserId: _me);
+
+        final refreshed = nextNotify(controller);
+        realtime.emitConnection(RealtimeConnectionEvent.connected);
+        await refreshed;
+
+        expect(listFetches(), 2);
+      },
+    );
+
+    test('ön plana dönüş listeyi sessizce tazeler', () async {
+      final controller = build([conversationBody()]);
+      await controller.load(currentUserId: _me);
+      var notified = 0;
+      controller.addListener(() => notified++);
+
+      final refreshed = nextNotify(controller);
+      realtime.emitConnection(RealtimeConnectionEvent.resumed);
+      await refreshed;
+
+      expect(listFetches(), 2);
+      expect(controller.isLoading, isFalse);
+      expect(notified, 1);
+    });
+
+    // Aynı anda gelen iki tetikleyici (dönüş + yeniden bağlanma) tek istek.
+    test('uçuştaki tazeleme paylaşılır', () async {
+      final controller = build([conversationBody()]);
+      await controller.load(currentUserId: _me);
+
+      final refreshed = nextNotify(controller);
+      realtime.emitConnection(RealtimeConnectionEvent.resumed);
+      realtime.emitConnection(RealtimeConnectionEvent.resumed);
+      await refreshed;
+
+      expect(listFetches(), 2);
     });
   });
 

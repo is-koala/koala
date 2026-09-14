@@ -30,5 +30,36 @@ class FakeSilentRealtimeClient implements RealtimeClient {
   @override
   bool get isConnected => true;
 
+  @override
+  Stream<RealtimeConnectionEvent> get connectionEvents =>
+      const Stream<RealtimeConnectionEvent>.empty();
+
+  @override
+  void resume({bool suspectStale = false}) {}
+
+  @override
+  Future<void> reconnect() async {}
+
   Future<void> dispose() => _events.close();
+}
+
+/// Widget testlerinde kişisel kuyruğa olay basabilen canlı istemci.
+///
+/// İki kabuğun sohbet listesinin aynı denetleyici üzerinden, çekme yapmadan
+/// canlı mesaj aldığını göstermek için var: [emitUserEvent] ile basılan olay
+/// `/user/queue/messages` dinleyicisine düşüyor.
+class FakeLiveRealtimeClient extends FakeSilentRealtimeClient {
+  final StreamController<RealtimeEvent> _userEvents =
+      StreamController<RealtimeEvent>.broadcast();
+
+  @override
+  Stream<RealtimeEvent> userMessageEvents() => _userEvents.stream;
+
+  void emitUserEvent(RealtimeEvent event) => _userEvents.add(event);
+
+  @override
+  Future<void> dispose() async {
+    await _userEvents.close();
+    await super.dispose();
+  }
 }

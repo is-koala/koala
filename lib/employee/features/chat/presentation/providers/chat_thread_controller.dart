@@ -42,11 +42,24 @@ class ChatThreadController extends ChangeNotifier {
   String? _currentUserId;
 
   StreamSubscription<RealtimeEvent>? _events;
+  StreamSubscription<RealtimeConnectionEvent>? _connection;
   Timer? _typingReset;
   DateTime? _lastTypingSentAt;
 
   bool _disposed = false;
   int _loadGeneration = 0;
+
+  /// Canlı akışta boşluk oluştu mu: bağlantı koptu ya da abonelik bağlantı
+  /// yokken açıldı. `connected` gelince kaçanlar REST'ten tamamlanıyor.
+  bool _needsCatchUp = false;
+
+  /// Uçuştaki tamamlama; art arda tetikleyiciler aynı isteği paylaşıyor.
+  Future<void>? _catchingUp;
+
+  /// Tamamlamada en fazla kaç sayfa geriye gidileceği. Sunucu sayfa başına
+  /// 30 mesaj veriyor; kopukluk süresince bundan fazlası geldiyse en eskiler
+  /// sayfalama açıldığında zaten gelecek.
+  static const int _catchUpPageLimit = 3;
 
   List<Message> get messages => List.unmodifiable(_messages);
 
@@ -218,10 +231,113 @@ class ChatThreadController extends ChangeNotifier {
     // mesajlarla çalışmaya devam ediyor.
     unawaited(_realtimeClient.connect());
 
+    _connection = _realtimeClient.connectionEvents.listen(_onConnectionEvent);
     _events = _realtimeClient
         .conversationEvents(conversationId)
         .listen(_onEvent);
+    // Abonelik CONNECT'ten önce açıldıysa REST yanıtıyla SUBSCRIBE arasına
+    // düşen mesaj kaçmış olabilir; ilk `connected` bunu kapatıyor.
+    _needsCatchUp = !_realtimeClient.isConnected;
   }
+
+  /// Bağlantı geçişleri. Kopukken gönderilen mesaj canlı kanaldan bir daha
+  /// gelmeyecek; boşluk [catchUp] ile kapanıyor.
+  void _onConnectionEvent(RealtimeConnectionEvent event) {
+    switch (event) {
+      case RealtimeConnectionEvent.disconnected:
+        _needsCatchUp = true;
+      case RealtimeConnectionEvent.connected:
+        if (!_needsCatchUp) return;
+        _needsCatchUp = false;
+        unawaited(catchUp());
+      case RealtimeConnectionEvent.resumed:
+        unawaited(catchUp());
+    }
+  }
+
+  /// Kopukken gelenleri sunucudan tamamlar.
+  ///
+  /// Sunucunun `since` parametresi yok; en yeni sayfa çekiliyor ve eldeki
+  /// mesajlarla **kimlik** üzerinden birleştiriliyor: bilinmeyenler
+  /// ekleniyor, bilinenler sunucudaki hâliyle değiştiriliyor (kopukken
+  /// okunmuş olanların `readAt`'i böyle geliyor), aynı kimlik ikinci kez
+  /// eklenmiyor. Sayfanın tamamı bilinmiyorsa — kopukluk süresince bir
+  /// sayfadan fazla mesaj geldi — bilinen bir mesaja rastlanana kadar ya da
+  /// [_catchUpPageLimit] dolana kadar geriye gidiliyor. Yeni gelen karşı
+  /// taraf mesajı varsa sohbet açık olduğu için okundu işaretleniyor.
+  /// Hata olursa eldeki liste duruyor; bir sonraki tetikleyici yine dener.
+  Future<void> catchUp() {
+    final userId = _currentUserId;
+    if (userId == null || _isLoading) return Future.value();
+    return _catchingUp ??= _catchUpNow(
+      userId,
+    ).whenComplete(() => _catchingUp = null);
+  }
+
+  Future<void> _catchUpNow(String userId) async {
+    final generation = _loadGeneration;
+    final known = {for (final message in _messages) message.id: message};
+    final fetched = <Message>[];
+
+    try {
+      for (var page = 0; page < _catchUpPageLimit; page++) {
+        final result = await _chatService.fetchMessages(
+          conversationId: conversationId,
+          currentUserId: userId,
+          page: page,
+        );
+        if (_disposed || generation != _loadGeneration) return;
+        fetched.addAll(result.messages);
+
+        final reachedKnown = result.messages.any(
+          (message) => known.containsKey(message.id),
+        );
+        if (reachedKnown || result.last || result.messages.isEmpty) break;
+      }
+    } on ApiException {
+      return;
+    }
+
+    _mergeFetched(fetched);
+  }
+
+  void _mergeFetched(List<Message> fetched) {
+    if (fetched.isEmpty) return;
+
+    final byId = {for (final message in fetched) message.id: message};
+    var changed = false;
+    var unreadFromCounterpart = false;
+
+    final merged = <Message>[];
+    for (final existing in _messages) {
+      final fresh = byId[existing.id];
+      if (fresh == null || _sameState(existing, fresh)) {
+        merged.add(existing);
+        continue;
+      }
+      merged.add(fresh);
+      changed = true;
+    }
+
+    final present = {for (final message in merged) message.id};
+    for (final message in fetched) {
+      if (!present.add(message.id)) continue;
+      merged.add(message);
+      changed = true;
+      if (!message.isMe) unreadFromCounterpart = true;
+    }
+
+    if (!changed) return;
+
+    merged.sort((a, b) => a.sentAt.compareTo(b.sentAt));
+    _messages = merged;
+    _safeNotify();
+
+    if (unreadFromCounterpart) unawaited(_markReadQuietly());
+  }
+
+  bool _sameState(Message existing, Message fresh) =>
+      existing.readAt == fresh.readAt && existing.body == fresh.body;
 
   void _onEvent(RealtimeEvent event) {
     final userId = _currentUserId;
@@ -303,6 +419,7 @@ class ChatThreadController extends ChangeNotifier {
     _disposed = true;
     _typingReset?.cancel();
     unawaited(_events?.cancel());
+    unawaited(_connection?.cancel());
     super.dispose();
   }
 }
