@@ -22,6 +22,7 @@ import 'package:koala/product/services/maps_availability.dart';
 import 'package:koala/product/services/reference_location_service.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
+import 'package:koala/product/widgets/empty_state.dart';
 import 'package:koala/product/widgets/my_button.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
 import 'package:koala/product/widgets/option_sheet.dart';
@@ -114,47 +115,19 @@ class _MapFirstAddressPageState extends MapFirstAddressPagemodel {
   }
 
   /// Harita anahtarı olmayan derlemede haritanın yerine geçen zemin
-  /// (is-koala/koala#172). Kartın üstünde kalan alana ortalanır; kart
-  /// açılınca altında kalması sorun değil, kart zaten adres girişinin yolu.
+  /// (is-koala/koala#172). [EmptyState] kendi üst payıyla kartın üstünde
+  /// kalan alana düşüyor; kart açılınca altında kalması sorun değil, kart
+  /// zaten adres girişinin yolu.
   Widget _mapPlaceholder() {
-    return Container(
+    return ColoredBox(
       key: const ValueKey('map-unavailable'),
       color: context.recessedColor,
-      alignment: Alignment.topCenter,
-      child: FractionallySizedBox(
-        heightFactor: 1 - MapFirstAddressPagemodel._sheetInitialSize,
-        child: Center(
-          child: Padding(
-            padding: AppPadding.primaryAll,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AppIcon(
-                  AppIcons.location,
-                  size: AppSizes.iconHuge,
-                  color: context.dividerColor,
-                ),
-                const SizedBox(height: AppSizes.spaceMedium),
-                Text(
-                  'Harita bu derlemede kullanılamıyor',
-                  textAlign: TextAlign.center,
-                  style: context.textTheme.titleMedium?.copyWith(
-                    color: context.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: AppSizes.spaceSmall),
-                Text(
-                  'Adresinizi arayarak ya da il/ilçe seçip alanları '
-                  'doldurarak girebilirsiniz.',
-                  textAlign: TextAlign.center,
-                  style: context.textTheme.bodyMedium?.copyWith(
-                    color: context.textTertiary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+      child: const EmptyState(
+        icon: AppIcons.location,
+        title: 'Harita bu derlemede kullanılamıyor',
+        description:
+            'Adresinizi arayarak ya da il/ilçe seçip alanları doldurarak '
+            'girebilirsiniz.',
       ),
     );
   }

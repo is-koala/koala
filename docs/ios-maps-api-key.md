@@ -63,8 +63,11 @@ kurulumu gerekmez.
   `warning: MAPS_API_KEY boş (Debug-staging). ios/Flutter/Secrets.staging.xcconfig dosyası yok ya da anahtar yazılmamış; …`
 - **Uygulama çökmez.** `AppDelegate` anahtarı vermediğini
   `com.iskoala.koala/maps_availability` kanalından Dart'a bildirir
-  (`lib/product/services/maps_availability.dart`); uygulama açılışta bir kez
-  okur ve `Provider` ile dağıtır. Bayrak kapalıyken:
+  (`lib/product/services/maps_availability.dart`); `main.dart` nesneyi
+  okumadan `Provider` ile dağıtır, açılış ekranı (`SplashPage`) oturumu
+  okumadan önce bir kez çözer. Kanal henüz kayıtlı değilse üç kez 300 ms
+  arayla yeniden dener; hâlâ cevap yoksa harita **kapalı** sayılır ve nedeni
+  `debugPrint` ile yazılır. Bayrak kapalıyken:
   - keşif haritası (`MapExplorePage`) `GoogleMap` yerine "Harita bu derlemede
     kullanılamıyor" yer tutucusunu çizer ve keşif **liste** görünümüyle açılır;
   - adres ekranı (`MapFirstAddressPage`; çalışan adresi, şirket adresi, ilan

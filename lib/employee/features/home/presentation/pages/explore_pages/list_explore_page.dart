@@ -7,6 +7,7 @@ import 'package:koala/employee/features/home/models/job_filter_selection.dart';
 import 'package:koala/employee/features/home/models/job_search_query.dart';
 import 'package:koala/employee/features/home/presentation/providers/job_category_provider.dart';
 import 'package:koala/employee/features/home/presentation/providers/job_search_provider.dart';
+import 'package:koala/employee/features/home/presentation/widgets/explore_brand_title.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_card.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_filter_sheet.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_sort_sheet.dart';
@@ -422,13 +423,7 @@ class _ListExplorePageState extends ListExplorePagemodel {
       backgroundColor: context.raisedColor,
       surfaceTintColor: context.raisedColor,
       clipBehavior: Clip.hardEdge,
-      title: Text(
-        'KOALA',
-        style: context.textTheme.displaySmall?.copyWith(
-          fontWeight: FontWeight.w800,
-          color: context.accentColor,
-        ),
-      ),
+      title: const ExploreBrandTitle(),
       centerTitle: false,
       shape: const RoundedRectangleBorder(
         borderRadius: AppRadius.secondaryBottom,

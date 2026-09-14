@@ -81,7 +81,7 @@ The Mac quality gate is `flutter test --flavor staging --dart-define-from-file=c
 
 > Each flavor xcconfig optionally includes its gitignored `Secrets.<flavor>.xcconfig`, so a fresh checkout and the no-codesign CI build do not need a placeholder. A real map acceptance still needs `MAPS_API_KEY`; production release writes `Secrets.production.xcconfig` from GitHub secrets.
 
-> Running the app needs the Google Maps key to be in place — see *Secrets* below. Without it the map tab renders a blank grey area, which is a configuration problem, not a code bug.
+> Running the app needs the Google Maps key to be in place — see *Secrets* below. Without it the app does not crash and does not draw a blank map either: `MapsAvailability` is off, the explore tab opens in list view, and every map screen shows the "Harita bu derlemede kullanılamıyor" placeholder (is-koala/koala#172). That placeholder on a build that *should* have a key is a configuration problem, not a code bug — check the xcconfig / `local.properties` first.
 
 ---
 
@@ -140,17 +140,18 @@ A shared *feature* — one with its own models, services and pages that both app
 
 ### State management
 
-`provider`. Eighteen `ChangeNotifierProvider`s are registered in `main.dart`, in this order (plus `BTalentPoolProvider` at the end):
+`provider`. Nineteen `ChangeNotifierProvider`s are registered in `main.dart`, in this order (plus `BTalentPoolProvider` at the end):
 
 | Provider | Responsibility |
 |---|---|
+| `MapsAvailability` | Whether the native side handed the Maps SDK a key (is-koala/koala#172). Constructed **unread** here so `main()` stays synchronous; `SplashPage._initialize` calls `resolve()` before it reads the session, and flips `PageProvider` to the list view when the answer is "no". Map screens ask `MapsAvailability.of(context)` before building a `GoogleMap`. |
 | `ThemeProvider` | Light/dark/system theme, persisted in `SharedPreferences` |
 | `UserProvider` | The session owner off `/users/me` — read by both apps |
 | `IdentityReviewProvider` | The session owner's last photo identity review (`GET /users/me/identity-documents`) — the profile badge, the account-info row and the identity screens read it; started on splash, cleared on logout |
 | `AvailabilityProvider` | The worker's weekly availability draft (`PUT` replaces all slots) |
 | `JobCategoryProvider` | The server's job categories, fetched once and cached app-wide |
 | `JobSearchProvider` | Explore's server-side search: the `JobSearchQuery`, the pages and the infinite scroll |
-| `PageProvider` | Employee shell: which tab, and the explore map/list toggle |
+| `PageProvider` | Employee shell: which tab, and the explore map/list toggle. Starts on the map; the splash switches it to the list when `MapsAvailability` is off |
 | `SavedJobsProvider` | Saved jobs |
 | `JobAlertsProvider` | The job alerts screen's server state |
 | `TimesheetQueueProvider` | The offline timesheet event queue — **`lazy: false`**, it has to drain on start |
@@ -432,7 +433,7 @@ The Google Maps key is **not** in the repo. Flavor builds read it from:
 
 These files are gitignored, as is `.env`. Never print a key value into an answer, a comment or a committed file.
 
-> ⚠️ **A missing key must not crash the app.** With an empty `MAPS_API_KEY` iOS used to throw `GMSServicesException` at the first `GoogleMap` and die (is-koala/koala#172). The native side now reports whether it handed the SDK a key over the `com.iskoala.koala/maps_availability` channel (`AppDelegate.swift`, `MainActivity.kt`); `main.dart` reads it once into `MapsAvailability` (`lib/product/services/maps_availability.dart`) and provides it. **Every screen that builds a `GoogleMap` asks `MapsAvailability.of(context)` first** and draws the "Harita bu derlemede kullanılamıyor" placeholder when it is off — `MapExplorePage` (explore opens in list view) and `MapFirstAddressPage` (search + il/ilçe, pin from the saved address / device / city centre, no reverse geocode). A new map screen must do the same, and its widget test must pump it with `withMapsAvailability(..., available: false)` from `test/support/fake_maps_availability.dart`. The Xcode *Check Maps API Key* phase prints a `warning:` when the key is empty; it never fails the build.
+> ⚠️ **A missing key must not crash the app.** With an empty `MAPS_API_KEY` iOS used to throw `GMSServicesException` at the first `GoogleMap` and die (is-koala/koala#172). The native side now reports whether it handed the SDK a key over the `com.iskoala.koala/maps_availability` channel (`AppDelegate.swift`, `MainActivity.kt`); `main.dart` registers `MapsAvailability` (`lib/product/services/maps_availability.dart`) unread — `main()` stays synchronous, like every other platform read — and `SplashPage._initialize` resolves it **before** `SessionManager.load()`, because the guard sends a logged-in user to the map the moment the session is read. `resolve()` retries a `MissingPluginException` three times (300 ms apart) in case the channel registers late, then logs and stays **closed**: an unanswered channel hides the map, it never risks the crash. **Every screen that builds a `GoogleMap` asks `MapsAvailability.of(context)` first** and draws the "Harita bu derlemede kullanılamıyor" placeholder when it is off — `MapExplorePage` (explore opens in list view) and `MapFirstAddressPage` (search + il/ilçe, pin from the saved address / device / city centre, no reverse geocode). A new map screen must do the same — `test/product/services/maps_availability_guard_test.dart` reads `lib/` and fails when a file builds `GoogleMap(` without an `if (!mapsAvailable)` / `mapsAvailable ? … : …` around it — and its widget test must pump it with `withMapsAvailability(..., available: false)` from `test/support/fake_maps_availability.dart` (`FakeMapsAvailabilityChannel` stands in for the native channel). The Xcode *Check Maps API Key* phase prints a `warning:` when the key is empty; it never fails the build.
 
 ### Platform toolchain
 

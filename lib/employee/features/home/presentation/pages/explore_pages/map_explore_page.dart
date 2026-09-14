@@ -9,6 +9,7 @@ import 'package:koala/employee/features/home/models/job_map_bounds.dart';
 import 'package:koala/employee/features/home/presentation/providers/map_explore_controller.dart';
 import 'package:koala/employee/features/home/presentation/providers/page_provider.dart';
 import 'package:koala/employee/features/home/presentation/providers/search_provider.dart';
+import 'package:koala/employee/features/home/presentation/widgets/explore_brand_title.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_marker_cache.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_marker_generator.dart';
 import 'package:koala/employee/features/home/presentation/widgets/map_explore_overlay.dart';
@@ -100,22 +101,14 @@ class _MapExplorePageState extends MapExplorePageModel {
       appBar: AppBar(
         backgroundColor: context.backgroundColor,
         elevation: 0,
-        title: Text(
-          'KOALA',
-          style: context.textTheme.displaySmall?.copyWith(
-            fontWeight: FontWeight.w800,
-            color: context.accentColor,
-          ),
-        ),
+        title: const ExploreBrandTitle(),
         centerTitle: false,
       ),
       body: EmptyState(
         key: const ValueKey('map-unavailable'),
         icon: AppIcons.location,
         title: unavailableTitle,
-        description:
-            'İlanları liste görünümünden inceleyebilirsiniz; harita anahtarı '
-            'eklenince bu ekran haritaya döner.',
+        description: 'İlanları liste görünümünden görebilirsiniz.',
         action: TextButton(
           onPressed: context.read<PageProvider>().setExploreViewToList,
           child: const Text('Listeye geç'),
@@ -278,13 +271,7 @@ class _MapExplorePageState extends MapExplorePageModel {
       systemOverlayStyle: overMapStyle,
       backgroundColor: Colors.transparent,
       elevation: 0,
-      title: Text(
-        'KOALA',
-        style: context.textTheme.displaySmall?.copyWith(
-          fontWeight: FontWeight.w800,
-          color: context.accentColor,
-        ),
-      ),
+      title: const ExploreBrandTitle(),
       centerTitle: false,
       actions: [
         IconButton(

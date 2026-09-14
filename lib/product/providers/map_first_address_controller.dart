@@ -579,11 +579,18 @@ class MapFirstAddressController extends ChangeNotifier {
           _moveCameraTo(position);
           return null;
         case DeviceLocationStatus.serviceDisabled:
-          return 'Cihaz konum servisi kapalı. Pini elle seçebilirsiniz.';
+          return _mapless
+              ? 'Cihaz konum servisi kapalı. Adresinizi arayarak '
+                    'girebilirsiniz.'
+              : 'Cihaz konum servisi kapalı. Pini elle seçebilirsiniz.';
         case DeviceLocationStatus.denied:
-          return 'Konum izni olmadan da pini elle seçebilirsiniz.';
+          return _mapless
+              ? 'Konum izni olmadan da adresinizi arayarak girebilirsiniz.'
+              : 'Konum izni olmadan da pini elle seçebilirsiniz.';
         case DeviceLocationStatus.unavailable:
-          return 'Konum alınamadı. Pini elle seçebilirsiniz.';
+          return _mapless
+              ? 'Konum alınamadı. Adresinizi arayarak girebilirsiniz.'
+              : 'Konum alınamadı. Pini elle seçebilirsiniz.';
       }
     } finally {
       if (!_disposed) {

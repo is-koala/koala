@@ -834,6 +834,25 @@ void main() {
       expect(harness.gateway.reverseCalls, isEmpty);
     });
 
+    testWidgets('izin reddedilirse mesaj haritasız yolu gösterir', (
+      tester,
+    ) async {
+      final harness = _Harness(mapsAvailable: false);
+      await harness.pump(tester);
+      await harness.settle(tester);
+
+      await tester.tap(findAppIcon(AppIcons.myLocation));
+      await tester.pump();
+      await tester.pump();
+
+      expect(
+        find.text('Konum izni olmadan da adresinizi arayarak girebilirsiniz.'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('pini elle'), findsNothing);
+      expect(harness.controller.pin, AppMap.istanbulCenter);
+    });
+
     testWidgets('arama sonucu alanları doldurur ve pini adaydan alır', (
       tester,
     ) async {

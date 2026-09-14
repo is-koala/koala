@@ -23,32 +23,24 @@ import 'package:koala/product/theme/theme_provider.dart';
 import 'package:koala/product/app.dart';
 import 'package:provider/provider.dart';
 
-Future<void> main() async {
+void main() {
   ApiConfig.validateBuildConfiguration();
-  WidgetsFlutterBinding.ensureInitialized();
-
-  // Harita anahtarı derlemede var mı, yerel taraftan bir kez okunur. Anahtar
-  // yokken iOS ilk haritada çöküyor (is-koala/koala#172); bayrak kapalıysa
-  // harita ekranları yer tutucu gösterir ve keşif liste görünümüyle açılır.
-  final mapsAvailability = await MapsAvailability.read();
 
   runApp(
     MultiProvider(
       providers: [
-        Provider<MapsAvailability>.value(value: mapsAvailability),
+        // Harita anahtarı derlemede var mı: nesne burada okunmadan kuruluyor,
+        // cevabı açılış ekranı alıyor (`SplashPage._initialize`) — `main`
+        // senkron kalır. Kapalıysa harita ekranları yer tutucu gösterir
+        // (is-koala/koala#172).
+        ChangeNotifierProvider(create: (_) => MapsAvailability()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => IdentityReviewProvider()),
         ChangeNotifierProvider(create: (_) => AvailabilityProvider()),
         ChangeNotifierProvider(create: (_) => JobCategoryProvider()),
         ChangeNotifierProvider(create: (_) => JobSearchProvider()),
-        ChangeNotifierProvider(
-          create: (_) => PageProvider(
-            exploreViewType: mapsAvailability.isAvailable
-                ? ExploreViewType.map
-                : ExploreViewType.list,
-          ),
-        ),
+        ChangeNotifierProvider(create: (_) => PageProvider()),
         ChangeNotifierProvider(create: (_) => SavedJobsProvider()),
         ChangeNotifierProvider(create: (_) => JobAlertsProvider()),
         ChangeNotifierProvider(
