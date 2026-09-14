@@ -11,10 +11,10 @@ import 'package:koala/employee/features/settings/presentation/providers/identity
 import 'package:koala/employee/features/profile/presentation/providers/availability_provider.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
+import 'package:koala/product/features/account/presentation/widgets/account_settings_tiles.dart';
 import 'package:koala/product/network/realtime_client.dart';
 import 'package:koala/product/providers/notification_provider.dart';
 import 'package:koala/product/theme/theme_provider.dart';
-import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:koala/product/widgets/my_list_tile.dart';
 import 'package:koala/product/widgets/theme_mode_sheet.dart';
@@ -45,41 +45,13 @@ class SettingsPage extends StatelessWidget {
   Column settingsList(BuildContext context) {
     return Column(
       children: [
-        MyListTile(
-          icon: AppIcons.user,
-          title: "Hesabı Düzenle",
-          onTap: () async {
-            // Profil henüz yüklenmediyse düzenleme ekranı boş açılırdı;
-            // önce veriyi getirip öyle geçiliyor.
-            final provider = context.read<UserProvider>();
-            if (provider.user == null) await provider.load();
-
-            final user = provider.user;
-            if (user == null) {
-              if (context.mounted) {
-                AppToast.error(
-                  context,
-                  provider.errorMessage ?? "Profil bilgisi alınamadı.",
-                );
-              }
-              return;
-            }
-
-            if (context.mounted) {
-              await context.push('/account-info', extra: user);
-            }
-          },
-        ),
-        MyListTile(
-          icon: AppIcons.shield,
-          title: "Şifreyi Değiştir",
-          onTap: () => context.push('/change-password'),
-        ),
-        MyListTile(
-          icon: AppIcons.mobile,
-          title: "Oturumlar",
-          onTap: () => context.push('/sessions'),
-        ),
+        // Hesap satırları ortak modülden: işverenin ayarları da aynı
+        // ekranlara gidiyor. Kazançlar ve iş alarmları çalışana özgü.
+        AccountSettingsTiles.editAccount(context),
+        AccountSettingsTiles.address(context),
+        AccountSettingsTiles.changePassword(context),
+        AccountSettingsTiles.sessions(context),
+        AccountSettingsTiles.notificationPreferences(context),
         MyListTile(
           icon: AppIcons.moneyBag,
           title: 'Kazançlarım',
@@ -90,27 +62,15 @@ class SettingsPage extends StatelessWidget {
           title: 'İş Alarmlarım',
           onTap: () => context.push('/job-alerts'),
         ),
-        MyListTile(
-          icon: AppIcons.shield,
-          title: "Şikayetlerim",
-          onTap: () => context.push('/reports'),
-        ),
-        MyListTile(
-          icon: AppIcons.userBlock,
-          title: "Engellediklerim",
-          onTap: () => context.push('/blocked-users'),
-        ),
+        AccountSettingsTiles.reports(context),
+        AccountSettingsTiles.blockedUsers(context),
         MyListTile(
           icon: AppIcons.paint,
           title: "Görünüm",
           value: context.watch<ThemeProvider>().themeMode.label,
           onTap: () => ThemeModeSheet.show(context),
         ),
-        MyListTile(
-          icon: AppIcons.delete,
-          title: "Hesabı Sil",
-          onTap: () => context.push('/account-deletion'),
-        ),
+        AccountSettingsTiles.deleteAccount(context),
         MyListTile(
           icon: AppIcons.logout,
           title: "Çıkış Yap",

@@ -115,6 +115,13 @@ class ApiPaths {
   static String currentUserNotificationRead(String notificationId) =>
       '$currentUserNotifications/$notificationId/read';
 
+  /// Kategori × kanal bildirim tercihleri. `GET` çözümlenmiş tabloyu
+  /// döndürüyor (satırı olmayan kombinasyon kategorinin varsayılanına
+  /// düşüyor); `PUT` yalnız gövdedeki kombinasyonlara dokunuyor ve güncel
+  /// tabloyu geri veriyor.
+  static const String currentUserNotificationPreferences =
+      '/users/me/notification-preferences';
+
   /// Bu cihazın FCM/APNs token'ı. Oturum ister; `publicPaths`'e girmez.
   ///
   /// Kaynak #29 bitene kadar boş olabilir. Yaşam döngüsü yine de bu ucu

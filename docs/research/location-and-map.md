@@ -37,7 +37,7 @@ Google'ın Flutter kurulum dokümanı, her hedef platform için anahtar verilmes
 
 **Kullanıcı adresi**
 
-[`address_page.dart`](../../lib/employee/features/settings/presentation/pages/address_page.dart) gerçek backend'den ülke → il → ilçe referanslarını çekiyor; açık adres ve posta kodunu kullanıcıdan alıyor; koordinatı ayrı bir harita ekranından seçtiriyor. Ancak kayıt isteği iç referans kimliklerini değil `cityName` ve `districtName` metinlerini geri gönderiyor.
+[`address_page.dart`](../../lib/product/features/account/presentation/pages/address_page.dart) gerçek backend'den ülke → il → ilçe referanslarını çekiyor; açık adres ve posta kodunu kullanıcıdan alıyor; koordinatı ayrı bir harita ekranından seçtiriyor. Ancak kayıt isteği iç referans kimliklerini değil `cityName` ve `districtName` metinlerini geri gönderiyor.
 
 **İlan adresi**
 

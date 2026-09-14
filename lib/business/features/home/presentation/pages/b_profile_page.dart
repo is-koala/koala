@@ -16,6 +16,7 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
+import 'package:koala/product/features/account/account_navigation.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/identity_status_badge.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
@@ -335,11 +336,17 @@ class _BProfilePageState extends BProfilePageModel {
     );
   }
 
-  /// Adres bölümü. Şirketin adresi yoksa kişininki gösteriliyor; ikisi de
-  /// yoksa bölüm hiç çizilmiyor.
+  /// Adres bölümü. Şirketin adresi yoksa kişininki gösteriliyor.
+  ///
+  /// Bireysel işverenin adresi yoksa bölüm boş bırakılmıyor: ödeme bu adres
+  /// olmadan başlamıyor (`JOB_ASSIGNMENT_ADDRESS_NOT_PROVIDED_FOR_EMPLOYER`)
+  /// ve kullanıcı bunu ödeme anında değil burada öğrenmeli. Şirket
+  /// işvereninde adres şirketin; o da yoksa çizilecek bir şey yok.
   List<Widget> _addressSection(CurrentUser user, Company? company) {
     final address = company?.address ?? user.address;
-    if (address == null) return const [];
+    if (address == null) {
+      return company == null ? _missingAddressSection() : const [];
+    }
 
     final locality = [
       address.districtName,
@@ -379,6 +386,58 @@ class _BProfilePageState extends BProfilePageModel {
                     Text(locality, style: context.textTheme.bodySmall),
                   ],
                 ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: AppSizes.spaceLarge),
+    ];
+  }
+
+  /// Adresi olmayan bireysel işverene adres ekleme çağrısı.
+  List<Widget> _missingAddressSection() {
+    return [
+      _sectionTitle("Adres"),
+      const SizedBox(height: AppSizes.space),
+      Container(
+        key: const ValueKey('profile-missing-address'),
+        width: double.infinity,
+        padding: AppPadding.primaryAll,
+        decoration: BoxDecoration(
+          color: context.tileColor,
+          borderRadius: AppRadius.innerCircular,
+          border: Border.all(color: AppColors.warning),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                AppIcon(
+                  AppIcons.location,
+                  size: AppSizes.iconMedium,
+                  color: AppColors.warning,
+                ),
+                const SizedBox(width: AppSizes.space),
+                Expanded(
+                  child: Text(
+                    'Adresiniz henüz eklenmedi. Çalışan ödemesini '
+                    'başlatabilmeniz için adresinizin kayıtlı olması '
+                    'gerekiyor.',
+                    style: context.textTheme.bodyMedium?.copyWith(
+                      color: context.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSizes.space),
+            Align(
+              alignment: Alignment.centerRight,
+              child: OutlinedButton(
+                onPressed: _openAddress,
+                child: const Text('Adres Ekle'),
               ),
             ),
           ],

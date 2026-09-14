@@ -4,7 +4,7 @@ import 'package:koala/employee/features/auth/models/pending_verification.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
 import 'package:koala/employee/features/auth/services/verification_service.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
-import 'package:koala/employee/features/settings/presentation/pages/verification_code_page.dart';
+import 'package:koala/product/features/account/presentation/pages/verification_code_page.dart';
 import 'package:koala/product/theme/theme.dart';
 import 'package:provider/provider.dart';
 
@@ -73,7 +73,7 @@ void main() {
     await pumpPage(tester, api);
 
     expect(
-      find.text('yeni@ornek.com adresine gönderdiğimiz 6 haneli kodu gir'),
+      find.text('yeni@ornek.com adresine gönderdiğimiz 6 haneli kodu girin'),
       findsOneWidget,
     );
   });
@@ -89,7 +89,7 @@ void main() {
     await pumpPage(tester, api, verification: _phoneVerification);
 
     expect(
-      find.text('5550000000 numarasına gönderdiğimiz 6 haneli kodu gir'),
+      find.text('5550000000 numarasına gönderdiğimiz 6 haneli kodu girin'),
       findsOneWidget,
     );
   });
@@ -230,7 +230,9 @@ void main() {
       // Kullanıcıya ne yapması gerektiği söyleniyor; sunucunun ham mesajı
       // tek başına "peki şimdi ne olacak" sorusunu yanıtlamıyor.
       expect(
-        find.text('Bu doğrulama artık geçerli değil. Değişikliği baştan yap.'),
+        find.text(
+          'Bu doğrulama artık geçerli değil. Değişikliği baştan yapın.',
+        ),
         findsOneWidget,
       );
     });
@@ -273,7 +275,9 @@ void main() {
 
       expect(finished, isFalse);
       expect(
-        find.text('Bu doğrulama artık geçerli değil. Değişikliği baştan yap.'),
+        find.text(
+          'Bu doğrulama artık geçerli değil. Değişikliği baştan yapın.',
+        ),
         findsOneWidget,
       );
     });
@@ -422,7 +426,7 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
 
     expect(find.text('Yeni kod gönderildi.'), findsNothing);
-    expect(find.text('E-posta adresin zaten doğrulanmış.'), findsOneWidget);
+    expect(find.text('E-posta adresiniz zaten doğrulanmış.'), findsOneWidget);
     // `true`: değer uygulandı. `false` dönmek çağıranda sıradaki doğrulamayı
     // düşürürdü (`account_info_pagemodel` zinciri `verified != true`'da
     // kesiyor) ve alanlara yeni değer yazılırken hata mesajı gösterilirdi.

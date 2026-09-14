@@ -1,4 +1,6 @@
 import 'package:koala/employee/features/auth/models/current_user.dart';
+import 'package:koala/product/features/account/account_routes.dart';
+import 'package:koala/product/features/account/models/address_required_error_codes.dart';
 
 /// İlana başvurabilmek için karşılanması gereken şart.
 ///
@@ -21,11 +23,11 @@ enum ApplicationRequirement {
     route: '/identity-verification',
   ),
   address(
-    errorCode: 'APPLICANT_ADDRESS_REQUIRED',
+    errorCode: AddressRequiredErrorCodes.applicant,
     title: 'Adresini ekle',
     description: 'Sözleşme ve ödeme için adres bilgin gerekiyor.',
     actionLabel: 'Adresimi Ekle',
-    route: '/address',
+    route: AccountRoutes.address,
   ),
   bankAccount(
     errorCode: 'APPLICANT_BANK_ACCOUNT_REQUIRED',
@@ -33,7 +35,7 @@ enum ApplicationRequirement {
     description:
         'Çalıştığın işin ücretini alabilmen için IBAN bilgin gerekiyor.',
     actionLabel: 'IBAN Ekle',
-    route: '/account-info',
+    route: AccountRoutes.accountInfo,
   );
 
   const ApplicationRequirement({

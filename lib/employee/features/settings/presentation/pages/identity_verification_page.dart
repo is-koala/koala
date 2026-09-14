@@ -13,9 +13,9 @@ import 'package:koala/employee/features/settings/presentation/providers/identity
 import 'package:koala/employee/features/settings/presentation/widgets/identity_chip_card.dart';
 import 'package:koala/employee/features/settings/presentation/widgets/identity_declaration_fields.dart';
 import 'package:koala/employee/features/settings/presentation/widgets/identity_photo_path_card.dart';
-import 'package:koala/employee/features/settings/presentation/widgets/locked_field.dart';
-import 'package:koala/employee/features/settings/presentation/widgets/settings_hint.dart';
 import 'package:koala/employee/features/settings/services/chip_reader.dart';
+import 'package:koala/product/widgets/locked_field.dart';
+import 'package:koala/product/widgets/settings_hint.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';

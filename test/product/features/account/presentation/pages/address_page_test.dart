@@ -8,7 +8,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
-import 'package:koala/employee/features/settings/presentation/pages/address_page.dart';
+import 'package:koala/product/features/account/presentation/pages/address_page.dart';
 import 'package:koala/product/providers/map_first_address_controller.dart';
 import 'package:koala/product/services/device_location_source.dart';
 import 'package:koala/product/services/reference_location_service.dart';
@@ -55,6 +55,12 @@ Map<String, dynamic> _savedAddress({required bool saved}) => {
 /// `/users/me` ve `PUT /users/me/address` uçlarını karşılayan sahte sunucu.
 /// Adres yazıldıktan sonra `/users/me` yeni adresi taşımaya başlıyor.
 class _Server {
+  _Server({this.isEmployer = false});
+
+  /// `/users/me` işveren mi dönsün. Adres ekranı iki rol için aynı; işveren
+  /// de aynı `PUT`'u gönderiyor.
+  final bool isEmployer;
+
   bool saved = false;
   FakeApiResponse? putResponse;
 
@@ -72,7 +78,7 @@ class _Server {
               'firstName': 'Ada',
               'lastName': 'Kaya',
               'email': 'ada@ornek.com',
-              'isEmployer': false,
+              'isEmployer': isEmployer,
               'address': _savedAddress(saved: saved),
             },
           },
@@ -111,7 +117,10 @@ void main() {
   });
 
   /// Hesap ekranını temsil eden kökten `/address`'i açar ve dönüşü izler.
-  Future<void> pumpAddress(WidgetTester tester) async {
+  ///
+  /// [withExtra] `false` ise rota kullanıcısız açılıyor: ödeme kapısından
+  /// gelen yönlendirme gibi, ekran kullanıcıyı sağlayıcıdan okumalı.
+  Future<void> pumpAddress(WidgetTester tester, {bool withExtra = true}) async {
     userProvider = UserProvider(
       userService: UserService.withClient(server.api.client),
     );
@@ -138,7 +147,9 @@ void main() {
           pageBuilder: (context, state) => MaterialPage<void>(
             key: state.pageKey,
             child: AddressPage(
-              user: state.extra as CurrentUser,
+              user: state.extra is CurrentUser
+                  ? state.extra! as CurrentUser
+                  : null,
               userService: UserService.withClient(server.api.client),
               addressSearchGateway: gateway,
               referenceService: ReferenceLocationService.withClient(
@@ -161,7 +172,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Eski Sokak 1, Eski Mahalle'), findsOneWidget);
 
-    router.push(_addressLocation, extra: user);
+    router.push(_addressLocation, extra: withExtra ? user : null);
     await tester.pumpAndSettle();
     expect(find.byType(MapFirstAddressPage), findsOneWidget);
   }
@@ -263,5 +274,41 @@ void main() {
     expect(find.byType(MapFirstAddressPage), findsOneWidget);
     expect(find.text('Posta kodu ilçeyle uyuşmuyor.'), findsOneWidget);
     expect(userProvider.user?.address?.displayAddress, contains('Eski'));
+  });
+
+  // İşverenin daha önce hiç yolu olmayan ekran: aynı `PUT /users/me/address`
+  // gövdesi, aynı tazeleme. Kabul kriteri "işveren adres kaydı → PUT gövdesi".
+  testWidgets('işveren adresini kaydedince aynı PUT gövdesi gider', (
+    tester,
+  ) async {
+    server = _Server(isEmployer: true);
+    await pumpAddress(tester);
+    expect(userProvider.user?.isEmployer, isTrue);
+
+    await dropPin(tester, _rawPin);
+    await tapSave(tester);
+
+    expect(server.putRequest.path, '/users/me/address');
+    expect(server.putBody['position'], {
+      'latitude': 40.982512,
+      'longitude': 29.025411,
+      'source': 'REVERSE_GEOCODE_CONFIRMED',
+    });
+    expect(server.putBody['districtId'], 'district-1');
+    expect(find.byType(MapFirstAddressPage), findsNothing);
+    expect(find.text('Moda Caddesi 12, Caferağa Mahallesi'), findsOneWidget);
+  });
+
+  // Ödeme kapısından gelen yönlendirme rotayı `extra`'sız açabiliyor; ekran
+  // sağlayıcıdaki kullanıcının adresine açılmalı, boş haritaya değil.
+  testWidgets("extra'sız açılış sağlayıcıdaki kullanıcının adresine açılır", (
+    tester,
+  ) async {
+    server = _Server(isEmployer: true);
+    await pumpAddress(tester, withExtra: false);
+
+    final map = tester.widget<GoogleMap>(find.byType(GoogleMap));
+    expect(map.initialCameraPosition.target, const LatLng(40.99, 29.03));
+    expect(find.text('KADIKÖY'), findsOneWidget);
   });
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
-import 'package:koala/employee/features/settings/presentation/widgets/settings_hint.dart';
+import 'package:koala/product/widgets/settings_hint.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -109,8 +109,8 @@ class _ChangePasswordPageState extends ChangePasswordPagemodel {
           const SizedBox(width: AppSizes.spaceSmall),
           Expanded(
             child: Text(
-              'Şifreni değiştirdiğinde bu cihaz dışındaki bütün '
-              'oturumların kapanacak. Bu cihazda açık kalırsın.',
+              'Şifrenizi değiştirdiğinizde bu cihaz dışındaki bütün '
+              'oturumlarınız kapanacak. Bu cihazda açık kalırsınız.',
               style: context.textTheme.bodyMedium?.copyWith(
                 color: context.textSecondary,
               ),

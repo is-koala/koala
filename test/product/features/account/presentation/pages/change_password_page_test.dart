@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
-import 'package:koala/employee/features/settings/presentation/pages/change_password_page.dart';
+import 'package:koala/product/features/account/presentation/pages/change_password_page.dart';
 import 'package:koala/product/constants/password_rule.dart';
 import 'package:koala/product/theme/theme.dart';
 
@@ -125,7 +125,7 @@ void main() {
 
     expect(api.requests, isEmpty);
     expect(
-      find.text('Yeni şifren mevcut şifrenden farklı olmalı.'),
+      find.text('Yeni şifreniz mevcut şifrenizden farklı olmalı.'),
       findsOneWidget,
     );
   });
@@ -210,7 +210,7 @@ void main() {
       await pumpPage(tester, successApi(), brightness: brightness);
 
       expect(
-        find.textContaining('bu cihaz dışındaki bütün oturumların kapanacak'),
+        find.textContaining('bu cihaz dışındaki bütün oturumlarınız kapanacak'),
         findsOneWidget,
       );
     });

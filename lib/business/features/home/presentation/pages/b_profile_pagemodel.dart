@@ -48,4 +48,8 @@ abstract class BProfilePageModel extends State<BProfilePage> {
     if (!mounted) return;
     await _load(force: true);
   }
+
+  /// Adres ekranını açar. Kayıt `UserProvider`'ı zaten tazeliyor; dönüşte
+  /// bu sayfa `watch` ettiği kullanıcıyla kendiliğinden yenileniyor.
+  Future<void> _openAddress() => AccountNavigation.openAddress(context);
 }

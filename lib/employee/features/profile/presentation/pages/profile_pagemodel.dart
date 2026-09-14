@@ -40,7 +40,7 @@ abstract class ProfilePageModel extends State<ProfilePage>
   Future<void> _refreshProfile() => _loadProfileData(silent: true);
 
   Future<void> _navigateToAccountInfo(CurrentUser user) async {
-    await context.push('/account-info', extra: user);
+    await context.push(AccountRoutes.accountInfo, extra: user);
     // Düzenleme ekranı kaydı doğrudan provider üzerinden güncelliyor; burada
     // yalnızca ekranın açık kaldığı sürede sunucuda değişen bir şey varsa
     // yakalamak için sessiz tazeleme yapılıyor.
