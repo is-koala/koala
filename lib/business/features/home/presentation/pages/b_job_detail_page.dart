@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/chat/models/messaging_availability.dart';
+import 'package:koala/product/router/business_routes.dart';
 import 'package:koala/product/widgets/messaging_gate_note.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
 import 'package:koala/business/features/home/models/b_job_post.dart';
@@ -1138,7 +1139,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
           // Profil satırı — tıklanabilir
           GestureDetector(
             onTap: () =>
-                context.push('/business/user-profile', extra: applicant),
+                context.push(BusinessRoutes.userProfile, extra: applicant),
             child: Row(
               children: [
                 ProfileAvatar(
@@ -1430,7 +1431,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     final jobTitle = worker.jobTitle;
 
     return GestureDetector(
-      onTap: () => context.push('/business/user-profile', extra: worker),
+      onTap: () => context.push(BusinessRoutes.userProfile, extra: worker),
       child: Container(
         padding: AppPadding.primaryAll,
         decoration: BoxDecoration(

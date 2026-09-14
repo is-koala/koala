@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:koala/employee/features/chat/models/chat_participant.dart';
 import 'package:koala/employee/features/chat/models/conversation.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/chat_list_tile.dart';
 
@@ -23,7 +24,11 @@ const _group = Conversation(
   name: 'Hafta Sonu Garson',
   avatar: 'HG',
   kind: ConversationKind.group,
-  participantCount: 3,
+  participants: [
+    ChatParticipant(id: 'p1', firstName: 'Kahve', lastName: 'Durağı'),
+    ChatParticipant(id: 'p2', firstName: 'Yetkili', lastName: 'Kişi'),
+    ChatParticipant(id: 'p3', firstName: 'Yakup', lastName: 'Kahraman'),
+  ],
   lastMessage: 'Herkese merhaba',
 );
 

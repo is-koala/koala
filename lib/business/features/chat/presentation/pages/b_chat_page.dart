@@ -35,6 +35,7 @@ class _BChatPageState extends BChatPagemodel {
         appBar: ChatAppBar(
           chat: widget.chat,
           isTyping: thread.isCounterpartTyping,
+          onTitleTap: onTitleTap,
         ),
         body: Column(
           children: [
@@ -107,13 +108,11 @@ class _BChatPageState extends BChatPagemodel {
       itemBuilder: (context, index) {
         final message = messages[index];
 
-        final isNextSameSender =
-            index < messages.length - 1 &&
-            messages[index + 1].isMe == message.isMe;
-
         return MessageBubble(
           message: message,
-          isNextSameSender: isNextSameSender,
+          isNextSameSender: isNextSameSender(messages, index),
+          sender: senderFor(message),
+          seenBy: readersFor(message),
         );
       },
     );

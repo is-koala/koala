@@ -24,6 +24,11 @@ class AppRadius {
   /// güncellemek gerekmez — sabit bir yarıçapın aksine.
   static const double stadium = 999.0;
 
+  /// Sohbetteki 40'lık avatarın (başlık, katılımcı ve gören satırları) köşe
+  /// yuvarlaklığı; listedeki 60'lık avatar [secondary] kullanıyor, bu ölçekte
+  /// aynı oran 14'e denk geliyor.
+  static const double avatar = 14.0;
+
   // ------------------------------------------------------- BorderRadius'lar
 
   static const BorderRadius primaryCircular = BorderRadius.all(

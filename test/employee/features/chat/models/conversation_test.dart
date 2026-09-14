@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:koala/employee/features/chat/models/chat_participant.dart';
 import 'package:koala/employee/features/chat/models/conversation.dart';
 
 /// Sunucudan gelen `ConversationDto`'nun tipik hâli.
@@ -175,7 +176,87 @@ void main() {
       );
 
       expect(conversation.participantCount, 0);
+      expect(conversation.participants, isEmpty);
     });
+
+    // Eski sunucu yalnız kimlik ve adı gönderiyor; katılımcılar yine
+    // kuruluyor, rol ve tarihler boş.
+    test('katılımcılar eski gövdeden de kurulur', () {
+      final conversation = Conversation.fromJson(
+        groupJson(),
+        currentUserId: 'worker-1',
+      );
+
+      expect(conversation.participants, hasLength(3));
+      expect(conversation.participants.first.id, 'employer-1');
+      expect(conversation.participants.first.fullName, 'Kahve Durağı');
+      expect(conversation.participants.first.role, ChatParticipantRole.unknown);
+      expect(conversation.participants.first.lastReadAt, isNull);
+    });
+
+    // is-koala/koala-backend#281: rol, katılma ve okundu damgası, ayrılma.
+    test('katılımcıların rolü, tarihleri ve ayrılma bilgisi okunur', () {
+      final json = groupJson()
+        ..['participants'] = [
+          {
+            'id': 'employer-1',
+            'firstName': 'Kahve',
+            'lastName': 'Durağı',
+            'role': 'EMPLOYER',
+            'joinedAt': '2026-09-01T08:00:00Z',
+            'lastReadAt': '2026-09-14T09:00:00Z',
+            'left': false,
+          },
+          {
+            'id': 'officer-1',
+            'firstName': 'Yetkili',
+            'lastName': 'Kişi',
+            'role': 'COMPANY_CONTACT',
+            'joinedAt': '2026-09-02T08:00:00Z',
+            'lastReadAt': null,
+            'left': true,
+          },
+        ];
+      final conversation = Conversation.fromJson(
+        json,
+        currentUserId: 'worker-1',
+      );
+
+      final employer = conversation.participants[0];
+      final officer = conversation.participants[1];
+      expect(employer.role, ChatParticipantRole.employer);
+      expect(employer.joinedAt, DateTime.utc(2026, 9, 1, 8));
+      expect(employer.lastReadAt, DateTime.utc(2026, 9, 14, 9));
+      expect(employer.left, isFalse);
+      expect(officer.role, ChatParticipantRole.companyContact);
+      expect(officer.lastReadAt, isNull);
+      expect(officer.left, isTrue);
+      // Ayrılan listede duruyor ama sayıya girmiyor: satır "1 katılımcı".
+      expect(conversation.participants, hasLength(2));
+      expect(conversation.participantCount, 1);
+      expect(conversation.participantLabel, '1 katılımcı');
+    });
+
+    // Sayı listeden türetiliyor; `copyWith(participants:)` ile ikisi
+    // birlikte değişiyor, bayat bir sayı kalmıyor.
+    test(
+      'participantCount listeden türer ve copyWith ile birlikte değişir',
+      () {
+        final conversation = Conversation.fromJson(
+          groupJson(),
+          currentUserId: 'worker-1',
+        );
+        expect(conversation.participantCount, 3);
+
+        final shrunk = conversation.copyWith(
+          participants: conversation.participants.take(1).toList(),
+        );
+        expect(shrunk.participantCount, 1);
+
+        final emptied = conversation.copyWith(participants: const []);
+        expect(emptied.participantCount, 0);
+      },
+    );
 
     test('copyWith grup alanlarını korur', () {
       final conversation = Conversation.fromJson(
@@ -185,6 +266,7 @@ void main() {
 
       expect(conversation.isGroup, isTrue);
       expect(conversation.participantCount, 3);
+      expect(conversation.participants, hasLength(3));
       expect(conversation.closed, isTrue);
     });
   });

@@ -32,6 +32,33 @@ void main() {
     });
 
     // Backend yeni bir olay türü eklerse istemci çökmemeli.
+    // is-koala/koala-backend#281: READ olayı okuyanın kimliği yanında yeni
+    // damgayı da taşıyor; eski sunucuda alan yok ve `null` kalıyor.
+    test('okundu olayı okuyanı ve damgayı taşır', () {
+      final event = RealtimeEvent.fromJson({
+        'type': 'READ',
+        'conversationId': 'c1',
+        'userId': 'u2',
+        'lastReadAt': '2026-09-14T10:00:00Z',
+        'at': '2026-09-14T10:00:01Z',
+      });
+
+      expect(event.type, RealtimeEventType.read);
+      expect(event.userId, 'u2');
+      expect(event.lastReadAt, DateTime.utc(2026, 9, 14, 10));
+      expect(event.at, DateTime.utc(2026, 9, 14, 10, 0, 1));
+    });
+
+    test('eski sunucunun okundu olayında damga yok', () {
+      final event = RealtimeEvent.fromJson({
+        'type': 'READ',
+        'conversationId': 'c1',
+        'userId': 'u2',
+      });
+
+      expect(event.lastReadAt, isNull);
+    });
+
     test('tanınmayan tür unknown olur', () {
       final event = RealtimeEvent.fromJson({'type': 'UZAYLI'});
 

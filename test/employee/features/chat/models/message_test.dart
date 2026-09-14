@@ -67,4 +67,43 @@ void main() {
       expect(message.status, MessageStatus.sent);
     });
   });
+
+  group('Message.fromJson gönderen bilgisi', () {
+    test('senderName ve fotoğraf okunur', () {
+      final message = Message.fromJson(
+        {
+          ...buildJson(),
+          'senderName': 'Yakup Kahraman',
+          'senderProfilePictureUrl': 'https://example.com/yakup.png',
+        },
+        conversationId: 'conv-1',
+        currentUserId: 'employer-1',
+      );
+
+      expect(message.senderName, 'Yakup Kahraman');
+      expect(message.senderProfilePictureUrl, 'https://example.com/yakup.png');
+    });
+
+    // Eski sunucu alanı göndermiyor; yeni sunucu adı boş kullanıcıda `null`
+    // gönderiyor. Boşluktan ibaret bir ad da yok sayılmalı ki balon
+    // katılımcı eşlemesine düşsün.
+    test('alan yoksa ya da boşsa null kalır', () {
+      expect(
+        Message.fromJson(
+          buildJson(),
+          conversationId: 'conv-1',
+          currentUserId: 'employer-1',
+        ).senderName,
+        isNull,
+      );
+      expect(
+        Message.fromJson(
+          {...buildJson(), 'senderName': '   '},
+          conversationId: 'conv-1',
+          currentUserId: 'employer-1',
+        ).senderName,
+        isNull,
+      );
+    });
+  });
 }
