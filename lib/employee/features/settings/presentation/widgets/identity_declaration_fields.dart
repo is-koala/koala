@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:koala/employee/features/settings/models/national_identity_number.dart';
-import 'package:koala/employee/features/settings/presentation/widgets/settings_hint.dart';
+import 'package:koala/product/widgets/settings_hint.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';

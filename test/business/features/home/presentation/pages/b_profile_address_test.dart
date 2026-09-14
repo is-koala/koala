@@ -9,7 +9,10 @@ import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
 import 'package:koala/employee/features/company_detail/services/company_service.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
+import 'package:koala/employee/features/settings/presentation/providers/identity_review_provider.dart';
+import 'package:koala/employee/features/settings/services/identity_document_service.dart';
 import 'package:koala/product/features/account/account_routes.dart';
+import 'package:koala/product/network/api_paths.dart';
 import 'package:koala/product/theme/theme.dart';
 import 'package:provider/provider.dart';
 
@@ -49,6 +52,12 @@ void main() {
       handler: (RequestOptions request) {
         if (request.path == '/users/me') {
           return FakeApiResponse(statusCode: 200, body: _me(address: address));
+        }
+        if (request.path == ApiPaths.currentUserIdentityDocuments) {
+          return const FakeApiResponse(
+            statusCode: 200,
+            body: {'success': true, 'data': null},
+          );
         }
         // İstatistikler: bölüm çizilsin ama bu testin konusu değil.
         return const FakeApiResponse(
@@ -99,6 +108,13 @@ void main() {
             create: (_) => BCompanyProvider(
               service: BCompanyService.withClient(api.client),
               companyService: CompanyService.withClient(api.client),
+            ),
+          ),
+          // Profil kimlik rozetini inceleme kaydından okuyor; sahte sunucu
+          // bu uca "yok" diyor.
+          ChangeNotifierProvider(
+            create: (_) => IdentityReviewProvider(
+              service: IdentityDocumentService.withClient(api.client),
             ),
           ),
         ],
