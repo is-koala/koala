@@ -67,6 +67,103 @@ void main() {
     });
   });
 
+  group('AssignmentService.fetchAssignment', () {
+    test('tekil atama kimliğiyle okunup modele çevriliyor', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {
+              'id': 'asg_51',
+              'status': 'CONFIRMED',
+              'paymentStatus': 'HELD_IN_ESCROW',
+              'assignmentDateTime': '2026-09-09T09:30:00Z',
+              'worker': {
+                'id': 'worker_51',
+                'firstName': 'Ayşe',
+                'lastName': 'Yılmaz',
+              },
+              'job': {
+                'id': 'job_51',
+                'title': 'Barista',
+                'salary': 1500,
+                'category': {
+                  'id': 'cat_1',
+                  'code': 'BARISTA',
+                  'name': 'Barista',
+                },
+              },
+            },
+          },
+        ),
+      );
+
+      final assignment = await AssignmentService.withClient(
+        api.client,
+      ).fetchAssignment('asg_51');
+
+      expect(api.requests.single.path, '/job-assignments/asg_51');
+      expect(api.requests.single.method, 'GET');
+      expect(api.requests.single.queryParameters, isEmpty);
+      expect(assignment.id, 'asg_51');
+      expect(assignment.job.id, 'job_51');
+      expect(assignment.worker?.fullName, 'Ayşe Yılmaz');
+      expect(assignment.status, AssignmentStatus.confirmed);
+      expect(assignment.paymentStatus, PaymentStatus.heldInEscrow);
+      expect(assignment.assignmentDateTime, DateTime.utc(2026, 9, 9, 9, 30));
+    });
+
+    for (final error in [
+      (
+        status: 404,
+        message: 'İş kaydı bulunamadı.',
+        category: 'RESOURCE_NOT_FOUND',
+        type: ApiErrorType.notFound,
+      ),
+      (
+        status: 500,
+        message: 'Sunucu geçici olarak kullanılamıyor.',
+        category: 'UNEXPECTED',
+        type: ApiErrorType.server,
+      ),
+    ]) {
+      test('${error.status} tekil atama hatası korunuyor', () async {
+        final api = FakeApi(
+          handler: (_) => FakeApiResponse(
+            statusCode: error.status,
+            body: {
+              'success': false,
+              'message': error.message,
+              'errorCategory': error.category,
+            },
+          ),
+        );
+
+        await expectLater(
+          AssignmentService.withClient(api.client).fetchAssignment('asg_51'),
+          throwsA(
+            isA<ApiException>()
+                .having(
+                  (exception) => exception.message,
+                  'message',
+                  error.message,
+                )
+                .having((exception) => exception.type, 'type', error.type)
+                .having(
+                  (exception) => exception.statusCode,
+                  'statusCode',
+                  error.status,
+                ),
+          ),
+        );
+        expect(api.requests.single.path, '/job-assignments/asg_51');
+        expect(api.requests.single.method, 'GET');
+        expect(api.requests.single.queryParameters, isEmpty);
+      });
+    }
+  });
+
   group('AssignmentService.respond', () {
     test('kabul cevabı doğru yola ve gövdeyle gider', () async {
       final api = FakeApi(

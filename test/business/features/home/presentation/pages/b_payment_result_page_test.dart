@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/business/features/home/presentation/pages/b_payment_result_page.dart';
-import 'package:koala/business/features/home/services/employer_job_service.dart';
+import 'package:koala/employee/features/jobs/services/assignment_service.dart';
 
 import '../../../../../support/fake_api.dart';
 import '../../../../../support/pump.dart';
@@ -555,7 +555,7 @@ Future<void> _pumpPaymentResult(
   tester,
   BPaymentResultPage(
     assignmentId: 'asg_1',
-    service: EmployerJobService.withClient(api.client),
+    service: AssignmentService.withClient(api.client),
     now: now,
     delay: delay,
   ),

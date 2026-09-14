@@ -28,7 +28,7 @@ abstract class BPaymentResultPagemodel extends State<BPaymentResultPage>
   int _nextPollIndex = 0;
   int _pollGeneration = 0;
 
-  EmployerJobService get _service => widget.service ?? EmployerJobService();
+  AssignmentService get _service => widget.service ?? AssignmentService();
 
   DateTime get _now => (widget.now ?? DateTime.now)();
 

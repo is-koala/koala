@@ -43,8 +43,10 @@ class AssignmentService {
   /// Tek bir atamayı kimliğiyle okur.
   ///
   /// Sunucu yalnızca atamanın taraflarına açıyor; taraf olmayan `404`
-  /// alıyor. İş detayı bir eylemden sonra bütün listeyi değil bu kaydı
-  /// tazeliyor — sayfalamadan bağımsız ve tek istek.
+  /// alıyor. Uç iki tarafa da açık, o yüzden tek servis: çalışanın iş
+  /// detayı bir eylemden sonra bu kaydı tazeliyor, Kazançlar listede
+  /// olmayan atamayı buradan getiriyor, işverenin ödeme sonucu ekranı da
+  /// aynı metodu çağırıyor — mesai oturumlarında olduğu gibi.
   Future<Assignment> fetchAssignment(String assignmentId) {
     return _apiClient.get<Assignment>(
       ApiPaths.jobAssignment(assignmentId),
