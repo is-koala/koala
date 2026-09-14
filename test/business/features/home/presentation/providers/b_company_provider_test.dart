@@ -7,6 +7,10 @@ import 'package:koala/business/features/home/services/b_company_service.dart';
 import 'package:koala/employee/features/company_detail/services/company_service.dart';
 import 'package:koala/employee/features/auth/models/company_membership.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
+import 'package:koala/product/models/canonical_address.dart';
+import 'package:koala/product/models/confirmed_address.dart';
+import 'package:koala/product/models/reference_location.dart';
+import 'package:koala/product/network/api_exception.dart';
 
 import '../../../../../support/fake_api.dart';
 
@@ -314,6 +318,124 @@ void main() {
       expect(await accountAResult, isFalse);
       expect(provider.company?.id, 'hesap_b');
       expect(provider.errorMessage, isNull);
+    });
+  });
+
+  // is-koala/koala#184: adres harita ekranından `PATCH /companies/{id}`
+  // gövdesindeki `address` ile gidiyor; hata fırlatılıyor ki ekran açık kalsın.
+  group('updateAddress', () {
+    const moda = ConfirmedAddress(
+      country: ReferenceLocation(id: 'country-1', name: 'TÜRKİYE'),
+      city: ReferenceLocation(id: 'city-1', name: 'İSTANBUL'),
+      district: ReferenceLocation(id: 'district-1', name: 'KADIKÖY'),
+      components: AddressComponents(
+        neighborhood: 'Caferağa Mahallesi',
+        thoroughfare: 'Moda Caddesi',
+        buildingNumber: '12',
+        postalCode: '34710',
+      ),
+      position: AddressPosition(
+        latitude: 40.982512,
+        longitude: 29.025411,
+        source: AddressPositionSource.userConfirmedPin,
+      ),
+    );
+
+    const savedAddress = {
+      'id': 'addr_2',
+      'countryId': 'country-1',
+      'countryName': 'TÜRKİYE',
+      'cityId': 'city-1',
+      'cityName': 'İSTANBUL',
+      'districtId': 'district-1',
+      'districtName': 'KADIKÖY',
+      'position': {
+        'latitude': 40.982512,
+        'longitude': 29.025411,
+        'source': 'USER_CONFIRMED_PIN',
+      },
+      'displayAddress': 'Moda Caddesi 12, Caferağa Mahallesi',
+    };
+
+    FakeApi apiWithPatch(FakeApiResponse patchResponse) => FakeApi(
+      handler: (options) {
+        if (options.method == 'PATCH') return patchResponse;
+        return FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': options.path.startsWith('/companies/')
+                ? companyJson()
+                : statsJson(),
+          },
+        );
+      },
+    );
+
+    test('başarıda eldeki şirket yanıttaki adresle değişiyor', () async {
+      final api = apiWithPatch(
+        FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {...companyJson(), 'address': savedAddress},
+          },
+        ),
+      );
+      final provider = providerFor(api);
+      await provider.load(
+        userId: 'user_1',
+        companyId: 'comp_1',
+        isApproved: true,
+      );
+      var notified = 0;
+      provider.addListener(() => notified++);
+
+      await provider.updateAddress(moda);
+
+      final patch = api.requests.singleWhere((r) => r.method == 'PATCH');
+      expect(patch.path, '/companies/comp_1');
+      expect((patch.data as Map).keys, ['address']);
+      expect((patch.data as Map)['address'], moda.toWrite().toJson());
+      expect(provider.company?.address?.districtName, 'KADIKÖY');
+      expect(provider.company?.isApproved, isTrue, reason: 'onay korunur');
+      expect(provider.errorMessage, isNull);
+      expect(notified, 1);
+    });
+
+    test('sunucu reddederse hata fırlıyor, eldeki şirket değişmiyor', () async {
+      final api = apiWithPatch(
+        const FakeApiResponse(
+          statusCode: 400,
+          body: {
+            'success': false,
+            'message': 'address alanı tanınmıyor',
+            'errorCategory': 'VALIDATION_FAILED',
+          },
+        ),
+      );
+      final provider = providerFor(api);
+      await provider.load(userId: 'user_1', companyId: 'comp_1');
+
+      await expectLater(
+        provider.updateAddress(moda),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.message,
+            'message',
+            'address alanı tanınmıyor',
+          ),
+        ),
+      );
+      expect(provider.company?.address, isNull);
+      expect(provider.company?.name, 'Kahve Durağı');
+    });
+
+    test('şirket yüklü değilken çağrı programlama hatası', () async {
+      final provider = providerFor(buildApi());
+      await provider.load(userId: 'user_1');
+
+      expect(() => provider.updateAddress(moda), throwsStateError);
     });
   });
 

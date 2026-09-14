@@ -152,6 +152,64 @@ void main() {
       // koruyor, boş metin göndermek onu silmek olurdu.
       expect(body.containsKey('description'), isFalse);
       expect(body.containsKey('taxNumber'), isFalse);
+      // Adres verilmedi: sunucu gövdede olmayan adrese dokunmuyor.
+      expect(body.containsKey('address'), isFalse);
+    });
+
+    // is-koala/koala#184: adres `POST /companies` ile aynı `AddressWriteDto`
+    // biçiminde, aynı `PATCH` gövdesinde gidiyor.
+    test('adres verilirse AddressWriteDto gövdesiyle PATCH ediliyor', () async {
+      final api = FakeApi(
+        handler: (_) =>
+            const FakeApiResponse(statusCode: 200, body: _companyBody),
+      );
+
+      final company = await BCompanyService.withClient(api.client)
+          .updateCompany(
+            'comp_1',
+            address: const AddressWrite(
+              countryId: 'country-1',
+              cityId: 'city-1',
+              districtId: 'district-1',
+              components: AddressComponents(
+                neighborhood: 'Caferağa Mahallesi',
+                thoroughfare: 'Moda Caddesi',
+                buildingNumber: '12',
+                postalCode: '34710',
+              ),
+              position: AddressPosition(
+                latitude: 40.982512,
+                longitude: 29.025411,
+                source: AddressPositionSource.reverseGeocodeConfirmed,
+              ),
+              candidateToken: 'reverse-proof',
+            ),
+          );
+
+      final request = api.requests.single;
+      expect(request.method, 'PATCH');
+      expect(request.path, '/companies/comp_1');
+      final body = request.data as Map;
+      expect(body.keys, ['address'], reason: 'metin alanları gönderilmedi');
+      expect(body['address'], {
+        'countryId': 'country-1',
+        'cityId': 'city-1',
+        'districtId': 'district-1',
+        'components': {
+          'neighborhood': 'Caferağa Mahallesi',
+          'thoroughfare': 'Moda Caddesi',
+          'buildingNumber': '12',
+          'postalCode': '34710',
+        },
+        'position': {
+          'latitude': 40.982512,
+          'longitude': 29.025411,
+          'source': 'REVERSE_GEOCODE_CONFIRMED',
+        },
+        'candidateToken': 'reverse-proof',
+      });
+      // Yanıttaki şirket olduğu gibi dönüyor; adres oradan okunacak.
+      expect(company.address?.districtName, 'Çankaya');
     });
   });
 

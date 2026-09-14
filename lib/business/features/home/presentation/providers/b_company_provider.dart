@@ -6,6 +6,7 @@ import 'package:koala/business/features/home/services/b_company_service.dart';
 import 'package:koala/employee/features/company_detail/services/company_service.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/product/constants/upload_limits.dart';
+import 'package:koala/product/models/confirmed_address.dart';
 import 'package:koala/product/network/api_exception.dart';
 
 /// İşverenin profil verisi: şirketi ve özet sayıları.
@@ -144,9 +145,9 @@ class BCompanyProvider extends ChangeNotifier {
 
   /// Firma bilgilerini günceller.
   ///
-  /// Sunucu yalnızca beş alanı kabul ediyor; vergi numarası, adres ve logo
-  /// buradan değiştirilemiyor. Başarılıysa eldeki kayıt yanıttakiyle
-  /// değişiyor ve `true` dönüyor.
+  /// Sunucu beş metin alanını kabul ediyor; vergi numarası ve logo buradan
+  /// değiştirilemiyor, adres [updateAddress] ile ayrı gidiyor. Başarılıysa
+  /// eldeki kayıt yanıttakiyle değişiyor ve `true` dönüyor.
   Future<bool> updateCompany({
     String? name,
     String? email,
@@ -167,6 +168,34 @@ class BCompanyProvider extends ChangeNotifier {
         description: description,
       ),
     );
+  }
+
+  /// Şirket adresini değiştirir ve eldeki kaydı yanıttakiyle değiştirir.
+  ///
+  /// Diğer güncellemeler gibi `bool` dönmüyor, `ApiException`'ı **fırlatıyor**:
+  /// harita ekranı `onSave` fırlatınca açık kalıp mesajı gösteriyor ve
+  /// kullanıcı pini düzeltip yeniden deniyor — *Adresim* ile aynı sözleşme.
+  /// Eski sunucunun alan hatası da bu yoldan kullanıcıya ulaşıyor.
+  ///
+  /// Yalnızca şirket yüklüyken çağrılır; şirketsiz çağrı programlama hatası.
+  Future<void> updateAddress(ConfirmedAddress address) async {
+    final current = _company;
+    if (current == null) {
+      throw StateError('Şirket yüklenmeden adres güncellenemez');
+    }
+
+    final generation = _generation;
+    final updated = await _service.updateCompany(
+      current.id,
+      address: address.toWrite(),
+    );
+    if (generation != _generation || _company?.id != current.id) return;
+
+    _company = updated.copyWith(
+      isApproved: updated.isApproved || current.isApproved,
+    );
+    _errorMessage = null;
+    notifyListeners();
   }
 
   /// Şirketin logosunu değiştirir.

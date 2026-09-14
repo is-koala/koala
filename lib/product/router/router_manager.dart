@@ -7,6 +7,7 @@ import 'package:koala/business/features/home/presentation/pages/b_posts_page.dar
 import 'package:koala/business/features/home/presentation/pages/b_profile_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_settings_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_company_gallery_page.dart';
+import 'package:koala/business/features/home/presentation/pages/b_company_address_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_company_info_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_company_contacts_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_job_detail_page.dart';
@@ -471,6 +472,14 @@ class RouterManager {
       GoRoute(
         path: '/business/company-info',
         pageBuilder: (context, state) => _page(state, const BCompanyInfoPage()),
+      ),
+
+      // Şirket adresi: harita-öncelikli ekranın `PATCH /companies/{id}`'e
+      // bağlanmış hâli. Firma bilgilerinin üstüne tam sayfa açılıyor.
+      GoRoute(
+        path: '/business/company-address',
+        pageBuilder: (context, state) =>
+            _page(state, const BCompanyAddressPage()),
       ),
 
       GoRoute(
