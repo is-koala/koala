@@ -1,3 +1,4 @@
+import 'package:koala/business/features/home/models/b_job_staffing.dart';
 import 'package:koala/business/features/home/models/job_applicant.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/jobs/models/job_application.dart';
@@ -15,6 +16,7 @@ import 'package:koala/employee/features/jobs/models/job_application.dart';
 class BJobPost {
   const BJobPost({
     required this.job,
+    this.staffing = BJobStaffing.unknown,
     this.applications = const [],
     this.applicantsLoaded = false,
     this.applicantsLoading = false,
@@ -22,6 +24,10 @@ class BJobPost {
   });
 
   final Job job;
+
+  /// Kontenjan: aranan ve işe alınan kişi sayısı. Liste yanıtıyla birlikte
+  /// geliyor ([BJobListEntry]); alanı göndermeyen sunucuda bilinmiyor.
+  final BJobStaffing staffing;
 
   /// İlana gelen bütün başvurular; bekleyeni de kabul edileni de reddedileni
   /// de içeriyor.
@@ -79,9 +85,10 @@ class BJobPost {
   }
 
   /// Liste yenilemesindeki yeni ilan özetini alırken başvuran durumunu korur.
-  BJobPost withJob(Job value) {
+  BJobPost withEntry(BJobListEntry entry) {
     return BJobPost(
-      job: value,
+      job: entry.job,
+      staffing: entry.staffing,
       applications: applications,
       applicantsLoaded: applicantsLoaded,
       applicantsLoading: applicantsLoading,
@@ -92,6 +99,7 @@ class BJobPost {
   BJobPost startApplicantLoad() {
     return BJobPost(
       job: job,
+      staffing: staffing,
       applications: applications,
       applicantsLoaded: applicantsLoaded,
       applicantsLoading: true,
@@ -99,12 +107,18 @@ class BJobPost {
   }
 
   BJobPost completeApplicantLoad(List<JobApplicant> value) {
-    return BJobPost(job: job, applications: value, applicantsLoaded: true);
+    return BJobPost(
+      job: job,
+      staffing: staffing,
+      applications: value,
+      applicantsLoaded: true,
+    );
   }
 
   BJobPost failApplicantLoad(String message) {
     return BJobPost(
       job: job,
+      staffing: staffing,
       applications: applications,
       applicantsLoaded: applicantsLoaded,
       applicantsError: message,

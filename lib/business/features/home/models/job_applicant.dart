@@ -16,6 +16,9 @@ class JobApplicant {
     this.notes,
     this.jobTitle,
     this.cvUrl,
+    this.answeredDateTime,
+    this.assignmentId,
+    this.rejectionReason,
   });
 
   /// Başvurunun kimliği. Kabul/ret bu kimlikle gönderiliyor
@@ -45,7 +48,27 @@ class JobApplicant {
   /// ayrıca sahiplik kontrolü yapıyor — başkasının dosyası `404`.
   final String? cvUrl;
 
+  /// Başvurunun kabul ya da reddedildiği an; henüz yanıtlanmadıysa `null`.
+  ///
+  /// koala-backend#282 ile geldi; eski sunucuda alan yok ve kart o satırı
+  /// çizmiyor.
+  final DateTime? answeredDateTime;
+
+  /// Kabulle doğan atamanın kimliği; kabul edilmediyse ya da sunucu alanı
+  /// göndermiyorsa `null`. Atama panelinden bağımsız bir eşleşme anahtarı:
+  /// çalışan kimliğiyle eşlemek iptal sonrası yeniden kabulde en yeni atamayı
+  /// seçmeyi gerektiriyor, bu alan doğrudan doğru kaydı söylüyor.
+  final String? assignmentId;
+
+  /// İşverenin yazdığı ret gerekçesi; reddedilmediyse ya da gerekçe
+  /// yazılmadıysa `null`.
+  final String? rejectionReason;
+
   String get fullName => user.fullName;
+
+  /// Özgeçmiş bağlantısı var mı. Sunucu adresi yalnızca ilanın işverenine
+  /// dolduruyor; boş dize de "yok" sayılıyor.
+  bool get hasCv => cvUrl != null && cvUrl!.isNotEmpty;
 
   String? get profilePictureUrl => user.profilePictureUrl;
 
@@ -70,6 +93,12 @@ class JobApplicant {
       notes: json['notes'] as String?,
       jobTitle: json['jobTitle'] as String?,
       cvUrl: json['cvUrl'] as String?,
+      answeredDateTime: _parseDate(json['answeredDateTime']),
+      assignmentId: switch (json['assignmentId']) {
+        final String value when value.isNotEmpty => value,
+        _ => null,
+      },
+      rejectionReason: json['rejectionReason'] as String?,
     );
   }
 

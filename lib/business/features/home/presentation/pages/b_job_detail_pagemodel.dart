@@ -23,6 +23,10 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
   /// Onay kutusundaki çok satırlı gövdenin satır aralığı.
   static const double _dialogLineHeight = 1.4;
 
+  /// Zaman çizelgesi satırı dar ekranda üç dört satıra sarıyor; sıkışık
+  /// dizilmesin diye açılmış satır aralığı.
+  static const double _timelineLineHeight = 1.4;
+
   JobService get _jobService => widget.jobService ?? JobService();
 
   EmployerJobService get _employerJobService =>
@@ -57,6 +61,13 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
   /// Bu ilanın atamaları ve ekranda açıkça seçilmiş olanı.
   List<Assignment> _assignments = const [];
   Assignment? _assignment;
+
+  /// Atama kimliğine göre zaman çizelgesi; atama listesiyle birlikte
+  /// okunuyor ve onunla birlikte değişiyor.
+  Map<String, BAssignmentTimeline> _timelines = const {};
+
+  BAssignmentTimeline _timelineOf(Assignment assignment) =>
+      _timelines[assignment.id] ?? BAssignmentTimeline.empty;
 
   /// Atama listesiyle ona bağlı iş takibi verisinin son yenileme durumu.
   ///
@@ -227,9 +238,10 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     }
 
     try {
-      final matches = await _employerJobService.fetchAssignmentsForJob(
+      final entries = await _employerJobService.fetchAssignmentsForJob(
         widget.jobId,
       );
+      final matches = [for (final entry in entries) entry.assignment];
       final selectedId =
           selectedAssignmentId ?? _pendingAssignmentId ?? _assignment?.id;
       final match = matches.isEmpty
@@ -244,6 +256,7 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
         setState(() {
           _assignment = null;
           _assignments = const [];
+          _timelines = const {};
           _workSessions = const [];
           _workSessionsError = null;
           _disputes = const [];
@@ -274,6 +287,9 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
       final keepsRelatedSnapshot = _assignment?.id == match.id;
       setState(() {
         _assignments = matches;
+        _timelines = {
+          for (final entry in entries) entry.assignment.id: entry.timeline,
+        };
         _assignment = match;
         _workSessions =
             workSessionsResult.value ??
@@ -835,6 +851,22 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     } finally {
       if (mounted) setState(() => _openingChatUserId = null);
     }
+  }
+
+  /// Adayın özgeçmişini harici tarayıcıda açar.
+  ///
+  /// Bağlantı `JobApplicantDto.cvUrl`'den geliyor ve sunucu onu yalnızca bu
+  /// ilanın işverenine dolduruyor; açılamazsa kullanıcıya söyleniyor.
+  Future<void> _openCv(JobApplicant applicant) async {
+    final url = applicant.cvUrl;
+    if (url == null || url.isEmpty) return;
+
+    final open =
+        widget.openExternalUrl ??
+        (uri) => launchUrl(uri, mode: LaunchMode.externalApplication);
+    final opened = await open(Uri.parse(url));
+    if (!mounted || opened) return;
+    AppToast.error(context, 'Özgeçmiş açılamadı');
   }
 
   /// Başvuruyu kabul eder.

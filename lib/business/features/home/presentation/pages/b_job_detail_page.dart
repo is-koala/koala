@@ -6,6 +6,7 @@ import 'package:koala/employee/features/chat/models/messaging_availability.dart'
 import 'package:koala/product/router/business_routes.dart';
 import 'package:koala/product/widgets/messaging_gate_note.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
+import 'package:koala/business/features/home/models/b_assignment_timeline.dart';
 import 'package:koala/business/features/home/models/b_job_post.dart';
 import 'package:koala/business/features/home/models/b_payment_attempt.dart';
 import 'package:koala/business/features/home/models/b_pricing_breakdown.dart';
@@ -51,6 +52,7 @@ import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
 import 'package:koala/product/widgets/reason_dialog.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 part 'b_job_detail_pagemodel.dart';
 
@@ -69,6 +71,7 @@ class BJobDetailPage extends StatefulWidget {
     this.paymentBrowser,
     this.galleryProvider,
     this.chatService,
+    this.openExternalUrl,
   });
 
   final String jobId;
@@ -81,6 +84,10 @@ class BJobDetailPage extends StatefulWidget {
 
   /// Testler için; verilmezse üretimdeki tekil servis.
   final ChatService? chatService;
+
+  /// Özgeçmiş bağlantısını açan kapı; verilmezse harici tarayıcı
+  /// (`url_launcher`). Testler sahte bir açıcı geçiyor.
+  final Future<bool> Function(Uri url)? openExternalUrl;
 
   @override
   State<BJobDetailPage> createState() => _BJobDetailPageState();
@@ -244,6 +251,8 @@ class _BJobDetailPageState extends BJobDetailPageModel {
               const SizedBox(height: AppSizes.space),
             ],
             _assignmentStatusRow(assignment),
+            const SizedBox(height: AppSizes.spaceSmall),
+            _assignmentTimelineRow(assignment),
             if (_workSessions.isNotEmpty) ...[
               const SizedBox(height: AppSizes.space),
               ..._workSessions.map(_workSessionRow),
@@ -440,6 +449,40 @@ class _BJobDetailPageState extends BJobDetailPageModel {
       ],
     );
   }
+
+  /// Atamanın zaman çizelgesi tek satırda: başvuru, kabul, ödeme durumu ve
+  /// tamamlanma.
+  ///
+  /// Damgalar sunucudan geliyor ([BAssignmentTimeline]); göndermeyen sunucuda
+  /// değerin yerine "—" yazılıyor ki satırın hangi bilgiyi taşıdığı yine
+  /// okunsun. Ödeme sütunu durumun metniyle birlikte emanete alınma anını,
+  /// para çalışana geçtiyse hesaba ulaştığı anı söylüyor.
+  Widget _assignmentTimelineRow(Assignment assignment) {
+    final timeline = _timelineOf(assignment);
+    final securedAt = timeline.paymentSecuredAt;
+    final paidOutAt = timeline.payout?.completedAt;
+    final paymentDetail = assignment.paymentStatus.isPaid && paidOutAt != null
+        ? ' (hesaba geçti: ${paidOutAt.toLocal().asShortDateTime})'
+        : securedAt != null
+        ? ' (emanete alındı: ${securedAt.toLocal().asShortDateTime})'
+        : '';
+
+    return Text(
+      'Başvuru: ${_stamp(timeline.appliedAt)}'
+      ' · Kabul: ${_stamp(timeline.acceptedAt)}'
+      ' · Ödeme: ${assignment.paymentStatus.displayName}$paymentDetail'
+      ' · Tamamlandı: ${_stamp(assignment.actualCompletionDateTime)}',
+      key: const ValueKey('assignment-timeline'),
+      style: context.textTheme.bodySmall?.copyWith(
+        color: context.textSecondary,
+        height: BJobDetailPageModel._timelineLineHeight,
+      ),
+    );
+  }
+
+  /// Zaman damgasının satırdaki hâli; yoksa "—".
+  static String _stamp(DateTime? value) =>
+      value?.toLocal().asShortDateTime ?? '—';
 
   /// Tek mesai oturumu: giriş, çıkış ve süre. Açık oturumda çıkış yerine
   /// "sürüyor" yazıyor.
@@ -1166,15 +1209,14 @@ class _BJobDetailPageState extends BJobDetailPageModel {
                   worker: applicant.user,
                   iconSize: AppSizes.iconSmall,
                 ),
-                Text(
-                  applicant.applicationDateTime?.asShortDate ?? '',
-                  style: context.textTheme.labelMedium?.copyWith(
-                    color: context.textTertiary,
-                  ),
-                ),
+                _applicantDates(context, applicant),
               ],
             ),
           ),
+          if (applicant.hasCv) ...[
+            const SizedBox(height: AppSizes.spaceSmall),
+            _applicantCvLink(context, applicant),
+          ],
           if (applicant.notes != null && applicant.notes!.isNotEmpty) ...[
             const SizedBox(height: AppSizes.space),
             Container(
@@ -1227,6 +1269,49 @@ class _BJobDetailPageState extends BJobDetailPageModel {
           else
             _applicationStatusBadge(context, applicant.status),
         ],
+      ),
+    );
+  }
+
+  /// Kartın sağ üst köşesindeki tarihler: başvuru ve — sunucu gönderiyorsa —
+  /// yanıt anı. Kabul edilen kartta yanıt kabul tarihidir.
+  Widget _applicantDates(BuildContext context, JobApplicant applicant) {
+    final answeredAt = applicant.answeredDateTime;
+    final style = context.textTheme.labelMedium?.copyWith(
+      color: context.textTertiary,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(applicant.applicationDateTime?.asShortDate ?? '', style: style),
+        if (answeredAt != null)
+          Text(
+            '${applicant.status == ApplicationStatus.accepted ? 'Kabul' : 'Yanıt'}: '
+            '${answeredAt.toLocal().asShortDate}',
+            key: ValueKey('applicant-answered-${applicant.id}'),
+            style: style,
+          ),
+      ],
+    );
+  }
+
+  /// Özgeçmiş bağlantısı. Adres doğrudan dosya değil, sunucunun sahipliği
+  /// doğrulayıp kısa ömürlü imzalı adrese yönlendirdiği bir yol; profil
+  /// ekranıyla aynı biçimde harici tarayıcıda açılıyor.
+  Widget _applicantCvLink(BuildContext context, JobApplicant applicant) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: TextButton.icon(
+        key: ValueKey('applicant-cv-${applicant.id}'),
+        onPressed: () => _openCv(applicant),
+        style: TextButton.styleFrom(
+          padding: AppPadding.badge,
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        icon: const AppIcon(AppIcons.fileText, size: AppSizes.iconSmall),
+        label: const Text('Özgeçmişi Görüntüle'),
       ),
     );
   }

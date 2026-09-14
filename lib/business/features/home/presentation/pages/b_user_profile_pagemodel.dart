@@ -19,14 +19,35 @@ abstract class BUserProfilePageModel extends State<BUserProfilePage> {
   /// Karşılığı henüz gelmemiş alanların yerine yazılan işaret.
   static const String _missing = '—';
 
-  final _userService = UserService();
-  final _availabilityService = AvailabilityService();
+  /// Son yorum sayısı. Profil bir değerlendirme sayfası değil; tamamı için
+  /// ayrı bir ekran gerekir.
+  static const int _visibleReviewCount = 3;
+
+  BCandidateProfileService get _profileService =>
+      widget.profileService ?? BCandidateProfileService();
+
+  AvailabilityService get _availabilityService =>
+      widget.availabilityService ?? AvailabilityService();
+
+  ReviewService get _reviewService => widget.reviewService ?? ReviewService();
 
   /// Adayın herkese açık profili. Başvuru kaydında olmayan alanlar —
   /// meslek, hakkında, konum, özgeçmiş — buradan geliyor.
   PublicProfile? _profile;
+
+  /// Profil yanıtındaki özet alanlar (tamamlanan iş, puan, rozet). Sunucu
+  /// göndermiyorsa boş kalıyor; puan ve rozet için asıl kaynak ayrı uçlar.
+  BCandidateProfile? _candidate;
   bool _isLoading = true;
   String? _errorMessage;
+
+  /// İtibar bölümü: puan özeti, son yorumlar ve rozetler. Üç uç birbirinden
+  /// bağımsız; biri düşünce diğerleri yine çiziliyor.
+  RatingSummary? _ratingSummary;
+  List<Review> _reviews = const [];
+  List<BBadge>? _badges;
+  bool _isReputationLoading = true;
+  String? _reputationErrorMessage;
 
   Availability? _availability;
   bool _isAvailabilityLoading = true;
@@ -40,6 +61,56 @@ abstract class BUserProfilePageModel extends State<BUserProfilePage> {
     super.initState();
     _loadProfile();
     _loadAvailability();
+    _loadReputation();
+  }
+
+  /// Puan özeti, son yorumlar ve rozetler; üçü paralel.
+  ///
+  /// Uçların biri düşerse eldekiler çiziliyor, düşen için profil yanıtındaki
+  /// kopya (`PublicProfileDto.averageRating/reviewCount/badges`) yedek; o da
+  /// yoksa şerit ve tekrar deneme. Yorumların profil yanıtında karşılığı yok.
+  Future<void> _loadReputation() async {
+    setState(() {
+      _isReputationLoading = true;
+      _reputationErrorMessage = null;
+    });
+
+    final userId = _profileUserId;
+    final (summaryResult, reviewsResult, badgesResult) = await (
+      _capture(_reviewService.fetchRatingSummary(userId)),
+      _capture(
+        _reviewService.fetchReviewsAbout(userId, size: _visibleReviewCount),
+      ),
+      _capture(_profileService.fetchBadges(userId)),
+    ).wait;
+    if (!mounted) return;
+
+    setState(() {
+      _ratingSummary = summaryResult.error == null
+          ? summaryResult.value
+          : _candidate?.ratingSummary;
+      _reviews = reviewsResult.value?.reviews ?? const [];
+      _badges = badgesResult.value ?? _candidate?.badges;
+      _reputationErrorMessage =
+          reviewsResult.error?.message ??
+          (_ratingSummary == null ? summaryResult.error?.message : null) ??
+          (_badges == null ? badgesResult.error?.message : null);
+      _isReputationLoading = false;
+    });
+  }
+
+  /// Puan özetinin son hâli: uçtan geldiyse o, gelmediyse profildeki kopya.
+  RatingSummary? get _effectiveRatingSummary =>
+      _ratingSummary ?? _candidate?.ratingSummary;
+
+  List<BBadge>? get _effectiveBadges => _badges ?? _candidate?.badges;
+
+  Future<_ReputationResult<T>> _capture<T>(Future<T> operation) async {
+    try {
+      return _ReputationResult.success(await operation);
+    } on ApiException catch (error) {
+      return _ReputationResult.failure(error);
+    }
   }
 
   Future<void> _loadAvailability() async {
@@ -73,10 +144,11 @@ abstract class BUserProfilePageModel extends State<BUserProfilePage> {
     });
 
     try {
-      final profile = await _userService.fetchPublicProfile(_profileUserId);
+      final candidate = await _profileService.fetchProfile(_profileUserId);
       if (!mounted) return;
       setState(() {
-        _profile = profile;
+        _candidate = candidate;
+        _profile = candidate.profile;
         _isLoading = false;
       });
     } on ApiException catch (error) {
@@ -202,4 +274,13 @@ abstract class BUserProfilePageModel extends State<BUserProfilePage> {
       ),
     );
   }
+}
+
+class _ReputationResult<T> {
+  const _ReputationResult.success(this.value) : error = null;
+
+  const _ReputationResult.failure(this.error) : value = null;
+
+  final T? value;
+  final ApiException? error;
 }

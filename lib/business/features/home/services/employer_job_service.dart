@@ -1,12 +1,14 @@
 import 'package:flutter/foundation.dart';
+import 'package:koala/business/features/home/models/b_assignment_timeline.dart';
+import 'package:koala/business/features/home/models/b_job_staffing.dart';
 import 'package:koala/business/features/home/models/create_job_request.dart';
 import 'package:koala/business/features/home/models/job_applicant.dart';
 import 'package:koala/business/features/home/models/b_payment_session.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
-import 'package:koala/employee/features/home/models/job_page.dart';
 import 'package:koala/employee/features/jobs/models/assignment.dart';
 import 'package:koala/employee/features/jobs/models/job_application.dart';
 import 'package:koala/product/network/api_client.dart';
+import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/network/api_paths.dart';
 
 /// İşveren ilan ve atama akışlarının uçları.
@@ -44,12 +46,13 @@ class EmployerJobService {
   /// İşverenin açtığı ilanlar, yeniden eskiye.
   ///
   /// Bireysel ve kurumsal ilanların ikisi de burada: backend `creatorId`'ye
-  /// bakıyor, dolayısıyla şirket kimliği geçmeye gerek yok.
-  Future<JobPage> fetchMyJobs({int page = 0, int size = defaultPageSize}) {
-    return _apiClient.get<JobPage>(
+  /// bakıyor, dolayısıyla şirket kimliği geçmeye gerek yok. Her satır ilan
+  /// özetiyle birlikte kontenjanı da taşıyor ([BJobListEntry]).
+  Future<BJobListPage> fetchMyJobs({int page = 0, int size = defaultPageSize}) {
+    return _apiClient.get<BJobListPage>(
       ApiPaths.myJobs,
       queryParameters: {'page': page, 'size': size},
-      parse: (data) => JobPage.fromJson(data! as Map<String, dynamic>),
+      parse: (data) => BJobListPage.fromJson(data! as Map<String, dynamic>),
     );
   }
 
@@ -113,33 +116,80 @@ class EmployerJobService {
   /// tarafı `AssignmentService` üzerinden bayraksız çağırıyor, burası
   /// `true` geçiyor ve sunucu `creatorId`'ye bakıyor.
   ///
-  /// İlan başına atama döndüren bir uç yok — `GET /jobs/{id}` atamayı
-  /// taşımıyor — o yüzden tek ilanın ataması bu listeden süzülüyor.
-  Future<AssignmentPage> fetchMyAssignments({
+  /// Tek ilanın ataması için asıl yol [fetchJobAssignments]; burası o ucu
+  /// tanımayan eski sunucuda [fetchAssignmentsForJob]'un düştüğü tarama.
+  Future<BEmployerAssignmentPage> fetchMyAssignments({
     int page = 0,
     int size = defaultPageSize,
   }) {
-    return _apiClient.get<AssignmentPage>(
+    return _apiClient.get<BEmployerAssignmentPage>(
       ApiPaths.myAssignments,
       queryParameters: {'asEmployer': true, 'page': page, 'size': size},
-      parse: (data) => AssignmentPage.fromJson(data! as Map<String, dynamic>),
+      parse: (data) =>
+          BEmployerAssignmentPage.fromJson(data! as Map<String, dynamic>),
     );
   }
+
+  /// Bir ilanın atamaları, `GET /jobs/{jobId}/assignments` (koala-
+  /// backend#282). Varsayılan sıralama `assignmentDateTime` azalan.
+  ///
+  /// Yalnızca ilan sahibi ya da şirket ilanının güncel yetkilisi okuyabiliyor;
+  /// başkası ve olmayan ilan aynı `404 JOB_NOT_FOUND` yanıtını alıyor.
+  Future<BEmployerAssignmentPage> fetchJobAssignments(
+    String jobId, {
+    int page = 0,
+    int size = defaultPageSize,
+  }) {
+    return _apiClient.get<BEmployerAssignmentPage>(
+      ApiPaths.assignmentsOfJob(jobId),
+      queryParameters: {'page': page, 'size': size},
+      parse: (data) =>
+          BEmployerAssignmentPage.fromJson(data! as Map<String, dynamic>),
+    );
+  }
+
+  /// Bu ucu tanımayan sunucunun yanıtı. `ErrorResult` kodu boşken kategori
+  /// adına düşüyor, `endpoint.not.found` anahtarı da aynı koda türüyor; iki
+  /// yoldan da aynı dize geliyor.
+  static const String _endpointNotFoundCode = 'ENDPOINT_NOT_FOUND';
 
   /// [jobId] için tüm atamaları sayfa sınırından bağımsız döndürür.
   ///
   /// Bir ilanda birden fazla çalışan olabilir; ödeme gibi atama-kimliğine
   /// bağlı işlemlerde ilk sayfadaki rastgele bir kaydı seçmek güvenli değildir.
-  Future<List<Assignment>> fetchAssignmentsForJob(String jobId) async {
-    final matches = <Assignment>[];
+  ///
+  /// Önce ilan başına uç deneniyor. Sunucu o ucu tanımıyorsa
+  /// (`404 ENDPOINT_NOT_FOUND`) işverenin bütün atamaları taranıp ilana göre
+  /// süzülüyor — bu ucun gelmesinden önceki yol. `JOB_NOT_FOUND` dâhil diğer
+  /// hatalar olduğu gibi yükseliyor: ilan gerçekten yoksa ya da yetki yoksa
+  /// tarama da bir şey bulmaz, hatayı gizlemenin anlamı yok.
+  Future<List<BEmployerAssignment>> fetchAssignmentsForJob(String jobId) async {
+    try {
+      return await _collectPages(
+        (pageNumber) => fetchJobAssignments(jobId, page: pageNumber),
+        (_) => true,
+      );
+    } on ApiException catch (error) {
+      if (error.errorCode != _endpointNotFoundCode) rethrow;
+    }
+
+    return _collectPages(
+      (pageNumber) => fetchMyAssignments(page: pageNumber),
+      (entry) => entry.assignment.job.id == jobId,
+    );
+  }
+
+  Future<List<BEmployerAssignment>> _collectPages(
+    Future<BEmployerAssignmentPage> Function(int pageNumber) fetchPage,
+    bool Function(BEmployerAssignment entry) matches,
+  ) async {
+    final collected = <BEmployerAssignment>[];
     var pageNumber = 0;
 
     while (true) {
-      final page = await fetchMyAssignments(page: pageNumber);
-      matches.addAll(
-        page.assignments.where((assignment) => assignment.job.id == jobId),
-      );
-      if (page.last) return matches;
+      final page = await fetchPage(pageNumber);
+      collected.addAll(page.entries.where(matches));
+      if (page.last) return collected;
       pageNumber++;
     }
   }

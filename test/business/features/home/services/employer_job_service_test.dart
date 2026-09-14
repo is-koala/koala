@@ -75,6 +75,43 @@ void main() {
 
       expect(api.requests.single.path, '/users/me/jobs');
       expect(page.jobs.single.id, 'job_1');
+      // Kontenjan alanı göndermeyen sunucuda bilinmiyor; "0/— dolu" yok.
+      expect(page.entries.single.staffing.isKnown, isFalse);
+    });
+
+    test('kontenjan alanları ilan özetiyle birlikte okunur', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {
+              'content': [
+                {
+                  'id': 'job_1',
+                  'title': 'Garson',
+                  'salary': 800,
+                  'status': 'OPEN',
+                  'headcount': 3,
+                  'hiredCount': 2,
+                  'category': {'id': 'c', 'code': 'WAITER', 'name': 'Garson'},
+                },
+              ],
+              'last': true,
+            },
+          },
+        ),
+      );
+
+      final page = await EmployerJobService.withClient(
+        api.client,
+      ).fetchMyJobs();
+
+      final staffing = page.entries.single.staffing;
+      expect(staffing.headcount, 3);
+      expect(staffing.hiredCount, 2);
+      expect(staffing.label, '2/3 dolu');
+      expect(staffing.isFull, isFalse);
     });
   });
 
@@ -326,7 +363,7 @@ void main() {
       final request = api.requests.single;
       expect(request.path, '/users/me/assignments');
       expect(request.queryParameters['asEmployer'], isTrue);
-      expect(page.assignments.single.job.id, 'job_1');
+      expect(page.entries.single.assignment.job.id, 'job_1');
     });
 
     test('tamamlama doğru yola gider', () async {
@@ -359,54 +396,211 @@ void main() {
       expect(assignment.status, AssignmentStatus.completed);
     });
 
-    test('bir ilanın atamalarını tüm sayfalardan eksiksiz toplar', () async {
+    Map<String, Object?> assignmentJson({
+      required String id,
+      required String jobId,
+      String workerName = 'Ayşe',
+      Map<String, Object?> extra = const {},
+    }) => {
+      'id': id,
+      'status': 'CONFIRMED',
+      'paymentStatus': 'PENDING_COLLECTION',
+      'worker': {
+        'id': 'worker-$id',
+        'firstName': workerName,
+        'lastName': 'Çalışan',
+      },
+      'job': {
+        'id': jobId,
+        'title': 'Garson',
+        'category': {'id': 'c', 'code': 'WAITER', 'name': 'Garson'},
+        'salary': 1500,
+      },
+      ...extra,
+    };
+
+    test(
+      'bir ilanın atamalarını ilan başına uçtan tüm sayfalarıyla toplar',
+      () async {
+        final api = FakeApi(
+          handler: (request) {
+            final page = request.queryParameters['page'];
+            return FakeApiResponse(
+              statusCode: 200,
+              body: {
+                'success': true,
+                'data': {
+                  'content': [
+                    assignmentJson(id: 'target-$page', jobId: 'job_1'),
+                  ],
+                  'page': page,
+                  'last': page == 1,
+                },
+              },
+            );
+          },
+        );
+
+        final entries = await EmployerJobService.withClient(
+          api.client,
+        ).fetchAssignmentsForJob('job_1');
+
+        expect(entries.map((entry) => entry.assignment.id), [
+          'target-0',
+          'target-1',
+        ]);
+        expect(entries.first.assignment.worker?.fullName, 'Ayşe Çalışan');
+        expect(api.requests.map((request) => request.path), [
+          '/jobs/job_1/assignments',
+          '/jobs/job_1/assignments',
+        ]);
+        expect(api.requests.map((request) => request.queryParameters['page']), [
+          0,
+          1,
+        ]);
+        // İlan başına uç zaten süzülmüş döndürüyor; asEmployer bayrağı yok.
+        expect(
+          api.requests.first.queryParameters.containsKey('asEmployer'),
+          isFalse,
+        );
+      },
+    );
+
+    test('zaman çizelgesi damgalarını atamayla birlikte okur', () async {
       final api = FakeApi(
-        handler: (request) {
-          final page = request.queryParameters['page'];
-          return FakeApiResponse(
-            statusCode: 200,
-            body: {
-              'success': true,
-              'data': {
-                'content': [
-                  {
-                    'id': page == 0 ? 'other-assignment' : 'target-$page',
-                    'status': 'CONFIRMED',
-                    'paymentStatus': 'PENDING_COLLECTION',
-                    'worker': {
-                      'id': 'worker-$page',
-                      'firstName': page == 0 ? 'Başka' : 'Ayşe',
-                      'lastName': 'Çalışan',
+        handler: (_) => FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {
+              'content': [
+                assignmentJson(
+                  id: 'asg_1',
+                  jobId: 'job_1',
+                  extra: {
+                    'application': {
+                      'id': 'app_1',
+                      'applicationDateTime': '2026-09-10T08:00:00Z',
+                      'answeredDateTime': '2026-09-10T09:30:00Z',
                     },
-                    'job': {
-                      'id': page == 0 ? 'other-job' : 'job_1',
-                      'title': 'Garson',
-                      'category': {
-                        'id': 'c',
-                        'code': 'WAITER',
-                        'name': 'Garson',
-                      },
-                      'salary': 1500,
+                    'createdAt': '2026-09-10T09:30:01Z',
+                    'confirmedAt': '2026-09-10T10:00:00Z',
+                    'paymentSecuredAt': '2026-09-10T11:00:00Z',
+                    'expectedCompletionDateTime': '2026-09-12T18:00:00Z',
+                    'payout': {
+                      'id': 'payout_1',
+                      'status': 'COMPLETED',
+                      'completedAt': '2026-09-13T12:00:00Z',
                     },
                   },
-                ],
-                'page': page,
-                'last': page == 1,
-              },
+                ),
+              ],
+              'last': true,
             },
-          );
-        },
+          },
+        ),
       );
 
-      final assignments = await EmployerJobService.withClient(
+      final entries = await EmployerJobService.withClient(
         api.client,
       ).fetchAssignmentsForJob('job_1');
 
-      expect(assignments.map((assignment) => assignment.id), ['target-1']);
-      expect(assignments.single.worker?.fullName, 'Ayşe Çalışan');
-      expect(api.requests.map((request) => request.queryParameters['page']), [
-        0,
-        1,
+      final timeline = entries.single.timeline;
+      expect(timeline.appliedAt, DateTime.utc(2026, 9, 10, 8));
+      expect(timeline.acceptedAt, DateTime.utc(2026, 9, 10, 9, 30));
+      expect(timeline.confirmedAt, DateTime.utc(2026, 9, 10, 10));
+      expect(timeline.paymentSecuredAt, DateTime.utc(2026, 9, 10, 11));
+      expect(timeline.expectedCompletionAt, DateTime.utc(2026, 9, 12, 18));
+      expect(timeline.payout?.completedAt, DateTime.utc(2026, 9, 13, 12));
+    });
+
+    // Eski sunucu ilan başına ucu tanımıyor; o zaman işverenin bütün
+    // atamaları taranıp ilana göre süzülüyor — bu ucun gelmesinden önceki yol.
+    test(
+      'ucu tanımayan sunucuda işveren atamalarını tarayıp ilana göre süzer',
+      () async {
+        final api = FakeApi(
+          handler: (request) {
+            if (request.path == '/jobs/job_1/assignments') {
+              return const FakeApiResponse(
+                statusCode: 404,
+                body: {
+                  'success': false,
+                  'message': 'Uç bulunamadı.',
+                  'errorCode': 'ENDPOINT_NOT_FOUND',
+                  'errorCategory': 'ENDPOINT_NOT_FOUND',
+                },
+              );
+            }
+            final page = request.queryParameters['page'];
+            return FakeApiResponse(
+              statusCode: 200,
+              body: {
+                'success': true,
+                'data': {
+                  'content': [
+                    assignmentJson(
+                      id: page == 0 ? 'other-assignment' : 'target-$page',
+                      jobId: page == 0 ? 'other-job' : 'job_1',
+                      workerName: page == 0 ? 'Başka' : 'Ayşe',
+                    ),
+                  ],
+                  'page': page,
+                  'last': page == 1,
+                },
+              },
+            );
+          },
+        );
+
+        final entries = await EmployerJobService.withClient(
+          api.client,
+        ).fetchAssignmentsForJob('job_1');
+
+        expect(entries.map((entry) => entry.assignment.id), ['target-1']);
+        expect(entries.single.assignment.worker?.fullName, 'Ayşe Çalışan');
+        expect(api.requests.map((request) => request.path), [
+          '/jobs/job_1/assignments',
+          '/users/me/assignments',
+          '/users/me/assignments',
+        ]);
+        expect(api.requests[1].queryParameters['asEmployer'], isTrue);
+        expect(api.requests.skip(1).map((r) => r.queryParameters['page']), [
+          0,
+          1,
+        ]);
+      },
+    );
+
+    // Aynı 404, farklı anlam: uç var ama ilan bu işverenin değil ya da yok.
+    // Tarama da bir şey bulmazdı; hata gizlenmeden yükseliyor.
+    test('JOB_NOT_FOUND yanıtında taramaya düşmez, hatayı yükseltir', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 404,
+          body: {
+            'success': false,
+            'message': 'İlan bulunamadı.',
+            'errorCode': 'JOB_NOT_FOUND',
+            'errorCategory': 'RESOURCE_NOT_FOUND',
+          },
+        ),
+      );
+
+      await expectLater(
+        EmployerJobService.withClient(
+          api.client,
+        ).fetchAssignmentsForJob('job_1'),
+        throwsA(
+          isA<ApiException>().having(
+            (error) => error.errorCode,
+            'errorCode',
+            'JOB_NOT_FOUND',
+          ),
+        ),
+      );
+      expect(api.requests.map((request) => request.path), [
+        '/jobs/job_1/assignments',
       ]);
     });
 

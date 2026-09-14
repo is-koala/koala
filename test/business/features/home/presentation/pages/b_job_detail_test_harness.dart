@@ -94,6 +94,7 @@ pumpPage(
   FutureOr<FakeApiResponse> Function(RequestOptions request)? chatHandler,
   Map<String, Object?>? currentUser,
   List<GoRoute> extraRoutes = const [],
+  Future<bool> Function(Uri url)? openExternalUrl,
 }) async {
   final detailApi = FakeApi(
     handler: (_) => const FakeApiResponse(
@@ -289,6 +290,7 @@ pumpPage(
         service: JobGalleryService.withClient(galleryApi.client),
       ),
       chatService: ChatService.withClient(chatApi.client),
+      openExternalUrl: openExternalUrl,
     ),
   );
   if (extraRoutes.isEmpty) {
