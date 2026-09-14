@@ -1,3 +1,4 @@
+import 'package:koala/employee/features/chat/models/messaging_availability.dart';
 import 'package:koala/employee/features/jobs/models/assignment.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
 
@@ -105,6 +106,15 @@ class MyJob {
   /// yazmak zorunda değil, o yüzden `null` olabilir.
   final String? rejectionReason;
 
+  /// İşverenle sohbet açılabilir mi.
+  ///
+  /// Sunucu ödeme emanete geçmeden sohbeti reddediyor
+  /// (`403 MESSAGING_PAYMENT_REQUIRED`); düğme onu beklemek yerine burada
+  /// gizleniyor ve yerine sebep yazılıyor. Başvurudan gelen satırlarda
+  /// varsayılan [MessagingAvailability.paymentRequired]: ortada atama yok,
+  /// dolayısıyla ödeme de yok.
+  final MessagingAvailability messaging;
+
   /// Atamanın id'si; kayıt bir başvurudan geliyorsa `null`.
   ///
   /// Atama uçları (`/job-assignments/...`) bunu istiyor; [id] ile aynı değeri
@@ -125,6 +135,7 @@ class MyJob {
     this.assignmentId,
     this.isPaymentSecured = false,
     this.rejectionReason,
+    this.messaging = MessagingAvailability.paymentRequired,
   });
 
   /// İş kapandı mı: üzerinde yapılacak bir şey kalmayan her satır.
@@ -201,6 +212,7 @@ class MyJob {
       status: status,
       assignmentId: assignment.id,
       isPaymentSecured: assignment.paymentStatus == PaymentStatus.heldInEscrow,
+      messaging: assignment.messaging,
     );
   }
 }

@@ -12,6 +12,7 @@ import 'package:koala/business/features/home/services/b_payment_browser.dart';
 import 'package:koala/business/features/home/services/b_payment_service.dart';
 import 'package:koala/business/features/home/services/employer_job_service.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
+import 'package:koala/employee/features/chat/services/chat_service.dart';
 import 'package:koala/employee/features/company_detail/services/company_service.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:koala/employee/features/jobs/services/assignment_service.dart';
@@ -68,6 +69,7 @@ Future<
     FakeApi assignmentApi,
     FakeApi employerApi,
     FakeApi paymentApi,
+    FakeApi chatApi,
     int Function() launches,
   })
 >
@@ -80,12 +82,15 @@ pumpPage(
   Completer<FakeApiResponse>? disputeResponse,
   bool settle = true,
   List<Map<String, Object?>> assignments = const [assignmentJson],
+  List<Map<String, Object?>> applicants = const [],
   String failureReason = 'Kart reddedildi.',
   Brightness brightness = Brightness.light,
   Completer<FakeApiResponse>? jobsResponse,
   FutureOr<FakeApiResponse> Function(RequestOptions request)? employerHandler,
   FutureOr<FakeApiResponse> Function(RequestOptions request)? assignmentHandler,
   FutureOr<FakeApiResponse> Function(RequestOptions request)? paymentHandler,
+  FutureOr<FakeApiResponse> Function(RequestOptions request)? chatHandler,
+  Map<String, Object?>? currentUser,
 }) async {
   final detailApi = FakeApi(
     handler: (_) => const FakeApiResponse(
@@ -107,9 +112,9 @@ pumpPage(
           },
         );
       }
-      return const FakeApiResponse(
+      return FakeApiResponse(
         statusCode: 200,
-        body: {'success': true, 'data': []},
+        body: {'success': true, 'data': applicants},
       );
     },
   );
@@ -139,6 +144,12 @@ pumpPage(
   );
   final assignmentApi = FakeApi(
     handler: (request) {
+      if (request.path == '/users/me' && currentUser != null) {
+        return FakeApiResponse(
+          statusCode: 200,
+          body: {'success': true, 'data': currentUser},
+        );
+      }
       if (assignmentHandler != null) return assignmentHandler(request);
       if (request.path.endsWith('/disputes') && disputeResponse != null) {
         return disputeResponse.future;
@@ -224,6 +235,21 @@ pumpPage(
       body: {'success': true, 'data': []},
     ),
   );
+  final chatApi = FakeApi(
+    handler: (request) =>
+        chatHandler?.call(request) ??
+        const FakeApiResponse(
+          statusCode: 200,
+          body: {'success': true, 'data': {}},
+        ),
+  );
+  // Sohbet açmak oturum sahibini istiyor; sayfa onu kendisi yüklemiyor.
+  final userProvider = UserProvider(
+    userService: UserService.withClient(assignmentApi.client),
+  );
+  if (currentUser != null) {
+    await tester.runAsync(userProvider.load);
+  }
   var launchCount = 0;
   final browser = BPaymentBrowser(
     supportsMode: (_) async => true,
@@ -248,11 +274,7 @@ pumpPage(
             companyService: CompanyService.withClient(assignmentApi.client),
           ),
         ),
-        ChangeNotifierProvider(
-          create: (_) => UserProvider(
-            userService: UserService.withClient(assignmentApi.client),
-          ),
-        ),
+        ChangeNotifierProvider.value(value: userProvider),
         ChangeNotifierProvider(create: (_) => BTalentPoolProvider()),
       ],
       child: BJobDetailPage(
@@ -265,6 +287,7 @@ pumpPage(
         galleryProvider: JobGalleryProvider(
           service: JobGalleryService.withClient(galleryApi.client),
         ),
+        chatService: ChatService.withClient(chatApi.client),
       ),
     ),
     brightness: brightness,
@@ -283,6 +306,7 @@ pumpPage(
     assignmentApi: assignmentApi,
     employerApi: employerApi,
     paymentApi: paymentApi,
+    chatApi: chatApi,
     launches: () => launchCount,
   );
 }

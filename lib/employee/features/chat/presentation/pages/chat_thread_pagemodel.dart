@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:koala/employee/features/chat/models/conversation.dart';
+import 'package:koala/employee/features/chat/models/messaging_availability.dart';
 import 'package:koala/employee/features/chat/presentation/providers/chat_thread_controller.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/widgets/app_toast.dart';
@@ -19,6 +20,10 @@ abstract class ChatThreadPagemodel<T extends StatefulWidget> extends State<T> {
 
   ChatThreadController? get providedThreadController;
 
+  /// Bu sayfa işveren kabuğunda mı. Ödeme kapısının metni tarafa göre
+  /// değişiyor: ödemeyi tamamlayacak olan işveren, bekleyen çalışan.
+  bool get asEmployer;
+
   late ChatThreadController thread;
   late bool _ownsThread;
   int _bindingGeneration = 0;
@@ -26,6 +31,26 @@ abstract class ChatThreadPagemodel<T extends StatefulWidget> extends State<T> {
   /// Oturum sahibi yüklenemediyse gösterilecek mesaj. Sohbetin kendi hataları
   /// [ChatThreadController] üzerinde.
   String? sessionError;
+
+  /// Mesaj kutusunun yerine geçecek açıklama; kutu açıksa `null`.
+  ///
+  /// Öncelik sırası: sunucunun az önce söylediği kapı ([ChatThreadController.gate])
+  /// > listeden gelen `closed` bayrağı > engel. Kapı listedeki bayraktan önce,
+  /// çünkü daha taze; engel en sonda, çünkü kapalı bir sohbette engelin bir
+  /// önemi kalmıyor.
+  String? get composerNotice {
+    final gate =
+        thread.gate ?? (chat.closed ? MessagingAvailability.closed : null);
+    if (gate != null) return gate.noteFor(asEmployer: asEmployer);
+    return thread.blockedMessage;
+  }
+
+  /// Kutunun kilitli olma sebebi kapı mı (ödeme/pencere), engel mi.
+  ///
+  /// Kapı bir hata değil, akışın beklenen durağı; şerit kırmızı engel
+  /// ikonuyla değil bilgi ikonuyla çiziliyor.
+  bool get isComposerGated =>
+      thread.gate != null || (chat.closed && thread.blockedMessage == null);
 
   @override
   void initState() {
@@ -135,7 +160,11 @@ abstract class ChatThreadPagemodel<T extends StatefulWidget> extends State<T> {
       return;
     }
 
-    final error = selectedThread.errorMessage;
+    // Kapı hatası sunucunun metniyle değil tarafa göre seçilen metinle
+    // gösteriliyor; şeritteki açıklamayla aynı cümle olsun.
+    final error =
+        selectedThread.gate?.noteFor(asEmployer: asEmployer) ??
+        selectedThread.errorMessage;
     if (error == null) return;
 
     // Metin alanı temizlenmiyor: kullanıcı yazdığını kaybetmesin.

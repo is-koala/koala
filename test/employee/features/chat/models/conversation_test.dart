@@ -81,6 +81,112 @@ void main() {
       expect(conversation.lastMessageAt, isNull);
       expect(conversation.timeString, '');
     });
+
+    // `kind`, `participants` ve `closed` backend PR 261 ile geldi; eski
+    // sunucunun göndermediği alanlar ikili ve açık sohbet demek.
+    test('kind gelmeyen sohbet ikili ve açık sayılır', () {
+      final conversation = Conversation.fromJson(
+        buildJson(),
+        currentUserId: 'worker-1',
+      );
+
+      expect(conversation.kind, ConversationKind.direct);
+      expect(conversation.isGroup, isFalse);
+      expect(conversation.participantCount, 0);
+      expect(conversation.closed, isFalse);
+    });
+
+    test('closed bayrağı okunur', () {
+      final conversation = Conversation.fromJson(
+        buildJson()..['closed'] = true,
+        currentUserId: 'worker-1',
+      );
+
+      expect(conversation.closed, isTrue);
+    });
+  });
+
+  group('Conversation.fromJson (grup)', () {
+    Map<String, dynamic> groupJson() => {
+      'id': 'conv-crew',
+      'jobId': 'job-1',
+      'jobTitle': 'Hafta Sonu Garson',
+      'kind': 'GROUP',
+      'employer': {
+        'id': 'employer-1',
+        'firstName': 'Kahve',
+        'lastName': 'Durağı',
+        'profilePictureUrl': 'https://example.com/employer.png',
+      },
+      'worker': null,
+      'participants': [
+        {'id': 'employer-1', 'firstName': 'Kahve', 'lastName': 'Durağı'},
+        {'id': 'officer-1', 'firstName': 'Yetkili', 'lastName': 'Kişi'},
+        {'id': 'worker-1', 'firstName': 'Yakup', 'lastName': 'Kahraman'},
+      ],
+      'lastMessageBody': 'Yarın 9\'da buluşalım.',
+      'unreadCount': 2,
+      'closed': false,
+    };
+
+    test('satır ilan başlığı ve katılımcı sayısıyla kurulur', () {
+      final conversation = Conversation.fromJson(
+        groupJson(),
+        currentUserId: 'worker-1',
+      );
+
+      expect(conversation.isGroup, isTrue);
+      expect(conversation.name, 'Hafta Sonu Garson');
+      expect(conversation.participantCount, 3);
+      expect(conversation.participantLabel, '3 katılımcı');
+      expect(conversation.avatar, 'HG');
+      expect(conversation.lastMessage, 'Yarın 9\'da buluşalım.');
+      expect(conversation.unreadCount, 2);
+    });
+
+    // İşveren kendi grubuna bakınca `worker` boş; eski mantık karşı tarafı
+    // boş bırakıp adı "" yapardı. Grupta karşı taraf kavramı hiç yok.
+    test('işveren bakınca da başlık ilan, karşı taraf yok', () {
+      final conversation = Conversation.fromJson(
+        groupJson(),
+        currentUserId: 'employer-1',
+      );
+
+      expect(conversation.name, 'Hafta Sonu Garson');
+      expect(conversation.counterpartId, '');
+      expect(conversation.avatarUrl, isNull);
+    });
+
+    // Presence kişiye bağlı; grupta kimseye abone olunmamalı.
+    test('çalışan bakınca da karşı taraf boş', () {
+      final conversation = Conversation.fromJson(
+        groupJson(),
+        currentUserId: 'worker-1',
+      );
+
+      expect(conversation.counterpartId, '');
+      expect(conversation.avatarUrl, isNull);
+    });
+
+    test('katılımcı listesi gelmezse sayı sıfır', () {
+      final conversation = Conversation.fromJson(
+        groupJson()..remove('participants'),
+        currentUserId: 'worker-1',
+      );
+
+      expect(conversation.participantCount, 0);
+    });
+
+    test('copyWith grup alanlarını korur', () {
+      final conversation = Conversation.fromJson(
+        groupJson()..['closed'] = true,
+        currentUserId: 'worker-1',
+      ).copyWith(unreadCount: 0);
+
+      expect(conversation.isGroup, isTrue);
+      expect(conversation.participantCount, 3);
+      expect(conversation.closed, isTrue);
+    });
   });
 
   group('Conversation.initialsOf', () {

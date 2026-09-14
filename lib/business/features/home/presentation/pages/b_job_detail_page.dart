@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:koala/employee/features/chat/models/messaging_availability.dart';
+import 'package:koala/employee/features/chat/presentation/widgets/messaging_gate_note.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
 import 'package:koala/business/features/home/models/b_job_post.dart';
 import 'package:koala/business/features/home/models/b_payment_attempt.dart';
@@ -63,6 +65,7 @@ class BJobDetailPage extends StatefulWidget {
     this.paymentService,
     this.paymentBrowser,
     this.galleryProvider,
+    this.chatService,
   });
 
   final String jobId;
@@ -72,6 +75,9 @@ class BJobDetailPage extends StatefulWidget {
   final BPaymentService? paymentService;
   final BPaymentBrowser? paymentBrowser;
   final JobGalleryProvider? galleryProvider;
+
+  /// Testler için; verilmezse üretimdeki tekil servis.
+  final ChatService? chatService;
 
   @override
   State<BJobDetailPage> createState() => _BJobDetailPageState();
@@ -1185,26 +1191,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
               ),
             ),
           ],
-          const SizedBox(height: AppSizes.space),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              key: ValueKey('applicant-chat-${applicant.user.id}'),
-              onPressed: _openingChatUserId != null
-                  ? null
-                  : () => _openChat(applicant),
-              icon: _openingChatUserId == applicant.user.id
-                  ? const SizedBox.square(
-                      dimension: AppSizes.iconSmall,
-                      child: CircularProgressIndicator(
-                        strokeWidth: BJobDetailPageModel._spinnerStroke,
-                      ),
-                    )
-                  : const AppIcon(AppIcons.chat, size: AppSizes.iconSmall),
-              label: const Text('Mesaj Gönder'),
-            ),
-          ),
-          const SizedBox(height: AppSizes.spaceSmall),
+          ..._applicantMessaging(context, applicant),
           if (isAccepted)
             _badge(
               context,
@@ -1239,6 +1226,75 @@ class _BJobDetailPageState extends BJobDetailPageModel {
         ],
       ),
     );
+  }
+
+  /// Adayla mesajlaşma: düğme ya da düğmenin yerine geçen açıklama.
+  ///
+  /// Kapı adayın bu ilandaki atamasından okunuyor (`messagingAvailable`).
+  /// Atama yoksa — başvuru henüz kabul edilmemiş ya da çalışan onaylamamış —
+  /// ödeme de yok, kapı kapalı. Ödeme bekleniyorsa ve atama ödenebilir
+  /// durumdaysa açıklamanın yanında ödeme akışına kısayol var; pencere
+  /// kapandıysa yalnızca "Bu sohbet kapandı". Atama listesi ilk kez
+  /// yüklenirken hiçbir şey çizilmiyor: bir an "ödeme bekleniyor" deyip
+  /// hemen düğmeye dönmek yanlış bir izlenim bırakırdı.
+  List<Widget> _applicantMessaging(
+    BuildContext context,
+    JobApplicant applicant,
+  ) {
+    if (_isAssignmentLoading && !_hasLoadedAssignments) return const [];
+
+    final assignment = _assignmentOf(applicant);
+    final messaging =
+        assignment?.messaging ?? MessagingAvailability.paymentRequired;
+    final note = messaging.noteFor(asEmployer: true);
+
+    if (note == null) {
+      return [
+        const SizedBox(height: AppSizes.space),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            key: ValueKey('applicant-chat-${applicant.user.id}'),
+            onPressed: _openingChatUserId != null
+                ? null
+                : () => _openChat(applicant),
+            icon: _openingChatUserId == applicant.user.id
+                ? const SizedBox.square(
+                    dimension: AppSizes.iconSmall,
+                    child: CircularProgressIndicator(
+                      strokeWidth: BJobDetailPageModel._spinnerStroke,
+                    ),
+                  )
+                : const AppIcon(AppIcons.chat, size: AppSizes.iconSmall),
+            label: const Text('Mesaj Gönder'),
+          ),
+        ),
+        const SizedBox(height: AppSizes.spaceSmall),
+      ];
+    }
+
+    final canPay =
+        assignment != null &&
+        messaging.needsPayment &&
+        assignment.needsEmployerPayment;
+
+    return [
+      const SizedBox(height: AppSizes.space),
+      MessagingGateNote(
+        key: ValueKey('applicant-chat-note-${applicant.user.id}'),
+        message: note,
+        action: canPay
+            ? TextButton(
+                key: ValueKey('applicant-pay-${applicant.user.id}'),
+                onPressed: _isStartingPayment
+                    ? null
+                    : () => _openPaymentFor(assignment),
+                child: const Text('Ödemeye Git'),
+              )
+            : null,
+      ),
+      const SizedBox(height: AppSizes.spaceSmall),
+    ];
   }
 
   /// Yanıtlanamayan bir başvurunun durumunu yazan nötr rozet.

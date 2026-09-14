@@ -14,6 +14,8 @@ Map<String, dynamic> assignmentBody({
     'serviceFeeAmount': '101.25',
     'employerTotal': '1451.25',
   },
+  bool? messagingAvailable,
+  String? messagingAvailableReason,
 }) {
   return {
     'id': 'asg_1',
@@ -24,6 +26,8 @@ Map<String, dynamic> assignmentBody({
     'workerPayout': workerPayout,
     'totalCharged': 1500,
     'pricing': pricing,
+    'messagingAvailable': ?messagingAvailable,
+    'messagingAvailableReason': ?messagingAvailableReason,
     'job': {
       'id': 'job_1',
       'title': 'Düğün Fotoğrafçısı',
@@ -140,6 +144,49 @@ void main() {
 
       expect(assignment.workerPayout, isNull);
     });
+
+    // Mesajlaşma kapısı sunucunun iki alanından okunuyor; alanlar yoksa
+    // (backend PR 261 öncesi sunucu) kapı kapalı sayılmalı ki düğme
+    // görünmesin.
+    test('mesajlaşma kapısı DTO alanlarından okunur', () {
+      expect(
+        Assignment.fromJson(
+          assignmentBody(
+            messagingAvailable: true,
+            messagingAvailableReason: 'AVAILABLE',
+          ),
+        ).messaging.isAvailable,
+        isTrue,
+      );
+      expect(
+        Assignment.fromJson(
+          assignmentBody(
+            paymentStatus: 'PENDING_COLLECTION',
+            messagingAvailable: false,
+            messagingAvailableReason: 'PAYMENT_REQUIRED',
+          ),
+        ).messaging.needsPayment,
+        isTrue,
+      );
+      expect(
+        Assignment.fromJson(
+          assignmentBody(
+            status: 'CANCELLED',
+            paymentStatus: 'REFUNDED',
+            messagingAvailable: false,
+            messagingAvailableReason: 'CLOSED',
+          ),
+        ).messaging.isClosed,
+        isTrue,
+      );
+    });
+
+    test('eski sunucu alanları göndermezse kapı kapalı', () {
+      final assignment = Assignment.fromJson(assignmentBody());
+
+      expect(assignment.messaging.isAvailable, isFalse);
+      expect(assignment.messaging.needsPayment, isTrue);
+    });
   });
 
   group('AssignmentPage', () {
@@ -170,6 +217,44 @@ void main() {
       final myJob = MyJob.fromAssignment(Assignment.fromJson(assignmentBody()));
 
       expect(myJob.jobId, 'job_1');
+    });
+
+    test('mesajlaşma kapısını atamadan taşır', () {
+      expect(
+        MyJob.fromAssignment(
+          Assignment.fromJson(
+            assignmentBody(
+              messagingAvailable: true,
+              messagingAvailableReason: 'AVAILABLE',
+            ),
+          ),
+        ).messaging.isAvailable,
+        isTrue,
+      );
+      expect(
+        MyJob.fromAssignment(
+          Assignment.fromJson(assignmentBody()),
+        ).messaging.isAvailable,
+        isFalse,
+      );
+    });
+
+    // Başvurudan gelen satırın ataması yok; ödeme de yok. Kapı kapalı
+    // başlamalı ki eski sunucuya karşı da düğme çıkmasın.
+    test('başvurudan kurulan satırda kapı kapalı başlar', () {
+      const myJob = MyJob(
+        id: 'app_1',
+        jobId: 'job_1',
+        title: 'Garson',
+        company: 'Kafe',
+        description: '',
+        date: '',
+        price: 100,
+        status: MyJobStatus.pending,
+      );
+
+      expect(myJob.messaging.isAvailable, isFalse);
+      expect(myJob.messaging.needsPayment, isTrue);
     });
 
     MyJob mapWith({required String status, String payment = 'HELD_IN_ESCROW'}) {

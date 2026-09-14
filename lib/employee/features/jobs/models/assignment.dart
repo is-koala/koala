@@ -1,3 +1,4 @@
+import 'package:koala/employee/features/chat/models/messaging_availability.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/product/models/pricing_breakdown.dart';
@@ -71,6 +72,7 @@ class Assignment {
     this.workerPayout,
     this.totalCharged,
     this.pricing,
+    this.messaging = MessagingAvailability.paymentRequired,
   });
 
   final String id;
@@ -97,6 +99,13 @@ class Assignment {
   /// İlan yayımlanırken backend'in atamaya sabitlediği fiyat snapshot'ı.
   /// Ödeme onayı bu değeri gösterir; güncel komisyon tarifesiyle yenilenmez.
   final PricingBreakdown? pricing;
+
+  /// Bu atama üzerinden sohbet açılabilir mi ve açılamıyorsa neden.
+  ///
+  /// `messagingAvailable` + `messagingAvailableReason` alanlarından geliyor.
+  /// Alanlar yoksa kapı kapalı sayılıyor: eski sunucu da ödeme öncesi sohbeti
+  /// reddediyor, düğme onu önceden gizliyor.
+  final MessagingAvailability messaging;
 
   /// İş bitti ve para çalışana geçti mi.
   bool get isPaidOut =>
@@ -130,6 +139,7 @@ class Assignment {
         final Map<String, dynamic> value => PricingBreakdown.fromJson(value),
         _ => throw const FormatException('pricing alanı geçersiz.'),
       },
+      messaging: MessagingAvailability.fromJson(json),
     );
   }
 

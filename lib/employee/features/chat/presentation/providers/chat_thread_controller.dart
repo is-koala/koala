@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:koala/employee/features/chat/models/message.dart';
+import 'package:koala/employee/features/chat/models/messaging_availability.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/network/realtime_client.dart';
@@ -37,6 +38,7 @@ class ChatThreadController extends ChangeNotifier {
   bool _isCounterpartTyping = false;
   String? _errorMessage;
   String? _blockedMessage;
+  MessagingAvailability? _gate;
   String? _currentUserId;
 
   StreamSubscription<RealtimeEvent>? _events;
@@ -69,6 +71,20 @@ class ChatThreadController extends ChangeNotifier {
   /// mesajlaşamazsınız." diyor ve sebebini bilen taraf o.
   String? get blockedMessage => _blockedMessage;
 
+  /// Sunucunun mesajlaşma kapısı sohbeti kapattıysa sebebi, değilse `null`.
+  ///
+  /// `403 MESSAGING_PAYMENT_REQUIRED` (işveren ödemeyi tamamlamadı) ve
+  /// `409 MESSAGING_WINDOW_CLOSED` (iptal/ret/iade ya da 7 günlük pencere
+  /// doldu). Engelden ayrı tutuluyor: engelin metni sunucudan geliyor ve
+  /// kırmızı; kapının metni tarafa göre değişiyor ve bir hata değil, akışın
+  /// beklenen bir durağı. Metni sayfa seçiyor
+  /// (`MessagingAvailability.noteFor`), çünkü işveren mi çalışan mı
+  /// olduğunu bilen o.
+  ///
+  /// Başarılı bir yükleme kapıyı temizliyor: ödeme geldiyse ekran yeniden
+  /// açılınca kutu geri gelmeli.
+  MessagingAvailability? get gate => _gate;
+
   /// Sayfa atıldıktan sonra gelen geç yanıtlar dinleyicileri uyandırmamalı.
   ///
   /// Navbar'da sekmeler arasında hızlıca gezinirken `PageView` ekranı
@@ -95,6 +111,7 @@ class ChatThreadController extends ChangeNotifier {
       _messages = page.messages;
       _errorMessage = null;
       _blockedMessage = null;
+      _gate = null;
       _listenToRealtime();
 
       // Okundu işaretlemek listedeki sayacı sıfırlıyor; başarısız olması
@@ -107,7 +124,7 @@ class ChatThreadController extends ChangeNotifier {
     } on ApiException catch (error) {
       if (_disposed || generation != _loadGeneration) return;
       _errorMessage = error.message;
-      _captureBlock(error);
+      _captureLock(error);
     } finally {
       if (!_disposed && generation == _loadGeneration) {
         _isLoading = false;
@@ -116,15 +133,29 @@ class ChatThreadController extends ChangeNotifier {
     }
   }
 
-  /// Engel kaynaklı yetki reddini yakalar.
+  /// Mesaj kutusunu kilitleyen hataları yakalar: önce kapı, sonra engel.
   ///
-  /// Ayrım önemli: [ApiErrorType.unauthenticated] oturumun bitmesi demek,
-  /// `AuthInterceptor` onu yenilemeye çalışıyor ve başaramazsa oturumu
-  /// kapatıyor; [ApiErrorType.forbidden] ise engel — kullanıcı oturumdan
-  /// atılmamalı, mesaj kutusu kilitlenmeli.
+  /// **Kapı `errorCode` ile tanınıyor**, kategoriyle değil: ödeme kapısı da
+  /// engel de `403` + `ACCESS_DENIED` olarak geliyor ve ikisini ayıran tek
+  /// alan kod. Kapı kodu geldiyse [gate] doluyor, [blockedMessage] boş
+  /// kalıyor; ekran ödeme/pencere metnini yazıyor ve kırmızı engel şeridini
+  /// çizmiyor.
   ///
-  /// Tipe bakılıyor, `statusCode`'a değil: ayrımın kaynağı artık sunucunun
-  /// `errorCategory` alanı (`ACCESS_DENIED`), durum kodu yalnızca yedek.
+  /// Kapı değilse engel ayrımı önemli: [ApiErrorType.unauthenticated]
+  /// oturumun bitmesi demek, `AuthInterceptor` onu yenilemeye çalışıyor ve
+  /// başaramazsa oturumu kapatıyor; [ApiErrorType.forbidden] ise engel —
+  /// kullanıcı oturumdan atılmamalı, mesaj kutusu kilitlenmeli. Tipe
+  /// bakılıyor, `statusCode`'a değil: ayrımın kaynağı sunucunun
+  /// `errorCategory` alanı, durum kodu yalnızca yedek.
+  void _captureLock(ApiException error) {
+    final gate = MessagingAvailability.fromErrorCode(error.errorCode);
+    if (gate != null) {
+      _gate = gate;
+      return;
+    }
+    _captureBlock(error);
+  }
+
   void _captureBlock(ApiException error) {
     if (error.type != ApiErrorType.forbidden) return;
     _blockedMessage = error.message;
@@ -152,8 +183,15 @@ class ChatThreadController extends ChangeNotifier {
       _appendMessage(message);
       return true;
     } on ApiException catch (error) {
-      _errorMessage = error.message;
-      _captureBlock(error);
+      final gate = MessagingAvailability.fromErrorCode(error.errorCode);
+      if (gate != null) {
+        // Kapı bir hata değil, kutunun kapanma sebebi: mesaj listesi hata
+        // durumuna düşmemeli, kutunun yerine açıklama gelmeli.
+        _gate = gate;
+      } else {
+        _errorMessage = error.message;
+        _captureBlock(error);
+      }
       return false;
     } finally {
       _isSending = false;

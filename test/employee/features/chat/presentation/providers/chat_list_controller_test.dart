@@ -138,6 +138,103 @@ void main() {
 
       expect(realtime.presenceStreams.keys, containsAll(['u1', 'u2']));
     });
+
+    // Grubun tek bir karşı tarafı yok; kimseye abone olunmamalı ve toplu
+    // presence isteğine grup için kimlik gitmemeli.
+    test('grup sohbeti için presence aboneliği açılmaz', () async {
+      final controller = build([
+        {
+          'id': 'crew',
+          'jobId': 'job_1',
+          'jobTitle': 'Garson',
+          'kind': 'GROUP',
+          'employer': {'id': _other, 'firstName': 'Ayşe', 'lastName': 'Y'},
+          'worker': null,
+          'participants': [
+            {'id': _other, 'firstName': 'Ayşe', 'lastName': 'Y'},
+            {'id': _me, 'firstName': 'Yakup', 'lastName': 'K'},
+          ],
+          'closed': false,
+        },
+      ]);
+
+      await controller.load(currentUserId: _me);
+
+      expect(controller.conversations.single.isGroup, isTrue);
+      expect(controller.conversations.single.participantCount, 2);
+      expect(realtime.presenceStreams, isEmpty);
+    });
+  });
+
+  group('refresh', () {
+    test('ilk yükleme olmadan ağa çıkmaz', () async {
+      var requestCount = 0;
+      final controller = ChatListController(
+        chatService: ChatService.withClient(
+          FakeApi(
+            handler: (_) {
+              requestCount++;
+              return const FakeApiResponse(
+                statusCode: 200,
+                body: {
+                  'success': true,
+                  'data': {'content': []},
+                },
+              );
+            },
+          ).client,
+        ),
+        realtimeClient: FakeRealtimeClient(),
+      );
+
+      await controller.refresh();
+
+      expect(requestCount, 0);
+    });
+
+    // Ödemeyle kurulan grup için canlı olay yok; sekmeye dönüşte yeniden
+    // çekilince liste yeni satırı görmeli, yükleme göstergesi açılmamalı.
+    test('listeyi yükleme göstergesi açmadan yeniden çeker', () async {
+      var listRequests = 0;
+      var loadingSeen = false;
+      final api = FakeApi(
+        handler: (options) {
+          if (options.path == '/presence/lookup') {
+            return const FakeApiResponse(
+              statusCode: 200,
+              body: {'success': true, 'data': []},
+            );
+          }
+          listRequests++;
+          return FakeApiResponse(
+            statusCode: 200,
+            body: {
+              'success': true,
+              'data': {
+                'content': [
+                  conversationBody(id: 'c1'),
+                  if (listRequests > 1) conversationBody(id: 'crew'),
+                ],
+              },
+            },
+          );
+        },
+      );
+      final controller = ChatListController(
+        chatService: ChatService.withClient(api.client),
+        realtimeClient: FakeRealtimeClient(),
+      );
+      await controller.load(currentUserId: _me);
+      controller.addListener(() {
+        if (controller.isLoading) loadingSeen = true;
+      });
+
+      await controller.refresh();
+
+      expect(listRequests, 2);
+      expect(controller.conversations.map((c) => c.id), ['c1', 'crew']);
+      expect(loadingSeen, isFalse);
+    });
   });
 
   group('canlı mesaj', () {

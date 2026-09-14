@@ -34,7 +34,7 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
   BPaymentBrowser get _paymentBrowser =>
       widget.paymentBrowser ?? BPaymentBrowser();
 
-  ChatService get _chatService => ChatService();
+  ChatService get _chatService => widget.chatService ?? ChatService();
 
   /// Mesai oturumlarını iki taraf da okuyabiliyor; sohbette olduğu gibi tek
   /// servis iki uygulamaya hizmet ediyor.
@@ -747,10 +747,61 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
   /// Tamamlama onayı. Açık mesai varsa uyarı metni farklı.
   Future<bool?> _confirmCompletion(Assignment assignment);
 
+  /// Adayın bu ilandaki ataması; yoksa `null`.
+  ///
+  /// Aynı çalışanın birden fazla ataması olabilir (iptal sonrası yeniden
+  /// kabul); sunucunun `closed` hesabıyla aynı seçim yapılıyor: en yeni
+  /// atama tarihi olan. Tarihsiz kayıt en eski sayılıyor.
+  Assignment? _assignmentOf(JobApplicant applicant) {
+    Assignment? latest;
+    for (final assignment in _assignments) {
+      if (assignment.worker?.id != applicant.user.id) continue;
+      final current = latest;
+      if (current == null || _isNewer(assignment, current)) latest = assignment;
+    }
+    return latest;
+  }
+
+  static bool _isNewer(Assignment candidate, Assignment current) {
+    final candidateDate = candidate.assignmentDateTime;
+    final currentDate = current.assignmentDateTime;
+    if (candidateDate == null) return false;
+    if (currentDate == null) return true;
+    return candidateDate.isAfter(currentDate);
+  }
+
+  /// Başvuran kartındaki "Ödemeye Git" kısayolu.
+  ///
+  /// Ödeme akışı ekranda seçili atama üzerinden yürüyor; kart başka bir
+  /// çalışanınsa önce o atama seçiliyor. Snapshot doğrulanmadan ödeme
+  /// başlatılmıyor ([_canStartPayment]); o durumda sessiz kalmak yerine
+  /// kullanıcıya söyleniyor.
+  Future<void> _openPaymentFor(Assignment assignment) async {
+    if (_assignment?.id != assignment.id) {
+      await _selectAssignment(assignment.id);
+      if (!mounted || _assignment?.id != assignment.id) return;
+    }
+
+    if (!_canStartPayment) {
+      AppToast.info(
+        context,
+        'Ödeme durumu doğrulanıyor; birazdan tekrar dene.',
+      );
+      return;
+    }
+
+    await _requestPayment();
+  }
+
   /// Başvuru kartından, seçilen adayla bu ilana bağlı sohbeti açar.
   ///
   /// Sunucu aynı ilan/çalışan çifti için mevcut konuşmayı döndürdüğünden bu
   /// buton güvenle tekrar kullanılabilir; kopya sohbet oluşmaz.
+  ///
+  /// Sunucu kapıyı kapattıysa (`403 MESSAGING_PAYMENT_REQUIRED`,
+  /// `409 MESSAGING_WINDOW_CLOSED`) düğmenin yerine yazılan metnin aynısı
+  /// gösteriliyor ve atama yeniden çekiliyor: düğme görünüyorsa elimizdeki
+  /// atama bayat demek.
   Future<void> _openChat(JobApplicant applicant) async {
     final currentUser = context.read<UserProvider>().user;
     if (currentUser == null || _openingChatUserId != null) return;
@@ -765,7 +816,14 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
       if (!mounted) return;
       await context.push('/business/chat-detail', extra: conversation);
     } on ApiException catch (error) {
-      if (mounted) AppToast.error(context, error.message);
+      if (!mounted) return;
+      final gate = MessagingAvailability.fromErrorCode(error.errorCode);
+      if (gate == null) {
+        AppToast.error(context, error.message);
+        return;
+      }
+      AppToast.error(context, gate.noteFor(asEmployer: true) ?? error.message);
+      await _loadAssignment();
     } finally {
       if (mounted) setState(() => _openingChatUserId = null);
     }

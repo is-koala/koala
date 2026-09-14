@@ -170,7 +170,7 @@ class ChatListController extends ChangeNotifier {
     // Yeni bir sohbetin ilk mesajı: liste onu henüz tanımıyor, tazelenmesi
     // gerekiyor.
     if (index == -1) {
-      unawaited(_reloadQuietly());
+      unawaited(refresh());
       return;
     }
 
@@ -198,7 +198,15 @@ class ChatListController extends ChangeNotifier {
     _safeNotify();
   }
 
-  Future<void> _reloadQuietly() async {
+  /// Listeyi yükleme göstergesi açmadan yeniden çeker.
+  ///
+  /// İki çağıranı var: kişisel kuyruktan tanınmayan bir sohbete mesaj
+  /// düştüğünde ve sohbet sekmesi yeniden görünür olduğunda. İkincisi
+  /// ödemeyle kurulan ilan grubu için: sunucu grup kurulunca canlı olay
+  /// göndermiyor, grup ilk mesaja kadar ancak yeniden çekilince listeye
+  /// düşüyor. İlk yükleme henüz olmadıysa (oturum sahibi bilinmiyor) hiçbir
+  /// şey yapmıyor; onu [load] yapacak.
+  Future<void> refresh() async {
     final userId = _currentUserId;
     if (userId == null) return;
 

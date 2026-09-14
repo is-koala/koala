@@ -6,6 +6,7 @@ import 'package:koala/employee/features/chat/presentation/widgets/blocked_notice
 import 'package:koala/employee/features/chat/presentation/widgets/chat_app_bar.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/message_bubble.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/message_textfield.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
@@ -47,10 +48,21 @@ class _BChatPageState extends BChatPagemodel {
     );
   }
 
-  /// Mesaj kutusu — sohbet engelliyse yerine [BlockedNotice].
+  /// Mesaj kutusu — sohbet kapalı ya da engelliyse yerine [BlockedNotice].
+  ///
+  /// Kapı (ödeme bekleniyor / pencere kapandı) bilgi ikonuyla, engel kırmızı
+  /// engel ikonuyla çiziliyor; ikisi de yazmayı kapatıyor.
   Widget _composer() {
-    final blockedMessage = thread.blockedMessage;
-    if (blockedMessage != null) return BlockedNotice(message: blockedMessage);
+    final notice = composerNotice;
+    if (notice != null) {
+      return isComposerGated
+          ? BlockedNotice(
+              message: notice,
+              icon: AppIcons.info,
+              iconColor: context.textSecondary,
+            )
+          : BlockedNotice(message: notice);
+    }
 
     return MessageTextField(
       controller: messageController,

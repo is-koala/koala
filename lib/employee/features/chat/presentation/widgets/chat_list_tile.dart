@@ -45,13 +45,7 @@ class ChatListTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    chat.name,
-                    style: context.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  _title(context),
                   const SizedBox(height: AppSizes.spaceTiny),
                   Text(
                     chat.lastMessage ?? '',
@@ -75,6 +69,37 @@ class ChatListTile extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  /// Satır başlığı: ikili sohbette karşı tarafın adı, grupta ilan başlığı
+  /// ve yanında katılımcı sayısı.
+  ///
+  /// Sayı başlığın içine değil yanına yazılıyor: uzun bir ilan adı üç
+  /// noktayla kısalırken sayı kaybolmasın.
+  Widget _title(BuildContext context) {
+    return Row(
+      children: [
+        Flexible(
+          child: Text(
+            chat.name,
+            style: context.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        if (chat.isGroup) ...[
+          const SizedBox(width: AppSizes.spaceTiny),
+          Text(
+            chat.participantLabel,
+            key: ValueKey('chat-participants-${chat.id}'),
+            style: context.textTheme.labelMedium?.copyWith(
+              color: context.textTertiary,
+            ),
+          ),
+        ],
+      ],
     );
   }
 
