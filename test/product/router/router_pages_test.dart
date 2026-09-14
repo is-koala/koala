@@ -44,6 +44,16 @@ void main() {
     expect(gallery.single.pageBuilder, isNotNull);
   });
 
+  test('şirket adresi shell dışında, kendi rotasıyla açılıyor', () {
+    final address = allGoRoutes(
+      RouterManager.router.configuration.routes,
+    ).where((route) => route.path == '/business/company-address');
+
+    // Harita ekranı navbar'ın üstünü kaplamalı (is-koala/koala#184).
+    expect(address, hasLength(1));
+    expect(address.single.pageBuilder, isNotNull);
+  });
+
   test('şirket yetkilileri shell dışında, kendi rotasıyla açılıyor', () {
     final contacts = allGoRoutes(
       RouterManager.router.configuration.routes,

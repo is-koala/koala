@@ -59,10 +59,15 @@ class BCompanyService {
 
   /// Şirketi günceller ve yeni hâlini döndürür.
   ///
-  /// Sunucu yalnızca bu beş alanı kabul ediyor (`UpdateCompanyRequestDto`):
-  /// vergi numarası, adres, tür ve logo kurulduktan sonra değiştirilemiyor.
-  /// Verilmeyen alan gövdeye hiç konmuyor; boş metin göndermek alanı
-  /// silmek anlamına gelirdi.
+  /// Sunucu beş metin alanını ve isteğe bağlı adresi kabul ediyor
+  /// (`UpdateCompanyRequestDto`); vergi numarası, tür ve logo kurulduktan
+  /// sonra buradan değiştirilemiyor. Verilmeyen alan gövdeye hiç konmuyor;
+  /// boş metin göndermek alanı silmek anlamına gelirdi.
+  ///
+  /// [address] `POST /companies` ile aynı `AddressWriteDto` biçiminde gider
+  /// (koala-backend#288): sunucu yeni bir adres kaydı açıp şirketi ona
+  /// bağlıyor, yanıttaki `address` yeni kayıt. Yalnızca `ADMIN` çağırabilir;
+  /// diğer yetkililere `404 USER_NOT_ASSOCIATED_WITH_COMPANY` dönüyor.
   Future<Company> updateCompany(
     String companyId, {
     String? name,
@@ -70,6 +75,7 @@ class BCompanyService {
     String? phoneNumber,
     String? website,
     String? description,
+    AddressWrite? address,
   }) {
     return _apiClient.patch<Company>(
       ApiPaths.company(companyId),
@@ -79,6 +85,7 @@ class BCompanyService {
         'phoneNumber': ?phoneNumber,
         'website': ?website,
         'description': ?description,
+        'address': ?address?.toJson(),
       },
       parse: (data) => Company.fromJson(data! as Map<String, dynamic>),
     );

@@ -20,17 +20,22 @@ import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/button_navbar.dart';
 import 'package:koala/product/widgets/empty_state.dart';
+import 'package:koala/product/widgets/locked_field.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
 import 'package:provider/provider.dart';
 
 /// Firma bilgilerini düzenleme ekranı.
 ///
-/// Backend `PATCH /companies/{id}` yalnızca **beş** alan kabul ediyor
+/// Backend `PATCH /companies/{id}` beş metin alanını kabul ediyor
 /// (`UpdateCompanyRequestDto`): ad, e-posta, telefon, website, açıklama.
-/// Vergi numarası, adres, tür ve logo şirket kurulurken belirleniyor ve
-/// sonradan değiştirilemiyor — o alanlar ekranda duruyor ama kapalı, çünkü
-/// işverenin kayıtlı değeri görmesi gerekiyor.
+/// Adres de aynı uçtan ama ayrı bir yoldan gidiyor: *Adresi değiştir*
+/// harita-öncelikli ekranı (`BCompanyAddressPage`) açıyor ve kayıt orada
+/// bitiyor (is-koala/koala#184). Yalnızca şirketin `ADMIN` yetkilisi
+/// değiştirebiliyor; diğer yetkililer adresi salt okunur görüyor.
+/// Vergi numarası şirket kurulurken belirleniyor ve sonradan
+/// değiştirilemiyor — alan ekranda duruyor ama kapalı, çünkü işverenin
+/// kayıtlı değeri görmesi gerekiyor.
 class BCompanyInfoPage extends StatefulWidget {
   const BCompanyInfoPage({super.key});
 
@@ -61,9 +66,6 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
   final _websiteController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _taxNumberController = TextEditingController();
-  final _displayAddressController = TextEditingController();
-  final _districtController = TextEditingController();
-  final _cityController = TextEditingController();
 
   /// Alanların hangi şirketten dolduğu. Sağlayıcı sonradan veriyi getirince
   /// alanlar bir kez doldurulsun, kullanıcının yazdığı üstüne yazılmasın.
@@ -105,9 +107,6 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
     _websiteController.dispose();
     _descriptionController.dispose();
     _taxNumberController.dispose();
-    _displayAddressController.dispose();
-    _districtController.dispose();
-    _cityController.dispose();
     super.dispose();
   }
 
@@ -122,9 +121,6 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
     _websiteController.text = company.website ?? '';
     _descriptionController.text = company.description ?? '';
     _taxNumberController.text = company.taxNumber ?? '';
-    _displayAddressController.text = company.address?.displayAddress ?? '';
-    _districtController.text = company.address?.districtName ?? '';
-    _cityController.text = company.address?.cityName ?? '';
   }
 
   // ------------------------------------------------------------------- Logo
@@ -278,6 +274,10 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
       return _noCompanyState();
     }
 
+    // Adresi yalnızca ADMIN değiştirebiliyor (sunucu da öyle); rol
+    // `/users/me`'deki üyelikten geliyor, yetkililer sayfasıyla aynı kaynak.
+    final canEditAddress = user.primaryCompany?.isAdmin ?? false;
+
     return SingleChildScrollView(
       child: Padding(
         padding: AppPadding.primaryAll,
@@ -322,6 +322,10 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
             const SizedBox(height: AppSizes.space),
             _descriptionTextField(),
             const SizedBox(height: AppSizes.spaceLarge),
+            _sectionLabel("Şirket Adresi"),
+            const SizedBox(height: AppSizes.space),
+            ..._addressSection(company, canEdit: canEditAddress),
+            const SizedBox(height: AppSizes.spaceLarge),
             _sectionLabel("Değiştirilemeyen Bilgiler"),
             const SizedBox(height: AppSizes.space),
             _lockedNotice(),
@@ -329,24 +333,6 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
             MyTextfield(
               labelText: "Vergi Numarası",
               controller: _taxNumberController,
-              enabled: false,
-            ),
-            const SizedBox(height: AppSizes.spaceMedium),
-            MyTextfield(
-              labelText: "Açık Adres",
-              controller: _displayAddressController,
-              enabled: false,
-            ),
-            const SizedBox(height: AppSizes.spaceMedium),
-            MyTextfield(
-              labelText: "İlçe",
-              controller: _districtController,
-              enabled: false,
-            ),
-            const SizedBox(height: AppSizes.spaceMedium),
-            MyTextfield(
-              labelText: "Şehir",
-              controller: _cityController,
               enabled: false,
             ),
             const SizedBox(height: AppSizes.sectionSpace),
@@ -632,8 +618,54 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
     await context.push(RegistrationRoutes.companyInformations);
   }
 
+  /// Şirket adresi: kayıtlı değer salt okunur satırlarda, altında ADMIN
+  /// için *Adresi değiştir*, diğer yetkililer için nedenini söyleyen not.
+  ///
+  /// Değerler `LockedField` ile doğrudan şirketten çiziliyor, denetleyiciyle
+  /// değil: adres harita ekranında kaydedilip sağlayıcı tazelenince bu
+  /// satırlar kendiliğinden yeni adresi gösteriyor; [_fill] ise kullanıcının
+  /// yazdığını korumak için yalnızca bir kez doluyor.
+  List<Widget> _addressSection(Company company, {required bool canEdit}) {
+    final address = company.address;
+    return [
+      if (address == null)
+        const LockedField(label: 'Adres', value: 'Adres kayıtlı değil')
+      else ...[
+        LockedField(label: 'Açık Adres', value: address.displayAddress ?? '—'),
+        const SizedBox(height: AppSizes.spaceSmall),
+        LockedField(label: 'İlçe', value: address.districtName),
+        const SizedBox(height: AppSizes.spaceSmall),
+        LockedField(label: 'Şehir', value: address.cityName),
+      ],
+      const SizedBox(height: AppSizes.spaceMedium),
+      if (canEdit)
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            key: const ValueKey('company-address-change'),
+            onPressed: _changeAddress,
+            child: const Text('Adresi değiştir'),
+          ),
+        )
+      else
+        _notice('Şirket adresini yalnızca şirket yöneticisi değiştirebilir.'),
+    ];
+  }
+
+  /// Harita-öncelikli şirket adresi ekranını açar.
+  ///
+  /// Kayıt o ekranda bitiyor ve sağlayıcıyı tazeliyor; bu sayfa sağlayıcıyı
+  /// izlediği için dönüşte yeni adres kendiliğinden görünüyor.
+  void _changeAddress() => context.push('/business/company-address');
+
   /// Neden bazı alanların kapalı olduğunu anlatan kutu.
-  Widget _lockedNotice() {
+  Widget _lockedNotice() => _notice(
+    'Vergi numarası firma kaydıyla birlikte belirleniyor; değiştirmek için '
+    'destek ekibiyle iletişime geçin.',
+  );
+
+  /// Vurgu zeminli bilgi kutusu.
+  Widget _notice(String message) {
     return Container(
       width: double.infinity,
       padding: AppPadding.chip,
@@ -652,8 +684,7 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
           const SizedBox(width: AppSizes.spaceSmall),
           Expanded(
             child: Text(
-              'Vergi numarası ve adres firma kaydıyla birlikte belirleniyor; '
-              'değiştirmek için destek ekibiyle iletişime geçin.',
+              message,
               style: context.textTheme.bodySmall?.copyWith(
                 color: context.textSecondary,
               ),
