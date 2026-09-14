@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/company_detail/models/company.dart';
@@ -5,7 +7,6 @@ import 'package:koala/business/features/home/models/employer_stats.dart';
 import 'package:koala/business/features/home/presentation/providers/b_company_provider.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
-import 'package:koala/employee/features/settings/models/identity_review.dart';
 import 'package:koala/employee/features/settings/presentation/providers/identity_review_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
@@ -16,6 +17,7 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
+import 'package:koala/product/widgets/identity_status_badge.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:provider/provider.dart';
 
@@ -258,9 +260,8 @@ class _BProfilePageState extends BProfilePageModel {
   /// Şirketi olanda şirketin onayı, olmayanda kişinin kimlik doğrulaması.
   ///
   /// İkisi de aynı şeyi anlatıyor: bu hesap ilan yayınlayabilir mi. Kimlik
-  /// tarafı dört hâlli: doğrulandı, personel incelemesinde, reddedildi,
-  /// hiç gönderilmedi — inceleme durumu [IdentityReviewProvider]'dan.
-  /// Doğrulanmamış hâllerde satır kimlik ekranını açıyor.
+  /// tarafı çalışan profilindeki rozetin kendisi: dört hâl, dokununca
+  /// kimlik ekranı; kapak yeşil olduğu için beyaz varyantı.
   Widget _statusRow(CurrentUser user, Company? company) {
     if (company != null) {
       return _coverStatus(
@@ -269,31 +270,7 @@ class _BProfilePageState extends BProfilePageModel {
       );
     }
 
-    final status = IdentityStatus.resolve(
-      identityVerified: user.identityVerified,
-      review: context.watch<IdentityReviewProvider?>()?.review,
-    );
-    final row = _coverStatus(
-      icon: switch (status) {
-        IdentityStatus.verified => AppIcons.checkCircle,
-        IdentityStatus.pending => AppIcons.clock,
-        IdentityStatus.rejected => AppIcons.cancelCircle,
-        IdentityStatus.unverified => AppIcons.alert,
-      },
-      label: switch (status) {
-        IdentityStatus.verified => 'Kimliği Doğrulanmış',
-        IdentityStatus.pending => 'Kimlik İncelemede',
-        IdentityStatus.rejected => 'Kimlik Reddedildi',
-        IdentityStatus.unverified => 'Kimlik Doğrulanmadı',
-      },
-    );
-    if (status == IdentityStatus.verified) return row;
-
-    return InkWell(
-      onTap: () => context.push('/identity-verification', extra: user),
-      borderRadius: AppRadius.stadiumCircular,
-      child: Padding(padding: AppPadding.badge, child: row),
-    );
+    return IdentityStatusBadge(user: user, onAccentSurface: true);
   }
 
   Widget _coverStatus({required String icon, required String label}) {

@@ -7,6 +7,7 @@ import 'package:koala/employee/features/profile/presentation/providers/user_prov
 import 'package:koala/employee/features/settings/models/identity_chip_result.dart';
 import 'package:koala/employee/features/settings/models/identity_declaration.dart';
 import 'package:koala/employee/features/settings/models/identity_error.dart';
+import 'package:koala/employee/features/settings/models/identity_review.dart';
 import 'package:koala/employee/features/settings/presentation/pages/identity_chip_page.dart';
 import 'package:koala/employee/features/settings/presentation/providers/identity_review_provider.dart';
 import 'package:koala/employee/features/settings/presentation/widgets/identity_chip_card.dart';
@@ -36,10 +37,11 @@ part 'identity_verification_pagemodel.dart';
 /// Ekran açılırken önce **hangi yolun** açılacağına karar veriyor
 /// ([IdentityVerificationPagemodel.enter]):
 ///
-/// - Bekleyen, reddedilmiş ya da onaylanmış bir inceleme varsa, telefon
-///   iOS'sa (çip okuma Apple üyeliği istiyor ve bu sürümde yok) ya da NFC
-///   donanımı yoksa **doğrudan fotoğraf akışı** (`/identity-documents`)
-///   açılıyor; o kapanınca bu ekran da aynı sonuçla kapanıyor.
+/// - Bekleyen ya da onaylanmış bir inceleme varsa, telefon iOS'sa (çip
+///   okuma Apple üyeliği istiyor ve bu sürümde yok) ya da NFC donanımı
+///   yoksa **doğrudan fotoğraf akışı** (`/identity-documents`) açılıyor; o
+///   kapanınca bu ekran da aynı sonuçla kapanıyor. Reddedilmiş inceleme çip
+///   yolunu kapatmıyor; fotoğraf kartı gerekçeyi yazıyor.
 /// - Aksi hâlde bu ekran çiziliyor: tepede fotoğraflı yol (ürünün ana
 ///   yolu), altında çip kartı ve beyan formu.
 ///
@@ -131,10 +133,26 @@ class _IdentityVerificationPageState extends IdentityVerificationPagemodel {
     );
   }
 
-  /// Fotoğraflı yol: ürünün ana yolu olarak tepede. Çip yolu az önce
-  /// başarısız olduysa aynı kart uyarı olarak çiziliyor — kullanıcı
-  /// tıkandığı yerde çıkışı görsün.
+  /// Fotoğraflı yol: ürünün ana yolu olarak tepede. Son inceleme
+  /// reddedildiyse kart gerekçeyi yazıyor; çip yolu az önce başarısız
+  /// olduysa aynı kart uyarı olarak çiziliyor — kullanıcı tıkandığı yerde
+  /// çıkışı görsün.
   Widget _photoPath() {
+    final rejected = rejectedReview;
+    if (rejected != null && !chipFailed) {
+      final reason = rejected.rejectionReason;
+      return IdentityPhotoPathCard(
+        onContinue: openPhotos,
+        title: 'Belgelerin reddedildi',
+        message: reason == null
+            ? 'Personel gönderdiğin fotoğrafları onaylamadı. Yeni fotoğraflarla '
+                  'tekrar gönderebilir ya da kartını okutabilirsin.'
+            : 'Personel gerekçesi: $reason. Yeni fotoğraflarla tekrar '
+                  'gönderebilir ya da kartını okutabilirsin.',
+        buttonLabel: 'Yeni Fotoğraflarla Gönder',
+        isWarning: true,
+      );
+    }
     if (!chipFailed) return IdentityPhotoPathCard(onContinue: openPhotos);
 
     return IdentityPhotoPathCard(

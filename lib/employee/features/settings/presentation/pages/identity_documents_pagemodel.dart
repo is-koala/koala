@@ -155,23 +155,24 @@ abstract class IdentityDocumentsPagemodel extends State<IdentityDocumentsPage> {
     final source = await IdentityPhotoSourceSheet.show(context, slot: slot);
     if (source == null || !mounted) return;
 
-    final picked = await _picker.pick(slot, source);
-    if (picked == null || !mounted) return;
+    final candidate = await _picker.pick(slot, source);
+    if (candidate == null || !mounted) return;
 
-    final rejection =
-        IdentityPhotoPolicy.check(path: picked.path, bytes: picked.bytes) ??
+    final (:photo, :rejection) = IdentityPhotoPolicy.accept(candidate);
+    final refused =
+        rejection ??
         IdentityPhotoPolicy.checkTotal([
           for (final entry in photos.entries)
             if (entry.key != slot) entry.value,
-          picked,
+          photo!,
         ]);
-    if (rejection != null) {
-      AppToast.error(context, rejection.message);
+    if (refused != null) {
+      AppToast.error(context, refused.message);
       return;
     }
 
     setState(() {
-      photos[slot] = picked;
+      photos[slot] = photo!;
       failure = null;
     });
   }

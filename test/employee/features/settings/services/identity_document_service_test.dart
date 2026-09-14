@@ -83,10 +83,10 @@ void main() {
         final part = form.files
             .singleWhere((entry) => entry.key == slot.fieldName)
             .value;
-        expect(part.filename, '${slot.name}.jpg', reason: slot.name);
-        // Uzantıdan türeyen içerik tipi: sunucu dosya adına bakıyor ama
-        // depoya yazılan tip de bu.
-        expect(part.contentType.toString(), 'image/jpeg', reason: slot.name);
+        // Ad ve içerik tipi dosyanın `.jpg` adından değil PNG içeriğinden:
+        // sunucu uzantıya bakıyor, uzantı da gerçeği söylemeli.
+        expect(part.filename, '${slot.fieldName}.png', reason: slot.name);
+        expect(part.contentType?.mimeType, 'image/png', reason: slot.name);
       }
 
       expect(review.status, IdentityReviewStatus.pending);

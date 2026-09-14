@@ -18,17 +18,20 @@ import 'package:koala/product/network/api_exception.dart';
 /// Bu yüzden bölüm başarısız olduğunda profil boşalmıyor, yalnızca bu şerit
 /// hatayı gösteriyor.
 class ProfileReviews extends StatefulWidget {
-  const ProfileReviews({super.key, required this.userId});
+  const ProfileReviews({super.key, required this.userId, this.service});
 
   /// Hakkında değerlendirme okunacak kişi.
   final String userId;
+
+  /// Testlerde sahte sunucuya bağlı servis; verilmezse üretim tekili.
+  final ReviewService? service;
 
   @override
   State<ProfileReviews> createState() => _ProfileReviewsState();
 }
 
 class _ProfileReviewsState extends State<ProfileReviews> {
-  final ReviewService _service = ReviewService();
+  late final ReviewService _service = widget.service ?? ReviewService();
 
   /// Listede gösterilen yorum sayısı. Profil bir değerlendirme sayfası değil;
   /// tamamı için ayrı bir ekran gerekir.

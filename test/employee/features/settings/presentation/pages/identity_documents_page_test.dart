@@ -37,11 +37,11 @@ final CurrentUser _user = CurrentUser.fromJson(const {
 class _FakePicker extends IdentityPhotoPicker {
   _FakePicker(this.photos);
 
-  final Map<IdentityPhotoSlot, IdentityPhoto?> photos;
+  final Map<IdentityPhotoSlot, IdentityPhotoCandidate?> photos;
   final List<(IdentityPhotoSlot, IdentityPhotoSource)> calls = [];
 
   @override
-  Future<IdentityPhoto?> pick(
+  Future<IdentityPhotoCandidate?> pick(
     IdentityPhotoSlot slot,
     IdentityPhotoSource source,
   ) async {
@@ -102,10 +102,10 @@ void main() {
     WidgetTester tester,
     FakeApi api, {
     Brightness brightness = Brightness.light,
-    Map<IdentityPhotoSlot, IdentityPhoto?>? photos,
+    Map<IdentityPhotoSlot, IdentityPhotoCandidate?>? photos,
     CurrentUser? user,
   }) async {
-    final picker = _FakePicker(photos ?? writeIdentityPhotos());
+    final picker = _FakePicker(photos ?? writeIdentityPhotoCandidates());
     final reviews = IdentityReviewProvider(
       service: IdentityDocumentService.withClient(api.client),
     );
@@ -353,10 +353,12 @@ void main() {
   });
 
   group('istemci sınırları', () {
-    testWidgets('HEIC dosya kendi uyarısıyla reddediliyor, kare boş kalıyor', (
-      tester,
-    ) async {
-      final heic = writeIdentityPhotos(extension: 'heic');
+    testWidgets('gerçek HEIC baytları kendi uyarısıyla reddediliyor, kare boş '
+        'kalıyor', (tester) async {
+      final heic = writeIdentityPhotoCandidates(
+        extension: 'heic',
+        content: heicSignatureBytes,
+      );
       await pumpPage(tester, serverWith(), photos: heic);
 
       await addPhoto(tester, IdentityPhotoSlot.front);
@@ -372,18 +374,49 @@ void main() {
       expect(find.text('Fotoğraflar (0/4)'), findsOneWidget);
     });
 
+    testWidgets('.heic adlı JPEG kabul ediliyor ve JPEG olarak gidiyor', (
+      tester,
+    ) async {
+      // Android galerisinden HEIC seçilince seçici JPEG'e çeviriyor ama adı
+      // bırakıyor; sunucu uzantıya baktığı için parça adı gerçek içerikten.
+      final api = serverWith();
+      await pumpPage(
+        tester,
+        api,
+        photos: writeIdentityPhotoCandidates(
+          extension: 'heic',
+          content: jpegSignatureBytes,
+        ),
+      );
+      await fillDeclaration(tester);
+      await addAllPhotos(tester);
+      expect(find.text('Fotoğraflar (4/4)'), findsOneWidget);
+
+      await submit(tester);
+
+      final form = submittedRequest(api).data as FormData;
+      for (final slot in IdentityPhotoSlot.values) {
+        final part = form.files
+            .singleWhere((entry) => entry.key == slot.fieldName)
+            .value;
+        expect(part.filename, '${slot.fieldName}.jpg', reason: slot.name);
+        expect(part.contentType?.mimeType, 'image/jpeg', reason: slot.name);
+      }
+    });
+
     testWidgets('10 MB üstü kare reddediliyor', (tester) async {
-      final photos = writeIdentityPhotos();
+      final photos = writeIdentityPhotoCandidates();
       final big = photos[IdentityPhotoSlot.front]!;
       await pumpPage(
         tester,
         serverWith(),
         photos: {
           ...photos,
-          IdentityPhotoSlot.front: IdentityPhoto(
+          IdentityPhotoSlot.front: IdentityPhotoCandidate(
             slot: big.slot,
             path: big.path,
             bytes: IdentityPhotoPolicy.maxPhotoBytes + 1,
+            head: big.head,
           ),
         },
       );
@@ -403,16 +436,17 @@ void main() {
       // Dosya başına 10 MiB × dört kare = 40 MiB, toplam sınırın kendisi.
       // Sınır aşımı ancak sabitler ayrışırsa mümkün; aşımın kendisi
       // `IdentityPhotoPolicy.checkTotal` biriminde ölçülüyor.
-      final photos = writeIdentityPhotos();
+      final photos = writeIdentityPhotoCandidates();
       await pumpPage(
         tester,
         serverWith(),
         photos: {
           for (final entry in photos.entries)
-            entry.key: IdentityPhoto(
+            entry.key: IdentityPhotoCandidate(
               slot: entry.key,
               path: entry.value.path,
               bytes: IdentityPhotoPolicy.maxPhotoBytes,
+              head: entry.value.head,
             ),
         },
       );
@@ -422,11 +456,14 @@ void main() {
       expect(find.text('Fotoğraflar (4/4)'), findsOneWidget);
     });
 
-    testWidgets('gif gibi tanınmayan biçim reddediliyor', (tester) async {
+    testWidgets('gif gibi tanınmayan içerik reddediliyor', (tester) async {
       await pumpPage(
         tester,
         serverWith(),
-        photos: writeIdentityPhotos(extension: 'gif'),
+        photos: writeIdentityPhotoCandidates(
+          extension: 'jpg',
+          content: 'GIF89a'.codeUnits,
+        ),
       );
 
       await addPhoto(tester, IdentityPhotoSlot.selfie);
@@ -472,7 +509,9 @@ void main() {
       expect(identity['tcIdentityNumber'], '12345678950');
       expect(identity['tcDocumentNumber'], 'A01B23456');
       for (final slot in IdentityPhotoSlot.values) {
-        expect(parts[slot.fieldName]!.filename, '${slot.name}.jpg');
+        // Fixture PNG: ad ve tip içerikten, dosyanın `.jpg` adından değil.
+        expect(parts[slot.fieldName]!.filename, '${slot.fieldName}.png');
+        expect(parts[slot.fieldName]!.contentType?.mimeType, 'image/png');
       }
 
       expect(find.text('Belgelerin inceleniyor'), findsOneWidget);

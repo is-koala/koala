@@ -14,6 +14,24 @@ import 'package:koala/product/network/device_interceptor.dart';
 import 'package:koala/product/network/session_manager.dart';
 import 'package:koala/product/network/token_storage.dart';
 
+/// Multipart isteğe eklenecek tek dosya.
+///
+/// [filename] ve [contentType] verilmezse dio dosya adından türetiyor;
+/// dosyanın adı içeriğini yansıtmıyorsa (Android seçicisinin `.heic` adıyla
+/// verdiği JPEG gibi) çağıran ikisini gerçek içeriğe göre yazıyor — sunucu
+/// uzantıya bakıyor.
+class UploadFile {
+  const UploadFile(this.path, {this.filename, this.contentType});
+
+  final String path;
+
+  /// Parçanın `filename` alanı; `null` ise dosyanın kendi adı.
+  final String? filename;
+
+  /// Parçanın içerik tipi (`image/jpeg` gibi); `null` ise addan türetilir.
+  final String? contentType;
+}
+
 /// Backend'e giden bütün isteklerin geçtiği tek kapı.
 ///
 /// İki işi var: yanıt zarfını açmak ve `DioException`'ı [ApiException]'a
@@ -176,15 +194,15 @@ class ApiClient {
   ///
   /// [postMultipartJson]'dan farkı dosya sayısı ve ilerleme: kimlik
   /// belgeleri gibi dört dosyayı tek istekte taşıyan uçlar için. [files]
-  /// parça adı → dosya yolu; her dosya kendi parçasında, içerik tipi
-  /// uzantısından. [onSendProgress] gönderilen ve toplam bayt sayısını
+  /// parça adı → dosya; her dosya kendi parçasında, adı ve içerik tipi
+  /// [UploadFile]'dan. [onSendProgress] gönderilen ve toplam bayt sayısını
   /// veriyor — kırk megabaytlık bir gövde mobil ağda dakikalar sürebiliyor,
   /// kullanıcı takıldığını sanmasın.
   Future<T> postMultipartJsonFiles<T>(
     String path, {
     required String jsonFieldName,
     required Map<String, dynamic> jsonBody,
-    required Map<String, String> files,
+    required Map<String, UploadFile> files,
     void Function(int sent, int total)? onSendProgress,
     required T Function(Object? data) parse,
   }) async {
@@ -201,7 +219,15 @@ class ApiClient {
       // gönderim sırasında akıtılıyor. Eşzamansız `fromFile` widget
       // testlerinin sahte saatinde hiç dönmüyor ve akış ekranda takılı
       // kalıyordu; gerçek cihazda iki yol arasında ölçülebilir fark yok.
-      parts[entry.key] = MultipartFile.fromFileSync(entry.value);
+      final file = entry.value;
+      final contentType = file.contentType;
+      parts[entry.key] = MultipartFile.fromFileSync(
+        file.path,
+        filename: file.filename,
+        contentType: contentType == null
+            ? null
+            : DioMediaType.parse(contentType),
+      );
     }
 
     return _send<T>(

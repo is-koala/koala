@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/network/api_paths.dart';
 
@@ -221,7 +222,14 @@ void main() {
           ApiPaths.currentUserIdentityDocuments,
           jsonFieldName: 'identity',
           jsonBody: const {'firstName': 'Çağrı'},
-          files: {'front': imageFile.path, 'back': second.path},
+          files: {
+            'front': UploadFile(imageFile.path),
+            'back': UploadFile(
+              second.path,
+              filename: 'arka.webp',
+              contentType: 'image/webp',
+            ),
+          },
           parse: (data) => (data! as Map<String, dynamic>)['id'] as String,
         );
 
@@ -243,8 +251,9 @@ void main() {
         expect(byKey['identity']!.contentType?.mimeType, 'application/json');
         expect(byKey['front']!.filename, 'galeri.jpg');
         expect(byKey['front']!.contentType?.mimeType, 'image/jpeg');
-        expect(byKey['back']!.filename, 'arka.png');
-        expect(byKey['back']!.contentType?.mimeType, 'image/png');
+        // Ad ve tip verildiyse dosyanın kendi adı değil onlar gidiyor.
+        expect(byKey['back']!.filename, 'arka.webp');
+        expect(byKey['back']!.contentType?.mimeType, 'image/webp');
         expect(byKey['back']!.length, 'koala-arka'.length);
       },
     );
@@ -264,7 +273,7 @@ void main() {
           ApiPaths.currentUserIdentityDocuments,
           jsonFieldName: 'identity',
           jsonBody: const {},
-          files: {'front': imageFile.path},
+          files: {'front': UploadFile(imageFile.path)},
           onSendProgress: onProgress,
           parse: (data) => data! as int,
         );

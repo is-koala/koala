@@ -85,26 +85,30 @@ abstract class IdentityVerificationPagemodel
 
   /// Hangi yolun açılacağına karar verir.
   ///
-  /// Fotoğraf akışına **doğrudan** gidilen üç hâl var: zaten bir inceleme
-  /// kaydı var (bekliyor, reddedildi ya da onaylandı — üçünün de ekranı
-  /// orada), telefon iOS (çip okuma bu sürümde açık değil) ya da NFC
-  /// donanımı yok. Bu hâllerde bu ekranın gösterecek bir şeyi yok:
+  /// Fotoğraf akışına **doğrudan** gidilen üç hâl var: bekleyen ya da
+  /// onaylanmış bir inceleme var (ikisinin de ekranı orada; çip okutmanın
+  /// bir anlamı kalmadı), telefon iOS (çip okuma bu sürümde açık değil) ya
+  /// da NFC donanımı yok. Bu hâllerde bu ekranın gösterecek bir şeyi yok:
   /// fotoğraf akışı kapanınca aynı sonuçla kapanıyor ki çağıran kapı tek
   /// bir `push` sonucu görsün.
   ///
-  /// İnceleme durumu okunamazsa "yok" sayılıyor: ağ hatası yüzünden
-  /// kullanıcıyı çip formundan mahrum etmek yerine form açılıyor, fotoğraf
-  /// yolu zaten tepede.
+  /// **Reddedilen** inceleme çip yolunu kapatmıyor: kullanıcı yeni
+  /// fotoğraflarla da, kartı okutarak da devam edebilmeli; fotoğraf kartı
+  /// o durumda reddi söylüyor. İnceleme durumu okunamazsa "yok" sayılıyor:
+  /// ağ hatası yüzünden kullanıcıyı çip formundan mahrum etmek yerine form
+  /// açılıyor, fotoğraf yolu zaten tepede.
   Future<void> enter() async {
-    final provider = context.read<IdentityReviewProvider?>();
-    if (provider != null) await provider.load(silent: true);
+    final provider = context.read<IdentityReviewProvider>();
+    await provider.load(silent: true);
     if (!mounted) return;
 
-    final hasReview = provider?.review != null;
+    final review = provider.review;
+    final reviewSettled =
+        review != null && (review.isPending || review.isApproved);
     final chipPossible = await _chipPossible();
     if (!mounted) return;
 
-    if (hasReview || widget.user.identityVerified || !chipPossible) {
+    if (reviewSettled || widget.user.identityVerified || !chipPossible) {
       final result = await context.push<bool>(
         '/identity-documents',
         extra: widget.user,
@@ -129,21 +133,27 @@ abstract class IdentityVerificationPagemodel
 
   /// Fotoğraf akışını açar.
   ///
-  /// Dönüşte bir inceleme kaydı oluşmuşsa (kullanıcı gönderdi) ya da akış
+  /// Dönüşte bekleyen bir inceleme varsa (kullanıcı gönderdi) ya da akış
   /// `true` ile kapandıysa bu ekranın yapacağı bir şey kalmadı, o da
-  /// kapanıyor. Kullanıcı hiçbir şey yapmadan geri döndüyse çip formu
-  /// olduğu yerde duruyor.
+  /// kapanıyor. Kullanıcı hiçbir şey yapmadan geri döndüyse — reddedilmiş
+  /// eski kayıt dahil — çip formu olduğu yerde duruyor.
   Future<void> openPhotos() async {
-    final provider = context.read<IdentityReviewProvider?>();
+    final provider = context.read<IdentityReviewProvider>();
     final result = await context.push<bool>(
       '/identity-documents',
       extra: widget.user,
     );
     if (!mounted) return;
 
-    if (result == true || provider?.review != null) {
+    if (result == true || (provider.review?.isPending ?? false)) {
       context.pop(result ?? false);
     }
+  }
+
+  /// Son inceleme reddedildiyse o kayıt; fotoğraf kartı gerekçeyi yazıyor.
+  IdentityReview? get rejectedReview {
+    final review = context.read<IdentityReviewProvider>().review;
+    return (review?.isRejected ?? false) ? review : null;
   }
 
   // ------------------------------------------------------------------- Çip

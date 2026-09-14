@@ -6,6 +6,8 @@ import 'package:koala/employee/features/auth/models/pending_verification.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/employee/features/settings/presentation/pages/account_info_page.dart';
+import 'package:koala/employee/features/settings/presentation/providers/identity_review_provider.dart';
+import 'package:koala/employee/features/settings/services/identity_document_service.dart';
 import 'package:koala/product/theme/theme.dart';
 import 'package:provider/provider.dart';
 
@@ -98,9 +100,20 @@ void main() {
     );
 
     await tester.pumpWidget(
-      ChangeNotifierProvider<UserProvider>(
-        create: (_) =>
-            UserProvider(userService: UserService.withClient(api.client)),
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<UserProvider>(
+            create: (_) =>
+                UserProvider(userService: UserService.withClient(api.client)),
+          ),
+          // Kimlik satırı inceleme durumunu buradan okuyor; sahte sunucu
+          // bu uca "yok" diyor, satır bayrağa göre çiziliyor.
+          ChangeNotifierProvider<IdentityReviewProvider>(
+            create: (_) => IdentityReviewProvider(
+              service: IdentityDocumentService.withClient(api.client),
+            ),
+          ),
+        ],
         child: MaterialApp.router(theme: lightTheme, routerConfig: router),
       ),
     );

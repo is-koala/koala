@@ -571,6 +571,66 @@ void main() {
       expect(popResults, [false]);
     });
 
+    testWidgets('reddedilmiş inceleme çip yolunu kapatmıyor: form + gerekçeli '
+        'fotoğraf kartı', (tester) async {
+      // Kullanıcı hem yeni fotoğraf yükleyebilmeli hem kartı deneyebilmeli.
+      final api = FakeApi(
+        handler: (options) {
+          if (options.path == '/users/me/identity-documents') {
+            return identityReviewResponse(
+              status: 'REJECTED',
+              rejectionReason: 'Arka yüz bulanık',
+            );
+          }
+          return FakeApiResponse(
+            statusCode: 200,
+            body: {'success': true, 'data': _user.toJson()},
+          );
+        },
+      );
+
+      await pumpPage(tester, api);
+
+      expect(documentsOpened, 0);
+      expect(find.text('Kimlik kartını telefona okut'), findsOneWidget);
+      expect(find.text('Belgelerin reddedildi'), findsOneWidget);
+      expect(find.textContaining('Arka yüz bulanık'), findsOneWidget);
+      expect(find.text('Yeni Fotoğraflarla Gönder'), findsOneWidget);
+
+      await tester.tap(find.text('Yeni Fotoğraflarla Gönder'));
+      await tester.pumpAndSettle();
+      expect(documentsOpened, 1);
+
+      // Hiçbir şey göndermeden dönülürse form yerinde: eski red kaydı
+      // ekranı kapattırmıyor.
+      final router = GoRouter.of(tester.element(find.text('fotoğraf akışı')));
+      router.pop();
+      await tester.pumpAndSettle();
+      expect(find.text('Kimlik kartını telefona okut'), findsOneWidget);
+      expect(popResults, isEmpty);
+    });
+
+    testWidgets('onaylanmış inceleme varken doğrudan fotoğraf akışı', (
+      tester,
+    ) async {
+      final api = FakeApi(
+        handler: (options) {
+          if (options.path == '/users/me/identity-documents') {
+            return identityReviewResponse(status: 'APPROVED');
+          }
+          return FakeApiResponse(
+            statusCode: 200,
+            body: {'success': true, 'data': _user.toJson()},
+          );
+        },
+      );
+
+      await pumpPage(tester, api, documentsResult: () => true);
+
+      expect(documentsOpened, 1);
+      expect(popResults, [true]);
+    });
+
     testWidgets(
       'fotoğraf akışı true ile kapanınca kimlik ekranı da true ile kapanıyor',
       (tester) async {

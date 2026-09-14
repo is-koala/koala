@@ -165,7 +165,7 @@ class _AccountInfoPageState extends AccountInfoPagemodel {
   Widget _identityRow() {
     final status = IdentityStatus.resolve(
       identityVerified: widget.user.identityVerified,
-      review: context.watch<IdentityReviewProvider?>()?.review,
+      review: context.watch<IdentityReviewProvider>().review,
     );
 
     return switch (status) {

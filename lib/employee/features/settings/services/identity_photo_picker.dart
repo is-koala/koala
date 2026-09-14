@@ -19,10 +19,10 @@ class IdentityPhotoPicker {
 
   /// Kareyi alır; kullanıcı vazgeçtiyse `null`.
   ///
-  /// Dönen dosya henüz sınırlardan geçmedi; boyut ve uzantı kontrolü
-  /// çağıranın işi. Boyut burada ölçülüyor ki sayfa dosyayı bir daha
-  /// açmasın.
-  Future<IdentityPhoto?> pick(
+  /// Dönen aday henüz sınırlardan geçmedi; biçim ve boyut kararı
+  /// [IdentityPhotoPolicy.accept]'in işi. Boyut ve baş baytlar burada
+  /// okunuyor ki sayfa dosyayı bir daha açmasın.
+  Future<IdentityPhotoCandidate?> pick(
     IdentityPhotoSlot slot,
     IdentityPhotoSource source,
   ) async {
@@ -40,7 +40,28 @@ class IdentityPhotoPicker {
     );
     if (picked == null) return null;
 
-    final bytes = await File(picked.path).length();
-    return IdentityPhoto(slot: slot, path: picked.path, bytes: bytes);
+    return candidateFor(slot, picked.path);
+  }
+
+  /// Diskteki dosyadan aday kurar: boyut ve içerik imzası için baş baytlar.
+  ///
+  /// Eşzamanlı okuma: dosyanın tamamı değil ilk on iki baytı; sahte saatli
+  /// widget testlerinde de eşzamansız IO gibi takılmıyor.
+  static IdentityPhotoCandidate candidateFor(
+    IdentityPhotoSlot slot,
+    String path,
+  ) {
+    final file = File(path);
+    final handle = file.openSync();
+    try {
+      return IdentityPhotoCandidate(
+        slot: slot,
+        path: path,
+        bytes: handle.lengthSync(),
+        head: handle.readSync(IdentityImageFormat.signatureLength),
+      );
+    } finally {
+      handle.closeSync();
+    }
   }
 }

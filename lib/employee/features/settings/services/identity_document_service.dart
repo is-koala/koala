@@ -65,9 +65,15 @@ class IdentityDocumentService {
         'tcIdentityNumber': identity.tcIdentityNumber,
         'tcDocumentNumber': identity.tcDocumentNumber,
       },
+      // Parça adı ve içerik tipi gerçek içerikten: Android seçicisi
+      // `.heic` adlı bir JPEG verebiliyor ve sunucu uzantıya bakıyor.
       files: {
         for (final slot in IdentityPhotoSlot.values)
-          slot.fieldName: photos[slot]!.path,
+          slot.fieldName: UploadFile(
+            photos[slot]!.path,
+            filename: photos[slot]!.uploadName,
+            contentType: photos[slot]!.format.mimeType,
+          ),
       },
       onSendProgress: onProgress,
       parse: _parseReview,
