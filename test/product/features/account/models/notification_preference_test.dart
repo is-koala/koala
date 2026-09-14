@@ -121,10 +121,11 @@ void main() {
       expect(NotificationChannelLabels.of('IN_APP'), 'Uygulama içi');
     });
 
-    // Sunucu yeni bir kategori eklerse uygulama patlamamalı ve ham kodu da
-    // olduğu gibi göstermemeli.
-    test('bilinmeyen kod okunur hâle getirilir', () {
-      expect(NotificationCategoryLabels.of('PAYOUT_UPDATES'), 'Payout updates');
+    // Sunucu yeni bir kategori eklerse uygulama patlamamalı; İngilizce enum
+    // adı yerine genel Türkçe etiket görünmeli.
+    test('bilinmeyen kod genel etikete düşer', () {
+      expect(NotificationCategoryLabels.of('PAYOUT_UPDATES'), 'Diğer');
+      expect(NotificationChannelLabels.of('FAX'), 'Diğer');
       expect(
         NotificationChannelLabels.rank('FAX'),
         NotificationChannelLabels.order.length,

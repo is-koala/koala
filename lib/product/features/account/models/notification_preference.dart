@@ -2,7 +2,8 @@
 ///
 /// Sunucu ileride yeni bir kategori eklerse uygulama patlamasın diye
 /// tanınmayan kod [NotificationPreference.category]'de ham hâliyle taşınıyor
-/// ve etiketi [NotificationCategoryLabels.of] kod üstünden üretiyor.
+/// ve [NotificationCategoryLabels.of] ona genel bir Türkçe etiket veriyor —
+/// İngilizce enum adını kullanıcıya göstermek yerine.
 class NotificationCategoryLabels {
   const NotificationCategoryLabels._();
 
@@ -16,15 +17,11 @@ class NotificationCategoryLabels {
     'NEWSLETTER': 'Bülten',
   };
 
-  /// Kategorinin Türkçe adı; bilinmeyen kod okunur hâle getiriliyor
-  /// (`SOME_NEW_THING` → `Some new thing`).
-  static String of(String category) => _labels[category] ?? _humanize(category);
+  /// Tanınmayan kategori ve kanal için genel etiket.
+  static const String fallback = 'Diğer';
 
-  static String _humanize(String code) {
-    final words = code.toLowerCase().replaceAll('_', ' ').trim();
-    if (words.isEmpty) return code;
-    return words[0].toUpperCase() + words.substring(1);
-  }
+  /// Kategorinin Türkçe adı; bilinmeyen kod [fallback].
+  static String of(String category) => _labels[category] ?? fallback;
 }
 
 /// Bildirim kanalları. Backend `NotificationChannel` enum'ının karşılığı.
@@ -42,7 +39,7 @@ class NotificationChannelLabels {
   static const List<String> order = ['PUSH', 'IN_APP', 'EMAIL', 'SMS'];
 
   static String of(String channel) =>
-      _labels[channel] ?? NotificationCategoryLabels.of(channel);
+      _labels[channel] ?? NotificationCategoryLabels.fallback;
 
   /// [order]'daki yeri; listede olmayan kanal sona düşüyor.
   static int rank(String channel) {
