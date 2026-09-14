@@ -2,60 +2,22 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:koala/product/network/realtime_client.dart';
 import 'package:koala/product/network/realtime_connection_keeper.dart';
-import 'package:koala/product/network/realtime_event.dart';
 
-/// Yalnızca `resume` çağrılarını kaydeden istemci.
-class RecordingRealtimeClient implements RealtimeClient {
-  final List<bool> resumeCalls = [];
-
-  @override
-  void resume({bool suspectStale = false}) => resumeCalls.add(suspectStale);
-
-  @override
-  Future<void> reconnect() async {}
-
-  @override
-  Future<void> connect() async {}
-
-  @override
-  Future<void> disconnect() async {}
-
-  @override
-  bool get isConnected => true;
-
-  @override
-  Stream<RealtimeConnectionEvent> get connectionEvents =>
-      const Stream<RealtimeConnectionEvent>.empty();
-
-  @override
-  Stream<RealtimeEvent> conversationEvents(String conversationId) =>
-      const Stream<RealtimeEvent>.empty();
-
-  @override
-  Stream<RealtimeEvent> presenceEventsFor(String userId) =>
-      const Stream<RealtimeEvent>.empty();
-
-  @override
-  Stream<RealtimeEvent> userMessageEvents() =>
-      const Stream<RealtimeEvent>.empty();
-
-  @override
-  void sendTyping(String conversationId) {}
-}
+import '../../support/fake_realtime.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  late RecordingRealtimeClient client;
+  late FakeSilentRealtimeClient client;
   late StreamController<void> network;
   late DateTime now;
   late int resumedCallbacks;
   late RealtimeConnectionKeeper keeper;
 
   setUp(() {
-    client = RecordingRealtimeClient();
+    client = FakeSilentRealtimeClient();
+    addTearDown(client.dispose);
     network = StreamController<void>.broadcast();
     now = DateTime(2026, 9, 14, 12);
     resumedCallbacks = 0;

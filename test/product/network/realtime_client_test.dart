@@ -87,6 +87,7 @@ void main() {
   late FakeTokenStorage tokens;
   late List<FakeStompClient> created;
   late int probes;
+  late DateTime now;
 
   FakeStompClient stomp() => created.last;
 
@@ -100,6 +101,7 @@ void main() {
         return client;
       },
       sessionProbe: () async => probes++,
+      now: () => now,
     );
   }
 
@@ -107,6 +109,7 @@ void main() {
     tokens = FakeTokenStorage(accessToken: 'token-1', refreshToken: 'r');
     created = [];
     probes = 0;
+    now = DateTime(2026, 9, 14, 12);
   });
 
   group('RealtimeClient.connect', () {
@@ -223,10 +226,29 @@ void main() {
 
       await client.connect();
       stomp().rejectConnect();
+      now = now.add(const Duration(seconds: 29));
       stomp().rejectConnect();
       await Future<void>.delayed(Duration.zero);
 
       expect(probes, 1);
+    });
+
+    // Ret token dışında bir sebeptense (sunucu canlı katmanı kapattı) her
+    // 5 saniyelik denemede değil, 30 saniyede bir yoklanıyor.
+    test('ret sürüyorsa yoklama 30 saniyede bir tekrarlanıyor', () async {
+      final client = build();
+      final sub = client.conversationEvents('c1').listen((_) {});
+      addTearDown(sub.cancel);
+
+      await client.connect();
+      stomp().rejectConnect();
+      now = now.add(const Duration(seconds: 30));
+      stomp().rejectConnect();
+      now = now.add(const Duration(seconds: 10));
+      stomp().rejectConnect();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(probes, 2);
     });
 
     test('kurulu bağlantıdaki hata karesi yoklama yapmıyor', () async {
@@ -353,14 +375,15 @@ void main() {
       expect(client.isConnected, isFalse);
     });
 
-    test('oturum kapalıyken CONNECT reddi yoklama yapmıyor', () async {
+    // Oturum bitince istemci bırakılıyor; eski istemcinin geç gelen ret
+    // karesi kimlik kontrolüne takılıyor, yoklama yapılmıyor.
+    test('bırakılan istemcinin geç ret karesi yoklama yapmıyor', () async {
       final client = build(session: session);
       final sub = client.conversationEvents('c1').listen((_) {});
       addTearDown(sub.cancel);
       await client.connect();
 
       await session.end();
-      // Kapanış istemciyi durdurdu; geç gelen ret karesi eski istemciden.
       created.first.config.onStompError(
         StompFrame(command: 'ERROR', body: 'rejected'),
       );

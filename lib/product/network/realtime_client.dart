@@ -71,10 +71,12 @@ class RealtimeClient {
     SessionManager? sessionManager,
     StompClientFactory? stompClientFactory,
     Future<void> Function()? sessionProbe,
+    DateTime Function()? now,
   }) : _tokenStorage = tokenStorage ?? TokenStorage(),
        _sessionManager = sessionManager,
        _stompClientFactory = stompClientFactory ?? _defaultStompClientFactory,
-       _sessionProbe = sessionProbe ?? _defaultSessionProbe {
+       _sessionProbe = sessionProbe ?? _defaultSessionProbe,
+       _now = now ?? DateTime.now {
     _sessionManager?.addListener(_onSessionChanged);
   }
 
@@ -89,19 +91,22 @@ class RealtimeClient {
   ///
   /// [stompClientFactory] verilmezse `connect()` gerçek bir soket açmaya
   /// çalışır; birim testleri sahte bir `StompClient` geçiriyor ve
-  /// `StompConfig` geri çağrılarını kendisi tetikliyor.
+  /// `StompConfig` geri çağrılarını kendisi tetikliyor. [now] yoklama
+  /// aralığının saati; testler ilerletiyor.
   @visibleForTesting
   factory RealtimeClient.forTesting({
     TokenStorage? tokenStorage,
     SessionManager? sessionManager,
     StompClientFactory? stompClientFactory,
     Future<void> Function()? sessionProbe,
+    DateTime Function()? now,
   }) {
     return RealtimeClient._(
       tokenStorage: tokenStorage,
       sessionManager: sessionManager,
       stompClientFactory: stompClientFactory,
       sessionProbe: sessionProbe,
+      now: now,
     );
   }
 
@@ -121,6 +126,7 @@ class RealtimeClient {
   final SessionManager? _sessionManager;
   final StompClientFactory _stompClientFactory;
   final Future<void> Function() _sessionProbe;
+  final DateTime Function() _now;
 
   StompClient? _client;
   Future<void>? _connecting;
@@ -249,13 +255,14 @@ class RealtimeClient {
   /// Bağlantı kurulmadan gelen hata karesi CONNECT'in reddi demek; sunucu
   /// ardından soketi kapatıyor ve kütüphane yeniden deniyor. Ret büyük
   /// olasılıkla süresi dolmuş token; oturum yoklanınca token yenileniyor ve
-  /// bir sonraki deneme onu okuyor.
+  /// bir sonraki deneme onu okuyor. Oturum bittiyse [disconnect] istemciyi
+  /// çoktan bırakmıştır; eski istemcinin geç karesi kimlik kontrolünden
+  /// geçemez, ayrıca oturum bakmaya gerek yok.
   void _onStompError(StompClient client, StompFrame frame) {
     debugPrint('Realtime STOMP hatası: ${frame.body}');
     if (!identical(client, _client) || _connected) return;
-    if (!(_sessionManager?.isLoggedIn ?? true)) return;
 
-    final now = DateTime.now();
+    final now = _now();
     final last = _lastSessionProbeAt;
     if (last != null && now.difference(last) < _sessionProbeInterval) return;
     _lastSessionProbeAt = now;
@@ -416,10 +423,12 @@ class RealtimeClient {
       }
     }
 
+    // İstemci akışlar kapanmadan, eşzamanlı olarak bırakılıyor: bu noktadan
+    // sonra eski soketten gelen hiçbir kare kimlik kontrolünden geçemez.
+    _teardownClient();
+
     for (final controller in controllers) {
       await controller.close();
     }
-
-    _teardownClient();
   }
 }

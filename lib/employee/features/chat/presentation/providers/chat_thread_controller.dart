@@ -108,12 +108,19 @@ class ChatThreadController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Mesajları çeker, sohbeti okundu işaretler ve canlı akışa bağlanır.
+  /// Canlı akışa bağlanır, mesajları çeker ve sohbeti okundu işaretler.
+  ///
+  /// Sıra bilerek böyle: **önce abone ol, sonra sayfayı çek.** Tersi
+  /// yapılınca sayfa yanıtı ile `SUBSCRIBE` arasına düşen mesaj ne sayfada
+  /// ne kanalda oluyordu. Çekim sürerken kanaldan gelenler [_appendMessage]
+  /// ile listeye düşüyor; sayfa gelince [_mergeIntoPage] ikisini kimlikle
+  /// birleştiriyor, aynı mesaj iki kez durmuyor.
   Future<void> load({required String currentUserId}) async {
     final generation = ++_loadGeneration;
     _currentUserId = currentUserId;
     _isLoading = _messages.isEmpty;
     _safeNotify();
+    _listenToRealtime();
 
     try {
       final page = await _chatService.fetchMessages(
@@ -121,11 +128,10 @@ class ChatThreadController extends ChangeNotifier {
         currentUserId: currentUserId,
       );
       if (_disposed || generation != _loadGeneration) return;
-      _messages = page.messages;
+      _messages = _mergeIntoPage(page.messages);
       _errorMessage = null;
       _blockedMessage = null;
       _gate = null;
-      _listenToRealtime();
 
       // Okundu işaretlemek listedeki sayacı sıfırlıyor; başarısız olması
       // mesajları göstermeyi engellememeli.
@@ -144,6 +150,18 @@ class ChatThreadController extends ChangeNotifier {
         _safeNotify();
       }
     }
+  }
+
+  /// Sunucu sayfasını eldeki mesajlarla birleştirir: sayfa esas, sayfada
+  /// olmayanlar (çekim sırasında kanaldan gelenler) kimlikle eklenir.
+  List<Message> _mergeIntoPage(List<Message> page) {
+    if (_messages.isEmpty) return page;
+
+    final inPage = {for (final message in page) message.id};
+    final extra = _messages.where((message) => !inPage.contains(message.id));
+    if (extra.isEmpty) return page;
+
+    return [...page, ...extra]..sort((a, b) => a.sentAt.compareTo(b.sentAt));
   }
 
   /// Mesaj kutusunu kilitleyen hataları yakalar: önce kapı, sonra engel.

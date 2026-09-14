@@ -8,6 +8,7 @@ import 'package:koala/product/network/realtime_client.dart';
 import 'package:koala/product/network/realtime_event.dart';
 
 import '../../../../../support/fake_api.dart';
+import '../../../../../support/fake_realtime.dart';
 
 const _me = 'user_me';
 const _other = 'user_other';
@@ -18,12 +19,13 @@ const _conversationId = 'conv_1';
 /// Presence kanalları kullanıcı başına ayrıldığı için hangi kimliklere abone
 /// olunduğu da kaydediliyor — yabancıya abone olmak sunucuda 403 ve
 /// bağlantıyı düşürüyor, bu yüzden testin izlemesi gereken bir şey.
-class FakeRealtimeClient implements RealtimeClient {
+class FakeRealtimeClient extends FakeSilentRealtimeClient {
   final _messages = StreamController<RealtimeEvent>.broadcast();
   final Map<String, StreamController<RealtimeEvent>> presenceStreams = {};
-  bool connectCalled = false;
 
   void emitMessage(RealtimeEvent event) => _messages.add(event);
+
+  bool get hasMessageListener => _messages.hasListener;
 
   void emitPresence(String userId, RealtimeEvent event) =>
       presenceStreams[userId]?.add(event);
@@ -39,38 +41,13 @@ class FakeRealtimeClient implements RealtimeClient {
   }
 
   @override
-  Stream<RealtimeEvent> conversationEvents(String conversationId) =>
-      _messages.stream;
-
-  @override
-  Future<void> connect() async => connectCalled = true;
-
-  @override
-  void sendTyping(String conversationId) {}
-
-  @override
-  Future<void> disconnect() async {}
-
-  @override
-  bool get isConnected => connected;
-
-  /// Abonelik anında bağlantı var mı; `false` verilirse denetleyici ilk
-  /// `connected`'da boşluğu tamamlamalı.
-  bool connected = true;
-
-  final _connection = StreamController<RealtimeConnectionEvent>.broadcast();
-  final List<bool> resumeCalls = [];
-
-  void emitConnection(RealtimeConnectionEvent event) => _connection.add(event);
-
-  @override
-  Stream<RealtimeConnectionEvent> get connectionEvents => _connection.stream;
-
-  @override
-  void resume({bool suspectStale = false}) => resumeCalls.add(suspectStale);
-
-  @override
-  Future<void> reconnect() async {}
+  Future<void> dispose() async {
+    await _messages.close();
+    for (final controller in presenceStreams.values) {
+      await controller.close();
+    }
+    await super.dispose();
+  }
 }
 
 Map<String, dynamic> conversationBody({
@@ -138,6 +115,7 @@ void main() {
     bool connected = true,
   }) {
     realtime = FakeRealtimeClient()..connected = connected;
+    addTearDown(realtime.dispose);
     api = FakeApi(
       handler: (options) => options.path == '/presence/lookup'
           ? const FakeApiResponse(
@@ -371,6 +349,75 @@ void main() {
       expect(controller.conversations.single.lastMessage, 'Kopukken gelen');
     });
 
+    // Abonelik liste çekiminden önce açılıyor; liste beklenirken kuyruktan
+    // gelen mesaj bekletilip liste gelince işleniyor. Sunucu satırı mesajı
+    // zaten sayıyorsa (`lastMessageAt` ≥ `sentAt`) sayaç bir daha artmaz.
+    test(
+      'liste beklenirken gelen mesaj kaybolmaz, sayılmışsa çift sayılmaz',
+      () async {
+        final listResponse = Completer<FakeApiResponse>();
+        realtime = FakeRealtimeClient();
+        addTearDown(realtime.dispose);
+        api = FakeApi(
+          handler: (options) => options.path == '/presence/lookup'
+              ? const FakeApiResponse(
+                  statusCode: 200,
+                  body: {'success': true, 'data': []},
+                )
+              : listResponse.future,
+        );
+        final controller = ChatListController(
+          chatService: ChatService.withClient(api.client),
+          realtimeClient: realtime,
+        );
+        final loading = controller.load(currentUserId: _me);
+        await api.requestsReach(1);
+
+        // c1: sunucu anlık görüntüsü bu mesajı zaten saymış (aynı sentAt).
+        realtime.emitMessage(
+          messageEvent(conversationId: 'c1', id: 'counted', body: 'Sayılmış'),
+        );
+        // c2: sunucu görüntüsünden sonra geldi.
+        realtime.emitMessage(
+          messageEvent(conversationId: 'c2', id: 'fresh', body: 'Taze'),
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect(controller.conversations, isEmpty);
+
+        listResponse.complete(
+          FakeApiResponse(
+            statusCode: 200,
+            body: {
+              'success': true,
+              'data': {
+                'content': [
+                  {
+                    ...conversationBody(
+                      id: 'c1',
+                      counterpart: 'u1',
+                      unreadCount: 1,
+                      lastMessageBody: 'Sayılmış',
+                    ),
+                    'lastMessageAt': '2026-03-05T12:00:00Z',
+                  },
+                  conversationBody(id: 'c2', counterpart: 'u2', unreadCount: 0),
+                ],
+              },
+            },
+          ),
+        );
+        await loading;
+
+        expect(controller.conversations.first.id, 'c2');
+        expect(controller.conversations.first.lastMessage, 'Taze');
+        expect(controller.conversations.first.unreadCount, 1);
+        final c1 = controller.conversations.last;
+        expect(c1.id, 'c1');
+        expect(c1.unreadCount, 1);
+        expect(listFetches(), 1);
+      },
+    );
+
     test('kesintisiz bağlantıda connected tazeleme yapmaz', () async {
       final controller = build([conversationBody()]);
       await controller.load(currentUserId: _me);
@@ -511,8 +558,9 @@ void main() {
       controller.dispose();
 
       await expectLater(pending, completes);
-      // Atılmış denetleyici artık soket açmamalı; aboneliğin iptali yok.
-      expect(realtime.connectCalled, isFalse);
+      // Abonelik çekimden önce açılıyor; atılınca bırakılmış olmalı ve geç
+      // gelen liste presence aboneliği açmamalı.
+      expect(realtime.hasMessageListener, isFalse);
       expect(realtime.presenceStreams, isEmpty);
     });
   });

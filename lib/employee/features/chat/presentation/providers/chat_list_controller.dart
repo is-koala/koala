@@ -37,6 +37,11 @@ class ChatListController extends ChangeNotifier {
   /// bağlantı yokken açıldı. `connected` gelince liste bir kez tazeleniyor.
   bool _needsCatchUp = false;
 
+  /// İlk liste çekimi sürüyor; bu sırada gelen kuyruk olayları
+  /// [_pendingEvents]'te bekliyor, liste gelince işleniyor.
+  bool _buffering = false;
+  final List<RealtimeEvent> _pendingEvents = [];
+
   /// Canlı kanaldan işlenen son mesaj kimlikleri. Aynı mesaj ikinci kez
   /// gelirse (yeniden abonelik, iki kanal) okunmamış sayacı bir daha
   /// artmamalı. Sınırlı tutuluyor; liste için yakın geçmiş yetiyor.
@@ -66,12 +71,21 @@ class ChatListController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Sohbetleri çeker, çevrimiçi bilgisini işler ve canlı akışa bağlanır.
+  /// Canlı akışa bağlanır, sohbetleri çeker ve çevrimiçi bilgisini işler.
+  ///
+  /// Sıra bilerek böyle: **önce abone ol, sonra listeyi çek.** Tersi
+  /// yapılınca liste yanıtı ile `SUBSCRIBE` arasına düşen mesaj kayboluyordu.
+  /// Çekim sürerken kuyruktan gelenler [_pendingEvents]'te bekliyor; liste
+  /// gelince sırayla işleniyor. Sunucu anlık görüntüsünün zaten saydığı bir
+  /// mesajı ikinci kez saymamak için [_onMessageEvent] `sentAt`'i satırın
+  /// `lastMessageAt`'iyle karşılaştırıyor.
   Future<void> load({required String currentUserId}) async {
     _currentUserId = currentUserId;
     _isLoading = _conversations.isEmpty;
     _errorMessage = null;
     _safeNotify();
+    _listenToMessages();
+    _buffering = true;
 
     try {
       final page = await _chatService.fetchConversations(
@@ -79,14 +93,23 @@ class ChatListController extends ChangeNotifier {
       );
       if (_disposed) return;
       _conversations = await _withPresence(page.conversations);
-      _listenToMessages();
       _syncPresenceSubscriptions();
     } on ApiException catch (error) {
       _errorMessage = error.message;
     } finally {
       _isLoading = false;
+      _buffering = false;
       _safeNotify();
+      _flushPendingEvents();
     }
+  }
+
+  /// Çekim sürerken biriken kuyruk olaylarını sırayla işler.
+  void _flushPendingEvents() {
+    if (_disposed || _pendingEvents.isEmpty) return;
+    final pending = List<RealtimeEvent>.of(_pendingEvents);
+    _pendingEvents.clear();
+    pending.forEach(_onUserEvent);
   }
 
   /// Çevrimiçi bilgisini tek istekte alıp sohbetlere işler.
@@ -152,6 +175,10 @@ class ChatListController extends ChangeNotifier {
   /// Kişisel kuyruktan gelen olaylar. Kuyruk yalnızca mesaj taşımıyor:
   /// okundu bilgisi de buradan geliyor.
   void _onUserEvent(RealtimeEvent event) {
+    if (_buffering) {
+      _pendingEvents.add(event);
+      return;
+    }
     switch (event.type) {
       case RealtimeEventType.message:
         _onMessageEvent(event);
@@ -217,6 +244,13 @@ class ChatListController extends ChangeNotifier {
     }
 
     final existing = _conversations[index];
+    // Sunucudan gelen satır bu mesajı zaten içeriyorsa (çekim sırasında
+    // ya da yeniden bağlanma tamamlamasından sonra geç gelen kopya) sayaç
+    // bir daha artmamalı.
+    final lastMessageAt = existing.lastMessageAt;
+    if (lastMessageAt != null && !message.sentAt.isAfter(lastMessageAt)) {
+      return;
+    }
     final updated = existing.copyWith(
       lastMessage: message.body,
       lastMessageAt: message.sentAt,

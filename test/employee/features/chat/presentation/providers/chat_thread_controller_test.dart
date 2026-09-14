@@ -8,57 +8,33 @@ import 'package:koala/product/network/realtime_client.dart';
 import 'package:koala/product/network/realtime_event.dart';
 
 import '../../../../../support/fake_api.dart';
+import '../../../../../support/fake_realtime.dart';
 
 const _me = 'user_me';
 const _other = 'user_other';
 const _conversationId = 'conv_1';
 
 /// Gerçek soket açmadan olay besleyen sahte canlı istemci.
-class FakeRealtimeClient implements RealtimeClient {
+class FakeRealtimeClient extends FakeSilentRealtimeClient {
   final _controller = StreamController<RealtimeEvent>.broadcast();
   final List<String> typingSentFor = [];
-  bool connectCalled = false;
 
   void emit(RealtimeEvent event) => _controller.add(event);
+
+  bool get hasListener => _controller.hasListener;
 
   @override
   Stream<RealtimeEvent> conversationEvents(String conversationId) =>
       _controller.stream;
 
   @override
-  Stream<RealtimeEvent> presenceEventsFor(String userId) => _controller.stream;
-
-  @override
-  Stream<RealtimeEvent> userMessageEvents() => _controller.stream;
-
-  @override
-  Future<void> connect() async => connectCalled = true;
-
-  @override
   void sendTyping(String conversationId) => typingSentFor.add(conversationId);
 
   @override
-  Future<void> disconnect() async {}
-
-  @override
-  bool get isConnected => connected;
-
-  /// Abonelik anında bağlantı var mı; `false` verilirse denetleyici ilk
-  /// `connected`'da boşluğu tamamlamalı.
-  bool connected = true;
-
-  final _connection = StreamController<RealtimeConnectionEvent>.broadcast();
-
-  void emitConnection(RealtimeConnectionEvent event) => _connection.add(event);
-
-  @override
-  Stream<RealtimeConnectionEvent> get connectionEvents => _connection.stream;
-
-  @override
-  void resume({bool suspectStale = false}) {}
-
-  @override
-  Future<void> reconnect() async {}
+  Future<void> dispose() async {
+    await _controller.close();
+    await super.dispose();
+  }
 }
 
 Map<String, dynamic> messageBody({
@@ -80,8 +56,9 @@ Map<String, dynamic> messageBody({
 void main() {
   late FakeRealtimeClient realtime;
 
-  ChatThreadController build(FakeApi api) {
-    realtime = FakeRealtimeClient();
+  ChatThreadController build(FakeApi api, {bool connected = true}) {
+    realtime = FakeRealtimeClient()..connected = connected;
+    addTearDown(realtime.dispose);
     return ChatThreadController(
       conversationId: _conversationId,
       chatService: ChatService.withClient(api.client),
@@ -271,6 +248,73 @@ void main() {
         2,
       );
     });
+
+    // Abonelik sayfa çekiminden önce açılıyor; sayfa yanıtı beklenirken
+    // kanaldan gelen mesaj sayfada olsun ya da olmasın listede bir kez durur.
+    test(
+      'sayfa beklenirken kanaldan gelen mesaj kaybolmaz ve çift olmaz',
+      () async {
+        final pageResponse = Completer<FakeApiResponse>();
+        final api = FakeApi(
+          handler: (options) => options.method == 'GET'
+              ? pageResponse.future
+              : const FakeApiResponse(statusCode: 200, body: {'success': true}),
+        );
+        final thread = build(api);
+        final loading = thread.load(currentUserId: _me);
+        await api.requestsReach(1);
+        expect(realtime.connectCalled, isTrue);
+
+        realtime.emit(
+          RealtimeEvent.fromJson({
+            'type': 'MESSAGE',
+            'conversationId': _conversationId,
+            'userId': _other,
+            'message': messageBody(
+              id: 'm-race',
+              body: 'Arada geldi',
+              sentAt: '2026-03-05T10:01:00Z',
+            ),
+          }),
+        );
+        realtime.emit(
+          RealtimeEvent.fromJson({
+            'type': 'MESSAGE',
+            'conversationId': _conversationId,
+            'userId': _other,
+            'message': messageBody(
+              id: 'm-late',
+              body: 'Sayfadan sonra',
+              sentAt: '2026-03-05T10:02:00Z',
+            ),
+          }),
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        // Sunucu sayfası ilkini zaten içeriyor, ikincisini içermiyor.
+        pageResponse.complete(
+          FakeApiResponse(
+            statusCode: 200,
+            body: {
+              'success': true,
+              'data': {
+                'content': [
+                  messageBody(
+                    id: 'm-race',
+                    body: 'Arada geldi',
+                    sentAt: '2026-03-05T10:01:00Z',
+                  ),
+                  messageBody(id: 'm1'),
+                ],
+              },
+            },
+          ),
+        );
+        await loading;
+
+        expect(thread.messages.map((m) => m.id), ['m1', 'm-race', 'm-late']);
+      },
+    );
 
     test('kesintisiz bağlantıda connected çekme yapmaz', () async {
       final api = apiWith([messageBody()]);
@@ -855,7 +899,8 @@ void main() {
       controller.dispose();
 
       await expectLater(pending, completes);
-      expect(realtime.connectCalled, isFalse);
+      // Abonelik çekimden önce açılıyor; atılınca bırakılmış olmalı.
+      expect(realtime.hasListener, isFalse);
     });
   });
 }
