@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/chat/models/messaging_availability.dart';
-import 'package:koala/employee/features/chat/presentation/widgets/messaging_gate_note.dart';
+import 'package:koala/product/widgets/messaging_gate_note.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
 import 'package:koala/business/features/home/models/b_job_post.dart';
 import 'package:koala/business/features/home/models/b_payment_attempt.dart';
@@ -1231,12 +1231,14 @@ class _BJobDetailPageState extends BJobDetailPageModel {
   /// Adayla mesajlaşma: düğme ya da düğmenin yerine geçen açıklama.
   ///
   /// Kapı adayın bu ilandaki atamasından okunuyor (`messagingAvailable`).
-  /// Atama yoksa — başvuru henüz kabul edilmemiş ya da çalışan onaylamamış —
-  /// ödeme de yok, kapı kapalı. Ödeme bekleniyorsa ve atama ödenebilir
-  /// durumdaysa açıklamanın yanında ödeme akışına kısayol var; pencere
-  /// kapandıysa yalnızca "Bu sohbet kapandı". Atama listesi ilk kez
-  /// yüklenirken hiçbir şey çizilmiyor: bir an "ödeme bekleniyor" deyip
-  /// hemen düğmeye dönmek yanlış bir izlenim bırakırdı.
+  /// **Atama yoksa hiçbir şey çizilmiyor**: bekleyen, reddedilen ya da geri
+  /// çekilen başvuranla mesajlaşma yolu yok ve "ödemeyi tamamlayınca açılır"
+  /// demek işverene ödenecek bir şey varmış gibi yanlış bir vaat olurdu.
+  /// Atama varken ödeme bekleniyorsa açıklama, atama ödenebilir durumdaysa
+  /// yanında ödeme akışına kısayol; pencere kapandıysa yalnızca "Bu sohbet
+  /// kapandı". Atama listesi ilk kez yüklenirken de hiçbir şey çizilmiyor:
+  /// bir an "ödeme bekleniyor" deyip hemen düğmeye dönmek yanlış bir
+  /// izlenim bırakırdı.
   List<Widget> _applicantMessaging(
     BuildContext context,
     JobApplicant applicant,
@@ -1244,8 +1246,9 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     if (_isAssignmentLoading && !_hasLoadedAssignments) return const [];
 
     final assignment = _assignmentOf(applicant);
-    final messaging =
-        assignment?.messaging ?? MessagingAvailability.paymentRequired;
+    if (assignment == null) return const [];
+
+    final messaging = assignment.messaging;
     final note = messaging.noteFor(asEmployer: true);
 
     if (note == null) {
@@ -1273,10 +1276,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
       ];
     }
 
-    final canPay =
-        assignment != null &&
-        messaging.needsPayment &&
-        assignment.needsEmployerPayment;
+    final canPay = messaging.needsPayment && assignment.needsEmployerPayment;
 
     return [
       const SizedBox(height: AppSizes.space),

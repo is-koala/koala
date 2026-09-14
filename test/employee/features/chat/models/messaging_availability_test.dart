@@ -138,12 +138,29 @@ void main() {
       expect(MessagingAvailability.fromErrorCode(null), isNull);
     });
 
-    test('kod sözleşmedeki dizgelerle birebir', () {
-      expect(
-        MessagingGateErrorCodes.paymentRequired,
-        'MESSAGING_PAYMENT_REQUIRED',
-      );
-      expect(MessagingGateErrorCodes.windowClosed, 'MESSAGING_WINDOW_CLOSED');
+    // Hata kodundan gelen kapı ile DTO'dan gelen kapı aynı nesne: ekran
+    // hangisinden geldiğine bakmadan aynı cümleyi yazmalı.
+    test('hata kodundan gelen kapı DTO kapısıyla aynı metni verir', () {
+      for (final asEmployer in [false, true]) {
+        expect(
+          MessagingAvailability.fromErrorCode(
+            MessagingGateErrorCodes.paymentRequired,
+          )!.noteFor(asEmployer: asEmployer),
+          MessagingAvailability.fromJson({
+            'messagingAvailable': false,
+            'messagingAvailableReason': 'PAYMENT_REQUIRED',
+          }).noteFor(asEmployer: asEmployer),
+        );
+        expect(
+          MessagingAvailability.fromErrorCode(
+            MessagingGateErrorCodes.windowClosed,
+          )!.noteFor(asEmployer: asEmployer),
+          MessagingAvailability.fromJson({
+            'messagingAvailable': false,
+            'messagingAvailableReason': 'CLOSED',
+          }).noteFor(asEmployer: asEmployer),
+        );
+      }
     });
   });
 

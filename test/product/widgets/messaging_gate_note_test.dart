@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:koala/employee/features/chat/presentation/widgets/messaging_gate_note.dart';
+import 'package:koala/product/widgets/messaging_gate_note.dart';
 import 'package:koala/product/constants/app_icons.dart';
 
-import '../../../../../support/finders.dart';
-import '../../../../../support/pump.dart';
+import '../../support/finders.dart';
+import '../../support/pump.dart';
 
 void main() {
   for (final brightness in Brightness.values) {

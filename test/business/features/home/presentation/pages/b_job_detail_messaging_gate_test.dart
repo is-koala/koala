@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:koala/product/widgets/messaging_gate_note.dart';
 
 import '../../../../../support/fake_api.dart';
 import 'b_job_detail_test_harness.dart';
@@ -19,6 +20,16 @@ const _acceptedApplicant = {
   'status': 'ACCEPTED',
   'applicationDateTime': '2026-09-08T10:00:00Z',
   'applicant': _worker,
+};
+
+// Reddedilen başvuran detay sayfasında hiç listelenmiyor
+// (`BJobPost.unansweredApplicants`); işverenin listede gördüğü kapalı kayıt
+// geri çekilen başvuru.
+const _withdrawnApplicant = {
+  'id': 'application-3',
+  'status': 'WITHDRAWN',
+  'applicationDateTime': '2026-09-08T12:00:00Z',
+  'applicant': {'id': 'worker-3', 'firstName': 'Zeynep', 'lastName': 'Demir'},
 };
 
 const _pendingApplicant = {
@@ -136,7 +147,9 @@ void main() {
         expect(_payShortcut, findsNothing);
       });
 
-      testWidgets('ataması olmayan başvuranda düğme yok', (tester) async {
+      // Ataması olmayan başvuranla mesajlaşma yolu yok; "ödemeyi
+      // tamamlayınca açılır" demek ödenecek bir şey varmış gibi olurdu.
+      testWidgets('bekleyen başvuranda ne düğme ne not', (tester) async {
         await pumpPage(
           tester,
           brightness: brightness,
@@ -144,6 +157,7 @@ void main() {
           assignments: const [],
         );
 
+        expect(find.text('Mehmet Kaya'), findsOneWidget);
         expect(
           find.byKey(const ValueKey('applicant-chat-worker-2')),
           findsNothing,
@@ -151,13 +165,55 @@ void main() {
         expect(find.text('Mesaj Gönder'), findsNothing);
         expect(
           find.text('Ödemeyi tamamlayınca ekip sohbeti açılır.'),
-          findsOneWidget,
-        );
-        expect(
-          find.byKey(const ValueKey('applicant-pay-worker-2')),
           findsNothing,
         );
+        expect(find.byType(MessagingGateNote), findsNothing);
       });
+
+      testWidgets('geri çeken başvuranda ne düğme ne not', (tester) async {
+        await pumpPage(
+          tester,
+          brightness: brightness,
+          applicants: const [_withdrawnApplicant],
+          assignments: const [],
+        );
+
+        expect(find.text('Zeynep Demir'), findsOneWidget);
+        expect(find.text('Geri Çekildi'), findsOneWidget);
+        expect(find.byType(MessagingGateNote), findsNothing);
+        expect(find.text('Mesaj Gönder'), findsNothing);
+      });
+
+      testWidgets(
+        'kabul edilmiş ve ödenmemiş atama: not + Ödemeye Git; geri çeken '
+        'kartta hiçbiri',
+        (tester) async {
+          await pumpPage(
+            tester,
+            brightness: brightness,
+            applicants: const [_acceptedApplicant, _withdrawnApplicant],
+            assignments: [
+              assignmentFor(
+                paymentStatus: 'PENDING_COLLECTION',
+                messagingAvailable: false,
+                messagingAvailableReason: 'PAYMENT_REQUIRED',
+              ),
+            ],
+          );
+
+          expect(find.byType(MessagingGateNote), findsOneWidget);
+          expect(_chatNote, findsOneWidget);
+          expect(_payShortcut, findsOneWidget);
+          expect(
+            find.byKey(const ValueKey('applicant-chat-note-worker-3')),
+            findsNothing,
+          );
+          expect(
+            find.byKey(const ValueKey('applicant-pay-worker-3')),
+            findsNothing,
+          );
+        },
+      );
     });
   }
 

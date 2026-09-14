@@ -7,9 +7,10 @@ import 'package:koala/product/widgets/app_icon.dart';
 /// Mesaj düğmesinin yerine geçen kısa açıklama.
 ///
 /// Sunucu ödeme emanete geçmeden sohbeti reddediyor; düğmeyi açık bırakıp
-/// `403` yedirmek yerine sebebi burada yazılıyor. İki kabuk da kullanıyor:
-/// çalışanın "İşlerim" satırı ve işverenin başvuran kartı. Metin
-/// `MessagingAvailability.noteFor` ile tarafa göre seçiliyor.
+/// `403` yedirmek yerine sebebi burada yazılıyor. İki kabuk da kullanıyor —
+/// çalışanın "İşlerim" satırı ve işverenin başvuran kartı — bu yüzden
+/// `product/` altında. Metin `MessagingAvailability.noteFor` ile tarafa göre
+/// seçiliyor.
 ///
 /// [action] isteğe bağlı kısayol — işverende ödeme akışını başlatan düğme.
 class MessagingGateNote extends StatelessWidget {
