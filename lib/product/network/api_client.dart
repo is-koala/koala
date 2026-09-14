@@ -172,6 +172,49 @@ class ApiClient {
     );
   }
 
+  /// JSON bir parça ve **birden çok** dosya içeren multipart POST.
+  ///
+  /// [postMultipartJson]'dan farkı dosya sayısı ve ilerleme: kimlik
+  /// belgeleri gibi dört dosyayı tek istekte taşıyan uçlar için. [files]
+  /// parça adı → dosya yolu; her dosya kendi parçasında, içerik tipi
+  /// uzantısından. [onSendProgress] gönderilen ve toplam bayt sayısını
+  /// veriyor — kırk megabaytlık bir gövde mobil ağda dakikalar sürebiliyor,
+  /// kullanıcı takıldığını sanmasın.
+  Future<T> postMultipartJsonFiles<T>(
+    String path, {
+    required String jsonFieldName,
+    required Map<String, dynamic> jsonBody,
+    required Map<String, String> files,
+    void Function(int sent, int total)? onSendProgress,
+    required T Function(Object? data) parse,
+  }) async {
+    final parts = <String, Object>{
+      jsonFieldName: MultipartFile.fromString(
+        jsonEncode(jsonBody),
+        filename: '$jsonFieldName.json',
+        contentType: DioMediaType('application', 'json'),
+      ),
+    };
+
+    for (final entry in files.entries) {
+      // Boyut eşzamanlı okunuyor: dört `stat` çağrısı, dosyanın kendisi
+      // gönderim sırasında akıtılıyor. Eşzamansız `fromFile` widget
+      // testlerinin sahte saatinde hiç dönmüyor ve akış ekranda takılı
+      // kalıyordu; gerçek cihazda iki yol arasında ölçülebilir fark yok.
+      parts[entry.key] = MultipartFile.fromFileSync(entry.value);
+    }
+
+    return _send<T>(
+      () => _dio.post<dynamic>(
+        path,
+        data: FormData.fromMap(parts),
+        options: _multipartOptions,
+        onSendProgress: onSendProgress,
+      ),
+      parse: parse,
+    );
+  }
+
   /// Tek dosya yükleyen `POST` isteği.
   ///
   /// [postMultipartJson]'dan farkı, JSON parçası istememesi: galeriye görsel

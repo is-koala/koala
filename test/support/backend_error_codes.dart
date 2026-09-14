@@ -16,6 +16,7 @@ class BackendErrorCodes {
     'lib/employee/features/jobs/models/application_readiness.dart',
     'lib/employee/features/auth/presentation/company_identity_gate.dart',
     'lib/employee/features/settings/models/identity_error.dart',
+    'lib/employee/features/settings/models/identity_document_error.dart',
     'lib/business/features/home/presentation/providers/b_job_templates_provider.dart',
     'lib/employee/features/jobs/presentation/providers/review_provider.dart',
     'lib/employee/features/jobs/presentation/providers/timesheet_queue_provider.dart',

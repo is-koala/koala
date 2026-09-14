@@ -5,6 +5,8 @@ import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/models/pending_verification.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/profile_avatar.dart';
+import 'package:koala/employee/features/settings/models/identity_review.dart';
+import 'package:koala/employee/features/settings/presentation/providers/identity_review_provider.dart';
 import 'package:koala/employee/features/settings/presentation/widgets/settings_hint.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -156,23 +158,42 @@ class _AccountInfoPageState extends AccountInfoPagemodel {
     );
   }
 
-  /// Kimlik doğrulama satırı. Doğrulanmışsa yalnızca durumu gösteriyor.
+  /// Kimlik doğrulama satırı. Doğrulanmışsa yalnızca durumu gösteriyor;
+  /// değilse incelemenin nerede olduğunu (bekliyor / reddedildi / hiç yok)
+  /// ve dokununca kimlik ekranını açıyor — bekleyen incelemede de açılıyor,
+  /// kullanıcı durumu oradan izliyor.
   Widget _identityRow() {
-    if (widget.user.identityVerified) {
-      return _linkRow(
+    final status = IdentityStatus.resolve(
+      identityVerified: widget.user.identityVerified,
+      review: context.watch<IdentityReviewProvider?>()?.review,
+    );
+
+    return switch (status) {
+      IdentityStatus.verified => _linkRow(
         label: "Kimlik",
         value: "Doğrulandı",
         isMissing: false,
         onTap: null,
-      );
-    }
-
-    return _linkRow(
-      label: "Kimlik",
-      value: "Doğrulanmadı",
-      isMissing: true,
-      onTap: openIdentityVerification,
-    );
+      ),
+      IdentityStatus.pending => _linkRow(
+        label: "Kimlik",
+        value: "İncelemede",
+        isMissing: false,
+        onTap: openIdentityVerification,
+      ),
+      IdentityStatus.rejected => _linkRow(
+        label: "Kimlik",
+        value: "Reddedildi",
+        isMissing: true,
+        onTap: openIdentityVerification,
+      ),
+      IdentityStatus.unverified => _linkRow(
+        label: "Kimlik",
+        value: "Doğrulanmadı",
+        isMissing: true,
+        onTap: openIdentityVerification,
+      ),
+    };
   }
 
   /// Başka bir ekrana götüren satır. Eksik bilgi vurgulu duruyor: üçü de

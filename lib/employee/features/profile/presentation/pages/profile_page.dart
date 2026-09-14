@@ -5,6 +5,7 @@ import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/models/experience.dart';
 import 'package:koala/employee/features/auth/models/user_badge.dart';
 import 'package:koala/employee/features/auth/models/education.dart';
+import 'package:koala/employee/core/widgets/identity_status_badge.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/education_sheet.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/cv_actions_sheet.dart';
 import 'package:koala/employee/features/profile/services/education_service.dart';
@@ -438,6 +439,11 @@ class _ProfilePageState extends ProfilePageModel {
                 Text(occupation, style: context.textTheme.bodyMedium),
               if (location != null)
                 Text(location, style: context.textTheme.bodyMedium),
+              const SizedBox(height: AppSizes.spaceSmall),
+              // Kimlik durumu: doğrulandı / incelemede / reddedildi /
+              // doğrulanmadı. Başvurunun ilk şartı bu; kullanıcı profilini
+              // her açtığında nerede durduğunu görsün.
+              IdentityStatusBadge(user: user),
             ],
           ),
         ),

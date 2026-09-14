@@ -10,7 +10,7 @@ doğrulandıktan sonra hesap sahibi tarafından mağaza konsollarında yayımlan
 | --- | --- | --- | --- | --- |
 | İletişim ve hesap | Ad, soyad, e-posta, telefon, kullanıcı kimliği | Hesap, güvenlik ve iletişim | Koala backend; e-posta/SMS sağlayıcıları gerçek üretim ayarına göre doğrulanır | Contact Info, User ID |
 | Konum | Yaklaşık konum, onaylı adres, iş konumu ve gerekli akışlarda koordinat | Yakındaki ilan, adres ve mesai güvenliği | Cihaz izni + Koala backend + Google Maps SDK; precise/approximate ayrımı trafikle doğrulanır | Location |
-| Kimlik belgesi | TCKN, belge no, doğum tarihi; çip okunduğunda SOD/DG1 ve varsa DG11/DG14/DG15 + imza | Kimlik doğrulama ve dolandırıcılık önleme | Backend saklama/anonimleştirme kapsamı ayrıca onaylanır; **DG2 hiç gönderilmez**, çip kanıtı isteğe bağlı ve kart okunmadan da doğrulama tamamlanıyor | Other Personal Info, Sensitive Info |
+| Kimlik belgesi | TCKN, belge no, doğum tarihi; çip okunduğunda SOD/DG1 ve varsa DG11/DG14/DG15 + imza; fotoğraflı yolda TCKK ön/arka yüzü, yüz ve kimlikle yüz fotoğrafları (`POST /users/me/identity-documents`) | Kimlik doğrulama ve dolandırıcılık önleme; fotoğraflar yalnız personel incelemesi için | Backend saklama/anonimleştirme kapsamı ayrıca onaylanır; **DG2 hiç gönderilmez**. Fotoğraflar tek istekte Koala backend'ine gider, dosya deposunda incelemeye bağlı saklanır, yalnız `IDENTITY_REVIEW` yetkili personel indirir; uygulama kareyi seçicinin geçici kopyasından akıtır, kendi kopyasını tutmaz | Other Personal Info, Sensitive Info, Photos |
 | Kamera görüntüsü | Kimlik kartının arka yüzünün canlı kamera kareleri | Kartın makine okunabilir alanını (MRZ) okumak | **Cihazdan çıkmıyor**: yalnız kadraj bölgesi yerel ML Kit modeliyle, sırayla tek kare işlenir; yalnız türetilen belge no / doğum / son geçerlilik çipi açmak için kullanılır. Ham kare dosyaya, geçici alana veya loga yazılmaz; backend'e gönderilmez ve saklanmaz | Photos (yalnız cihaz içi işleme) |
 | Özgeçmiş ve profil | CV dosyası, profil resmi, deneyim, eğitim, nitelik ve ilgi alanı | İş başvurusu ve profil | Koala dosya deposu/backend; yetkili işveren erişimi | Files and Docs, Photos, User Content |
 | Mesaj ve başvuru içeriği | Sohbet metni, ön yazı, değerlendirme, uyuşmazlık gerekçesi | Pazaryeri iletişimi ve işlem desteği | Koala backend; yetki ve saklama süresi ayrıca doğrulanır | Messages, Other User Content |
@@ -24,7 +24,9 @@ doğrulandıktan sonra hesap sahibi tarafından mağaza konsollarında yayımlan
   kimliği ve yalnız gerekli API'lerle kısıtlanır.
 - `geolocator`: cihaz konum izni; yalnız kullanıcı akışında istenir.
 - `image_picker` ve `file_picker`: seçilen logo, profil görseli, kimlik/CV dosyası;
-  bütün galeriye sürekli erişim varsayılmaz.
+  bütün galeriye sürekli erişim varsayılmaz. Kimlik fotoğrafları için
+  `image_picker` kamerayı da açar (`ImageSource.camera`); kare ölçeklenip
+  JPEG yazılır ve yalnız `POST /users/me/identity-documents` ile gönderilir.
 - `camera`: TCKK MRZ taramasında canlı arka kamera önizlemesi ve bellek içi
   kare akışı; ham kare saklanmaz, loglanmaz veya ağ üzerinden gönderilmez.
 - `flutter_nfc_kit` ve `dmrtd`: kimlik kartının çipini ICAO 9303 üzerinden

@@ -1,5 +1,5 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
@@ -7,10 +7,14 @@ import 'package:koala/employee/features/profile/presentation/providers/user_prov
 import 'package:koala/employee/features/settings/models/identity_chip_result.dart';
 import 'package:koala/employee/features/settings/models/identity_declaration.dart';
 import 'package:koala/employee/features/settings/models/identity_error.dart';
-import 'package:koala/employee/features/settings/models/national_identity_number.dart';
+import 'package:koala/employee/features/settings/presentation/pages/identity_chip_page.dart';
+import 'package:koala/employee/features/settings/presentation/providers/identity_review_provider.dart';
 import 'package:koala/employee/features/settings/presentation/widgets/identity_chip_card.dart';
+import 'package:koala/employee/features/settings/presentation/widgets/identity_declaration_fields.dart';
+import 'package:koala/employee/features/settings/presentation/widgets/identity_photo_path_card.dart';
 import 'package:koala/employee/features/settings/presentation/widgets/locked_field.dart';
 import 'package:koala/employee/features/settings/presentation/widgets/settings_hint.dart';
+import 'package:koala/employee/features/settings/services/chip_reader.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
@@ -20,33 +24,40 @@ import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/button_navbar.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
-import 'package:koala/product/widgets/my_textfield.dart';
 import 'package:provider/provider.dart';
 
 part 'identity_verification_pagemodel.dart';
 
-/// Kimlik doğrulama formu.
+/// Kimlik doğrulamanın giriş ekranı.
 ///
 /// İlana başvurabilmenin ilk şartı: sunucu doğrulanmamış kullanıcının
 /// başvurusunu `APPLICANT_IDENTITY_NOT_VERIFIED` ile reddediyor.
 ///
-/// Ekranın **iki yolu** var ve ikincisi zorunlu değil:
+/// Ekran açılırken önce **hangi yolun** açılacağına karar veriyor
+/// ([IdentityVerificationPagemodel.enter]):
+///
+/// - Bekleyen, reddedilmiş ya da onaylanmış bir inceleme varsa, telefon
+///   iOS'sa (çip okuma Apple üyeliği istiyor ve bu sürümde yok) ya da NFC
+///   donanımı yoksa **doğrudan fotoğraf akışı** (`/identity-documents`)
+///   açılıyor; o kapanınca bu ekran da aynı sonuçla kapanıyor.
+/// - Aksi hâlde bu ekran çiziliyor: tepede fotoğraflı yol (ürünün ana
+///   yolu), altında çip kartı ve beyan formu.
+///
+/// Çip yolunun **iki hâli** var ve ikincisi zorunlu değil:
 ///
 /// 1. **Beyan** — beş alan doldurulup gönderiliyor. Sunucudaki
 ///    `IDENTITY_PASSIVE_AUTH_ENABLED` bugün `false` olduğu için bu yol tek
-///    başına çalışıyor ve bu sürüm yayına çıktığında hiçbir şey değişmiyor.
+///    başına çalışıyor.
 /// 2. **Çip** — kimlik kartının çipi okunup kanıt (`sod`, `dg1`, varsa
-///    `dg11`/`dg15` ve imza) aynı isteğe ekleniyor. NFC'si olmayan telefon,
-///    okunmayan kart ya da vazgeçen kullanıcı birinci yola düşüyor; çip bir
-///    kapı değil.
+///    `dg11`/`dg15` ve imza) aynı isteğe ekleniyor.
 ///
-/// Çip okunduğunda beş alan da **kanıttan türüyor ve salt okunur**: ad,
-/// soyad, TCKN, seri no ve doğum tarihi DG1/DG11'den geliyor, ekranda
-/// yazılabilir bir alan kalmıyor. Elle düzenlemeye dönüşün tek yolu
-/// okumayı bırakmak — kullanıcı "Okumayı Kaldır" der ya da sunucu kanıtı
-/// `IDENTITY_CHALLENGE_INVALID` ile reddeder — ve o geçiş kanıtı ile
-/// türeyen alanları birlikte bırakıyor. Böylece gönderilen beyan, ekranın
-/// kanıtın yanında gösterdiğinin birebir aynısı (is-koala/koala#136).
+/// Çip okunduğunda beş alan da **kanıttan türüyor ve salt okunur**; elle
+/// düzenlemeye dönüşün tek yolu okumayı bırakmak — kullanıcı "Okumayı
+/// Kaldır" der ya da sunucu kanıtı `IDENTITY_CHALLENGE_INVALID` ile reddeder
+/// (is-koala/koala#136). Çip yolu bir hata verdiğinde — cihazda
+/// (`ChipReadFailure`) ya da sunucuda (`IdentityError`) — kullanıcı
+/// "Fotoğrafla Devam Et" ile fotoğraf akışına geçebiliyor; çip bir kapı
+/// değil.
 ///
 /// Doğrulama başarılı olduğunda ad ve soyad **kilitleniyor** — hesap
 /// bilgileri ekranı da o noktadan sonra ikisini düzenletmiyor.
@@ -55,12 +66,17 @@ class IdentityVerificationPage extends StatefulWidget {
     super.key,
     required this.user,
     this.userService,
+    this.chipReader,
   });
 
   final CurrentUser user;
 
   /// Testlerde gerçek API yerine sahte sunucuya bağlı servis kullanılabilir.
   final UserService? userService;
+
+  /// NFC donanımının varlığını soran sınır; testlerde yerli eklenti olmadan
+  /// "var" ya da "yok" denebilsin diye dışarıdan veriliyor.
+  final ChipReader? chipReader;
 
   @override
   State<IdentityVerificationPage> createState() =>
@@ -70,6 +86,16 @@ class IdentityVerificationPage extends StatefulWidget {
 class _IdentityVerificationPageState extends IdentityVerificationPagemodel {
   @override
   Widget build(BuildContext context) {
+    if (!isReady) {
+      // Karar verilene ve fotoğraf akışı kapanana kadar boş bir sayfa:
+      // çip formunu bir an gösterip kaldırmak kullanıcıya iki ekran
+      // arasında sekiyormuş gibi görünürdü.
+      return Scaffold(
+        appBar: MyAppbar(title: 'Kimlik Doğrulama'),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       appBar: MyAppbar(title: 'Kimlik Doğrulama'),
       bottomNavigationBar: ButtonNavbar(
@@ -84,6 +110,8 @@ class _IdentityVerificationPageState extends IdentityVerificationPagemodel {
           children: [
             _intro(),
             const SizedBox(height: AppSizes.spaceMedium),
+            _photoPath(),
+            const SizedBox(height: AppSizes.spaceLarge),
             IdentityChipCard(
               result: chip,
               onRead: readChip,
@@ -103,40 +131,36 @@ class _IdentityVerificationPageState extends IdentityVerificationPagemodel {
     );
   }
 
+  /// Fotoğraflı yol: ürünün ana yolu olarak tepede. Çip yolu az önce
+  /// başarısız olduysa aynı kart uyarı olarak çiziliyor — kullanıcı
+  /// tıkandığı yerde çıkışı görsün.
+  Widget _photoPath() {
+    if (!chipFailed) return IdentityPhotoPathCard(onContinue: openPhotos);
+
+    return IdentityPhotoPathCard(
+      onContinue: openPhotos,
+      title: 'Çip yolu bu sefer tamamlanamadı',
+      message:
+          'Kimliğini dört fotoğrafla incelemeye gönderebilirsin; personel '
+          'onaylayınca doğrulanmış olur. Kartı yeniden okutmayı da '
+          'deneyebilirsin.',
+      buttonLabel: 'Fotoğrafla Devam Et',
+      isWarning: true,
+    );
+  }
+
   /// Elle beyan: dört metin alanı ve doğum tarihi seçici.
   List<Widget> _manualFields() {
     return [
-      MyTextfield(
-        labelText: 'Ad',
-        controller: firstName,
-        onChanged: (_) => setState(() {}),
+      IdentityDeclarationFields(
+        firstName: firstName,
+        lastName: lastName,
+        tcIdentity: tcIdentity,
+        tcDocument: tcDocument,
+        birthDate: birthDate,
+        onChanged: () => setState(() {}),
+        onBirthDateChanged: (picked) => setState(() => birthDate = picked),
       ),
-      const SizedBox(height: AppSizes.spaceMedium),
-      MyTextfield(
-        labelText: 'Soyad',
-        controller: lastName,
-        onChanged: (_) => setState(() {}),
-      ),
-      const SizedBox(height: AppSizes.spaceMedium),
-      MyTextfield(
-        labelText: 'TC Kimlik No',
-        controller: tcIdentity,
-        keyboardType: TextInputType.number,
-        inputFormatters: [
-          FilteringTextInputFormatter.digitsOnly,
-          LengthLimitingTextInputFormatter(NationalIdentityNumber.length),
-        ],
-        onChanged: (_) => setState(() {}),
-      ),
-      const SizedBox(height: AppSizes.spaceMedium),
-      MyTextfield(
-        labelText: 'Seri No',
-        controller: tcDocument,
-        onChanged: (_) => setState(() {}),
-      ),
-      const SettingsHint('Kimlik kartının ön yüzündeki seri numarası.'),
-      const SizedBox(height: AppSizes.spaceMedium),
-      _birthDateField(),
     ];
   }
 
@@ -183,39 +207,4 @@ class _IdentityVerificationPageState extends IdentityVerificationPagemodel {
 
   /// Bilgilendirme metinlerinin satır aralığı.
   static const double _lineHeight = 1.4;
-
-  Widget _birthDateField() {
-    final selected = birthDate;
-
-    return InkWell(
-      onTap: pickBirthDate,
-      borderRadius: AppRadius.innerCircular,
-      child: Container(
-        width: double.infinity,
-        padding: AppPadding.primaryAll,
-        decoration: BoxDecoration(
-          borderRadius: AppRadius.innerCircular,
-          border: Border.all(color: context.dividerColor),
-        ),
-        child: Row(
-          children: [
-            Text(
-              'Doğum tarihi',
-              style: context.textTheme.bodyMedium?.copyWith(
-                color: context.textSecondary,
-              ),
-            ),
-            const Spacer(),
-            Text(
-              selected == null ? 'Seç' : selected.asShortDate,
-              style: context.textTheme.bodyMedium?.copyWith(
-                color: selected == null ? context.textTertiary : null,
-                fontWeight: selected == null ? null : FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

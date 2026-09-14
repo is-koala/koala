@@ -8,6 +8,7 @@ import 'package:koala/business/features/home/presentation/providers/b_jobs_provi
 import 'package:koala/business/features/home/presentation/providers/b_talent_pool_provider.dart';
 import 'package:koala/employee/features/profile/presentation/providers/availability_provider.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
+import 'package:koala/employee/features/settings/presentation/providers/identity_review_provider.dart';
 import 'package:koala/product/theme/theme.dart';
 import 'package:koala/product/theme/theme_provider.dart';
 import 'package:provider/provider.dart';
@@ -53,6 +54,7 @@ void main() {
             ChangeNotifierProvider(create: (_) => ThemeProvider()),
             ChangeNotifierProvider.value(value: notifications),
             ChangeNotifierProvider(create: (_) => UserProvider()),
+            ChangeNotifierProvider(create: (_) => IdentityReviewProvider()),
             ChangeNotifierProvider(create: (_) => AvailabilityProvider()),
             ChangeNotifierProvider(create: (_) => BJobsProvider()),
             ChangeNotifierProvider(create: (_) => BCompanyProvider()),

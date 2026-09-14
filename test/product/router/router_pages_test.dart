@@ -86,6 +86,19 @@ void main() {
     );
   });
 
+  test(
+    'fotoğraflı kimlik incelemesi shell dışında, kendi rotasıyla açılıyor',
+    () {
+      final documents = allGoRoutes(
+        RouterManager.router.configuration.routes,
+      ).where((route) => route.path == '/identity-documents');
+
+      // Çip ekranı gibi kimlik ekranının üstüne tam sayfa açılıyor.
+      expect(documents, hasLength(1));
+      expect(documents.single.pageBuilder, isNotNull);
+    },
+  );
+
   test('kazançlar ekranı shell dışında, kendi rotasıyla açılıyor', () {
     final earnings = allGoRoutes(
       RouterManager.router.configuration.routes,

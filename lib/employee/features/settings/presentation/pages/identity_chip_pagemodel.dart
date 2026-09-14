@@ -210,6 +210,10 @@ abstract class IdentityChipPagemodel extends State<IdentityChipPage> {
   /// NFC'nin başarısızlığı kullanıcıyı akışın dışına atmamalı.
   void abandon() => context.pop();
 
+  /// Çip yolunu bırakıp fotoğraflı incelemeye geçer; ekranı açan kimlik
+  /// ekranı sonucu görünce fotoğraf akışını açıyor.
+  void continueWithPhotos() => context.pop(IdentityChipHandoff.photos);
+
   Future<void> pickBirthDate() async {
     final now = DateTime.now();
     final picked = await showDatePicker(

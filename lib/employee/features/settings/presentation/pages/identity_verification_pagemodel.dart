@@ -3,6 +3,7 @@ part of 'identity_verification_page.dart';
 abstract class IdentityVerificationPagemodel
     extends State<IdentityVerificationPage> {
   late final UserService _userService;
+  late final ChipReader _chipReader;
 
   /// Elle beyanın taslağı. Çip okunduğunda **dokunulmuyor**: kilitli ekran
   /// bu denetleyicileri hiç okumuyor, okuma kaldırıldığında da taslak
@@ -15,6 +16,15 @@ abstract class IdentityVerificationPagemodel
   DateTime? birthDate;
   bool isSubmitting = false;
 
+  /// Giriş kararı verildi ve bu ekran çizilecek. `false` iken ya karar
+  /// bekleniyor ya da fotoğraf akışı üstte açık ve bu ekran onun sonucuyla
+  /// kapanacak.
+  bool isReady = false;
+
+  /// Çip yolu az önce başarısız oldu — cihazda okunamadı ya da sunucu
+  /// kanıtı reddetti. Fotoğraf kartı uyarı olarak çiziliyor.
+  bool chipFailed = false;
+
   /// Çipten okunan kanıt ve ondan türeyen kart sahibi. `null` ise akış
   /// **eskisi gibi** çalışıyor: beyan formu doldurulup gönderiliyor ve
   /// sunucu bayrağı kapalı olduğu için istek aynen kabul ediliyor.
@@ -24,16 +34,11 @@ abstract class IdentityVerificationPagemodel
   /// tersi bir durum yazılamıyor: `chip = null` ikisini birden bırakıyor.
   IdentityChipResult? chip;
 
-  /// Doğum tarihi seçicinin gidebileceği en eski yıl.
-  static const int earliestYear = 1920;
-
-  /// Çalışma yaşı alt sınırı; seçici bundan yenisini göstermiyor.
-  static const int minimumAge = 15;
-
   @override
   void initState() {
     super.initState();
     _userService = widget.userService ?? UserService();
+    _chipReader = widget.chipReader ?? ChipReader();
     // Kayıtta girilen ad ve soyad çoğu kullanıcıda kimliktekiyle aynı;
     // form boş açılırsa gereksiz yere yeniden yazdırmış oluruz.
     firstName = TextEditingController(text: widget.user.firstName);
@@ -41,6 +46,9 @@ abstract class IdentityVerificationPagemodel
     tcIdentity = TextEditingController();
     tcDocument = TextEditingController();
     birthDate = widget.user.birthDate;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) enter();
+    });
   }
 
   @override
@@ -73,17 +81,96 @@ abstract class IdentityVerificationPagemodel
 
   bool get canSubmit => declaration.isComplete;
 
+  // ------------------------------------------------------------------ Giriş
+
+  /// Hangi yolun açılacağına karar verir.
+  ///
+  /// Fotoğraf akışına **doğrudan** gidilen üç hâl var: zaten bir inceleme
+  /// kaydı var (bekliyor, reddedildi ya da onaylandı — üçünün de ekranı
+  /// orada), telefon iOS (çip okuma bu sürümde açık değil) ya da NFC
+  /// donanımı yok. Bu hâllerde bu ekranın gösterecek bir şeyi yok:
+  /// fotoğraf akışı kapanınca aynı sonuçla kapanıyor ki çağıran kapı tek
+  /// bir `push` sonucu görsün.
+  ///
+  /// İnceleme durumu okunamazsa "yok" sayılıyor: ağ hatası yüzünden
+  /// kullanıcıyı çip formundan mahrum etmek yerine form açılıyor, fotoğraf
+  /// yolu zaten tepede.
+  Future<void> enter() async {
+    final provider = context.read<IdentityReviewProvider?>();
+    if (provider != null) await provider.load(silent: true);
+    if (!mounted) return;
+
+    final hasReview = provider?.review != null;
+    final chipPossible = await _chipPossible();
+    if (!mounted) return;
+
+    if (hasReview || widget.user.identityVerified || !chipPossible) {
+      final result = await context.push<bool>(
+        '/identity-documents',
+        extra: widget.user,
+      );
+      if (mounted) context.pop(result ?? false);
+      return;
+    }
+
+    setState(() => isReady = true);
+  }
+
+  /// Çip yolu bu cihazda denenebilir mi.
+  ///
+  /// iOS'ta hayır: kart okuma Apple'ın NFC yetkisini istiyor ve bu sürüm
+  /// onu taşımıyor. Android'de NFC donanımı yoksa hayır; **kapalıysa** evet,
+  /// kullanıcı ayarlardan açabiliyor ve çip ekranı bunu söylüyor.
+  Future<bool> _chipPossible() async {
+    if (defaultTargetPlatform == TargetPlatform.iOS) return false;
+    final availability = await _chipReader.availability();
+    return availability != NfcAvailability.unsupported;
+  }
+
+  /// Fotoğraf akışını açar.
+  ///
+  /// Dönüşte bir inceleme kaydı oluşmuşsa (kullanıcı gönderdi) ya da akış
+  /// `true` ile kapandıysa bu ekranın yapacağı bir şey kalmadı, o da
+  /// kapanıyor. Kullanıcı hiçbir şey yapmadan geri döndüyse çip formu
+  /// olduğu yerde duruyor.
+  Future<void> openPhotos() async {
+    final provider = context.read<IdentityReviewProvider?>();
+    final result = await context.push<bool>(
+      '/identity-documents',
+      extra: widget.user,
+    );
+    if (!mounted) return;
+
+    if (result == true || provider?.review != null) {
+      context.pop(result ?? false);
+    }
+  }
+
+  // ------------------------------------------------------------------- Çip
+
   /// Çip okuma ekranını açar ve dönen sonucu forma işler.
   ///
-  /// Ekran `null` ile kapanırsa hiçbir şey değişmiyor: kullanıcı vazgeçmiş
-  /// ya da NFC yokmuş demektir ve eldeki durum — beyan formu ya da önceki
-  /// okuma — olduğu gibi duruyor. Geçerli bir okumayı, ikinci denemeden
-  /// vazgeçildi diye atmak kartı boşuna yeniden okutmak olurdu.
+  /// Üç sonuç var: okunan kanıt forma yazılıyor; `IdentityChipHandoff.photos`
+  /// kullanıcının hata ekranından "Fotoğrafla Devam Et" dediği anlamına
+  /// geliyor ve fotoğraf akışı açılıyor; `null` ise hiçbir şey değişmiyor
+  /// — kullanıcı vazgeçmiş ya da NFC yokmuş demektir ve eldeki durum
+  /// olduğu gibi duruyor. Geçerli bir okumayı, ikinci denemeden vazgeçildi
+  /// diye atmak kartı boşuna yeniden okutmak olurdu.
   Future<void> readChip() async {
-    final result = await context.push<IdentityChipResult>('/identity-chip');
-    if (!mounted || result == null) return;
+    final result = await context.push<Object>('/identity-chip');
+    if (!mounted) return;
 
-    setState(() => chip = result);
+    switch (result) {
+      case IdentityChipResult read:
+        setState(() {
+          chip = read;
+          chipFailed = false;
+        });
+      case IdentityChipHandoff.photos:
+        await openPhotos();
+      default:
+        break;
+    }
   }
 
   /// Okumayı bırakır: kanıt ve ondan türeyen beş alan **tek geçişte**
@@ -97,20 +184,7 @@ abstract class IdentityVerificationPagemodel
   /// ayrışmasına izin vermek olurdu.
   void removeChip() => setState(() => chip = null);
 
-  Future<void> pickBirthDate() async {
-    final now = DateTime.now();
-    final latest = DateTime(now.year - minimumAge, now.month, now.day);
-
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: birthDate ?? latest,
-      firstDate: DateTime(earliestYear),
-      lastDate: latest,
-    );
-    if (picked == null) return;
-
-    setState(() => birthDate = picked);
-  }
+  // --------------------------------------------------------------- Gönderim
 
   Future<void> submit() async {
     // Gövde ekrandaki beyandan kuruluyor, denetleyicilerden değil: çip
@@ -150,15 +224,18 @@ abstract class IdentityVerificationPagemodel
   }
 
   /// Sunucunun hatasını kullanıcıya ne yapacağını söyleyen bir mesaja
-  /// çevirir.
+  /// çevirir ve fotoğraf yolunu öne çıkarır.
   ///
   /// Sunucunun kendi metni **ne olduğunu** anlatıyor, **ne yapılacağını**
   /// değil; tanınan `IDENTITY_*` kodlarında bizim karşılığımız gösteriliyor.
   /// Tanınmayan kodda sunucunun mesajı olduğu gibi kalıyor — uydurulmuş bir
-  /// yönlendirme, hiç yönlendirmemekten kötü.
+  /// yönlendirme, hiç yönlendirmemekten kötü. Kod ne olursa olsun çip yolu
+  /// bu sefer yürümedi; fotoğraf kartı uyarı olarak çiziliyor ki kullanıcı
+  /// aynı okumayı döngüye girmeden bırakabilsin.
   void _showFailure(ApiException error) {
     final known = IdentityError.fromErrorCode(error.errorCode);
     AppToast.error(context, known?.message ?? error.message);
+    setState(() => chipFailed = true);
 
     if (known == null) return;
 

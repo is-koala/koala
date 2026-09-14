@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:koala/employee/features/settings/presentation/providers/identity_review_provider.dart';
 import 'package:koala/product/constants/app_assets.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
@@ -36,7 +39,15 @@ class _SplashPageState extends State<SplashPage> {
   }
 
   Future<void> _initialize() async {
-    await SessionManager().load();
+    final session = SessionManager();
+    await session.load();
+    if (!mounted) return;
+    if (session.isLoggedIn) {
+      // Kimlik inceleme durumu açılışta arka planda okunuyor: profil rozeti
+      // ve kimlik ekranı açıldığında bekletmeden çizilsin. Beklenmiyor —
+      // ağ yavaşsa açılışı geciktirmemeli; sonuç provider'a düşüyor.
+      unawaited(context.read<IdentityReviewProvider>().load(silent: true));
+    }
     await PushMessaging.ensureInitialized();
     final pushTokens = PushTokenLifecycle();
     if (PushMessaging.isReady) {

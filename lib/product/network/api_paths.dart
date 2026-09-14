@@ -53,6 +53,20 @@ class ApiPaths {
   static const String currentUserIdentityChallenge =
       '$currentUserIdentityVerification/challenge';
 
+  /// Fotoğraflı kimlik incelemesi.
+  ///
+  /// `POST` multipart: `identity` JSON parçası (ad, soyad, doğum tarihi,
+  /// TCKN, seri no) ve dört dosya parçası `selfie`, `front`, `back`,
+  /// `together`. Personel kuyruğuna düşer; kimlik **onaydan sonra**
+  /// damgalanır, yanıt hemen `identityVerified` yapmaz. Tek dosya 10 MiB,
+  /// toplam gövde 42 MB (`413`); bekleyen inceleme varken ikinci yükleme
+  /// `IDENTITY_DOCUMENTS_ALREADY_PENDING` (`400`).
+  ///
+  /// `GET`: oturum sahibinin son incelemesi; hiç yükleme yoksa `404`
+  /// `IDENTITY_DOCUMENTS_NOT_FOUND`.
+  static const String currentUserIdentityDocuments =
+      '/users/me/identity-documents';
+
   /// Oturum sahibinin takip ettiği şirketler. Sayfalı.
   static const String followedCompanies = '/users/me/followed-companies';
 
