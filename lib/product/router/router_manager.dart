@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/business/core/b_shell_page.dart';
-import 'package:koala/business/features/home/presentation/pages/b_account_deletion_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_create_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_home_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_posts_page.dart';
@@ -16,15 +15,9 @@ import 'package:koala/business/features/home/presentation/pages/b_talent_pool_pa
 import 'package:koala/business/features/home/presentation/pages/b_user_profile_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_notifications_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_payment_result_page.dart';
-import 'package:koala/business/features/home/presentation/pages/b_blocked_users_page.dart';
-import 'package:koala/business/features/home/presentation/pages/b_reports_page.dart';
-import 'package:koala/business/features/home/presentation/pages/b_sessions_page.dart';
 import 'package:koala/employee/features/notifications/presentation/pages/notifications_page.dart';
 import 'package:koala/employee/features/notifications/presentation/pages/company_invitation_page.dart';
 import 'package:koala/employee/features/profile/presentation/pages/followed_companies_page.dart';
-import 'package:koala/employee/features/settings/presentation/pages/blocked_users_page.dart';
-import 'package:koala/employee/features/settings/presentation/pages/reports_page.dart';
-import 'package:koala/employee/features/settings/presentation/pages/sessions_page.dart';
 import 'package:koala/business/features/chat/presentation/pages/b_chat_list_page.dart';
 import 'package:koala/business/features/chat/presentation/pages/b_chat_page.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
@@ -49,7 +42,6 @@ import 'package:koala/employee/features/profile/presentation/pages/profile_page.
 import 'package:koala/employee/features/profile/presentation/pages/availability_page.dart';
 import 'package:koala/employee/features/home/presentation/pages/shell_page.dart';
 import 'package:koala/employee/features/company_detail/presentation/pages/company_detail_page.dart';
-import 'package:koala/employee/features/settings/presentation/pages/account_deletion_page.dart';
 import 'package:koala/employee/features/settings/presentation/pages/settings_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/login_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/register_page.dart';
@@ -61,14 +53,10 @@ import 'package:koala/employee/features/auth/presentation/pages/forgot_password_
 import 'package:koala/employee/features/auth/presentation/registration_routes.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/apply_page.dart';
 import 'package:koala/employee/features/home/models/job.dart';
-import 'package:koala/employee/features/settings/presentation/pages/account_info_page.dart';
-import 'package:koala/employee/features/settings/presentation/pages/address_page.dart';
-import 'package:koala/employee/features/auth/models/pending_verification.dart';
-import 'package:koala/employee/features/settings/presentation/pages/change_password_page.dart';
-import 'package:koala/employee/features/settings/presentation/pages/verification_code_page.dart';
 import 'package:koala/employee/features/settings/presentation/pages/identity_chip_page.dart';
 import 'package:koala/employee/features/settings/presentation/pages/identity_documents_page.dart';
 import 'package:koala/employee/features/settings/presentation/pages/identity_verification_page.dart';
+import 'package:koala/product/features/account/account_routes.dart';
 import 'package:koala/product/models/confirmed_address.dart';
 import 'package:koala/product/network/session_manager.dart';
 import 'package:koala/product/widgets/map_first_address_page.dart';
@@ -341,14 +329,9 @@ class RouterManager {
         pageBuilder: (context, state) => _page(state, const AvailabilityPage()),
       ),
 
-      GoRoute(
-        path: '/account-deletion',
-        pageBuilder: (context, state) =>
-            _page(state, const AccountDeletionPage()),
-      ),
-
-      // Kimlik doğrulama ve adres, başvuru kapısının iki şartı; ikisi de
-      // hesap bilgilerinden ve başvuru ekranından açılıyor.
+      // Kimlik doğrulama başvuru kapısının şartlarından; hesap bilgilerinden
+      // ve başvuru ekranından açılıyor. Adres hesap modülünde
+      // (`AccountRoutes.address`).
       GoRoute(
         path: '/identity-verification',
         pageBuilder: (context, state) {
@@ -378,17 +361,10 @@ class RouterManager {
         },
       ),
 
-      GoRoute(
-        path: '/address',
-        pageBuilder: (context, state) {
-          final user = state.extra as CurrentUser;
-          return _page(state, AddressPage(user: user));
-        },
-      ),
-
       // Harita-öncelikli adres seçici iki uygulamanın da işine yarıyor:
-      // işveren ilan ve şirket adresini buradan seçiyor (çalışan adresi
-      // `/address` üzerinden aynı ekrana `PUT` bağlanmış hâliyle gidiyor).
+      // işveren ilan ve şirket adresini buradan seçiyor (kullanıcının kendi
+      // adresi `/address` üzerinden aynı ekrana `PUT` bağlanmış hâliyle
+      // gidiyor).
       // `context.push<ConfirmedAddress>` ile çağrılır; `extra` daha önce
       // onaylanmış adres olabilir, ekran ona açılır.
       GoRoute(
@@ -404,25 +380,11 @@ class RouterManager {
         },
       ),
 
-      GoRoute(
-        path: '/account-info',
-        pageBuilder: (context, state) {
-          final user = state.extra as CurrentUser;
-          return _page(state, AccountInfoPage(user: user));
-        },
-      ),
-
-      // Hesap ekranından açılıyor: e-posta ya da telefon değiştiğinde
-      // sunucu değeri yazmıyor, önce buradaki kodun girilmesini bekliyor.
-      // Sonucu `bool` olarak döndürüyor; çağıran sıradaki doğrulamaya
-      // geçip geçmeyeceğine buna bakarak karar veriyor.
-      GoRoute(
-        path: '/verification',
-        pageBuilder: (context, state) {
-          final verification = state.extra as PendingVerification;
-          return _page(state, VerificationCodePage(verification: verification));
-        },
-      ),
+      // Hesap modülü: hesap bilgileri, adres, parola, oturumlar, bildirim
+      // tercihleri, şikayetler, engellenenler, hesap silme ve doğrulama kodu.
+      // Hesap kullanıcıya ait, tarafına değil — iki kabuk da aynı rotalara
+      // gidiyor, `/business/` kopyaları yok.
+      ...AccountRoutes.routes(_page),
 
       ShellRoute(
         builder: (context, state, child) => BShellPage(child: child),
@@ -495,12 +457,6 @@ class RouterManager {
       ),
 
       GoRoute(
-        path: '/business/account-deletion',
-        pageBuilder: (context, state) =>
-            _page(state, const BAccountDeletionPage()),
-      ),
-
-      GoRoute(
         path: '/business/company-info',
         pageBuilder: (context, state) => _page(state, const BCompanyInfoPage()),
       ),
@@ -550,47 +506,8 @@ class RouterManager {
       ),
 
       GoRoute(
-        path: '/sessions',
-        pageBuilder: (context, state) => _page(state, const SessionsPage()),
-      ),
-
-      GoRoute(
         path: '/earnings',
         pageBuilder: (context, state) => _page(state, const EarningsPage()),
-      ),
-
-      GoRoute(
-        path: '/business/sessions',
-        pageBuilder: (context, state) => _page(state, const BSessionsPage()),
-      ),
-
-      // Parola kullanıcıya ait, tarafına değil: iki uygulamanın ayarları da
-      // aynı ekrana çıkıyor.
-      GoRoute(
-        path: '/change-password',
-        pageBuilder: (context, state) =>
-            _page(state, const ChangePasswordPage()),
-      ),
-
-      GoRoute(
-        path: '/reports',
-        pageBuilder: (context, state) => _page(state, const ReportsPage()),
-      ),
-
-      GoRoute(
-        path: '/business/reports',
-        pageBuilder: (context, state) => _page(state, const BReportsPage()),
-      ),
-
-      GoRoute(
-        path: '/blocked-users',
-        pageBuilder: (context, state) => _page(state, const BlockedUsersPage()),
-      ),
-
-      GoRoute(
-        path: '/business/blocked-users',
-        pageBuilder: (context, state) =>
-            _page(state, const BBlockedUsersPage()),
       ),
 
       GoRoute(

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:koala/employee/features/settings/presentation/widgets/locked_field.dart';
+import 'package:koala/product/widgets/locked_field.dart';
 
-import '../../../../../support/pump.dart';
+import '../../support/pump.dart';
 
 /// Çipten türeyen beş alanın çizildiği satır: değer doğrudan geçiliyor,
 /// yazılabilir bir şey yok ve ekran okuyucu etiketle değeri tek parça duyuyor.

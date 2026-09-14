@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/features/account/presentation/widgets/account_list_clearance.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:koala/product/widgets/session_view.dart';
 
-/// Çalışanın açık oturumları.
+/// Hesabın açık oturumları.
 ///
-/// Liste iki uygulamada da aynı — gövde [SessionView]'den geliyor.
+/// Oturum kullanıcıya ait, tarafına değil: iki uygulamanın ayarları da bu
+/// ekranı açıyor. Gövde [SessionView]'den geliyor; alt pay kabuğa göre
+/// ([AccountListClearance]).
 class SessionsPage extends StatelessWidget {
   const SessionsPage({super.key});
 
@@ -14,7 +17,7 @@ class SessionsPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: context.backgroundColor,
       appBar: const MyAppbar(title: 'Oturumlar'),
-      body: const SessionView(),
+      body: SessionView(bottomPadding: AccountListClearance.bottomPadding()),
     );
   }
 }

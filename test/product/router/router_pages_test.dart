@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:koala/product/features/account/account_routes.dart';
 import 'package:koala/product/router/router_manager.dart';
 
 /// Bir rotanın sayfasını go_router'a seçtirmek (`builder:`) bu sürümde
@@ -106,5 +107,37 @@ void main() {
 
     expect(earnings, hasLength(1));
     expect(earnings.single.pageBuilder, isNotNull);
+  });
+
+  test('hesap modülünün rotaları tek, /business/ kopyaları yok', () {
+    final routes = allGoRoutes(RouterManager.router.configuration.routes);
+    final paths = routes.map((route) => route.path).toList();
+
+    // Hesap kullanıcıya ait, tarafına değil: iki kabuk aynı rotaya gidiyor.
+    for (final path in [
+      AccountRoutes.accountInfo,
+      AccountRoutes.address,
+      AccountRoutes.changePassword,
+      AccountRoutes.sessions,
+      AccountRoutes.notificationPreferences,
+      AccountRoutes.reports,
+      AccountRoutes.blockedUsers,
+      AccountRoutes.accountDeletion,
+      AccountRoutes.verification,
+    ]) {
+      expect(paths.where((p) => p == path), hasLength(1), reason: path);
+      expect(path.startsWith('/business/'), isFalse, reason: path);
+    }
+
+    // Eski işveren kopyaları: `/business/sessions`, `/business/reports`,
+    // `/business/blocked-users`, `/business/account-deletion`.
+    for (final legacy in [
+      '/business/sessions',
+      '/business/reports',
+      '/business/blocked-users',
+      '/business/account-deletion',
+    ]) {
+      expect(paths, isNot(contains(legacy)), reason: '$legacy hâlâ var');
+    }
   });
 }

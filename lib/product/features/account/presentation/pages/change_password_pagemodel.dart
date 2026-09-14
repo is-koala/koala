@@ -31,7 +31,7 @@ abstract class ChangePasswordPagemodel extends State<ChangePasswordPage> {
     final repeated = confirmation.text;
 
     if (current.isEmpty || next.isEmpty || repeated.isEmpty) {
-      AppToast.error(context, 'Bütün alanları doldur.');
+      AppToast.error(context, 'Bütün alanları doldurun.');
       return;
     }
     if (!PasswordRule.isSatisfiedBy(next)) {
@@ -43,7 +43,10 @@ abstract class ChangePasswordPagemodel extends State<ChangePasswordPage> {
       return;
     }
     if (next == current) {
-      AppToast.error(context, 'Yeni şifren mevcut şifrenden farklı olmalı.');
+      AppToast.error(
+        context,
+        'Yeni şifreniz mevcut şifrenizden farklı olmalı.',
+      );
       return;
     }
 
@@ -60,7 +63,7 @@ abstract class ChangePasswordPagemodel extends State<ChangePasswordPage> {
       // giriş istemek gereksiz olurdu.
       AppToast.success(
         context,
-        'Şifren güncellendi. Diğer cihazlardaki oturumların kapatıldı.',
+        'Şifreniz güncellendi. Diğer cihazlardaki oturumlarınız kapatıldı.',
       );
 
       final onCompleted = widget.onCompleted;

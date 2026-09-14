@@ -115,8 +115,8 @@ abstract class VerificationCodePagemodel extends State<VerificationCodePage> {
       AppToast.success(
         context,
         verification.isEmail
-            ? 'E-posta adresin doğrulandı.'
-            : 'Telefon numaran doğrulandı.',
+            ? 'E-posta adresiniz doğrulandı.'
+            : 'Telefon numaranız doğrulandı.',
       );
       _finish(true);
     } on ApiException catch (error) {
@@ -137,7 +137,7 @@ abstract class VerificationCodePagemodel extends State<VerificationCodePage> {
           error.type == ApiErrorType.notFound) {
         AppToast.error(
           context,
-          'Bu doğrulama artık geçerli değil. Değişikliği baştan yap.',
+          'Bu doğrulama artık geçerli değil. Değişikliği baştan yapın.',
         );
         _finish(false);
         return;
@@ -203,8 +203,8 @@ abstract class VerificationCodePagemodel extends State<VerificationCodePage> {
         AppToast.success(
           context,
           verification.isEmail
-              ? 'E-posta adresin zaten doğrulanmış.'
-              : 'Telefon numaran zaten doğrulanmış.',
+              ? 'E-posta adresiniz zaten doğrulanmış.'
+              : 'Telefon numaranız zaten doğrulanmış.',
         );
         _finish(true);
         return;

@@ -5,10 +5,11 @@ import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/models/pending_verification.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
-import 'package:koala/employee/features/settings/presentation/pages/account_info_page.dart';
 import 'package:koala/employee/features/settings/presentation/providers/identity_review_provider.dart';
 import 'package:koala/employee/features/settings/services/identity_document_service.dart';
+import 'package:koala/product/features/account/presentation/pages/account_info_page.dart';
 import 'package:koala/product/theme/theme.dart';
+import 'package:koala/product/widgets/locked_field.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../../support/fake_api.dart';
@@ -22,7 +23,31 @@ final CurrentUser _user = CurrentUser.fromJson(const {
   'isEmployer': false,
 });
 
-Map<String, dynamic> _patchResponse(List<Map<String, dynamic>> pending) => {
+/// Şirketsiz işveren: aynı ekranı kendi ayarlarından açıyor.
+final CurrentUser _employer = CurrentUser.fromJson(const {
+  'id': 'employer-1',
+  'firstName': 'Ayşe',
+  'lastName': 'İşveren',
+  'email': 'ayse@ornek.com',
+  'phoneNumber': '5551112233',
+  'jobTitle': 'Eski meslek',
+  'isEmployer': true,
+});
+
+/// Kimliği çipten doğrulanmış çalışan: ad ve soyad artık değiştirilemiyor.
+final CurrentUser _verifiedUser = CurrentUser.fromJson(const {
+  'id': 'user-2',
+  'firstName': 'ÇAĞRI',
+  'lastName': 'YILMAZ',
+  'email': 'cagri@ornek.com',
+  'identityVerified': true,
+  'isEmployer': false,
+});
+
+Map<String, dynamic> _patchResponse(
+  List<Map<String, dynamic>> pending, {
+  bool isEmployer = false,
+}) => {
   'success': true,
   'data': {
     'user': {
@@ -30,7 +55,7 @@ Map<String, dynamic> _patchResponse(List<Map<String, dynamic>> pending) => {
       'firstName': 'Ada',
       'lastName': 'Kaya',
       'email': 'eski@ornek.com',
-      'isEmployer': false,
+      'isEmployer': isEmployer,
     },
     'pendingVerifications': pending,
   },
@@ -73,7 +98,9 @@ void main() {
     WidgetTester tester,
     FakeApi api, {
     ValueChanged<String>? onVerificationOpened,
+    CurrentUser? user,
   }) async {
+    final pageUser = user ?? _user;
     final router = GoRouter(
       initialLocation: '/profile',
       routes: [
@@ -84,7 +111,7 @@ void main() {
         ),
         GoRoute(
           path: '/account-info',
-          builder: (context, state) => AccountInfoPage(user: _user),
+          builder: (context, state) => AccountInfoPage(user: pageUser),
         ),
         GoRoute(
           path: '/verification',
@@ -118,10 +145,14 @@ void main() {
       ),
     );
 
-    router.push('/account-info');
+    router.push('/account-info', extra: pageUser);
     await tester.pumpAndSettle();
     return router;
   }
+
+  Finder fieldLabelled(String label) => find.byWidgetPredicate(
+    (widget) => widget is TextField && widget.decoration?.labelText == label,
+  );
 
   Future<void> enterField(
     WidgetTester tester,
@@ -233,7 +264,7 @@ void main() {
     await tester.tap(find.text('Kaydet'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Profilin güncellendi.'), findsOneWidget);
+    expect(find.text('Profiliniz güncellendi.'), findsOneWidget);
     expect(find.text('profil ekranı'), findsOneWidget);
     expect(find.text('doğrulama ekranı'), findsNothing);
   });
@@ -344,4 +375,67 @@ void main() {
       expect(find.text('doğrulama ekranı'), findsNothing);
     },
   );
+
+  // İşveren aynı ekranı kendi ayarlarından açıyor; çalışan profilinin
+  // alanları orada ne çiziliyor ne gövdeye giriyor.
+  testWidgets('işverende çalışan alanları çizilmez ve PATCH gövdesine girmez', (
+    tester,
+  ) async {
+    final api = FakeApi(
+      handler: (_) => FakeApiResponse(
+        statusCode: 200,
+        body: _patchResponse([], isEmployer: true),
+      ),
+    );
+
+    await pumpPage(tester, api, user: _employer);
+
+    for (final label in [
+      'Meslek',
+      'IBAN',
+      'Hakkımda',
+      'Yetkinlikler',
+      'İlgi alanları',
+    ]) {
+      expect(fieldLabelled(label), findsNothing, reason: '$label çizildi');
+    }
+    for (final label in ['Ad', 'Soyad', 'Telefon', 'E-posta']) {
+      expect(fieldLabelled(label), findsOneWidget, reason: '$label yok');
+    }
+    expect(find.byKey(const ValueKey('account-address-row')), findsOneWidget);
+
+    await enterField(tester, 'Telefon', '5559998877');
+    await tester.tap(find.text('Kaydet'));
+    await tester.pumpAndSettle();
+
+    final body = api.requests.single.data as Map<String, dynamic>;
+    expect(body, {'phoneNumber': '5559998877'});
+    expect(find.text('Profiliniz güncellendi.'), findsOneWidget);
+  });
+
+  // #151: çipten gelen ad-soyad kilitli. Kapalı bir metin kutusu değil,
+  // kimlik ekranındakiyle aynı kilitli satır çiziliyor ve gövdeye girmiyor.
+  testWidgets('kimliği doğrulanmış kullanıcıda ad ve soyad kilitli satır', (
+    tester,
+  ) async {
+    final api = FakeApi(
+      handler: (_) =>
+          FakeApiResponse(statusCode: 200, body: _patchResponse([])),
+    );
+
+    await pumpPage(tester, api, user: _verifiedUser);
+
+    expect(fieldLabelled('Ad'), findsNothing);
+    expect(fieldLabelled('Soyad'), findsNothing);
+    final locked = tester.widgetList<LockedField>(find.byType(LockedField));
+    expect(locked.map((field) => field.value), ['ÇAĞRI', 'YILMAZ']);
+    expect(find.textContaining('ad ve soyad değiştirilemiyor'), findsOneWidget);
+
+    await tester.tap(find.text('Kaydet'));
+    await tester.pumpAndSettle();
+
+    final body = api.requests.single.data as Map<String, dynamic>;
+    expect(body.containsKey('firstName'), isFalse);
+    expect(body.containsKey('lastName'), isFalse);
+  });
 }

@@ -34,11 +34,11 @@ class PendingVerification {
     final target = sentTo;
     // `sentTo` sözleşmede zorunlu değil; boşsa hedefi adlandırmadan söyle.
     if (target == null || target.isEmpty) {
-      return 'Sana gönderdiğimiz 6 haneli kodu gir';
+      return 'Size gönderdiğimiz 6 haneli kodu girin';
     }
     return isEmail
-        ? '$target adresine gönderdiğimiz 6 haneli kodu gir'
-        : '$target numarasına gönderdiğimiz 6 haneli kodu gir';
+        ? '$target adresine gönderdiğimiz 6 haneli kodu girin'
+        : '$target numarasına gönderdiğimiz 6 haneli kodu girin';
   }
 
   factory PendingVerification.fromJson(Map<String, dynamic> json) {

@@ -4,6 +4,11 @@ import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/account_deletion_view.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 
+/// Hesap silme talebi.
+///
+/// Silme hesabın kendisine ait: çalışan da işveren de aynı ekrandan,
+/// aynı `LegalService` çağrısıyla talep açıyor. Gövde
+/// [AccountDeletionView]'den geliyor.
 class AccountDeletionPage extends StatelessWidget {
   const AccountDeletionPage({super.key});
 

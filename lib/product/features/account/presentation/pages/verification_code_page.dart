@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/models/pending_verification.dart';
 import 'package:koala/employee/features/auth/services/verification_service.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
-import 'package:koala/employee/features/settings/presentation/widgets/settings_hint.dart';
+import 'package:koala/product/widgets/settings_hint.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
@@ -102,7 +102,7 @@ class _VerificationCodePageState extends VerificationCodePagemodel {
     return SettingsHint(
       hasTimeLeft
           ? 'Kodun geçerlilik süresi: $remainingLabel'
-          : 'Kodun süresi dolmuş olabilir. Geçmediyse yeni bir kod iste.',
+          : 'Kodun süresi dolmuş olabilir. Geçmediyse yeni bir kod isteyin.',
       padding: AppPadding.primaryLeft,
     );
   }
@@ -140,7 +140,7 @@ class _VerificationCodePageState extends VerificationCodePagemodel {
           ),
           if (resendCooldownSeconds > 0)
             SettingsHint(
-              '$resendCooldownSeconds saniye sonra tekrar isteyebilirsin.',
+              '$resendCooldownSeconds saniye sonra tekrar isteyebilirsiniz.',
               padding: AppPadding.primaryLeft,
             ),
         ],

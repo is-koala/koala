@@ -58,8 +58,12 @@ abstract class AccountInfoPagemodel extends State<AccountInfoPage> {
   }
 
   /// Kimliği doğrulanmış kullanıcı ad ve soyadını değiştiremiyor; backend
-  /// isteği reddettiği için alanlar en baştan kapalı açılıyor.
+  /// isteği reddettiği için alanlar en baştan kilitli çiziliyor.
   bool get canEditName => !widget.user.identityVerified;
+
+  /// Meslek, IBAN, hakkımda, yetkinlik ve ilgi alanları çalışan profiline
+  /// ait; işverende ne çiziliyor ne gövdeye giriyor.
+  bool get showsWorkerFields => !widget.user.isEmployer;
 
   Future<void> pickProfilePicture() async {
     final image = await ImagePicker().pickImage(
@@ -73,7 +77,7 @@ abstract class AccountInfoPagemodel extends State<AccountInfoPage> {
     final uploaded = await provider.uploadProfilePicture(image.path);
     if (!mounted) return;
     if (uploaded) {
-      AppToast.success(context, 'Profil fotoğrafın güncellendi.');
+      AppToast.success(context, 'Profil fotoğrafınız güncellendi.');
     } else {
       AppToast.error(
         context,
@@ -96,14 +100,22 @@ abstract class AccountInfoPagemodel extends State<AccountInfoPage> {
     // gönderdiği için hata alırdı.
     final firstName = _changed(firstNameController.text, user.firstName);
     final lastName = _changed(lastNameController.text, user.lastName);
-    final about = _changed(aboutController.text, user.about);
     final phoneNumber = _changed(phoneController.text, user.phoneNumber);
-    final jobTitle = _changed(occupationController.text, user.jobTitle);
-    final qualifications = _changed(
-      qualificationsController.text,
-      user.qualifications,
-    );
-    final interests = _changed(interestsController.text, user.interests);
+    // Çalışan alanları işverende hiç çizilmiyor; kontrolcüleri açılıştaki
+    // değeri taşıdığı için zaten "değişmedi" çıkar, yine de gövdeye
+    // girmemeleri kontrolcüye değil role bağlansın.
+    final about = showsWorkerFields
+        ? _changed(aboutController.text, user.about)
+        : null;
+    final jobTitle = showsWorkerFields
+        ? _changed(occupationController.text, user.jobTitle)
+        : null;
+    final qualifications = showsWorkerFields
+        ? _changed(qualificationsController.text, user.qualifications)
+        : null;
+    final interests = showsWorkerFields
+        ? _changed(interestsController.text, user.interests)
+        : null;
     // E-posta ve telefon değişikliği hemen yazılmıyor: sunucu yeni değere kod
     // gönderip bekleyen doğrulamayı döndürüyor.
     final email = _changed(emailController.text, user.email);
@@ -111,7 +123,7 @@ abstract class AccountInfoPagemodel extends State<AccountInfoPage> {
     // IBAN alanı boş bırakıldıysa hiç gönderilmiyor: kayıtlı IBAN
     // maskelendiği için "değişti mi" karşılaştırması yapılamıyor, boş metin
     // göndermek de kayıtlıyı bozardı.
-    final iban = ibanController.text.trim();
+    final iban = showsWorkerFields ? ibanController.text.trim() : '';
 
     final pending = await provider.updateProfile(
       firstName: canEditName ? firstName : null,
@@ -141,7 +153,7 @@ abstract class AccountInfoPagemodel extends State<AccountInfoPage> {
     }
 
     if (pending.isEmpty) {
-      AppToast.success(context, "Profilin güncellendi.");
+      AppToast.success(context, "Profiliniz güncellendi.");
       context.pop();
       return;
     }
@@ -161,7 +173,7 @@ abstract class AccountInfoPagemodel extends State<AccountInfoPage> {
   Future<void> _collectVerifications(List<PendingVerification> pending) async {
     for (final verification in pending) {
       final verified = await context.push<bool>(
-        '/verification',
+        AccountRoutes.verification,
         extra: verification,
       );
       if (!mounted) return;
@@ -186,9 +198,9 @@ abstract class AccountInfoPagemodel extends State<AccountInfoPage> {
     });
   }
 
-  /// Adres kendi ekranında düzenleniyor: uç toptan yazıyor ve ülke/il/ilçe
-  /// seçicisiyle koordinat istiyor.
-  Future<void> openAddress() => _editOnOwnPage('/address');
+  /// Adres kendi ekranında düzenleniyor: uç toptan yazıyor ve harita
+  /// üzerinde onaylanmış koordinat istiyor.
+  Future<void> openAddress() => _editOnOwnPage(AccountRoutes.address);
 
   /// Kimlik de kendi ekranında doğrulanıyor.
   Future<void> openIdentityVerification() =>

@@ -421,7 +421,15 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
 
       await _startPayment(currentAssignment);
     } on ApiException catch (error) {
-      if (mounted) AppToast.error(context, error.message);
+      if (!mounted) return;
+      AppToast.error(context, error.message);
+      // Bireysel işverenin adresi yokken İyzico alıcı kaydı kurulamıyor ve
+      // sunucu "İşverenin adres bilgisi eksik." diyor. Mesaj ne yapılacağını
+      // söylemiyor; kullanıcı doğrudan adres ekranına götürülüyor, kayıt
+      // `UserProvider`'ı tazeliyor ve ödeme yeniden denenebiliyor.
+      if (AddressRequiredErrorCodes.matches(error)) {
+        await AccountNavigation.openAddress(context);
+      }
     } finally {
       if (mounted) setState(() => _isStartingPayment = false);
     }

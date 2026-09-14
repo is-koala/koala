@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:koala/business/features/home/presentation/pages/b_job_detail_page.dart';
 import 'package:koala/business/features/home/presentation/providers/b_company_provider.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
@@ -19,6 +20,7 @@ import 'package:koala/employee/features/jobs/services/assignment_service.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/providers/job_gallery_provider.dart';
 import 'package:koala/product/services/job_gallery_service.dart';
+import 'package:koala/product/theme/theme.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../../support/fake_api.dart';
@@ -91,6 +93,7 @@ pumpPage(
   FutureOr<FakeApiResponse> Function(RequestOptions request)? paymentHandler,
   FutureOr<FakeApiResponse> Function(RequestOptions request)? chatHandler,
   Map<String, Object?>? currentUser,
+  List<GoRoute> extraRoutes = const [],
 }) async {
   final detailApi = FakeApi(
     handler: (_) => const FakeApiResponse(
@@ -259,39 +262,58 @@ pumpPage(
     },
   );
 
-  await pumpInApp(
-    tester,
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(
-          create: (_) => BJobsProvider(
-            service: EmployerJobService.withClient(jobsApi.client),
-          ),
+  final page = MultiProvider(
+    providers: [
+      ChangeNotifierProvider(
+        create: (_) => BJobsProvider(
+          service: EmployerJobService.withClient(jobsApi.client),
         ),
-        ChangeNotifierProvider(
-          create: (_) => BCompanyProvider(
-            service: BCompanyService.withClient(assignmentApi.client),
-            companyService: CompanyService.withClient(assignmentApi.client),
-          ),
-        ),
-        ChangeNotifierProvider.value(value: userProvider),
-        ChangeNotifierProvider(create: (_) => BTalentPoolProvider()),
-      ],
-      child: BJobDetailPage(
-        jobId: 'job-1',
-        jobService: JobService.withClient(detailApi.client),
-        employerJobService: EmployerJobService.withClient(employerApi.client),
-        assignmentService: AssignmentService.withClient(assignmentApi.client),
-        paymentService: BPaymentService.withClient(paymentApi.client),
-        paymentBrowser: browser,
-        galleryProvider: JobGalleryProvider(
-          service: JobGalleryService.withClient(galleryApi.client),
-        ),
-        chatService: ChatService.withClient(chatApi.client),
       ),
+      ChangeNotifierProvider(
+        create: (_) => BCompanyProvider(
+          service: BCompanyService.withClient(assignmentApi.client),
+          companyService: CompanyService.withClient(assignmentApi.client),
+        ),
+      ),
+      ChangeNotifierProvider.value(value: userProvider),
+      ChangeNotifierProvider(create: (_) => BTalentPoolProvider()),
+    ],
+    child: BJobDetailPage(
+      jobId: 'job-1',
+      jobService: JobService.withClient(detailApi.client),
+      employerJobService: EmployerJobService.withClient(employerApi.client),
+      assignmentService: AssignmentService.withClient(assignmentApi.client),
+      paymentService: BPaymentService.withClient(paymentApi.client),
+      paymentBrowser: browser,
+      galleryProvider: JobGalleryProvider(
+        service: JobGalleryService.withClient(galleryApi.client),
+      ),
+      chatService: ChatService.withClient(chatApi.client),
     ),
-    brightness: brightness,
   );
+  if (extraRoutes.isEmpty) {
+    await pumpInApp(tester, page, brightness: brightness);
+  } else {
+    // Sayfanın başka bir rotaya gittiğini sınayan testler için: sayfa kökte,
+    // hedefler `extraRoutes`'ta. `pumpInApp` router taşımıyor.
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(
+          path: '/',
+          pageBuilder: (context, state) => MaterialPage<void>(child: page),
+        ),
+        ...extraRoutes,
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      MaterialApp.router(
+        theme: brightness == Brightness.dark ? darkTheme : lightTheme,
+        routerConfig: router,
+      ),
+    );
+  }
   // Post-frame yükleme dört async servis katmanından geçiyor. İlk istek ve
   // state yazımı tamamlanmadan `pumpAndSettle` erken dönebildiği için olay
   // döngüsünü deterministik biçimde ilerlet.

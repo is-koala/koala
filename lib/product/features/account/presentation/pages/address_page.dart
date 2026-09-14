@@ -10,22 +10,33 @@ import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/map_first_address_page.dart';
 import 'package:provider/provider.dart';
 
-/// Çalışanın adresi: harita-öncelikli ekranın `PUT /users/me/address` ile
-/// bağlanmış hâli.
+/// Kullanıcının kendi adresi: harita-öncelikli ekranın
+/// `PUT /users/me/address` ile bağlanmış hâli.
+///
+/// Adres hesaba ait, tarafına değil: çalışan başvuru kapısından, işveren
+/// ayarlardaki *Adresim* satırından ve ödeme kapısından aynı ekrana geliyor.
+/// Bireysel işverenin ödemesi bu adres olmadan başlamıyor
+/// (`JOB_ASSIGNMENT_ADDRESS_NOT_PROVIDED_FOR_EMPLOYER`); önceden işveren
+/// tarafında bu ekranın hiç yolu yoktu.
 ///
 /// Kayıt başarılıysa `UserProvider` tazelenir ve ekran kapanır; açan ekran
-/// (hesap bilgileri, başvuru kapısı) tazelenmiş kullanıcıyı zaten izliyor.
+/// (hesap bilgileri, başvuru kapısı, işveren profili) tazelenmiş kullanıcıyı
+/// zaten izliyor.
 class AddressPage extends StatelessWidget {
   const AddressPage({
     super.key,
-    required this.user,
+    this.user,
     this.userService,
     this.addressSearchGateway,
     this.referenceService,
     this.locationSource,
   });
 
-  final CurrentUser user;
+  /// Ekranın açılacağı kullanıcı. Verilmezse `UserProvider`'daki kullanıcı
+  /// okunuyor; o da yoksa harita boş adresle açılıyor — kullanıcı adresini
+  /// yine girebiliyor, yalnız önceden dolu alan olmuyor.
+  final CurrentUser? user;
+
   final UserService? userService;
   final AddressSearchGateway? addressSearchGateway;
   final ReferenceLocationService? referenceService;
@@ -33,9 +44,11 @@ class AddressPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final current = user ?? context.read<UserProvider>().user;
+
     return MapFirstAddressPage(
       title: 'Adresim',
-      initialAddress: ConfirmedAddress.fromCanonical(user.address),
+      initialAddress: ConfirmedAddress.fromCanonical(current?.address),
       addressSearchGateway: addressSearchGateway,
       referenceService: referenceService,
       locationSource: locationSource,

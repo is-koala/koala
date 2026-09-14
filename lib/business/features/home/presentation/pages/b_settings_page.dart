@@ -12,6 +12,7 @@ import 'package:koala/employee/features/profile/presentation/providers/availabil
 import 'package:koala/product/network/realtime_client.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
+import 'package:koala/product/features/account/presentation/widgets/account_settings_tiles.dart';
 import 'package:koala/product/providers/notification_provider.dart';
 import 'package:koala/product/theme/theme_provider.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
@@ -44,6 +45,12 @@ class BSettingsPage extends StatelessWidget {
   Widget _settingsList(BuildContext context) {
     return Column(
       children: [
+        // Hesap satırları ortak modülden: çalışanın ayarları da aynı
+        // ekranlara gidiyor. Firma, şablon ve yetenek havuzu işverene özgü.
+        // "Adresim" işverenin kendi adresi — bireysel işverenin ödemesi bu
+        // adres olmadan başlamıyor; şirket adresi firma bilgilerinde.
+        AccountSettingsTiles.editAccount(context),
+        AccountSettingsTiles.address(context),
         MyListTile(
           icon: AppIcons.building,
           title: "Firma Bilgileri Düzenle",
@@ -61,37 +68,18 @@ class BSettingsPage extends StatelessWidget {
           title: "Yetenek Havuzum",
           onTap: () => context.push('/business/talent-pool'),
         ),
-        MyListTile(
-          icon: AppIcons.shield,
-          title: "Şifreyi Değiştir",
-          onTap: () => context.push('/change-password'),
-        ),
-        MyListTile(
-          icon: AppIcons.mobile,
-          title: "Oturumlar",
-          onTap: () => context.push('/business/sessions'),
-        ),
-        MyListTile(
-          icon: AppIcons.shield,
-          title: "Şikayetlerim",
-          onTap: () => context.push('/business/reports'),
-        ),
-        MyListTile(
-          icon: AppIcons.userBlock,
-          title: "Engellediklerim",
-          onTap: () => context.push('/business/blocked-users'),
-        ),
+        AccountSettingsTiles.changePassword(context),
+        AccountSettingsTiles.sessions(context),
+        AccountSettingsTiles.notificationPreferences(context),
+        AccountSettingsTiles.reports(context),
+        AccountSettingsTiles.blockedUsers(context),
         MyListTile(
           icon: AppIcons.paint,
           title: "Görünüm",
           value: context.watch<ThemeProvider>().themeMode.label,
           onTap: () => ThemeModeSheet.show(context),
         ),
-        MyListTile(
-          icon: AppIcons.delete,
-          title: "Hesabı Sil",
-          onTap: () => context.push('/business/account-deletion'),
-        ),
+        AccountSettingsTiles.deleteAccount(context),
         MyListTile(
           icon: AppIcons.logout,
           title: "Çıkış Yap",

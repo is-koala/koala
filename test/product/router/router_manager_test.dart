@@ -1,5 +1,6 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:koala/product/features/account/account_routes.dart';
 import 'package:koala/product/network/session_manager.dart';
 import 'package:koala/product/router/router_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -182,20 +183,29 @@ void main() {
       );
     });
 
-    // Parola ekranı iki uygulamanın da ayarlarından açılıyor ve tek bir
-    // rotası var. `/business` önekini taşımadığı için işverenin, employee
-    // rota listesinde olmadığı için çalışanın önü kesilmemeli.
-    test('parola değiştirme her iki tarafa da açık', () {
+    // Hesap modülünün ekranları iki uygulamanın da ayarlarından açılıyor ve
+    // her birinin tek rotası var. `/business` önekini taşımadıkları için
+    // işverenin, employee rota listesinde olmadıkları için çalışanın önü
+    // kesilmemeli.
+    test('hesap modülü rotaları her iki tarafa da açık', () {
       for (final userType in ['employee', 'business']) {
-        expect(
-          redirect(
-            loggedIn: true,
-            userType: userType,
-            location: '/change-password',
-          ),
-          isNull,
-          reason: '$userType parola ekranına ulaşamıyor',
-        );
+        for (final location in [
+          AccountRoutes.accountInfo,
+          AccountRoutes.address,
+          AccountRoutes.changePassword,
+          AccountRoutes.sessions,
+          AccountRoutes.notificationPreferences,
+          AccountRoutes.reports,
+          AccountRoutes.blockedUsers,
+          AccountRoutes.accountDeletion,
+          AccountRoutes.verification,
+        ]) {
+          expect(
+            redirect(loggedIn: true, userType: userType, location: location),
+            isNull,
+            reason: '$userType $location ekranına ulaşamıyor',
+          );
+        }
       }
     });
   });

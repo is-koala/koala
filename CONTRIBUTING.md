@@ -70,6 +70,8 @@ Servis sınıfı dosyasının adını alır: `job_service.dart` → `JobService`
 
 Employee'ye özgü bir widget'ı `product/` altına koyma; `product/` iki uygulamanın da sözleşmesidir.
 
+İki uygulamanın da açtığı, kendi modeli/servisi/sayfaları olan bir **özellik** `product/features/<özellik_adı>/` altına, taraf feature'larıyla aynı üç klasörlü şemayla konur (`models/`, `services/`, `presentation/`). İlk örnek `product/features/account/` (hesap bilgileri, adres, parola, oturumlar, bildirim tercihleri, engellenenler, hesap silme): iki ayarlar menüsü de aynı rotalara gider, `b_` önekli kopyası yoktur.
+
 **Business tarafı `b_` önekini kullanır:** `b_home_page.dart` → `BHomePage`, `BJobsProvider`, `BNavItem`. Bu önek iki tarafın aynı isimli dosyalarını ayırt etmek için var; koru.
 
 ---

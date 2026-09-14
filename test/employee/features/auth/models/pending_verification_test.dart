@@ -35,7 +35,7 @@ void main() {
 
       expect(
         verification.instruction,
-        'yeni@ornek.com adresine gönderdiğimiz 6 haneli kodu gir',
+        'yeni@ornek.com adresine gönderdiğimiz 6 haneli kodu girin',
       );
     });
 
@@ -48,7 +48,7 @@ void main() {
 
       expect(
         verification.instruction,
-        '5550000000 numarasına gönderdiğimiz 6 haneli kodu gir',
+        '5550000000 numarasına gönderdiğimiz 6 haneli kodu girin',
       );
     });
 
@@ -57,7 +57,10 @@ void main() {
     test('hedef boşsa cümle genel hâline düşüyor', () {
       const verification = PendingVerification(id: 'ver-4', type: 'EMAIL');
 
-      expect(verification.instruction, 'Sana gönderdiğimiz 6 haneli kodu gir');
+      expect(
+        verification.instruction,
+        'Size gönderdiğimiz 6 haneli kodu girin',
+      );
     });
   });
 }
