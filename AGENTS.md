@@ -428,9 +428,11 @@ When you add anything data-shaped, keep it behind the existing repository classe
 The Google Maps key is **not** in the repo. Flavor builds read it from:
 
 - Android: `MAPS_API_KEY_DEV`, `MAPS_API_KEY_STAGING` or `MAPS_API_KEY_PRODUCTION` in `android/local.properties`. Staging and production may instead receive their matching `KOALA_ANDROID_MAPS_API_KEY_*` environment variable in CI.
-- iOS: `MAPS_API_KEY` inside `ios/Flutter/Secrets.dev.xcconfig`, `Secrets.staging.xcconfig` or `Secrets.production.xcconfig`; each flavor configuration includes only its matching file.
+- iOS: `MAPS_API_KEY` inside `ios/Flutter/Secrets.dev.xcconfig`, `Secrets.staging.xcconfig` or `Secrets.production.xcconfig`; each flavor configuration includes only its matching file. Where the key comes from (Google Cloud, *Maps SDK for iOS*, restricted to the flavor's bundle id `com.iskoala.koala.staging` / `com.iskoala.koala`) and how it reaches `Info.plist` is written in `docs/ios-maps-api-key.md`.
 
 These files are gitignored, as is `.env`. Never print a key value into an answer, a comment or a committed file.
+
+> ⚠️ **A missing key must not crash the app.** With an empty `MAPS_API_KEY` iOS used to throw `GMSServicesException` at the first `GoogleMap` and die (is-koala/koala#172). The native side now reports whether it handed the SDK a key over the `com.iskoala.koala/maps_availability` channel (`AppDelegate.swift`, `MainActivity.kt`); `main.dart` reads it once into `MapsAvailability` (`lib/product/services/maps_availability.dart`) and provides it. **Every screen that builds a `GoogleMap` asks `MapsAvailability.of(context)` first** and draws the "Harita bu derlemede kullanılamıyor" placeholder when it is off — `MapExplorePage` (explore opens in list view) and `MapFirstAddressPage` (search + il/ilçe, pin from the saved address / device / city centre, no reverse geocode). A new map screen must do the same, and its widget test must pump it with `withMapsAvailability(..., available: false)` from `test/support/fake_maps_availability.dart`. The Xcode *Check Maps API Key* phase prints a `warning:` when the key is empty; it never fails the build.
 
 ### Platform toolchain
 
@@ -446,7 +448,7 @@ The native side sits at Flutter 3.47.1's own baseline; **the plugins pin most of
 **iOS** — deployment target 15.5. Dependencies are a **hybrid**: `app_links`, `geolocator_apple`, `package_info_plus`, `permission_handler_apple` and `shared_preferences_foundation` come through **Swift Package Manager** (on by default in Flutter 3.47), and CocoaPods is still there for one reason only — `google_maps_flutter_ios` ships no `Package.swift`. `ios/Podfile` exists solely for it and can be deleted outright the day that plugin adopts SPM. The build prints a "does not support Swift Package Manager" warning about it every time; that is expected, not something to fix.
 
 - The app uses the **UIScene lifecycle**. Plugins are registered in `didInitializeImplicitFlutterEngine`, *not* in `didFinishLaunchingWithOptions` — putting them back would break plugin registration. `Info.plist` carries the matching `UIApplicationSceneManifest`, pointing at Flutter's own `FlutterSceneDelegate` (there is no `SceneDelegate.swift`, and adding one means editing `project.pbxproj`).
-- `GMSServices.provideAPIKey` stays in `didFinishLaunchingWithOptions`: it is an app-level service, unrelated to the engine.
+- `GMSServices.provideAPIKey` stays in `didFinishLaunchingWithOptions`: it is an app-level service, unrelated to the engine. The `maps_availability` method channel is registered in `didInitializeImplicitFlutterEngine` through `engineBridge.applicationRegistrar.messenger()` — that is the only messenger the implicit engine exposes.
 
 ---
 

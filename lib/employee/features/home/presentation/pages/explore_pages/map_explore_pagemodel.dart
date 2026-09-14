@@ -3,7 +3,14 @@ part of 'map_explore_page.dart';
 abstract class MapExplorePageModel extends State<MapExplorePage>
     with AutomaticKeepAliveClientMixin<MapExplorePage> {
   GoogleMapController? _mapController;
-  late LocationService _locationService;
+
+  /// Harita bu derlemede çizilebilir mi (is-koala/koala#172). Kapalıysa
+  /// sayfa haritayı hiç kurmaz, konum iznini de sormaz: sorulacak bir
+  /// haritanın üstü yok.
+  late final bool mapsAvailable = MapsAvailability.of(context).isAvailable;
+
+  /// Konum akışı; harita kapalıyken hiç kurulmaz.
+  LocationService? _locationService;
 
   /// İlan durumu. Sayfa kendi kontrolcüsünü kuruyor; test onu
   /// [MapExplorePage.controller] ile dışarıdan veriyor, çünkü pinlerin
@@ -46,6 +53,7 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
     super.initState();
 
     _jobs.addListener(_onJobsChanged);
+    if (!mapsAvailable) return;
 
     _locationService = LocationService(
       context,
@@ -64,7 +72,7 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
       },
     );
 
-    _locationService.init();
+    _locationService!.init();
   }
 
   @override
@@ -72,7 +80,7 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
     _jobs
       ..removeListener(_onJobsChanged)
       ..dispose();
-    _locationService.dispose();
+    _locationService?.dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
     super.dispose();

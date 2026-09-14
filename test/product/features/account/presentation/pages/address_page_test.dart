@@ -18,6 +18,7 @@ import 'package:provider/provider.dart';
 
 import '../../../../../support/fake_address_search_gateway.dart';
 import '../../../../../support/fake_api.dart';
+import '../../../../../support/fake_maps_availability.dart';
 
 const _originLocation = '/account-info';
 const _addressLocation = '/address';
@@ -120,7 +121,11 @@ void main() {
   ///
   /// [withExtra] `false` ise rota kullanıcısız açılıyor: ödeme kapısından
   /// gelen yönlendirme gibi, ekran kullanıcıyı sağlayıcıdan okumalı.
-  Future<void> pumpAddress(WidgetTester tester, {bool withExtra = true}) async {
+  Future<void> pumpAddress(
+    WidgetTester tester, {
+    bool withExtra = true,
+    bool mapsAvailable = true,
+  }) async {
     userProvider = UserProvider(
       userService: UserService.withClient(server.api.client),
     );
@@ -164,9 +169,12 @@ void main() {
     addTearDown(router.dispose);
 
     await tester.pumpWidget(
-      ChangeNotifierProvider.value(
-        value: userProvider,
-        child: MaterialApp.router(theme: lightTheme, routerConfig: router),
+      withMapsAvailability(
+        ChangeNotifierProvider.value(
+          value: userProvider,
+          child: MaterialApp.router(theme: lightTheme, routerConfig: router),
+        ),
+        available: mapsAvailable,
       ),
     );
     await tester.pumpAndSettle();
@@ -215,6 +223,34 @@ void main() {
       );
       expect(find.text('KADIKÖY'), findsOneWidget);
       expect(gateway.reverseCalls, isEmpty, reason: 'pin oynamadan istek yok');
+    },
+  );
+
+  // is-koala/koala#172: harita anahtarı olmayan derlemede kullanıcı adresi
+  // ekranı çökmez; harita yerine yer tutucu, kayıtlı pin korunur ve kayıt
+  // haritasız da çalışır.
+  testWidgets(
+    'harita anahtarı yokken yer tutucu çizer, kayıtlı pin korunur ve kaydeder',
+    (tester) async {
+      await pumpAddress(tester, mapsAvailable: false);
+
+      expect(find.byType(GoogleMap), findsNothing);
+      expect(find.byKey(const ValueKey('map-unavailable')), findsOneWidget);
+      expect(find.text('Harita bu derlemede kullanılamıyor'), findsOneWidget);
+      expect(find.text('KADIKÖY'), findsOneWidget);
+      expect(gateway.reverseCalls, isEmpty);
+
+      await tapSave(tester);
+
+      expect(server.putRequest.path, '/users/me/address');
+      expect(server.putBody['position'], {
+        'latitude': 40.99,
+        'longitude': 29.03,
+        'source': 'USER_CONFIRMED_PIN',
+      });
+      expect(server.putBody['candidateToken'], isNull);
+      expect(find.byType(MapFirstAddressPage), findsNothing);
+      expect(find.text('Adresiniz kaydedildi'), findsOneWidget);
     },
   );
 

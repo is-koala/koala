@@ -16,6 +16,16 @@ void main() {
       expect(provider.exploreViewType, ExploreViewType.map);
     });
 
+    // Harita bu derlemede yoksa (`MapsAvailability`, is-koala/koala#172)
+    // uygulama keşfi listeyle açar; kullanıcı yer tutucuyla karşılaşmaz.
+    test('listeyle başlaması istenebilir', () {
+      final listFirst = PageProvider(exploreViewType: ExploreViewType.list);
+      expect(listFirst.exploreViewType, ExploreViewType.list);
+
+      listFirst.toggleExploreView();
+      expect(listFirst.exploreViewType, ExploreViewType.map);
+    });
+
     test('toggle harita ile liste arasında gidip gelir', () {
       provider.toggleExploreView();
       expect(provider.exploreViewType, ExploreViewType.list);

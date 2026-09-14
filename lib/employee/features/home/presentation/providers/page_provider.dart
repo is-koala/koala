@@ -5,7 +5,13 @@ enum ExploreViewType { map, list }
 enum JobsViewType { home, saved }
 
 class PageProvider with ChangeNotifier {
-  ExploreViewType _exploreViewType = ExploreViewType.map;
+  /// [exploreViewType] keşfin açılış görünümü. Varsayılan harita; harita bu
+  /// derlemede kullanılamıyorsa (`MapsAvailability`) uygulama listeyle açar,
+  /// kullanıcı yer tutucuya bakarak başlamasın.
+  PageProvider({ExploreViewType exploreViewType = ExploreViewType.map})
+    : _exploreViewType = exploreViewType;
+
+  ExploreViewType _exploreViewType;
   JobsViewType _jobsViewType = JobsViewType.home;
 
   ExploreViewType get exploreViewType => _exploreViewType;

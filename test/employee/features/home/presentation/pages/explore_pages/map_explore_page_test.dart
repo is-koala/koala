@@ -1,16 +1,19 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:koala/employee/features/home/models/job_map_bounds.dart';
 import 'package:koala/employee/features/home/presentation/pages/explore_pages/map_explore_page.dart';
 import 'package:koala/employee/features/home/presentation/providers/map_explore_controller.dart';
+import 'package:koala/employee/features/home/presentation/providers/page_provider.dart';
 import 'package:koala/employee/features/home/presentation/providers/search_provider.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_marker_generator.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../../../support/fake_api.dart';
+import '../../../../../../support/fake_maps_availability.dart';
 import '../../../../../../support/fixtures.dart';
 import '../../../../../../support/pump.dart';
 
@@ -122,15 +125,25 @@ Future<void> _warmMarkerArtwork(WidgetTester tester) async {
 
 Future<void> _pumpMap(
   WidgetTester tester,
-  MapExploreController controller,
-) async {
+  MapExploreController controller, {
+  bool mapsAvailable = true,
+  PageProvider? pageProvider,
+  Brightness brightness = Brightness.light,
+}) async {
   await _warmMarkerArtwork(tester);
   await pumpInApp(
     tester,
-    ChangeNotifierProvider(
-      create: (_) => SearchProvider(),
-      child: MapExplorePage(controller: controller),
+    withMapsAvailability(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => SearchProvider()),
+          ChangeNotifierProvider.value(value: pageProvider ?? PageProvider()),
+        ],
+        child: MapExplorePage(controller: controller),
+      ),
+      available: mapsAvailable,
     ),
+    brightness: brightness,
   );
 }
 
@@ -304,5 +317,88 @@ void main() {
 
     expect(_map(tester).markers, isEmpty);
     expect(_map(tester).circles, isEmpty);
+  });
+
+  group('harita bayrağı', () {
+    // is-koala/koala#172: iOS'ta anahtar boşken ilk `GoogleMap` uygulamayı
+    // çökertiyordu. Bayrak kapalıysa harita hiç kurulmaz; kullanıcı yer
+    // tutucuyu görür ve listeye geçebilir.
+    for (final brightness in Brightness.values) {
+      testWidgets('kapalıyken ${brightness.name} temada yer tutucu çizer', (
+        tester,
+      ) async {
+        final api = _apiServing([
+          _jobBody(
+            latitude: exactLatitude,
+            longitude: exactLongitude,
+            precision: 'EXACT',
+          ),
+        ]);
+        final controller = MapExploreController(
+          service: JobService.withClient(api.client),
+          debounce: Duration.zero,
+        );
+
+        await _pumpMap(
+          tester,
+          controller,
+          mapsAvailable: false,
+          brightness: brightness,
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byType(GoogleMap), findsNothing);
+        expect(find.byKey(const ValueKey('map-unavailable')), findsOneWidget);
+        expect(find.text('Harita bu derlemede kullanılamıyor'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    testWidgets('kapalıyken "Listeye geç" keşfi listeye alır', (tester) async {
+      final api = _apiServing([
+        _jobBody(
+          latitude: exactLatitude,
+          longitude: exactLongitude,
+          precision: 'EXACT',
+        ),
+      ]);
+      final controller = MapExploreController(
+        service: JobService.withClient(api.client),
+        debounce: Duration.zero,
+      );
+      final pageProvider = PageProvider();
+
+      await _pumpMap(
+        tester,
+        controller,
+        mapsAvailable: false,
+        pageProvider: pageProvider,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Listeye geç'));
+      await tester.pump();
+
+      expect(pageProvider.exploreViewType, ExploreViewType.list);
+    });
+
+    testWidgets('açıkken harita eskisi gibi kurulur', (tester) async {
+      final api = _apiServing([
+        _jobBody(
+          latitude: exactLatitude,
+          longitude: exactLongitude,
+          precision: 'EXACT',
+        ),
+      ]);
+      final controller = MapExploreController(
+        service: JobService.withClient(api.client),
+        debounce: Duration.zero,
+      );
+
+      await _pumpMap(tester, controller);
+
+      expect(find.byType(GoogleMap), findsOneWidget);
+      expect(find.byKey(const ValueKey('map-unavailable')), findsNothing);
+    });
   });
 }
