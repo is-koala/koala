@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/product/widgets/button_navbar.dart';
 import 'package:koala/product/widgets/form_page_body.dart';
+import 'package:koala/product/widgets/keyboard_done_bar.dart';
 import 'package:koala/product/widgets/my_button.dart';
 
 /// Testte simüle edilen klavyenin mantıksal yüksekliği.
@@ -34,9 +35,18 @@ Future<void> showKeyboard(
 double screenHeightOf(WidgetTester tester) =>
     tester.view.physicalSize.height / tester.view.devicePixelRatio;
 
-/// Düğmenin klavyenin üstünde ve ekranda kaldığını doğrular; gövdenin
-/// içindeyse önce oraya kaydırır. `tester.tap` sonrasında da çalışır, çünkü
-/// hit test görünmeyen bir düğmeyi ıskalar.
+/// Klavyenin (ve iOS'ta görünürse "Bitti" şeridinin) üst kenarı: içeriğin
+/// bu çizginin üstünde kalması gerekiyor.
+double keyboardTopOf(WidgetTester tester, {double height = keyboardHeight}) {
+  final doneBar = find.byType(KeyboardDoneBar);
+  if (doneBar.evaluate().isNotEmpty) return tester.getRect(doneBar).top;
+  return screenHeightOf(tester) - height;
+}
+
+/// Düğmenin klavyenin (ve şeridin) üstünde, ekranda ve dokunulabilir
+/// olduğunu doğrular; gövdenin içindeyse önce oraya kaydırır.
+/// `hitTestable` düğmenin merkezine giden dokunuşun ona ulaştığını
+/// söylüyor: şeridin arkasında kalan bir düğme burada düşer.
 Future<void> expectAboveKeyboard(
   WidgetTester tester,
   Finder cta, {
@@ -46,7 +56,7 @@ Future<void> expectAboveKeyboard(
   await tester.pump();
 
   final rect = tester.getRect(cta);
-  final keyboardTop = screenHeightOf(tester) - height;
+  final keyboardTop = keyboardTopOf(tester, height: height);
   expect(
     rect.bottom,
     lessThanOrEqualTo(keyboardTop),
@@ -55,6 +65,38 @@ Future<void> expectAboveKeyboard(
         'klavye üstü $keyboardTop)',
   );
   expect(rect.top, greaterThanOrEqualTo(0));
+  expect(cta.hitTestable(), findsOneWidget, reason: 'düğmeye dokunulamıyor');
+}
+
+/// Alanı kaydırıp odaklar ve `EditableText`'in imleci görünür alana
+/// taşımasını (100 ms) ve odakla açılan bir kartın büyümesini (250 ms)
+/// bekler.
+Future<void> focusField(WidgetTester tester, Finder field) async {
+  await tester.ensureVisible(field);
+  await tester.pump();
+  await tester.tap(field);
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 300));
+}
+
+/// Odaklı alanın klavyenin (ve şeridin) üstünde kaldığını doğrular.
+Future<void> expectFocusedFieldAboveKeyboard(
+  WidgetTester tester,
+  Finder field, {
+  double height = keyboardHeight,
+}) async {
+  await focusField(tester, field);
+  expect(anyFieldFocused(tester), isTrue, reason: 'alan odaklanamadı');
+
+  final bottom = tester.getRect(field).bottom;
+  final keyboardTop = keyboardTopOf(tester, height: height);
+  expect(
+    bottom,
+    lessThanOrEqualTo(keyboardTop),
+    reason:
+        'odaklı alan klavyenin arkasında kaldı (alt kenar $bottom, '
+        'klavye üstü $keyboardTop)',
+  );
 }
 
 /// `Scaffold.bottomNavigationBar`'daki [ButtonNavbar]'ın düğmesi. Çubuğun
@@ -86,13 +128,36 @@ Future<void> expectTapOutsideDropsFocus(
   WidgetTester tester,
   Finder field,
 ) async {
-  await tester.ensureVisible(field);
-  await tester.pump();
-  await tester.tap(field);
-  await tester.pump();
+  await focusField(tester, field);
   expect(anyFieldFocused(tester), isTrue, reason: 'alan odaklanamadı');
 
   await tapEmptyFormArea(tester);
 
   expect(anyFieldFocused(tester), isFalse, reason: 'odak düşmedi');
+}
+
+/// iOS: sayısal alanı odaklar ve "Bitti" şeridiyle birlikte yerleşimi
+/// doğrular — şerit çıkmış, odaklı alan şeridin üstünde, [cta] şeridin
+/// üstünde ve dokunulabilir. CTA'ya dokunup etkisini ölçmek çağırana kalıyor.
+Future<void> expectDoneBarLayout(
+  WidgetTester tester, {
+  required Finder numericField,
+  required Finder cta,
+}) async {
+  await showKeyboard(tester);
+  await expectFocusedFieldAboveKeyboard(tester, numericField);
+  expect(
+    find.byType(KeyboardDoneBar),
+    findsOneWidget,
+    reason: 'Bitti şeridi çizilmedi',
+  );
+  await expectAboveKeyboard(tester, cta);
+}
+
+/// "Bitti"ye dokunur: odak düşer, şerit kalkar.
+Future<void> tapDoneBar(WidgetTester tester) async {
+  await tester.tap(find.text(KeyboardDoneBar.label));
+  await tester.pump();
+  expect(find.byType(KeyboardDoneBar), findsNothing);
+  expect(anyFieldFocused(tester), isFalse);
 }

@@ -21,8 +21,7 @@ import '../../support/fake_maps_availability.dart';
 import '../../support/finders.dart';
 import '../../support/reference_location_fixtures.dart';
 import '../../support/keyboard.dart';
-import 'package:koala/product/widgets/dismiss_keyboard_on_tap.dart';
-import 'package:koala/product/widgets/keyboard_done_bar.dart';
+import 'package:koala/product/widgets/form_page_body.dart';
 
 const _debounce = MapFirstAddressController.defaultReverseDebounce;
 const _pickerLocation = '/pick-address';
@@ -936,7 +935,7 @@ void main() {
           expect(anyFieldFocused(tester), isTrue);
 
           // Kartın tutamacının hemen yanı: alan yok, düğme yok.
-          final card = tester.getRect(find.byType(DismissKeyboardOnTap));
+          final card = tester.getRect(find.byType(FormPageBody));
           await tester.tapAt(card.topLeft + const Offset(4, 4));
           await tester.pump();
 
@@ -945,26 +944,38 @@ void main() {
       );
     }
 
-    testWidgets(
-      'iOS: posta kodu alanı odaklanınca klavyenin üstünde Bitti çıkar',
-      (tester) async {
-        final harness = _Harness(initialAddress: _initialAddress());
-        await harness.pump(tester);
-        await showKeyboard(tester);
+    testWidgets('kart sürüklenince odak düşer', (tester) async {
+      final harness = _Harness(initialAddress: _initialAddress());
+      await harness.pump(tester);
 
-        await tester.ensureVisible(_field('Posta Kodu *'));
-        await tester.pump();
-        await tester.tap(_field('Posta Kodu *'));
-        await tester.pump();
+      await focusField(tester, _field('Posta Kodu *'));
+      expect(anyFieldFocused(tester), isTrue);
 
-        expect(find.text(KeyboardDoneBar.label), findsOneWidget);
+      // Kart odakla zaten açıldı ve içerik alanı göstermek için sona kaydı;
+      // geri sürüklemek artık içeriği kaydırıyor, kartı değil.
+      await tester.drag(find.byType(FormPageBody), const Offset(0, 80));
+      await tester.pumpAndSettle();
 
-        await tester.tap(find.text(KeyboardDoneBar.label));
-        await tester.pump();
+      expect(anyFieldFocused(tester), isFalse);
+    });
 
-        expect(anyFieldFocused(tester), isFalse);
-      },
-      variant: TargetPlatformVariant.only(TargetPlatform.iOS),
-    );
+    for (final brightness in Brightness.values) {
+      testWidgets(
+        '${brightness.name} tema, iOS: posta kodu alanında Bitti şeridi '
+        'çıkar, Kaydet şeridin üstüne kaydırılır',
+        (tester) async {
+          final harness = _Harness(initialAddress: _initialAddress());
+          await harness.pump(tester, brightness: brightness);
+
+          await expectDoneBarLayout(
+            tester,
+            numericField: _field('Posta Kodu *'),
+            cta: find.byKey(const ValueKey('address-save')),
+          );
+          await tapDoneBar(tester);
+        },
+        variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+      );
+    }
   });
 }

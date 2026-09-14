@@ -25,8 +25,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 part 'creating_password_pagemodel.dart';
 
 class CreatingPasswordPage extends StatefulWidget {
-  const CreatingPasswordPage({super.key, this.token});
+  const CreatingPasswordPage({
+    super.key,
+    this.token,
+    this.authService,
+    this.legalService,
+  });
+
   final String? token;
+
+  /// Testlerde sahte sunucuya bağlı servisler; üretimde tekil örnekler.
+  final AuthService? authService;
+  final LegalService? legalService;
 
   @override
   State<CreatingPasswordPage> createState() => _CreatingPasswordPageState();

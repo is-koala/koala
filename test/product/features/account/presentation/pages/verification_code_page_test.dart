@@ -508,5 +508,41 @@ void main() {
         await expectTapOutsideDropsFocus(tester, find.byType(TextField).first);
       },
     );
+
+    testWidgets(
+      '${brightness.name} tema, iOS: kod alanında Bitti şeridi çıkar, Onayla '
+      'şeridin üstünde kalır ve gerçekten gönderir',
+      (tester) async {
+        final api = FakeApi(
+          handler: (_) =>
+              const FakeApiResponse(statusCode: 200, body: {'success': true}),
+        );
+        var finished = false;
+        await pumpPage(
+          tester,
+          api,
+          brightness: brightness,
+          onFinished: (_) => finished = true,
+        );
+        await enterCode(tester, '123456');
+
+        await expectDoneBarLayout(
+          tester,
+          numericField: find.byType(TextField).first,
+          cta: findBottomBarButton(),
+        );
+
+        await tester.tap(findBottomBarButton());
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        expect(
+          api.requests.any((request) => request.path.endsWith('/confirm')),
+          isTrue,
+          reason: 'Onayla dokunuşu şeride gitti',
+        );
+        expect(finished, isTrue);
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+    );
   }
 }

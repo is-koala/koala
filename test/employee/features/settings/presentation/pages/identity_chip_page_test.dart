@@ -18,6 +18,7 @@ import 'package:koala/product/theme/theme.dart';
 import '../../../../../support/chip_fixtures.dart';
 import '../../../../../support/fake_api.dart';
 import '../../../../../support/keyboard.dart';
+import '../../../../../support/finders.dart';
 
 class _AvailableChipReader extends ChipReader {
   @override
@@ -502,11 +503,7 @@ void main() {
           await expectAboveKeyboard(tester, findBottomBarButton());
           await expectTapOutsideDropsFocus(
             tester,
-            find.byWidgetPredicate(
-              (widget) =>
-                  widget is TextField &&
-                  widget.decoration?.labelText == 'Belge (seri) numarası',
-            ),
+            findFieldLabelled('Belge (seri) numarası'),
           );
         },
       );

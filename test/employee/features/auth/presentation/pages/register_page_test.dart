@@ -4,6 +4,7 @@ import 'package:koala/employee/features/auth/presentation/pages/register_page.da
 import 'package:koala/product/theme/theme.dart';
 
 import '../../../../../support/keyboard.dart';
+import '../../../../../support/finders.dart';
 
 void main() {
   Future<void> pumpPage(WidgetTester tester, Brightness brightness) async {
@@ -17,10 +18,6 @@ void main() {
     // hemen reddediyor, istek kapansın ki askıda zamanlayıcı kalmasın.
     await tester.pumpAndSettle();
   }
-
-  Finder field(String label) => find.byWidgetPredicate(
-    (widget) => widget is TextField && widget.decoration?.labelText == label,
-  );
 
   for (final brightness in Brightness.values) {
     group('${brightness.name} tema', () {
@@ -37,7 +34,7 @@ void main() {
       testWidgets('boş alana dokununca odak düşer', (tester) async {
         await pumpPage(tester, brightness);
 
-        await expectTapOutsideDropsFocus(tester, field('E-posta'));
+        await expectTapOutsideDropsFocus(tester, findFieldLabelled('E-posta'));
       });
     });
   }

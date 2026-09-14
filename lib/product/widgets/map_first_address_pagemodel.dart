@@ -60,7 +60,6 @@ abstract class MapFirstAddressPagemodel extends State<MapFirstAddressPage> {
       zoom: controller.pin != null ? AppMap.streetZoom : AppMap.initialZoom,
     );
     controller.addListener(_onControllerChanged);
-    searchFocus.addListener(_onSearchFocusChanged);
     if (mapsAvailable) {
       controller.locateOnOpen();
     } else {
@@ -72,9 +71,7 @@ abstract class MapFirstAddressPagemodel extends State<MapFirstAddressPage> {
   void dispose() {
     controller.removeListener(_onControllerChanged);
     if (_ownsController) controller.dispose();
-    searchFocus
-      ..removeListener(_onSearchFocusChanged)
-      ..dispose();
+    searchFocus.dispose();
     sheetController.dispose();
     _mapController?.dispose();
     super.dispose();
@@ -86,10 +83,13 @@ abstract class MapFirstAddressPagemodel extends State<MapFirstAddressPage> {
     _followPendingCamera();
   }
 
-  /// Arama kutusu odaklanınca kart açılır ki öneri listesi klavyenin üstünde
-  /// yer bulsun.
-  void _onSearchFocusChanged() {
-    if (searchFocus.hasFocus) expandSheet();
+  /// Karttaki herhangi bir alan odaklanınca kart açılır: arama kutusunda
+  /// öneri listesi, diğer alanlarda alanın kendisi klavyenin üstünde yer
+  /// bulsun. Kart başlangıç boyundayken klavye kartın neredeyse tamamını
+  /// örtüyor; küçülmeyen `Scaffold`'da odaklı alanı görünür tutmanın tek yolu
+  /// kartı büyütmek.
+  void onCardFocusChanged(bool hasFocus) {
+    if (hasFocus) expandSheet();
   }
 
   Future<void> expandSheet() async {

@@ -19,6 +19,8 @@ import 'package:provider/provider.dart';
 import '../../../../../support/chip_fixtures.dart';
 import '../../../../../support/fake_api.dart';
 import '../../../../../support/identity_document_fixtures.dart';
+import '../../../../../support/keyboard.dart';
+import '../../../../../support/finders.dart';
 
 /// Kayıtta girilen ad-soyad ve doğum tarihi kimliktekiyle **aynı değil**:
 /// çip okununca hangisinin gönderildiği buradan ayırt ediliyor. Karttaki
@@ -763,5 +765,26 @@ void main() {
       expect(popResults, [false]);
       expect(find.text('profil ekranı'), findsOneWidget);
     });
+  });
+
+  // iOS'ta bu ekran açılır açılmaz fotoğraf akışına geçiyor; "Bitti" şeridi
+  // TCKN alanını taşıyan `IdentityDocumentsPage` testinde ölçülüyor.
+  group('klavye (is-koala/koala#190)', () {
+    for (final brightness in Brightness.values) {
+      testWidgets(
+        '${brightness.name} tema: Doğrula çubuğu klavyenin üstüne çıkar, '
+        'boş alana dokununca odak düşer',
+        (tester) async {
+          await pumpPage(tester, okApi(), brightness: brightness);
+          await showKeyboard(tester);
+
+          await expectAboveKeyboard(tester, findBottomBarButton());
+          await expectTapOutsideDropsFocus(
+            tester,
+            findFieldLabelled('TC Kimlik No'),
+          );
+        },
+      );
+    }
   });
 }

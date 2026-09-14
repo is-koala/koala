@@ -13,6 +13,7 @@ import '../../../../../support/fake_api.dart';
 import '../../../../../support/pump.dart';
 import '../../../../../support/keyboard.dart';
 import 'package:flutter/material.dart';
+import '../../../../../support/finders.dart';
 
 void main() {
   testWidgets('düzenleme formu opsiyonel ölçütleri temizleyebilir', (
@@ -175,13 +176,37 @@ void main() {
           await expectAboveKeyboard(tester, find.text('Alarmı Oluştur'));
           await expectTapOutsideDropsFocus(
             tester,
-            find.byWidgetPredicate(
-              (widget) =>
-                  widget is TextField &&
-                  widget.decoration?.labelText == 'Alarm adı',
-            ),
+            findFieldLabelled('Alarm adı'),
           );
         },
+      );
+
+      testWidgets(
+        '${brightness.name} tema, iOS: asgari ücret alanında Bitti şeridi '
+        'çıkar, Alarmı Oluştur şeridin üstüne kaydırılır ve basılır',
+        (tester) async {
+          await pumpCreateForm(tester, brightness);
+
+          await tester.enterText(findFieldLabelled('Asgari ücret'), '1.2.3');
+          await expectDoneBarLayout(
+            tester,
+            numericField: findFieldLabelled('Asgari ücret'),
+            cta: find.text('Alarmı Oluştur'),
+          );
+
+          // Geçersiz ücret doğrulamaya takılır; hata satırı geldiyse dokunuş
+          // şeride değil düğmeye gitmiştir.
+          await tester.tap(find.text('Alarmı Oluştur'));
+          await tester.pump();
+          expect(
+            find.text('Asgari ücret geçerli bir sayı olmalıdır.'),
+            findsOneWidget,
+            reason: 'Alarmı Oluştur dokunuşu şeride gitti',
+          );
+
+          await tapDoneBar(tester);
+        },
+        variant: TargetPlatformVariant.only(TargetPlatform.iOS),
       );
     }
   });

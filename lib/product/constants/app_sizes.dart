@@ -84,6 +84,11 @@ class AppSizes {
   /// klavye araç çubuğuyla aynı boyda dursun diye 44.
   static const double keyboardToolbar = 44.0;
 
+  /// Odaklanan alanın görünür alanın kenarına bırakacağı pay;
+  /// `EditableText`'in kendi varsayılanı (20) korunuyor, "Bitti" şeridi
+  /// varken üstüne şerit boyu ekleniyor.
+  static const double caretScrollPadding = 20.0;
+
   // --------------------------------------------------------------- Boşluklar
 
   /// Etiket ile hemen altındaki değeri arası; iki satır tek blok gibi

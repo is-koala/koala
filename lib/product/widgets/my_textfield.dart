@@ -6,6 +6,7 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/keyboard_done_bar.dart';
+import 'package:koala/product/widgets/keyboard_insets.dart';
 
 /// Uygulamanın tek satırlık ve çok satırlık metin alanı.
 ///
@@ -132,14 +133,29 @@ class _MyTextfieldState extends State<MyTextfield> {
     );
     Overlay.of(context, rootOverlay: true).insert(entry);
     _doneBar = entry;
+    KeyboardInsets.doneBarVisible.value = true;
   }
 
   void _removeDoneBar() {
     final entry = _doneBar;
     if (entry == null) return;
     _doneBar = null;
+    KeyboardInsets.doneBarVisible.value = false;
     entry.remove();
     entry.dispose();
+  }
+
+  /// İmlecin görünür tutulacağı pay. `EditableText` odaklı alanı görünür
+  /// alanın 20 pt üstüne park ediyor. Küçülen `Scaffold`'da görünür alan
+  /// zaten klavyenin üstünde bitiyor (`viewInsets` sıfır); küçülmeyen
+  /// ekranda klavye payı buraya ekleniyor ki alan klavyenin üstüne
+  /// kaydırılsın. Şerit çizilecekse alan onun da üstünde kalsın diye pay
+  /// şerit kadar daha büyüyor.
+  EdgeInsets _scrollPadding(BuildContext context) {
+    const base = EdgeInsets.all(AppSizes.caretScrollPadding);
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    final doneBar = _needsDoneBar ? AppSizes.keyboardToolbar : 0.0;
+    return base.copyWith(bottom: base.bottom + keyboard + doneBar);
   }
 
   @override
@@ -155,6 +171,7 @@ class _MyTextfieldState extends State<MyTextfield> {
         maxLines: widget.expands ? null : 1,
         expands: widget.expands,
         textAlignVertical: widget.expands ? TextAlignVertical.top : null,
+        scrollPadding: _scrollPadding(context),
         decoration: InputDecoration(
           labelText: widget.labelText,
           alignLabelWithHint: widget.expands,
