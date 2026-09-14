@@ -282,12 +282,7 @@ class _MapFirstAddressPageState extends MapFirstAddressPagemodel {
                 const SizedBox(height: AppSizes.space),
                 ..._fields(),
                 const SizedBox(height: AppSizes.spaceLarge),
-                MyButton(
-                  key: const ValueKey('address-save'),
-                  onPressed: save,
-                  title: 'Adresi kaydet',
-                  isLoading: isSaving,
-                ),
+                ..._saveSection(),
               ],
             ),
           ),
@@ -311,6 +306,41 @@ class _MapFirstAddressPageState extends MapFirstAddressPagemodel {
 
   Widget _sectionLabel(String title) =>
       Text(title, style: context.textTheme.titleMedium);
+
+  /// "Adresi kaydet" ve kapalıysa yanındaki gerekçe.
+  ///
+  /// Hizmet alanı dışındaki pinle düğme kapalı: sunucu aynı pini yine
+  /// reddederdi. Gerekçe düğmenin altında görünür metin olarak ve düğmenin
+  /// erişilebilirlik ipucu olarak durur; kullanıcı pini taşıyınca ikisi de
+  /// kalkar.
+  List<Widget> _saveSection() {
+    final blockedReason = controller.saveBlockedReason;
+    return [
+      Semantics(
+        hint: blockedReason,
+        child: MyButton(
+          key: const ValueKey('address-save'),
+          onPressed: blockedReason == null ? save : null,
+          title: 'Adresi kaydet',
+          isLoading: isSaving,
+        ),
+      ),
+      if (blockedReason != null) ...[
+        const SizedBox(height: AppSizes.spaceSmall),
+        Padding(
+          padding: AppPadding.horizontalSmall,
+          child: Text(
+            blockedReason,
+            key: const ValueKey('address-save-blocked-reason'),
+            textAlign: TextAlign.center,
+            style: context.textTheme.bodySmall?.copyWith(
+              color: context.textSecondary,
+            ),
+          ),
+        ),
+      ],
+    ];
+  }
 
   // ------------------------------------------------------------------ Arama
 
@@ -430,8 +460,11 @@ class _MapFirstAddressPageState extends MapFirstAddressPagemodel {
 
   /// Pinin altında ne olduğu: öneri hazırlanıyor, öneri alınamadı ya da
   /// alanlar bir adaydan doldu.
+  ///
+  /// Düşen ters geokodun şeridi nedene göre değişir: metin ve eylem
+  /// [ReverseGeocodeFailure]'dan gelir; hizmet alanı dışında eylem yok.
   List<Widget> _pinStatus() {
-    final reverseError = controller.reverseError;
+    final failure = controller.reverseFailure;
     return [
       if (controller.reverseGeocoding) ...[
         Row(
@@ -453,10 +486,10 @@ class _MapFirstAddressPageState extends MapFirstAddressPagemodel {
         ),
         const SizedBox(height: AppSizes.spaceMedium),
       ],
-      if (reverseError != null) ...[
+      if (failure != null) ...[
         _strip(
-          reverseError,
-          actionLabel: 'Tekrar dene',
+          failure.message,
+          actionLabel: failure.retryLabel,
           onAction: controller.retryReverse,
         ),
         const SizedBox(height: AppSizes.spaceMedium),
@@ -478,14 +511,22 @@ class _MapFirstAddressPageState extends MapFirstAddressPagemodel {
               color: context.textSecondary,
             ),
           ),
+        if (controller.buildingNumberHintVisible)
+          Text(
+            'Öneri bina düzeyine inemedi; bina numarasını girin.',
+            style: context.textTheme.bodySmall?.copyWith(
+              color: context.textSecondary,
+            ),
+          ),
         const SizedBox(height: AppSizes.spaceMedium),
       ],
     ];
   }
 
+  /// Bilgi şeridi; [actionLabel] `null` ise yalnız metin.
   Widget _strip(
     String message, {
-    required String actionLabel,
+    required String? actionLabel,
     required VoidCallback onAction,
   }) {
     return Container(
@@ -498,7 +539,8 @@ class _MapFirstAddressPageState extends MapFirstAddressPagemodel {
       child: Row(
         children: [
           Expanded(child: Text(message, style: context.textTheme.bodySmall)),
-          TextButton(onPressed: onAction, child: Text(actionLabel)),
+          if (actionLabel != null)
+            TextButton(onPressed: onAction, child: Text(actionLabel)),
         ],
       ),
     );

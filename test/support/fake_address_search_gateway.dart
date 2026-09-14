@@ -1,4 +1,5 @@
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:koala/product/models/address_reverse_error_codes.dart';
 import 'package:koala/product/models/canonical_address.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/services/address_search_service.dart';
@@ -12,6 +13,8 @@ AddressCandidate modaCandidate({
   AddressPosition? position,
   String candidateToken = 'reverse-proof',
   bool needsUserReview = false,
+  AddressCandidatePrecision? precision,
+  String? buildingNumber = '12',
 }) {
   return AddressCandidate(
     countryId: 'country-1',
@@ -21,10 +24,10 @@ AddressCandidate modaCandidate({
     cityName: 'İSTANBUL',
     districtId: 'district-1',
     districtName: 'KADIKÖY',
-    components: const AddressComponents(
+    components: AddressComponents(
       neighborhood: 'Caferağa Mahallesi',
       thoroughfare: 'Moda Caddesi',
-      buildingNumber: '12',
+      buildingNumber: buildingNumber,
       postalCode: '34710',
     ),
     position:
@@ -37,6 +40,7 @@ AddressCandidate modaCandidate({
     candidateToken: candidateToken,
     needsUserReview: needsUserReview,
     attribution: 'Google Maps',
+    precision: precision,
   );
 }
 
@@ -44,12 +48,17 @@ AddressCandidate modaCandidate({
 ///
 /// Ters geokod, istenen pini adayın konumu yapar (sunucu da öyle yapıyor:
 /// kanıt pinle birebir eşleşmek zorunda). [reverseFailure] verilirse her
-/// ters geokod o hatayla düşer — `400` (sonuç yok) ve `502` (sağlayıcı
-/// düştü) yolları buradan sürülür. Arama yolu tek bir öneri döndürür ve
-/// çözümü [searchCandidate] adayına gider.
+/// ters geokod o hatayla düşer — sunucunun üç `errorCode`'u
+/// ([outsideServiceAreaFailure], [noResultFailure], [providerFailure])
+/// buradan sürülür; hata metinleri `messages_tr.properties`'teki
+/// karşılıkları. [reversePrecision] sunucunun opsiyonel `precision`
+/// alanını taklit eder; sokak/mahalle düzeyinde bina numarası boş gelir.
+/// Arama yolu tek bir öneri döndürür ve çözümü [searchCandidate] adayına
+/// gider.
 class FakeAddressSearchGateway implements AddressSearchGateway {
   FakeAddressSearchGateway({
     this.reverseFailure,
+    this.reversePrecision,
     AddressCandidate? searchCandidate,
   }) : searchCandidate =
            searchCandidate ??
@@ -64,6 +73,7 @@ class FakeAddressSearchGateway implements AddressSearchGateway {
            );
 
   ApiException? reverseFailure;
+  AddressCandidatePrecision? reversePrecision;
   AddressCandidate searchCandidate;
 
   final List<LatLng> reverseCalls = [];
@@ -71,13 +81,40 @@ class FakeAddressSearchGateway implements AddressSearchGateway {
   int sessionCalls = 0;
   int resolveCalls = 0;
 
-  static ApiException failure(int statusCode) => ApiException(
-    message: statusCode == 400
-        ? 'Bu konum için adres bulunamadı.'
-        : 'Adres sağlayıcısına ulaşılamadı.',
-    type: statusCode == 400 ? ApiErrorType.validation : ApiErrorType.server,
-    statusCode: statusCode,
-    errorCode: statusCode == 400 ? 'REVERSE_NO_RESULT' : 'PROVIDER_UNAVAILABLE',
+  /// Durum koduna göre sunucunun o kodla döndürdüğü hata: `400` sonuç yok,
+  /// diğerleri sağlayıcı düştü.
+  static ApiException failure(int statusCode) =>
+      statusCode == 400 ? noResultFailure() : providerFailure();
+
+  /// `400` `address.searchCandidate.outsideServiceArea`.
+  static ApiException outsideServiceAreaFailure({
+    String message = 'Adres İstanbul hizmet alanı içinde olmalıdır.',
+  }) => ApiException(
+    message: message,
+    type: ApiErrorType.validation,
+    statusCode: 400,
+    errorCode: AddressReverseErrorCodes.outsideServiceArea,
+  );
+
+  /// `400` `address.reverse.noResult`.
+  static ApiException noResultFailure({
+    String message =
+        'Bu konum için bir adres bulunamadı. Adresi elle tamamlayın.',
+  }) => ApiException(
+    message: message,
+    type: ApiErrorType.validation,
+    statusCode: 400,
+    errorCode: AddressReverseErrorCodes.noResult,
+  );
+
+  /// `502` `address.searchProvider.unavailable`.
+  static ApiException providerFailure({
+    String message = 'Adres arama servisine şu anda ulaşılamıyor.',
+  }) => ApiException(
+    message: message,
+    type: ApiErrorType.server,
+    statusCode: 502,
+    errorCode: AddressReverseErrorCodes.providerUnavailable,
   );
 
   @override
@@ -85,12 +122,15 @@ class FakeAddressSearchGateway implements AddressSearchGateway {
     reverseCalls.add(LatLng(latitude, longitude));
     final error = reverseFailure;
     if (error != null) throw error;
+    final precision = reversePrecision;
     return modaCandidate(
       position: AddressPosition(
         latitude: latitude,
         longitude: longitude,
         source: AddressPositionSource.reverseGeocodeConfirmed,
       ),
+      precision: precision,
+      buildingNumber: (precision?.lacksBuildingNumber ?? false) ? null : '12',
     );
   }
 

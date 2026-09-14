@@ -287,6 +287,50 @@ void main() {
     });
   });
 
+  group('precision', () {
+    for (final brightness in Brightness.values) {
+      testWidgets(
+        '${brightness.name} temada sokak düzeyinde aday bina numarası ipucu '
+        'gösterir, numara yazılınca kalkar',
+        (tester) async {
+          final harness = _Harness(
+            gateway: FakeAddressSearchGateway(
+              reversePrecision: AddressCandidatePrecision.street,
+            ),
+          );
+          await harness.pump(tester, brightness: brightness);
+
+          await harness.dropPin(tester, _rawPin);
+
+          expect(
+            find.text('Öneri bina düzeyine inemedi; bina numarasını girin.'),
+            findsOneWidget,
+          );
+          expect(harness.controller.buildingNumber.text, isEmpty);
+
+          await tester.enterText(_field('Bina No'), '14');
+          await tester.pump();
+
+          expect(
+            find.text('Öneri bina düzeyine inemedi; bina numarasını girin.'),
+            findsNothing,
+          );
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+
+    testWidgets('alan gelmezse ipucu çıkmaz', (tester) async {
+      final harness = _Harness();
+      await harness.pump(tester);
+
+      await harness.dropPin(tester, _rawPin);
+
+      expect(find.textContaining('bina numarasını girin'), findsNothing);
+      expect(harness.controller.buildingNumber.text, '12');
+    });
+  });
+
   group('ters geokod düşerse', () {
     for (final status in [400, 502]) {
       testWidgets('$status: şerit çıkar, elle giriş devam eder ve kaydolur', (
@@ -303,8 +347,7 @@ void main() {
 
         await harness.dropPin(tester, _rawPin);
 
-        expect(find.textContaining('adres önerisi alınamadı'), findsOneWidget);
-        expect(find.text('Tekrar dene'), findsOneWidget);
+        expect(find.text(harness.gateway.reverseFailure!.message), findsOne);
         expect(harness.controller.pin, _rawPin);
 
         await _pickOption(tester, 'İl *', 'İSTANBUL');
@@ -326,6 +369,178 @@ void main() {
         });
       });
     }
+
+    for (final brightness in Brightness.values) {
+      testWidgets(
+        '${brightness.name} temada hizmet alanı dışı: şerit eylemsiz, '
+        'kaydet kapalı ve gerekçesi yanında',
+        (tester) async {
+          var saves = 0;
+          final harness = _Harness(
+            gateway: FakeAddressSearchGateway(
+              reverseFailure:
+                  FakeAddressSearchGateway.outsideServiceAreaFailure(),
+            ),
+            onSave: (_) async => saves++,
+          );
+          await harness.pump(tester, brightness: brightness);
+
+          await harness.dropPin(tester, _rawPin);
+
+          expect(
+            find.text('Adres İstanbul hizmet alanı içinde olmalıdır.'),
+            findsOneWidget,
+          );
+          expect(find.text('Tekrar dene'), findsNothing);
+          expect(find.text('Yenile'), findsNothing);
+
+          final save = find.byKey(const ValueKey('address-save'));
+          await tester.ensureVisible(save);
+          await tester.pump();
+          final button = tester.widget<ElevatedButton>(
+            find.descendant(of: save, matching: find.byType(ElevatedButton)),
+          );
+          expect(button.onPressed, isNull, reason: 'kaydet kapalı');
+          expect(
+            find.byKey(const ValueKey('address-save-blocked-reason')),
+            findsOneWidget,
+          );
+          expect(
+            find.text('Kaydetmek için pini İstanbul içine taşıyın.'),
+            findsOneWidget,
+          );
+          expect(
+            find.bySemanticsLabel(RegExp('Adresi kaydet')),
+            findsOneWidget,
+          );
+
+          await tester.tap(save, warnIfMissed: false);
+          await tester.pump();
+          expect(saves, 0);
+          expect(find.text('İl seçin'), findsNothing);
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+
+    testWidgets('pin İstanbul içine dönünce kaydet ve gerekçe normale döner', (
+      tester,
+    ) async {
+      final harness = _Harness(
+        gateway: FakeAddressSearchGateway(
+          reverseFailure: FakeAddressSearchGateway.outsideServiceAreaFailure(),
+        ),
+      );
+      await harness.pump(tester);
+      await harness.dropPin(tester, const LatLng(39.925533, 32.866287));
+      expect(
+        find.byKey(const ValueKey('address-save-blocked-reason')),
+        findsOneWidget,
+      );
+
+      harness.gateway.reverseFailure = null;
+      await harness.dropPin(tester, _rawPin);
+
+      expect(
+        find.byKey(const ValueKey('address-save-blocked-reason')),
+        findsNothing,
+      );
+      expect(
+        find.text('Adres İstanbul hizmet alanı içinde olmalıdır.'),
+        findsNothing,
+      );
+      final button = tester.widget<ElevatedButton>(
+        find.descendant(
+          of: find.byKey(const ValueKey('address-save')),
+          matching: find.byType(ElevatedButton),
+        ),
+      );
+      expect(button.onPressed, isNotNull);
+      expect(find.textContaining('Google Maps önerisi'), findsOneWidget);
+    });
+
+    testWidgets('sonuç yok: sunucu metni ve "Tekrar dene", kaydet açık', (
+      tester,
+    ) async {
+      final harness = _Harness(
+        gateway: FakeAddressSearchGateway(
+          reverseFailure: FakeAddressSearchGateway.noResultFailure(),
+        ),
+      );
+      await harness.pump(tester);
+
+      await harness.dropPin(tester, _rawPin);
+
+      expect(
+        find.text(
+          'Bu konum için bir adres bulunamadı. Adresi elle tamamlayın.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Tekrar dene'), findsOneWidget);
+      expect(find.text('Yenile'), findsNothing);
+      expect(
+        find.byKey(const ValueKey('address-save-blocked-reason')),
+        findsNothing,
+      );
+      final button = tester.widget<ElevatedButton>(
+        find.descendant(
+          of: find.byKey(const ValueKey('address-save')),
+          matching: find.byType(ElevatedButton),
+        ),
+      );
+      expect(button.onPressed, isNotNull);
+    });
+
+    testWidgets('sağlayıcı düştü: sunucu metni ve "Yenile" yeniden ister', (
+      tester,
+    ) async {
+      final harness = _Harness(
+        gateway: FakeAddressSearchGateway(
+          reverseFailure: FakeAddressSearchGateway.providerFailure(),
+        ),
+      );
+      await harness.pump(tester);
+
+      await harness.dropPin(tester, _rawPin);
+
+      expect(
+        find.text('Adres arama servisine şu anda ulaşılamıyor.'),
+        findsOneWidget,
+      );
+      expect(find.text('Yenile'), findsOneWidget);
+      expect(find.text('Tekrar dene'), findsNothing);
+
+      harness.gateway.reverseFailure = null;
+      await tester.tap(find.text('Yenile'));
+      await tester.pump();
+      await tester.pump();
+
+      expect(harness.gateway.reverseCalls, [_rawPin, _rawPin]);
+      expect(find.text('Yenile'), findsNothing);
+      expect(harness.controller.neighborhood.text, 'Caferağa Mahallesi');
+      expect(find.textContaining('Google Maps önerisi'), findsOneWidget);
+    });
+
+    testWidgets('sunucu metin göndermediyse Türkçe yedek görünür', (
+      tester,
+    ) async {
+      final harness = _Harness(
+        gateway: FakeAddressSearchGateway(
+          reverseFailure: FakeAddressSearchGateway.providerFailure(message: ''),
+        ),
+      );
+      await harness.pump(tester);
+
+      await harness.dropPin(tester, _rawPin);
+
+      expect(
+        find.text(
+          'Adres servisi şu an yanıt vermiyor; birazdan yeniden deneyin.',
+        ),
+        findsOneWidget,
+      );
+    });
 
     testWidgets('eksik alanla kaydet satır içi hata gösterir, ekran kalır', (
       tester,
