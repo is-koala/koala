@@ -1,8 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:koala/employee/features/chat/models/conversation_page.dart';
 import 'package:koala/employee/features/chat/models/message.dart';
 import 'package:koala/employee/features/chat/models/messaging_availability.dart';
+import 'package:koala/employee/features/chat/models/messaging_gate_error_codes.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/network/realtime_client.dart';
@@ -56,9 +58,10 @@ class ChatThreadController extends ChangeNotifier {
   /// Uçuştaki tamamlama; art arda tetikleyiciler aynı isteği paylaşıyor.
   Future<void>? _catchingUp;
 
-  /// Tamamlamada en fazla kaç sayfa geriye gidileceği. Sunucu sayfa başına
-  /// 30 mesaj veriyor; kopukluk süresince bundan fazlası geldiyse en eskiler
-  /// sayfalama açıldığında zaten gelecek.
+  /// Tamamlamada en fazla kaç sayfa çekileceği: `after=` kipinde ileriye,
+  /// yedek yolda geriye. Sunucu sayfa başına 30 mesaj veriyor; kopukluk
+  /// süresince bundan fazlası geldiyse en yeni sayfalar esas alınır, en
+  /// eskiler sayfalama açıldığında zaten gelecek.
   static const int _catchUpPageLimit = 3;
 
   List<Message> get messages => List.unmodifiable(_messages);
@@ -275,15 +278,19 @@ class ChatThreadController extends ChangeNotifier {
 
   /// Kopukken gelenleri sunucudan tamamlar.
   ///
-  /// Sunucunun `since` parametresi yok; en yeni sayfa çekiliyor ve eldeki
-  /// mesajlarla **kimlik** üzerinden birleştiriliyor: bilinmeyenler
-  /// ekleniyor, bilinenler sunucudaki hâliyle değiştiriliyor (kopukken
-  /// okunmuş olanların `readAt`'i böyle geliyor), aynı kimlik ikinci kez
-  /// eklenmiyor. Sayfanın tamamı bilinmiyorsa — kopukluk süresince bir
-  /// sayfadan fazla mesaj geldi — bilinen bir mesaja rastlanana kadar ya da
-  /// [_catchUpPageLimit] dolana kadar geriye gidiliyor. Yeni gelen karşı
-  /// taraf mesajı varsa sohbet açık olduğu için okundu işaretleniyor.
-  /// Hata olursa eldeki liste duruyor; bir sonraki tetikleyici yine dener.
+  /// Elde mesaj varsa en yenisinin kimliği çapa olur ve sunucudan yalnız
+  /// ondan sonrakiler istenir (`after=<id>`, artan sırada). Çapa sunucuda
+  /// bilinmiyorsa — başka sohbetin mesajı ya da silinmiş, `400
+  /// MESSAGING_AFTER_UNKNOWN` — ya da kopukluk [_catchUpPageLimit] sayfadan
+  /// uzun sürdüyse eski yol devreye girer: en yeni sayfa(lar) çekilir ve
+  /// bilinen bir mesaja rastlanana kadar geriye gidilir. Artımlı yol
+  /// okunmamış kendi mesajımız varken en yeni sayfayı da bir kez okur ki
+  /// kopukken okunanların `readAt`'i gelsin. İki yolda da
+  /// gelenler eldekiyle **kimlik** üzerinden birleşir: bilinmeyenler
+  /// eklenir, bilinenler sunucudaki hâliyle değiştirilir, aynı kimlik
+  /// ikinci kez eklenmez. Yeni gelen karşı taraf mesajı varsa sohbet açık
+  /// olduğu için okundu işaretlenir. Hata olursa eldeki liste durur; bir
+  /// sonraki tetikleyici yine dener.
   Future<void> catchUp() {
     final userId = _currentUserId;
     if (userId == null || _isLoading) return Future.value();
@@ -294,29 +301,109 @@ class ChatThreadController extends ChangeNotifier {
 
   Future<void> _catchUpNow(String userId) async {
     final generation = _loadGeneration;
-    final known = {for (final message in _messages) message.id: message};
-    final fetched = <Message>[];
+    final anchor = _newestKnownId();
 
+    final List<Message> fetched;
     try {
-      for (var page = 0; page < _catchUpPageLimit; page++) {
-        final result = await _chatService.fetchMessages(
-          conversationId: conversationId,
-          currentUserId: userId,
-          page: page,
-        );
-        if (_disposed || generation != _loadGeneration) return;
-        fetched.addAll(result.messages);
-
-        final reachedKnown = result.messages.any(
-          (message) => known.containsKey(message.id),
-        );
-        if (reachedKnown || result.last || result.messages.isEmpty) break;
+      if (anchor == null) {
+        fetched = await _fetchNewestPages(userId, generation);
+      } else {
+        final incremental = await _fetchAfter(userId, generation, anchor);
+        fetched = incremental == null
+            ? await _fetchNewestPages(userId, generation)
+            : [
+                ...incremental,
+                ...await _fetchReadReceiptsIfNeeded(userId, generation),
+              ];
       }
     } on ApiException {
       return;
     }
 
     _mergeFetched(fetched);
+  }
+
+  /// Eldeki en yeni mesajın kimliği; liste boşsa `null`.
+  String? _newestKnownId() {
+    Message? newest;
+    for (final message in _messages) {
+      if (newest == null || message.sentAt.isAfter(newest.sentAt)) {
+        newest = message;
+      }
+    }
+    return newest?.id;
+  }
+
+  /// `after=` ile artımlı çekim. Tamamlanamazsa `null`: çapa bilinmiyor ya
+  /// da sayfa sınırı doldu; çağıran eski yola düşer.
+  Future<List<Message>?> _fetchAfter(
+    String userId,
+    int generation,
+    String anchor,
+  ) async {
+    final fetched = <Message>[];
+    for (var page = 0; page < _catchUpPageLimit; page++) {
+      final MessagePage result;
+      try {
+        result = await _chatService.fetchMessages(
+          conversationId: conversationId,
+          currentUserId: userId,
+          page: page,
+          after: anchor,
+        );
+      } on ApiException catch (error) {
+        if (error.errorCode == MessagingHistoryErrorCodes.afterUnknown) {
+          return null;
+        }
+        rethrow;
+      }
+      if (_disposed || generation != _loadGeneration) return const [];
+      fetched.addAll(result.messages);
+      if (result.last || result.messages.isEmpty) return fetched;
+    }
+    return null;
+  }
+
+  /// `after=` yalnız yeni mesajları taşıyor; kopukken karşı tarafın okuduğu
+  /// **kendi** mesajlarımızın `readAt`'i ondan gelmez (READ olayı da kopukken
+  /// kaçtı). Okunmamış kendi mesajımız varsa en yeni sayfa bir kez daha
+  /// okunur ve [_mergeFetched] bilinenleri sunucudaki hâliyle değiştirir.
+  /// Hepsi okunmuşsa ya da hiç yoksa ağa çıkılmaz.
+  Future<List<Message>> _fetchReadReceiptsIfNeeded(
+    String userId,
+    int generation,
+  ) async {
+    final awaitingReceipt = _messages.any(
+      (message) => message.isMe && message.readAt == null,
+    );
+    if (!awaitingReceipt) return const [];
+
+    final result = await _chatService.fetchMessages(
+      conversationId: conversationId,
+      currentUserId: userId,
+    );
+    if (_disposed || generation != _loadGeneration) return const [];
+    return result.messages;
+  }
+
+  /// En yeni sayfadan geriye, bilinen bir mesaja rastlayana ya da
+  /// [_catchUpPageLimit] dolana kadar.
+  Future<List<Message>> _fetchNewestPages(String userId, int generation) async {
+    final known = {for (final message in _messages) message.id};
+    final fetched = <Message>[];
+    for (var page = 0; page < _catchUpPageLimit; page++) {
+      final result = await _chatService.fetchMessages(
+        conversationId: conversationId,
+        currentUserId: userId,
+        page: page,
+      );
+      if (_disposed || generation != _loadGeneration) return const [];
+      fetched.addAll(result.messages);
+
+      final reachedKnown = result.messages.any(known.contains);
+      if (reachedKnown || result.last || result.messages.isEmpty) break;
+    }
+    return fetched;
   }
 
   void _mergeFetched(List<Message> fetched) {

@@ -13,6 +13,7 @@ class NotificationCategoryLabels {
     'IDENTITY_VERIFICATION': 'Kimlik doğrulama',
     'COMPANY_UPDATES': 'Şirket güncellemeleri',
     'JOB_ALERTS': 'İş alarmları',
+    'MESSAGES': 'Mesajlar',
     'MARKETINGS': 'Kampanya ve duyurular',
     'NEWSLETTER': 'Bülten',
   };

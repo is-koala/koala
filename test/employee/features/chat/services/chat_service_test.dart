@@ -200,6 +200,135 @@ void main() {
     });
   });
 
+  group('ChatService.fetchMessages after=', () {
+    // Kopukluk sonrası artımlı tamamlama: yalnız çapadan sonrakiler istenir.
+    // Sunucu bu kipte `sort` parametresini 400 ile reddediyor; gönderilmez.
+    test('after sorguya girer, sort girmez', () async {
+      final api = FakeApi(
+        handler: (_) => FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {
+              'content': [messageBody(id: 'yeni')],
+              'last': true,
+            },
+          },
+        ),
+      );
+
+      final page = await ChatService.withClient(api.client).fetchMessages(
+        conversationId: 'conv_1',
+        currentUserId: _me,
+        after: 'eski',
+      );
+
+      expect(api.requests.single.queryParameters, {
+        'page': 0,
+        'size': 30,
+        'after': 'eski',
+      });
+      expect(page.messages.single.id, 'yeni');
+    });
+
+    test('after verilmezse sorguda hiç yok', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {'content': []},
+          },
+        ),
+      );
+
+      await ChatService.withClient(
+        api.client,
+      ).fetchMessages(conversationId: 'conv_1', currentUserId: _me);
+
+      expect(api.requests.single.queryParameters, {'page': 0, 'size': 30});
+    });
+
+    test('bilinmeyen çapa errorCode ile ApiException', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 400,
+          body: {
+            'success': false,
+            'message': 'after ile verilen mesaj bu konuşmada bulunamadı.',
+            'errorCode': 'MESSAGING_AFTER_UNKNOWN',
+            'errorCategory': 'VALIDATION_FAILED',
+          },
+        ),
+      );
+
+      await expectLater(
+        ChatService.withClient(api.client).fetchMessages(
+          conversationId: 'conv_1',
+          currentUserId: _me,
+          after: 'yok',
+        ),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.errorCode,
+            'errorCode',
+            'MESSAGING_AFTER_UNKNOWN',
+          ),
+        ),
+      );
+    });
+  });
+
+  group('ChatService.fetchConversation', () {
+    test(
+      'tek sohbeti okur ve karşı tarafı oturum sahibine göre seçer',
+      () async {
+        final api = FakeApi(
+          handler: (_) => FakeApiResponse(
+            statusCode: 200,
+            body: {'success': true, 'data': conversationBody()},
+          ),
+        );
+
+        final conversation = await ChatService.withClient(
+          api.client,
+        ).fetchConversation(conversationId: 'conv_1', currentUserId: _me);
+
+        expect(api.requests.single.method, 'GET');
+        expect(api.requests.single.path, '/conversations/conv_1');
+        expect(conversation.id, 'conv_1');
+        expect(conversation.counterpartId, _other);
+      },
+    );
+
+    // Taraf olmayan kullanıcı ve olmayan sohbet aynı 404'ü alıyor.
+    test('bulunamazsa notFound', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 404,
+          body: {
+            'success': false,
+            'message': 'Konuşma bulunamadı.',
+            'errorCategory': 'RESOURCE_NOT_FOUND',
+          },
+        ),
+      );
+
+      await expectLater(
+        ChatService.withClient(
+          api.client,
+        ).fetchConversation(conversationId: 'conv_x', currentUserId: _me),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.type,
+            'type',
+            ApiErrorType.notFound,
+          ),
+        ),
+      );
+    });
+  });
+
   group('ChatService.openConversationForJob', () {
     test('ilan üzerinden sohbet açar', () async {
       final api = FakeApi(

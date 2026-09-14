@@ -121,6 +121,13 @@ void main() {
       expect(NotificationChannelLabels.of('IN_APP'), 'Uygulama içi');
     });
 
+    // Backend 0.9.19 sohbet mesajlarını `MESSAGES` kategorisinde push'luyor
+    // (is-koala/koala-backend#268); satır İngilizce enum adıyla değil
+    // Türkçe etiketle görünmeli.
+    test('MESSAGES kategorisi Mesajlar', () {
+      expect(NotificationCategoryLabels.of('MESSAGES'), 'Mesajlar');
+    });
+
     // Sunucu yeni bir kategori eklerse uygulama patlamamalı; İngilizce enum
     // adı yerine genel Türkçe etiket görünmeli.
     test('bilinmeyen kod genel etikete düşer', () {

@@ -3,11 +3,14 @@ import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/widgets.dart';
+import 'package:koala/employee/features/chat/models/conversation.dart';
+import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/network/session_manager.dart';
 import 'package:koala/product/providers/notification_provider.dart';
 import 'package:koala/product/router/router_manager.dart';
 import 'package:koala/product/services/notification_service.dart';
+import 'package:koala/product/services/push_conversation_opener.dart';
 import 'package:koala/product/services/push_inbox.dart';
 import 'package:koala/product/services/push_notification_dedupe.dart';
 import 'package:koala/product/services/push_token_lifecycle.dart';
@@ -38,8 +41,13 @@ class PushMessaging {
     }
   }
 
+  /// FCM dinleyicilerini bağlar.
+  ///
+  /// [users] `type=MESSAGE` dokunması için: sohbet ekranı karşı tarafı
+  /// oturum sahibine göre seçiyor, kimlik `/users/me`'den geliyor.
   static Future<void> bindListeners({
     NotificationProvider? notifications,
+    UserProvider? users,
     SessionManager? session,
     NotificationService? service,
     PushInbox? inbox,
@@ -49,16 +57,25 @@ class PushMessaging {
     final sessionManager = session ?? SessionManager();
     final feed = notifications;
     final notificationService = service ?? NotificationService();
+    bool isBusiness() => sessionManager.userType == SessionManager.businessType;
+    final conversations = PushConversationOpener(
+      currentUserId: () async {
+        if (users == null) return null;
+        if (users.user == null) await users.load();
+        return users.user?.id;
+      },
+      routes: () => isBusiness() ? ChatRoutes.business : ChatRoutes.employee,
+      navigate: _openChat,
+    );
     _inbox =
         inbox ??
         PushInbox(
           dedupe: PushNotificationDedupe(),
           sessionInitialized: () => sessionManager.isInitialized,
           notificationsRoute: () =>
-              sessionManager.userType == SessionManager.businessType
-              ? '/business/notifications'
-              : '/notifications',
+              isBusiness() ? '/business/notifications' : '/notifications',
           navigate: _navigate,
+          onConversationOpened: conversations.open,
           onForeground: () async {
             debugPrint('Ön plan push alındı, bildirim listesi tazeleniyor');
             await feed?.load(silent: true);
@@ -113,6 +130,12 @@ class PushMessaging {
   static void _navigate(String route) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       RouterManager.router.go(route);
+    });
+  }
+
+  static void _openChat(ChatRoutes routes, Conversation? conversation) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      openChatOn(RouterManager.router, routes, conversation);
     });
   }
 
