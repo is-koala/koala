@@ -31,6 +31,7 @@ import 'package:koala/employee/features/jobs/models/job_application.dart';
 import 'package:koala/employee/features/jobs/models/review.dart';
 import 'package:koala/employee/features/jobs/models/work_session.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/review_provider.dart';
+import 'package:koala/employee/features/jobs/presentation/widgets/review_state_row.dart';
 import 'package:koala/employee/features/jobs/services/assignment_service.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/profile_avatar.dart';
@@ -650,43 +651,25 @@ class _BJobDetailPageState extends BJobDetailPageModel {
   /// Değerlendirme: tamamlanmış atamada durum ve düğme.
   ///
   /// Çalışan kabuğundaki `WorkDetailPage._reviewCard`'ın işveren karşılığı;
-  /// "değerlendirdim mi" cevabını aynı [ReviewProvider] tutuyor. Değerlendirme
-  /// yazıldıysa içeriği de gösteriliyor; içerik bilinmiyorsa (başka cihazda
-  /// yazılmış, 409'dan öğrenilmiş) yalnızca durum yazılıyor ve sunucudan
-  /// tamamlanması `_syncOwnReview` ile denenmiş oluyor.
+  /// aynı [ReviewStateRow]. "Değerlendirdim mi" sunucudan (`myReview`),
+  /// içerik de oradan; [ReviewProvider] yalnız az önce gönderilenin boşluğunu
+  /// dolduruyor. Çalışan işvereni değerlendirdiyse küçük rozet.
   Widget _reviewRow(Assignment assignment) {
-    final provider = context.watch<ReviewProvider>();
-    final reviewed = provider.hasReviewed(assignment.id);
-    final own = provider.ownReviewFor(assignment.id);
+    final reviews = context.watch<ReviewProvider>();
 
-    return Row(
+    return KeyedSubtree(
       key: const ValueKey('assignment-review'),
-      children: [
-        AppIcon(
-          reviewed ? AppIcons.checkCircle : AppIcons.star,
-          size: AppSizes.iconMedium,
-          color: reviewed ? AppColors.success : AppColors.rating,
-        ),
-        const SizedBox(width: AppSizes.spaceSmall),
-        Expanded(
-          child: Text(
-            reviewed
-                ? (own == null
-                      ? 'Değerlendirdiniz.'
-                      : 'Değerlendirdiniz: ${own.summaryLabel}')
-                : 'Çalışanı henüz değerlendirmediniz.',
-            style: context.textTheme.bodyMedium,
-          ),
-        ),
-        if (!reviewed)
-          TextButton(
-            key: const ValueKey('assignment-review-button'),
-            onPressed: _isRunningAssignmentAction
-                ? null
-                : () => _reviewWorker(assignment),
-            child: const Text('Çalışanı Değerlendirin'),
-          ),
-      ],
+      child: ReviewStateRow(
+        ownReview: reviews.ownReviewFor(assignment),
+        hasReviewed: reviews.hasReviewed(assignment),
+        counterpartyReviewed: assignment.counterpartyReviewed,
+        pendingText: 'Çalışanı henüz değerlendirmediniz.',
+        buttonLabel: 'Çalışanı Değerlendirin',
+        buttonKey: const ValueKey('assignment-review-button'),
+        onReview: _isRunningAssignmentAction
+            ? null
+            : () => _reviewWorker(assignment),
+      ),
     );
   }
 

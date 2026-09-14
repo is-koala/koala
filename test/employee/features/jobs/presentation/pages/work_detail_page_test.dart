@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -20,6 +22,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../../support/fake_api.dart';
+import '../../../../../support/review_fixtures.dart';
 import '../../../../../support/work_test_support.dart';
 
 /// `GET /jobs/{id}` gövdesi; adres kesinliği ve ilanı açan taraf testin
@@ -190,10 +193,8 @@ Future<Harness> pumpDetail(
           ),
         ),
         ChangeNotifierProvider(
-          create: (_) => ReviewProvider(
-            userIdOf: () => userProvider.user?.id,
-            service: ReviewService.withClient(api.client),
-          ),
+          create: (_) =>
+              ReviewProvider(service: ReviewService.withClient(api.client)),
         ),
       ],
       child: MaterialApp.router(
@@ -845,4 +846,204 @@ void main() {
       expect(find.byKey(const ValueKey('work-detail-menu')), findsNothing);
     });
   });
+
+  // Değerlendirme durumu sunucudan (`myReview`, `counterpartyReviewed`;
+  // is-koala/koala#189). Cihazda kayıt yok, `GET /users/{id}/reviews`e
+  // gidilmiyor.
+  for (final brightness in Brightness.values) {
+    group('değerlendirme durumu / ${brightness.name}', () {
+      final button = find.byKey(const ValueKey('work-detail-review'));
+      final badge = find.byKey(const ValueKey('review-counterparty-badge'));
+
+      testWidgets('myReview dolu: içerik yazılır, düğme yok', (tester) async {
+        final harness = await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: assignmentRow(
+            assignmentJson(
+              status: 'COMPLETED',
+              paymentStatus: 'RELEASED_TO_WORKER',
+              extra: {
+                'myReview': myReviewJson(rating: 4, comment: 'Dakik'),
+                'counterpartyReviewed': false,
+              },
+            ),
+          ),
+          detail: detailJson(creator: _ayse),
+        );
+
+        final text = find.text('Değerlendirdiniz: ★4 · "Dakik"');
+        await tester.scrollUntilVisible(text, 200);
+        expect(text, findsOneWidget);
+        expect(button, findsNothing);
+        expect(badge, findsNothing);
+        expect(
+          harness.api.requests.map((request) => request.path),
+          isNot(contains(contains('/reviews'))),
+        );
+      });
+
+      testWidgets('myReview null: düğme var, karşı taraf rozeti var', (
+        tester,
+      ) async {
+        await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: assignmentRow(
+            assignmentJson(
+              status: 'COMPLETED',
+              paymentStatus: 'HELD_IN_ESCROW',
+              extra: {'myReview': null, 'counterpartyReviewed': true},
+            ),
+          ),
+          detail: detailJson(creator: _ayse),
+        );
+
+        await tester.scrollUntilVisible(button, 200);
+        expect(button, findsOneWidget);
+        expect(find.text('İşvereni henüz değerlendirmediniz.'), findsOneWidget);
+        expect(badge, findsOneWidget);
+        expect(find.text('Karşı taraf sizi değerlendirdi'), findsOneWidget);
+      });
+
+      // Oturum belleği iki fetch arasındaki boşluğu kapatıyor: gönderim
+      // biter bitmez satır döner; yeniden çekimde sunucunun `myReview`'ı esas.
+      testWidgets('POST sonrası satır anında döner, yeniden çekimde sunucu '
+          'esas', (tester) async {
+        final harness = await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: assignmentRow(
+            assignmentJson(
+              status: 'COMPLETED',
+              paymentStatus: 'RELEASED_TO_WORKER',
+              extra: {'myReview': null, 'counterpartyReviewed': false},
+            ),
+          ),
+          detail: detailJson(creator: _ayse),
+          refreshedAssignment: assignmentJson(
+            status: 'COMPLETED',
+            paymentStatus: 'RELEASED_TO_WORKER',
+            extra: {
+              'myReview': myReviewJson(rating: 3, comment: 'Sunucudan'),
+              'counterpartyReviewed': true,
+            },
+          ),
+          overrides: {
+            '/reviews': (_) => reviewCreatedResponse(
+              reviewDtoJson(
+                rating: 5,
+                comment: 'Harika',
+                jobAssignmentId: 'assignment-1',
+              ),
+            ),
+          },
+        );
+
+        await tester.scrollUntilVisible(button, 200);
+        expect(button, findsOneWidget);
+
+        final provider = tester.element(button).read<ReviewProvider>();
+        // Sahte HTTP gerçek olay döngüsünde; test zamanında beklense
+        // tamamlanmaz.
+        final sent = await tester.runAsync(
+          () => provider.submitReview(
+            assignmentId: 'assignment-1',
+            rating: 5,
+            comment: 'Harika',
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(sent, isTrue);
+        expect(find.text('Değerlendirdiniz: ★5 · "Harika"'), findsOneWidget);
+        expect(button, findsNothing);
+        expect(badge, findsNothing);
+
+        // Aşağı çekince atama yeniden okunuyor (`GET /job-assignments/{id}`);
+        // sunucunun kaydı oturumdakinin önüne geçiyor, rozet de geliyor.
+        // Liste aşağı kaydırılmış durumda; jest yerine göstergenin kendisi
+        // tetikleniyor, aynı `onRefresh` çalışıyor.
+        unawaited(
+          tester
+              .state<RefreshIndicatorState>(find.byType(RefreshIndicator))
+              .show(),
+        );
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        await settle(tester);
+
+        expect(
+          harness.api.requests.map((request) => request.path),
+          contains('/job-assignments/assignment-1'),
+        );
+        expect(find.text('Değerlendirdiniz: ★3 · "Sunucudan"'), findsOneWidget);
+        expect(find.text('Değerlendirdiniz: ★5 · "Harika"'), findsNothing);
+        expect(badge, findsOneWidget);
+      });
+
+      // Eski sunucu alanları göndermiyor: düğme görünür, rozet yok.
+      testWidgets('eski sunucu: düğme var, rozet yok', (tester) async {
+        await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: assignmentRow(
+            assignmentJson(
+              status: 'COMPLETED',
+              paymentStatus: 'RELEASED_TO_WORKER',
+            ),
+          ),
+          detail: detailJson(creator: _ayse),
+        );
+
+        await tester.scrollUntilVisible(button, 200);
+        expect(button, findsOneWidget);
+        expect(badge, findsNothing);
+      });
+    });
+
+    // Çalışan yalnız kendi kazancını görür (is-koala/koala#189 B). Sunucu
+    // `pricing`i artık göndermiyor; gönderse de (eski sunucu) hizmet bedeli
+    // ve işveren toplamı çizilmiyor.
+    group('kazanç kartı / ${brightness.name}', () {
+      testWidgets('pricing null: yalnız "Kazancınız" ve workerPayout', (
+        tester,
+      ) async {
+        await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: assignmentRow({
+            ...assignmentJson(status: 'COMPLETED'),
+            'pricing': null,
+            'totalCharged': null,
+          }),
+          detail: detailJson(creator: _ayse),
+        );
+
+        expect(find.text('Kazancınız'), findsOneWidget);
+        expect(find.text('950,00 ₺'), findsOneWidget);
+        expect(find.textContaining('Hizmet bedeli'), findsNothing);
+        expect(find.textContaining('İşverenin ödediği'), findsNothing);
+        expect(find.text('1.000,00 ₺'), findsNothing);
+      });
+
+      testWidgets('pricing gelse de komisyon satırları çizilmez', (
+        tester,
+      ) async {
+        await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: assignmentRow(assignmentJson(status: 'COMPLETED')),
+          detail: detailJson(creator: _ayse),
+        );
+
+        expect(find.text('Kazancınız'), findsOneWidget);
+        expect(find.text('950,00 ₺'), findsOneWidget);
+        expect(find.textContaining('Hizmet bedeli'), findsNothing);
+        expect(find.textContaining('İşverenin ödediği'), findsNothing);
+        expect(find.text('50,00 ₺'), findsNothing);
+        expect(find.text('1.000,00 ₺'), findsNothing);
+      });
+    });
+  }
 }

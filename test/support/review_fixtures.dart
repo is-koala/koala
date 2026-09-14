@@ -6,7 +6,8 @@ import 'fake_api.dart';
 /// testleri aynı zarfları paylaşıyor.
 
 /// Backend `ReviewDto` karşılığı. Yazar verilmezse anonim kayıt gibi
-/// `author` alanı hiç yazılmıyor.
+/// `author` alanı hiç yazılmıyor. [jobAssignmentId] yalnız POST yanıtında
+/// dolu; herkese açık listede sunucu `null` gönderiyor.
 Map<String, Object?> reviewDtoJson({
   String id = 'rev_1',
   int rating = 4,
@@ -14,8 +15,10 @@ Map<String, Object?> reviewDtoJson({
   String? authorId = 'u1',
   String? createdAt,
   bool anonymous = false,
+  String? jobAssignmentId,
 }) => {
   'id': id,
+  'jobAssignmentId': jobAssignmentId,
   'rating': rating,
   'comment': ?comment,
   'anonymous': anonymous,
@@ -23,6 +26,15 @@ Map<String, Object?> reviewDtoJson({
     'author': {'id': authorId, 'firstName': 'Ada', 'lastName': 'Kaya'},
   'createdAt': ?createdAt,
 };
+
+/// `MyAssignmentDto.myReview` (`MyReviewDto`): görüntüleyenin kendi kaydı,
+/// yazar alanı yok.
+Map<String, Object?> myReviewJson({
+  String id = 'rev_mine',
+  int rating = 4,
+  String? comment,
+  String createdAt = '2026-09-11T09:00:00Z',
+}) => {'id': id, 'rating': rating, 'comment': comment, 'createdAt': createdAt};
 
 /// `POST /job-assignments/{id}/reviews` başarılı yanıtı (`201`).
 FakeApiResponse reviewCreatedResponse(Map<String, Object?> review) =>

@@ -278,7 +278,6 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
       ).wait;
 
       if (!mounted || generation != _assignmentLoadGeneration) return;
-      unawaited(_syncOwnReview(match));
       final keepsRelatedSnapshot = _assignment?.id == match.id;
       setState(() {
         _assignments = matches;
@@ -313,31 +312,12 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
 
   /// Değerlendirme ekranını bu atamanın çalışanı için açar.
   ///
-  /// Ekran başarı ve hata toast'larını kendisi gösteriyor; burada yalnızca
-  /// dönüşte kaydın içeriği tamamlanıyor. Sunucu reddederse (`409`, zaten
-  /// değerlendirilmiş) [ReviewProvider] atamayı işaretlemiş oluyor ve satır
-  /// düğmesiz hâline geçiyor.
+  /// Ekran başarı ve hata toast'larını kendisi gösteriyor. Dönüşte satır
+  /// [ReviewProvider]'ın oturum belleğinden düğmesiz hâline geçiyor; bir
+  /// sonraki yüklemede sunucunun `myReview` alanı esas.
   Future<void> _reviewWorker(Assignment assignment) async {
     if (!_canReviewWorker(assignment)) return;
     await context.push('/review', extra: ReviewSubject.forWorker(assignment));
-    if (!mounted) return;
-    await _syncOwnReview(assignment);
-  }
-
-  /// İşaretli ama içeriği bilinmeyen değerlendirmeyi sunucudan tamamlar.
-  /// Değerlendirilmişliğe karar vermez; o karar [ReviewProvider]'da.
-  Future<void> _syncOwnReview(Assignment assignment) async {
-    final workerId = assignment.worker?.id;
-    final authorId = context.read<UserProvider>().user?.id;
-    if (!_canReviewWorker(assignment) || workerId == null || authorId == null) {
-      return;
-    }
-    await context.read<ReviewProvider>().loadOwnReview(
-      assignmentId: assignment.id,
-      subjectUserId: workerId,
-      authorUserId: authorId,
-      completedAt: assignment.actualCompletionDateTime,
-    );
   }
 
   Future<void> _selectAssignment(String assignmentId) async {

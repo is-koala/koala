@@ -19,6 +19,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../../support/fake_api.dart';
+import '../../../../../support/review_fixtures.dart';
 import '../../../../../support/work_test_support.dart';
 
 /// Onaylanmış atama; kapı alanları isteğe bağlı ki eski sunucu (alan yok)
@@ -106,7 +107,6 @@ Future<Harness> pumpPage(
         ),
         ChangeNotifierProvider(
           create: (_) => ReviewProvider(
-            userIdOf: () => userProvider.user?.id,
             service: ReviewService.withClient(assignmentApi.client),
           ),
         ),
@@ -438,4 +438,67 @@ void main() {
       });
     });
   }
+
+  // "Değerlendirildi" rozeti ve "Değerlendir" düğmesi sunucunun `myReview`
+  // alanına bakıyor (is-koala/koala#189); cihazda kayıt yok.
+  group('İşlerim değerlendirme durumu', () {
+    Map<String, Object?> completed({
+      required String paymentStatus,
+      Map<String, Object?>? myReview,
+    }) => {
+      ..._assignment(status: 'COMPLETED', paymentStatus: paymentStatus),
+      'myReview': myReview,
+      'counterpartyReviewed': false,
+    };
+
+    testWidgets('ödeme bekleyen işte myReview dolu → rozet, düğme yok', (
+      tester,
+    ) async {
+      await pumpPage(
+        tester,
+        assignments: [
+          completed(
+            paymentStatus: 'HELD_IN_ESCROW',
+            myReview: myReviewJson(rating: 4),
+          ),
+        ],
+      );
+
+      expect(find.text('Değerlendirildi'), findsOneWidget);
+      expect(find.text('Değerlendir'), findsNothing);
+    });
+
+    testWidgets('ödeme bekleyen işte myReview null → düğme', (tester) async {
+      await pumpPage(
+        tester,
+        assignments: [completed(paymentStatus: 'HELD_IN_ESCROW')],
+      );
+
+      expect(find.text('Değerlendir'), findsOneWidget);
+      expect(find.text('Değerlendirildi'), findsNothing);
+    });
+
+    testWidgets('geçmiş işte myReview dolu → düğme yok', (tester) async {
+      await pumpPage(
+        tester,
+        assignments: [
+          completed(
+            paymentStatus: 'RELEASED_TO_WORKER',
+            myReview: myReviewJson(rating: 5),
+          ),
+        ],
+      );
+
+      expect(find.text('Değerlendir'), findsNothing);
+    });
+
+    testWidgets('geçmiş işte myReview null → düğme', (tester) async {
+      await pumpPage(
+        tester,
+        assignments: [completed(paymentStatus: 'RELEASED_TO_WORKER')],
+      );
+
+      expect(find.text('Değerlendir'), findsOneWidget);
+    });
+  });
 }

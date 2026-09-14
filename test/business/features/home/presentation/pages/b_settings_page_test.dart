@@ -6,6 +6,7 @@ import 'package:koala/business/features/home/presentation/providers/b_company_pr
 import 'package:koala/business/features/home/presentation/providers/b_job_templates_provider.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
 import 'package:koala/business/features/home/presentation/providers/b_talent_pool_provider.dart';
+import 'package:koala/employee/features/jobs/models/assignment.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/review_provider.dart';
 import 'package:koala/employee/features/jobs/services/review_service.dart';
 import 'package:koala/employee/features/profile/presentation/providers/availability_provider.dart';
@@ -18,6 +19,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../../support/notification_test_support.dart';
 import '../../../../../support/review_fixtures.dart';
+import '../../../../../support/work_test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -30,11 +32,10 @@ void main() {
       final notifications = (await tester.runAsync(
         loadedNotificationProvider,
       ))!;
-      // İşveren de değerlendirme bırakıyor (#185): çıkışta bu kayıt da
-      // silinmeli, yoksa aynı cihazdaki sonraki hesap öncekinin yorumunu
-      // görürdü.
+      // İşveren de değerlendirme bırakıyor (#185): çıkışta oturum belleği
+      // de silinmeli, yoksa aynı cihazdaki sonraki hesap öncekinin "az önce
+      // gönderdim" kaydını görürdü.
       final reviews = ReviewProvider(
-        userIdOf: () => 'employer-1',
         service: ReviewService.withClient(reviewApi().client),
       );
       await tester.runAsync(
@@ -44,7 +45,10 @@ void main() {
           comment: 'Sonraki hesap görmesin',
         ),
       );
-      expect(reviews.hasReviewed('assignment-1'), isTrue);
+      final assignment = Assignment.fromJson(
+        assignmentJson(status: 'COMPLETED'),
+      );
+      expect(reviews.hasReviewed(assignment), isTrue);
       var wasClearBeforeLogout = false;
       final router = GoRouter(
         initialLocation: '/business/settings',
@@ -96,10 +100,8 @@ void main() {
       expect(notifications.notifications, isEmpty);
       expect(notifications.unreadCount, 0);
       expect(find.text('Giriş hedefi'), findsOneWidget);
-      expect(reviews.hasReviewed('assignment-1'), isFalse);
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getStringList('reviewed_assignments:employer-1'), isNull);
-      expect(prefs.getString('reviewed_assignment_details:employer-1'), isNull);
+      expect(reviews.hasReviewed(assignment), isFalse);
+      expect(reviews.ownReviewFor(assignment), isNull);
     },
   );
 }

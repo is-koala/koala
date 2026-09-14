@@ -271,6 +271,63 @@ void main() {
       expect(assignment.messaging.isAvailable, isFalse);
       expect(assignment.messaging.needsPayment, isTrue);
     });
+
+    // Çalışan görünümünde sunucu `pricing` ve `totalCharged`'ı `null`
+    // gönderiyor (koala-backend#294); kazanç `workerPayout`'ta kalıyor.
+    test('çalışan görünümü: pricing ve totalCharged null, kazanç var', () {
+      final assignment = Assignment.fromJson({
+        ...assignmentBody(pricing: null),
+        'totalCharged': null,
+      });
+
+      expect(assignment.pricing, isNull);
+      expect(assignment.totalCharged, isNull);
+      expect(assignment.workerPayout, 1350);
+      expect(MyJob.fromAssignment(assignment).price, 1350);
+    });
+
+    group('değerlendirme durumu (koala-backend#293)', () {
+      test('myReview dolu ve counterpartyReviewed okunur', () {
+        final assignment = Assignment.fromJson({
+          ...assignmentBody(status: 'COMPLETED'),
+          'myReview': {
+            'id': 'rev_mine',
+            'rating': 4,
+            'comment': 'Çok iyiydi',
+            'createdAt': '2026-03-11T10:00:00Z',
+          },
+          'counterpartyReviewed': true,
+        });
+
+        expect(assignment.myReview?.id, 'rev_mine');
+        expect(assignment.myReview?.rating, 4);
+        expect(assignment.myReview?.comment, 'Çok iyiydi');
+        expect(assignment.myReview?.createdAt, DateTime.utc(2026, 3, 11, 10));
+        expect(assignment.counterpartyReviewed, isTrue);
+      });
+
+      test('myReview null: henüz değerlendirilmemiş', () {
+        final assignment = Assignment.fromJson({
+          ...assignmentBody(status: 'COMPLETED'),
+          'myReview': null,
+          'counterpartyReviewed': false,
+        });
+
+        expect(assignment.myReview, isNull);
+        expect(assignment.counterpartyReviewed, isFalse);
+      });
+
+      // Eski sunucu alanları hiç göndermiyor: düğme görünür kalsın, karşı
+      // taraf rozeti çizilmesin.
+      test('eski sunucu alanları göndermezse null / false', () {
+        final assignment = Assignment.fromJson(
+          assignmentBody(status: 'COMPLETED'),
+        );
+
+        expect(assignment.myReview, isNull);
+        expect(assignment.counterpartyReviewed, isFalse);
+      });
+    });
   });
 
   group('AssignmentPage', () {

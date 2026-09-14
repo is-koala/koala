@@ -1,23 +1,23 @@
-import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:koala/employee/features/jobs/models/assignment.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/review_provider.dart';
 import 'package:koala/employee/features/jobs/services/review_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../../support/fake_api.dart';
 import '../../../../../support/review_fixtures.dart';
+import '../../../../../support/work_test_support.dart';
 
-FakeApi createdApi() => reviewApi();
-
-/// `GET /users/{id}/reviews` için sayfalı yanıt; yazma 409 "zaten var".
-FakeApi reviewsAboutApi(
-  List<Map<String, Object?>> reviews, {
-  List<RequestOptions>? seen,
-}) => FakeApi(
+FakeApi createdApi({String? jobAssignmentId}) => FakeApi(
   handler: (request) {
-    seen?.add(request);
-    if (request.method == 'GET') return reviewsPageResponse(reviews);
-    return reviewAlreadyReviewedResponse();
+    final body = request.data as Map<String, dynamic>;
+    return reviewCreatedResponse(
+      reviewDtoJson(
+        rating: body['rating'] as int,
+        comment: body['comment'] as String?,
+        jobAssignmentId: jobAssignmentId,
+      ),
+    );
   },
 );
 
@@ -27,35 +27,115 @@ FakeApi alreadyReviewedApi() =>
 FakeApi workNotCompletedApi() =>
     FakeApi(handler: (_) => reviewWorkNotCompletedResponse());
 
-/// Oturum sahibi `me`; kimlik değişimini sınayan testler [userId] veriyor.
-ReviewProvider providerWith(FakeApi api, {String? Function()? userId}) =>
-    ReviewProvider(
-      userIdOf: userId ?? () => 'me',
-      service: ReviewService.withClient(api.client),
-    );
+ReviewProvider providerWith(FakeApi api) =>
+    ReviewProvider(service: ReviewService.withClient(api.client));
+
+/// Sunucudan gelmiş bir atama; [myReview] verilirse sunucu "değerlendirdin"
+/// diyor.
+Assignment assignmentWith({
+  String id = 'asg_1',
+  Map<String, Object?>? myReview,
+  bool? counterpartyReviewed,
+}) => Assignment.fromJson(
+  assignmentJson(
+    id: id,
+    status: 'COMPLETED',
+    extra: {
+      'myReview': ?myReview,
+      'counterpartyReviewed': ?counterpartyReviewed,
+    },
+  ),
+);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  group('ReviewProvider.submitReview', () {
-    test('başarılı gönderim atamayı işaretler', () async {
+  group('ReviewProvider sunucu durumu', () {
+    // Kaynak sunucu: `myReview` doluysa değerlendirilmiş, içerik oradan.
+    test('myReview dolu atama değerlendirilmiş, içerik sunucudan', () {
       final provider = providerWith(createdApi());
-
-      final sent = await provider.submitReview(
-        assignmentId: 'asg_1',
-        rating: 5,
+      final assignment = assignmentWith(
+        myReview: {
+          'id': 'rev_9',
+          'rating': 4,
+          'comment': 'İyi',
+          'createdAt': '2026-09-11T09:00:00Z',
+        },
       );
 
-      expect(sent, isTrue);
-      expect(provider.hasReviewed('asg_1'), isTrue);
-      expect(provider.errorMessage, isNull);
+      expect(provider.hasReviewed(assignment), isTrue);
+      expect(provider.ownReviewFor(assignment)?.summaryLabel, '★4 · "İyi"');
     });
 
-    // Sunucuda "değerlendirdim mi" diye sorulacak uç yok; reddin kendisi tek
-    // kaynak. Kullanıcı açısından sonuç "yazıldı" olduğu için işaretleniyor.
-    test('REVIEW_ALREADY_REVIEWED atamayı işaretler', () async {
+    test('myReview null atama değerlendirilmemiş', () {
+      final provider = providerWith(createdApi());
+
+      expect(provider.hasReviewed(assignmentWith()), isFalse);
+      expect(provider.ownReviewFor(assignmentWith()), isNull);
+    });
+
+    test('atama yoksa (başvuru satırı) değerlendirilmiş sayılmaz', () {
+      final provider = providerWith(createdApi());
+
+      expect(provider.hasReviewed(null), isFalse);
+      expect(provider.ownReviewFor(null), isNull);
+    });
+  });
+
+  group('ReviewProvider.submitReview', () {
+    test(
+      'başarılı gönderim atamayı oturumluk işaretler, içerik yanıttan',
+      () async {
+        final provider = providerWith(createdApi());
+
+        final sent = await provider.submitReview(
+          assignmentId: 'asg_1',
+          rating: 4,
+          comment: 'Dakik ve titiz.',
+        );
+
+        expect(sent, isTrue);
+        expect(provider.errorMessage, isNull);
+        // Liste henüz tazelenmedi (`myReview` yok); provider boşluğu kapatıyor.
+        final stale = assignmentWith();
+        expect(provider.hasReviewed(stale), isTrue);
+        expect(
+          provider.ownReviewFor(stale)?.summaryLabel,
+          '★4 · "Dakik ve titiz."',
+        );
+        expect(provider.hasReviewed(assignmentWith(id: 'asg_2')), isFalse);
+      },
+    );
+
+    // Yanıt hangi atamaya yazıldığını söylüyor (`jobAssignmentId`, yalnız
+    // POST yanıtında dolu); anahtar o, istenen kimlik değil.
+    test('yanıttaki jobAssignmentId anahtar olarak esas alınır', () async {
+      final provider = providerWith(createdApi(jobAssignmentId: 'asg_server'));
+
+      await provider.submitReview(assignmentId: 'asg_1', rating: 5);
+
+      expect(provider.hasReviewed(assignmentWith(id: 'asg_server')), isTrue);
+      expect(provider.hasReviewed(assignmentWith(id: 'asg_1')), isFalse);
+    });
+
+    // Sonraki fetch sunucuyu esas alıyor: yeni gelen `myReview` oturumdaki
+    // kopyanın önüne geçer.
+    test('sonraki fetch sunucunun kaydını öne alır', () async {
+      final provider = providerWith(createdApi());
+      await provider.submitReview(assignmentId: 'asg_1', rating: 3);
+
+      final fresh = assignmentWith(
+        myReview: {'id': 'rev_server', 'rating': 3, 'comment': 'Sunucudan'},
+      );
+
+      expect(provider.ownReviewFor(fresh)?.id, 'rev_server');
+    });
+
+    // Eski sunucu (alan yok) için tek sinyal reddin kodu: kullanıcı açısından
+    // sonuç "yazılmış", düğme çıkmasın; içerik bilinmiyor.
+    test('REVIEW_ALREADY_REVIEWED atamayı içeriksiz işaretler', () async {
       final provider = providerWith(alreadyReviewedApi());
 
       final sent = await provider.submitReview(
@@ -64,13 +144,11 @@ void main() {
       );
 
       expect(sent, isFalse);
-      expect(provider.hasReviewed('asg_1'), isTrue);
-      expect(provider.errorMessage, isNotNull);
+      expect(provider.errorMessage, 'Bu iş için zaten değerlendirme yaptınız.');
+      expect(provider.hasReviewed(assignmentWith()), isTrue);
+      expect(provider.ownReviewFor(assignmentWith()), isNull);
     });
 
-    // Asıl kusur buydu: iş tamamlanmadığı için reddedilen kullanıcı, atamayı
-    // "değerlendirilmiş" olarak diske yazdığı için iş tamamlandıktan sonra da
-    // bir daha hiç değerlendiremiyordu.
     test('REVIEW_WORK_NOT_COMPLETED atamayı işaretlemez', () async {
       final provider = providerWith(workNotCompletedApi());
 
@@ -80,7 +158,7 @@ void main() {
       );
 
       expect(sent, isFalse);
-      expect(provider.hasReviewed('asg_1'), isFalse);
+      expect(provider.hasReviewed(assignmentWith()), isFalse);
       expect(
         provider.errorMessage,
         'İş tamamlanmadan değerlendirme yapılamaz.',
@@ -88,8 +166,7 @@ void main() {
     });
 
     // Ayrımın kategoriden gelemeyeceğini ölçen test: iki reddin durum kodu da
-    // kategorisi de birebir aynı, yalnızca `errorCode` farklı. Kod yerine
-    // `type` ya da `statusCode` okunsaydı ikisi de aynı tarafa düşerdi.
+    // kategorisi de birebir aynı, yalnızca `errorCode` farklı.
     test('iki red aynı kategoriyle gelip farklı sonuçlanıyor', () async {
       final reviewed = providerWith(alreadyReviewedApi());
       final notCompleted = providerWith(workNotCompletedApi());
@@ -97,12 +174,10 @@ void main() {
       await reviewed.submitReview(assignmentId: 'asg_1', rating: 5);
       await notCompleted.submitReview(assignmentId: 'asg_1', rating: 5);
 
-      expect(reviewed.hasReviewed('asg_1'), isTrue);
-      expect(notCompleted.hasReviewed('asg_1'), isFalse);
+      expect(reviewed.hasReviewed(assignmentWith()), isTrue);
+      expect(notCompleted.hasReviewed(assignmentWith()), isFalse);
     });
 
-    // Kod hiç gelmezse ya da tanınmazsa işaretlenmiyor: fazladan bir buton
-    // göstermek, atamayı kalıcı olarak değerlendirilemez yapmaktan iyi.
     for (final envelope in <String, Map<String, dynamic>>{
       'kod yokken': {'success': false, 'message': 'Olmadı'},
       'kod tanınmazken': {
@@ -122,357 +197,55 @@ void main() {
 
         await provider.submitReview(assignmentId: 'asg_1', rating: 5);
 
-        expect(provider.hasReviewed('asg_1'), isFalse);
+        expect(provider.hasReviewed(assignmentWith()), isFalse);
       });
     }
 
-    test('işaret cihazda saklanır', () async {
+    // Disk önbelleği kaldırıldı: gönderim hiçbir anahtar yazmıyor.
+    test('gönderim diske yazmaz', () async {
       final provider = providerWith(createdApi());
       await provider.submitReview(assignmentId: 'asg_1', rating: 4);
 
       final prefs = await SharedPreferences.getInstance();
 
-      expect(prefs.getStringList('reviewed_assignments:me'), ['asg_1']);
+      expect(prefs.getKeys(), isEmpty);
     });
 
-    test('atama kimliği yoksa değerlendirilmiş sayılmaz', () {
+    test('clear oturum belleğini siler', () async {
       final provider = providerWith(createdApi());
-
-      expect(provider.hasReviewed(null), isFalse);
-    });
-
-    // İşveren kartı "Değerlendirdiniz: ★4 · yorum" satırını buradan çiziyor;
-    // sunucunun yanıtı olduğu gibi saklanıyor, ikinci istek atılmıyor.
-    test('başarılı gönderimde kendi kaydı içeriğiyle tutulur', () async {
-      final provider = providerWith(createdApi());
-
-      await provider.submitReview(
-        assignmentId: 'asg_1',
-        rating: 4,
-        comment: 'Dakik ve titiz.',
-      );
-
-      final own = provider.ownReviewFor('asg_1');
-      expect(own, isNotNull);
-      expect(own!.rating, 4);
-      expect(own.summaryLabel, '★4 · "Dakik ve titiz."');
-      expect(provider.ownReviewFor('asg_2'), isNull);
-    });
-
-    test('yorumsuz kaydın özeti yalnızca yıldız', () async {
-      final provider = providerWith(createdApi());
-
       await provider.submitReview(assignmentId: 'asg_1', rating: 5);
 
-      expect(provider.ownReviewFor('asg_1')!.summaryLabel, '★5');
-    });
+      provider.clear();
 
-    // 409 ile işaretlenen atamanın içeriği bilinmiyor: `null` "değerlendirilmedi"
-    // demek değil, `hasReviewed` ondan ayrı.
-    test('409 ile işaretlenen atamanın içeriği yok', () async {
-      final provider = providerWith(alreadyReviewedApi());
-
-      await provider.submitReview(assignmentId: 'asg_1', rating: 5);
-
-      expect(provider.hasReviewed('asg_1'), isTrue);
-      expect(provider.ownReviewFor('asg_1'), isNull);
+      expect(provider.hasReviewed(assignmentWith()), isFalse);
+      expect(provider.ownReviewFor(assignmentWith()), isNull);
+      expect(provider.errorMessage, isNull);
     });
   });
 
-  group('ReviewProvider.loadOwnReview', () {
-    // Sunucu "hangi atamaya" demiyor; yazarı biz olan ve tamamlanmadan sonra
-    // yazılmış en eski kayıt seçiliyor, başkasının kaydı elenmiş oluyor.
-    test('işaretli atamanın kaydını yazara ve tarihe göre bulur', () async {
-      final provider = providerWith(
-        reviewsAboutApi([
-          reviewDtoJson(
-            id: 'rev_other',
-            authorId: 'u_other',
-            rating: 1,
-            createdAt: '2026-09-11T10:00:00Z',
-          ),
-          reviewDtoJson(
-            id: 'rev_old',
-            authorId: 'me',
-            rating: 2,
-            createdAt: '2026-09-01T10:00:00Z',
-          ),
-          reviewDtoJson(
-            id: 'rev_mine',
-            authorId: 'me',
-            rating: 4,
-            comment: 'Güzel iş',
-            createdAt: '2026-09-11T09:00:00Z',
-          ),
-        ]),
-      );
-      await provider.submitReview(assignmentId: 'asg_1', rating: 5);
-
-      await provider.loadOwnReview(
-        assignmentId: 'asg_1',
-        subjectUserId: 'worker-1',
-        authorUserId: 'me',
-        completedAt: DateTime.parse('2026-09-10T17:00:00Z'),
-      );
-
-      expect(provider.ownReviewFor('asg_1')?.id, 'rev_mine');
-    });
-
-    // Arama değerlendirilmişliğe karar vermez: işaretsiz atamada hiç
-    // gidilmiyor, aksi hâlde aynı kişiyle ikinci iş yanlış işaretlenirdi.
-    test('işaretsiz atamada sunucuya gitmez', () async {
-      final seen = <RequestOptions>[];
-      final provider = providerWith(
-        reviewsAboutApi([
-          reviewDtoJson(id: 'rev_mine', authorId: 'me', rating: 4),
-        ], seen: seen),
-      );
-
-      await provider.loadOwnReview(
-        assignmentId: 'asg_1',
-        subjectUserId: 'worker-1',
-        authorUserId: 'me',
-      );
-
-      expect(seen, isEmpty);
-      expect(provider.hasReviewed('asg_1'), isFalse);
-      expect(provider.ownReviewFor('asg_1'), isNull);
-    });
-
-    test('içeriği bilinen atama için tekrar sormaz', () async {
-      final gets = <RequestOptions>[];
-      final provider = providerWith(
-        FakeApi(
-          handler: (request) {
-            if (request.method == 'GET') gets.add(request);
-            return reviewCreatedResponse(reviewDtoJson(rating: 3));
-          },
-        ),
-      );
-      await provider.submitReview(assignmentId: 'asg_1', rating: 3);
-
-      await provider.loadOwnReview(
-        assignmentId: 'asg_1',
-        subjectUserId: 'worker-1',
-        authorUserId: 'me',
-      );
-
-      expect(gets, isEmpty);
-      expect(provider.ownReviewFor('asg_1')?.id, 'rev_1');
-    });
-
-    // Aynı kişiyle iki tamamlanmış iş: iki aday var, hangisi hangi atamanın
-    // bilinemiyor. Yanlış kaydı göstermektense içeriksiz kalıyor; işaret durur.
-    test('iki aday varsa eşleştirme yapmaz, işaret durur', () async {
-      final provider = providerWith(
-        reviewsAboutApi([
-          reviewDtoJson(
-            id: 'rev_a',
-            authorId: 'me',
-            rating: 4,
-            createdAt: '2026-09-11T09:00:00Z',
-          ),
-          reviewDtoJson(
-            id: 'rev_b',
-            authorId: 'me',
-            rating: 2,
-            createdAt: '2026-09-12T09:00:00Z',
-          ),
-        ]),
-      );
-      await provider.submitReview(assignmentId: 'asg_1', rating: 5);
-
-      await provider.loadOwnReview(
-        assignmentId: 'asg_1',
-        subjectUserId: 'worker-1',
-        authorUserId: 'me',
-        completedAt: DateTime.parse('2026-09-10T17:00:00Z'),
-      );
-
-      expect(provider.hasReviewed('asg_1'), isTrue);
-      expect(provider.ownReviewFor('asg_1'), isNull);
-    });
-
-    // Sunucudan gelen tahmin diske yazılmıyor: yeni bir provider (yeni
-    // oturum) içeriği bilmez, işareti bilir.
-    test('sunucudan bulunan kayıt yalnızca bellekte kalır', () async {
-      final api = reviewsAboutApi([
-        reviewDtoJson(id: 'rev_mine', authorId: 'me', rating: 4),
-      ]);
-      final provider = providerWith(api);
-      await provider.submitReview(assignmentId: 'asg_1', rating: 5);
-      await provider.loadOwnReview(
-        assignmentId: 'asg_1',
-        subjectUserId: 'worker-1',
-        authorUserId: 'me',
-      );
-      expect(provider.ownReviewFor('asg_1')?.id, 'rev_mine');
-
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('reviewed_assignment_details:me'), isNull);
-      final fresh = providerWith(api);
-      fresh.hasReviewed('asg_1');
-      await Future<void>.delayed(Duration.zero);
-      expect(fresh.hasReviewed('asg_1'), isTrue);
-      expect(fresh.ownReviewFor('asg_1'), isNull);
-    });
-
-    test('kendi kaydı yoksa satır içeriksiz kalır, hata yükselmez', () async {
-      final provider = providerWith(
-        FakeApi(
-          handler: (request) => request.method == 'GET'
-              ? const FakeApiResponse(
-                  statusCode: 500,
-                  body: {'success': false, 'message': 'Olmadı'},
-                )
-              : reviewAlreadyReviewedResponse(),
-        ),
-      );
-      await provider.submitReview(assignmentId: 'asg_1', rating: 5);
-
-      await provider.loadOwnReview(
-        assignmentId: 'asg_1',
-        subjectUserId: 'worker-1',
-        authorUserId: 'me',
-      );
-
-      expect(provider.hasReviewed('asg_1'), isTrue);
-      expect(provider.ownReviewFor('asg_1'), isNull);
-    });
-  });
-
-  group('ReviewProvider kullanıcıya bağlı kayıt', () {
-    // Aynı cihazda sonraki hesap — örneğin aynı atamanın öbür tarafı —
-    // öncekinin işaretini görmemeli: düğmesini kaybeder, yorumunu okurdu.
-    test('başka kullanıcı öncekinin işaretini ve yorumunu görmez', () async {
-      var userId = 'me';
-      final provider = providerWith(createdApi(), userId: () => userId);
-      await provider.submitReview(
-        assignmentId: 'asg_1',
-        rating: 4,
-        comment: 'Gizli kalmalı',
-      );
-      expect(provider.hasReviewed('asg_1'), isTrue);
-
-      userId = 'someone-else';
-      expect(provider.hasReviewed('asg_1'), isFalse);
-      await Future<void>.delayed(Duration.zero);
-
-      expect(provider.hasReviewed('asg_1'), isFalse);
-      expect(provider.ownReviewFor('asg_1'), isNull);
-      expect(provider.reviewedAssignmentIds, isEmpty);
-    });
-
-    test('diskteki kayıt yalnızca sahibine yüklenir', () async {
-      SharedPreferences.setMockInitialValues({
-        'reviewed_assignments:me': ['asg_9'],
-        'reviewed_assignments:other': ['asg_7'],
-      });
-      final provider = providerWith(createdApi());
-      provider.hasReviewed('asg_9');
-      await Future<void>.delayed(Duration.zero);
-
-      expect(provider.hasReviewed('asg_9'), isTrue);
-      expect(provider.hasReviewed('asg_7'), isFalse);
-    });
-
-    test(
-      'kimlik bilinmiyorsa hiçbir şey işaretli değil, disk yazılmaz',
-      () async {
-        final provider = providerWith(createdApi(), userId: () => null);
-        final sent = await provider.submitReview(
-          assignmentId: 'asg_1',
-          rating: 4,
-        );
-        final prefs = await SharedPreferences.getInstance();
-
-        expect(sent, isTrue);
-        expect(provider.hasReviewed('asg_1'), isFalse);
-        expect(prefs.getKeys(), isEmpty);
-      },
-    );
-
-    // Eski sürüm kimliksiz anahtar yazıyordu; kimin olduğu bilinmediği için
-    // okunmuyor, çıkışta siliniyor.
-    test('eski kimliksiz anahtar okunmaz, clear siler', () async {
+  group('ReviewProvider.purgeLegacyCache', () {
+    // Önceki sürümlerin kimliksiz ve kullanıcı anahtarlı kayıtları bir kez
+    // siliniyor; başka anahtarlara dokunulmuyor.
+    test('eski önbellek anahtarlarını siler, diğerlerine dokunmaz', () async {
       SharedPreferences.setMockInitialValues({
         'reviewed_assignments': ['asg_legacy'],
+        'reviewed_assignments:me': ['asg_9'],
+        'reviewed_assignment_details:me': '{"asg_9":{"id":"rev_9"}}',
+        'reviewed_assignment_details': '{}',
+        'seen_onboarding': true,
       });
-      final provider = providerWith(createdApi());
-      provider.hasReviewed('asg_legacy');
-      await Future<void>.delayed(Duration.zero);
-      expect(provider.hasReviewed('asg_legacy'), isFalse);
 
-      await provider.clear();
+      await ReviewProvider.purgeLegacyCache();
+
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getStringList('reviewed_assignments'), isNull);
-    });
-  });
-
-  group('ReviewProvider kapsülleme', () {
-    test('kayıtlı işaretler açılışta geri yüklenir', () async {
-      SharedPreferences.setMockInitialValues({
-        'reviewed_assignments:me': ['asg_9'],
-      });
-
-      final provider = providerWith(createdApi());
-      // Okuma ilk soruda tembel başlıyor; bitince dinleyenler uyarılıyor.
-      expect(provider.hasReviewed('asg_9'), isFalse);
-      await Future<void>.delayed(Duration.zero);
-
-      expect(provider.hasReviewed('asg_9'), isTrue);
+      expect(prefs.getKeys(), {'seen_onboarding'});
     });
 
-    test('kayıtlı içerik açılışta geri yüklenir', () async {
-      SharedPreferences.setMockInitialValues({
-        'reviewed_assignments:me': ['asg_9'],
-        'reviewed_assignment_details:me':
-            '{"asg_9":{"id":"rev_9","rating":4,"comment":"İyi"}}',
-      });
+    test('silinecek bir şey yoksa sessizce biter', () async {
+      await ReviewProvider.purgeLegacyCache();
 
-      final provider = providerWith(createdApi());
-      provider.hasReviewed('asg_9');
-      await Future<void>.delayed(Duration.zero);
-
-      expect(provider.ownReviewFor('asg_9')?.summaryLabel, '★4 · "İyi"');
-    });
-
-    // Bozuk içerik kaydı kimlikleri götürmez: rozet kalır, içerik düşer.
-    test('bozuk içerik kaydı işaretleri bozmaz', () async {
-      SharedPreferences.setMockInitialValues({
-        'reviewed_assignments:me': ['asg_9'],
-        'reviewed_assignment_details:me': '{bozuk',
-      });
-
-      final provider = providerWith(createdApi());
-      provider.hasReviewed('asg_9');
-      await Future<void>.delayed(Duration.zero);
-
-      expect(provider.hasReviewed('asg_9'), isTrue);
-      expect(provider.ownReviewFor('asg_9'), isNull);
-    });
-
-    test('clear çıkışta işaretleri hem bellekten hem diskten siler', () async {
-      final provider = providerWith(createdApi());
-      await provider.submitReview(assignmentId: 'asg_1', rating: 5);
-
-      await provider.clear();
       final prefs = await SharedPreferences.getInstance();
-
-      expect(provider.hasReviewed('asg_1'), isFalse);
-      expect(provider.ownReviewFor('asg_1'), isNull);
-      expect(prefs.getStringList('reviewed_assignments:me'), isNull);
-      expect(prefs.getString('reviewed_assignment_details:me'), isNull);
-    });
-
-    test('reviewedAssignmentIds dışarıdan değiştirilemez', () async {
-      final provider = providerWith(createdApi());
-      await provider.submitReview(assignmentId: 'asg_1', rating: 5);
-
-      expect(
-        () => provider.reviewedAssignmentIds.add('asg_2'),
-        throwsUnsupportedError,
-      );
+      expect(prefs.getKeys(), isEmpty);
     });
   });
 }

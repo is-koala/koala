@@ -54,6 +54,9 @@ abstract final class AppIcons {
   // ────────────────────────────────────── İş & Detay
   static const String location = 'location';
   static const String moneyBag = 'moneyBag';
+
+  /// Banka hesabı; hakediş satırındaki maskeli IBAN.
+  static const String bank = 'bank';
   static const String calendar = 'calendar';
   static const String clock = 'clock';
   static const String route = 'route';
@@ -84,6 +87,9 @@ abstract final class AppIcons {
   static const String attachment = 'paperclip';
   static const String download = 'download';
   static const String delete = 'trash';
+
+  /// Panoya kopyalama; hakediş detayındaki sağlayıcı referansı.
+  static const String copy = 'copy';
 
   // ────────────────────────────────────── Görünüm / Tema
   static const String sun = 'sun';

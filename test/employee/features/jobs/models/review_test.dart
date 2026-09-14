@@ -116,16 +116,37 @@ void main() {
   });
 
   group('Review yerel kayıt', () {
-    test('toJson → fromJson içeriği korur, yazar yazılmaz', () {
-      final review = Review.fromJson(reviewBody(rating: 3));
+    // `jobAssignmentId` yalnız POST yanıtında dolu; herkese açık listede
+    // sunucu `null` gönderiyor (anonim yazarı açığa çıkarmasın).
+    test('jobAssignmentId POST yanıtında okunur, listede null kalır', () {
+      final posted = Review.fromJson({
+        ...reviewBody(),
+        'jobAssignmentId': 'asg_1',
+      });
+      final listed = Review.fromJson({
+        ...reviewBody(),
+        'jobAssignmentId': null,
+      });
+      final legacy = Review.fromJson(reviewBody());
 
-      final restored = Review.fromJson(review.toJson());
+      expect(posted.jobAssignmentId, 'asg_1');
+      expect(listed.jobAssignmentId, isNull);
+      expect(legacy.jobAssignmentId, isNull);
+    });
 
-      expect(restored.id, 'rev_1');
-      expect(restored.rating, 3);
-      expect(restored.comment, 'Çok iyiydi');
-      expect(restored.createdAt, review.createdAt);
-      expect(restored.author, isNull);
+    // `MyReviewDto` yazar taşımıyor; aynı `fromJson` onu da çözüyor.
+    test('myReview gövdesi yazarsız çözülür', () {
+      final review = Review.fromJson({
+        'id': 'rev_mine',
+        'rating': 5,
+        'comment': null,
+        'createdAt': '2026-09-11T09:00:00Z',
+      });
+
+      expect(review.rating, 5);
+      expect(review.author, isNull);
+      expect(review.hasComment, isFalse);
+      expect(review.summaryLabel, '★5');
     });
 
     test('summaryLabel yorumu tırnak içinde, yorumsuzda yalnızca yıldız', () {
