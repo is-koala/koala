@@ -260,6 +260,49 @@ void main() {
     });
   });
 
+  group('NotificationProvider.refreshQuietly', () {
+    // Ön plana dönüşte çağrılıyor: rozet için canlı kanal yok, arka planda
+    // gelenler böyle sayılıyor. Hiç yüklenmemişse oturum olmayabilir; istek
+    // atılmaz, zil kendi `ensureLoaded`'ını yapar.
+    test('akış hiç çekilmediyse ağa çıkmaz', () async {
+      var requests = 0;
+      final api = FakeApi(
+        handler: (_) {
+          requests++;
+          return FakeApiResponse(
+            statusCode: 200,
+            body: feedResponse(page: 0, last: true),
+          );
+        },
+      );
+      final provider = providerWith(api);
+
+      await provider.refreshQuietly();
+
+      expect(requests, 0);
+    });
+
+    test('yüklenmiş akışı göstergesiz yeniden çeker', () async {
+      var unread = 2;
+      final api = FakeApi(
+        handler: (_) => FakeApiResponse(
+          statusCode: 200,
+          body: feedResponse(page: 0, last: true, unreadCount: unread),
+        ),
+      );
+      final provider = providerWith(api);
+      await provider.load();
+      var sawSpinner = false;
+      provider.addListener(() => sawSpinner = sawSpinner || provider.isLoading);
+
+      unread = 5;
+      await provider.refreshQuietly();
+
+      expect(provider.unreadCount, 5);
+      expect(sawSpinner, isFalse);
+    });
+  });
+
   group('NotificationProvider.markRead', () {
     // Liste elde güncelleniyor: kullanıcı satıra dokunup gidiyor, dönüşte
     // listenin baştan kurulmasını beklemesin.

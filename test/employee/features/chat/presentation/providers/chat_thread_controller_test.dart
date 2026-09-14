@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/chat/presentation/providers/chat_thread_controller.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
@@ -7,40 +8,33 @@ import 'package:koala/product/network/realtime_client.dart';
 import 'package:koala/product/network/realtime_event.dart';
 
 import '../../../../../support/fake_api.dart';
+import '../../../../../support/fake_realtime.dart';
 
 const _me = 'user_me';
 const _other = 'user_other';
 const _conversationId = 'conv_1';
 
 /// Gerçek soket açmadan olay besleyen sahte canlı istemci.
-class FakeRealtimeClient implements RealtimeClient {
+class FakeRealtimeClient extends FakeSilentRealtimeClient {
   final _controller = StreamController<RealtimeEvent>.broadcast();
   final List<String> typingSentFor = [];
-  bool connectCalled = false;
 
   void emit(RealtimeEvent event) => _controller.add(event);
+
+  bool get hasListener => _controller.hasListener;
 
   @override
   Stream<RealtimeEvent> conversationEvents(String conversationId) =>
       _controller.stream;
 
   @override
-  Stream<RealtimeEvent> presenceEventsFor(String userId) => _controller.stream;
-
-  @override
-  Stream<RealtimeEvent> userMessageEvents() => _controller.stream;
-
-  @override
-  Future<void> connect() async => connectCalled = true;
-
-  @override
   void sendTyping(String conversationId) => typingSentFor.add(conversationId);
 
   @override
-  Future<void> disconnect() async {}
-
-  @override
-  bool get isConnected => true;
+  Future<void> dispose() async {
+    await _controller.close();
+    await super.dispose();
+  }
 }
 
 Map<String, dynamic> messageBody({
@@ -62,8 +56,9 @@ Map<String, dynamic> messageBody({
 void main() {
   late FakeRealtimeClient realtime;
 
-  ChatThreadController build(FakeApi api) {
-    realtime = FakeRealtimeClient();
+  ChatThreadController build(FakeApi api, {bool connected = true}) {
+    realtime = FakeRealtimeClient()..connected = connected;
+    addTearDown(realtime.dispose);
     return ChatThreadController(
       conversationId: _conversationId,
       chatService: ChatService.withClient(api.client),
@@ -180,6 +175,263 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(thread.messages, hasLength(1));
+    });
+  });
+
+  group('bağlantı geçişleri', () {
+    /// Denetleyicinin bir sonraki `notifyListeners` çağrısı; tamamlama sessiz
+    /// olduğu için bitişi ancak buradan anlaşılıyor.
+    Future<void> nextNotify(ChatThreadController thread) {
+      final completer = Completer<void>();
+      late final VoidCallback listener;
+      listener = () {
+        if (!completer.isCompleted) completer.complete();
+        thread.removeListener(listener);
+      };
+      thread.addListener(listener);
+      return completer.future;
+    }
+
+    int messageFetches(FakeApi api) => api.requests
+        .where(
+          (r) =>
+              r.method == 'GET' &&
+              r.path == '/conversations/$_conversationId/messages',
+        )
+        .length;
+
+    // Sunucunun `since` parametresi yok: en yeni sayfa çekilip kimlikle
+    // birleştiriliyor. Kopukken gelen eklenir, eldeki tekrar eklenmez, kopuk
+    // sırada okunan kendi mesajımızın `readAt`'i sunucudan gelir.
+    test('kopup gelen bağlantı kaçan mesajları kimlikle tamamlar', () async {
+      final messages = [
+        messageBody(id: 'm1', body: 'Merhaba'),
+        messageBody(id: 'm2', senderId: _me, body: 'Selam'),
+      ];
+      final api = apiWith(messages);
+      final thread = build(api);
+      await thread.load(currentUserId: _me);
+      expect(thread.messages, hasLength(2));
+
+      // Sunucu en yeniden eskiye veriyor.
+      messages
+        ..clear()
+        ..addAll([
+          messageBody(
+            id: 'm3',
+            body: 'Kopukken yazdım',
+            sentAt: '2026-03-05T10:05:00Z',
+          ),
+          messageBody(
+            id: 'm2',
+            senderId: _me,
+            body: 'Selam',
+            readAt: '2026-03-05T10:04:00Z',
+          ),
+          messageBody(id: 'm1', body: 'Merhaba'),
+        ]);
+      final caughtUp = nextNotify(thread);
+      realtime.emitConnection(RealtimeConnectionEvent.disconnected);
+      realtime.emitConnection(RealtimeConnectionEvent.connected);
+      await caughtUp;
+
+      expect(messageFetches(api), 2);
+      expect(thread.messages.map((m) => m.id), ['m1', 'm2', 'm3']);
+      expect(thread.messages[1].readAt, isNotNull);
+      expect(thread.messages.last.body, 'Kopukken yazdım');
+      // Ekran açık: karşı tarafın kaçan mesajı okundu işaretlenir.
+      await api.requestsReach(4);
+      expect(
+        api.requests
+            .where((r) => r.path == '/conversations/$_conversationId/read')
+            .length,
+        2,
+      );
+    });
+
+    // Abonelik sayfa çekiminden önce açılıyor; sayfa yanıtı beklenirken
+    // kanaldan gelen mesaj sayfada olsun ya da olmasın listede bir kez durur.
+    test(
+      'sayfa beklenirken kanaldan gelen mesaj kaybolmaz ve çift olmaz',
+      () async {
+        final pageResponse = Completer<FakeApiResponse>();
+        final api = FakeApi(
+          handler: (options) => options.method == 'GET'
+              ? pageResponse.future
+              : const FakeApiResponse(statusCode: 200, body: {'success': true}),
+        );
+        final thread = build(api);
+        final loading = thread.load(currentUserId: _me);
+        await api.requestsReach(1);
+        expect(realtime.connectCalled, isTrue);
+
+        realtime.emit(
+          RealtimeEvent.fromJson({
+            'type': 'MESSAGE',
+            'conversationId': _conversationId,
+            'userId': _other,
+            'message': messageBody(
+              id: 'm-race',
+              body: 'Arada geldi',
+              sentAt: '2026-03-05T10:01:00Z',
+            ),
+          }),
+        );
+        realtime.emit(
+          RealtimeEvent.fromJson({
+            'type': 'MESSAGE',
+            'conversationId': _conversationId,
+            'userId': _other,
+            'message': messageBody(
+              id: 'm-late',
+              body: 'Sayfadan sonra',
+              sentAt: '2026-03-05T10:02:00Z',
+            ),
+          }),
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        // Sunucu sayfası ilkini zaten içeriyor, ikincisini içermiyor.
+        pageResponse.complete(
+          FakeApiResponse(
+            statusCode: 200,
+            body: {
+              'success': true,
+              'data': {
+                'content': [
+                  messageBody(
+                    id: 'm-race',
+                    body: 'Arada geldi',
+                    sentAt: '2026-03-05T10:01:00Z',
+                  ),
+                  messageBody(id: 'm1'),
+                ],
+              },
+            },
+          ),
+        );
+        await loading;
+
+        expect(thread.messages.map((m) => m.id), ['m1', 'm-race', 'm-late']);
+      },
+    );
+
+    test('kesintisiz bağlantıda connected çekme yapmaz', () async {
+      final api = apiWith([messageBody()]);
+      final thread = build(api);
+      await thread.load(currentUserId: _me);
+
+      realtime.emitConnection(RealtimeConnectionEvent.connected);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(messageFetches(api), 1);
+    });
+
+    test(
+      'bağlantı yokken açılan abonelik ilk connected ile tamamlanır',
+      () async {
+        final messages = [messageBody(id: 'm1')];
+        final api = apiWith(messages);
+        realtime = FakeRealtimeClient()..connected = false;
+        final thread = ChatThreadController(
+          conversationId: _conversationId,
+          chatService: ChatService.withClient(api.client),
+          realtimeClient: realtime,
+        );
+        await thread.load(currentUserId: _me);
+
+        messages.insert(0, messageBody(id: 'm2', body: 'Arada gelen'));
+        final caughtUp = nextNotify(thread);
+        realtime.emitConnection(RealtimeConnectionEvent.connected);
+        await caughtUp;
+
+        expect(thread.messages.map((m) => m.id), ['m1', 'm2']);
+      },
+    );
+
+    test('değişiklik yoksa dinleyici uyandırılmaz', () async {
+      final api = apiWith([messageBody(id: 'm1')]);
+      final thread = build(api);
+      await thread.load(currentUserId: _me);
+      var notified = 0;
+      thread.addListener(() => notified++);
+
+      realtime.emitConnection(RealtimeConnectionEvent.resumed);
+      await api.requestsReach(3);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(messageFetches(api), 2);
+      expect(notified, 0);
+      expect(thread.messages, hasLength(1));
+    });
+
+    // Aynı mesaj hem canlı kanaldan hem tamamlamadan gelirse bir kez durur.
+    test('canlı gelen mesaj tamamlamada ikinci kez eklenmez', () async {
+      final messages = [messageBody(id: 'm1')];
+      final api = apiWith(messages);
+      final thread = build(api);
+      await thread.load(currentUserId: _me);
+
+      messages.insert(0, messageBody(id: 'm2', body: 'Yeni'));
+      realtime.emit(
+        RealtimeEvent.fromJson({
+          'type': 'MESSAGE',
+          'conversationId': _conversationId,
+          'userId': _other,
+          'message': messageBody(id: 'm2', body: 'Yeni'),
+        }),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(thread.messages, hasLength(2));
+
+      realtime.emitConnection(RealtimeConnectionEvent.resumed);
+      await api.requestsReach(4);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(thread.messages.map((m) => m.id), ['m1', 'm2']);
+    });
+
+    // Kopukluk bir sayfadan uzun sürdüyse bilinen bir mesaja rastlayana
+    // kadar geriye gidilir; sınır üç sayfa.
+    test('tamamlama bilinen mesaja kadar sayfalar', () async {
+      Map<String, dynamic> at(String id, int minute) =>
+          messageBody(id: id, sentAt: '2026-03-05T10:0$minute:00Z');
+      final pages = <int, List<Map<String, dynamic>>>{
+        0: [at('m5', 5), at('m4', 4)],
+        1: [at('m3', 3), at('m2', 2)],
+        2: [at('m1', 1)],
+      };
+      var served = pages[2]!;
+      final api = FakeApi(
+        handler: (options) {
+          if (options.method != 'GET') {
+            return const FakeApiResponse(
+              statusCode: 200,
+              body: {'success': true},
+            );
+          }
+          final page = options.queryParameters['page'] as int? ?? 0;
+          final content = served == pages[2]! ? served : pages[page]!;
+          return FakeApiResponse(
+            statusCode: 200,
+            body: {
+              'success': true,
+              'data': {'content': content, 'last': page >= 2},
+            },
+          );
+        },
+      );
+      final thread = build(api);
+      await thread.load(currentUserId: _me);
+      expect(thread.messages.map((m) => m.id), ['m1']);
+
+      served = pages[0]!;
+      final caughtUp = nextNotify(thread);
+      realtime.emitConnection(RealtimeConnectionEvent.resumed);
+      await caughtUp;
+
+      expect(thread.messages.map((m) => m.id), ['m1', 'm2', 'm3', 'm4', 'm5']);
+      expect(messageFetches(api), 4);
     });
   });
 
@@ -647,7 +899,8 @@ void main() {
       controller.dispose();
 
       await expectLater(pending, completes);
-      expect(realtime.connectCalled, isFalse);
+      // Abonelik çekimden önce açılıyor; atılınca bırakılmış olmalı.
+      expect(realtime.hasListener, isFalse);
     });
   });
 }

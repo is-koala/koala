@@ -4,7 +4,9 @@ import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:koala/product/network/api_config.dart';
 import 'package:koala/product/network/app_update_gate.dart';
+import 'package:koala/product/network/realtime_connection_keeper.dart';
 import 'package:koala/product/network/session_manager.dart';
+import 'package:koala/product/providers/notification_provider.dart';
 import 'package:koala/product/router/app_link_coordinator.dart';
 import 'package:koala/product/router/router_manager.dart';
 import 'package:koala/product/theme/theme.dart';
@@ -22,6 +24,7 @@ class App extends StatefulWidget {
 class _AppState extends State<App> {
   late final SessionManager _sessionManager;
   late final AppLinkCoordinator _appLinkCoordinator;
+  late final RealtimeConnectionKeeper _realtimeKeeper;
   StreamSubscription<Uri>? _appLinkSubscription;
 
   @override
@@ -34,6 +37,15 @@ class _AppState extends State<App> {
     );
     _sessionManager.addListener(_flushPendingDeepLink);
     _appLinkSubscription = AppLinks().uriLinkStream.listen(_handleDeepLink);
+    // Canlı bağlantı arka plandan dönüşte ve ağ değişiminde yeniden
+    // kuruluyor; rozet de aynı anda sessizce tazeleniyor.
+    _realtimeKeeper = RealtimeConnectionKeeper(onResumed: _refreshBadge)
+      ..start();
+  }
+
+  void _refreshBadge() {
+    if (!mounted) return;
+    unawaited(context.read<NotificationProvider>().refreshQuietly());
   }
 
   /// Backend'in ürettiği kayıt, şifre ve ödeme bağlantılarını çalışan
@@ -63,6 +75,7 @@ class _AppState extends State<App> {
 
   @override
   void dispose() {
+    _realtimeKeeper.stop();
     _sessionManager.removeListener(_flushPendingDeepLink);
     final subscription = _appLinkSubscription;
     if (subscription != null) unawaited(subscription.cancel());

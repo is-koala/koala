@@ -68,6 +68,18 @@ class NotificationProvider extends ChangeNotifier {
     await load(silent: true);
   }
 
+  /// Akış daha önce çekildiyse göstergesiz yeniden çeker.
+  ///
+  /// Uygulama ön plana dönünce çağrılıyor: rozet için canlı bir kanal yok
+  /// (STOMP yalnızca sohbet olaylarını taşıyor), ön planda FCM `onMessage`
+  /// tazeliyor; arka planda gelenler de dönüşte böyle sayılıyor. Hiç
+  /// çekilmediyse zil kendi [ensureLoaded] çağrısını yapacak, burada
+  /// başlatılmıyor — oturum yokken istek atmamak için.
+  Future<void> refreshQuietly() async {
+    if (!_hasLoaded || _isFetching) return;
+    await load(silent: true);
+  }
+
   /// İlk sayfayı çeker; yenilemede de bu çağrılıyor.
   ///
   /// [silent] verildiğinde yükleniyor göstergesi açılmıyor — ekrana her
