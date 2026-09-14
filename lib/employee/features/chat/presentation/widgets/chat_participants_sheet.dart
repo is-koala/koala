@@ -47,11 +47,7 @@ class ChatParticipantsSheet extends StatelessWidget {
       'Bu sohbet kapandı; yeni mesaj gönderilemiyor.';
   static const String emptyNote = 'Katılımcı bilgisi henüz yok.';
   static const String youTag = 'Siz';
-  static const String leftTag = 'Ayrıldı';
-
-  /// Avatar ölçüleri; başlıktakiyle aynı.
-  static const double _avatarSize = 40;
-  static const double _avatarRadius = 14;
+  static const String leftTag = ChatParticipant.leftLabel;
 
   /// Ayrılan katılımcının avatarı soluk.
   static const double _leftOpacity = 0.5;
@@ -77,6 +73,9 @@ class ChatParticipantsSheet extends StatelessWidget {
     );
   }
 
+  int get _activeCount =>
+      participants.where((participant) => !participant.left).length;
+
   /// Aktifler önce, ayrılanlar sonda; kendi içlerinde sunucu sırası.
   List<ChatParticipant> get _ordered => [
     ...participants.where((participant) => !participant.left),
@@ -99,8 +98,10 @@ class ChatParticipantsSheet extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: AppSizes.smallGap),
+          // Ayrılanlar listede duruyor ama sayıya girmiyor; sohbet listesinin
+          // satırıyla aynı kural (`Conversation.participantCount`).
           Text(
-            '${ordered.length} katılımcı',
+            '$_activeCount katılımcı',
             style: context.textTheme.labelMedium?.copyWith(
               color: context.textSecondary,
             ),
@@ -168,8 +169,8 @@ class ChatParticipantsSheet extends StatelessWidget {
                   child: ChatAvatar(
                     avatarUrl: participant.profilePictureUrl,
                     fallbackText: participant.initials,
-                    size: _avatarSize,
-                    borderRadius: _avatarRadius,
+                    size: AppSizes.avatarSmall,
+                    borderRadius: AppRadius.avatar,
                   ),
                 ),
                 const SizedBox(width: AppSizes.space),

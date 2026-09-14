@@ -81,6 +81,19 @@ void main() {
     );
   }
 
+  /// Denetleyicinin bir sonraki `notifyListeners` çağrısı; tamamlama sessiz
+  /// olduğu için bitişi ancak buradan anlaşılıyor.
+  Future<void> nextNotify(ChatThreadController thread) {
+    final completer = Completer<void>();
+    late final VoidCallback listener;
+    listener = () {
+      if (!completer.isCompleted) completer.complete();
+      thread.removeListener(listener);
+    };
+    thread.addListener(listener);
+    return completer.future;
+  }
+
   group('load', () {
     test('mesajlar çekilir ve okundu işaretlenir', () async {
       final api = apiWith([messageBody()]);
@@ -180,19 +193,6 @@ void main() {
   });
 
   group('bağlantı geçişleri', () {
-    /// Denetleyicinin bir sonraki `notifyListeners` çağrısı; tamamlama sessiz
-    /// olduğu için bitişi ancak buradan anlaşılıyor.
-    Future<void> nextNotify(ChatThreadController thread) {
-      final completer = Completer<void>();
-      late final VoidCallback listener;
-      listener = () {
-        if (!completer.isCompleted) completer.complete();
-        thread.removeListener(listener);
-      };
-      thread.addListener(listener);
-      return completer.future;
-    }
-
     int messageFetches(FakeApi api) => api.requests
         .where(
           (r) =>
@@ -957,6 +957,163 @@ void main() {
       expect(senders[1].name, 'Eski Üye');
       expect(senders[1].left, isTrue);
       expect(senders[2].name, ChatParticipant.anonymousName);
+    });
+
+    /// Mesaj sayfasına ek olarak `GET /conversations/{id}`'ye de cevap
+    /// veren sahte sunucu; [participantsJson] o anki katılımcı gövdesi.
+    FakeApi apiWithConversation(
+      List<Map<String, dynamic>> messages,
+      List<Map<String, dynamic>> Function() participantsJson,
+    ) {
+      return FakeApi(
+        handler: (options) {
+          if (options.method != 'GET') {
+            return const FakeApiResponse(
+              statusCode: 200,
+              body: {'success': true},
+            );
+          }
+          if (options.path == '/conversations/$_conversationId') {
+            return FakeApiResponse(
+              statusCode: 200,
+              body: {
+                'success': true,
+                'data': {
+                  'id': _conversationId,
+                  'kind': 'GROUP',
+                  'jobTitle': 'Garson',
+                  'participants': participantsJson(),
+                },
+              },
+            );
+          }
+          return FakeApiResponse(
+            statusCode: 200,
+            body: {
+              'success': true,
+              'data': {'content': messages, 'last': true},
+            },
+          );
+        },
+      );
+    }
+
+    int conversationFetches(FakeApi api) => api.requests
+        .where(
+          (r) =>
+              r.method == 'GET' && r.path == '/conversations/$_conversationId',
+        )
+        .length;
+
+    Map<String, dynamic> participantJson(
+      ChatParticipant participant, {
+      String? lastReadAt,
+      bool? left,
+    }) => {
+      ...participant.toJson(),
+      'lastReadAt': lastReadAt ?? participant.lastReadAt?.toIso8601String(),
+      'left': left ?? participant.left,
+    };
+
+    // Kopukken kaçan READ olayı bir daha gelmez; yeniden bağlanınca sohbet
+    // sunucudan okunur ve damgalar oradan ilerler.
+    test(
+      'kopma sonrası tamamlama katılımcı damgalarını sunucudan tazeler',
+      () async {
+        var officerRead = false;
+        final api = apiWithConversation(
+          [messageBody(id: 'benim', senderId: _me)],
+          () => [
+            for (final participant in participants)
+              participantJson(
+                participant,
+                lastReadAt: participant.id == officer && officerRead
+                    ? '2026-03-05T10:08:00Z'
+                    : null,
+              ),
+          ],
+        );
+        final thread = buildGroup(api);
+        await thread.load(currentUserId: _me);
+        expect(thread.readersOf(thread.messages.single).map((p) => p.id), [
+          _other,
+          gone,
+        ]);
+        expect(conversationFetches(api), 0);
+
+        officerRead = true;
+        // Mesaj çekimleri bilineni getiriyor, ilk bildirim katılımcı
+        // tazelemesinden gelir.
+        final refreshed = nextNotify(thread);
+        realtime.emitConnection(RealtimeConnectionEvent.disconnected);
+        realtime.emitConnection(RealtimeConnectionEvent.connected);
+        await refreshed;
+
+        expect(conversationFetches(api), 1);
+        expect(thread.readersOf(thread.messages.single).map((p) => p.id), [
+          _other,
+          officer,
+          gone,
+        ]);
+      },
+    );
+
+    // Sunucu anlık görüntüsü canlı olayın gerisinde kalabilir; damga geri
+    // alınmaz. Üyelik ise sunucudan: ayrılan `left` olur, yeni gelen eklenir.
+    test('tazeleme damgayı geri almaz, üyeliği sunucudan alır', () async {
+      final api = apiWithConversation(
+        const [],
+        () => [
+          for (final participant in participants)
+            participantJson(
+              participant,
+              lastReadAt: participant.id == _other
+                  ? '2026-03-05T09:00:00Z'
+                  : null,
+              left: participant.id == officer ? true : null,
+            ),
+          {
+            'id': 'user_new',
+            'firstName': 'Yeni',
+            'lastName': 'Üye',
+            'role': 'WORKER',
+            'left': false,
+          },
+        ],
+      );
+      final thread = buildGroup(api);
+      await thread.load(currentUserId: _me);
+
+      realtime.emit(
+        RealtimeEvent.fromJson({
+          'type': 'READ',
+          'userId': _other,
+          'lastReadAt': '2026-03-05T10:30:00Z',
+        }),
+      );
+      await settle();
+      final refreshed = nextNotify(thread);
+      realtime.emitConnection(RealtimeConnectionEvent.resumed);
+      await refreshed;
+
+      final byId = {for (final p in thread.participants) p.id: p};
+      expect(byId[_other]?.lastReadAt, DateTime.utc(2026, 3, 5, 10, 30));
+      expect(byId[officer]?.left, isTrue);
+      expect(byId['user_new']?.fullName, 'Yeni Üye');
+      expect(thread.participants, hasLength(5));
+    });
+
+    // İkili sohbette katılımcı listesi yok; tamamlama sohbeti çekmez.
+    test('katılımcı listesi boşken tamamlama sohbeti çekmez', () async {
+      final api = apiWithConversation(const [], () => const []);
+      final thread = build(api);
+      await thread.load(currentUserId: _me);
+
+      realtime.emitConnection(RealtimeConnectionEvent.resumed);
+      await api.requestsReach(3);
+      await settle();
+
+      expect(conversationFetches(api), 0);
     });
 
     // İkili sohbette ve eski sunucuda liste boş; hiçbir şey patlamamalı.

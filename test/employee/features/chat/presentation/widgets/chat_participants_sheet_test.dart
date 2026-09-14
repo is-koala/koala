@@ -16,7 +16,6 @@ const _chat = Conversation(
   name: 'Hafta Sonu Garson',
   avatar: 'HG',
   kind: ConversationKind.group,
-  participantCount: 3,
 );
 
 final _participants = [
@@ -76,7 +75,8 @@ void main() {
         expect(tester.takeException(), isNull);
         expect(find.text(ChatParticipantsSheet.title), findsOneWidget);
         expect(find.text('Hafta Sonu Garson'), findsOneWidget);
-        expect(find.text('4 katılımcı'), findsOneWidget);
+        // Dört satır, ama ayrılan sayıya girmiyor.
+        expect(find.text('3 katılımcı'), findsOneWidget);
         expect(find.text('Kahve Durağı'), findsOneWidget);
         expect(find.text('İşveren · Katılım: 01.09.2026'), findsOneWidget);
         expect(

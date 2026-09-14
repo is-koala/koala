@@ -45,7 +45,6 @@ class Conversation {
     this.unreadCount = 0,
     this.isOnline = false,
     this.kind = ConversationKind.direct,
-    this.participantCount = 0,
     this.participants = const [],
     this.closed = false,
   });
@@ -87,15 +86,18 @@ class Conversation {
 
   final ConversationKind kind;
 
-  /// Katılımcı sayısı; sunucunun `participants` listesinden. İkili sohbette
-  /// ve sohbeti açan `POST` yanıtında (liste boş geliyor) `0`.
-  final int participantCount;
-
   /// Katılımcılar, sunucudan geldiği sırayla; ayrılanlar da `left=true` ile
   /// içinde. Grup balonundaki gönderen adı, katılımcılar sayfası ve "kimler
   /// gördü" buradan besleniyor. Eski sunucu yalnız `id/firstName/lastName`
   /// veriyor; rol, tarihler ve ayrılma bilgisi o zaman boş.
   final List<ChatParticipant> participants;
+
+  /// Sohbette hâlâ bulunan katılımcı sayısı: [participants] eksi ayrılanlar.
+  /// Listeden türetiliyor ki `copyWith(participants:)` sayıyı bayat
+  /// bırakamasın. İkili sohbette ve sohbeti açan `POST` yanıtında (liste boş
+  /// geliyor) `0`; eski sunucu `left` göndermediği için orada herkes sayılır.
+  int get participantCount =>
+      participants.where((participant) => !participant.left).length;
 
   /// Sohbet salt okunur mu: atama iptal/ret/iade edildi ya da iş bitiminden
   /// 7 gün geçti. Sunucu okuma anında hesaplıyor; mesaj göndermek
@@ -170,7 +172,6 @@ class Conversation {
       lastMessage: json['lastMessageBody'] as String?,
       unreadCount: (json['unreadCount'] as num?)?.toInt() ?? 0,
       kind: kind,
-      participantCount: participants is List ? participants.length : 0,
       participants: participants is List
           ? participants
                 .whereType<Map<String, dynamic>>()
@@ -205,7 +206,6 @@ class Conversation {
     int? unreadCount,
     bool? isOnline,
     ConversationKind? kind,
-    int? participantCount,
     List<ChatParticipant>? participants,
     bool? closed,
   }) {
@@ -222,7 +222,6 @@ class Conversation {
       unreadCount: unreadCount ?? this.unreadCount,
       isOnline: isOnline ?? this.isOnline,
       kind: kind ?? this.kind,
-      participantCount: participantCount ?? this.participantCount,
       participants: participants ?? this.participants,
       closed: closed ?? this.closed,
     );

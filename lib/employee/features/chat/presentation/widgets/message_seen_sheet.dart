@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:koala/employee/features/chat/models/chat_participant.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/chat_avatar.dart';
+import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
@@ -18,10 +19,6 @@ class MessageSeenSheet extends StatelessWidget {
   final List<ChatParticipant> readers;
 
   static const String title = 'Görenler';
-
-  /// Avatar ölçüleri; başlıktakiyle aynı.
-  static const double _avatarSize = 40;
-  static const double _avatarRadius = 14;
 
   /// Listenin kaplayabileceği en fazla yükseklik oranı.
   static const double _maxHeightRatio = 0.6;
@@ -65,8 +62,8 @@ class MessageSeenSheet extends StatelessWidget {
           ChatAvatar(
             avatarUrl: reader.profilePictureUrl,
             fallbackText: reader.initials,
-            size: _avatarSize,
-            borderRadius: _avatarRadius,
+            size: AppSizes.avatarSmall,
+            borderRadius: AppRadius.avatar,
           ),
           const SizedBox(width: AppSizes.space),
           Expanded(

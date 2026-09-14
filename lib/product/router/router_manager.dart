@@ -60,6 +60,7 @@ import 'package:koala/employee/features/settings/presentation/pages/identity_ver
 import 'package:koala/product/features/account/account_routes.dart';
 import 'package:koala/product/models/confirmed_address.dart';
 import 'package:koala/product/network/session_manager.dart';
+import 'package:koala/product/router/business_routes.dart';
 import 'package:koala/product/widgets/map_first_address_page.dart';
 
 class RouterManager {
@@ -504,7 +505,7 @@ class RouterManager {
       ),
 
       GoRoute(
-        path: '/business/user-profile',
+        path: BusinessRoutes.userProfile,
         pageBuilder: (context, state) {
           return _page(state, BUserProfilePage.fromExtra(state.extra));
         },

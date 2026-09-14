@@ -162,6 +162,7 @@ void main() {
         );
 
         expect(find.text('3 kişi gördü'), findsOneWidget);
+        expect(find.text(ChatParticipant.leftLabel), findsNothing);
 
         await tester.tap(find.text('3 kişi gördü'));
         await tester.pumpAndSettle();
@@ -173,6 +174,24 @@ void main() {
         expect(find.text('Yetkili Kişi'), findsOneWidget);
         expect(find.text('Eski Üye'), findsOneWidget);
         expect(find.text('15.02.2026 09:05'), findsOneWidget);
+      });
+
+      testWidgets('görüldü satırı erişilebilirlikte düğme', (tester) async {
+        final handle = tester.ensureSemantics();
+        await pumpInApp(
+          tester,
+          MessageBubble(
+            message: buildMessage(isMe: true),
+            isNextSameSender: false,
+            seenBy: _readers,
+          ),
+          brightness: brightness,
+        );
+
+        final semantics = tester.getSemantics(find.text('3 kişi gördü'));
+        expect(semantics.flagsCollection.isButton, isTrue);
+        expect(semantics.label, contains('3 kişi gördü'));
+        handle.dispose();
       });
 
       // Henüz kimse görmediyse de, eski sunucu damga göndermiyorsa da satır

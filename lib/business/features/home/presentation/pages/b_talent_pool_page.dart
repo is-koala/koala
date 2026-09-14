@@ -10,6 +10,7 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
+import 'package:koala/product/router/business_routes.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/empty_state.dart';
@@ -133,7 +134,7 @@ class _BTalentPoolPageState extends BTalentPoolPagemodel {
       child: InkWell(
         borderRadius: AppRadius.innerCircular,
         onTap: () =>
-            context.push('/business/user-profile', extra: entry.worker.id),
+            context.push(BusinessRoutes.userProfile, extra: entry.worker.id),
         child: Padding(
           padding: AppPadding.card,
           child: Row(

@@ -74,7 +74,6 @@ Conversation _group({
   name: 'Hafta Sonu Garson',
   avatar: 'HG',
   kind: ConversationKind.group,
-  participantCount: 4,
   participants: _participants(
     currentUserId: currentUserId,
     isEmployer: isEmployer,
@@ -318,7 +317,8 @@ void registerChatPageGroupTests({
           brightness: brightness,
         );
 
-        await tester.tap(find.text('4 katılımcı'));
+        // Dört katılımcıdan biri ayrıldı; sayı üç.
+        await tester.tap(find.text('3 katılımcı'));
         await tester.pumpAndSettle();
 
         expect(tester.takeException(), isNull);

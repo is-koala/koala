@@ -51,6 +51,10 @@ class MessageBubble extends StatelessWidget {
   static const double _senderAvatarSize = 28;
   static const double _senderAvatarRadius = 10;
 
+  /// Zaman ve görüldü satırı gövdeden daha soluk: aynı ön plan rengi, bu
+  /// alfa ile. İki satır da aynı değeri kullanıyor ki üst üste tutarlı dursun.
+  static const double _metaAlpha = 0.7;
+
   /// Kendi balonunun altındaki "N kişi gördü" etiketi; dokununca liste.
   static String seenLabel(int count) => '$count kişi gördü';
 
@@ -84,7 +88,7 @@ class MessageBubble extends StatelessWidget {
           Text(
             message.timeString,
             style: context.textTheme.labelMedium?.copyWith(
-              color: foreground.withValues(alpha: 0.7),
+              color: foreground.withValues(alpha: _metaAlpha),
             ),
           ),
           if (seenBy.isNotEmpty) _seenLine(context, foreground),
@@ -145,7 +149,7 @@ class MessageBubble extends StatelessWidget {
         if (sender.left) ...[
           const SizedBox(width: AppSizes.spaceTiny),
           Text(
-            'Ayrıldı',
+            ChatParticipant.leftLabel,
             style: context.textTheme.labelSmall?.copyWith(
               color: context.textTertiary,
             ),
@@ -157,23 +161,28 @@ class MessageBubble extends StatelessWidget {
 
   /// Kendi balonunun altındaki görüldü satırı; dokununca görenlerin listesi.
   Widget _seenLine(BuildContext context, Color foreground) {
-    final color = foreground.withValues(alpha: 0.7);
+    final color = foreground.withValues(alpha: _metaAlpha);
+    final label = seenLabel(seenBy.length);
 
     return Padding(
       padding: const EdgeInsets.only(top: AppSizes.spaceTiny),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => MessageSeenSheet.show(context, readers: seenBy),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AppIcon(AppIcons.eyeOpen, size: AppSizes.iconSmall, color: color),
-            const SizedBox(width: AppSizes.spaceTiny),
-            Text(
-              seenLabel(seenBy.length),
-              style: context.textTheme.labelMedium?.copyWith(color: color),
-            ),
-          ],
+      child: Semantics(
+        button: true,
+        label: label,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => MessageSeenSheet.show(context, readers: seenBy),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppIcon(AppIcons.eyeOpen, size: AppSizes.iconSmall, color: color),
+              const SizedBox(width: AppSizes.spaceTiny),
+              Text(
+                label,
+                style: context.textTheme.labelMedium?.copyWith(color: color),
+              ),
+            ],
+          ),
         ),
       ),
     );

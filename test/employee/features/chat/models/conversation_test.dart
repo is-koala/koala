@@ -231,9 +231,32 @@ void main() {
       expect(officer.role, ChatParticipantRole.companyContact);
       expect(officer.lastReadAt, isNull);
       expect(officer.left, isTrue);
-      // Ayrılan da sayıya dahil: sunucu onu listede tutuyor.
-      expect(conversation.participantCount, 2);
+      // Ayrılan listede duruyor ama sayıya girmiyor: satır "1 katılımcı".
+      expect(conversation.participants, hasLength(2));
+      expect(conversation.participantCount, 1);
+      expect(conversation.participantLabel, '1 katılımcı');
     });
+
+    // Sayı listeden türetiliyor; `copyWith(participants:)` ile ikisi
+    // birlikte değişiyor, bayat bir sayı kalmıyor.
+    test(
+      'participantCount listeden türer ve copyWith ile birlikte değişir',
+      () {
+        final conversation = Conversation.fromJson(
+          groupJson(),
+          currentUserId: 'worker-1',
+        );
+        expect(conversation.participantCount, 3);
+
+        final shrunk = conversation.copyWith(
+          participants: conversation.participants.take(1).toList(),
+        );
+        expect(shrunk.participantCount, 1);
+
+        final emptied = conversation.copyWith(participants: const []);
+        expect(emptied.participantCount, 0);
+      },
+    );
 
     test('copyWith grup alanlarını korur', () {
       final conversation = Conversation.fromJson(

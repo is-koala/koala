@@ -8,6 +8,7 @@ import 'package:koala/employee/features/chat/models/messaging_availability.dart'
 import 'package:koala/employee/features/chat/presentation/providers/chat_thread_controller.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/chat_participants_sheet.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
+import 'package:koala/product/router/business_routes.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:provider/provider.dart';
 
@@ -78,8 +79,8 @@ abstract class ChatThreadPagemodel<T extends StatefulWidget> extends State<T> {
       messages[index + 1].senderId == messages[index].senderId;
 
   /// Katılımcılar sheet'i. Profil bağlantısı yalnız işverende: başkasının
-  /// profilini açan rota (`/business/user-profile`) çalışan kabuğunda yok
-  /// ve yönlendirme bekçisi çalışanı oradan geri çevirir.
+  /// profilini açan rota ([BusinessRoutes.userProfile]) çalışan kabuğunda
+  /// yok ve yönlendirme bekçisi çalışanı oradan geri çevirir.
   void openParticipants() {
     ChatParticipantsSheet.show(
       context,
@@ -91,7 +92,7 @@ abstract class ChatThreadPagemodel<T extends StatefulWidget> extends State<T> {
   }
 
   void openProfile(ChatParticipant participant) {
-    context.push('/business/user-profile', extra: participant.id);
+    context.push(BusinessRoutes.userProfile, extra: participant.id);
   }
 
   @override

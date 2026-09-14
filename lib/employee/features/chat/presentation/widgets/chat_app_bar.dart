@@ -4,6 +4,7 @@ import 'package:koala/employee/features/chat/models/conversation.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/chat_avatar.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
+import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/models/report.dart';
@@ -39,10 +40,11 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   /// açıyor. `null` ise başlık dokunulmuyor — ikili sohbette öyle.
   final VoidCallback? onTitleTap;
 
-  /// Başlıktaki avatarın ölçüleri; sohbet listesindekinden küçük.
-  static const double _avatarSize = 40;
-  static const double _avatarRadius = 14;
+  /// Başlıktaki çevrimiçi noktası; listedekinden küçük.
   static const double _avatarDotSize = 12;
+
+  /// Erişilebilirlik etiketi: grupta başlık katılımcıları açan bir düğme.
+  static const String participantsSemanticsLabel = 'Katılımcıları göster';
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -54,11 +56,17 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
         icon: AppIcon(AppIcons.arrowLeft, color: context.textPrimary),
         onPressed: () => context.pop(),
       ),
-      title: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTitleTap,
-        child: _title(context),
-      ),
+      title: onTitleTap == null
+          ? _title(context)
+          : Semantics(
+              button: true,
+              label: participantsSemanticsLabel,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onTitleTap,
+                child: _title(context),
+              ),
+            ),
       // Şikayet ve engel bir kişiye yönelik; grupta hedef alınacak tek bir
       // karşı taraf olmadığı için menü çizilmiyor.
       actions: [if (!chat.isGroup) _overflowMenu(context)],
@@ -71,8 +79,8 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
         ChatAvatar(
           avatarUrl: chat.avatarUrl,
           fallbackText: chat.avatar,
-          size: _avatarSize,
-          borderRadius: _avatarRadius,
+          size: AppSizes.avatarSmall,
+          borderRadius: AppRadius.avatar,
           isOnline: chat.isOnline,
           onlineDotSize: _avatarDotSize,
         ),

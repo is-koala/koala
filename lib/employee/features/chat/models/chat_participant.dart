@@ -52,6 +52,10 @@ class ChatParticipant {
   /// söz, adı hiç çözülemeyen gönderen için istemcinin yedeği.
   static const String anonymousName = 'Anonim Kullanıcı';
 
+  /// Sohbetten ayrılan katılımcının etiketi; balonda adın yanında ve
+  /// katılımcılar sheet'inde aynı söz.
+  static const String leftLabel = 'Ayrıldı';
+
   /// Kullanıcı kimliği; `MessageDto.senderId` ile aynı.
   final String id;
 

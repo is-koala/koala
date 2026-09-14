@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:koala/employee/features/chat/models/chat_participant.dart';
+import 'package:koala/employee/features/chat/models/conversation.dart';
 import 'package:koala/employee/features/chat/models/conversation_page.dart';
 import 'package:koala/employee/features/chat/models/message.dart';
 import 'package:koala/employee/features/chat/models/message_sender.dart';
@@ -310,6 +311,10 @@ class ChatThreadController extends ChangeNotifier {
 
   /// Kopukken gelenleri sunucudan tamamlar.
   ///
+  /// Grupta katılımcı damgaları da tazelenir: kopukken kaçan `READ` olayı
+  /// bir daha gelmeyeceği için `GET /conversations/{id}` okunur ve
+  /// `lastReadAt`'ler ileri alınır ([_refreshParticipants]).
+  ///
   /// Elde mesaj varsa en yenisinin kimliği çapa olur ve sunucudan yalnız
   /// ondan sonrakiler istenir (`after=<id>`, artan sırada). Çapa sunucuda
   /// bilinmiyorsa — başka sohbetin mesajı ya da silinmiş, `400
@@ -353,7 +358,57 @@ class ChatThreadController extends ChangeNotifier {
     }
 
     _mergeFetched(fetched);
+    await _refreshParticipants(userId, generation);
   }
+
+  /// Katılımcı listesini sunucudan yeniler; yalnız grupta (liste doluyken).
+  ///
+  /// Sunucudaki liste üyelik için esas (yeni katılan eklenir, ayrılan
+  /// `left` olur); okundu damgası ise **monoton**: canlı olayla ilerlemiş
+  /// bir damga, sunucu anlık görüntüsü daha eski olsa bile geri alınmaz.
+  /// Hata yutulur — mesajlar geldi, damga bir sonraki tetikleyicide.
+  Future<void> _refreshParticipants(String userId, int generation) async {
+    if (_participants.isEmpty) return;
+
+    final Conversation conversation;
+    try {
+      conversation = await _chatService.fetchConversation(
+        conversationId: conversationId,
+        currentUserId: userId,
+      );
+    } on ApiException {
+      return;
+    }
+    if (_disposed || generation != _loadGeneration) return;
+    if (conversation.participants.isEmpty) return;
+
+    final known = {for (final p in _participants) p.id: p};
+    var changed = false;
+    final merged = conversation.participants.map((fresh) {
+      final current = known[fresh.id];
+      final currentStamp = current?.lastReadAt;
+      final freshStamp = fresh.lastReadAt;
+      final keepsNewer =
+          currentStamp != null &&
+          (freshStamp == null || freshStamp.isBefore(currentStamp));
+      final next = keepsNewer
+          ? fresh.copyWith(lastReadAt: currentStamp)
+          : fresh;
+      if (current == null || !_sameParticipant(current, next)) changed = true;
+      return next;
+    }).toList();
+    if (merged.length != _participants.length) changed = true;
+    if (!changed) return;
+
+    _participants = List.unmodifiable(merged);
+    _safeNotify();
+  }
+
+  bool _sameParticipant(ChatParticipant a, ChatParticipant b) =>
+      a.lastReadAt == b.lastReadAt &&
+      a.left == b.left &&
+      a.fullName == b.fullName &&
+      a.role == b.role;
 
   /// Eldeki en yeni mesajın kimliği; liste boşsa `null`.
   String? _newestKnownId() {
