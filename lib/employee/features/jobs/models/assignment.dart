@@ -43,6 +43,29 @@ enum PaymentStatus {
   /// Para çalışana geçti mi.
   bool get isPaid => this == PaymentStatus.releasedToWorker;
 
+  /// İş detayında çalışana yazılan başlık: "Ödeme bekleniyor / Emanette /
+  /// Ödendi / İade edildi". [displayName] işveren tarafının dili
+  /// ("Tahsilat Bekleniyor"); çalışan tahsilat yapmıyor, ödeme bekliyor.
+  String get workerLabel => switch (this) {
+    PaymentStatus.pendingCollection => 'Ödeme bekleniyor',
+    PaymentStatus.heldInEscrow => 'Emanette',
+    PaymentStatus.releasedToWorker => 'Ödendi',
+    PaymentStatus.failed => 'Ödeme alınamadı',
+    PaymentStatus.refunded => 'İade edildi',
+  };
+
+  /// Başlığın altındaki tek cümlelik açıklama.
+  String get workerNote => switch (this) {
+    PaymentStatus.pendingCollection =>
+      'İşveren ücreti henüz güvenceye almadı; mesai o zaman başlayabilir.',
+    PaymentStatus.heldInEscrow =>
+      'Ücret Koala güvencesinde; iş tamamlanınca size aktarılır.',
+    PaymentStatus.releasedToWorker => 'Ücret hesabınıza aktarıldı.',
+    PaymentStatus.failed =>
+      'İşverenin ödemesi tamamlanamadı; işveren yeniden deneyebilir.',
+    PaymentStatus.refunded => 'Ücret işverene iade edildi.',
+  };
+
   /// Tahsilat emanet hesaba geçti mi veya çalışana ödendi mi.
   bool get isSecured =>
       this == PaymentStatus.heldInEscrow ||

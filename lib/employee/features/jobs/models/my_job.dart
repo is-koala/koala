@@ -190,6 +190,27 @@ class MyJob {
     MyJobStatus.completed => false,
   };
 
+  /// Bu kayıtta sohbet teklif ediliyor mu — kapalı işlerde hiç edilmiyor.
+  ///
+  /// Kapının açık olup olmadığı ayrı bir soru ([messaging]); burası yalnızca
+  /// kaydın durumuna bakıyor. İşlerim satırı ve iş detayı aynı kararı
+  /// veriyor, o yüzden tek yerde.
+  bool get offersChat =>
+      jobId != null &&
+      switch (status) {
+        MyJobStatus.pending ||
+        MyJobStatus.awaitingApproval ||
+        MyJobStatus.approved ||
+        MyJobStatus.inProgress ||
+        MyJobStatus.completed => true,
+        MyJobStatus.past ||
+        MyJobStatus.rejected ||
+        MyJobStatus.applicationRejected ||
+        MyJobStatus.cancelled ||
+        MyJobStatus.withdrawn ||
+        MyJobStatus.unknown => false,
+      };
+
   /// Satırın alt satırında gösterilecek metin.
   ///
   /// Reddedilen başvuruda işverenin yazdığı gerekçe ilanın özetinden daha
