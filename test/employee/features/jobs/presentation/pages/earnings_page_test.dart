@@ -214,7 +214,6 @@ void main() {
       'jobTitle': 'Barista',
       'companyName': 'Koala Cafe',
       'maskedIban': 'TR18***2315',
-      'bankAccountId': 'bank-1',
       'providerReference': 'IYZ-77',
       'amount': '950.00',
       'currency': 'TRY',

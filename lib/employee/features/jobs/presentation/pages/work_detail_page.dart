@@ -48,8 +48,9 @@ enum _WorkMenuAction { cancel, dispute, withdraw }
 
 /// Bir işin — başvurunun ya da atamanın — detay sayfası.
 ///
-/// İşlerim'in her satırı ve Kazançlar'daki her ödeme buraya açılıyor
-/// (is-koala/koala#177). Satır bir özet; burada ilanın açık adresi (atama
+/// İşlerim'in her satırı buraya açılıyor; Kazançlar'daki ödeme önce
+/// hakediş detayını açıyor, oradaki düğme buraya geliyor (is-koala/koala#177,
+/// #189). Satır bir özet; burada ilanın açık adresi (atama
 /// kurulduysa), işverenin kimliği, kazancı, ödemenin durumu, zaman
 /// çizelgesi, iptal kaydı ve satırdaki eylemlerin aynısı var. Eylemler
 /// [WorkActionsPagemodel]'den geliyor; İşlerim'le aynı akış, aynı kurallar.
@@ -82,8 +83,9 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
   /// Buton içindeki bekleme halkasının kalınlığı.
   static const double _spinnerStroke = 2;
 
-  /// Fiyat snapshot'ı (`pricing`) gelmediğinde tutarın para birimi; ilan
-  /// ücreti `salary` birim taşımıyor ve uygulama yalnız TRY'de çalışıyor.
+  /// Kazancın para birimi. Çalışan görünümünde fiyat snapshot'ı gelmiyor
+  /// (koala-backend#294), ilan ücreti `salary` birim taşımıyor ve uygulama
+  /// yalnız TRY'de çalışıyor.
   static const String _defaultCurrency = 'TRY';
 
   @override
@@ -390,13 +392,12 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
   /// Çalışan yalnız **kendi kazancını** görür (`workerPayout`;
   /// koala-backend#294). Hizmet bedeli ve işverenin ödediği toplam bu
   /// kabukta hiçbir koşulda çizilmiyor — sunucu artık `pricing`'i çalışana
-  /// göndermiyor, eski sunucu gönderse de buradan satır çıkmıyor. Para birimi
-  /// snapshot'tan, o da yoksa uygulamanın tek birimi.
+  /// göndermiyor, eski sunucu gönderse de buradan okunmuyor
+  /// (`worker_fee_guard_test` bunu sabitliyor).
   Widget _priceBlock() {
-    final currency = job.assignment?.pricing?.currency ?? _defaultCurrency;
     final payoutLabel = TurkishMoneyFormatter.format(
       job.price.toStringAsFixed(2),
-      currency,
+      _defaultCurrency,
     );
 
     return Row(

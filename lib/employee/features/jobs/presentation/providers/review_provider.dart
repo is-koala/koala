@@ -17,8 +17,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Disk önbelleği yok. Önceki sürüm kimlikleri `SharedPreferences`'a
 /// yazıyordu (`reviewed_assignments*`, kullanıcı anahtarlı) ve içeriği
 /// `GET /users/{id}/reviews` içinden **tahmin ediyordu**; ikisi de kaldırıldı,
-/// eski anahtarlar [purgeLegacyCache] ile bir kez siliniyor. Bellek
-/// oturumluk: [clear] çıkışta sıfırlıyor, uygulama kapanınca zaten gidiyor.
+/// eski anahtarlar [purgeLegacyCache] ile siliniyor. Bellek oturumluk:
+/// [clear] çıkışta sıfırlıyor, uygulama kapanınca zaten gidiyor.
 class ReviewProvider extends ChangeNotifier {
   ReviewProvider({ReviewService? service})
     : _service = service ?? ReviewService();
@@ -133,9 +133,13 @@ class ReviewProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Önceki sürümlerin disk önbelleğini bir kez siler.
+  /// Önceki sürümlerin disk önbelleğini siler.
   ///
-  /// Anahtarlar kullanıcı kimliğiyle ekliydi ve kimlerin olduğu artık
+  /// `main.dart` provider ilk okunduğunda çağırıyor (provider tembel, yani
+  /// her açılışta bir kez); ilk temizlikten sonra önekle başlayan anahtar
+  /// kalmadığı için sonraki çağrılar boş döngü. Ayrı bir "temizlendi" bayrağı
+  /// tutulmadı: kaldırılan önbelleğin yerine kalıcı bir anahtar bırakmak
+  /// olurdu. Anahtarlar kullanıcı kimliğiyle ekliydi ve kimlerin olduğu artık
   /// bilinmiyor; önekle başlayan her şey gidiyor. Disk okunamazsa (platform
   /// kanalı yok) sessiz — silinecek bir şey de yok demektir.
   static Future<void> purgeLegacyCache() async {

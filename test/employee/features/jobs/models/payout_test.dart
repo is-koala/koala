@@ -14,7 +14,6 @@ Map<String, dynamic> payoutBody({
   'jobTitle': 'Barista',
   'companyName': 'Koala Cafe',
   'maskedIban': maskedIban,
-  'bankAccountId': 'bank-1',
   'providerReference': providerReference,
   'amount': '950.00',
   'currency': 'TRY',
@@ -34,7 +33,6 @@ void main() {
       expect(payout.companyName, 'Koala Cafe');
       expect(payout.maskedIban, 'TR18***2315');
       expect(payout.ibanTail, '2315');
-      expect(payout.bankAccountId, 'bank-1');
       expect(payout.providerReference, 'IYZ-77');
       expect(payout.releasedAt, DateTime.utc(2026, 9, 10, 18));
       expect(payout.settledAt, DateTime.utc(2026, 9, 11, 9));
@@ -78,7 +76,6 @@ void main() {
       expect(payout.jobTitle, isNull);
       expect(payout.companyName, isNull);
       expect(payout.maskedIban, isNull);
-      expect(payout.bankAccountId, isNull);
       expect(payout.providerReference, isNull);
       expect(payout.releasedAt, isNull);
       expect(payout.settledAt, isNull);
@@ -115,13 +112,26 @@ void main() {
     });
 
     // "Hesabınıza geçti" gibi kesin ifade yalnız COMPLETED'da; öteki üç
-    // durumun hiçbir metni parayı hesapta göstermiyor.
+    // durumun rozeti de açıklaması da parayı hesapta göstermiyor.
     test('kesin ifade yalnız COMPLETED metinlerinde', () {
-      for (final status in PayoutStatus.values) {
-        final texts = '${status.displayName} ${status.description}';
-        final definitive = texts.contains('Hesabınıza geçti');
+      const definitive = 'hesabınıza geçti';
+      String textsOf(PayoutStatus status) =>
+          '${status.displayName} ${status.description}'.toLowerCase();
 
-        expect(definitive, status.isSettled, reason: status.code);
+      expect(textsOf(PayoutStatus.completed), contains(definitive));
+      expect(PayoutStatus.completed.isSettled, isTrue);
+
+      for (final status in const [
+        PayoutStatus.pending,
+        PayoutStatus.processing,
+        PayoutStatus.failed,
+      ]) {
+        expect(
+          textsOf(status),
+          isNot(contains(definitive)),
+          reason: status.code,
+        );
+        expect(status.isSettled, isFalse, reason: status.code);
       }
     });
 

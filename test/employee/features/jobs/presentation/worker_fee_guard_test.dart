@@ -21,13 +21,18 @@ void main() {
           .whereType<Directory>()
           .map((feature) => Directory('${feature.path}/presentation')),
     ];
-    // Kod tarafında alan adları, metin tarafında satır başlıkları. Yorum
-    // satırları ayıklanıyor: kuralın kendisi bu adları anabilir.
+    // Kod tarafında alan adları ve `pricing` erişimi (`.pricing`,
+    // `?.pricing`), metin tarafında satır başlıkları; büyük/küçük harf
+    // duyarsız. Yorum satırları ayıklanıyor: kuralın kendisi bu adları
+    // anabilir.
     final forbidden = RegExp(
       r'\b(serviceFeeAmount|serviceFeeRate|serviceFeePercentLabel|'
-      r'employerTotal|totalCharged)\b|Hizmet bedeli|İşverenin ödediği',
+      r'employerTotal|totalCharged)\b|\?\.pricing\b|\.pricing\b|'
+      r'hizmet bedeli|işverenin ödediği',
+      caseSensitive: false,
     );
 
+    var scanned = 0;
     for (final root in roots) {
       if (!root.existsSync()) continue;
       final files = root
@@ -35,6 +40,7 @@ void main() {
           .whereType<File>()
           .where((file) => file.path.endsWith('.dart'));
       for (final file in files) {
+        scanned++;
         final code = file
             .readAsLinesSync()
             .where((line) => !line.trimLeft().startsWith('//'))
@@ -43,6 +49,18 @@ void main() {
       }
     }
 
+    // Boş tarama boş bir geçiş olurdu: klasör taşınırsa test bunu söylesin.
+    expect(
+      scanned,
+      greaterThan(0),
+      reason:
+          'Çalışan sunum klasörleri bulunamadı; tarama kökleri güncellenmeli.',
+    );
+    // Kuralın asıl adresi olan klasör de taramada olmalı.
+    expect(
+      Directory('lib/employee/features/jobs/presentation').existsSync(),
+      isTrue,
+    );
     expect(
       offenders,
       isEmpty,

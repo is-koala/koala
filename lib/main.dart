@@ -50,8 +50,10 @@ void main() {
           lazy: false,
         ),
         // "Değerlendirdim mi" artık sunucudan (`myReview`); provider yalnız
-        // oturumluk "az önce gönderdim" belleği. Önceki sürümlerin disk
-        // önbelleği ilk kuruluşta bir kez siliniyor (is-koala/koala#189).
+        // oturumluk "az önce gönderdim" belleği. Provider tembel: önceki
+        // sürümlerin disk önbelleği her açılışta provider ilk okunduğunda
+        // taranıyor; ilk temizlikten sonra silinecek anahtar kalmadığı için
+        // boş bir döngü (is-koala/koala#189).
         ChangeNotifierProvider(
           create: (_) {
             unawaited(ReviewProvider.purgeLegacyCache());

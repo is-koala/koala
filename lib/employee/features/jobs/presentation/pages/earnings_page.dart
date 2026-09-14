@@ -6,6 +6,7 @@ import 'package:koala/employee/features/jobs/models/assignment.dart';
 import 'package:koala/employee/features/jobs/models/my_job.dart';
 import 'package:koala/employee/features/jobs/models/payout.dart';
 import 'package:koala/employee/features/jobs/presentation/widgets/payout_detail_sheet.dart';
+import 'package:koala/employee/features/jobs/presentation/widgets/payout_status_badge.dart';
 import 'package:koala/employee/features/jobs/services/assignment_service.dart';
 import 'package:koala/employee/features/jobs/services/payout_service.dart';
 import 'package:koala/product/constants/app_colors.dart';

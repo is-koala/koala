@@ -52,6 +52,8 @@ enum PayoutStatus {
 /// `GET /users/me/payouts` yanıtındaki `PayoutDto`. Hesap ve zaman alanları
 /// (koala-backend#294) hepsi opsiyonel: eski sunucu göndermiyor, yeni sunucu
 /// da hesap silinmişse ya da sağlayıcı referans dönmediyse `null` bırakıyor.
+/// `bankAccountId` bilerek okunmuyor: ekranda bir karşılığı yok, hesap
+/// [maskedIban] ile gösteriliyor.
 class Payout {
   const Payout({
     required this.id,
@@ -63,7 +65,6 @@ class Payout {
     this.jobTitle,
     this.companyName,
     this.maskedIban,
-    this.bankAccountId,
     this.providerReference,
     this.releasedAt,
     this.settledAt,
@@ -90,9 +91,6 @@ class Payout {
   /// anındaki birincil hesap, sonradan değişmiyor. Tam IBAN hiçbir yanıtta
   /// gelmiyor. Hesap kaydı yoksa ya da sonradan silindiyse `null`.
   final String? maskedIban;
-
-  /// Hakedişin gittiği banka hesabının kimliği; hesap yoksa `null`.
-  final String? bankAccountId;
 
   /// Sağlayıcının (Iyzico) çıkış talimatını onaylarken verdiği işlem
   /// referansı; `PENDING`'de ya da referans dönmediyse `null`.
@@ -138,7 +136,6 @@ class Payout {
       jobTitle: _optionalString(json['jobTitle']),
       companyName: _optionalString(json['companyName']),
       maskedIban: _optionalString(json['maskedIban']),
-      bankAccountId: _optionalString(json['bankAccountId']),
       providerReference: _optionalString(json['providerReference']),
       releasedAt: JsonField.dateOrNull(json['releasedAt']),
       settledAt: JsonField.dateOrNull(json['settledAt']),
