@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:koala/employee/features/jobs/models/review.dart';
 import 'package:koala/employee/features/jobs/services/review_service.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -18,11 +21,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ReviewProvider extends ChangeNotifier {
   ReviewProvider({ReviewService? service})
     : _service = service ?? ReviewService() {
-    _restore();
+    // Disk okunamazsa (platform kanalı yok) kayıtsız başlanıyor; bekleyen
+    // çağrılar hata yerine boş önbellekle devam ediyor.
+    _restored = _restore().catchError((Object _) {});
   }
 
   /// Değerlendirilmiş atamaların kimlikleri; cihazda saklanan anahtar.
   static const String _prefsKey = 'reviewed_assignments';
+
+  /// Kendi yazdığımız değerlendirmelerin içeriği (atama kimliği →
+  /// [Review.toJson]); "Değerlendirdiniz: ★4 · yorum" satırı buradan
+  /// çiziliyor. [_prefsKey]'den ayrı, çünkü içerik olmadan da kimlik
+  /// işaretli olabilir (409'dan öğrenilen, başka cihazda yazılmış kayıt).
+  static const String _detailsPrefsKey = 'reviewed_assignment_details';
 
   /// Sunucunun "bu atamayı zaten değerlendirdin" dediği hata kodu.
   ///
@@ -43,6 +54,15 @@ class ReviewProvider extends ChangeNotifier {
   final ReviewService _service;
 
   final Set<String> _reviewedAssignmentIds = {};
+  final Map<String, Review> _ownReviews = {};
+
+  /// Kurucudaki disk okuması; provider tembel kurulduğunda ilk çağrı okuma
+  /// bitmeden gelebiliyor, [loadOwnReview] önce bunu bekliyor.
+  late final Future<void> _restored;
+
+  /// Sunucudan kendi kaydını arayan istekler; aynı atama için ikinci kez
+  /// gidilmesin.
+  final Set<String> _lookingUp = {};
 
   bool _isSubmitting = false;
   String? _errorMessage;
@@ -58,6 +78,14 @@ class ReviewProvider extends ChangeNotifier {
   /// Bu atama değerlendirilmiş mi.
   bool hasReviewed(String? assignmentId) =>
       assignmentId != null && _reviewedAssignmentIds.contains(assignmentId);
+
+  /// Bu atamaya kendi yazdığımız değerlendirme; içeriği bilinmiyorsa `null`.
+  ///
+  /// `null`, "değerlendirilmedi" demek değil — [hasReviewed] ona bakar. Kayıt
+  /// bu cihazda yazıldıysa içerik yanıttan geliyor; başka cihazda yazıldıysa
+  /// [loadOwnReview] sunucudan tamamlamayı dener.
+  Review? ownReviewFor(String? assignmentId) =>
+      assignmentId == null ? null : _ownReviews[assignmentId];
 
   /// Tamamlanmış bir işi değerlendirir. Başarılıysa `true` döner.
   ///
@@ -83,13 +111,13 @@ class ReviewProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _service.leaveReview(
+      final review = await _service.leaveReview(
         assignmentId: assignmentId,
         rating: rating,
         comment: comment,
         anonymous: anonymous,
       );
-      await _markReviewed(assignmentId);
+      await _markReviewed(assignmentId, review: review);
       return true;
     } on ApiException catch (error) {
       _errorMessage = error.message;
@@ -108,21 +136,96 @@ class ReviewProvider extends ChangeNotifier {
     }
   }
 
+  /// İşaretli ama içeriği bilinmeyen atamanın değerlendirmesini sunucudan
+  /// tamamlar: `GET /users/{subjectUserId}/reviews` içinde yazarı biz olan
+  /// kayıt aranıyor.
+  ///
+  /// Sunucu "hangi atamaya" demiyor (`ReviewDto`'da atama kimliği yok), bu
+  /// yüzden bu arama **yalnızca** [hasReviewed] doğruyken çalışıyor —
+  /// değerlendirilmişliğe karar vermek için değil, bilinen kaydın içeriğini
+  /// göstermek için. Aynı kişiyle birden çok iş yapılmışsa
+  /// [completedAt]'ten sonra yazılmış en eski kayıt seçiliyor; bulunamazsa
+  /// satır içeriksiz kalıyor, yanlış kayıt bağlanmıyor.
+  Future<void> loadOwnReview({
+    required String assignmentId,
+    required String subjectUserId,
+    required String authorUserId,
+    DateTime? completedAt,
+  }) async {
+    await _restored;
+    if (!hasReviewed(assignmentId) ||
+        _ownReviews.containsKey(assignmentId) ||
+        !_lookingUp.add(assignmentId)) {
+      return;
+    }
+
+    try {
+      final page = await _service.fetchReviewsAbout(subjectUserId);
+      final mine =
+          page.reviews
+              .where((review) => review.author?.id == authorUserId)
+              .where(
+                (review) =>
+                    completedAt == null ||
+                    review.createdAt == null ||
+                    !review.createdAt!.isBefore(completedAt),
+              )
+              .toList()
+            ..sort(_byCreatedAtAscending);
+      final match = mine.firstOrNull;
+      if (match == null) return;
+
+      _ownReviews[assignmentId] = match;
+      notifyListeners();
+      await _persistDetails();
+    } on ApiException {
+      // Sessiz: satır "Değerlendirdiniz." olarak kalıyor, bir sonraki açılışta
+      // yeniden denenir.
+    } finally {
+      _lookingUp.remove(assignmentId);
+    }
+  }
+
+  static int _byCreatedAtAscending(Review a, Review b) {
+    final left = a.createdAt;
+    final right = b.createdAt;
+    if (left == null || right == null) return left == null ? 1 : -1;
+    return left.compareTo(right);
+  }
+
   /// Çıkışta önceki kullanıcının kayıtları kalmasın.
   Future<void> clear() async {
     _reviewedAssignmentIds.clear();
+    _ownReviews.clear();
     _errorMessage = null;
     notifyListeners();
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_prefsKey);
+    await prefs.remove(_detailsPrefsKey);
   }
 
-  Future<void> _markReviewed(String assignmentId) async {
-    if (!_reviewedAssignmentIds.add(assignmentId)) return;
+  Future<void> _markReviewed(String assignmentId, {Review? review}) async {
+    final added = _reviewedAssignmentIds.add(assignmentId);
+    if (review != null) _ownReviews[assignmentId] = review;
+    if (!added && review == null) return;
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(_prefsKey, _reviewedAssignmentIds.toList());
+    if (added) {
+      await prefs.setStringList(_prefsKey, _reviewedAssignmentIds.toList());
+    }
+    if (review != null) await _persistDetails();
+  }
+
+  Future<void> _persistDetails() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _detailsPrefsKey,
+      jsonEncode({
+        for (final entry in _ownReviews.entries)
+          entry.key: entry.value.toJson(),
+      }),
+    );
   }
 
   Future<void> _restore() async {
@@ -131,6 +234,23 @@ class ReviewProvider extends ChangeNotifier {
     if (stored == null || stored.isEmpty) return;
 
     _reviewedAssignmentIds.addAll(stored);
+    _ownReviews.addAll(_decodeDetails(prefs.getString(_detailsPrefsKey)));
     notifyListeners();
+  }
+
+  /// Bozuk ya da eski biçimli kayıt içerik kaybettirir, kimlikleri değil.
+  static Map<String, Review> _decodeDetails(String? raw) {
+    if (raw == null || raw.isEmpty) return const {};
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) return const {};
+      return {
+        for (final entry in decoded.entries)
+          if (entry.value is Map<String, dynamic>)
+            entry.key: Review.fromJson(entry.value as Map<String, dynamic>),
+      };
+    } on FormatException {
+      return const {};
+    }
   }
 }

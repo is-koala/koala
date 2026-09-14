@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:koala/employee/features/jobs/models/my_job.dart';
+import 'package:koala/employee/features/jobs/models/review.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/review_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -11,10 +11,17 @@ import 'package:koala/product/widgets/button_navbar.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:provider/provider.dart';
 
+/// Tamamlanmış bir işi değerlendirme ekranı; iki kabuk da açıyor.
+///
+/// Çalışan işvereni, işveren çalışanı değerlendiriyor; farkı [ReviewSubject]
+/// taşıyor. Sunucu karşı tarafı yazardan çıkarıyor, istek her iki tarafta da
+/// aynı uca gidiyor. Anonim yayınlama yalnızca çalışana sunuluyor: işverenin
+/// kartında "Değerlendirdiniz: ★N" satırı yazarı biz olan kaydı sunucudan
+/// bulabilmeye dayanıyor, anonim kayıtta yazar gelmiyor.
 class ReviewPage extends StatefulWidget {
-  final MyJob job;
+  final ReviewSubject subject;
 
-  const ReviewPage({super.key, required this.job});
+  const ReviewPage({super.key, required this.subject});
 
   @override
   State<ReviewPage> createState() => _ReviewPageState();
@@ -53,8 +60,8 @@ class _ReviewPageState extends State<ReviewPage> {
 
     // Değerlendirme atamaya bırakılıyor; başvurudan gelen bir satırın atama
     // kimliği yok ve zaten "Değerlendir" butonu da o satırlarda çıkmıyor.
-    final assignmentId = widget.job.assignmentId;
-    if (assignmentId == null) {
+    final assignmentId = widget.subject.assignmentId;
+    if (assignmentId.isEmpty) {
       AppToast.error(context, 'Bu iş henüz değerlendirilemez');
       return;
     }
@@ -67,7 +74,7 @@ class _ReviewPageState extends State<ReviewPage> {
       assignmentId: assignmentId,
       rating: _rating,
       comment: comment.isEmpty ? null : comment,
-      anonymous: _isAnonymous,
+      anonymous: !widget.subject.isEmployer && _isAnonymous,
     );
 
     if (!mounted) return;
@@ -103,8 +110,10 @@ class _ReviewPageState extends State<ReviewPage> {
             _ratingSection(),
             const SizedBox(height: AppSizes.spaceXLarge),
             _commentSection(),
-            const SizedBox(height: AppSizes.spaceLarge),
-            _anonymousToggle(),
+            if (!widget.subject.isEmployer) ...[
+              const SizedBox(height: AppSizes.spaceLarge),
+              _anonymousToggle(),
+            ],
             const SizedBox(height: AppSizes.navBarClearance),
           ],
         ),
@@ -149,7 +158,9 @@ class _ReviewPageState extends State<ReviewPage> {
               borderRadius: AppRadius.innerCircular,
             ),
             child: Icon(
-              Icons.work_outline_rounded,
+              widget.subject.isEmployer
+                  ? Icons.person_outline_rounded
+                  : Icons.work_outline_rounded,
               color: context.accentColor,
               size: AppSizes.icon,
             ),
@@ -159,16 +170,21 @@ class _ReviewPageState extends State<ReviewPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(widget.job.title, style: context.textTheme.titleSmall),
+                Text(widget.subject.title, style: context.textTheme.titleSmall),
                 const SizedBox(height: AppSizes.smallGap),
                 Text(
-                  widget.job.company,
+                  widget.subject.subtitle,
                   style: context.textTheme.bodyMedium?.copyWith(
                     color: context.textSecondary,
                   ),
                 ),
-                const SizedBox(height: AppSizes.smallGap),
-                Text(widget.job.date, style: context.textTheme.labelMedium),
+                if (widget.subject.date.isNotEmpty) ...[
+                  const SizedBox(height: AppSizes.smallGap),
+                  Text(
+                    widget.subject.date,
+                    style: context.textTheme.labelMedium,
+                  ),
+                ],
               ],
             ),
           ),
@@ -185,7 +201,11 @@ class _ReviewPageState extends State<ReviewPage> {
       children: [
         _sectionTitle("Puanınız"),
         const SizedBox(height: AppSizes.spaceTiny),
-        _sectionSubtitle("Bu iş deneyiminizi nasıl değerlendirirsiniz?"),
+        _sectionSubtitle(
+          widget.subject.isEmployer
+              ? "Çalışanla deneyiminizi nasıl değerlendirirsiniz?"
+              : "Bu iş deneyiminizi nasıl değerlendirirsiniz?",
+        ),
         const SizedBox(height: AppSizes.spaceMedium),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -259,10 +279,12 @@ class _ReviewPageState extends State<ReviewPage> {
         TextField(
           controller: _commentController,
           maxLines: 5,
-          maxLength: 500,
+          maxLength: Review.maxCommentLength,
           style: context.textTheme.bodyLarge,
           decoration: InputDecoration(
-            hintText: "İş ortamı, iletişim, ödeme süreci vb. hakkında...",
+            hintText: widget.subject.isEmployer
+                ? "Dakiklik, iletişim, işin kalitesi vb. hakkında..."
+                : "İş ortamı, iletişim, ödeme süreci vb. hakkında...",
             hintStyle: context.textTheme.bodyMedium?.copyWith(
               color: context.textTertiary,
             ),

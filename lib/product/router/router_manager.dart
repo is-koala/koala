@@ -37,6 +37,8 @@ import 'package:koala/employee/features/jobs/models/job_alert.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/review_page.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/work_detail_page.dart';
 import 'package:koala/employee/features/jobs/models/my_job.dart';
+import 'package:koala/employee/features/jobs/models/review.dart'
+    show ReviewSubject;
 import 'package:koala/employee/features/chat/presentation/pages/chat_list_page.dart';
 import 'package:koala/employee/features/chat/presentation/pages/chat_page.dart';
 import 'package:koala/employee/features/chat/models/conversation.dart';
@@ -294,8 +296,8 @@ class RouterManager {
       GoRoute(
         path: '/review',
         pageBuilder: (context, state) {
-          final job = state.extra as MyJob;
-          return _page(state, ReviewPage(job: job));
+          final subject = state.extra as ReviewSubject;
+          return _page(state, ReviewPage(subject: subject));
         },
       ),
 

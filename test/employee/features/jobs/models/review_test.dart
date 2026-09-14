@@ -1,6 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:koala/employee/features/jobs/models/assignment.dart';
+import 'package:koala/employee/features/jobs/models/my_job.dart';
 import 'package:koala/employee/features/jobs/models/rating_summary.dart';
 import 'package:koala/employee/features/jobs/models/review.dart';
+
+import '../../../../support/backend_contract_root.dart';
 
 Map<String, dynamic> reviewBody({
   int rating = 4,
@@ -106,6 +112,103 @@ void main() {
       });
 
       expect(summary.hasRating, isFalse);
+    });
+  });
+
+  group('Review yerel kayıt', () {
+    test('toJson → fromJson içeriği korur, yazar yazılmaz', () {
+      final review = Review.fromJson(reviewBody(rating: 3));
+
+      final restored = Review.fromJson(review.toJson());
+
+      expect(restored.id, 'rev_1');
+      expect(restored.rating, 3);
+      expect(restored.comment, 'Çok iyiydi');
+      expect(restored.createdAt, review.createdAt);
+      expect(restored.author, isNull);
+    });
+
+    test('summaryLabel yorumu tırnak içinde, yorumsuzda yalnızca yıldız', () {
+      expect(
+        Review.fromJson(reviewBody(rating: 4)).summaryLabel,
+        '★4 · "Çok iyiydi"',
+      );
+      expect(
+        Review.fromJson(reviewBody(rating: 5, comment: '  ')).summaryLabel,
+        '★5',
+      );
+    });
+
+    // Sınır sözleşmenin karşı ucunda: `CreateReviewDto.comment`
+    // `@Size(max = 2000)`. Backend checkout'u yanındaysa ikisi karşılaştırılıyor.
+    test('maxCommentLength backend CreateReviewDto ile aynı', () {
+      final Directory root;
+      try {
+        root = BackendContractRoot.resolve();
+      } on StateError {
+        markTestSkipped('backend checkout yok');
+        return;
+      }
+      final dto = File(
+        '${root.path}/src/main/java/com/exskylab/koala/core/dtos/review/'
+        'request/CreateReviewDto.java',
+      );
+      if (!dto.existsSync()) {
+        markTestSkipped('CreateReviewDto.java bulunamadı');
+        return;
+      }
+      final match = RegExp(
+        r'@Size\(max = (\d+)\)\s+private String comment;',
+      ).firstMatch(dto.readAsStringSync());
+
+      expect(
+        match,
+        isNotNull,
+        reason: 'comment alanının @Size sınırı okunamadı',
+      );
+      expect(Review.maxCommentLength, int.parse(match!.group(1)!));
+    });
+  });
+
+  group('ReviewSubject', () {
+    final assignment = Assignment.fromJson({
+      'id': 'asg_1',
+      'status': 'COMPLETED',
+      'paymentStatus': 'HELD_IN_ESCROW',
+      'worker': {'id': 'w1', 'firstName': 'Ayşe', 'lastName': 'Yılmaz'},
+      'actualCompletionDateTime': '2026-09-10T17:05:00Z',
+      'job': {
+        'id': 'job-1',
+        'title': 'Barista',
+        'category': {'id': 'c1', 'code': 'BARISTA', 'name': 'Barista'},
+        'type': 'ONE_TIME',
+        'employerType': 'INDIVIDUAL',
+        'salaryType': 'DAILY',
+        'salary': 1000,
+        'status': 'OPEN',
+        'startDateTime': '2026-09-10T09:00:00Z',
+        'endDateTime': '2026-09-10T17:00:00Z',
+      },
+    });
+
+    test('forWorker işveren tarafını çalışanın adıyla kurar', () {
+      final subject = ReviewSubject.forWorker(assignment);
+
+      expect(subject.assignmentId, 'asg_1');
+      expect(subject.side, ReviewSide.employer);
+      expect(subject.isEmployer, isTrue);
+      expect(subject.title, 'Ayşe Yılmaz');
+      expect(subject.subtitle, 'Barista');
+      expect(subject.date, isNotEmpty);
+    });
+
+    test('fromMyJob çalışan tarafını satırdan kurar', () {
+      final subject = ReviewSubject.fromMyJob(MyJob.fromAssignment(assignment));
+
+      expect(subject.assignmentId, 'asg_1');
+      expect(subject.side, ReviewSide.worker);
+      expect(subject.title, 'Barista');
+      expect(subject.subtitle, 'Bireysel İlan');
     });
   });
 }

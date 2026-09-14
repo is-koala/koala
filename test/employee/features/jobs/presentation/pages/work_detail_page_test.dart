@@ -8,6 +8,7 @@ import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:koala/employee/features/jobs/models/assignment.dart';
 import 'package:koala/employee/features/jobs/models/job_application.dart';
 import 'package:koala/employee/features/jobs/models/my_job.dart';
+import 'package:koala/employee/features/jobs/models/review.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/work_detail_page.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/review_provider.dart';
@@ -569,10 +570,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(harness.openedReviews, hasLength(1));
-      expect(
-        (harness.openedReviews.single as MyJob).assignmentId,
-        'assignment-1',
-      );
+      final subject = harness.openedReviews.single as ReviewSubject;
+      expect(subject.assignmentId, 'assignment-1');
+      expect(subject.side, ReviewSide.worker);
     });
 
     testWidgets('mesaj kapısı kapalıysa düğme yerine sebep', (tester) async {

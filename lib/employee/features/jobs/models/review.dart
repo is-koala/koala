@@ -1,4 +1,7 @@
 import 'package:koala/employee/features/home/models/job_detail.dart';
+import 'package:koala/employee/features/jobs/models/assignment.dart';
+import 'package:koala/employee/features/jobs/models/my_job.dart';
+import 'package:koala/product/extensions/date_extensions.dart';
 
 /// Bir iş üzerine bırakılan değerlendirme.
 ///
@@ -20,6 +23,9 @@ class Review {
     this.comment,
     this.createdAt,
   });
+
+  /// Yorumun üst sınırı; backend `CreateReviewDto.comment` `@Size(max = 2000)`.
+  static const int maxCommentLength = 2000;
 
   final String id;
 
@@ -48,6 +54,20 @@ class Review {
 
   /// Listede gösterilecek yazar adı.
   String get authorLabel => author?.fullName ?? 'Anonim';
+
+  /// Kartta tek satır: `★4 · "yorum"`; yorum yoksa yalnızca yıldız.
+  String get summaryLabel =>
+      hasComment ? '★$rating · "${comment!.trim()}"' : '★$rating';
+
+  /// Cihazda saklanacak hâli; yazar yazılmıyor, kendi yazdığımız kayıt için
+  /// zaten biziz. [fromJson] ile geri okunuyor.
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'rating': rating,
+    'comment': ?comment,
+    'anonymous': isAnonymous,
+    'createdAt': ?createdAt?.toIso8601String(),
+  };
 
   factory Review.fromJson(Map<String, dynamic> json) {
     final author = json['author'];
@@ -97,4 +117,62 @@ class ReviewPage {
       last: json['last'] as bool? ?? true,
     );
   }
+}
+
+/// Değerlendirilecek işin hangi tarafından bakıldığı; ekran metinleri buna
+/// göre değişiyor.
+enum ReviewSide {
+  /// Çalışan işvereni değerlendiriyor.
+  worker,
+
+  /// İşveren çalışanı değerlendiriyor.
+  employer,
+}
+
+/// `ReviewPage`'in konusu: hangi atamaya, kimin adına, hangi kartla.
+///
+/// İki kabuk aynı ekranı açıyor; çalışan `İşlerim` satırından
+/// ([ReviewSubject.fromMyJob]), işveren ilan detayındaki atamadan
+/// ([ReviewSubject.forWorker]). Yazma isteği her iki tarafta da aynı:
+/// `POST /job-assignments/{id}/reviews`, karşı tarafı sunucu seçiyor.
+class ReviewSubject {
+  const ReviewSubject({
+    required this.assignmentId,
+    required this.side,
+    required this.title,
+    required this.subtitle,
+    this.date = '',
+  });
+
+  /// Çalışanın satırından. Başvurudan gelen satırın atama kimliği yok; o
+  /// satırlarda "Değerlendir" zaten çıkmıyor.
+  factory ReviewSubject.fromMyJob(MyJob job) => ReviewSubject(
+    assignmentId: job.assignmentId ?? '',
+    side: ReviewSide.worker,
+    title: job.title,
+    subtitle: job.company,
+    date: job.date,
+  );
+
+  /// İşverenin atamasından: kart çalışanın adını taşıyor, ilan başlığı altta.
+  factory ReviewSubject.forWorker(Assignment assignment) => ReviewSubject(
+    assignmentId: assignment.id,
+    side: ReviewSide.employer,
+    title: assignment.worker?.fullName.isNotEmpty == true
+        ? assignment.worker!.fullName
+        : 'Çalışan',
+    subtitle: assignment.job.title,
+    date:
+        (assignment.actualCompletionDateTime ?? assignment.assignmentDateTime)
+            ?.asShortDate ??
+        '',
+  );
+
+  final String assignmentId;
+  final ReviewSide side;
+  final String title;
+  final String subtitle;
+  final String date;
+
+  bool get isEmployer => side == ReviewSide.employer;
 }
