@@ -1,6 +1,8 @@
 import 'package:koala/employee/features/chat/models/messaging_availability.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
+import 'package:koala/employee/features/jobs/models/cancellation.dart';
+import 'package:koala/employee/features/jobs/models/payout.dart';
 import 'package:koala/product/models/pricing_breakdown.dart';
 
 /// Atamanın durumu. Backend `AssignmentStatus` karşılığı.
@@ -73,6 +75,15 @@ class Assignment {
     this.totalCharged,
     this.pricing,
     this.messaging = MessagingAvailability.paymentRequired,
+    this.createdAt,
+    this.confirmedAt,
+    this.expectedCompletionDateTime,
+    this.paymentSecuredAt,
+    this.application,
+    this.employer,
+    this.company,
+    this.cancellation,
+    this.payout,
   });
 
   final String id;
@@ -107,6 +118,40 @@ class Assignment {
   /// reddediyor, düğme onu önceden gizliyor.
   final MessagingAvailability messaging;
 
+  /// Zaman çizelgesinin sunucudan gelen damgaları (koala-backend#282).
+  ///
+  /// Hepsi **opsiyonel**: bu alanları göndermeyen sunucuda `null` kalıyor ve
+  /// çizelge o satırı hiç çizmiyor. Eski damgalar ([assignmentDateTime],
+  /// [actualCompletionDateTime]) değişmedi; yenileri onların arasını
+  /// dolduruyor — atamanın açıldığı an, çalışanın onayı, ödemenin emanete
+  /// alındığı an ve planlanan bitiş.
+  final DateTime? createdAt;
+  final DateTime? confirmedAt;
+  final DateTime? expectedCompletionDateTime;
+  final DateTime? paymentSecuredAt;
+
+  /// Atamanın türediği başvuru: ne zaman başvurulduğu ve ne zaman kabul
+  /// edildiği. Sunucu göndermiyorsa `null`.
+  final AssignmentApplication? application;
+
+  /// İlanı açan kişi (`SafeUserDto`). Bireysel ilanda işveren kartında adı
+  /// ve fotoğrafı bu alandan geliyor; sunucu göndermiyorsa ilan detayının
+  /// `creator` alanı yedek.
+  final JobCreator? employer;
+
+  /// İlanı açan şirket: kimlik, ad ve logo. Şirket ilanında dolu; bireysel
+  /// ilanda ve eski sunucuda `null` — o zaman [Job.companyId] ve
+  /// [Job.company] kullanılıyor.
+  final JobCompany? company;
+
+  /// Atama iptal edildiyse kaydın özeti. `GET .../cancellation` tam kaydı
+  /// döndürüyor; buradaki, sunucu listeyle birlikte gönderdiğinde ek istek
+  /// atmadan kartı çizmeye yarıyor.
+  final Cancellation? cancellation;
+
+  /// Hakediş özeti: sunucu ödeme çıkışı açtıysa durumu ve tamamlanma anı.
+  final PayoutSummary? payout;
+
   /// İş bitti ve para çalışana geçti mi.
   bool get isPaidOut =>
       status == AssignmentStatus.completed && paymentStatus.isPaid;
@@ -140,11 +185,64 @@ class Assignment {
         _ => throw const FormatException('pricing alanı geçersiz.'),
       },
       messaging: MessagingAvailability.fromJson(json),
+      createdAt: _parseDate(json['createdAt']),
+      confirmedAt: _parseDate(json['confirmedAt']),
+      expectedCompletionDateTime: _parseDate(
+        json['expectedCompletionDateTime'],
+      ),
+      paymentSecuredAt: _parseDate(json['paymentSecuredAt']),
+      application: switch (json['application']) {
+        final Map<String, dynamic> value => AssignmentApplication.fromJson(
+          value,
+        ),
+        _ => null,
+      },
+      employer: switch (json['employer']) {
+        final Map<String, dynamic> value => JobCreator.fromJson(value),
+        _ => null,
+      },
+      company: switch (json['company']) {
+        final Map<String, dynamic> value => JobCompany.fromJson(value),
+        _ => null,
+      },
+      cancellation: switch (json['cancellation']) {
+        final Map<String, dynamic> value => Cancellation.fromJson(value),
+        _ => null,
+      },
+      payout: switch (json['payout']) {
+        final Map<String, dynamic> value => PayoutSummary.fromJson(value),
+        _ => null,
+      },
     );
   }
 
   static DateTime? _parseDate(Object? value) =>
       value is String ? DateTime.tryParse(value) : null;
+}
+
+/// Atamanın türediği başvurunun damgaları.
+///
+/// `MyAssignmentDto.application` (koala-backend#282): başvurunun kimliği,
+/// başvuru anı ve işverenin yanıt anı — atama açısından yanıt anı kabul
+/// anıdır. Zaman çizelgesinin ilk iki satırı buradan geliyor.
+class AssignmentApplication {
+  const AssignmentApplication({
+    required this.id,
+    this.applicationDateTime,
+    this.answeredDateTime,
+  });
+
+  final String id;
+  final DateTime? applicationDateTime;
+  final DateTime? answeredDateTime;
+
+  factory AssignmentApplication.fromJson(Map<String, dynamic> json) {
+    return AssignmentApplication(
+      id: '${json['id'] ?? ''}',
+      applicationDateTime: Assignment._parseDate(json['applicationDateTime']),
+      answeredDateTime: Assignment._parseDate(json['answeredDateTime']),
+    );
+  }
 }
 
 /// Sayfalı atama yanıtı.

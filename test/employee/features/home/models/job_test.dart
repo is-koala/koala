@@ -125,6 +125,35 @@ void main() {
       expect(job.company, isNull);
     });
 
+    // `companyLogoUrl` ve `headcount` özete koala-backend#282 ile geliyor;
+    // eski sunucuda alan yok ve gövde yine çözülmeli.
+    test('şirket logosu ve kişi sayısı opsiyonel okunur', () {
+      const base = {
+        'id': 'job_1',
+        'title': 'Garson',
+        'category': {'id': 'cat-1', 'code': 'WAITER', 'name': 'Garsonluk'},
+        'employerType': 'COMPANY',
+        'type': 'ONE_TIME',
+        'salary': 500,
+      };
+
+      final old = Job.fromJson(base);
+      expect(old.companyLogoUrl, isNull);
+      expect(old.headcount, isNull);
+      expect(old.hiredCount, 0);
+
+      final fresh = Job.fromJson({
+        ...base,
+        'companyLogoUrl': 'https://cdn.example/logo.png',
+        'headcount': 3,
+        'hiredCount': 1,
+      });
+      expect(fresh.companyLogoUrl, 'https://cdn.example/logo.png');
+      expect(fresh.headcount, 3);
+      expect(fresh.hiredCount, 1);
+      expect(Job.fromJson(fresh.toJson()).headcount, 3);
+    });
+
     // Backend enlem/boylamı opsiyonel döndürüyor; koordinatsız ilan haritada
     // çizilmiyor ama listede görünmeye devam ediyor.
     test('koordinat gelmezse hasLocation false olur', () {
@@ -250,6 +279,26 @@ void main() {
       });
 
       expect(detail.addressLabel, 'Kızılay/Ankara');
+    });
+
+    test('kişi sayısı ve alınan sayısı okunur, yoksa null / 0', () {
+      const base = {
+        'id': 'job_1',
+        'title': 'Garson',
+        'category': {'id': 'cat-1', 'code': 'WAITER', 'name': 'Garsonluk'},
+      };
+
+      final old = JobDetail.fromJson(base);
+      expect(old.headcount, isNull);
+      expect(old.hiredCount, 0);
+
+      final fresh = JobDetail.fromJson({
+        ...base,
+        'headcount': 2,
+        'hiredCount': 2,
+      });
+      expect(fresh.headcount, 2);
+      expect(fresh.hiredCount, 2);
     });
   });
 

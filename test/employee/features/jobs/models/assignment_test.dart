@@ -1,6 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/jobs/models/assignment.dart';
+import 'package:koala/employee/features/jobs/models/cancellation.dart';
 import 'package:koala/employee/features/jobs/models/my_job.dart';
+import 'package:koala/employee/features/jobs/models/payout.dart';
 
 Map<String, dynamic> assignmentBody({
   String status = 'CONFIRMED',
@@ -179,6 +182,87 @@ void main() {
         ).messaging.isClosed,
         isTrue,
       );
+    });
+
+    // koala-backend#282 henüz gelmemiş sunucu: yeni alanların hiçbiri yok.
+    test('çizelge alanları gelmezse hepsi null kalır, gövde çözülür', () {
+      final assignment = Assignment.fromJson(assignmentBody());
+
+      expect(assignment.createdAt, isNull);
+      expect(assignment.confirmedAt, isNull);
+      expect(assignment.expectedCompletionDateTime, isNull);
+      expect(assignment.paymentSecuredAt, isNull);
+      expect(assignment.application, isNull);
+      expect(assignment.employer, isNull);
+      expect(assignment.company, isNull);
+      expect(assignment.cancellation, isNull);
+      expect(assignment.payout, isNull);
+    });
+
+    test('çizelge, işveren, şirket, iptal ve hakediş alanları okunur', () {
+      final assignment = Assignment.fromJson({
+        ...assignmentBody(status: 'CANCELLED', paymentStatus: 'REFUNDED'),
+        'createdAt': '2026-03-02T08:00:00Z',
+        'confirmedAt': '2026-03-02T09:30:00Z',
+        'expectedCompletionDateTime': '2026-03-10T17:00:00Z',
+        'paymentSecuredAt': '2026-03-03T12:00:00Z',
+        'application': {
+          'id': 'app_1',
+          'applicationDateTime': '2026-03-01T10:00:00Z',
+          'answeredDateTime': '2026-03-02T08:00:00Z',
+        },
+        'employer': {
+          'id': 'user_9',
+          'firstName': 'Ayşe',
+          'lastName': 'Yılmaz',
+          'profilePictureUrl': 'https://cdn.example/ayse.png',
+        },
+        'company': {
+          'id': 'comp_7',
+          'name': 'Koala Organizasyon',
+          'logoUrl': 'https://cdn.example/logo.png',
+        },
+        'cancellation': {
+          'cancelledByParty': 'EMPLOYER',
+          'cancelledAt': '2026-03-05T11:00:00Z',
+          'feeRate': '0.25',
+          'feeAmount': '375.00',
+          'refundAmount': '1125.00',
+        },
+        'payout': {
+          'id': 'payout_1',
+          'status': 'COMPLETED',
+          'completedAt': '2026-03-11T09:00:00Z',
+        },
+      });
+
+      expect(assignment.createdAt, DateTime.utc(2026, 3, 2, 8));
+      expect(assignment.confirmedAt, DateTime.utc(2026, 3, 2, 9, 30));
+      expect(
+        assignment.expectedCompletionDateTime,
+        DateTime.utc(2026, 3, 10, 17),
+      );
+      expect(assignment.paymentSecuredAt, DateTime.utc(2026, 3, 3, 12));
+      expect(assignment.application?.id, 'app_1');
+      expect(
+        assignment.application?.applicationDateTime,
+        DateTime.utc(2026, 3, 1, 10),
+      );
+      expect(
+        assignment.application?.answeredDateTime,
+        DateTime.utc(2026, 3, 2, 8),
+      );
+      expect(assignment.employer?.fullName, 'Ayşe Yılmaz');
+      expect(assignment.company?.id, 'comp_7');
+      expect(assignment.company?.logoUrl, 'https://cdn.example/logo.png');
+      expect(
+        assignment.cancellation?.cancelledByParty,
+        CancellationParty.employer,
+      );
+      expect(assignment.cancellation?.feePercent, 25);
+      expect(assignment.cancellation?.hasFee, isTrue);
+      expect(assignment.payout?.status, PayoutStatus.completed);
+      expect(assignment.payout?.completedAt, DateTime.utc(2026, 3, 11, 9));
     });
 
     test('eski sunucu alanları göndermezse kapı kapalı', () {
@@ -373,6 +457,40 @@ void main() {
 
     test('tarih gg.aa.yyyy biçiminde yazılır', () {
       expect(mapWith(status: 'CONFIRMED').date, '10.03.2026');
+    });
+
+    test('işveren türü, ödeme durumu ve kaynak atama satıra taşınır', () {
+      final body = assignmentBody();
+      (body['job'] as Map<String, dynamic>)['employerType'] = 'INDIVIDUAL';
+
+      final assignment = Assignment.fromJson(body);
+      final myJob = MyJob.fromAssignment(assignment);
+
+      expect(myJob.employerType, JobEmployerType.individual);
+      expect(myJob.paymentStatus, PaymentStatus.heldInEscrow);
+      expect(myJob.assignment, same(assignment));
+      expect(myJob.application, isNull);
+      expect(myJob.applicationDateTime, isNull);
+      expect(myJob.answeredDateTime, isNull);
+    });
+
+    test('atamanın şirket alanı ilan özetindeki addan önce gelir', () {
+      final myJob = MyJob.fromAssignment(
+        Assignment.fromJson({
+          ...assignmentBody(),
+          'application': {
+            'id': 'app_1',
+            'applicationDateTime': '2026-03-01T10:00:00Z',
+            'answeredDateTime': '2026-03-02T08:00:00Z',
+          },
+          'company': {'id': 'comp_7', 'name': 'Koala Etkinlik'},
+        }),
+      );
+
+      expect(myJob.company, 'Koala Etkinlik');
+      expect(myJob.companyId, 'comp_7');
+      expect(myJob.applicationDateTime, DateTime.utc(2026, 3, 1, 10));
+      expect(myJob.answeredDateTime, DateTime.utc(2026, 3, 2, 8));
     });
   });
 }

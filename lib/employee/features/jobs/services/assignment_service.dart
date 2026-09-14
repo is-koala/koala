@@ -40,6 +40,18 @@ class AssignmentService {
     );
   }
 
+  /// Tek bir atamayı kimliğiyle okur.
+  ///
+  /// Sunucu yalnızca atamanın taraflarına açıyor; taraf olmayan `404`
+  /// alıyor. İş detayı bir eylemden sonra bütün listeyi değil bu kaydı
+  /// tazeliyor — sayfalamadan bağımsız ve tek istek.
+  Future<Assignment> fetchAssignment(String assignmentId) {
+    return _apiClient.get<Assignment>(
+      ApiPaths.jobAssignment(assignmentId),
+      parse: (data) => Assignment.fromJson(data! as Map<String, dynamic>),
+    );
+  }
+
   /// Mesaiye başlar ve açılan oturumu döndürür.
   ///
   /// Konum isteğe bağlı: sunucu gövdesiz isteği de kabul ediyor, o yüzden

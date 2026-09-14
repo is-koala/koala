@@ -61,3 +61,29 @@ class Payout {
     );
   }
 }
+
+/// Atamanın içinde gelen hakediş özeti.
+///
+/// `MyAssignmentDto.payout` (koala-backend#282) yalnızca kimlik, durum ve
+/// tamamlanma anını taşıyor; tutar ve para birimi [Payout]'ta,
+/// `/users/me/payouts` ucunda. Zaman çizelgesinin "hakediş" satırı ve
+/// ödeme durumu metni buna bakıyor.
+class PayoutSummary {
+  const PayoutSummary({
+    required this.id,
+    required this.status,
+    this.completedAt,
+  });
+
+  final String id;
+  final PayoutStatus status;
+  final DateTime? completedAt;
+
+  factory PayoutSummary.fromJson(Map<String, dynamic> json) {
+    return PayoutSummary(
+      id: '${json['id'] ?? ''}',
+      status: PayoutStatus.fromCode(json['status']),
+      completedAt: JsonField.dateOrNull(json['completedAt']),
+    );
+  }
+}
