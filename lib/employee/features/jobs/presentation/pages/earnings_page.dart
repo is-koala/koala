@@ -18,6 +18,7 @@ import 'package:koala/product/formatters/turkish_money_formatter.dart';
 import 'package:koala/product/formatters/financial_failure_message.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/empty_state.dart';
+import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 
 part 'earnings_pagemodel.dart';
@@ -34,6 +35,10 @@ class EarningsPage extends StatefulWidget {
 }
 
 class _EarningsPageState extends EarningsPagemodel {
+  /// Satırdaki bekleme halkasının kalınlığı; varsayılan bu boyutta dolu
+  /// görünüyor.
+  static const double _spinnerStroke = 2;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -151,12 +156,14 @@ class _EarningsPageState extends EarningsPagemodel {
     );
   }
 
-  /// Ödeme satırı; atama biliniyorsa dokununca işin detayı açılıyor.
+  /// Ödeme satırı; dokununca işin detayı açılıyor.
   ///
-  /// Atamalar ikinci istekle geliyor ve gelmeyebiliyor; o zaman satır düz
-  /// kalıyor — ödeme kaydının kendisi bir detay sayfası taşımıyor.
+  /// Atama etiketi ikinci istekle ve yalnızca ilk sayfa için geliyor; ödeme
+  /// o sayfada olmayan bir atamaya aitse satır yine tıklanabilir — kayıt
+  /// dokunma anında kimliğiyle çekiliyor ([_openWork]).
   Widget _payoutCard(Payout payout) {
     final assignment = _assignments[payout.jobAssignmentId];
+    final isOpening = _openingPayoutId == payout.id;
 
     return Material(
       color: context.tileColor,
@@ -164,20 +171,20 @@ class _EarningsPageState extends EarningsPagemodel {
       child: InkWell(
         key: ValueKey('payout-${payout.id}'),
         borderRadius: AppRadius.innerCircular,
-        onTap: assignment == null ? null : () => _openWork(assignment),
+        onTap: _openingPayoutId != null ? null : () => _openWork(payout),
         child: Padding(
           padding: AppPadding.card,
-          child: _payoutBody(payout, assignment),
+          child: _payoutBody(payout, assignment, isOpening: isOpening),
         ),
       ),
     );
   }
 
-  Future<void> _openWork(Assignment assignment) async {
-    await context.push('/work-detail', extra: MyJob.fromAssignment(assignment));
-  }
-
-  Widget _payoutBody(Payout payout, Assignment? assignment) {
+  Widget _payoutBody(
+    Payout payout,
+    Assignment? assignment, {
+    required bool isOpening,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -191,6 +198,13 @@ class _EarningsPageState extends EarningsPagemodel {
                 ),
               ),
             ),
+            if (isOpening) ...[
+              const SizedBox.square(
+                dimension: AppSizes.iconSmall,
+                child: CircularProgressIndicator(strokeWidth: _spinnerStroke),
+              ),
+              const SizedBox(width: AppSizes.spaceSmall),
+            ],
             _statusBadge(payout.status),
           ],
         ),

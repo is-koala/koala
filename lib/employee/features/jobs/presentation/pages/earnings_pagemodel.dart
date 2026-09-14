@@ -6,6 +6,10 @@ abstract class EarningsPagemodel extends State<EarningsPage> {
   bool _isLoading = true;
   String? _errorMessage;
 
+  /// Detayı açılmak üzere ataması çekilen ödemenin kimliği; satırları
+  /// kilitliyor.
+  String? _openingPayoutId;
+
   PayoutService get _service => widget.service ?? PayoutService();
 
   AssignmentService get _assignmentService =>
@@ -53,6 +57,38 @@ abstract class EarningsPagemodel extends State<EarningsPage> {
     } on ApiException {
       // Atama etiketi yardımcı bilgidir; ödeme listesini asla kapatmaz.
     }
+  }
+
+  /// Ödemenin işini açar.
+  ///
+  /// Atama listeden biliniyorsa doğrudan; bilinmiyorsa — ödeme ilk 20
+  /// atamanın dışında kaldıysa ya da liste hiç gelmediyse — kimliğiyle
+  /// çekiliyor (`GET /job-assignments/{id}`). Çekilemezse toast; ödeme
+  /// kaydının kendi başına bir detay sayfası yok.
+  Future<void> _openWork(Payout payout) async {
+    if (_openingPayoutId != null) return;
+
+    var assignment = _assignments[payout.jobAssignmentId];
+    if (assignment == null) {
+      setState(() => _openingPayoutId = payout.id);
+      try {
+        final fetched = await _assignmentService.fetchAssignment(
+          payout.jobAssignmentId,
+        );
+        if (!mounted) return;
+        assignment = fetched;
+        setState(() => _assignments = {..._assignments, fetched.id: fetched});
+      } on ApiException catch (error) {
+        if (!mounted) return;
+        AppToast.error(context, error.message);
+        return;
+      } finally {
+        if (mounted) setState(() => _openingPayoutId = null);
+      }
+    }
+
+    if (!mounted) return;
+    await context.push('/work-detail', extra: MyJob.fromAssignment(assignment));
   }
 
   List<_CurrencyTotal> _totalsFor(Set<PayoutStatus> statuses) {

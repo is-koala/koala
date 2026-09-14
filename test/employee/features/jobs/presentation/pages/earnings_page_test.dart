@@ -198,62 +198,123 @@ void main() {
   });
 
   // Kazançlar satırı da ölüydü (is-koala/koala#177): ödeme hangi işin
-  // ödemesiyse onun detayına açılmalı. Atama etiketi ikinci istekle
-  // geliyor; gelmeden satır dokunulmaz kalıyor.
-  testWidgets('ödeme satırı atamanın iş detayına açılır', (tester) async {
-    final payoutApi = FakeApi(
-      handler: (_) => dataResponse(const [
-        {
-          'id': 'payout-1',
-          'jobAssignmentId': 'assignment-1',
-          'amount': '950.00',
-          'currency': 'TRY',
-          'status': 'COMPLETED',
-          'completedAt': '2026-09-11T09:00:00Z',
-          'createdAt': '2026-09-11T08:00:00Z',
-        },
-      ]),
+  // ödemesiyse onun detayına açılmalı.
+  group('ödeme satırı → iş detayı', () {
+    const payoutBody = {
+      'id': 'payout-1',
+      'jobAssignmentId': 'assignment-1',
+      'amount': '950.00',
+      'currency': 'TRY',
+      'status': 'COMPLETED',
+      'completedAt': '2026-09-11T09:00:00Z',
+      'createdAt': '2026-09-11T08:00:00Z',
+    };
+    final completedAssignment = assignmentJson(
+      status: 'COMPLETED',
+      paymentStatus: 'RELEASED_TO_WORKER',
     );
-    final assignmentsApi = FakeApi(
-      handler: (_) => pageResponse([
-        assignmentJson(
-          status: 'COMPLETED',
-          paymentStatus: 'RELEASED_TO_WORKER',
-        ),
-      ]),
-    );
-    final opened = <MyJob>[];
-    final router = GoRouter(
-      initialLocation: '/earnings',
-      routes: [
-        GoRoute(
-          path: '/earnings',
-          pageBuilder: (context, state) => MaterialPage<void>(
-            key: state.pageKey,
-            child: EarningsPage(
-              service: PayoutService.withClient(payoutApi.client),
-              assignmentService: AssignmentService.withClient(
-                assignmentsApi.client,
+
+    Future<({FakeApi assignmentsApi, List<MyJob> opened})> pumpEarnings(
+      WidgetTester tester, {
+      required FakeApiResponse Function(String path) assignmentHandler,
+    }) async {
+      final payoutApi = FakeApi(
+        handler: (_) => dataResponse(const [payoutBody]),
+      );
+      final assignmentsApi = FakeApi(
+        handler: (request) => assignmentHandler(request.path),
+      );
+      final opened = <MyJob>[];
+      final router = GoRouter(
+        initialLocation: '/earnings',
+        routes: [
+          GoRoute(
+            path: '/earnings',
+            pageBuilder: (context, state) => MaterialPage<void>(
+              key: state.pageKey,
+              child: EarningsPage(
+                service: PayoutService.withClient(payoutApi.client),
+                assignmentService: AssignmentService.withClient(
+                  assignmentsApi.client,
+                ),
               ),
             ),
           ),
-        ),
-        stubWorkDetailRoute(onOpened: opened.add),
-      ],
-    );
-    addTearDown(router.dispose);
+          stubWorkDetailRoute(onOpened: opened.add),
+        ],
+      );
+      addTearDown(router.dispose);
 
-    await tester.pumpWidget(
-      MaterialApp.router(theme: lightTheme, routerConfig: router),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        MaterialApp.router(theme: lightTheme, routerConfig: router),
+      );
+      await tester.pumpAndSettle();
+      return (assignmentsApi: assignmentsApi, opened: opened);
+    }
 
-    expect(find.text('Barista'), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('payout-payout-1')));
-    await tester.pumpAndSettle();
+    testWidgets('atama listede varsa doğrudan açılır', (tester) async {
+      final harness = await pumpEarnings(
+        tester,
+        assignmentHandler: (path) => path == '/users/me/assignments'
+            ? pageResponse([completedAssignment])
+            : throw StateError('tekil atama istenmemeli: $path'),
+      );
 
-    expect(find.text(workDetailStubTitle), findsOneWidget);
-    expect(opened.single.assignmentId, 'assignment-1');
-    expect(opened.single.status, MyJobStatus.past);
+      expect(find.text('Barista'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('payout-payout-1')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(workDetailStubTitle), findsOneWidget);
+      expect(harness.opened.single.assignmentId, 'assignment-1');
+      expect(harness.opened.single.status, MyJobStatus.past);
+    });
+
+    // Atama listesi ilk 20 kaydı getiriyor; eski bir ödemenin ataması orada
+    // olmayabilir. Satır yine tıklanır, kayıt dokununca kimliğiyle çekilir.
+    testWidgets('atama listede yoksa dokununca kimliğiyle çekilir', (
+      tester,
+    ) async {
+      final harness = await pumpEarnings(
+        tester,
+        assignmentHandler: (path) => path == '/users/me/assignments'
+            ? pageResponse(const [])
+            : dataResponse(completedAssignment),
+      );
+
+      // Etiket yok: liste bu atamayı tanımıyor.
+      expect(find.text('Barista'), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('payout-payout-1')));
+      await tester.pumpAndSettle();
+
+      expect(
+        harness.assignmentsApi.requests.map((request) => request.path),
+        contains('/job-assignments/assignment-1'),
+      );
+      expect(find.text(workDetailStubTitle), findsOneWidget);
+      expect(harness.opened.single.assignmentId, 'assignment-1');
+    });
+
+    testWidgets('tekil atama çekilemezse toast, detay açılmaz', (tester) async {
+      final harness = await pumpEarnings(
+        tester,
+        assignmentHandler: (path) => path == '/users/me/assignments'
+            ? pageResponse(const [])
+            : const FakeApiResponse(
+                statusCode: 404,
+                body: {
+                  'success': false,
+                  'message': 'Atama bulunamadı.',
+                  'errorCategory': 'RESOURCE_NOT_FOUND',
+                },
+              ),
+      );
+
+      await tester.tap(find.byKey(const ValueKey('payout-payout-1')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Atama bulunamadı.'), findsOneWidget);
+      expect(find.text(workDetailStubTitle), findsNothing);
+      expect(harness.opened, isEmpty);
+    });
   });
 }

@@ -100,6 +100,8 @@ Future<Harness> pumpDetail(
   Map<String, Object?>? cancellation,
   Map<String, Object?>? refreshedAssignment,
   List<Map<String, Object?>> applications = const [],
+  Map<String, FakeApiResponse Function(RequestOptions request)> overrides =
+      const {},
   Brightness brightness = Brightness.light,
 }) async {
   final openedCompanies = <Object?>[];
@@ -108,6 +110,10 @@ Future<Harness> pumpDetail(
   final api = FakeApi(
     handler: (RequestOptions request) {
       final path = request.path;
+      // Yol sonekine göre testin verdiği yanıt; eylem uçları buradan.
+      for (final entry in overrides.entries) {
+        if (path.endsWith(entry.key)) return entry.value(request);
+      }
       if (path.startsWith('/jobs/')) {
         return detail == null
             ? const FakeApiResponse(
@@ -405,16 +411,28 @@ void main() {
         expect(find.text('Yaklaşık konum'), findsNothing);
       });
 
-      testWidgets('adres: APPROXIMATE ise yalnız ilçe', (tester) async {
+      // Sunucu `APPROXIMATE` derken gövdede açık adres ve tarif gelse bile
+      // çizilmemeli (ADR-0003): bayrak kesinliği, metin değil.
+      testWidgets('adres: APPROXIMATE ise açık adres ve tarif gelse de yalnız '
+          'ilçe', (tester) async {
         await pumpDetail(
           tester,
           brightness: brightness,
           job: applicationRow(applicationJson()),
-          detail: detailJson(creator: _ayse),
+          detail: detailJson(
+            precision: 'APPROXIMATE',
+            displayAddress: 'Caferağa Mah. Moda Cad. No:12 D:4, Kadıköy',
+            directions: 'Eczanenin yanındaki kapı',
+            creator: _ayse,
+          ),
         );
 
         expect(find.text('Yaklaşık konum'), findsOneWidget);
         expect(find.text('Kadıköy/İstanbul'), findsOneWidget);
+        expect(
+          find.text('Caferağa Mah. Moda Cad. No:12 D:4, Kadıköy'),
+          findsNothing,
+        );
         expect(find.textContaining('Tarif:'), findsNothing);
       });
     });
@@ -589,6 +607,240 @@ void main() {
       expect(find.text('Barista'), findsWidgets);
       await tester.scrollUntilVisible(find.text('Kadıköy/İstanbul'), 200);
       expect(find.text('Kadıköy/İstanbul'), findsOneWidget);
+    });
+  });
+
+  // Eylemler `WorkActionsPagemodel`'den geliyor; sayfa onları doğru
+  // bağlamış mı ve sonucu doğru okuyor mu — diyalog → istek → tazeleme.
+  group('eylem akışları', () {
+    const conflict = FakeApiResponse(
+      statusCode: 409,
+      body: {
+        'success': false,
+        'message': 'Atama bu durumdan cevaplanamaz.',
+        'errorCategory': 'DATA_CONFLICT',
+        'errorCode': 'ASSIGNMENT_ALREADY_ANSWERED',
+      },
+    );
+
+    Iterable<String> pathsOf(Harness harness) =>
+        harness.api.requests.map((request) => request.path);
+
+    testWidgets('reddet: onay kutusu, /respond accepted=false, tazeleme', (
+      tester,
+    ) async {
+      final harness = await pumpDetail(
+        tester,
+        job: assignmentRow(
+          assignmentJson(
+            status: 'PENDING_CONFIRMATION',
+            paymentStatus: 'PENDING_COLLECTION',
+          ),
+        ),
+        detail: detailJson(creator: _ayse),
+        refreshedAssignment: assignmentJson(
+          status: 'REJECTED',
+          paymentStatus: 'PENDING_COLLECTION',
+        ),
+        overrides: {
+          '/respond': (_) => dataResponse({'status': 'REJECTED'}),
+        },
+      );
+
+      await tester.tap(find.byKey(const ValueKey('work-detail-reject')));
+      await tester.pumpAndSettle();
+      expect(find.text('İşi reddet'), findsOneWidget);
+      expect(find.textContaining('size kapanır'), findsOneWidget);
+
+      // Kutunun kendi "Reddet"i; sayfadaki düğme kutunun altında kaldı.
+      await tester.tap(find.widgetWithText(TextButton, 'Reddet'));
+      await settle(tester);
+
+      final respond = harness.api.requests.singleWhere(
+        (request) => request.path.endsWith('/respond'),
+      );
+      expect(respond.data, {'accepted': false});
+      expect(find.text('İşi reddettiniz'), findsOneWidget);
+      expect(pathsOf(harness), contains('/job-assignments/assignment-1'));
+      expect(find.text('Reddedildi'), findsOneWidget);
+      expect(find.byKey(const ValueKey('work-detail-accept')), findsNothing);
+    });
+
+    testWidgets('kabulde 409: sunucu mesajı ve kayıt yeniden okunur', (
+      tester,
+    ) async {
+      final harness = await pumpDetail(
+        tester,
+        job: assignmentRow(
+          assignmentJson(
+            status: 'PENDING_CONFIRMATION',
+            paymentStatus: 'PENDING_COLLECTION',
+          ),
+        ),
+        detail: detailJson(creator: _ayse),
+        refreshedAssignment: assignmentJson(
+          status: 'CANCELLED',
+          paymentStatus: 'REFUNDED',
+        ),
+        overrides: {'/respond': (_) => conflict},
+      );
+      final refreshesBefore = pathsOf(
+        harness,
+      ).where((path) => path == '/job-assignments/assignment-1').length;
+
+      await tester.tap(find.byKey(const ValueKey('work-detail-accept')));
+      await settle(tester);
+
+      expect(find.text('Atama bu durumdan cevaplanamaz.'), findsOneWidget);
+      expect(
+        pathsOf(
+          harness,
+        ).where((path) => path == '/job-assignments/assignment-1').length,
+        greaterThan(refreshesBefore),
+      );
+      expect(find.text('İptal Edildi'), findsOneWidget);
+    });
+
+    testWidgets('iptal: önizleme cancellableNow=false ise kutu açılmaz', (
+      tester,
+    ) async {
+      final harness = await pumpDetail(
+        tester,
+        job: assignmentRow(assignmentJson()),
+        detail: detailJson(creator: _ayse),
+        overrides: {
+          '/cancellation-preview': (_) => dataResponse({
+            'feeRate': '0',
+            'feeAmount': '0',
+            'refundAmount': '1000.00',
+            'noticeMinutes': -30,
+            'cancellableNow': false,
+          }),
+        },
+      );
+
+      await tester.tap(find.byKey(const ValueKey('work-detail-menu')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('İşi İptal Et'));
+      await settle(tester);
+
+      expect(
+        pathsOf(harness),
+        contains('/job-assignments/assignment-1/cancellation-preview'),
+      );
+      expect(find.text('Bu iş artık iptal edilemez'), findsOneWidget);
+      expect(find.text('İşi iptal et'), findsNothing);
+      expect(
+        pathsOf(harness).where((path) => path.endsWith('/cancel')),
+        isEmpty,
+      );
+    });
+
+    testWidgets('iptal: gerekçe kutusu, POST /cancel, sonuç toast', (
+      tester,
+    ) async {
+      final harness = await pumpDetail(
+        tester,
+        job: assignmentRow(assignmentJson()),
+        detail: detailJson(creator: _ayse),
+        refreshedAssignment: assignmentJson(
+          status: 'CANCELLED',
+          paymentStatus: 'REFUNDED',
+        ),
+        overrides: {
+          '/cancellation-preview': (_) => dataResponse({
+            'feeRate': '0',
+            'feeAmount': '0',
+            'refundAmount': '1000.00',
+            'noticeMinutes': 300,
+            'cancellableNow': true,
+          }),
+          '/cancel': (_) => dataResponse({
+            'id': 'cnc-1',
+            'jobAssignmentId': 'assignment-1',
+            'cancelledByParty': 'WORKER',
+            'reason': 'Hastalandım',
+            'feeRate': '0',
+            'feeAmount': '0',
+            'refundAmount': '1000.00',
+            'cancelledAt': '2026-09-09T12:00:00Z',
+          }),
+        },
+      );
+
+      await tester.tap(find.byKey(const ValueKey('work-detail-menu')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('İşi İptal Et'));
+      await settle(tester);
+
+      expect(find.text('İşi iptal et'), findsOneWidget);
+      expect(
+        find.textContaining('sizden kesinti yapılmayacak'),
+        findsOneWidget,
+      );
+      await tester.enterText(find.byType(TextField), 'Hastalandım');
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, 'İptal Et'));
+      await settle(tester);
+
+      final cancel = harness.api.requests.singleWhere(
+        (request) => request.path.endsWith('/cancel'),
+      );
+      expect(cancel.data, {'reason': 'Hastalandım'});
+      // Toast ve tazelenen kaydın çizelge satırı aynı metni taşıyor.
+      expect(find.text('İş iptal edildi'), findsWidgets);
+      expect(find.text('İptal Edildi'), findsOneWidget);
+    });
+
+    testWidgets('başvuruyu geri çek: onay, POST /withdraw, satır güncellenir', (
+      tester,
+    ) async {
+      final harness = await pumpDetail(
+        tester,
+        job: applicationRow(applicationJson()),
+        detail: detailJson(creator: _ayse),
+        overrides: {
+          '/withdraw': (_) => dataResponse({
+            'id': 'application-1',
+            'status': 'WITHDRAWN',
+            'job': {'id': 'job-2', 'title': 'Garson'},
+          }),
+        },
+        applications: [applicationJson()],
+      );
+      // Provider listeyi ilk çağrıda çekmiş olmalı ki geri çekme satırı
+      // yerinde güncelleyebilsin; sayfa açılışta yüklemiyor.
+      await tester.runAsync(
+        () => tester
+            .element(find.byType(WorkDetailPage))
+            .read<ApplyProvider>()
+            .load(),
+      );
+      await settle(tester);
+      final loadsBefore = pathsOf(
+        harness,
+      ).where((path) => path == '/users/me/applications').length;
+
+      await tester.tap(find.byKey(const ValueKey('work-detail-menu')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Başvurumu Geri Çek'));
+      await tester.pumpAndSettle();
+      expect(find.text('Başvurunuzu geri çekin'), findsOneWidget);
+      await tester.tap(find.widgetWithText(TextButton, 'Geri Çek'));
+      await settle(tester);
+
+      expect(
+        pathsOf(harness),
+        contains('/job-applications/application-1/withdraw'),
+      );
+      expect(find.text('Başvurunuz geri çekildi'), findsOneWidget);
+      expect(find.text('Geri Çektin'), findsOneWidget);
+      // Provider satırı yerinde güncelledi; ikinci bir liste yüklemesi yok.
+      expect(
+        pathsOf(harness).where((path) => path == '/users/me/applications'),
+        hasLength(loadsBefore),
+      );
+      expect(find.byKey(const ValueKey('work-detail-menu')), findsNothing);
     });
   });
 }
