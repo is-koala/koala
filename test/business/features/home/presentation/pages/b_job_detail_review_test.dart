@@ -4,8 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/jobs/models/review.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/review_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../../../support/fake_api.dart';
+import '../../../../../support/review_fixtures.dart';
 import 'b_job_detail_test_harness.dart';
 
 const _worker = {'id': 'worker-1', 'firstName': 'Ayşe', 'lastName': 'Yılmaz'};
@@ -26,20 +27,6 @@ Map<String, Object?> _assignment({required String status}) => {
       : 'PENDING_COLLECTION',
   'worker': _worker,
   'actualCompletionDateTime': '2026-09-10T17:05:00Z',
-};
-
-Map<String, Object?> _review({
-  required String id,
-  required String authorId,
-  required int rating,
-  String? comment,
-  required String createdAt,
-}) => {
-  'id': id,
-  'rating': rating,
-  'comment': ?comment,
-  'author': {'id': authorId, 'firstName': 'X', 'lastName': 'Y'},
-  'createdAt': createdAt,
 };
 
 final _row = find.byKey(const ValueKey('assignment-review'));
@@ -140,30 +127,21 @@ void main() {
       reviewedAssignmentIds: const ['assignment-1'],
       reviewHandler: (request) {
         paths.add(request.path);
-        return FakeApiResponse(
-          statusCode: 200,
-          body: {
-            'success': true,
-            'data': {
-              'content': [
-                _review(
-                  id: 'rev_other',
-                  authorId: 'someone-else',
-                  rating: 1,
-                  createdAt: '2026-09-11T09:00:00Z',
-                ),
-                _review(
-                  id: 'rev_mine',
-                  authorId: 'employer-1',
-                  rating: 5,
-                  comment: 'Harika',
-                  createdAt: '2026-09-11T10:00:00Z',
-                ),
-              ],
-              'last': true,
-            },
-          },
-        );
+        return reviewsPageResponse([
+          reviewDtoJson(
+            id: 'rev_other',
+            authorId: 'someone-else',
+            rating: 1,
+            createdAt: '2026-09-11T09:00:00Z',
+          ),
+          reviewDtoJson(
+            id: 'rev_mine',
+            authorId: 'employer-1',
+            rating: 5,
+            comment: 'Harika',
+            createdAt: '2026-09-11T10:00:00Z',
+          ),
+        ]);
       },
     );
 
@@ -189,23 +167,14 @@ void main() {
       assignments: [_assignment(status: 'COMPLETED')],
       reviewHandler: (request) {
         paths.add(request.path);
-        return FakeApiResponse(
-          statusCode: 200,
-          body: {
-            'success': true,
-            'data': {
-              'content': [
-                _review(
-                  id: 'rev_mine',
-                  authorId: 'employer-1',
-                  rating: 5,
-                  createdAt: '2026-09-11T10:00:00Z',
-                ),
-              ],
-              'last': true,
-            },
-          },
-        );
+        return reviewsPageResponse([
+          reviewDtoJson(
+            id: 'rev_mine',
+            authorId: 'employer-1',
+            rating: 5,
+            createdAt: '2026-09-11T10:00:00Z',
+          ),
+        ]);
       },
     );
 
@@ -225,22 +194,8 @@ void main() {
       currentUser: _employer,
       assignments: [_assignment(status: 'COMPLETED')],
       reviewHandler: (request) => request.method == 'POST'
-          ? const FakeApiResponse(
-              statusCode: 409,
-              body: {
-                'success': false,
-                'message': 'Bu iş için zaten değerlendirme yaptınız.',
-                'errorCode': 'REVIEW_ALREADY_REVIEWED',
-                'errorCategory': 'DATA_CONFLICT',
-              },
-            )
-          : const FakeApiResponse(
-              statusCode: 200,
-              body: {
-                'success': true,
-                'data': {'content': [], 'last': true},
-              },
-            ),
+          ? reviewAlreadyReviewedResponse()
+          : reviewsPageResponse(const []),
     );
 
     await tester.scrollUntilVisible(_row, 200);
@@ -255,5 +210,62 @@ void main() {
     expect(sent, isFalse);
     expect(find.text('Değerlendirdiniz.'), findsOneWidget);
     expect(_button, findsNothing);
+  });
+
+  // Aynı çalışanla iki tamamlanmış iş: iki aday, eşleştirme yok. İşaret
+  // durur, içerik yazılmaz — yanlış yorum başka atamaya bağlanmasın.
+  testWidgets('iki aday varsa içerik gösterilmez, işaret durur', (
+    tester,
+  ) async {
+    await pumpPage(
+      tester,
+      currentUser: _employer,
+      assignments: [_assignment(status: 'COMPLETED')],
+      reviewedAssignmentIds: const ['assignment-1'],
+      reviewHandler: (_) => reviewsPageResponse([
+        reviewDtoJson(
+          id: 'rev_a',
+          authorId: 'employer-1',
+          rating: 5,
+          comment: 'Harika',
+          createdAt: '2026-09-11T10:00:00Z',
+        ),
+        reviewDtoJson(
+          id: 'rev_b',
+          authorId: 'employer-1',
+          rating: 2,
+          comment: 'Geç kaldı',
+          createdAt: '2026-09-12T10:00:00Z',
+        ),
+      ]),
+    );
+
+    await tester.scrollUntilVisible(_row, 200);
+    expect(find.text('Değerlendirdiniz.'), findsOneWidget);
+    expect(find.textContaining('Harika'), findsNothing);
+    expect(find.textContaining('Geç kaldı'), findsNothing);
+    expect(_button, findsNothing);
+  });
+
+  // Aynı cihazda önceki hesabın kaydı (kimliksiz eski anahtar ya da başka
+  // kullanıcının anahtarı) bu işverene görünmez; düğme yerinde durur.
+  testWidgets('başka hesabın cihaz kaydı bu işvereni işaretlemez', (
+    tester,
+  ) async {
+    await pumpPage(
+      tester,
+      currentUser: _employer,
+      assignments: [_assignment(status: 'COMPLETED')],
+    );
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('reviewed_assignments', ['assignment-1']);
+    await prefs.setStringList('reviewed_assignments:worker-1', [
+      'assignment-1',
+    ]);
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(_row, 200);
+    expect(_button, findsOneWidget);
+    expect(find.text('Değerlendirdiniz.'), findsNothing);
   });
 }

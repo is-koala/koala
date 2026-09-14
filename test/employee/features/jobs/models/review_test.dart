@@ -199,7 +199,7 @@ void main() {
       expect(subject.isEmployer, isTrue);
       expect(subject.title, 'Ayşe Yılmaz');
       expect(subject.subtitle, 'Barista');
-      expect(subject.date, isNotEmpty);
+      expect(subject.date, DateTime.parse('2026-09-10T17:05:00Z'));
     });
 
     test('fromMyJob çalışan tarafını satırdan kurar', () {

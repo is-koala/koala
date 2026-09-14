@@ -190,8 +190,10 @@ Future<Harness> pumpDetail(
           ),
         ),
         ChangeNotifierProvider(
-          create: (_) =>
-              ReviewProvider(service: ReviewService.withClient(api.client)),
+          create: (_) => ReviewProvider(
+            userIdOf: () => userProvider.user?.id,
+            service: ReviewService.withClient(api.client),
+          ),
         ),
       ],
       child: MaterialApp.router(

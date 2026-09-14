@@ -1,7 +1,6 @@
 import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/jobs/models/assignment.dart';
 import 'package:koala/employee/features/jobs/models/my_job.dart';
-import 'package:koala/product/extensions/date_extensions.dart';
 
 /// Bir iş üzerine bırakılan değerlendirme.
 ///
@@ -141,17 +140,18 @@ class ReviewSubject {
     required this.side,
     required this.title,
     required this.subtitle,
-    this.date = '',
+    this.date,
   });
 
   /// Çalışanın satırından. Başvurudan gelen satırın atama kimliği yok; o
-  /// satırlarda "Değerlendir" zaten çıkmıyor.
+  /// satırlarda "Değerlendir" zaten çıkmıyor, ekran yine de `null`'ı
+  /// kendisi karşılıyor.
   factory ReviewSubject.fromMyJob(MyJob job) => ReviewSubject(
-    assignmentId: job.assignmentId ?? '',
+    assignmentId: job.assignmentId,
     side: ReviewSide.worker,
     title: job.title,
     subtitle: job.company,
-    date: job.date,
+    date: job.assignment?.assignmentDateTime,
   );
 
   /// İşverenin atamasından: kart çalışanın adını taşıyor, ilan başlığı altta.
@@ -162,17 +162,17 @@ class ReviewSubject {
         ? assignment.worker!.fullName
         : 'Çalışan',
     subtitle: assignment.job.title,
-    date:
-        (assignment.actualCompletionDateTime ?? assignment.assignmentDateTime)
-            ?.asShortDate ??
-        '',
+    date: assignment.actualCompletionDateTime ?? assignment.assignmentDateTime,
   );
 
-  final String assignmentId;
+  /// Başvurudan gelen satırda yok; yalnızca atama değerlendirilebiliyor.
+  final String? assignmentId;
   final ReviewSide side;
   final String title;
   final String subtitle;
-  final String date;
+
+  /// Kartta gösterilecek tarih; biçimlemeyi ekran yapıyor.
+  final DateTime? date;
 
   bool get isEmployer => side == ReviewSide.employer;
 }

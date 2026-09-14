@@ -47,7 +47,13 @@ void main() {
           create: (_) => TimesheetQueueProvider(),
           lazy: false,
         ),
-        ChangeNotifierProvider(create: (_) => ReviewProvider()),
+        // Değerlendirme önbelleği oturum sahibine göre anahtarlanıyor;
+        // kimliği `UserProvider`'dan okuyor.
+        ChangeNotifierProvider(
+          create: (context) => ReviewProvider(
+            userIdOf: () => context.read<UserProvider>().user?.id,
+          ),
+        ),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => ApplyProvider()),
         ChangeNotifierProvider(create: (_) => SearchProvider()),

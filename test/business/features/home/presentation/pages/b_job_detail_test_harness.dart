@@ -28,6 +28,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../../support/fake_api.dart';
 import '../../../../../support/pump.dart';
+import '../../../../../support/review_fixtures.dart';
 
 const jobJson = {
   'id': 'job-1',
@@ -254,33 +255,24 @@ pumpPage(
           body: {'success': true, 'data': {}},
         ),
   );
-  // `ReviewProvider` kurulurken cihaz kaydını okuyor; sahte depo burada
-  // dolduruluyor ki testler "başka cihazda değerlendirilmiş" hâli kurabilsin.
+  // `ReviewProvider` kaydı oturum sahibinin kimliğiyle okuyor; sahte depo
+  // burada dolduruluyor ki testler "başka cihazda değerlendirilmiş" hâli
+  // kurabilsin. Anahtar `currentUser`'ın kimliğiyle ekleniyor.
+  final reviewOwnerId = currentUser?['id'] as String?;
   SharedPreferences.setMockInitialValues({
-    if (reviewedAssignmentIds.isNotEmpty)
-      'reviewed_assignments': reviewedAssignmentIds,
-    'reviewed_assignment_details': ?reviewedAssignmentDetails,
+    if (reviewOwnerId != null && reviewedAssignmentIds.isNotEmpty)
+      'reviewed_assignments:$reviewOwnerId': reviewedAssignmentIds,
+    if (reviewOwnerId != null && reviewedAssignmentDetails != null)
+      'reviewed_assignment_details:$reviewOwnerId': reviewedAssignmentDetails,
   });
   // Değerlendirme: yazma `POST .../reviews`, kendi kaydını arama
   // `GET /users/{id}/reviews`. Varsayılan: boş sayfa, yazma 201.
-  final reviewApi = FakeApi(
+  final reviewClient = FakeApi(
     handler: (request) =>
         reviewHandler?.call(request) ??
         (request.method == 'GET'
-            ? const FakeApiResponse(
-                statusCode: 200,
-                body: {
-                  'success': true,
-                  'data': {'content': [], 'last': true},
-                },
-              )
-            : const FakeApiResponse(
-                statusCode: 201,
-                body: {
-                  'success': true,
-                  'data': {'id': 'rev_1', 'rating': 4},
-                },
-              )),
+            ? reviewsPageResponse(const [])
+            : reviewCreatedResponse(reviewDtoJson())),
   );
   // Sohbet açmak oturum sahibini istiyor; sayfa onu kendisi yüklemiyor.
   final userProvider = UserProvider(
@@ -314,8 +306,10 @@ pumpPage(
       ChangeNotifierProvider.value(value: userProvider),
       ChangeNotifierProvider(create: (_) => BTalentPoolProvider()),
       ChangeNotifierProvider(
-        create: (_) =>
-            ReviewProvider(service: ReviewService.withClient(reviewApi.client)),
+        create: (_) => ReviewProvider(
+          userIdOf: () => userProvider.user?.id,
+          service: ReviewService.withClient(reviewClient.client),
+        ),
       ),
     ],
     child: BJobDetailPage(
@@ -370,7 +364,7 @@ pumpPage(
     employerApi: employerApi,
     paymentApi: paymentApi,
     chatApi: chatApi,
-    reviewApi: reviewApi,
+    reviewApi: reviewClient,
     launches: () => launchCount,
   );
 }

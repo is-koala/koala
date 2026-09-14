@@ -106,6 +106,7 @@ Future<Harness> pumpPage(
         ),
         ChangeNotifierProvider(
           create: (_) => ReviewProvider(
+            userIdOf: () => userProvider.user?.id,
             service: ReviewService.withClient(assignmentApi.client),
           ),
         ),

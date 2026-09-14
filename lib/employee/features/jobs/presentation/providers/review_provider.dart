@@ -17,23 +17,26 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// kurulursa, kullanıcı başka cihaza geçerse) buton geri gelir, basıldığında
 /// sunucu reddeder ve kayıt oradan tazelenir. Yani yanlış tarafa düşse bile
 /// akış tıkanmıyor — **eksik tarafa** düşerse. Fazla tarafa düşmesi kalıcı:
-/// [_prefsKey] diske yazılıyor ve onu silen tek şey çıkış.
+/// disk yazılıyor ve onu silen tek şey çıkış.
+///
+/// **Kayıt kullanıcıya bağlı.** Anahtarlar oturum sahibinin kimliğiyle
+/// ekleniyor (`reviewed_assignments:<userId>`); aynı cihazda başka bir hesap
+/// açılınca — örneğin aynı atamanın öbür tarafı — öncekinin işareti ve yorumu
+/// görünmüyor, çıkışta `clear` unutulsa bile. Kimlik [userIdOf] ile dışarıdan
+/// geliyor; kim olduğu bilinmiyorsa hiçbir şey işaretli sayılmıyor.
 class ReviewProvider extends ChangeNotifier {
-  ReviewProvider({ReviewService? service})
-    : _service = service ?? ReviewService() {
-    // Disk okunamazsa (platform kanalı yok) kayıtsız başlanıyor; bekleyen
-    // çağrılar hata yerine boş önbellekle devam ediyor.
-    _restored = _restore().catchError((Object _) {});
-  }
+  ReviewProvider({required String? Function() userIdOf, ReviewService? service})
+    : _userIdOf = userIdOf,
+      _service = service ?? ReviewService();
 
-  /// Değerlendirilmiş atamaların kimlikleri; cihazda saklanan anahtar.
-  static const String _prefsKey = 'reviewed_assignments';
+  /// Değerlendirilmiş atamaların kimlikleri; kullanıcı kimliğiyle eklenir.
+  static const String _idsPrefsPrefix = 'reviewed_assignments';
 
   /// Kendi yazdığımız değerlendirmelerin içeriği (atama kimliği →
   /// [Review.toJson]); "Değerlendirdiniz: ★4 · yorum" satırı buradan
-  /// çiziliyor. [_prefsKey]'den ayrı, çünkü içerik olmadan da kimlik
+  /// çiziliyor. Kimlik listesinden ayrı, çünkü içerik olmadan da kimlik
   /// işaretli olabilir (409'dan öğrenilen, başka cihazda yazılmış kayıt).
-  static const String _detailsPrefsKey = 'reviewed_assignment_details';
+  static const String _detailsPrefsPrefix = 'reviewed_assignment_details';
 
   /// Sunucunun "bu atamayı zaten değerlendirdin" dediği hata kodu.
   ///
@@ -51,14 +54,24 @@ class ReviewProvider extends ChangeNotifier {
   /// alana bakılıyor; kod, sınıfını değil **bu** hatayı tanımlıyor.
   static const String _alreadyReviewedErrorCode = 'REVIEW_ALREADY_REVIEWED';
 
+  final String? Function() _userIdOf;
   final ReviewService _service;
 
+  /// Bellekteki kayıtların ait olduğu kullanıcı; `null` ise henüz kimsenin
+  /// kaydı yüklenmedi.
+  String? _loadedUserId;
+  Future<void>? _loading;
+  String? _loadingUserId;
+
   final Set<String> _reviewedAssignmentIds = {};
+
+  /// Kendi gönderdiğimiz kayıtların içeriği; diske yazılıyor.
   final Map<String, Review> _ownReviews = {};
 
-  /// Kurucudaki disk okuması; provider tembel kurulduğunda ilk çağrı okuma
-  /// bitmeden gelebiliyor, [loadOwnReview] önce bunu bekliyor.
-  late final Future<void> _restored;
+  /// Sunucudan bulunan **tahmini** kayıtlar; yalnızca bellekte, oturumluk.
+  /// Sunucu "hangi atamaya" demediği için tahmin yanlış çıkabilir; yanlışı
+  /// kalıcı yapmamak için diske hiç yazılmıyor.
+  final Map<String, Review> _serverReviews = {};
 
   /// Sunucudan kendi kaydını arayan istekler; aynı atama için ikinci kez
   /// gidilmesin.
@@ -68,24 +81,42 @@ class ReviewProvider extends ChangeNotifier {
   String? _errorMessage;
 
   /// Değerlendirilmiş atamaların kimlikleri.
-  Set<String> get reviewedAssignmentIds =>
-      Set.unmodifiable(_reviewedAssignmentIds);
+  Set<String> get reviewedAssignmentIds => Set.unmodifiable(
+    _isCurrentUserLoaded ? _reviewedAssignmentIds : const {},
+  );
 
   bool get isSubmitting => _isSubmitting;
 
   String? get errorMessage => _errorMessage;
 
+  bool get _isCurrentUserLoaded {
+    final userId = _userIdOf();
+    return userId != null && userId == _loadedUserId;
+  }
+
   /// Bu atama değerlendirilmiş mi.
-  bool hasReviewed(String? assignmentId) =>
-      assignmentId != null && _reviewedAssignmentIds.contains(assignmentId);
+  ///
+  /// Kayıt oturum sahibine göre tembel yükleniyor: kimlik değiştiyse önce
+  /// `false` dönüp yüklemeyi başlatıyor, bitince dinleyenleri uyarıyor.
+  bool hasReviewed(String? assignmentId) {
+    final userId = _userIdOf();
+    if (assignmentId == null || userId == null) return false;
+    if (userId != _loadedUserId) {
+      _ensureLoaded(userId);
+      return false;
+    }
+    return _reviewedAssignmentIds.contains(assignmentId);
+  }
 
   /// Bu atamaya kendi yazdığımız değerlendirme; içeriği bilinmiyorsa `null`.
   ///
   /// `null`, "değerlendirilmedi" demek değil — [hasReviewed] ona bakar. Kayıt
   /// bu cihazda yazıldıysa içerik yanıttan geliyor; başka cihazda yazıldıysa
   /// [loadOwnReview] sunucudan tamamlamayı dener.
-  Review? ownReviewFor(String? assignmentId) =>
-      assignmentId == null ? null : _ownReviews[assignmentId];
+  Review? ownReviewFor(String? assignmentId) {
+    if (assignmentId == null || !hasReviewed(assignmentId)) return null;
+    return _ownReviews[assignmentId] ?? _serverReviews[assignmentId];
+  }
 
   /// Tamamlanmış bir işi değerlendirir. Başarılıysa `true` döner.
   ///
@@ -143,41 +174,42 @@ class ReviewProvider extends ChangeNotifier {
   /// Sunucu "hangi atamaya" demiyor (`ReviewDto`'da atama kimliği yok), bu
   /// yüzden bu arama **yalnızca** [hasReviewed] doğruyken çalışıyor —
   /// değerlendirilmişliğe karar vermek için değil, bilinen kaydın içeriğini
-  /// göstermek için. Aynı kişiyle birden çok iş yapılmışsa
-  /// [completedAt]'ten sonra yazılmış en eski kayıt seçiliyor; bulunamazsa
-  /// satır içeriksiz kalıyor, yanlış kayıt bağlanmıyor.
+  /// göstermek için. [completedAt] biliniyorsa ondan önce yazılmış kayıtlar
+  /// eleniyor. Geriye **tam bir** aday kalırsa gösteriliyor; aynı kişiyle
+  /// birden çok iş yapılmışsa (iki ve daha çok aday) eşleştirme yapılmıyor,
+  /// satır içeriksiz "Değerlendirdiniz" olarak kalıyor. Bulunan kayıt yalnız
+  /// bellekte tutuluyor; tahmin diske yazılmıyor.
   Future<void> loadOwnReview({
     required String assignmentId,
     required String subjectUserId,
     required String authorUserId,
     DateTime? completedAt,
   }) async {
-    await _restored;
+    final userId = _userIdOf();
+    if (userId == null) return;
+    await _ensureLoaded(userId);
     if (!hasReviewed(assignmentId) ||
         _ownReviews.containsKey(assignmentId) ||
+        _serverReviews.containsKey(assignmentId) ||
         !_lookingUp.add(assignmentId)) {
       return;
     }
 
     try {
       final page = await _service.fetchReviewsAbout(subjectUserId);
-      final mine =
-          page.reviews
-              .where((review) => review.author?.id == authorUserId)
-              .where(
-                (review) =>
-                    completedAt == null ||
-                    review.createdAt == null ||
-                    !review.createdAt!.isBefore(completedAt),
-              )
-              .toList()
-            ..sort(_byCreatedAtAscending);
-      final match = mine.firstOrNull;
-      if (match == null) return;
+      final candidates = page.reviews
+          .where((review) => review.author?.id == authorUserId)
+          .where(
+            (review) =>
+                completedAt == null ||
+                review.createdAt == null ||
+                !review.createdAt!.isBefore(completedAt),
+          )
+          .toList();
+      if (candidates.length != 1 || _loadedUserId != userId) return;
 
-      _ownReviews[assignmentId] = match;
+      _serverReviews[assignmentId] = candidates.single;
       notifyListeners();
-      await _persistDetails();
     } on ApiException {
       // Sessiz: satır "Değerlendirdiniz." olarak kalıyor, bir sonraki açılışta
       // yeniden denenir.
@@ -186,55 +218,105 @@ class ReviewProvider extends ChangeNotifier {
     }
   }
 
-  static int _byCreatedAtAscending(Review a, Review b) {
-    final left = a.createdAt;
-    final right = b.createdAt;
-    if (left == null || right == null) return left == null ? 1 : -1;
-    return left.compareTo(right);
-  }
-
   /// Çıkışta önceki kullanıcının kayıtları kalmasın.
+  ///
+  /// Diskte yalnızca yüklü kullanıcının anahtarları siliniyor; başkasının
+  /// kaydına zaten kimlik olmadan ulaşılamıyor. Eski sürümün kimliksiz
+  /// anahtarları da burada temizleniyor.
   Future<void> clear() async {
-    _reviewedAssignmentIds.clear();
-    _ownReviews.clear();
-    _errorMessage = null;
+    final userId = _loadedUserId;
+    _reset();
     notifyListeners();
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_prefsKey);
-    await prefs.remove(_detailsPrefsKey);
+    await prefs.remove(_idsPrefsPrefix);
+    await prefs.remove(_detailsPrefsPrefix);
+    if (userId != null) {
+      await prefs.remove(_idsKey(userId));
+      await prefs.remove(_detailsKey(userId));
+    }
   }
 
+  void _reset() {
+    _loadedUserId = null;
+    _loading = null;
+    _loadingUserId = null;
+    _reviewedAssignmentIds.clear();
+    _ownReviews.clear();
+    _serverReviews.clear();
+    _lookingUp.clear();
+    _errorMessage = null;
+  }
+
+  static String _idsKey(String userId) => '$_idsPrefsPrefix:$userId';
+
+  static String _detailsKey(String userId) => '$_detailsPrefsPrefix:$userId';
+
   Future<void> _markReviewed(String assignmentId, {Review? review}) async {
+    final userId = _userIdOf();
+    // Kim olduğu bilinmiyorsa diske yazılacak bir anahtar da yok; sunucu
+    // kaydı tuttu, rozet bir sonraki denemede 409'dan gelir.
+    if (userId == null) return;
+    await _ensureLoaded(userId);
+    if (_loadedUserId != userId) return;
+
     final added = _reviewedAssignmentIds.add(assignmentId);
     if (review != null) _ownReviews[assignmentId] = review;
     if (!added && review == null) return;
 
     final prefs = await SharedPreferences.getInstance();
     if (added) {
-      await prefs.setStringList(_prefsKey, _reviewedAssignmentIds.toList());
+      await prefs.setStringList(
+        _idsKey(userId),
+        _reviewedAssignmentIds.toList(),
+      );
     }
-    if (review != null) await _persistDetails();
+    if (review != null) {
+      await prefs.setString(
+        _detailsKey(userId),
+        jsonEncode({
+          for (final entry in _ownReviews.entries)
+            entry.key: entry.value.toJson(),
+        }),
+      );
+    }
   }
 
-  Future<void> _persistDetails() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      _detailsPrefsKey,
-      jsonEncode({
-        for (final entry in _ownReviews.entries)
-          entry.key: entry.value.toJson(),
-      }),
-    );
+  /// [userId]'nin kaydını belleğe alır; başka bir kullanıcının kaydı
+  /// bellekteyse önce onu bırakır. Aynı kullanıcı için tek yükleme koşar.
+  Future<void> _ensureLoaded(String userId) {
+    if (_loadedUserId == userId) return Future.value();
+    final inFlight = _loading;
+    if (inFlight != null && _loadingUserId == userId) return inFlight;
+
+    _loadingUserId = userId;
+    // Disk okunamazsa (platform kanalı yok) kayıtsız başlanıyor; bekleyen
+    // çağrılar hata yerine boş önbellekle devam ediyor.
+    final future = _restore(userId).catchError((Object _) {
+      if (_loadingUserId == userId) {
+        _loading = null;
+        _loadingUserId = null;
+      }
+    });
+    _loading = future;
+    return future;
   }
 
-  Future<void> _restore() async {
+  Future<void> _restore(String userId) async {
     final prefs = await SharedPreferences.getInstance();
-    final stored = prefs.getStringList(_prefsKey);
-    if (stored == null || stored.isEmpty) return;
+    // Bu arada kimlik yeniden değiştiyse okunan kayıt artık başkasının.
+    if (_loadingUserId != userId) return;
 
-    _reviewedAssignmentIds.addAll(stored);
-    _ownReviews.addAll(_decodeDetails(prefs.getString(_detailsPrefsKey)));
+    _reviewedAssignmentIds
+      ..clear()
+      ..addAll(prefs.getStringList(_idsKey(userId)) ?? const []);
+    _ownReviews
+      ..clear()
+      ..addAll(_decodeDetails(prefs.getString(_detailsKey(userId))));
+    _serverReviews.clear();
+    _loadedUserId = userId;
+    _loading = null;
+    _loadingUserId = null;
     notifyListeners();
   }
 

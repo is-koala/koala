@@ -684,7 +684,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
             onPressed: _isRunningAssignmentAction
                 ? null
                 : () => _reviewWorker(assignment),
-            child: const Text('İşçiyi Değerlendirin'),
+            child: const Text('Çalışanı Değerlendirin'),
           ),
       ],
     );

@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:koala/employee/features/jobs/models/review.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/review_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/extensions/date_extensions.dart';
+import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/button_navbar.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
@@ -61,7 +64,7 @@ class _ReviewPageState extends State<ReviewPage> {
     // Değerlendirme atamaya bırakılıyor; başvurudan gelen bir satırın atama
     // kimliği yok ve zaten "Değerlendir" butonu da o satırlarda çıkmıyor.
     final assignmentId = widget.subject.assignmentId;
-    if (assignmentId.isEmpty) {
+    if (assignmentId == null) {
       AppToast.error(context, 'Bu iş henüz değerlendirilemez');
       return;
     }
@@ -157,12 +160,11 @@ class _ReviewPageState extends State<ReviewPage> {
               color: context.accentColor.withValues(alpha: 0.15),
               borderRadius: AppRadius.innerCircular,
             ),
-            child: Icon(
-              widget.subject.isEmployer
-                  ? Icons.person_outline_rounded
-                  : Icons.work_outline_rounded,
-              color: context.accentColor,
-              size: AppSizes.icon,
+            child: Center(
+              child: AppIcon(
+                widget.subject.isEmployer ? AppIcons.user : AppIcons.work,
+                color: context.accentColor,
+              ),
             ),
           ),
           const SizedBox(width: AppSizes.spaceMedium),
@@ -178,10 +180,10 @@ class _ReviewPageState extends State<ReviewPage> {
                     color: context.textSecondary,
                   ),
                 ),
-                if (widget.subject.date.isNotEmpty) ...[
+                if (widget.subject.date != null) ...[
                   const SizedBox(height: AppSizes.smallGap),
                   Text(
-                    widget.subject.date,
+                    widget.subject.date!.asShortDate,
                     style: context.textTheme.labelMedium,
                   ),
                 ],

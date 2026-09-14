@@ -11,13 +11,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../../support/fake_api.dart';
 import '../../../../../support/pump.dart';
+import '../../../../../support/review_fixtures.dart';
 
 const _employerSubject = ReviewSubject(
   assignmentId: 'assignment-1',
   side: ReviewSide.employer,
   title: 'Ayşe Yılmaz',
   subtitle: 'Barista',
-  date: '10 Eyl 2026',
 );
 
 const _workerSubject = ReviewSubject(
@@ -25,7 +25,6 @@ const _workerSubject = ReviewSubject(
   side: ReviewSide.worker,
   title: 'Barista',
   subtitle: 'Kahve Dükkânı',
-  date: '10 Eyl 2026',
 );
 
 Future<FakeApi> pumpReview(
@@ -36,20 +35,15 @@ Future<FakeApi> pumpReview(
 }) async {
   final api = FakeApi(
     handler: (request) =>
-        handler?.call(request) ??
-        const FakeApiResponse(
-          statusCode: 201,
-          body: {
-            'success': true,
-            'data': {'id': 'rev_1', 'rating': 4},
-          },
-        ),
+        handler?.call(request) ?? reviewCreatedResponse(reviewDtoJson()),
   );
   await pumpInApp(
     tester,
     ChangeNotifierProvider(
-      create: (_) =>
-          ReviewProvider(service: ReviewService.withClient(api.client)),
+      create: (_) => ReviewProvider(
+        userIdOf: () => 'me',
+        service: ReviewService.withClient(api.client),
+      ),
       child: ReviewPage(subject: subject),
     ),
     brightness: brightness,
@@ -115,12 +109,8 @@ void main() {
       handler: (request) {
         path = request.path;
         body = request.data as Map<String, dynamic>;
-        return const FakeApiResponse(
-          statusCode: 201,
-          body: {
-            'success': true,
-            'data': {'id': 'rev_1', 'rating': 4, 'comment': 'Dakik'},
-          },
+        return reviewCreatedResponse(
+          reviewDtoJson(rating: 4, comment: 'Dakik'),
         );
       },
     );
@@ -154,15 +144,7 @@ void main() {
     await pumpReview(
       tester,
       subject: _employerSubject,
-      handler: (_) => const FakeApiResponse(
-        statusCode: 409,
-        body: {
-          'success': false,
-          'message': 'Bu iş için zaten değerlendirme yaptınız.',
-          'errorCode': 'REVIEW_ALREADY_REVIEWED',
-          'errorCategory': 'DATA_CONFLICT',
-        },
-      ),
+      handler: (_) => reviewAlreadyReviewedResponse(),
     );
 
     await tester.tap(_fourthStar);
