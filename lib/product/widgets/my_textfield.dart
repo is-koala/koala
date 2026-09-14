@@ -1,11 +1,20 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/widgets/keyboard_done_bar.dart';
+import 'package:koala/product/widgets/keyboard_insets.dart';
 
-class MyTextfield extends StatelessWidget {
+/// Uygulamanın tek satırlık ve çok satırlık metin alanı.
+///
+/// iOS'ta geri dönüş tuşu olmayan sayısal klavyelerde ([KeyboardDoneBar.needsFor])
+/// alan odaklanınca klavyenin üstüne bir "Bitti" şeridi yerleştiriyor; odak
+/// düşünce şerit kalkıyor. Şerit kök `Overlay`'e giriyor ki sheet ve
+/// diyaloglardaki alanlarda da klavyenin üstünde dursun.
+class MyTextfield extends StatefulWidget {
   const MyTextfield({
     super.key,
     required this.labelText,
@@ -56,36 +65,131 @@ class MyTextfield extends StatelessWidget {
   final List<TextInputFormatter>? inputFormatters;
 
   @override
+  State<MyTextfield> createState() => _MyTextfieldState();
+}
+
+class _MyTextfieldState extends State<MyTextfield> {
+  /// Dışarıdan düğüm verilmediğinde odağı izlemek için kurulan düğüm.
+  FocusNode? _ownedFocusNode;
+
+  FocusNode get _focusNode =>
+      widget.focusNode ?? (_ownedFocusNode ??= FocusNode());
+
+  OverlayEntry? _doneBar;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(_onFocusChanged);
+  }
+
+  @override
+  void didUpdateWidget(MyTextfield oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.focusNode != widget.focusNode) {
+      (oldWidget.focusNode ?? _ownedFocusNode)?.removeListener(_onFocusChanged);
+      _focusNode.addListener(_onFocusChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    _focusNode.removeListener(_onFocusChanged);
+    _removeDoneBar();
+    _ownedFocusNode?.dispose();
+    super.dispose();
+  }
+
+  /// Platform temadan değil doğrudan okunuyor: `ThemeData` platformu
+  /// kurulduğu anda donduruyor, klavye davranışı ise çalışılan cihaza bağlı.
+  bool get _needsDoneBar =>
+      defaultTargetPlatform == TargetPlatform.iOS &&
+      KeyboardDoneBar.needsFor(widget.keyboardType);
+
+  void _onFocusChanged() {
+    if (!mounted) return;
+    if (_focusNode.hasFocus && _needsDoneBar) {
+      _showDoneBar();
+    } else {
+      _removeDoneBar();
+    }
+  }
+
+  void _showDoneBar() {
+    if (_doneBar != null) return;
+    final entry = OverlayEntry(
+      builder: (overlayContext) {
+        // Klavye henüz yükselmediyse (ya da donanım klavyesi varsa) şerit
+        // ekranın dibine yapışmasın; klavye görününce yerini alıyor.
+        final keyboard = MediaQuery.viewInsetsOf(overlayContext).bottom;
+        if (keyboard <= 0) return const SizedBox.shrink();
+        return Positioned(
+          left: 0,
+          right: 0,
+          bottom: keyboard,
+          child: KeyboardDoneBar(onDone: _focusNode.unfocus),
+        );
+      },
+    );
+    Overlay.of(context, rootOverlay: true).insert(entry);
+    _doneBar = entry;
+    KeyboardInsets.doneBarVisible.value = true;
+  }
+
+  void _removeDoneBar() {
+    final entry = _doneBar;
+    if (entry == null) return;
+    _doneBar = null;
+    KeyboardInsets.doneBarVisible.value = false;
+    entry.remove();
+    entry.dispose();
+  }
+
+  /// İmlecin görünür tutulacağı pay. `EditableText` odaklı alanı görünür
+  /// alanın 20 pt üstüne park ediyor. Küçülen `Scaffold`'da görünür alan
+  /// zaten klavyenin üstünde bitiyor (`viewInsets` sıfır); küçülmeyen
+  /// ekranda klavye payı buraya ekleniyor ki alan klavyenin üstüne
+  /// kaydırılsın. Şerit çizilecekse alan onun da üstünde kalsın diye pay
+  /// şerit kadar daha büyüyor.
+  EdgeInsets _scrollPadding(BuildContext context) {
+    const base = EdgeInsets.all(AppSizes.caretScrollPadding);
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    final doneBar = _needsDoneBar ? AppSizes.keyboardToolbar : 0.0;
+    return base.copyWith(bottom: base.bottom + keyboard + doneBar);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: height,
+      height: widget.height,
       child: TextField(
-        controller: controller,
-        focusNode: focusNode,
-        enabled: enabled,
-        onChanged: onChanged,
-        obscureText: isObscureText,
-        maxLines: expands ? null : 1,
-        expands: expands,
-        textAlignVertical: expands ? TextAlignVertical.top : null,
+        controller: widget.controller,
+        focusNode: _focusNode,
+        enabled: widget.enabled,
+        onChanged: widget.onChanged,
+        obscureText: widget.isObscureText,
+        maxLines: widget.expands ? null : 1,
+        expands: widget.expands,
+        textAlignVertical: widget.expands ? TextAlignVertical.top : null,
+        scrollPadding: _scrollPadding(context),
         decoration: InputDecoration(
-          labelText: labelText,
-          alignLabelWithHint: expands,
+          labelText: widget.labelText,
+          alignLabelWithHint: widget.expands,
           labelStyle: context.textTheme.bodyLarge?.copyWith(
             color: context.textSecondary,
           ),
-          border: OutlineInputBorder(borderRadius: borderRadius),
+          border: OutlineInputBorder(borderRadius: widget.borderRadius),
           focusedBorder: OutlineInputBorder(
-            borderRadius: borderRadius,
+            borderRadius: widget.borderRadius,
             borderSide: BorderSide(color: context.accentColor, width: 2.0),
           ),
           contentPadding: AppPadding.field,
           isDense: true,
-          suffixIcon: showSuffixIcon == true ? suffixIcon : null,
+          suffixIcon: widget.showSuffixIcon == true ? widget.suffixIcon : null,
         ),
         style: context.textTheme.bodyLarge,
-        keyboardType: keyboardType,
-        inputFormatters: inputFormatters,
+        keyboardType: widget.keyboardType,
+        inputFormatters: widget.inputFormatters,
       ),
     );
   }

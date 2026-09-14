@@ -6,6 +6,7 @@ import 'package:koala/product/constants/password_rule.dart';
 import 'package:koala/product/theme/theme.dart';
 
 import '../../../../../support/fake_api.dart';
+import '../../../../../support/keyboard.dart';
 
 /// Testte kullanılan parolalar bilerek anlamsız; gerçek bir hesabın
 /// parolası değil.
@@ -214,5 +215,19 @@ void main() {
         findsOneWidget,
       );
     });
+  }
+
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      '${brightness.name} tema: klavye açıkken Kaydet çubuğu klavyenin '
+      'üstüne çıkar, boş alana dokununca odak düşer',
+      (tester) async {
+        await pumpPage(tester, successApi(), brightness: brightness);
+        await showKeyboard(tester);
+
+        await expectAboveKeyboard(tester, findBottomBarButton());
+        await expectTapOutsideDropsFocus(tester, find.byType(TextField).first);
+      },
+    );
   }
 }

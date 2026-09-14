@@ -26,6 +26,8 @@ import '../../../../../support/fake_address_search_gateway.dart';
 import '../../../../../support/fake_api.dart';
 import '../../../../../support/fake_maps_availability.dart';
 import '../../../../../support/identity_gate_test_support.dart';
+import '../../../../../support/keyboard.dart';
+import '../../../../../support/finders.dart';
 
 const _companyJson = {
   'id': 'company_1',
@@ -339,13 +341,7 @@ void main() {
         expect(find.text('Kayıtlı firmanız yok'), findsNothing);
         expect(
           tester
-              .widget<TextField>(
-                find.byWidgetPredicate(
-                  (widget) =>
-                      widget is TextField &&
-                      widget.decoration?.labelText == 'Firma Adı',
-                ),
-              )
+              .widget<TextField>(findFieldLabelled('Firma Adı'))
               .controller
               ?.text,
           'Moda Kahve Atölyesi',
@@ -612,5 +608,67 @@ void main() {
         expect(find.text('Eski Sokak 1, Eski Mahalle'), findsOneWidget);
       },
     );
+  });
+
+  group('klavye', () {
+    for (final brightness in Brightness.values) {
+      testWidgets(
+        '${brightness.name} tema: Kaydet çubuğu klavyenin üstüne çıkar, boş '
+        'alana dokununca odak düşer',
+        (tester) async {
+          await _pumpCompanyInfo(
+            tester,
+            identityVerified: true,
+            companies: const [_membership],
+            brightness: brightness,
+          );
+          await showKeyboard(tester);
+
+          await expectAboveKeyboard(tester, findBottomBarButton());
+          await expectTapOutsideDropsFocus(
+            tester,
+            findFieldLabelled('Telefon'),
+          );
+        },
+      );
+
+      testWidgets(
+        '${brightness.name} tema, iOS: telefon alanında Bitti şeridi çıkar, '
+        'Kaydet şeridin üstünde kalır ve gerçekten gönderir',
+        (tester) async {
+          final server = await _pumpCompanyInfo(
+            tester,
+            identityVerified: true,
+            companies: const [_membership],
+            brightness: brightness,
+          );
+          // Başarılı kayıt ekranı kapatıyor; bu harnesste kapanacak yer yok,
+          // sunucu reddetsin — PATCH'in çıkmış olması dokunuşun kanıtı.
+          server.patchResponse = const FakeApiResponse(
+            statusCode: 400,
+            body: {
+              'success': false,
+              'message': 'Geçersiz telefon',
+              'errorCategory': 'VALIDATION_FAILED',
+            },
+          );
+
+          await expectDoneBarLayout(
+            tester,
+            numericField: findFieldLabelled('Telefon'),
+            cta: findBottomBarButton(),
+          );
+
+          await tester.tap(findBottomBarButton());
+          await tester.pumpAndSettle();
+          expect(
+            server.api.requests.any((request) => request.method == 'PATCH'),
+            isTrue,
+            reason: 'Kaydet dokunuşu şeride gitti, PATCH atılmadı',
+          );
+        },
+        variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+      );
+    }
   });
 }

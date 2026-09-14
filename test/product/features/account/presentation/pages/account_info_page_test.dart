@@ -13,6 +13,8 @@ import 'package:koala/product/widgets/locked_field.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../../support/fake_api.dart';
+import '../../../../../support/keyboard.dart';
+import '../../../../../support/finders.dart';
 
 final CurrentUser _user = CurrentUser.fromJson(const {
   'id': 'user-1',
@@ -99,6 +101,7 @@ void main() {
     FakeApi api, {
     ValueChanged<String>? onVerificationOpened,
     CurrentUser? user,
+    Brightness brightness = Brightness.light,
   }) async {
     final pageUser = user ?? _user;
     final router = GoRouter(
@@ -141,7 +144,10 @@ void main() {
             ),
           ),
         ],
-        child: MaterialApp.router(theme: lightTheme, routerConfig: router),
+        child: MaterialApp.router(
+          theme: brightness == Brightness.dark ? darkTheme : lightTheme,
+          routerConfig: router,
+        ),
       ),
     );
 
@@ -437,5 +443,53 @@ void main() {
     final body = api.requests.single.data as Map<String, dynamic>;
     expect(body.containsKey('firstName'), isFalse);
     expect(body.containsKey('lastName'), isFalse);
+  });
+
+  group('klavye (is-koala/koala#190)', () {
+    FakeApi patchApi() => FakeApi(
+      handler: (_) =>
+          FakeApiResponse(statusCode: 200, body: _patchResponse([])),
+    );
+
+    for (final brightness in Brightness.values) {
+      testWidgets(
+        '${brightness.name} tema: Kaydet çubuğu klavyenin üstüne çıkar, boş '
+        'alana dokununca odak düşer',
+        (tester) async {
+          await pumpPage(tester, patchApi(), brightness: brightness);
+          await showKeyboard(tester);
+
+          await expectAboveKeyboard(tester, findBottomBarButton());
+          await expectTapOutsideDropsFocus(
+            tester,
+            findFieldLabelled('Telefon'),
+          );
+        },
+      );
+
+      testWidgets(
+        '${brightness.name} tema, iOS: telefon alanında Bitti şeridi çıkar, '
+        'Kaydet şeridin üstünde kalır ve gerçekten gönderir',
+        (tester) async {
+          final api = patchApi();
+          await pumpPage(tester, api, brightness: brightness);
+
+          await expectDoneBarLayout(
+            tester,
+            numericField: findFieldLabelled('Telefon'),
+            cta: findBottomBarButton(),
+          );
+
+          await tester.tap(findBottomBarButton());
+          await tester.pumpAndSettle();
+          expect(
+            api.requests.any((request) => request.method == 'PATCH'),
+            isTrue,
+            reason: 'Kaydet dokunuşu şeride gitti, PATCH atılmadı',
+          );
+        },
+        variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+      );
+    }
   });
 }

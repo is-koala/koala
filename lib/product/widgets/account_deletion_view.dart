@@ -10,6 +10,7 @@ import 'package:koala/product/models/account_deletion.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/confirm_dialog.dart';
+import 'package:koala/product/widgets/form_page_body.dart';
 import 'package:koala/product/widgets/my_button.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
 
@@ -85,45 +86,48 @@ class _AccountDeletionViewState extends State<AccountDeletionView> {
     final deletion = _deletion;
     if (deletion != null) return _success(deletion);
 
-    return ListView(
+    return FormPageBody(
       padding: AppPadding.primaryAll,
-      children: [
-        Text('Hesap silme talebi', style: context.textTheme.titleLarge),
-        const SizedBox(height: AppSizes.space),
-        Text(
-          'Bu işlem geri alınamaz. Talep, bekleme süresi ile devam eden iş, '
-          'uyuşmazlık ve ödeme kontrolleri tamamlandıktan sonra işlenir.',
-          style: context.textTheme.bodyMedium?.copyWith(
-            color: context.textSecondary,
-          ),
-        ),
-        const SizedBox(height: AppSizes.spaceMedium),
-        _retentionNotice(),
-        const SizedBox(height: AppSizes.spaceLarge),
-        MyTextfield(
-          labelText: 'Silme nedeni (isteğe bağlı)',
-          controller: _reasonController,
-          height: _reasonFieldHeight,
-          expands: true,
-          borderRadius: AppRadius.secondaryCircular,
-          inputFormatters: [LengthLimitingTextInputFormatter(512)],
-        ),
-        if (_errorMessage != null) ...[
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Hesap silme talebi', style: context.textTheme.titleLarge),
           const SizedBox(height: AppSizes.space),
           Text(
-            _errorMessage!,
+            'Bu işlem geri alınamaz. Talep, bekleme süresi ile devam eden iş, '
+            'uyuşmazlık ve ödeme kontrolleri tamamlandıktan sonra işlenir.',
             style: context.textTheme.bodyMedium?.copyWith(
-              color: AppColors.danger,
+              color: context.textSecondary,
             ),
           ),
+          const SizedBox(height: AppSizes.spaceMedium),
+          _retentionNotice(),
+          const SizedBox(height: AppSizes.spaceLarge),
+          MyTextfield(
+            labelText: 'Silme nedeni (isteğe bağlı)',
+            controller: _reasonController,
+            height: _reasonFieldHeight,
+            expands: true,
+            borderRadius: AppRadius.secondaryCircular,
+            inputFormatters: [LengthLimitingTextInputFormatter(512)],
+          ),
+          if (_errorMessage != null) ...[
+            const SizedBox(height: AppSizes.space),
+            Text(
+              _errorMessage!,
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: AppColors.danger,
+              ),
+            ),
+          ],
+          const SizedBox(height: AppSizes.spaceLarge),
+          MyButton(
+            onPressed: _request,
+            title: 'Silme Talebi Oluştur',
+            isLoading: _isLoading,
+          ),
         ],
-        const SizedBox(height: AppSizes.spaceLarge),
-        MyButton(
-          onPressed: _request,
-          title: 'Silme Talebi Oluştur',
-          isLoading: _isLoading,
-        ),
-      ],
+      ),
     );
   }
 

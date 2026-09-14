@@ -14,6 +14,7 @@ import '../../../../../support/fake_api.dart';
 import '../../../../../support/pump.dart';
 import '../../../../../support/review_fixtures.dart';
 import '../../../../../support/work_test_support.dart';
+import '../../../../../support/keyboard.dart';
 
 const _employerSubject = ReviewSubject(
   assignmentId: 'assignment-1',
@@ -164,5 +165,25 @@ void main() {
     final assignment = Assignment.fromJson(assignmentJson(status: 'COMPLETED'));
     expect(provider.hasReviewed(assignment), isTrue);
     expect(provider.ownReviewFor(assignment), isNull);
+  });
+
+  group('klavye (is-koala/koala#190)', () {
+    for (final brightness in Brightness.values) {
+      testWidgets(
+        '${brightness.name} tema: Yorumu Yayınla çubuğu klavyenin üstüne '
+        'çıkar, boş alana dokununca yorum odağı düşer',
+        (tester) async {
+          await pumpReview(
+            tester,
+            subject: _workerSubject,
+            brightness: brightness,
+          );
+          await showKeyboard(tester);
+
+          await expectAboveKeyboard(tester, findBottomBarButton());
+          await expectTapOutsideDropsFocus(tester, find.byType(TextField));
+        },
+      );
+    }
   });
 }

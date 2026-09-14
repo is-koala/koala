@@ -10,6 +10,7 @@ import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/widgets/dismiss_keyboard_on_tap.dart';
 
 part 'b_chat_pagemodel.dart';
 
@@ -39,7 +40,9 @@ class _BChatPageState extends BChatPagemodel {
         ),
         body: Column(
           children: [
-            Expanded(child: _messageList()),
+            // Mesaj listesine dokunmak ya da onu sürüklemek klavyeyi
+            // kapatıyor; kutu klavyenin üstünde, kapatmanın başka yolu yok.
+            Expanded(child: DismissKeyboardOnTap(child: _messageList())),
             // Engelli sohbette mesaj kutusu yerine sebebini söyleyen şerit
             // duruyor; engel iki yönlü, yazmayı denemenin anlamı yok.
             _composer(),
@@ -103,6 +106,7 @@ class _BChatPageState extends BChatPagemodel {
 
     return ListView.builder(
       controller: scrollController,
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       padding: AppPadding.primaryAll,
       itemCount: messages.length,
       itemBuilder: (context, index) {

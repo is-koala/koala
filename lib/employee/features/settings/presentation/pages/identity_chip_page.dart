@@ -12,6 +12,7 @@ import 'package:koala/employee/features/settings/presentation/widgets/live_mrz_s
 import 'package:koala/employee/features/settings/services/chip_reader.dart';
 import 'package:koala/employee/features/settings/services/device_mrz_camera_session.dart';
 import 'package:koala/employee/features/settings/services/mrz_camera_session.dart';
+import 'package:koala/product/widgets/form_page_body.dart';
 import 'package:koala/product/widgets/settings_hint.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -188,7 +189,7 @@ class _IdentityChipPageState extends IdentityChipPagemodel {
   // ------------------------------------------------------------ Elle giriş
 
   Widget _manualForm() {
-    return SingleChildScrollView(
+    return FormPageBody(
       padding: AppPadding.primaryAll,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

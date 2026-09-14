@@ -6,6 +6,7 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/app_toast.dart';
+import 'package:koala/product/widgets/form_page_body.dart';
 import 'package:koala/product/widgets/my_button.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
 
@@ -27,7 +28,7 @@ class _ForgotPasswordPageState extends ForgotPasswordPagemodel {
     return Scaffold(
       appBar: AppBar(title: const Text('Şifremi Unuttum')),
       body: SafeArea(
-        child: Padding(
+        child: FormPageBody(
           padding: AppPadding.authContent,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

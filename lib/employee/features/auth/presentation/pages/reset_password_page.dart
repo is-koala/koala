@@ -7,6 +7,7 @@ import 'package:koala/product/constants/password_rule.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/app_toast.dart';
+import 'package:koala/product/widgets/form_page_body.dart';
 import 'package:koala/product/widgets/my_button.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
 
@@ -34,7 +35,7 @@ class _ResetPasswordPageState extends ResetPasswordPagemodel {
     return Scaffold(
       appBar: AppBar(title: const Text('Şifremi Yenile')),
       body: SafeArea(
-        child: SingleChildScrollView(
+        child: FormPageBody(
           padding: AppPadding.authContent,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

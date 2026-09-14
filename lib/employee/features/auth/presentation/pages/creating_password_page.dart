@@ -17,6 +17,7 @@ import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/network/session_manager.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
+import 'package:koala/product/widgets/form_page_body.dart';
 import 'package:koala/product/widgets/my_button.dart';
 import 'package:koala/product/widgets/password_field.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -24,8 +25,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 part 'creating_password_pagemodel.dart';
 
 class CreatingPasswordPage extends StatefulWidget {
-  const CreatingPasswordPage({super.key, this.token});
+  const CreatingPasswordPage({
+    super.key,
+    this.token,
+    this.authService,
+    this.legalService,
+  });
+
   final String? token;
+
+  /// Testlerde sahte sunucuya bağlı servisler; üretimde tekil örnekler.
+  final AuthService? authService;
+  final LegalService? legalService;
 
   @override
   State<CreatingPasswordPage> createState() => _CreatingPasswordPageState();
@@ -58,7 +69,7 @@ class _CreatingPasswordPageState extends CreatingPasswordPagemodel {
       return _errorSection(error);
     }
 
-    return SingleChildScrollView(
+    return FormPageBody(
       child: Center(
         child: Padding(
           padding: AppPadding.primaryAll,

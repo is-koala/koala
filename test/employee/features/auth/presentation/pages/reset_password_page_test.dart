@@ -5,6 +5,7 @@ import 'package:koala/employee/features/auth/services/auth_service.dart';
 import 'package:koala/product/theme/theme.dart';
 
 import '../../../../../support/fake_api.dart';
+import '../../../../../support/keyboard.dart';
 
 void main() {
   testWidgets('yeni şifre reset tokenıyla backend\'e gönderilir', (
@@ -52,4 +53,33 @@ void main() {
       'newPassword': 'KoalaDemo!2026',
     });
   });
+
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      '${brightness.name} tema: klavye açıkken ŞİFREYİ GÜNCELLE klavyenin '
+      'üstünde kalır, boş alana dokununca odak düşer',
+      (tester) async {
+        final api = FakeApi(
+          handler: (_) =>
+              const FakeApiResponse(statusCode: 200, body: {'success': true}),
+        );
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: brightness == Brightness.dark ? darkTheme : lightTheme,
+            home: ResetPasswordPage(
+              token: 'reset-123',
+              authService: AuthService.withClient(api.client),
+            ),
+          ),
+        );
+        await showKeyboard(tester);
+
+        await expectAboveKeyboard(
+          tester,
+          find.byKey(const ValueKey('reset-password-submit')),
+        );
+        await expectTapOutsideDropsFocus(tester, find.byType(TextField).first);
+      },
+    );
+  }
 }

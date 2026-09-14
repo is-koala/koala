@@ -24,6 +24,7 @@ import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/button_navbar.dart';
+import 'package:koala/product/widgets/form_page_body.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:provider/provider.dart';
 
@@ -105,7 +106,7 @@ class _IdentityVerificationPageState extends IdentityVerificationPagemodel {
         title: 'Doğrula',
         isLoading: isSubmitting,
       ),
-      body: SingleChildScrollView(
+      body: FormPageBody(
         padding: AppPadding.primaryAll,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

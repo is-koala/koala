@@ -11,6 +11,7 @@ import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
+import 'package:koala/product/widgets/form_page_body.dart';
 import 'package:koala/product/widgets/my_button.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
 
@@ -30,7 +31,8 @@ class _RegisterPageState extends RegisterPagemodel {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.backgroundColor,
-      resizeToAvoidBottomInset: false,
+      // Gövde klavyenin üstüne sığıyor; odaklı alan ve KAYIT OL kaydırılarak
+      // görünür kalıyor. Yasal alt satır CTA değil, klavye arkasında kalabilir.
       appBar: AppBar(
         leading: IconButton(
           icon: AppIcon(AppIcons.arrowLeft, color: context.textPrimary),
@@ -39,7 +41,7 @@ class _RegisterPageState extends RegisterPagemodel {
       ),
       bottomNavigationBar: const AuthLegalFooter(),
       body: SafeArea(
-        child: SingleChildScrollView(
+        child: FormPageBody(
           child: Center(
             child: Padding(
               padding: AppPadding.authContent,

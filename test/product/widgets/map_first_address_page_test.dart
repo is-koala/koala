@@ -20,6 +20,8 @@ import '../../support/fake_api.dart';
 import '../../support/fake_maps_availability.dart';
 import '../../support/finders.dart';
 import '../../support/reference_location_fixtures.dart';
+import '../../support/keyboard.dart';
+import 'package:koala/product/widgets/form_page_body.dart';
 
 const _debounce = MapFirstAddressController.defaultReverseDebounce;
 const _pickerLocation = '/pick-address';
@@ -916,5 +918,64 @@ void main() {
         'source': 'USER_CONFIRMED_PIN',
       });
     });
+  });
+
+  group('klavye (is-koala/koala#190)', () {
+    for (final brightness in Brightness.values) {
+      testWidgets(
+        '${brightness.name} tema: kartın boş alanına dokununca odak düşer',
+        (tester) async {
+          final harness = _Harness(initialAddress: _initialAddress());
+          await harness.pump(tester, brightness: brightness);
+
+          await tester.ensureVisible(_field('Posta Kodu *'));
+          await tester.pump();
+          await tester.tap(_field('Posta Kodu *'));
+          await tester.pump();
+          expect(anyFieldFocused(tester), isTrue);
+
+          // Kartın tutamacının hemen yanı: alan yok, düğme yok.
+          final card = tester.getRect(find.byType(FormPageBody));
+          await tester.tapAt(card.topLeft + const Offset(4, 4));
+          await tester.pump();
+
+          expect(anyFieldFocused(tester), isFalse);
+        },
+      );
+    }
+
+    testWidgets('kart sürüklenince odak düşer', (tester) async {
+      final harness = _Harness(initialAddress: _initialAddress());
+      await harness.pump(tester);
+
+      await focusField(tester, _field('Posta Kodu *'));
+      expect(anyFieldFocused(tester), isTrue);
+
+      // Kart odakla zaten açıldı ve içerik alanı göstermek için sona kaydı;
+      // geri sürüklemek artık içeriği kaydırıyor, kartı değil.
+      await tester.drag(find.byType(FormPageBody), const Offset(0, 80));
+      await tester.pumpAndSettle();
+
+      expect(anyFieldFocused(tester), isFalse);
+    });
+
+    for (final brightness in Brightness.values) {
+      testWidgets(
+        '${brightness.name} tema, iOS: posta kodu alanında Bitti şeridi '
+        'çıkar, Kaydet şeridin üstüne kaydırılır',
+        (tester) async {
+          final harness = _Harness(initialAddress: _initialAddress());
+          await harness.pump(tester, brightness: brightness);
+
+          await expectDoneBarLayout(
+            tester,
+            numericField: _field('Posta Kodu *'),
+            cta: find.byKey(const ValueKey('address-save')),
+          );
+          await tapDoneBar(tester);
+        },
+        variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+      );
+    }
   });
 }

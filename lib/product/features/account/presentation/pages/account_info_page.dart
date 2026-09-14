@@ -14,6 +14,7 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/features/account/account_routes.dart';
+import 'package:koala/product/widgets/form_page_body.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/button_navbar.dart';
@@ -68,7 +69,7 @@ class _AccountInfoPageState extends AccountInfoPagemodel {
         title: "Kaydet",
         isLoading: isSaving,
       ),
-      body: SingleChildScrollView(
+      body: FormPageBody(
         child: Padding(
           padding: AppPadding.primaryAll,
           child: Column(

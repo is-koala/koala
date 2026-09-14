@@ -33,8 +33,8 @@ abstract class CreatingPasswordPagemodel extends State<CreatingPasswordPage> {
   final TextEditingController confirmPasswordController =
       TextEditingController();
 
-  final AuthService _authService = AuthService();
-  final LegalService _legalService = LegalService();
+  late final AuthService _authService = widget.authService ?? AuthService();
+  late final LegalService _legalService = widget.legalService ?? LegalService();
 
   bool get passwordsMatch =>
       passwordController.text == confirmPasswordController.text &&

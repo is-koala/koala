@@ -7,6 +7,7 @@ import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/account_deletion_view.dart';
 
 import '../../support/pump.dart';
+import '../../support/keyboard.dart';
 
 void main() {
   testWidgets('silme isteğini açık onaydan sonra gerekçesiyle gönderir', (
@@ -120,4 +121,25 @@ void main() {
       expect(find.text('Hesap silme talebi'), findsOneWidget);
     }
   });
+
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      '${brightness.name} tema: klavye açıkken düğme kaydırılarak klavyenin '
+      'üstüne gelir, boş alana dokununca odak düşer',
+      (tester) async {
+        await pumpInApp(
+          tester,
+          AccountDeletionView(
+            requestDeletion: ({reason}) async =>
+                const AccountDeletion(status: AccountDeletionStatus.requested),
+          ),
+          brightness: brightness,
+        );
+        await showKeyboard(tester);
+
+        await expectAboveKeyboard(tester, find.text('Silme Talebi Oluştur'));
+        await expectTapOutsideDropsFocus(tester, find.byType(TextField));
+      },
+    );
+  }
 }

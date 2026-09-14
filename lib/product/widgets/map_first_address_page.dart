@@ -22,6 +22,7 @@ import 'package:koala/product/services/maps_availability.dart';
 import 'package:koala/product/services/reference_location_service.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
+import 'package:koala/product/widgets/form_page_body.dart';
 import 'package:koala/product/widgets/empty_state.dart';
 import 'package:koala/product/widgets/my_button.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
@@ -256,8 +257,6 @@ class _MapFirstAddressPageState extends MapFirstAddressPagemodel {
   // ------------------------------------------------------------------- Kart
 
   Widget _card() {
-    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
-
     return DraggableScrollableSheet(
       controller: sheetController,
       initialChildSize: MapFirstAddressPagemodel._sheetInitialSize,
@@ -283,27 +282,33 @@ class _MapFirstAddressPageState extends MapFirstAddressPagemodel {
           ),
           // Tek sütun, tembel liste değil: alanlar bir formun parçası, hepsi
           // birlikte kurulur ki odaklanma ve kaydırma tek ağaç üzerinde
-          // çalışsın.
-          child: SingleChildScrollView(
+          // çalışsın. Sayfa `Scaffold`'u küçülmediği için klavye payını
+          // gövde ekliyor; kartın boş alanına dokunmak ya da kartı
+          // sürüklemek klavyeyi kapatıyor, harita dokunuşu odağı düşürmüyor.
+          child: FormPageBody(
             controller: scrollController,
             padding: AppPadding.sheet.copyWith(
-              bottom:
-                  AppPadding.sheet.bottom + context.padding.bottom + keyboard,
+              bottom: AppPadding.sheet.bottom + context.padding.bottom,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _handle(),
-                const SizedBox(height: AppSizes.spaceMedium),
-                _searchSection(),
-                const SizedBox(height: AppSizes.spaceMedium),
-                ..._pinStatus(),
-                _sectionLabel('Adres bilgileri'),
-                const SizedBox(height: AppSizes.space),
-                ..._fields(),
-                const SizedBox(height: AppSizes.spaceLarge),
-                ..._saveSection(),
-              ],
+            child: Focus(
+              canRequestFocus: false,
+              skipTraversal: true,
+              onFocusChange: onCardFocusChanged,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _handle(),
+                  const SizedBox(height: AppSizes.spaceMedium),
+                  _searchSection(),
+                  const SizedBox(height: AppSizes.spaceMedium),
+                  ..._pinStatus(),
+                  _sectionLabel('Adres bilgileri'),
+                  const SizedBox(height: AppSizes.space),
+                  ..._fields(),
+                  const SizedBox(height: AppSizes.spaceLarge),
+                  ..._saveSection(),
+                ],
+              ),
             ),
           ),
         );

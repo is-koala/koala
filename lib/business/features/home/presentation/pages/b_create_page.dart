@@ -8,6 +8,7 @@ import 'package:koala/business/features/home/models/b_pricing_breakdown.dart';
 import 'package:koala/business/features/home/presentation/providers/b_job_templates_provider.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
 import 'package:koala/business/features/home/presentation/widgets/b_info_notice.dart';
+import 'package:koala/product/widgets/form_page_body.dart';
 import 'package:koala/product/widgets/option_sheet.dart';
 import 'package:koala/business/features/home/presentation/widgets/b_selection_field.dart';
 import 'package:koala/business/features/home/presentation/widgets/b_pricing_breakdown_card.dart';
@@ -63,7 +64,7 @@ class _BCreatePageState extends BCreatePageModel {
         title: "İlanı Yayınla",
         isLoading: _isSubmitting,
       ),
-      body: SingleChildScrollView(
+      body: FormPageBody(
         child: Padding(
           padding: AppPadding.primaryAll,
           child: Column(
