@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:koala/business/core/load_result.dart';
+import 'package:koala/business/features/home/models/b_candidate_profile.dart';
 import 'package:koala/business/features/home/models/job_applicant.dart';
+import 'package:koala/business/features/home/presentation/widgets/b_candidate_reputation_section.dart';
 import 'package:koala/business/features/home/presentation/widgets/b_talent_pool_button.dart';
+import 'package:koala/business/features/home/services/b_candidate_profile_service.dart';
 import 'package:koala/employee/features/auth/models/public_profile.dart';
-import 'package:koala/employee/features/auth/services/user_service.dart';
+import 'package:koala/employee/features/auth/models/user_badge.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
+import 'package:koala/employee/features/jobs/models/rating_summary.dart';
+import 'package:koala/employee/features/jobs/models/review.dart';
+import 'package:koala/employee/features/jobs/services/review_service.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/profile_avatar.dart';
 import 'package:koala/product/models/availability.dart';
 import 'package:koala/product/services/availability_service.dart';
@@ -38,12 +45,22 @@ part 'b_user_profile_pagemodel.dart';
 ///
 /// Sunucu bu uçta tam adres döndürmüyor — yalnızca il/ilçe — ve `cvUrl`'i
 /// sadece bu ilanın işverenine veriyor.
+///
+/// Puan özeti, son yorumlar ve rozetler kendi uçlarından
+/// (`/users/{id}/rating-summary`, `/reviews`, `/badges`) geliyor; tamamlanan
+/// iş sayısı ve aynı üçlünün kopyası koala-backend#282 ile profil yanıtında.
 class BUserProfilePage extends StatefulWidget {
-  const BUserProfilePage({super.key, this.applicant, this.userId})
-    : assert(
-        applicant != null || userId != null,
-        'applicant veya userId gerekli',
-      );
+  const BUserProfilePage({
+    super.key,
+    this.applicant,
+    this.userId,
+    this.profileService,
+    this.availabilityService,
+    this.reviewService,
+  }) : assert(
+         applicant != null || userId != null,
+         'applicant veya userId gerekli',
+       );
 
   /// Rota `extra`'sından sayfayı kurar: başvuran kaydı ya da kullanıcı kimliği.
   factory BUserProfilePage.fromExtra(Object? extra) {
@@ -62,6 +79,11 @@ class BUserProfilePage extends StatefulWidget {
 
   final JobApplicant? applicant;
   final String? userId;
+
+  /// Testler için; verilmezse üretimdeki tekil servisler.
+  final BCandidateProfileService? profileService;
+  final AvailabilityService? availabilityService;
+  final ReviewService? reviewService;
 
   @override
   State<BUserProfilePage> createState() => _BUserProfilePageState();
@@ -107,6 +129,18 @@ class _BUserProfilePageState extends BUserProfilePageModel {
                     isLoading: _isAvailabilityLoading,
                     errorMessage: _availabilityErrorMessage,
                     onRetry: _loadAvailability,
+                  ),
+                  const SizedBox(height: AppSizes.spaceLarge),
+                  BCandidateReputationSection(
+                    summary: _effectiveRatingSummary,
+                    summaryFailed: _ratingSummaryFailed,
+                    reviews: _reviews,
+                    badges: _effectiveBadges,
+                    badgesFailed: _badgesFailed,
+                    completedJobCount: _candidate?.completedJobCount,
+                    isLoading: _isReputationLoading,
+                    errorMessage: _reputationErrorMessage,
+                    onRetry: _loadReputation,
                   ),
                   if (_showsCvSection) ...[
                     const SizedBox(height: AppSizes.spaceLarge),

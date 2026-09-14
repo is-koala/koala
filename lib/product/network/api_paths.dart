@@ -149,6 +149,14 @@ class ApiPaths {
   /// Bir ilana başvurma.
   static String jobApplications(String jobId) => '$jobs/$jobId/applications';
 
+  /// Bir ilanın atamaları, sayfalı (koala-backend#282).
+  ///
+  /// Yalnızca ilan sahibi ya da şirket ilanının güncel yetkilisi okuyabiliyor;
+  /// başkası ve olmayan ilan aynı `404 JOB_NOT_FOUND` yanıtını alıyor. Bu
+  /// ucu tanımayan eski sunucu `404 ENDPOINT_NOT_FOUND` döndürüyor; işveren
+  /// servisi o durumda [myAssignments] taramasına düşüyor.
+  static String assignmentsOfJob(String jobId) => '$jobs/$jobId/assignments';
+
   /// Oturum açmış kullanıcının başvuruları.
   static const String myApplications = '/users/me/applications';
 
@@ -419,6 +427,10 @@ class ApiPaths {
   /// Hiç değerlendirilmemiş kullanıcı için `data: null` dönüyor.
   static String userRatingSummary(String userId) =>
       '${publicProfile(userId)}/rating-summary';
+
+  /// Bir kullanıcının kazandığı rozetler. Düz liste, herkese açık; kazanılan
+  /// rozet geri alınmıyor.
+  static String userBadges(String userId) => '${publicProfile(userId)}/badges';
 
   /// Bir işverenin istatistikleri: açtığı ilan, tamamlanan iş, puan.
   ///

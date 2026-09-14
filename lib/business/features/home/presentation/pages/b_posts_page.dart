@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:koala/business/features/home/models/b_job_post.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/profile_avatar.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -10,6 +11,7 @@ import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
@@ -53,6 +55,12 @@ class _BPostsPageState extends State<BPostsPage>
     _tabController.dispose();
     super.dispose();
   }
+
+  /// Kullanıcının birden çok şirketi var mı. Tek şirketli ya da bireysel
+  /// işverende kartta şirket adı yazmak bilgi taşımaz; birden çok şirket adına
+  /// ilan açabilen kullanıcıda hangi ilanın kimin adına olduğu görünmeli.
+  bool get _showsCompanyName =>
+      (context.watch<UserProvider>().user?.companies.length ?? 0) > 1;
 
   @override
   Widget build(BuildContext context) {
@@ -281,6 +289,10 @@ class _BPostsPageState extends State<BPostsPage>
             ),
             const SizedBox(height: AppSizes.space),
             _priceAndLocationRow(job),
+            if (job.startDateTime != null || job.headcount != null) ...[
+              const SizedBox(height: AppSizes.spaceSmall),
+              _scheduleAndStaffingRow(job),
+            ],
             const SizedBox(height: AppSizes.space),
             if (isActive) _applicantsRow(post) else _workerRow(post),
           ],
@@ -290,15 +302,102 @@ class _BPostsPageState extends State<BPostsPage>
   }
 
   Widget _cardHeader(Job job, {required bool isActive}) {
+    final companyName = job.company;
+
     return Row(
       children: [
         _categoryBadge(job),
         const SizedBox(width: AppSizes.spaceSmall),
-        _statusBadge(isActive: isActive),
-        const Spacer(),
+        _statusBadge(job.status),
+        if (_showsCompanyName) ...[
+          const SizedBox(width: AppSizes.spaceSmall),
+          Expanded(
+            child: Text(
+              companyName != null && companyName.isNotEmpty
+                  ? companyName
+                  : 'Bireysel',
+              key: ValueKey('post-company-${job.id}'),
+              style: context.textTheme.labelMedium?.copyWith(
+                color: context.textSecondary,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ] else
+          const Spacer(),
         if (isActive) _postMenu(job),
       ],
     );
+  }
+
+  /// İş tarihi ve kontenjan: "10.09.2026 09:00 - 17:00 · 2/3 dolu".
+  ///
+  /// Bitiş aynı güne düşüyorsa yalnızca saati yazılıyor; başka güne taşan
+  /// işte iki tarih de tam. Kontenjan (`headcount`) sunucudan gelmediyse o
+  /// parça yok — "2/— dolu" bir bilgi değil; dolunca yeşil.
+  Widget _scheduleAndStaffingRow(Job job) {
+    final headcount = job.headcount;
+    final schedule = _scheduleLabel(job);
+    final staffingLabel = headcount == null
+        ? null
+        : '${job.hiredCount}/$headcount dolu';
+    final isFull = headcount != null && job.hiredCount >= headcount;
+    final color = isFull ? AppColors.successStrong : context.textTertiary;
+
+    return Row(
+      children: [
+        if (schedule != null) ...[
+          AppIcon(
+            AppIcons.calendar,
+            size: AppSizes.iconSmall,
+            color: context.textTertiary,
+          ),
+          const SizedBox(width: AppSizes.spaceTiny),
+          Expanded(
+            child: Text(
+              schedule,
+              key: ValueKey('post-schedule-${job.id}'),
+              style: context.textTheme.bodySmall?.copyWith(
+                color: context.textTertiary,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ] else
+          const Spacer(),
+        if (staffingLabel != null) ...[
+          const SizedBox(width: AppSizes.spaceSmall),
+          AppIcon(AppIcons.userCheck, size: AppSizes.iconSmall, color: color),
+          const SizedBox(width: AppSizes.spaceTiny),
+          Text(
+            staffingLabel,
+            key: ValueKey('post-staffing-${job.id}'),
+            style: context.textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w500,
+              color: color,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// İlanın tarih etiketi; başlangıç yoksa `null`.
+  static String? _scheduleLabel(Job job) {
+    final start = job.startDateTime;
+    final end = job.endDateTime;
+    if (start == null) return null;
+    if (end == null) return start.asShortDateTime;
+
+    final sameDay =
+        start.year == end.year &&
+        start.month == end.month &&
+        start.day == end.day;
+    return sameDay
+        ? '${start.asShortDateTime} - ${end.asShortTime}'
+        : '${start.asShortDateTime} - ${end.asShortDateTime}';
   }
 
   Widget _categoryBadge(Job job) {
@@ -329,20 +428,35 @@ class _BPostsPageState extends State<BPostsPage>
     );
   }
 
-  Widget _statusBadge({required bool isActive}) {
-    final color = isActive ? AppColors.success : context.textTertiary;
+  /// İlanın sunucudaki durumu. Açık ilan "Aktif" (sekmenin adı); kapalı ve
+  /// iptal edilen ayrı yazılıyor — ikisi de "Geçmiş" sekmesinde ama aynı şey
+  /// değil: kapalı ilan geçerliliğini koruyor, iptal edilen geçersiz.
+  Widget _statusBadge(JobStatus status) {
+    final (label, tint, textColor) = switch (status) {
+      JobStatus.open => ('Aktif', AppColors.success, AppColors.successStrong),
+      JobStatus.closed => (
+        status.displayName,
+        context.textTertiary,
+        context.textSecondary,
+      ),
+      JobStatus.cancelled => (
+        status.displayName,
+        AppColors.danger,
+        AppColors.danger,
+      ),
+    };
 
     return Container(
       padding: AppPadding.badge,
       decoration: BoxDecoration(
-        color: color.withValues(alpha: _tintAlpha),
+        color: tint.withValues(alpha: _tintAlpha),
         borderRadius: AppRadius.smallCircular,
       ),
       child: Text(
-        isActive ? 'Aktif' : 'Geçmiş',
+        label,
         style: context.textTheme.labelMedium?.copyWith(
           fontWeight: FontWeight.w600,
-          color: isActive ? AppColors.successStrong : context.textSecondary,
+          color: textColor,
         ),
       ),
     );

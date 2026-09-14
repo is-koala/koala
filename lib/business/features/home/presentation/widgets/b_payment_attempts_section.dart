@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:koala/business/features/home/models/b_payment_attempt.dart';
+import 'package:koala/product/models/pricing_breakdown.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
@@ -97,9 +98,17 @@ class BPaymentAttemptsSection extends StatelessWidget {
           ),
           const SizedBox(height: AppSizes.spaceSmall),
           Text(
-            attempt.createdAt.toLocal().asShortDateTime,
+            _timestamps(attempt),
             style: context.textTheme.bodySmall?.copyWith(
               color: context.textTertiary,
+            ),
+          ),
+          const SizedBox(height: AppSizes.spaceTiny),
+          Text(
+            _breakdown(attempt),
+            key: ValueKey('payment-attempt-breakdown-${attempt.id}'),
+            style: context.textTheme.bodySmall?.copyWith(
+              color: context.textSecondary,
             ),
           ),
           if (attempt.status == BPaymentAttemptStatus.failed) ...[
@@ -114,6 +123,32 @@ class BPaymentAttemptsSection extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// Başlatılma ve — sunucu göndermişse — tamamlanma anı.
+  ///
+  /// `completedAt` başarılı denemede tahsilatın kesinleştiği, başarısızda
+  /// sonucun öğrenildiği an; hâlâ süren denemede boş.
+  static String _timestamps(BPaymentAttempt attempt) {
+    final started = attempt.createdAt.toLocal().asShortDateTime;
+    final completed = attempt.completedAt;
+    if (completed == null) return started;
+    return '$started · Tamamlandı: ${completed.toLocal().asShortDateTime}';
+  }
+
+  /// Denemenin dökümü: çalışan ücreti ve komisyon. Backend dizeleri olduğu
+  /// gibi biçimleniyor, toplam ayrıca hesaplanmıyor — o zaten üst satırda.
+  static String _breakdown(BPaymentAttempt attempt) {
+    final payout = TurkishMoneyFormatter.format(
+      attempt.workerPayout,
+      attempt.currency,
+    );
+    final commission = TurkishMoneyFormatter.format(
+      attempt.commissionAmount,
+      attempt.currency,
+    );
+    final rate = PricingBreakdown.percentLabel(attempt.commissionRate);
+    return 'Çalışan ücreti: $payout · Komisyon: $commission (%$rate)';
   }
 
   Widget _statusBadge(BuildContext context, BPaymentAttemptStatus status) {

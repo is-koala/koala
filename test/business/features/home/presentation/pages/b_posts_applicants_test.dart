@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/business/features/home/presentation/pages/b_posts_page.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
 import 'package:koala/business/features/home/services/employer_job_service.dart';
+import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../../support/fake_api.dart';
@@ -70,8 +71,13 @@ void main() {
 
       await pumpInApp(
         tester,
-        ChangeNotifierProvider.value(
-          value: provider,
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider.value(value: provider),
+            // Kart, çok şirketli kullanıcıda şirket adını yazmak için oturum
+            // sahibine bakıyor; bu test o satırı sınamıyor, kullanıcı boş.
+            ChangeNotifierProvider(create: (_) => UserProvider()),
+          ],
           child: const BPostsPage(),
         ),
         brightness: brightness,

@@ -2,14 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:koala/employee/features/jobs/models/rating_summary.dart';
 import 'package:koala/employee/features/jobs/models/review.dart';
 import 'package:koala/employee/features/jobs/services/review_service.dart';
-import 'package:koala/employee/features/profile/presentation/widgets/profile_avatar.dart';
-import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
-import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/network/api_exception.dart';
+import 'package:koala/product/widgets/rating_summary_badge.dart';
+import 'package:koala/product/widgets/review_tile.dart';
 
 /// Kullanıcı hakkında yazılmış değerlendirmeler ve puan özeti.
 ///
@@ -36,14 +35,6 @@ class _ProfileReviewsState extends State<ProfileReviews> {
   /// Listede gösterilen yorum sayısı. Profil bir değerlendirme sayfası değil;
   /// tamamı için ayrı bir ekran gerekir.
   static const int _visibleCount = 3;
-
-  /// Puan rozetindeki yıldızın boyutu.
-  static const double _summaryStarSize = 20;
-
-  /// Yorum satırındaki yazar fotoğrafı.
-  static const double _authorAvatarSize = 36;
-
-  static const int _maxRating = 5;
 
   RatingSummary? _summary;
   List<Review> _reviews = const [];
@@ -109,7 +100,11 @@ class _ProfileReviewsState extends State<ProfileReviews> {
         else if (_reviews.isEmpty)
           _emptyText()
         else
-          ..._reviews.map(_reviewTile),
+          for (final review in _reviews)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSizes.space),
+              child: ReviewTile(review: review),
+            ),
       ],
     );
   }
@@ -128,34 +123,8 @@ class _ProfileReviewsState extends State<ProfileReviews> {
         ),
         const Spacer(),
         // Değerlendirmesi olmayana "0.0" yazmak onu kötü puanlı gösterirdi.
-        if (summary != null && summary.hasRating) _summaryBadge(summary),
-      ],
-    );
-  }
-
-  Widget _summaryBadge(RatingSummary summary) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Icon(
-          Icons.star_rounded,
-          color: AppColors.rating,
-          size: _summaryStarSize,
-        ),
-        const SizedBox(width: AppSizes.spaceTiny),
-        Text(
-          summary.averageRating.toStringAsFixed(1),
-          style: context.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(width: AppSizes.spaceTiny),
-        Text(
-          '(${summary.reviewCount})',
-          style: context.textTheme.labelMedium?.copyWith(
-            color: context.textSecondary,
-          ),
-        ),
+        if (summary != null && summary.hasRating)
+          RatingSummaryBadge(summary: summary),
       ],
     );
   }
@@ -191,86 +160,6 @@ class _ProfileReviewsState extends State<ProfileReviews> {
           OutlinedButton(onPressed: _load, child: const Text('Tekrar Dene')),
         ],
       ),
-    );
-  }
-
-  Widget _reviewTile(Review review) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSizes.space),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Anonim değerlendirmede yazar hiç gelmiyor; varsayılan koala
-          // görseli zaten `ProfileAvatar`'ın boş durumu.
-          ProfileAvatar(
-            imageUrl: review.author?.profilePictureUrl,
-            size: _authorAvatarSize,
-          ),
-          const SizedBox(width: AppSizes.space),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        review.authorLabel,
-                        style: context.textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          // Anonim satır bir kişiyi işaret etmiyor; adı
-                          // soluk yazmak bunu görsel olarak da söylüyor.
-                          color: review.isAnonymous
-                              ? context.textSecondary
-                              : null,
-                          fontStyle: review.isAnonymous
-                              ? FontStyle.italic
-                              : null,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (review.createdAt != null)
-                      Text(
-                        review.createdAt!.asShortDate,
-                        style: context.textTheme.labelMedium?.copyWith(
-                          color: context.textTertiary,
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: AppSizes.smallGap),
-                _stars(review.rating),
-                if (review.hasComment) ...[
-                  const SizedBox(height: AppSizes.spaceTiny),
-                  Text(
-                    review.comment!,
-                    style: context.textTheme.bodyMedium?.copyWith(
-                      color: context.textSecondary,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _stars(int rating) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(_maxRating, (index) {
-        final isFilled = index < rating;
-
-        return Icon(
-          isFilled ? Icons.star_rounded : Icons.star_border_rounded,
-          color: isFilled ? AppColors.rating : context.dividerColor,
-          size: AppSizes.iconSmall,
-        );
-      }),
     );
   }
 }
