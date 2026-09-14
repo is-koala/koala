@@ -6,6 +6,7 @@ import 'package:koala/employee/core/widgets/employer_type_badge.dart';
 import 'package:koala/product/widgets/messaging_gate_note.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
 import 'package:koala/employee/features/jobs/models/my_job.dart';
+import 'package:koala/employee/features/jobs/models/review.dart';
 import 'package:koala/employee/features/jobs/models/timesheet_event.dart';
 import 'package:koala/employee/features/jobs/models/work_session.dart';
 import 'package:koala/employee/features/jobs/services/assignment_service.dart';
@@ -1073,7 +1074,8 @@ class _MyJobsPageState extends MyJobsPagemodel {
     return SizedBox(
       height: _inlineButtonHeight,
       child: ElevatedButton(
-        onPressed: () => context.push('/review', extra: job),
+        onPressed: () =>
+            context.push('/review', extra: ReviewSubject.fromMyJob(job)),
         style: ElevatedButton.styleFrom(
           backgroundColor: background,
           foregroundColor: AppColors.onAccent,

@@ -16,15 +16,19 @@ import 'package:koala/employee/features/auth/services/user_service.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
 import 'package:koala/employee/features/company_detail/services/company_service.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
+import 'package:koala/employee/features/jobs/presentation/providers/review_provider.dart';
 import 'package:koala/employee/features/jobs/services/assignment_service.dart';
+import 'package:koala/employee/features/jobs/services/review_service.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/providers/job_gallery_provider.dart';
 import 'package:koala/product/services/job_gallery_service.dart';
 import 'package:koala/product/theme/theme.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../../support/fake_api.dart';
 import '../../../../../support/pump.dart';
+import '../../../../../support/review_fixtures.dart';
 
 const jobJson = {
   'id': 'job-1',
@@ -72,6 +76,7 @@ Future<
     FakeApi employerApi,
     FakeApi paymentApi,
     FakeApi chatApi,
+    FakeApi reviewApi,
     int Function() launches,
   })
 >
@@ -92,7 +97,10 @@ pumpPage(
   FutureOr<FakeApiResponse> Function(RequestOptions request)? assignmentHandler,
   FutureOr<FakeApiResponse> Function(RequestOptions request)? paymentHandler,
   FutureOr<FakeApiResponse> Function(RequestOptions request)? chatHandler,
+  FutureOr<FakeApiResponse> Function(RequestOptions request)? reviewHandler,
   Map<String, Object?>? currentUser,
+  List<String> reviewedAssignmentIds = const [],
+  String? reviewedAssignmentDetails,
   List<GoRoute> extraRoutes = const [],
   Future<bool> Function(Uri url)? openExternalUrl,
 }) async {
@@ -247,6 +255,25 @@ pumpPage(
           body: {'success': true, 'data': {}},
         ),
   );
+  // `ReviewProvider` kaydı oturum sahibinin kimliğiyle okuyor; sahte depo
+  // burada dolduruluyor ki testler "başka cihazda değerlendirilmiş" hâli
+  // kurabilsin. Anahtar `currentUser`'ın kimliğiyle ekleniyor.
+  final reviewOwnerId = currentUser?['id'] as String?;
+  SharedPreferences.setMockInitialValues({
+    if (reviewOwnerId != null && reviewedAssignmentIds.isNotEmpty)
+      'reviewed_assignments:$reviewOwnerId': reviewedAssignmentIds,
+    if (reviewOwnerId != null && reviewedAssignmentDetails != null)
+      'reviewed_assignment_details:$reviewOwnerId': reviewedAssignmentDetails,
+  });
+  // Değerlendirme: yazma `POST .../reviews`, kendi kaydını arama
+  // `GET /users/{id}/reviews`. Varsayılan: boş sayfa, yazma 201.
+  final reviewClient = FakeApi(
+    handler: (request) =>
+        reviewHandler?.call(request) ??
+        (request.method == 'GET'
+            ? reviewsPageResponse(const [])
+            : reviewCreatedResponse(reviewDtoJson())),
+  );
   // Sohbet açmak oturum sahibini istiyor; sayfa onu kendisi yüklemiyor.
   final userProvider = UserProvider(
     userService: UserService.withClient(assignmentApi.client),
@@ -278,6 +305,12 @@ pumpPage(
       ),
       ChangeNotifierProvider.value(value: userProvider),
       ChangeNotifierProvider(create: (_) => BTalentPoolProvider()),
+      ChangeNotifierProvider(
+        create: (_) => ReviewProvider(
+          userIdOf: () => userProvider.user?.id,
+          service: ReviewService.withClient(reviewClient.client),
+        ),
+      ),
     ],
     child: BJobDetailPage(
       jobId: 'job-1',
@@ -331,6 +364,7 @@ pumpPage(
     employerApi: employerApi,
     paymentApi: paymentApi,
     chatApi: chatApi,
+    reviewApi: reviewClient,
     launches: () => launchCount,
   );
 }

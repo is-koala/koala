@@ -12,6 +12,7 @@ import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:koala/employee/features/jobs/models/assignment.dart';
 import 'package:koala/employee/features/jobs/models/cancellation.dart';
 import 'package:koala/employee/features/jobs/models/my_job.dart';
+import 'package:koala/employee/features/jobs/models/review.dart';
 import 'package:koala/employee/features/jobs/models/timesheet_event.dart';
 import 'package:koala/employee/features/jobs/models/work_session.dart';
 import 'package:koala/employee/features/jobs/models/work_timeline.dart';
@@ -609,7 +610,8 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
           if (!reviewed)
             TextButton(
               key: const ValueKey('work-detail-review'),
-              onPressed: () => context.push('/review', extra: job),
+              onPressed: () =>
+                  context.push('/review', extra: ReviewSubject.fromMyJob(job)),
               child: const Text('Değerlendir'),
             ),
         ],
