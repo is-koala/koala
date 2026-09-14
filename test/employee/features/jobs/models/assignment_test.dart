@@ -493,4 +493,50 @@ void main() {
       expect(myJob.answeredDateTime, DateTime.utc(2026, 3, 2, 8));
     });
   });
+
+  // İşlerim menüsü ve iş detayı aynı kuralları buradan okuyor; sayfalar
+  // durumdan yeniden türetmiyor.
+  group('MyJob eylem kuralları', () {
+    MyJob row(String status, {String paymentStatus = 'HELD_IN_ESCROW'}) =>
+        MyJob.fromAssignment(
+          Assignment.fromJson(
+            assignmentBody(status: status, paymentStatus: paymentStatus),
+          ),
+        );
+
+    test('iptal yalnız onaylanmış ve süren işte', () {
+      expect(row('CONFIRMED').canCancel, isTrue);
+      expect(row('IN_PROGRESS').canCancel, isTrue);
+      expect(row('PENDING_CONFIRMATION').canCancel, isFalse);
+      expect(row('COMPLETED').canCancel, isFalse);
+      expect(row('CANCELLED').canCancel, isFalse);
+    });
+
+    test('sorun bildirme para emanetteyken, süren ve biten işte', () {
+      expect(row('IN_PROGRESS').canDispute, isTrue);
+      expect(
+        row('COMPLETED', paymentStatus: 'PENDING_COLLECTION').canDispute,
+        isFalse,
+      );
+      expect(row('COMPLETED').canDispute, isTrue);
+      expect(row('CONFIRMED').canDispute, isFalse);
+    });
+
+    test('geri çekme yalnız bekleyen başvuruda, atama satırında değil', () {
+      expect(row('PENDING_CONFIRMATION').canWithdraw, isFalse);
+      const pending = MyJob(
+        id: 'app_1',
+        jobId: 'job_1',
+        title: 'Garson',
+        company: 'Koala Cafe',
+        description: 'Garson',
+        date: '',
+        price: 500,
+        status: MyJobStatus.pending,
+      );
+      expect(pending.canWithdraw, isTrue);
+      expect(pending.canCancel, isFalse);
+      expect(pending.canDispute, isFalse);
+    });
+  });
 }

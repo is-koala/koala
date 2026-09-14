@@ -685,16 +685,9 @@ class _MyJobsPageState extends MyJobsPagemodel {
   /// İkisi de nadir ve geri dönüşü zor; birincil butonların yanında değil
   /// menünün içinde duruyorlar. Kapanmış işlerde menü hiç çıkmıyor.
   Widget? _assignmentMenu(MyJob job, Color foreground) {
-    final canCancel =
-        job.status == MyJobStatus.approved ||
-        job.status == MyJobStatus.inProgress;
-    // Uyuşmazlık yalnızca para emanetteyken açılabiliyor.
-    final canDispute =
-        job.isPaymentSecured &&
-        (job.status == MyJobStatus.inProgress ||
-            job.status == MyJobStatus.completed);
-
-    if (job.assignmentId == null || (!canCancel && !canDispute)) return null;
+    final canCancel = job.canCancel;
+    final canDispute = job.canDispute;
+    if (!canCancel && !canDispute) return null;
 
     return PopupMenuButton<_AssignmentAction>(
       enabled: assignmentActionId == null,
@@ -725,9 +718,7 @@ class _MyJobsPageState extends MyJobsPagemodel {
   /// satırlar eleniyor: geri çekme **başvurunun** kimliğini istiyor ve o
   /// satırlarda [MyJob.id] atamanın kimliği olur.
   Widget? _applicationMenu(MyJob job, Color foreground) {
-    if (job.status != MyJobStatus.pending || job.assignmentId != null) {
-      return null;
-    }
+    if (!job.canWithdraw) return null;
 
     return PopupMenuButton<_ApplicationAction>(
       // Bir başvuru geri çekilirken diğerlerinin menüsü de kapanıyor:

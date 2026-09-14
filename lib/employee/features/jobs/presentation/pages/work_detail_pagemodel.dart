@@ -182,10 +182,20 @@ abstract class WorkDetailPagemodel
     return () => context.push('/company-detail', extra: companyId);
   }
 
-  /// Başvuruyu geri çeker; başarılıysa kaydı tazeler ki satır "Geri
-  /// Çektin" olarak görünsün.
+  /// Başvuruyu geri çeker; başarılıysa sayfayı provider'daki hâline
+  /// çevirir.
+  ///
+  /// [ApplyProvider.withdraw] satırı yerinde güncelliyor ve `409`'da
+  /// listeyi kendisi yeniden çekiyor; burada ikinci bir yükleme yok, yeni
+  /// durum [ApplyProvider.appliedJobs]'tan okunuyor.
   Future<void> withdraw() async {
     final withdrawn = await withdrawApplication(job);
-    if (withdrawn && mounted) await refreshWork();
+    if (!withdrawn || !mounted) return;
+    final refreshed = context
+        .read<ApplyProvider>()
+        .appliedJobs
+        .where((candidate) => candidate.id == job.id)
+        .firstOrNull;
+    if (refreshed != null) setState(() => job = refreshed);
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:koala/employee/core/widgets/employer_type_badge.dart';
+import 'package:koala/employee/features/chat/models/conversation.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/chat_avatar.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -52,7 +53,7 @@ class EmployerCard extends StatelessWidget {
         children: [
           ChatAvatar(
             avatarUrl: imageUrl,
-            fallbackText: _initials(displayName),
+            fallbackText: Conversation.initialsOf(displayName),
             size: _avatarSize,
             borderRadius: AppRadius.inner,
           ),
@@ -95,15 +96,5 @@ class EmployerCard extends StatelessWidget {
             )
           : content,
     );
-  }
-
-  /// Avatar yer tutucusu: adın ilk iki kelimesinin baş harfleri.
-  static String _initials(String name) {
-    final parts = name
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((part) => part.isNotEmpty)
-        .take(2);
-    return parts.map((part) => part[0].toUpperCase()).join();
   }
 }

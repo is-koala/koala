@@ -29,7 +29,7 @@ class BPricingBreakdownCard extends StatelessWidget {
             context,
             'Koala Hizmet Bedeli',
             breakdown.serviceFeeAmount,
-            detail: '(%${_percent(breakdown.serviceFeeRate)})',
+            detail: '(%${breakdown.serviceFeePercentLabel})',
           ),
           const SizedBox(height: AppSizes.spaceSmall),
           Divider(color: context.dividerColor),
@@ -81,34 +81,5 @@ class BPricingBreakdownCard extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  /// Backend'in oran dizesini yalnızca yüzde etiketi için ondalık noktası iki
-  /// basamak sağa kaydırarak biçimler. Ücret veya hizmet bedeli hesaplamaz.
-  static String _percent(String rate) {
-    final match = RegExp(r'^([+-]?)(\d+)(?:\.(\d+))?$').firstMatch(rate);
-    if (match == null) return rate.replaceAll('.', ',');
-
-    final sign = match.group(1) ?? '';
-    final whole = match.group(2)!;
-    final fraction = match.group(3) ?? '';
-    var digits = '$whole$fraction';
-    var decimalPosition = whole.length + 2;
-
-    if (decimalPosition >= digits.length) {
-      digits = digits.padRight(decimalPosition, '0');
-    } else if (decimalPosition <= 0) {
-      digits = digits.padLeft(digits.length - decimalPosition, '0');
-      decimalPosition = 1;
-    }
-
-    var percentWhole = digits.substring(0, decimalPosition);
-    var percentFraction = digits.substring(decimalPosition);
-    percentWhole = percentWhole.replaceFirst(RegExp(r'^0+(?=\d)'), '');
-    percentFraction = percentFraction.replaceFirst(RegExp(r'0+$'), '');
-
-    return percentFraction.isEmpty
-        ? '$sign$percentWhole'
-        : '$sign$percentWhole,$percentFraction';
   }
 }

@@ -147,20 +147,11 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
 
   /// İkincil eylemler: iptal, sorun bildirme, başvuruyu geri çekme.
   ///
-  /// Koşullar İşlerim satırındaki menüyle aynı; iş kapandıysa menü yok.
+  /// Koşullar [MyJob] üzerinde; İşlerim satırının menüsü aynı kuralı okuyor.
   Widget? _menu() {
-    final canCancel =
-        job.assignmentId != null &&
-        (job.status == MyJobStatus.approved ||
-            job.status == MyJobStatus.inProgress);
-    final canDispute =
-        job.assignmentId != null &&
-        job.isPaymentSecured &&
-        (job.status == MyJobStatus.inProgress ||
-            job.status == MyJobStatus.completed);
-    final canWithdraw =
-        job.status == MyJobStatus.pending && job.assignmentId == null;
-
+    final canCancel = job.canCancel;
+    final canDispute = job.canDispute;
+    final canWithdraw = job.canWithdraw;
     if (!canCancel && !canDispute && !canWithdraw) return null;
 
     final busy =
@@ -431,7 +422,7 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
         if (pricing != null) ...[
           const SizedBox(height: AppSizes.spaceSmall),
           _breakdownRow(
-            'Hizmet bedeli (%${_percent(pricing.serviceFeeRate)})',
+            'Hizmet bedeli (%${pricing.serviceFeePercentLabel})',
             TurkishMoneyFormatter.format(pricing.serviceFeeAmount, currency),
           ),
           _breakdownRow(
@@ -465,17 +456,6 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
         ],
       ),
     );
-  }
-
-  /// `0.075` → `7,5`; oran ondalık dize olarak geliyor.
-  static String _percent(String rate) {
-    final value = double.tryParse(rate);
-    if (value == null) return rate;
-    final percent = value * 100;
-    final text = percent == percent.roundToDouble()
-        ? percent.toStringAsFixed(0)
-        : percent.toStringAsFixed(1);
-    return text.replaceAll('.', ',');
   }
 
   /// İşveren kartı: şirket ilanında ad + logo + bağlantı, bireyselde ad +
@@ -513,19 +493,29 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
   /// Kesinliğe **detay** karar veriyor; özet yalnızca ilçe/il taşıyor.
   /// Detay gelmeden ya da gelemezse özetin kesinliği geçerli — o da
   /// bilinmiyorsa yaklaşık, çünkü kanıtlanmamış yetki kesin sayılmaz.
+  ///
+  /// Yaklaşık yanıtta açık adres de tarif de **çizilmiyor**, gövdede gelmiş
+  /// olsa bile: sunucu `APPROXIMATE` derken sokak yazmak ADR-0003'ün
+  /// istemci tarafındaki ihlali olurdu. O zaman yalnız ilçe/il var.
   Widget _addressCard() {
     final address = detail?.address;
-    final precision = detail?.addressPrecision ?? summaryJob?.addressPrecision;
+    final precision =
+        detail?.addressPrecision ??
+        summaryJob?.addressPrecision ??
+        AddressPrecision.approximate;
+    final isApproximate = precision.isApproximate;
     final label =
-        detail?.addressLabel ??
-        summaryJob?.locationLabel ??
+        (isApproximate ? null : detail?.addressLabel) ??
         address?.shortLabel ??
+        summaryJob?.locationLabel ??
         'Konum belirtilmemiş';
 
     return JobLocationCard(
-      precision: precision ?? AddressPrecision.approximate,
+      precision: precision,
       label: label,
-      directions: address?.components?.additionalDirections,
+      directions: isApproximate
+          ? null
+          : address?.components?.additionalDirections,
     );
   }
 

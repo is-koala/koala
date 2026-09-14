@@ -211,6 +211,30 @@ class MyJob {
         MyJobStatus.unknown => false,
       };
 
+  /// Çalışan bu atamayı iptal edebilir mi.
+  ///
+  /// Sunucu `PENDING_CONFIRMATION`, `CONFIRMED` ve `IN_PROGRESS` dışından
+  /// `409` döndürüyor; cevap bekleyen atamada iptal yerine "Reddet" var, o
+  /// yüzden burada yalnız onaylanmış ve süren iş. İşlerim menüsü ve iş
+  /// detayı aynı kuralı buradan okuyor.
+  bool get canCancel =>
+      assignmentId != null &&
+      (status == MyJobStatus.approved || status == MyJobStatus.inProgress);
+
+  /// Sorun bildirilebilir mi: yalnızca para emanetteyken ve iş sürerken ya
+  /// da bitip ödeme beklerken. Sunucu emanette para yoksa `409` döndürüyor.
+  bool get canDispute =>
+      assignmentId != null &&
+      isPaymentSecured &&
+      (status == MyJobStatus.inProgress || status == MyJobStatus.completed);
+
+  /// Başvuru geri çekilebilir mi.
+  ///
+  /// Sunucu yalnızca `APPLIED` durumdan kabul ediyor; atamadan gelen satır
+  /// eleniyor çünkü geri çekme **başvurunun** kimliğini istiyor ve o
+  /// satırlarda [id] atamanın kimliği olur.
+  bool get canWithdraw => status == MyJobStatus.pending && assignmentId == null;
+
   /// Satırın alt satırında gösterilecek metin.
   ///
   /// Reddedilen başvuruda işverenin yazdığı gerekçe ilanın özetinden daha
