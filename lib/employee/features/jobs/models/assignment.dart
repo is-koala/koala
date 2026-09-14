@@ -3,6 +3,7 @@ import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/jobs/models/cancellation.dart';
 import 'package:koala/employee/features/jobs/models/payout.dart';
+import 'package:koala/employee/features/jobs/models/review.dart';
 import 'package:koala/product/models/pricing_breakdown.dart';
 
 /// Atamanın durumu. Backend `AssignmentStatus` karşılığı.
@@ -107,6 +108,8 @@ class Assignment {
     this.company,
     this.cancellation,
     this.payout,
+    this.myReview,
+    this.counterpartyReviewed = false,
   });
 
   final String id;
@@ -124,14 +127,20 @@ class Assignment {
   /// Çalışılan saat. İş bitmeden 0.
   final int workHours;
 
-  /// Çalışanın eline geçecek tutar (komisyon düşülmüş).
+  /// Çalışanın eline geçecek tutar (komisyon düşülmüş). İki tarafa da
+  /// geliyor; çalışan görünümünde tek fiyat alanı bu.
   final double? workerPayout;
 
-  /// İşverenden tahsil edilen toplam.
+  /// İşverenden tahsil edilen toplam. Sunucu yalnız işverene gönderiyor;
+  /// görüntüleyen çalışansa `null` (koala-backend#294).
   final double? totalCharged;
 
   /// İlan yayımlanırken backend'in atamaya sabitlediği fiyat snapshot'ı.
   /// Ödeme onayı bu değeri gösterir; güncel komisyon tarifesiyle yenilenmez.
+  ///
+  /// Yalnız işveren görünümünde dolu: hizmet bedeli ve işveren toplamı
+  /// çalışanın işi değil, sunucu ona `null` gönderiyor. Çalışan kabuğu bu
+  /// alandan satır çizmez — gelse bile (eski sunucu) çizmez.
   final PricingBreakdown? pricing;
 
   /// Bu atama üzerinden sohbet açılabilir mi ve açılamıyorsa neden.
@@ -174,6 +183,18 @@ class Assignment {
 
   /// Hakediş özeti: sunucu ödeme çıkışı açtıysa durumu ve tamamlanma anı.
   final PayoutSummary? payout;
+
+  /// Görüntüleyenin bu atamaya yazdığı değerlendirme; yazmadıysa `null`
+  /// (koala-backend#293). "Değerlendir" düğmesinin kapısı **bu alan**:
+  /// doluysa düğme yok, içerik doğrudan buradan yazılıyor. Alanı hiç
+  /// göndermeyen eski sunucuda da `null` — düğme görünür, ikinci denemeyi
+  /// sunucunun `409`u karşılar.
+  final Review? myReview;
+
+  /// Karşı taraf bu atamayı değerlendirdi mi. Yalnız varlık bilgisi; içerik
+  /// ve yazar taşınmıyor, ekranda küçük bir rozetten fazlası çizilmiyor.
+  /// Alan yoksa `false`.
+  final bool counterpartyReviewed;
 
   /// İş bitti ve para çalışana geçti mi.
   bool get isPaidOut =>
@@ -236,6 +257,11 @@ class Assignment {
         final Map<String, dynamic> value => PayoutSummary.fromJson(value),
         _ => null,
       },
+      myReview: switch (json['myReview']) {
+        final Map<String, dynamic> value => Review.fromJson(value),
+        _ => null,
+      },
+      counterpartyReviewed: json['counterpartyReviewed'] as bool? ?? false,
     );
   }
 

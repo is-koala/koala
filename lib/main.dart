@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:koala/product/network/api_config.dart';
 import 'package:koala/business/features/home/presentation/providers/b_page_provider.dart';
@@ -47,12 +49,14 @@ void main() {
           create: (_) => TimesheetQueueProvider(),
           lazy: false,
         ),
-        // Değerlendirme önbelleği oturum sahibine göre anahtarlanıyor;
-        // kimliği `UserProvider`'dan okuyor.
+        // "Değerlendirdim mi" artık sunucudan (`myReview`); provider yalnız
+        // oturumluk "az önce gönderdim" belleği. Önceki sürümlerin disk
+        // önbelleği ilk kuruluşta bir kez siliniyor (is-koala/koala#189).
         ChangeNotifierProvider(
-          create: (context) => ReviewProvider(
-            userIdOf: () => context.read<UserProvider>().user?.id,
-          ),
+          create: (_) {
+            unawaited(ReviewProvider.purgeLegacyCache());
+            return ReviewProvider();
+          },
         ),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => ApplyProvider()),

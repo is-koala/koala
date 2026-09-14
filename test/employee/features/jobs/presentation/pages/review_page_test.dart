@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:koala/employee/features/jobs/models/assignment.dart';
 import 'package:koala/employee/features/jobs/models/review.dart'
     show Review, ReviewSide, ReviewSubject;
 import 'package:koala/employee/features/jobs/presentation/pages/review_page.dart';
@@ -12,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../../support/fake_api.dart';
 import '../../../../../support/pump.dart';
 import '../../../../../support/review_fixtures.dart';
+import '../../../../../support/work_test_support.dart';
 
 const _employerSubject = ReviewSubject(
   assignmentId: 'assignment-1',
@@ -40,10 +42,8 @@ Future<FakeApi> pumpReview(
   await pumpInApp(
     tester,
     ChangeNotifierProvider(
-      create: (_) => ReviewProvider(
-        userIdOf: () => 'me',
-        service: ReviewService.withClient(api.client),
-      ),
+      create: (_) =>
+          ReviewProvider(service: ReviewService.withClient(api.client)),
       child: ReviewPage(subject: subject),
     ),
     brightness: brightness,
@@ -160,6 +160,9 @@ void main() {
     final provider = tester
         .element(find.byType(ReviewPage))
         .read<ReviewProvider>();
-    expect(provider.hasReviewed('assignment-1'), isTrue);
+    // Eski sunucu (`myReview` yok): 409'un kodu oturumluk işaret.
+    final assignment = Assignment.fromJson(assignmentJson(status: 'COMPLETED'));
+    expect(provider.hasReviewed(assignment), isTrue);
+    expect(provider.ownReviewFor(assignment), isNull);
   });
 }

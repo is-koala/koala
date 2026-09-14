@@ -24,7 +24,6 @@ import 'package:koala/product/providers/job_gallery_provider.dart';
 import 'package:koala/product/services/job_gallery_service.dart';
 import 'package:koala/product/theme/theme.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../../support/fake_api.dart';
 import '../../../../../support/pump.dart';
@@ -99,8 +98,6 @@ pumpPage(
   FutureOr<FakeApiResponse> Function(RequestOptions request)? chatHandler,
   FutureOr<FakeApiResponse> Function(RequestOptions request)? reviewHandler,
   Map<String, Object?>? currentUser,
-  List<String> reviewedAssignmentIds = const [],
-  String? reviewedAssignmentDetails,
   List<GoRoute> extraRoutes = const [],
   Future<bool> Function(Uri url)? openExternalUrl,
 }) async {
@@ -255,24 +252,11 @@ pumpPage(
           body: {'success': true, 'data': {}},
         ),
   );
-  // `ReviewProvider` kaydı oturum sahibinin kimliğiyle okuyor; sahte depo
-  // burada dolduruluyor ki testler "başka cihazda değerlendirilmiş" hâli
-  // kurabilsin. Anahtar `currentUser`'ın kimliğiyle ekleniyor.
-  final reviewOwnerId = currentUser?['id'] as String?;
-  SharedPreferences.setMockInitialValues({
-    if (reviewOwnerId != null && reviewedAssignmentIds.isNotEmpty)
-      'reviewed_assignments:$reviewOwnerId': reviewedAssignmentIds,
-    if (reviewOwnerId != null && reviewedAssignmentDetails != null)
-      'reviewed_assignment_details:$reviewOwnerId': reviewedAssignmentDetails,
-  });
-  // Değerlendirme: yazma `POST .../reviews`, kendi kaydını arama
-  // `GET /users/{id}/reviews`. Varsayılan: boş sayfa, yazma 201.
+  // Değerlendirme yazma `POST .../reviews`; "değerlendirdim mi" atamanın
+  // kendi `myReview` alanından geliyor, ayrı bir okuma yok. Varsayılan: 201.
   final reviewClient = FakeApi(
     handler: (request) =>
-        reviewHandler?.call(request) ??
-        (request.method == 'GET'
-            ? reviewsPageResponse(const [])
-            : reviewCreatedResponse(reviewDtoJson())),
+        reviewHandler?.call(request) ?? reviewCreatedResponse(reviewDtoJson()),
   );
   // Sohbet açmak oturum sahibini istiyor; sayfa onu kendisi yüklemiyor.
   final userProvider = UserProvider(
@@ -307,7 +291,6 @@ pumpPage(
       ChangeNotifierProvider(create: (_) => BTalentPoolProvider()),
       ChangeNotifierProvider(
         create: (_) => ReviewProvider(
-          userIdOf: () => userProvider.user?.id,
           service: ReviewService.withClient(reviewClient.client),
         ),
       ),

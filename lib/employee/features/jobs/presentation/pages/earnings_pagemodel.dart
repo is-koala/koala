@@ -59,6 +59,16 @@ abstract class EarningsPagemodel extends State<EarningsPage> {
     }
   }
 
+  /// Hakedişin detay sayfasını (alt sayfa) açar; işin detayı oradan.
+  Future<void> _openDetail(Payout payout) {
+    return PayoutDetailSheet.show(
+      context,
+      payout: payout,
+      jobTitle: _assignments[payout.jobAssignmentId]?.job.title,
+      onOpenWork: () => _openWork(payout),
+    );
+  }
+
   /// Ödemenin işini açar.
   ///
   /// Atama listeden biliniyorsa doğrudan; bilinmiyorsa — ödeme ilk 20

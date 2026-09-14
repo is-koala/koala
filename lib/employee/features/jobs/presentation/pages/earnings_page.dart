@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/jobs/models/assignment.dart';
 import 'package:koala/employee/features/jobs/models/my_job.dart';
 import 'package:koala/employee/features/jobs/models/payout.dart';
+import 'package:koala/employee/features/jobs/presentation/widgets/payout_detail_sheet.dart';
 import 'package:koala/employee/features/jobs/services/assignment_service.dart';
 import 'package:koala/employee/features/jobs/services/payout_service.dart';
 import 'package:koala/product/constants/app_colors.dart';
@@ -17,6 +18,7 @@ import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/formatters/turkish_money_formatter.dart';
 import 'package:koala/product/formatters/financial_failure_message.dart';
 import 'package:koala/product/network/api_exception.dart';
+import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/empty_state.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
@@ -156,11 +158,13 @@ class _EarningsPageState extends EarningsPagemodel {
     );
   }
 
-  /// Ödeme satırı; dokununca işin detayı açılıyor.
+  /// Ödeme satırı; dokununca hakedişin detayı açılıyor ([PayoutDetailSheet]),
+  /// işin detayına oradan geçiliyor.
   ///
-  /// Atama etiketi ikinci istekle ve yalnızca ilk sayfa için geliyor; ödeme
-  /// o sayfada olmayan bir atamaya aitse satır yine tıklanabilir — kayıt
-  /// dokunma anında kimliğiyle çekiliyor ([_openWork]).
+  /// İş adı sunucunun `jobTitle` alanından; eski sunucuda ikinci istekle
+  /// gelen atama listesinden (yalnız ilk sayfa). İkisi de yoksa satır adsız,
+  /// yine tıklanabilir — iş detayı dokunma anında kimliğiyle çekiliyor
+  /// ([_openWork]).
   Widget _payoutCard(Payout payout) {
     final assignment = _assignments[payout.jobAssignmentId];
     final isOpening = _openingPayoutId == payout.id;
@@ -171,20 +175,26 @@ class _EarningsPageState extends EarningsPagemodel {
       child: InkWell(
         key: ValueKey('payout-${payout.id}'),
         borderRadius: AppRadius.innerCircular,
-        onTap: _openingPayoutId != null ? null : () => _openWork(payout),
+        onTap: _openingPayoutId != null ? null : () => _openDetail(payout),
         child: Padding(
           padding: AppPadding.card,
-          child: _payoutBody(payout, assignment, isOpening: isOpening),
+          child: _payoutBody(
+            payout,
+            jobTitle: payout.jobTitle ?? assignment?.job.title,
+            isOpening: isOpening,
+          ),
         ),
       ),
     );
   }
 
   Widget _payoutBody(
-    Payout payout,
-    Assignment? assignment, {
+    Payout payout, {
+    required String? jobTitle,
     required bool isOpening,
   }) {
+    final ibanTail = payout.ibanTail;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -205,16 +215,42 @@ class _EarningsPageState extends EarningsPagemodel {
               ),
               const SizedBox(width: AppSizes.spaceSmall),
             ],
-            _statusBadge(payout.status),
+            PayoutStatusBadge(status: payout.status),
           ],
         ),
-        if (assignment != null) ...[
+        const SizedBox(height: AppSizes.spaceTiny),
+        Text(
+          payout.status.description,
+          style: context.textTheme.labelMedium?.copyWith(
+            color: PayoutStatusBadge.colorOf(payout.status),
+          ),
+        ),
+        if (jobTitle != null) ...[
           const SizedBox(height: AppSizes.spaceSmall),
-          Text(assignment.job.title, style: context.textTheme.bodyMedium),
+          Text(jobTitle, style: context.textTheme.bodyMedium),
+        ],
+        if (ibanTail != null) ...[
+          const SizedBox(height: AppSizes.spaceTiny),
+          Row(
+            children: [
+              AppIcon(
+                AppIcons.bank,
+                size: AppSizes.iconSmall,
+                color: context.textSecondary,
+              ),
+              const SizedBox(width: AppSizes.spaceTiny),
+              Text(
+                "…$ibanTail IBAN'ına",
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: context.textSecondary,
+                ),
+              ),
+            ],
+          ),
         ],
         const SizedBox(height: AppSizes.spaceSmall),
         Text(
-          payout.createdAt.toLocal().asShortDate,
+          payout.releasedAtOrCreated.toLocal().asShortDate,
           style: context.textTheme.bodySmall?.copyWith(
             color: context.textTertiary,
           ),
@@ -231,28 +267,4 @@ class _EarningsPageState extends EarningsPagemodel {
       ],
     );
   }
-
-  Widget _statusBadge(PayoutStatus status) {
-    return Container(
-      padding: AppPadding.badge,
-      decoration: BoxDecoration(
-        color: context.payoutSurface,
-        borderRadius: AppRadius.smallCircular,
-      ),
-      child: Text(
-        status.displayName,
-        style: context.textTheme.labelSmall?.copyWith(
-          color: _statusColor(status),
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  Color _statusColor(PayoutStatus status) => switch (status) {
-    PayoutStatus.pending => AppColors.warning,
-    PayoutStatus.processing => AppColors.progress,
-    PayoutStatus.completed => AppColors.successStrong,
-    PayoutStatus.failed => AppColors.danger,
-  };
 }

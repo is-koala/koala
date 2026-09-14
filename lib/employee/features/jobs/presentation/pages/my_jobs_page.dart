@@ -369,7 +369,7 @@ class _MyJobsPageState extends MyJobsPagemodel {
         foreground: context.textPrimary,
         itemBuilder: (job) => _completedTile(
           job,
-          alreadyReviewed: reviewProvider.hasReviewed(job.assignmentId),
+          alreadyReviewed: reviewProvider.hasReviewed(job.assignment),
         ),
       ),
     );
@@ -1131,11 +1131,12 @@ class _MyJobsPageState extends MyJobsPagemodel {
     // işvereni değerlendirmek hiç mümkün olmazdı.
     //
     // İptal ve red edilen işler değerlendirilemiyor: sunucu yalnızca
-    // tamamlanmış atamaya değerlendirme kabul ediyor.
+    // tamamlanmış atamaya değerlendirme kabul ediyor. "Değerlendirdim mi"
+    // sunucudan (`myReview`), az önce gönderilen provider'dan.
     final canReview =
         job.status == MyJobStatus.past &&
         job.assignmentId != null &&
-        !context.watch<ReviewProvider>().hasReviewed(job.assignmentId);
+        !context.watch<ReviewProvider>().hasReviewed(job.assignment);
 
     if (canReview) {
       return Column(

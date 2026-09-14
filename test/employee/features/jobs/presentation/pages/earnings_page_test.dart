@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/jobs/models/my_job.dart';
@@ -145,20 +146,27 @@ void main() {
     expect(find.text('1.250,00 ₺'), findsOneWidget);
     expect(find.text('Bekleyen / işlenen'), findsOneWidget);
     expect(find.text('30,20 ₺'), findsOneWidget);
-    expect(find.text('Tamamlandı'), findsNWidgets(2));
-    expect(find.text('İşleniyor'), findsOneWidget);
-    expect(find.text('Bekliyor'), findsOneWidget);
-    expect(find.text('Başarısız'), findsOneWidget);
+    // Satırlar açıklama satırıyla uzadı; son kayıtlar ilk karede ekran dışı.
     expect(
-      find.text('Kazanç ödemesi tamamlanamadı. Lütfen destekle iletişime geç.'),
+      find.text('Hesabınıza geçti', skipOffstage: false),
+      findsNWidgets(2),
+    );
+    expect(find.text('Transfer yolda', skipOffstage: false), findsOneWidget);
+    expect(find.text('Çıkışa alındı', skipOffstage: false), findsOneWidget);
+    expect(find.text('Başarısız', skipOffstage: false), findsOneWidget);
+    expect(
+      find.text(
+        'Kazanç ödemesi tamamlanamadı. Lütfen destekle iletişime geç.',
+        skipOffstage: false,
+      ),
       findsOneWidget,
     );
-    expect(find.text(rawFailureReason), findsNothing);
+    expect(find.text(rawFailureReason, skipOffstage: false), findsNothing);
     expect(
       find.bySemanticsLabel(RegExp(RegExp.escape(rawFailureReason))),
       findsNothing,
     );
-    expect(find.text('99,99 ₺'), findsOneWidget);
+    expect(find.text('99,99 ₺', skipOffstage: false), findsOneWidget);
     semantics.dispose();
   });
 
@@ -197,15 +205,22 @@ void main() {
     expect(find.text('{payout.settlement.failed}'), findsNothing);
   });
 
-  // Kazançlar satırı da ölüydü (is-koala/koala#177): ödeme hangi işin
-  // ödemesiyse onun detayına açılmalı.
-  group('ödeme satırı → iş detayı', () {
+  // Kazançlar satırı hakedişin detayını açıyor (is-koala/koala#189); işin
+  // detayına (is-koala/koala#177) oradan geçiliyor.
+  group('ödeme satırı → hakediş detayı → iş detayı', () {
     const payoutBody = {
       'id': 'payout-1',
       'jobAssignmentId': 'assignment-1',
+      'jobTitle': 'Barista',
+      'companyName': 'Koala Cafe',
+      'maskedIban': 'TR18***2315',
+      'bankAccountId': 'bank-1',
+      'providerReference': 'IYZ-77',
       'amount': '950.00',
       'currency': 'TRY',
       'status': 'COMPLETED',
+      'releasedAt': '2026-09-11T08:00:00Z',
+      'settledAt': '2026-09-11T09:00:00Z',
       'completedAt': '2026-09-11T09:00:00Z',
       'createdAt': '2026-09-11T08:00:00Z',
     };
@@ -213,14 +228,16 @@ void main() {
       status: 'COMPLETED',
       paymentStatus: 'RELEASED_TO_WORKER',
     );
+    final row = find.byKey(const ValueKey('payout-payout-1'));
+    final openWork = find.byKey(const ValueKey('payout-detail-open-work'));
 
     Future<({FakeApi assignmentsApi, List<MyJob> opened})> pumpEarnings(
       WidgetTester tester, {
       required FakeApiResponse Function(String path) assignmentHandler,
+      Map<String, Object?> payout = payoutBody,
+      Brightness brightness = Brightness.light,
     }) async {
-      final payoutApi = FakeApi(
-        handler: (_) => dataResponse(const [payoutBody]),
-      );
+      final payoutApi = FakeApi(handler: (_) => dataResponse([payout]));
       final assignmentsApi = FakeApi(
         handler: (request) => assignmentHandler(request.path),
       );
@@ -246,13 +263,140 @@ void main() {
       addTearDown(router.dispose);
 
       await tester.pumpWidget(
-        MaterialApp.router(theme: lightTheme, routerConfig: router),
+        MaterialApp.router(
+          theme: brightness == Brightness.dark ? darkTheme : lightTheme,
+          routerConfig: router,
+        ),
       );
       await tester.pumpAndSettle();
       return (assignmentsApi: assignmentsApi, opened: opened);
     }
 
-    testWidgets('atama listede varsa doğrudan açılır', (tester) async {
+    for (final brightness in Brightness.values) {
+      testWidgets('satır: tutar, durum, iş adı ve maskeli IBAN kuyruğu '
+          '(${brightness.name})', (tester) async {
+        await pumpEarnings(
+          tester,
+          brightness: brightness,
+          assignmentHandler: (_) => pageResponse(const []),
+        );
+
+        // Tutar özet kartında ("Tamamlanan") ve satırda.
+        expect(find.text('950,00 ₺'), findsNWidgets(2));
+        expect(find.text('Hesabınıza geçti'), findsOneWidget);
+        expect(
+          find.text('Hesabınıza geçti (ekstre ile doğrulandı)'),
+          findsOneWidget,
+        );
+        // İş adı sunucunun `jobTitle` alanından; atama listesi boş.
+        expect(find.text('Barista'), findsOneWidget);
+        expect(find.text("…2315 IBAN'ına"), findsOneWidget);
+        // Tam IBAN hiçbir yerde yok; maske bile satırda değil.
+        expect(find.textContaining('TR18'), findsNothing);
+      });
+
+      testWidgets('detay: iş, şirket, IBAN, referans, zamanlar ve not '
+          '(${brightness.name})', (tester) async {
+        await pumpEarnings(
+          tester,
+          brightness: brightness,
+          assignmentHandler: (_) => pageResponse(const []),
+        );
+
+        await tester.tap(row);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Hakediş Detayı'), findsOneWidget);
+        expect(find.text('Koala Cafe'), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('payout-detail-iban')),
+          findsOneWidget,
+        );
+        expect(find.text('TR18***2315'), findsOneWidget);
+        expect(find.text('IYZ-77'), findsOneWidget);
+        expect(find.textContaining('Bu hesap silinmişse'), findsOneWidget);
+        expect(find.text('Çıkışa alındı'), findsOneWidget);
+        expect(find.text('Mutabakat'), findsOneWidget);
+        expect(
+          tester
+              .widget<Text>(find.byKey(const ValueKey('payout-detail-settled')))
+              .data,
+          isNot('—'),
+        );
+        expect(openWork, findsOneWidget);
+      });
+    }
+
+    testWidgets('sağlayıcı referansı panoya kopyalanır', (tester) async {
+      final copied = <String?>[];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+            if (call.method == 'Clipboard.setData') {
+              copied.add((call.arguments as Map)['text'] as String?);
+            }
+            return null;
+          });
+      addTearDown(
+        () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(SystemChannels.platform, null),
+      );
+      await pumpEarnings(
+        tester,
+        assignmentHandler: (_) => pageResponse(const []),
+      );
+
+      await tester.tap(row);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('payout-detail-copy')));
+      await tester.pumpAndSettle();
+
+      expect(copied, ['IYZ-77']);
+      expect(find.text('Referans kopyalandı'), findsOneWidget);
+    });
+
+    // Hesap silinmiş ya da eski sunucu: IBAN ve referans yok → "—", kopyalama
+    // düğmesi yok; PENDING'de mutabakat da yok. Kesin ifade yalnız
+    // COMPLETED'da.
+    testWidgets('hesap ve referans yoksa "—", bekleyen çıkışta mutabakat yok', (
+      tester,
+    ) async {
+      await pumpEarnings(
+        tester,
+        payout: const {
+          'id': 'payout-1',
+          'jobAssignmentId': 'assignment-1',
+          'amount': '950.00',
+          'currency': 'TRY',
+          'status': 'PENDING',
+          'createdAt': '2026-09-11T08:00:00Z',
+        },
+        assignmentHandler: (_) => pageResponse([completedAssignment]),
+      );
+
+      expect(find.textContaining("IBAN'ına"), findsNothing);
+      expect(
+        find.text('Çıkışa alındı — sağlayıcı onayı bekleniyor'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Hesabınıza geçti'), findsNothing);
+      // Eski sunucu `jobTitle` göndermiyor; ad atama listesinden.
+      expect(find.text('Barista'), findsOneWidget);
+
+      await tester.tap(row);
+      await tester.pumpAndSettle();
+
+      Text valueOf(String key) =>
+          tester.widget<Text>(find.byKey(ValueKey(key)));
+      expect(valueOf('payout-detail-iban').data, '—');
+      expect(valueOf('payout-detail-reference').data, '—');
+      expect(valueOf('payout-detail-settled').data, '—');
+      expect(find.byKey(const ValueKey('payout-detail-copy')), findsNothing);
+      expect(find.textContaining('Hesabınıza geçti'), findsNothing);
+    });
+
+    testWidgets('atama listede varsa iş detayı doğrudan açılır', (
+      tester,
+    ) async {
       final harness = await pumpEarnings(
         tester,
         assignmentHandler: (path) => path == '/users/me/assignments'
@@ -260,8 +404,9 @@ void main() {
             : throw StateError('tekil atama istenmemeli: $path'),
       );
 
-      expect(find.text('Barista'), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('payout-payout-1')));
+      await tester.tap(row);
+      await tester.pumpAndSettle();
+      await tester.tap(openWork);
       await tester.pumpAndSettle();
 
       expect(find.text(workDetailStubTitle), findsOneWidget);
@@ -270,10 +415,8 @@ void main() {
     });
 
     // Atama listesi ilk 20 kaydı getiriyor; eski bir ödemenin ataması orada
-    // olmayabilir. Satır yine tıklanır, kayıt dokununca kimliğiyle çekilir.
-    testWidgets('atama listede yoksa dokununca kimliğiyle çekilir', (
-      tester,
-    ) async {
+    // olmayabilir. Kayıt "İş detayını aç" anında kimliğiyle çekilir.
+    testWidgets('atama listede yoksa kimliğiyle çekilir', (tester) async {
       final harness = await pumpEarnings(
         tester,
         assignmentHandler: (path) => path == '/users/me/assignments'
@@ -281,9 +424,9 @@ void main() {
             : dataResponse(completedAssignment),
       );
 
-      // Etiket yok: liste bu atamayı tanımıyor.
-      expect(find.text('Barista'), findsNothing);
-      await tester.tap(find.byKey(const ValueKey('payout-payout-1')));
+      await tester.tap(row);
+      await tester.pumpAndSettle();
+      await tester.tap(openWork);
       await tester.pumpAndSettle();
 
       expect(
@@ -309,7 +452,9 @@ void main() {
               ),
       );
 
-      await tester.tap(find.byKey(const ValueKey('payout-payout-1')));
+      await tester.tap(row);
+      await tester.pumpAndSettle();
+      await tester.tap(openWork);
       await tester.pumpAndSettle();
 
       expect(find.text('Atama bulunamadı.'), findsOneWidget);

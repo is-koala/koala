@@ -17,6 +17,7 @@ class Review {
   const Review({
     required this.id,
     required this.rating,
+    this.jobAssignmentId,
     this.author,
     this.isAnonymous = false,
     this.comment,
@@ -27,6 +28,14 @@ class Review {
   static const int maxCommentLength = 2000;
 
   final String id;
+
+  /// Değerlendirmenin yazıldığı atama.
+  ///
+  /// Yalnızca `POST /job-assignments/{id}/reviews` yanıtında dolu; herkese
+  /// açık listede (`GET /users/{id}/reviews`) sunucu bilerek `null`
+  /// gönderiyor — iki profilde aynı atama kimliği anonim yazarı açığa
+  /// çıkarırdı. [ReviewProvider] gönderilen kaydı bu kimlikle anahtarlıyor.
+  final String? jobAssignmentId;
 
   /// Değerlendirmeyi yazan. Backend `SafeUserDto` döndürüyor; Dart karşılığı
   /// [JobCreator] olarak zaten var, ikinci bir kopya çıkarılmadı.
@@ -58,21 +67,18 @@ class Review {
   String get summaryLabel =>
       hasComment ? '★$rating · "${comment!.trim()}"' : '★$rating';
 
-  /// Cihazda saklanacak hâli; yazar yazılmıyor, kendi yazdığımız kayıt için
-  /// zaten biziz. [fromJson] ile geri okunuyor.
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'rating': rating,
-    'comment': ?comment,
-    'anonymous': isAnonymous,
-    'createdAt': ?createdAt?.toIso8601String(),
-  };
-
+  /// `ReviewDto`'yu okur. `MyAssignmentDto.myReview` (`MyReviewDto`: kimlik,
+  /// puan, yorum, tarih) de aynı biçimde çözülüyor; orada yazar zaten
+  /// görüntüleyenin kendisi, alan hiç gelmiyor.
   factory Review.fromJson(Map<String, dynamic> json) {
     final author = json['author'];
 
     return Review(
       id: '${json['id']}',
+      jobAssignmentId: switch (json['jobAssignmentId']) {
+        final String value when value.isNotEmpty => value,
+        _ => null,
+      },
       author: author is Map<String, dynamic>
           ? JobCreator.fromJson(author)
           : null,

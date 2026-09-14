@@ -92,9 +92,7 @@ void main() {
             ChangeNotifierProvider(create: (_) => ApplyProvider()),
             ChangeNotifierProvider(create: (_) => SavedJobsProvider()),
             ChangeNotifierProvider(create: (_) => JobAlertsProvider()),
-            ChangeNotifierProvider(
-              create: (_) => ReviewProvider(userIdOf: () => null),
-            ),
+            ChangeNotifierProvider(create: (_) => ReviewProvider()),
           ],
           child: MaterialApp.router(theme: lightTheme, routerConfig: router),
         ),

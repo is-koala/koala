@@ -22,6 +22,7 @@ import 'package:koala/employee/features/jobs/presentation/providers/review_provi
 import 'package:koala/employee/features/jobs/presentation/providers/timesheet_queue_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/widgets/cancellation_card.dart';
 import 'package:koala/employee/features/jobs/presentation/widgets/employer_card.dart';
+import 'package:koala/employee/features/jobs/presentation/widgets/review_state_row.dart';
 import 'package:koala/employee/features/jobs/presentation/widgets/timesheet_queue_status.dart';
 import 'package:koala/employee/features/jobs/presentation/widgets/work_timeline_view.dart';
 import 'package:koala/employee/features/jobs/services/assignment_service.dart';
@@ -49,7 +50,7 @@ enum _WorkMenuAction { cancel, dispute, withdraw }
 ///
 /// İşlerim'in her satırı ve Kazançlar'daki her ödeme buraya açılıyor
 /// (is-koala/koala#177). Satır bir özet; burada ilanın açık adresi (atama
-/// kurulduysa), işverenin kimliği, ücret dökümü, ödemenin durumu, zaman
+/// kurulduysa), işverenin kimliği, kazancı, ödemenin durumu, zaman
 /// çizelgesi, iptal kaydı ve satırdaki eylemlerin aynısı var. Eylemler
 /// [WorkActionsPagemodel]'den geliyor; İşlerim'le aynı akış, aynı kurallar.
 class WorkDetailPage extends StatefulWidget {
@@ -384,78 +385,42 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
     );
   }
 
-  /// Ücret: atamada `pricing.*` dökümü, başvuruda ilan ücreti.
+  /// Ücret: atamada çalışanın kazancı, başvuruda ilan ücreti.
   ///
-  /// Döküm sunucunun yayımlarken sabitlediği snapshot; hizmet bedeli burada
-  /// yeniden hesaplanmıyor, dizeler olduğu gibi yazılıyor.
+  /// Çalışan yalnız **kendi kazancını** görür (`workerPayout`;
+  /// koala-backend#294). Hizmet bedeli ve işverenin ödediği toplam bu
+  /// kabukta hiçbir koşulda çizilmiyor — sunucu artık `pricing`'i çalışana
+  /// göndermiyor, eski sunucu gönderse de buradan satır çıkmıyor. Para birimi
+  /// snapshot'tan, o da yoksa uygulamanın tek birimi.
   Widget _priceBlock() {
-    final pricing = job.assignment?.pricing;
-    final currency = pricing?.currency ?? _defaultCurrency;
-    final payoutLabel = pricing == null
-        ? TurkishMoneyFormatter.format(job.price.toStringAsFixed(2), currency)
-        : TurkishMoneyFormatter.format(pricing.workerPayout, currency);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            AppIcon(
-              AppIcons.moneyBag,
-              size: AppSizes.iconSmall,
-              color: context.accentColor,
-            ),
-            const SizedBox(width: AppSizes.spaceSmall),
-            Text(
-              job.assignment == null ? 'İlan ücreti' : 'Kazancınız',
-              style: context.textTheme.bodyMedium,
-            ),
-            const Spacer(),
-            Text(
-              payoutLabel,
-              style: context.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: context.accentColor,
-              ),
-            ),
-          ],
-        ),
-        if (pricing != null) ...[
-          const SizedBox(height: AppSizes.spaceSmall),
-          _breakdownRow(
-            'Hizmet bedeli (%${pricing.serviceFeePercentLabel})',
-            TurkishMoneyFormatter.format(pricing.serviceFeeAmount, currency),
-          ),
-          _breakdownRow(
-            'İşverenin ödediği toplam',
-            TurkishMoneyFormatter.format(pricing.employerTotal, currency),
-          ),
-        ],
-      ],
+    final currency = job.assignment?.pricing?.currency ?? _defaultCurrency;
+    final payoutLabel = TurkishMoneyFormatter.format(
+      job.price.toStringAsFixed(2),
+      currency,
     );
-  }
 
-  Widget _breakdownRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(top: AppSizes.spaceTiny),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: context.textTheme.labelMedium?.copyWith(
-                color: context.textSecondary,
-              ),
-            ),
+    return Row(
+      key: const ValueKey('work-detail-price'),
+      children: [
+        AppIcon(
+          AppIcons.moneyBag,
+          size: AppSizes.iconSmall,
+          color: context.accentColor,
+        ),
+        const SizedBox(width: AppSizes.spaceSmall),
+        Text(
+          job.assignment == null ? 'İlan ücreti' : 'Kazancınız',
+          style: context.textTheme.bodyMedium,
+        ),
+        const Spacer(),
+        Text(
+          payoutLabel,
+          style: context.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: context.accentColor,
           ),
-          Text(
-            value,
-            style: context.textTheme.labelMedium?.copyWith(
-              color: context.textSecondary,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -579,42 +544,28 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
 
   /// Değerlendirme: tamamlanmış atamada durum ve düğme.
   ///
-  /// Sunucu "değerlendirdim mi" demiyor; [ReviewProvider] cihazda tutuyor.
+  /// "Değerlendirdim mi" sunucudan geliyor (`myReview`); [ReviewProvider]
+  /// yalnız az önce gönderilenin boşluğunu dolduruyor. Kart iş tamamlanınca
+  /// çıkıyor, ödemenin serbest bırakılmasını beklemiyor.
   bool get _canReview =>
       job.assignmentId != null &&
       (job.status == MyJobStatus.completed || job.status == MyJobStatus.past);
 
   Widget _reviewCard() {
-    final reviewed = context.watch<ReviewProvider>().hasReviewed(
-      job.assignmentId,
-    );
+    final assignment = job.assignment;
+    final reviews = context.watch<ReviewProvider>();
 
     return _card(
       title: 'Değerlendirme',
-      child: Row(
-        children: [
-          AppIcon(
-            reviewed ? AppIcons.checkCircle : AppIcons.star,
-            size: AppSizes.iconMedium,
-            color: reviewed ? AppColors.success : AppColors.rating,
-          ),
-          const SizedBox(width: AppSizes.spaceSmall),
-          Expanded(
-            child: Text(
-              reviewed
-                  ? 'Bu işi değerlendirdiniz.'
-                  : 'İşvereni henüz değerlendirmediniz.',
-              style: context.textTheme.bodyMedium,
-            ),
-          ),
-          if (!reviewed)
-            TextButton(
-              key: const ValueKey('work-detail-review'),
-              onPressed: () =>
-                  context.push('/review', extra: ReviewSubject.fromMyJob(job)),
-              child: const Text('Değerlendir'),
-            ),
-        ],
+      child: ReviewStateRow(
+        ownReview: reviews.ownReviewFor(assignment),
+        hasReviewed: reviews.hasReviewed(assignment),
+        counterpartyReviewed: assignment?.counterpartyReviewed ?? false,
+        pendingText: 'İşvereni henüz değerlendirmediniz.',
+        buttonLabel: 'Değerlendir',
+        buttonKey: const ValueKey('work-detail-review'),
+        onReview: () =>
+            context.push('/review', extra: ReviewSubject.fromMyJob(job)),
       ),
     );
   }
