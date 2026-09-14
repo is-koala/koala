@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:koala/employee/features/chat/models/chat_participant.dart';
 import 'package:koala/employee/features/chat/models/conversation.dart';
+import 'package:koala/employee/features/chat/models/message.dart';
+import 'package:koala/employee/features/chat/models/message_sender.dart';
 import 'package:koala/employee/features/chat/models/messaging_availability.dart';
 import 'package:koala/employee/features/chat/presentation/providers/chat_thread_controller.dart';
+import 'package:koala/employee/features/chat/presentation/widgets/chat_participants_sheet.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:provider/provider.dart';
@@ -51,6 +56,43 @@ abstract class ChatThreadPagemodel<T extends StatefulWidget> extends State<T> {
   /// ikonuyla değil bilgi ikonuyla çiziliyor.
   bool get isComposerGated =>
       thread.gate != null || (chat.closed && thread.blockedMessage == null);
+
+  /// Başlığa dokununca katılımcılar; ikili sohbette başlık dokunulmuyor.
+  VoidCallback? get onTitleTap => chat.isGroup ? openParticipants : null;
+
+  /// Grupta karşı tarafın balonuna yazılacak gönderen; kendi mesajında ve
+  /// ikili sohbette `null`, orada kimin yazdığı hizadan belli.
+  MessageSender? senderFor(Message message) =>
+      chat.isGroup && !message.isMe ? thread.senderOf(message) : null;
+
+  /// Grupta kendi mesajını görenler; ikili sohbette boş, orada okundu
+  /// bilgisi `readAt` üzerinden yürüyor.
+  List<ChatParticipant> readersFor(Message message) =>
+      chat.isGroup && message.isMe ? thread.readersOf(message) : const [];
+
+  /// Sıradaki mesaj aynı kişiden mi: peş peşe balonlar yakın duruyor.
+  /// Gönderen kimliğine bakılıyor; ikili sohbette bu [Message.isMe]
+  /// karşılaştırmasıyla aynı, grupta ise iki farklı karşı tarafı ayırıyor.
+  bool isNextSameSender(List<Message> messages, int index) =>
+      index < messages.length - 1 &&
+      messages[index + 1].senderId == messages[index].senderId;
+
+  /// Katılımcılar sheet'i. Profil bağlantısı yalnız işverende: başkasının
+  /// profilini açan rota (`/business/user-profile`) çalışan kabuğunda yok
+  /// ve yönlendirme bekçisi çalışanı oradan geri çevirir.
+  void openParticipants() {
+    ChatParticipantsSheet.show(
+      context,
+      chat: chat,
+      participants: thread.participants,
+      currentUserId: context.read<UserProvider>().user?.id,
+      onOpenProfile: asEmployer ? openProfile : null,
+    );
+  }
+
+  void openProfile(ChatParticipant participant) {
+    context.push('/business/user-profile', extra: participant.id);
+  }
 
   @override
   void initState() {
@@ -187,7 +229,10 @@ abstract class ChatThreadPagemodel<T extends StatefulWidget> extends State<T> {
     }
 
     return (
-      controller: ChatThreadController(conversationId: conversationId),
+      controller: ChatThreadController(
+        conversationId: conversationId,
+        participants: chat.participants,
+      ),
       ownsController: true,
     );
   }

@@ -34,6 +34,7 @@ class RealtimeEvent {
     this.message,
     this.online,
     this.at,
+    this.lastReadAt,
   });
 
   final RealtimeEventType type;
@@ -52,9 +53,15 @@ class RealtimeEvent {
 
   final DateTime? at;
 
+  /// `READ` olaylarında okuyanın yeni okundu damgası
+  /// (is-koala/koala-backend#281). Eski sunucu göndermiyor; o zaman `null`
+  /// ve dinleyiciler [at]'e düşüyor.
+  final DateTime? lastReadAt;
+
   factory RealtimeEvent.fromJson(Map<String, dynamic> json) {
     final message = json['message'];
     final at = json['at'];
+    final lastReadAt = json['lastReadAt'];
 
     return RealtimeEvent(
       type: RealtimeEventType.fromCode(json['type']),
@@ -65,6 +72,7 @@ class RealtimeEvent {
       message: message is Map<String, dynamic> ? message : null,
       online: json['online'] as bool?,
       at: at is String ? DateTime.tryParse(at) : null,
+      lastReadAt: lastReadAt is String ? DateTime.tryParse(lastReadAt) : null,
     );
   }
 }

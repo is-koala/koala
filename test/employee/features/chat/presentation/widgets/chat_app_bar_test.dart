@@ -14,6 +14,17 @@ const _chat = Conversation(
   avatar: 'AY',
 );
 
+const _group = Conversation(
+  id: 'c2',
+  jobId: 'j1',
+  jobTitle: 'Garson',
+  counterpartId: '',
+  name: 'Garson',
+  avatar: 'G',
+  kind: ConversationKind.group,
+  participantCount: 3,
+);
+
 void main() {
   group('ChatAppBar taşma menüsü', () {
     testWidgets('menü açılınca şikayet eylemi görünür', (tester) async {
@@ -50,6 +61,49 @@ void main() {
 
         expect(tester.takeException(), isNull, reason: '$brightness patladı');
         expect(find.text('Ayşe Yılmaz'), findsOneWidget);
+      }
+    });
+  });
+
+  // Grupta başlığa dokununca katılımcılar açılıyor (is-koala/koala#179);
+  // sayfa bunu `onTitleTap` ile bağlıyor.
+  group('ChatAppBar başlık dokunuşu', () {
+    testWidgets('onTitleTap verilince ada dokununca çağrılır', (tester) async {
+      var taps = 0;
+      await pumpInApp(
+        tester,
+        ChatAppBar(chat: _group, onTitleTap: () => taps++),
+      );
+
+      await tester.tap(find.text('Garson'));
+      await tester.pump();
+
+      expect(taps, 1);
+      // Katılımcı sayısı da başlığın parçası; ona dokunmak da açıyor.
+      await tester.tap(find.text('3 katılımcı'));
+      await tester.pump();
+      expect(taps, 2);
+    });
+
+    testWidgets('onTitleTap yoksa dokunmak bir şey yapmaz', (tester) async {
+      await pumpInApp(tester, const ChatAppBar(chat: _chat));
+
+      await tester.tap(find.text('Ayşe Yılmaz'));
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('grup başlığı iki temada da çizilir', (tester) async {
+      for (final brightness in Brightness.values) {
+        await pumpInApp(
+          tester,
+          ChatAppBar(chat: _group, onTitleTap: () {}),
+          brightness: brightness,
+        );
+
+        expect(tester.takeException(), isNull, reason: '$brightness patladı');
+        expect(find.text('3 katılımcı'), findsOneWidget);
       }
     });
   });

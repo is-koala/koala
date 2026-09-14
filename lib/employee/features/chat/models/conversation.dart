@@ -1,3 +1,5 @@
+import 'package:koala/employee/features/chat/models/chat_participant.dart';
+
 /// Sohbetin türü. Backend `ConversationKind` karşılığı.
 enum ConversationKind {
   /// İşveren ile tek bir çalışan arasında.
@@ -44,6 +46,7 @@ class Conversation {
     this.isOnline = false,
     this.kind = ConversationKind.direct,
     this.participantCount = 0,
+    this.participants = const [],
     this.closed = false,
   });
 
@@ -87,6 +90,12 @@ class Conversation {
   /// Katılımcı sayısı; sunucunun `participants` listesinden. İkili sohbette
   /// ve sohbeti açan `POST` yanıtında (liste boş geliyor) `0`.
   final int participantCount;
+
+  /// Katılımcılar, sunucudan geldiği sırayla; ayrılanlar da `left=true` ile
+  /// içinde. Grup balonundaki gönderen adı, katılımcılar sayfası ve "kimler
+  /// gördü" buradan besleniyor. Eski sunucu yalnız `id/firstName/lastName`
+  /// veriyor; rol, tarihler ve ayrılma bilgisi o zaman boş.
+  final List<ChatParticipant> participants;
 
   /// Sohbet salt okunur mu: atama iptal/ret/iade edildi ya da iş bitiminden
   /// 7 gün geçti. Sunucu okuma anında hesaplıyor; mesaj göndermek
@@ -162,6 +171,12 @@ class Conversation {
       unreadCount: (json['unreadCount'] as num?)?.toInt() ?? 0,
       kind: kind,
       participantCount: participants is List ? participants.length : 0,
+      participants: participants is List
+          ? participants
+                .whereType<Map<String, dynamic>>()
+                .map(ChatParticipant.fromJson)
+                .toList()
+          : const [],
       closed: json['closed'] == true,
     );
   }
@@ -191,6 +206,7 @@ class Conversation {
     bool? isOnline,
     ConversationKind? kind,
     int? participantCount,
+    List<ChatParticipant>? participants,
     bool? closed,
   }) {
     return Conversation(
@@ -207,6 +223,7 @@ class Conversation {
       isOnline: isOnline ?? this.isOnline,
       kind: kind ?? this.kind,
       participantCount: participantCount ?? this.participantCount,
+      participants: participants ?? this.participants,
       closed: closed ?? this.closed,
     );
   }
@@ -226,6 +243,7 @@ class Conversation {
       'isOnline': isOnline,
       'kind': kind.code,
       'participantCount': participantCount,
+      'participants': [for (final p in participants) p.toJson()],
       'closed': closed,
     };
   }

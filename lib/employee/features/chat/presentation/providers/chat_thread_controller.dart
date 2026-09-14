@@ -1,8 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:koala/employee/features/chat/models/chat_participant.dart';
 import 'package:koala/employee/features/chat/models/conversation_page.dart';
 import 'package:koala/employee/features/chat/models/message.dart';
+import 'package:koala/employee/features/chat/models/message_sender.dart';
 import 'package:koala/employee/features/chat/models/messaging_availability.dart';
 import 'package:koala/employee/features/chat/models/messaging_gate_error_codes.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
@@ -17,14 +19,21 @@ import 'package:koala/product/network/realtime_event.dart';
 class ChatThreadController extends ChangeNotifier {
   ChatThreadController({
     required this.conversationId,
+    List<ChatParticipant> participants = const [],
     ChatService? chatService,
     RealtimeClient? realtimeClient,
-  }) : _chatService = chatService ?? ChatService(),
+  }) : _participants = List.unmodifiable(participants),
+       _chatService = chatService ?? ChatService(),
        _realtimeClient = realtimeClient ?? RealtimeClient();
 
   final String conversationId;
   final ChatService _chatService;
   final RealtimeClient _realtimeClient;
+
+  /// Sohbetin katılımcıları, listeden gelen anlık görüntüyle başlıyor;
+  /// `READ` olayları `lastReadAt`'i canlı tutuyor. Sunucu grup için ayrı bir
+  /// katılımcı ucu vermiyor, liste `ConversationDto` üzerinde geliyor.
+  List<ChatParticipant> _participants;
 
   /// Backend'in `realtime.typingTimeout` varsayılanıyla aynı: bu süre içinde
   /// yeni bir olay gelmezse gösterge sönüyor.
@@ -65,6 +74,10 @@ class ChatThreadController extends ChangeNotifier {
   static const int _catchUpPageLimit = 3;
 
   List<Message> get messages => List.unmodifiable(_messages);
+
+  /// Katılımcılar; ayrılanlar da içinde. İkili sohbette ve eski sunucuda
+  /// boş olabilir.
+  List<ChatParticipant> get participants => _participants;
 
   bool get isLoading => _isLoading;
 
@@ -109,6 +122,25 @@ class ChatThreadController extends ChangeNotifier {
   void _safeNotify() {
     if (_disposed) return;
     notifyListeners();
+  }
+
+  /// Grup balonunda yazılacak gönderen: sunucunun `senderName`'i, yoksa
+  /// katılımcı eşlemesi, o da yoksa anonim ([MessageSender.resolve]).
+  MessageSender senderOf(Message message) =>
+      MessageSender.resolve(message, _participants);
+
+  /// [message]'ı görmüş katılımcılar: oturum sahibi dışında `lastReadAt`'i
+  /// gönderim anından geri olmayanlar. Ayrılanlar da sayılıyor — okuma
+  /// ayrılmadan önce olduysa gördü. Eski sunucuda `lastReadAt` hiç
+  /// gelmediği için liste boş kalıyor ve ekran görüldü bilgisini gizliyor.
+  List<ChatParticipant> readersOf(Message message) {
+    return List.unmodifiable(
+      _participants.where(
+        (participant) =>
+            participant.id != _currentUserId &&
+            participant.hasReadSince(message.sentAt),
+      ),
+    );
   }
 
   /// Canlı akışa bağlanır, mesajları çeker ve sohbeti okundu işaretler.
@@ -471,7 +503,9 @@ class ChatThreadController extends ChangeNotifier {
 
       case RealtimeEventType.read:
         if (event.userId == userId) return;
-        _markOwnMessagesRead(event.at ?? DateTime.now());
+        final readAt = event.lastReadAt ?? event.at ?? DateTime.now();
+        _markParticipantRead(event.userId, readAt);
+        _markOwnMessagesRead(readAt);
 
       case RealtimeEventType.presence:
       case RealtimeEventType.unknown:
@@ -497,6 +531,25 @@ class ChatThreadController extends ChangeNotifier {
       _isCounterpartTyping = false;
       _safeNotify();
     });
+  }
+
+  /// Okuyanın katılımcı satırındaki damgayı ileri alır; geriye almaz ve
+  /// listede olmayan bir okuyan için (eski anlık görüntü) hiçbir şey yapmaz.
+  void _markParticipantRead(String? readerId, DateTime readAt) {
+    if (readerId == null) return;
+
+    var changed = false;
+    _participants = List.unmodifiable(
+      _participants.map((participant) {
+        if (participant.id != readerId) return participant;
+        final current = participant.lastReadAt;
+        if (current != null && !current.isBefore(readAt)) return participant;
+        changed = true;
+        return participant.copyWith(lastReadAt: readAt);
+      }),
+    );
+
+    if (changed) _safeNotify();
   }
 
   void _markOwnMessagesRead(DateTime readAt) {
