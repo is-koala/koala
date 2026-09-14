@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/employee/features/settings/presentation/providers/identity_review_provider.dart';
 import 'package:koala/product/constants/app_assets.dart';
 import 'package:koala/product/constants/app_sizes.dart';
@@ -58,6 +59,7 @@ class _SplashPageState extends State<SplashPage> {
     if (!mounted) return;
     await PushMessaging.bindListeners(
       notifications: context.read<NotificationProvider>(),
+      users: context.read<UserProvider>(),
     );
   }
 

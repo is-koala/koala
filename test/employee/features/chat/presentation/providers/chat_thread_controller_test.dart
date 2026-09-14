@@ -200,44 +200,72 @@ void main() {
         )
         .length;
 
-    // Sunucunun `since` parametresi yok: en yeni sayfa çekilip kimlikle
-    // birleştiriliyor. Kopukken gelen eklenir, eldeki tekrar eklenmez, kopuk
-    // sırada okunan kendi mesajımızın `readAt`'i sunucudan gelir.
-    test('kopup gelen bağlantı kaçan mesajları kimlikle tamamlar', () async {
+    /// Mesaj çekimlerinin `after` sorgu parametreleri, sırayla.
+    List<Object?> afterParams(FakeApi api) => api.requests
+        .where(
+          (r) =>
+              r.method == 'GET' &&
+              r.path == '/conversations/$_conversationId/messages',
+        )
+        .map((r) => r.queryParameters['after'])
+        .toList();
+
+    // Tamamlama artımlı: eldeki en yeni mesaj çapa olur ve sunucudan yalnız
+    // ondan sonrakiler istenir. Kopukken gelen eklenir, eldeki tekrar
+    // eklenmez; `after` kipinde `sort` gönderilmez (sunucu 400 verir).
+    test('kopup gelen bağlantı kaçanları after= ile tamamlar', () async {
       final messages = [
         messageBody(id: 'm1', body: 'Merhaba'),
-        messageBody(id: 'm2', senderId: _me, body: 'Selam'),
+        messageBody(
+          id: 'm2',
+          senderId: _me,
+          body: 'Selam',
+          sentAt: '2026-03-05T10:01:00Z',
+        ),
       ];
-      final api = apiWith(messages);
+      final api = FakeApi(
+        handler: (options) {
+          if (options.method != 'GET') {
+            return const FakeApiResponse(
+              statusCode: 200,
+              body: {'success': true},
+            );
+          }
+          final after = options.queryParameters['after'];
+          final content = after == null
+              ? messages.reversed.toList()
+              : after == 'm2'
+              ? [
+                  messageBody(
+                    id: 'm3',
+                    body: 'Kopukken yazdım',
+                    sentAt: '2026-03-05T10:05:00Z',
+                  ),
+                ]
+              : <Map<String, dynamic>>[];
+          return FakeApiResponse(
+            statusCode: 200,
+            body: {
+              'success': true,
+              'data': {'content': content, 'last': true},
+            },
+          );
+        },
+      );
       final thread = build(api);
       await thread.load(currentUserId: _me);
       expect(thread.messages, hasLength(2));
 
-      // Sunucu en yeniden eskiye veriyor.
-      messages
-        ..clear()
-        ..addAll([
-          messageBody(
-            id: 'm3',
-            body: 'Kopukken yazdım',
-            sentAt: '2026-03-05T10:05:00Z',
-          ),
-          messageBody(
-            id: 'm2',
-            senderId: _me,
-            body: 'Selam',
-            readAt: '2026-03-05T10:04:00Z',
-          ),
-          messageBody(id: 'm1', body: 'Merhaba'),
-        ]);
       final caughtUp = nextNotify(thread);
       realtime.emitConnection(RealtimeConnectionEvent.disconnected);
       realtime.emitConnection(RealtimeConnectionEvent.connected);
       await caughtUp;
 
       expect(messageFetches(api), 2);
+      expect(afterParams(api), [null, 'm2']);
+      final catchUpRequest = api.requests.last;
+      expect(catchUpRequest.queryParameters.containsKey('sort'), isFalse);
       expect(thread.messages.map((m) => m.id), ['m1', 'm2', 'm3']);
-      expect(thread.messages[1].readAt, isNotNull);
       expect(thread.messages.last.body, 'Kopukken yazdım');
       // Ekran açık: karşı tarafın kaçan mesajı okundu işaretlenir.
       await api.requestsReach(4);
@@ -248,6 +276,121 @@ void main() {
         2,
       );
     });
+
+    // Çapa sunucuda bilinmiyorsa (silinmiş ya da başka sohbetin mesajı)
+    // sunucu 400 MESSAGING_AFTER_UNKNOWN veriyor; liste baştan çekilir ve
+    // kimlikle birleştirilir, aynı mesaj iki kez durmaz.
+    test('400 MESSAGING_AFTER_UNKNOWN gelirse liste baştan çekilir', () async {
+      final api = FakeApi(
+        handler: (options) {
+          if (options.method != 'GET') {
+            return const FakeApiResponse(
+              statusCode: 200,
+              body: {'success': true},
+            );
+          }
+          if (options.queryParameters.containsKey('after')) {
+            return const FakeApiResponse(
+              statusCode: 400,
+              body: {
+                'success': false,
+                'message':
+                    'after ile verilen mesaj bu konuşmada bulunamadı; '
+                    'listeyi baştan çekin.',
+                'errorCode': 'MESSAGING_AFTER_UNKNOWN',
+                'errorCategory': 'VALIDATION_FAILED',
+              },
+            );
+          }
+          return FakeApiResponse(
+            statusCode: 200,
+            body: {
+              'success': true,
+              'data': {
+                'content': [
+                  messageBody(
+                    id: 'm3',
+                    body: 'Yeni',
+                    sentAt: '2026-03-05T10:05:00Z',
+                  ),
+                  messageBody(id: 'm1', body: 'Merhaba'),
+                ],
+                'last': true,
+              },
+            },
+          );
+        },
+      );
+      final thread = build(api);
+      await thread.load(currentUserId: _me);
+      expect(thread.messages.map((m) => m.id), ['m1', 'm3']);
+
+      // Silinmiş bir çapa: eldeki en yeni mesaj sunucuda artık yok.
+      realtime.emit(
+        RealtimeEvent.fromJson({
+          'type': 'MESSAGE',
+          'conversationId': _conversationId,
+          'userId': _other,
+          'message': messageBody(
+            id: 'm-silinen',
+            body: 'Silinecek',
+            sentAt: '2026-03-05T10:06:00Z',
+          ),
+        }),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      // İstekler: sayfa, okundu, canlı mesajın okundusu, after (400), tam.
+      realtime.emitConnection(RealtimeConnectionEvent.resumed);
+      await api.requestsReach(5);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(afterParams(api), [null, 'm-silinen', null]);
+      expect(thread.messages.map((m) => m.id), ['m1', 'm3', 'm-silinen']);
+      expect(thread.messages.where((m) => m.id == 'm3'), hasLength(1));
+    });
+
+    // after= dışındaki bir hata eldeki listeyi bozmaz ve yedek yola düşmez.
+    test(
+      'after çekiminde başka bir hata gelirse liste olduğu gibi kalır',
+      () async {
+        final api = FakeApi(
+          handler: (options) {
+            if (options.method != 'GET') {
+              return const FakeApiResponse(
+                statusCode: 200,
+                body: {'success': true},
+              );
+            }
+            if (options.queryParameters.containsKey('after')) {
+              return const FakeApiResponse(
+                statusCode: 500,
+                body: {'success': false, 'message': 'Sunucu hatası'},
+              );
+            }
+            return FakeApiResponse(
+              statusCode: 200,
+              body: {
+                'success': true,
+                'data': {
+                  'content': [messageBody(id: 'm1')],
+                },
+              },
+            );
+          },
+        );
+        final thread = build(api);
+        await thread.load(currentUserId: _me);
+
+        realtime.emitConnection(RealtimeConnectionEvent.resumed);
+        await api.requestsReach(3);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(messageFetches(api), 2);
+        expect(thread.messages.map((m) => m.id), ['m1']);
+        expect(thread.errorMessage, isNull);
+      },
+    );
 
     // Abonelik sayfa çekiminden önce açılıyor; sayfa yanıtı beklenirken
     // kanaldan gelen mesaj sayfada olsun ya da olmasın listede bir kez durur.
@@ -391,17 +534,15 @@ void main() {
       expect(thread.messages.map((m) => m.id), ['m1', 'm2']);
     });
 
-    // Kopukluk bir sayfadan uzun sürdüyse bilinen bir mesaja rastlayana
-    // kadar geriye gidilir; sınır üç sayfa.
-    test('tamamlama bilinen mesaja kadar sayfalar', () async {
+    // after= sayfalı: ilk sayfa `last` değilse aynı çapayla sonraki sayfa
+    // istenir; sunucu artan sırada veriyor.
+    test('after tamamlaması son sayfaya kadar ilerler', () async {
       Map<String, dynamic> at(String id, int minute) =>
           messageBody(id: id, sentAt: '2026-03-05T10:0$minute:00Z');
-      final pages = <int, List<Map<String, dynamic>>>{
-        0: [at('m5', 5), at('m4', 4)],
-        1: [at('m3', 3), at('m2', 2)],
-        2: [at('m1', 1)],
+      final afterPages = <int, List<Map<String, dynamic>>>{
+        0: [at('m2', 2), at('m3', 3)],
+        1: [at('m4', 4)],
       };
-      var served = pages[2]!;
       final api = FakeApi(
         handler: (options) {
           if (options.method != 'GET') {
@@ -411,12 +552,23 @@ void main() {
             );
           }
           final page = options.queryParameters['page'] as int? ?? 0;
-          final content = served == pages[2]! ? served : pages[page]!;
+          if (options.queryParameters['after'] != 'm1') {
+            return FakeApiResponse(
+              statusCode: 200,
+              body: {
+                'success': true,
+                'data': {
+                  'content': [at('m1', 1)],
+                  'last': true,
+                },
+              },
+            );
+          }
           return FakeApiResponse(
             statusCode: 200,
             body: {
               'success': true,
-              'data': {'content': content, 'last': page >= 2},
+              'data': {'content': afterPages[page]!, 'last': page >= 1},
             },
           );
         },
@@ -425,13 +577,94 @@ void main() {
       await thread.load(currentUserId: _me);
       expect(thread.messages.map((m) => m.id), ['m1']);
 
-      served = pages[0]!;
       final caughtUp = nextNotify(thread);
       realtime.emitConnection(RealtimeConnectionEvent.resumed);
       await caughtUp;
 
-      expect(thread.messages.map((m) => m.id), ['m1', 'm2', 'm3', 'm4', 'm5']);
-      expect(messageFetches(api), 4);
+      expect(thread.messages.map((m) => m.id), ['m1', 'm2', 'm3', 'm4']);
+      expect(afterParams(api), [null, 'm1', 'm1']);
+    });
+
+    // Kopukluk sayfa sınırından uzun sürdüyse after= yolu tamamlanamaz;
+    // eski yol devreye girer: en yeni sayfadan bilinen mesaja kadar geriye.
+    test(
+      'after sayfa sınırını aşarsa en yeni sayfalardan tamamlanır',
+      () async {
+        Map<String, dynamic> at(String id, int minute) =>
+            messageBody(id: id, sentAt: '2026-03-05T10:0$minute:00Z');
+        final newestFirst = <int, List<Map<String, dynamic>>>{
+          0: [at('m5', 5), at('m4', 4)],
+          1: [at('m3', 3), at('m2', 2)],
+          2: [at('m1', 1)],
+        };
+        var loaded = false;
+        final api = FakeApi(
+          handler: (options) {
+            if (options.method != 'GET') {
+              return const FakeApiResponse(
+                statusCode: 200,
+                body: {'success': true},
+              );
+            }
+            final page = options.queryParameters['page'] as int? ?? 0;
+            if (options.queryParameters.containsKey('after')) {
+              // Hiç bitmeyen artımlı sayfalar.
+              return FakeApiResponse(
+                statusCode: 200,
+                body: {
+                  'success': true,
+                  'data': {
+                    'content': [at('m$page', 2)],
+                    'last': false,
+                  },
+                },
+              );
+            }
+            final content = loaded ? newestFirst[page]! : newestFirst[2]!;
+            return FakeApiResponse(
+              statusCode: 200,
+              body: {
+                'success': true,
+                'data': {'content': content, 'last': page >= 2},
+              },
+            );
+          },
+        );
+        final thread = build(api);
+        await thread.load(currentUserId: _me);
+        expect(thread.messages.map((m) => m.id), ['m1']);
+        loaded = true;
+
+        final caughtUp = nextNotify(thread);
+        realtime.emitConnection(RealtimeConnectionEvent.resumed);
+        await caughtUp;
+
+        expect(thread.messages.map((m) => m.id), [
+          'm1',
+          'm2',
+          'm3',
+          'm4',
+          'm5',
+        ]);
+        // Üç after sayfası + geriye doğru üç sayfa.
+        expect(afterParams(api), [null, 'm1', 'm1', 'm1', null, null, null]);
+      },
+    );
+
+    // Elde mesaj yokken çapa yok: en yeni sayfa çekilir.
+    test('boş sohbette tamamlama after göndermez', () async {
+      final messages = <Map<String, dynamic>>[];
+      final api = apiWith(messages);
+      final thread = build(api);
+      await thread.load(currentUserId: _me);
+
+      messages.add(messageBody(id: 'm1'));
+      final caughtUp = nextNotify(thread);
+      realtime.emitConnection(RealtimeConnectionEvent.resumed);
+      await caughtUp;
+
+      expect(afterParams(api), [null, null]);
+      expect(thread.messages.map((m) => m.id), ['m1']);
     });
   });
 

@@ -433,6 +433,12 @@ class ApiPaths {
   /// Bir ilan üzerinden sohbet açar. Sohbet daima ilana bağlı.
   static String jobConversation(String jobId) => '$jobs/$jobId/conversation';
 
+  /// Tek bir sohbet; bildirimden gelirken listeyi çekip aramak yerine.
+  static String conversation(String conversationId) =>
+      '$conversations/$conversationId';
+
+  /// Sohbetin mesajları. `after=<messageId>` sorgusu yalnız o mesajdan
+  /// sonrakileri artan sırada verir; o kipte `sort` gönderilmez.
   static String conversationMessages(String conversationId) =>
       '$conversations/$conversationId/messages';
 

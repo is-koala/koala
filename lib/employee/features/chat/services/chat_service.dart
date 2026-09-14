@@ -45,18 +45,44 @@ class ChatService {
     );
   }
 
+  /// Tek bir sohbet, listedeki satırla aynı hesapla.
+  ///
+  /// Bildirimden gelirken kullanılıyor: listeyi çekip içinde aramak yerine
+  /// `GET /conversations/{id}`. Taraf olmayan kullanıcı ve olmayan sohbet
+  /// aynı `404`'ü alıyor.
+  Future<Conversation> fetchConversation({
+    required String conversationId,
+    required String currentUserId,
+  }) {
+    return _apiClient.get<Conversation>(
+      ApiPaths.conversation(conversationId),
+      parse: (data) => Conversation.fromJson(
+        data! as Map<String, dynamic>,
+        currentUserId: currentUserId,
+      ),
+    );
+  }
+
   /// Bir sohbetin mesajları.
   ///
   /// Sunucunun varsayılan sayfa boyutu 30; aynı değer burada da varsayılan.
+  ///
+  /// [after] verilirse yalnız o mesajdan **sonra** gönderilenler döner
+  /// (kopukluk sonrası artımlı tamamlama). Sunucu bu kipte sırayı kendisi
+  /// sabitliyor ve `sort` parametresini `400` ile reddediyor; burada zaten
+  /// hiçbir kipte `sort` gönderilmiyor. Çapa bu sohbetin bir mesajı değilse
+  /// ya da silinmişse `400 MESSAGING_AFTER_UNKNOWN` gelir; çağıran listeyi
+  /// baştan çeker.
   Future<MessagePage> fetchMessages({
     required String conversationId,
     required String currentUserId,
     int page = 0,
     int size = 30,
+    String? after,
   }) {
     return _apiClient.get<MessagePage>(
       ApiPaths.conversationMessages(conversationId),
-      queryParameters: {'page': page, 'size': size},
+      queryParameters: {'page': page, 'size': size, 'after': ?after},
       parse: (data) => MessagePage.fromJson(
         data! as Map<String, dynamic>,
         conversationId: conversationId,

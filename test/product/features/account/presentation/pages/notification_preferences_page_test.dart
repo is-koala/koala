@@ -144,6 +144,34 @@ void main() {
     expect(toggled.value, isTrue);
   });
 
+  // Sohbet mesajı push'ı (`MESSAGES`, ALERT): satır "Mesajlar" başlığıyla
+  // çizilir, kapatmak tek PUT ile yalnız o kararı gönderir.
+  testWidgets('Mesajlar satırı görünür ve kapatma tek PUT atar', (
+    tester,
+  ) async {
+    server = _Server(
+      rows: [_row('JOB_ALERTS', 'PUSH'), _row('MESSAGES', 'PUSH')],
+    );
+    await pumpPage(tester);
+
+    expect(find.text('Mesajlar'), findsOneWidget);
+    expect(find.text('Diğer'), findsNothing);
+    final before = tester.widget<Switch>(switchFor('MESSAGES', 'PUSH'));
+    expect(before.value, isTrue);
+    expect(before.onChanged, isNotNull);
+
+    await tester.tap(switchFor('MESSAGES', 'PUSH'));
+    await tester.pumpAndSettle();
+
+    final put = server.puts.single;
+    expect(_Server.putBody(put), {
+      'preferences': [
+        {'category': 'MESSAGES', 'channel': 'PUSH', 'enabled': false},
+      ],
+    });
+    expect(tester.widget<Switch>(switchFor('MESSAGES', 'PUSH')).value, isFalse);
+  });
+
   // İşlemsel satırı kapatmak sunucuda `400`; anahtar en baştan kilitli
   // olmalı ki kullanıcı deneyip hata görmesin.
   testWidgets('işlemsel kategori kilitli çizilir ve istek göndermez', (
