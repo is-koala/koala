@@ -283,7 +283,9 @@ class ChatThreadController extends ChangeNotifier {
   /// bilinmiyorsa — başka sohbetin mesajı ya da silinmiş, `400
   /// MESSAGING_AFTER_UNKNOWN` — ya da kopukluk [_catchUpPageLimit] sayfadan
   /// uzun sürdüyse eski yol devreye girer: en yeni sayfa(lar) çekilir ve
-  /// bilinen bir mesaja rastlanana kadar geriye gidilir. İki yolda da
+  /// bilinen bir mesaja rastlanana kadar geriye gidilir. Artımlı yol
+  /// okunmamış kendi mesajımız varken en yeni sayfayı da bir kez okur ki
+  /// kopukken okunanların `readAt`'i gelsin. İki yolda da
   /// gelenler eldekiyle **kimlik** üzerinden birleşir: bilinmeyenler
   /// eklenir, bilinenler sunucudaki hâliyle değiştirilir, aynı kimlik
   /// ikinci kez eklenmez. Yeni gelen karşı taraf mesajı varsa sohbet açık
@@ -303,10 +305,17 @@ class ChatThreadController extends ChangeNotifier {
 
     final List<Message> fetched;
     try {
-      fetched = anchor == null
-          ? await _fetchNewestPages(userId, generation)
-          : await _fetchAfter(userId, generation, anchor) ??
-                await _fetchNewestPages(userId, generation);
+      if (anchor == null) {
+        fetched = await _fetchNewestPages(userId, generation);
+      } else {
+        final incremental = await _fetchAfter(userId, generation, anchor);
+        fetched = incremental == null
+            ? await _fetchNewestPages(userId, generation)
+            : [
+                ...incremental,
+                ...await _fetchReadReceiptsIfNeeded(userId, generation),
+              ];
+      }
     } on ApiException {
       return;
     }
@@ -353,6 +362,28 @@ class ChatThreadController extends ChangeNotifier {
       if (result.last || result.messages.isEmpty) return fetched;
     }
     return null;
+  }
+
+  /// `after=` yalnız yeni mesajları taşıyor; kopukken karşı tarafın okuduğu
+  /// **kendi** mesajlarımızın `readAt`'i ondan gelmez (READ olayı da kopukken
+  /// kaçtı). Okunmamış kendi mesajımız varsa en yeni sayfa bir kez daha
+  /// okunur ve [_mergeFetched] bilinenleri sunucudaki hâliyle değiştirir.
+  /// Hepsi okunmuşsa ya da hiç yoksa ağa çıkılmaz.
+  Future<List<Message>> _fetchReadReceiptsIfNeeded(
+    String userId,
+    int generation,
+  ) async {
+    final awaitingReceipt = _messages.any(
+      (message) => message.isMe && message.readAt == null,
+    );
+    if (!awaitingReceipt) return const [];
+
+    final result = await _chatService.fetchMessages(
+      conversationId: conversationId,
+      currentUserId: userId,
+    );
+    if (_disposed || generation != _loadGeneration) return const [];
+    return result.messages;
   }
 
   /// En yeni sayfadan geriye, bilinen bir mesaja rastlayana ya da

@@ -190,6 +190,36 @@ void main() {
       expect(api.requests, hasLength(1));
     });
 
+    // Soğuk açılışta işveren ana sayfası `/users/me`'yi başlatmışken gelen
+    // push dokunması `await load()` deyip boş kullanıcı bulmamalı: ikinci
+    // çağrı ağa çıkmaz ama süren isteğin bitmesini bekler.
+    test('süren yükleme varken ikinci çağrı onun bitmesini bekler', () async {
+      final response = Completer<FakeApiResponse>();
+      final api = FakeApi(handler: (_) => response.future);
+      final provider = buildProvider(api);
+
+      final first = provider.load(silent: true);
+      await api.requestsReach(1);
+      var secondDone = false;
+      final second = provider.load().whenComplete(() => secondDone = true);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(secondDone, isFalse);
+      expect(provider.user, isNull);
+
+      response.complete(
+        FakeApiResponse(
+          statusCode: 200,
+          body: {'success': true, 'data': userBody()},
+        ),
+      );
+      await Future.wait([first, second]);
+
+      expect(secondDone, isTrue);
+      expect(provider.user?.id, 'user-1');
+      expect(api.requests, hasLength(1));
+    });
+
     test('sessiz tazelemeler de üst üste binmez', () async {
       final api = FakeApi(
         handler: (_) => FakeApiResponse(

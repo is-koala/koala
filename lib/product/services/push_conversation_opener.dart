@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/chat/models/conversation.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
 import 'package:koala/product/network/api_exception.dart';
@@ -74,4 +75,24 @@ class PushConversationOpener {
       navigate(target, null);
     }
   }
+}
+
+/// Sohbet listesine gider; sohbet varsa üstüne sohbet ekranını iter.
+///
+/// Önce liste: sohbetten geri çıkınca kullanıcı listeye düşmeli, boş bir
+/// yığına değil. `push` bir sonraki kareye bırakılıyor ki `go`'nun rota
+/// çözümü tamamlanmış olsun ve `push` yeni yığını taban alsın; iki kabuk da
+/// aynı `extra` sözleşmesini kullanıyor ([Conversation]).
+/// `PushMessaging` bunu uygulamanın router'ıyla çağırıyor; testler kendi
+/// küçük router'larıyla.
+void openChatOn(
+  GoRouter router,
+  ChatRoutes routes,
+  Conversation? conversation,
+) {
+  router.go(routes.list);
+  if (conversation == null) return;
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    router.push(routes.detail, extra: conversation);
+  });
 }

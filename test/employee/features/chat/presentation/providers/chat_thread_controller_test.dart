@@ -213,7 +213,10 @@ void main() {
     // Tamamlama artımlı: eldeki en yeni mesaj çapa olur ve sunucudan yalnız
     // ondan sonrakiler istenir. Kopukken gelen eklenir, eldeki tekrar
     // eklenmez; `after` kipinde `sort` gönderilmez (sunucu 400 verir).
+    // Okunmamış kendi mesajımız (m2) olduğu için en yeni sayfa da bir kez
+    // okunur: kopukken okunanın `readAt`'i sunucudan gelir.
     test('kopup gelen bağlantı kaçanları after= ile tamamlar', () async {
+      var readOffline = false;
       final messages = [
         messageBody(id: 'm1', body: 'Merhaba'),
         messageBody(
@@ -233,7 +236,13 @@ void main() {
           }
           final after = options.queryParameters['after'];
           final content = after == null
-              ? messages.reversed.toList()
+              ? [
+                  for (final message in messages.reversed)
+                    if (message['id'] == 'm2' && readOffline)
+                      {...message, 'readAt': '2026-03-05T10:04:00Z'}
+                    else
+                      message,
+                ]
               : after == 'm2'
               ? [
                   messageBody(
@@ -255,20 +264,24 @@ void main() {
       final thread = build(api);
       await thread.load(currentUserId: _me);
       expect(thread.messages, hasLength(2));
+      expect(thread.messages[1].readAt, isNull);
 
+      readOffline = true;
       final caughtUp = nextNotify(thread);
       realtime.emitConnection(RealtimeConnectionEvent.disconnected);
       realtime.emitConnection(RealtimeConnectionEvent.connected);
       await caughtUp;
 
-      expect(messageFetches(api), 2);
-      expect(afterParams(api), [null, 'm2']);
-      final catchUpRequest = api.requests.last;
-      expect(catchUpRequest.queryParameters.containsKey('sort'), isFalse);
+      expect(messageFetches(api), 3);
+      expect(afterParams(api), [null, 'm2', null]);
+      for (final request in api.requests) {
+        expect(request.queryParameters.containsKey('sort'), isFalse);
+      }
       expect(thread.messages.map((m) => m.id), ['m1', 'm2', 'm3']);
+      expect(thread.messages[1].readAt, isNotNull);
       expect(thread.messages.last.body, 'Kopukken yazdım');
       // Ekran açık: karşı tarafın kaçan mesajı okundu işaretlenir.
-      await api.requestsReach(4);
+      await api.requestsReach(5);
       expect(
         api.requests
             .where((r) => r.path == '/conversations/$_conversationId/read')
@@ -348,6 +361,28 @@ void main() {
       expect(afterParams(api), [null, 'm-silinen', null]);
       expect(thread.messages.map((m) => m.id), ['m1', 'm3', 'm-silinen']);
       expect(thread.messages.where((m) => m.id == 'm3'), hasLength(1));
+    });
+
+    // Kendi mesajlarımızın hepsi okunmuşsa (ya da hiç yoksa) okundu bilgisi
+    // için ikinci sayfa okunmaz: yalnız after= isteği.
+    test('okunmamış kendi mesajımız yoksa yalnız after çekilir', () async {
+      final api = apiWith([
+        messageBody(id: 'm1'),
+        messageBody(
+          id: 'm2',
+          senderId: _me,
+          sentAt: '2026-03-05T10:01:00Z',
+          readAt: '2026-03-05T10:02:00Z',
+        ),
+      ]);
+      final thread = build(api);
+      await thread.load(currentUserId: _me);
+
+      realtime.emitConnection(RealtimeConnectionEvent.resumed);
+      await api.requestsReach(3);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(afterParams(api), [null, 'm2']);
     });
 
     // after= dışındaki bir hata eldeki listeyi bozmaz ve yedek yola düşmez.

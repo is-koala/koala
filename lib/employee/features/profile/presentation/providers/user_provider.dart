@@ -38,13 +38,30 @@ class UserProvider extends ChangeNotifier {
   /// Elde gösterilecek veri yokken hata varsa ekran boş değil hatalı çizilmeli.
   bool get hasError => _errorMessage != null;
 
+  /// Süren `load` isteği; ikinci çağıran ağa çıkmak yerine bunu bekliyor.
+  Future<void>? _loading;
+
   /// Kullanıcıyı sunucudan çeker.
   ///
   /// Elde veri varken tekrar çağrıldığında yükleme göstergesi açılmıyor
   /// ([silent]): sayfaya her dönüşte iskelet ekranın yanıp sönmesi, tazeleme
   /// için ödenecek makul bir bedel değil.
-  Future<void> load({bool silent = false}) async {
-    if (_isRequestInFlight) return;
+  ///
+  /// Bir yükleme sürerken gelen çağrı ikinci istek atmıyor ama **onu
+  /// bekliyor**: soğuk açılışta işveren ana sayfası `/users/me`'yi zaten
+  /// başlatmışken gelen bir push dokunması `await load()` deyip hâlâ boş
+  /// bir kullanıcı bulmamalı (is-koala/koala#170).
+  Future<void> load({bool silent = false}) {
+    if (_isRequestInFlight) return _loading ?? Future.value();
+
+    late final Future<void> loading;
+    loading = _loadNow(silent: silent).whenComplete(() {
+      if (identical(_loading, loading)) _loading = null;
+    });
+    return _loading = loading;
+  }
+
+  Future<void> _loadNow({required bool silent}) async {
     final generation = _generation;
     _isRequestInFlight = true;
 

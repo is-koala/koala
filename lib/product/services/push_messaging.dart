@@ -133,19 +133,9 @@ class PushMessaging {
     });
   }
 
-  /// Sohbet listesine gider; sohbet varsa üstüne sohbet ekranını iter.
-  ///
-  /// Önce liste: sohbetten geri çıkınca kullanıcı listeye düşmeli, boş bir
-  /// yığına değil. `push` bir sonraki kareye bırakılıyor ki `go`'nun rota
-  /// çözümü tamamlanmış olsun; iki kabuk da aynı `extra` sözleşmesini
-  /// kullanıyor ([Conversation]).
   static void _openChat(ChatRoutes routes, Conversation? conversation) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      RouterManager.router.go(routes.list);
-      if (conversation == null) return;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        RouterManager.router.push(routes.detail, extra: conversation);
-      });
+      openChatOn(RouterManager.router, routes, conversation);
     });
   }
 
