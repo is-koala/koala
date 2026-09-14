@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
@@ -10,10 +12,12 @@ import 'package:koala/employee/features/profile/presentation/widgets/cv_actions_
 import 'package:koala/employee/features/profile/services/education_service.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/timeline_card.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
+import 'package:koala/employee/features/settings/presentation/providers/identity_review_provider.dart';
 import 'package:koala/employee/features/profile/presentation/providers/availability_provider.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/profile_avatar.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/experience_sheet.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/profile_reviews.dart';
+import 'package:koala/employee/features/jobs/services/review_service.dart';
 import 'package:koala/employee/features/profile/services/experience_service.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -26,12 +30,17 @@ import 'package:koala/product/widgets/confirm_dialog.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:koala/product/widgets/availability_view.dart';
+import 'package:koala/product/widgets/identity_status_badge.dart';
 import 'package:provider/provider.dart';
 
 part 'profile_pagemodel.dart';
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  const ProfilePage({super.key, this.reviewService});
+
+  /// Değerlendirme şeridinin servisi; testlerde sahte sunucuya bağlanıyor,
+  /// üretimde `null` ve şerit kendi tekilini kullanıyor.
+  final ReviewService? reviewService;
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -149,7 +158,7 @@ class _ProfilePageState extends ProfilePageModel {
               const SizedBox(height: AppSizes.spaceMedium),
               educationSection(user),
               const SizedBox(height: AppSizes.spaceMedium),
-              ProfileReviews(userId: user.id),
+              ProfileReviews(userId: user.id, service: widget.reviewService),
               const SizedBox(height: _bottomClearance),
             ],
           ),
@@ -438,6 +447,11 @@ class _ProfilePageState extends ProfilePageModel {
                 Text(occupation, style: context.textTheme.bodyMedium),
               if (location != null)
                 Text(location, style: context.textTheme.bodyMedium),
+              const SizedBox(height: AppSizes.spaceSmall),
+              // Kimlik durumu: doğrulandı / incelemede / reddedildi /
+              // doğrulanmadı. Başvurunun ilk şartı bu; kullanıcı profilini
+              // her açtığında nerede durduğunu görsün.
+              IdentityStatusBadge(user: user),
             ],
           ),
         ),

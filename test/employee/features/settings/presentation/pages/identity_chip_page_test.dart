@@ -261,7 +261,8 @@ void main() {
 
     expect(find.text('Bu telefon kimlik kartı okuyamıyor'), findsOneWidget);
     // "Bir hata oluştu" değil: kullanıcıya çıkış yolu gösteriliyor.
-    expect(find.textContaining('elle girerek'), findsOneWidget);
+    expect(find.textContaining('dört fotoğrafla'), findsOneWidget);
+    expect(find.text('Fotoğrafla Devam Et'), findsOneWidget);
   });
 
   testWidgets('çözümü olmayan hatada tekrar dene düğmesi çıkmıyor', (
@@ -271,6 +272,75 @@ void main() {
     await pumpPage(tester);
 
     expect(find.text('Tekrar Dene'), findsNothing);
+    expect(find.text('Bilgileri Elle Doğrula'), findsOneWidget);
+  });
+
+  testWidgets(
+    '"Fotoğrafla Devam Et" fotoğraf yoluna geçiş sonucuyla kapanıyor',
+    (tester) async {
+      // Kabul maddesi: her çip hatasında fotoğraflı yol bir dokunuş uzakta.
+      // Ekran kanıt değil bir yön döndürüyor; kimlik ekranı onu görünce dört
+      // fotoğraflı incelemeyi açıyor.
+      Object? popped;
+      final router = GoRouter(
+        initialLocation: '/identity-verification',
+        routes: [
+          GoRoute(
+            path: '/identity-verification',
+            builder: (context, state) =>
+                const Scaffold(body: Text('kimlik formu')),
+          ),
+          GoRoute(
+            path: '/identity-chip',
+            builder: (context, state) => const IdentityChipPage(),
+          ),
+        ],
+      );
+      await tester.pumpWidget(
+        MaterialApp.router(theme: lightTheme, routerConfig: router),
+      );
+      unawaited(
+        router.push<Object>('/identity-chip').then((result) => popped = result),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Bu telefon kimlik kartı okuyamıyor'), findsOneWidget);
+
+      await tester.tap(find.text('Fotoğrafla Devam Et'));
+      await tester.pumpAndSettle();
+
+      expect(popped, IdentityChipHandoff.photos);
+      expect(find.text('kimlik formu'), findsOneWidget);
+    },
+  );
+
+  testWidgets('okuma hatasında da "Fotoğrafla Devam Et" ilk seçenek', (
+    tester,
+  ) async {
+    final api = FakeApi(
+      handler: (_) => const FakeApiResponse(
+        statusCode: 200,
+        body: {'success': true, 'data': 'q83vEjRWeJA='},
+      ),
+    );
+    final camera = _LiveCameraSession();
+    await pumpPage(
+      tester,
+      page: IdentityChipPage(
+        userService: UserService.withClient(api.client),
+        chipReader: _AvailableChipReader(),
+        mrzCamera: camera,
+      ),
+    );
+    await tester.tap(find.text('Kartın Arka Yüzünü Tara'));
+    await tester.pump();
+    camera.controller.addError(
+      const ChipReadException(ChipReadFailure.cardMoved),
+    );
+    await tester.pumpAndSettle();
+
+    final photos = tester.getTopLeft(find.text('Fotoğrafla Devam Et'));
+    final retry = tester.getTopLeft(find.text('Tekrar Dene'));
+    expect(photos.dy, lessThan(retry.dy));
     expect(find.text('Bilgileri Elle Doğrula'), findsOneWidget);
   });
 

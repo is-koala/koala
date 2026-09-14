@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/network/api_paths.dart';
 
@@ -200,6 +201,89 @@ void main() {
       expect(error.message, 'Galeri sınırı aşıldı.');
       expect(error.errorCode, 'GALLERY_LIMIT_EXCEEDED');
     });
+
+    test(
+      'postMultipartJsonFiles JSON parçasını ve her dosyayı kendi parçasında '
+      'gönderir',
+      () async {
+        final second = File('${tempDir.path}/arka.png')
+          ..writeAsStringSync('koala-arka');
+        final api = FakeApi(
+          handler: (_) => const FakeApiResponse(
+            statusCode: 201,
+            body: {
+              'success': true,
+              'data': {'id': 'r-1'},
+            },
+          ),
+        );
+
+        final id = await api.client.postMultipartJsonFiles<String>(
+          ApiPaths.currentUserIdentityDocuments,
+          jsonFieldName: 'identity',
+          jsonBody: const {'firstName': 'Çağrı'},
+          files: {
+            'front': UploadFile(imageFile.path),
+            'back': UploadFile(
+              second.path,
+              filename: 'arka.webp',
+              contentType: 'image/webp',
+            ),
+          },
+          parse: (data) => (data! as Map<String, dynamic>)['id'] as String,
+        );
+
+        expect(id, 'r-1');
+        final request = api.requests.single;
+        expect(request.method, 'POST');
+        expect(
+          request.headers[Headers.contentTypeHeader],
+          startsWith(Headers.multipartFormDataContentType),
+        );
+        final formData = request.data! as FormData;
+        expect(formData.fields, isEmpty);
+        expect(formData.files.map((part) => part.key), [
+          'identity',
+          'front',
+          'back',
+        ]);
+        final byKey = {for (final part in formData.files) part.key: part.value};
+        expect(byKey['identity']!.contentType?.mimeType, 'application/json');
+        expect(byKey['front']!.filename, 'galeri.jpg');
+        expect(byKey['front']!.contentType?.mimeType, 'image/jpeg');
+        // Ad ve tip verildiyse dosyanın kendi adı değil onlar gidiyor.
+        expect(byKey['back']!.filename, 'arka.webp');
+        expect(byKey['back']!.contentType?.mimeType, 'image/webp');
+        expect(byKey['back']!.length, 'koala-arka'.length);
+      },
+    );
+
+    test(
+      'postMultipartJsonFiles ilerleme geri çağrısını dio\'ya iletir',
+      () async {
+        final api = FakeApi(
+          handler: (_) => const FakeApiResponse(
+            statusCode: 201,
+            body: {'success': true, 'data': 1},
+          ),
+        );
+        void onProgress(int sent, int total) {}
+
+        await api.client.postMultipartJsonFiles<int>(
+          ApiPaths.currentUserIdentityDocuments,
+          jsonFieldName: 'identity',
+          jsonBody: const {},
+          files: {'front': UploadFile(imageFile.path)},
+          onSendProgress: onProgress,
+          parse: (data) => data! as int,
+        );
+
+        // Sahte adaptör akışı okumadığı için geri çağrı burada tetiklenmiyor;
+        // ölçülen şey isteğe takılmış olması. Gerçek adaptör her parçada
+        // çağırıyor.
+        expect(api.requests.single.onSendProgress, same(onProgress));
+      },
+    );
   });
 
   group('ApiClient hata çevirisi', () {

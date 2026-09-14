@@ -29,6 +29,17 @@ import 'package:koala/product/widgets/my_textfield.dart';
 
 part 'identity_chip_pagemodel.dart';
 
+/// Çip ekranının kanıt yerine bir **yön** ile kapandığını söyleyen sonuç.
+///
+/// Ekran normalde [IdentityChipResult] ya da `null` ile kapanıyor. Hata
+/// ekranındaki "Fotoğrafla Devam Et" üçüncü bir sonuç: kimlik ekranı bunu
+/// görünce fotoğraf akışını açıyor. Ayrı bir tip olmasının sebebi, `null`'ın
+/// zaten "vazgeçti, hiçbir şey değişmesin" anlamını taşıması.
+enum IdentityChipHandoff {
+  /// Kullanıcı çip yolunu bırakıp dört fotoğrafla devam etmek istiyor.
+  photos,
+}
+
 /// Kimlik kartının çipini okuyan ekran.
 ///
 /// Sırası kasıtlı: **önce sunucudan tek kullanımlık sayı**, sonra kartın
@@ -37,8 +48,10 @@ part 'identity_chip_pagemodel.dart';
 ///
 /// Başarılı okumada [IdentityChipResult] ile kapanıyor; kullanıcı vazgeçer
 /// ya da NFC hiç yoksa `null` ile kapanıyor ve kimlik ekranı **beyan
-/// formuyla eskisi gibi** devam ediyor. Çip bu akışta bir kanıt, bir kapı
-/// değil.
+/// formuyla eskisi gibi** devam ediyor. Her hata ekranında bir de
+/// "Fotoğrafla Devam Et" var: [IdentityChipHandoff.photos] ile kapanıyor ve
+/// kimlik ekranı dört fotoğraflı incelemeyi açıyor. Çip bu akışta bir kanıt,
+/// bir kapı değil.
 ///
 /// > iOS okuma sırasında kendi sistem NFC sayfasını açıyor ve bu ekran
 /// > onun altında kalıyor — bu yüzden ilerleme metni hem burada hem
@@ -310,12 +323,15 @@ class _IdentityChipPageState extends IdentityChipPagemodel {
             ),
           ),
           const SizedBox(height: AppSizes.spaceLarge),
+          // Çip okunamasa da kullanıcı boşlukta kalmıyor: ürünün ana yolu
+          // olan fotoğraflı inceleme her hatada ilk seçenek. Kartı yeniden
+          // okutmak ve beyan formu onun altında duruyor.
+          MyButton(onPressed: continueWithPhotos, title: 'Fotoğrafla Devam Et'),
+          const SizedBox(height: AppSizes.space),
           if (reason.canRetry) ...[
-            MyButton(onPressed: retry, title: 'Tekrar Dene'),
+            MyButton(onPressed: retry, title: 'Tekrar Dene', isReversed: true),
             const SizedBox(height: AppSizes.space),
           ],
-          // Çip okunamasa da kullanıcı boşlukta kalmıyor: beyan formu
-          // eskisi gibi çalışıyor ve doğrulama oradan tamamlanabiliyor.
           MyButton(
             onPressed: abandon,
             title: 'Bilgileri Elle Doğrula',

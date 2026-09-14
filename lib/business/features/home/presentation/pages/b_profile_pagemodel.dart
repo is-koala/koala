@@ -27,6 +27,9 @@ abstract class BProfilePageModel extends State<BProfilePage> {
     if (!mounted) return;
 
     final userProvider = context.read<UserProvider>();
+    // Kimlik rozeti için inceleme durumu her açılışta ve yenilemede
+    // tazeleniyor; kullanıcı yüklemesini bekletmiyor.
+    unawaited(context.read<IdentityReviewProvider>().load(silent: true));
     if (userProvider.user == null || force) {
       await userProvider.load(silent: !force);
     }

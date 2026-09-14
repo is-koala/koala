@@ -67,6 +67,7 @@ import 'package:koala/employee/features/auth/models/pending_verification.dart';
 import 'package:koala/employee/features/settings/presentation/pages/change_password_page.dart';
 import 'package:koala/employee/features/settings/presentation/pages/verification_code_page.dart';
 import 'package:koala/employee/features/settings/presentation/pages/identity_chip_page.dart';
+import 'package:koala/employee/features/settings/presentation/pages/identity_documents_page.dart';
 import 'package:koala/employee/features/settings/presentation/pages/identity_verification_page.dart';
 import 'package:koala/product/models/confirmed_address.dart';
 import 'package:koala/product/network/session_manager.dart';
@@ -362,6 +363,19 @@ class RouterManager {
       GoRoute(
         path: '/identity-chip',
         pageBuilder: (context, state) => _page(state, const IdentityChipPage()),
+      ),
+
+      // Fotoğraflı inceleme: dört kare + beyan tek istekte, sonra personel
+      // onayı. Kimlik ekranı iOS'ta, NFC'siz cihazda ve bir inceleme kaydı
+      // varken buraya doğrudan geçiyor; Android'de çip formunun tepesinden
+      // ve çip hatalarından da açılıyor. `true` ile yalnız onaylanmış
+      // incelemede kapanıyor.
+      GoRoute(
+        path: '/identity-documents',
+        pageBuilder: (context, state) {
+          final user = state.extra as CurrentUser;
+          return _page(state, IdentityDocumentsPage(user: user));
+        },
       ),
 
       GoRoute(

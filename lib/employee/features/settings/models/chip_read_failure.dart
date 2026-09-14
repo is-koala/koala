@@ -8,12 +8,13 @@
 /// Sunucunun döndürdüğü hatalar burada değil — onlar [IdentityError]'da.
 enum ChipReadFailure {
   /// Telefonda NFC donanımı yok. Tekrar denemenin faydası yok; kullanıcının
-  /// çıkış yolu elle doğrulama talebi.
+  /// çıkış yolu dört fotoğraflı inceleme.
   nfcUnsupported(
     title: 'Bu telefon kimlik kartı okuyamıyor',
     message:
         'Telefonunda NFC bulunmuyor, bu yüzden kimlik kartının çipini '
-        'okuyamıyoruz. Kimlik bilgilerini elle girerek devam edebilirsin.',
+        'okuyamıyoruz. Kimliğini dört fotoğrafla incelemeye göndererek '
+        'devam edebilirsin.',
     canRetry: false,
   ),
 

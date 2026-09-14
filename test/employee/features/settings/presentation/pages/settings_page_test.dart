@@ -7,6 +7,7 @@ import 'package:koala/employee/features/jobs/presentation/providers/review_provi
 import 'package:koala/employee/features/jobs/presentation/providers/saved_jobs_provider.dart';
 import 'package:koala/employee/features/profile/presentation/providers/availability_provider.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
+import 'package:koala/employee/features/settings/presentation/providers/identity_review_provider.dart';
 import 'package:koala/employee/features/settings/presentation/pages/settings_page.dart';
 import 'package:koala/product/theme/theme.dart';
 import 'package:koala/product/theme/theme_provider.dart';
@@ -86,6 +87,7 @@ void main() {
             ChangeNotifierProvider(create: (_) => ThemeProvider()),
             ChangeNotifierProvider.value(value: notifications),
             ChangeNotifierProvider(create: (_) => UserProvider()),
+            ChangeNotifierProvider(create: (_) => IdentityReviewProvider()),
             ChangeNotifierProvider(create: (_) => AvailabilityProvider()),
             ChangeNotifierProvider(create: (_) => ApplyProvider()),
             ChangeNotifierProvider(create: (_) => SavedJobsProvider()),

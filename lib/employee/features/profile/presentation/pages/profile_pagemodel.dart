@@ -24,6 +24,10 @@ abstract class ProfilePageModel extends State<ProfilePage>
 
   Future<void> _loadProfileData({bool silent = false}) async {
     final userProvider = context.read<UserProvider>();
+    // Kimlik inceleme durumu her açılışta ve yenilemede tazeleniyor: personel
+    // kararı (red/onay) bu ekranın rozetinde görünmeli, açılıştaki tek
+    // okumada kalmamalı. Kullanıcı yüklemesini bekletmiyor.
+    unawaited(context.read<IdentityReviewProvider>().load(silent: true));
     await userProvider.load(silent: silent);
     if (!mounted) return;
 

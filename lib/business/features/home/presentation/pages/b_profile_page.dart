@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/company_detail/models/company.dart';
@@ -5,6 +7,7 @@ import 'package:koala/business/features/home/models/employer_stats.dart';
 import 'package:koala/business/features/home/presentation/providers/b_company_provider.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
+import 'package:koala/employee/features/settings/presentation/providers/identity_review_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -14,6 +17,7 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
+import 'package:koala/product/widgets/identity_status_badge.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:provider/provider.dart';
 
@@ -255,21 +259,26 @@ class _BProfilePageState extends BProfilePageModel {
 
   /// Şirketi olanda şirketin onayı, olmayanda kişinin kimlik doğrulaması.
   ///
-  /// İkisi de aynı şeyi anlatıyor: bu hesap ilan yayınlayabilir mi.
+  /// İkisi de aynı şeyi anlatıyor: bu hesap ilan yayınlayabilir mi. Kimlik
+  /// tarafı çalışan profilindeki rozetin kendisi: dört hâl, dokununca
+  /// kimlik ekranı; kapak yeşil olduğu için beyaz varyantı.
   Widget _statusRow(CurrentUser user, Company? company) {
-    final isVerified = company?.isApproved ?? user.identityVerified;
-    final label = company != null
-        ? (isVerified ? 'Onaylı İşletme' : 'Onay Bekliyor')
-        : (isVerified ? 'Kimliği Doğrulanmış' : 'Kimlik Doğrulanmadı');
+    if (company != null) {
+      return _coverStatus(
+        icon: company.isApproved ? AppIcons.checkCircle : AppIcons.alert,
+        label: company.isApproved ? 'Onaylı İşletme' : 'Onay Bekliyor',
+      );
+    }
 
+    return IdentityStatusBadge(user: user, onAccentSurface: true);
+  }
+
+  Widget _coverStatus({required String icon, required String label}) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        AppIcon(
-          isVerified ? AppIcons.checkCircle : AppIcons.alert,
-          color: AppColors.onAccent,
-          size: AppSizes.iconSmall,
-        ),
+        AppIcon(icon, color: AppColors.onAccent, size: AppSizes.iconSmall),
         const SizedBox(width: AppSizes.spaceTiny),
         Text(
           label,
