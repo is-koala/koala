@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:koala/product/constants/app_assets.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_map.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -198,7 +199,7 @@ class _MapFirstAddressPageState extends MapFirstAddressPagemodel {
   ];
 
   Widget _overlayButton({
-    required String icon,
+    required AppIconData icon,
     required String tooltip,
     required VoidCallback? onPressed,
     bool isLoading = false,
