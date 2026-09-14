@@ -23,6 +23,8 @@ import 'package:provider/provider.dart';
 
 import '../../../../../support/fake_api.dart';
 import '../../../../../support/identity_document_fixtures.dart';
+import '../../../../../support/keyboard.dart';
+import 'package:koala/product/widgets/keyboard_done_bar.dart';
 
 final CurrentUser _user = CurrentUser.fromJson(const {
   'id': 'user-1',
@@ -869,5 +871,45 @@ void main() {
         IdentityStatus.pending,
       );
     });
+  });
+
+  group('klavye (is-koala/koala#190)', () {
+    for (final brightness in Brightness.values) {
+      testWidgets(
+        '${brightness.name} tema: gönder çubuğu klavyenin üstüne çıkar, boş '
+        'alana dokununca odak düşer',
+        (tester) async {
+          await pumpPage(tester, serverWith(), brightness: brightness);
+          await showKeyboard(tester);
+
+          await expectAboveKeyboard(tester, findBottomBarButton());
+          await expectTapOutsideDropsFocus(
+            tester,
+            textFieldLabeled('TC Kimlik No'),
+          );
+        },
+      );
+    }
+
+    testWidgets(
+      'iOS: TC Kimlik No alanı odaklanınca klavyenin üstünde Bitti çıkar',
+      (tester) async {
+        await pumpPage(tester, serverWith());
+        await showKeyboard(tester);
+
+        await tester.ensureVisible(textFieldLabeled('TC Kimlik No'));
+        await tester.pump();
+        await tester.tap(textFieldLabeled('TC Kimlik No'));
+        await tester.pump();
+
+        expect(find.text(KeyboardDoneBar.label), findsOneWidget);
+
+        await tester.tap(find.text(KeyboardDoneBar.label));
+        await tester.pump();
+
+        expect(anyFieldFocused(tester), isFalse);
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+    );
   });
 }

@@ -3,12 +3,17 @@ import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/widgets/dismiss_keyboard_on_tap.dart';
 
 /// Uygulamadaki bottom sheet'lerin ortak kabuğu: zemin, üst köşeler, başlık
 /// satırı ve alt güvenli alan payı.
 ///
 /// İçeriğin kendi durumu varsa `builder` içinde bir `StatefulBuilder` ile
 /// sarmalayıp bu widget'ı onun altında kur; kabuk durumla ilgilenmiyor.
+///
+/// Kabuğun boş alanına dokunmak klavyeyi kapatıyor; metin alanı taşıyan
+/// sheet'ler klavye payını (`viewInsets`) kendileri ekliyor, çünkü sheet
+/// `Scaffold`'un dışında, Navigator katmanında duruyor.
 class AppBottomSheet extends StatelessWidget {
   const AppBottomSheet({super.key, required this.title, required this.child});
 
@@ -31,31 +36,33 @@ class AppBottomSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: context.backgroundColor,
-        borderRadius: AppRadius.sheetTop,
-      ),
-      padding: AppPadding.sheet.copyWith(
-        bottom: context.padding.bottom + AppPadding.sheet.bottom,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(title, style: context.textTheme.titleLarge),
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSizes.spaceMedium),
-          child,
-        ],
+    return DismissKeyboardOnTap(
+      child: Container(
+        decoration: BoxDecoration(
+          color: context.backgroundColor,
+          borderRadius: AppRadius.sheetTop,
+        ),
+        padding: AppPadding.sheet.copyWith(
+          bottom: context.padding.bottom + AppPadding.sheet.bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(title, style: context.textTheme.titleLarge),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSizes.spaceMedium),
+            child,
+          ],
+        ),
       ),
     );
   }

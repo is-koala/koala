@@ -13,6 +13,7 @@ import 'package:koala/product/widgets/locked_field.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../../support/fake_api.dart';
+import '../../../../../support/keyboard.dart';
 
 final CurrentUser _user = CurrentUser.fromJson(const {
   'id': 'user-1',
@@ -437,5 +438,18 @@ void main() {
     final body = api.requests.single.data as Map<String, dynamic>;
     expect(body.containsKey('firstName'), isFalse);
     expect(body.containsKey('lastName'), isFalse);
+  });
+
+  testWidgets('klavye açıkken Kaydet çubuğu klavyenin üstüne çıkar, boş alana '
+      'dokununca odak düşer', (tester) async {
+    final api = FakeApi(
+      handler: (_) =>
+          FakeApiResponse(statusCode: 200, body: _patchResponse([])),
+    );
+    await pumpPage(tester, api);
+    await showKeyboard(tester);
+
+    await expectAboveKeyboard(tester, findBottomBarButton());
+    await expectTapOutsideDropsFocus(tester, fieldLabelled('Telefon'));
   });
 }

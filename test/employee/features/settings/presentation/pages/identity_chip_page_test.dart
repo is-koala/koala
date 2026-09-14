@@ -17,6 +17,7 @@ import 'package:koala/product/theme/theme.dart';
 
 import '../../../../../support/chip_fixtures.dart';
 import '../../../../../support/fake_api.dart';
+import '../../../../../support/keyboard.dart';
 
 class _AvailableChipReader extends ChipReader {
   @override
@@ -471,5 +472,44 @@ void main() {
       expect(find.text('Bilgileri Elle Doğrula'), findsOneWidget);
       expect(find.text('kimlik formu'), findsNothing);
     });
+  });
+
+  group('elle giriş formu klavyesi (is-koala/koala#190)', () {
+    for (final brightness in Brightness.values) {
+      testWidgets(
+        '${brightness.name} tema: Kartı Okut çubuğu klavyenin üstüne çıkar, '
+        'boş alana dokununca odak düşer',
+        (tester) async {
+          final api = FakeApi(
+            handler: (_) => const FakeApiResponse(
+              statusCode: 200,
+              body: {'success': true, 'data': 'q83vEjRWeJA='},
+            ),
+          );
+          await pumpPage(
+            tester,
+            brightness: brightness,
+            page: IdentityChipPage(
+              userService: UserService.withClient(api.client),
+              chipReader: _AvailableChipReader(),
+              mrzCamera: _LiveCameraSession(),
+            ),
+          );
+          await tester.tap(find.text('Kart taranmıyor mu? Bilgileri elle gir'));
+          await tester.pumpAndSettle();
+          await showKeyboard(tester);
+
+          await expectAboveKeyboard(tester, findBottomBarButton());
+          await expectTapOutsideDropsFocus(
+            tester,
+            find.byWidgetPredicate(
+              (widget) =>
+                  widget is TextField &&
+                  widget.decoration?.labelText == 'Belge (seri) numarası',
+            ),
+          );
+        },
+      );
+    }
   });
 }

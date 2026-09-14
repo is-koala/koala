@@ -10,6 +10,7 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/models/reference_location.dart';
 import 'package:koala/product/services/reference_location_service.dart';
+import 'package:koala/product/widgets/form_page_body.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:koala/product/widgets/my_button.dart';
@@ -38,7 +39,7 @@ class _JobAlertFormPageState extends JobAlertFormPagemodel {
         title: widget.alert == null ? 'Yeni İş Alarmı' : 'Alarmı Düzenle',
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
+        child: FormPageBody(
           padding: AppPadding.primaryAll,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

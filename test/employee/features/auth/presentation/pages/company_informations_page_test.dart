@@ -22,6 +22,7 @@ import 'package:provider/provider.dart';
 import '../../../../../support/fake_api.dart';
 import '../../../../../support/finders.dart';
 import '../../../../../support/identity_gate_test_support.dart';
+import '../../../../../support/keyboard.dart';
 
 const _companyResponse = {
   'success': true,
@@ -620,4 +621,20 @@ void main() {
       },
     );
   });
+
+  testWidgets(
+    'klavye açıkken KAYDET kaydırılarak klavyenin üstüne gelir, boş alana '
+    'dokununca odak düşer',
+    (tester) async {
+      await pumpRegistrationFlow(
+        tester,
+        initialLocation: RegistrationRoutes.companyInformations,
+        companyPageBuilder: companyPage,
+      );
+      await showKeyboard(tester);
+
+      await expectAboveKeyboard(tester, find.text('KAYDET'));
+      await expectTapOutsideDropsFocus(tester, companyNameField());
+    },
+  );
 }

@@ -16,6 +16,7 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/constants/upload_limits.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/widgets/form_page_body.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/button_navbar.dart';
@@ -278,7 +279,7 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
     // `/users/me`'deki üyelikten geliyor, yetkililer sayfasıyla aynı kaynak.
     final canEditAddress = user.primaryCompany?.isAdmin ?? false;
 
-    return SingleChildScrollView(
+    return FormPageBody(
       child: Padding(
         padding: AppPadding.primaryAll,
         child: Column(

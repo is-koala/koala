@@ -26,6 +26,7 @@ import '../../../../../support/fake_address_search_gateway.dart';
 import '../../../../../support/fake_api.dart';
 import '../../../../../support/fake_maps_availability.dart';
 import '../../../../../support/identity_gate_test_support.dart';
+import '../../../../../support/keyboard.dart';
 
 const _companyJson = {
   'id': 'company_1',
@@ -612,5 +613,33 @@ void main() {
         expect(find.text('Eski Sokak 1, Eski Mahalle'), findsOneWidget);
       },
     );
+  });
+
+  group('klavye', () {
+    for (final brightness in Brightness.values) {
+      testWidgets(
+        '${brightness.name} tema: Kaydet çubuğu klavyenin üstüne çıkar, boş '
+        'alana dokununca odak düşer',
+        (tester) async {
+          await _pumpCompanyInfo(
+            tester,
+            identityVerified: true,
+            companies: const [_membership],
+            brightness: brightness,
+          );
+          await showKeyboard(tester);
+
+          await expectAboveKeyboard(tester, findBottomBarButton());
+          await expectTapOutsideDropsFocus(
+            tester,
+            find.byWidgetPredicate(
+              (widget) =>
+                  widget is TextField &&
+                  widget.decoration?.labelText == 'Telefon',
+            ),
+          );
+        },
+      );
+    }
   });
 }

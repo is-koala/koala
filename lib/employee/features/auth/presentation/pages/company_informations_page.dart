@@ -19,6 +19,7 @@ import 'package:koala/product/models/confirmed_address.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/confirmed_address_field.dart';
+import 'package:koala/product/widgets/form_page_body.dart';
 import 'package:koala/product/widgets/my_button.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
 import 'package:provider/provider.dart';
@@ -71,7 +72,7 @@ class _CompanyInformationsPageState extends CompanyInformationsPagemodel {
           ),
         ),
         body: SafeArea(
-          child: SingleChildScrollView(
+          child: FormPageBody(
             child: Padding(
               padding: AppPadding.authContent,
               child: Column(

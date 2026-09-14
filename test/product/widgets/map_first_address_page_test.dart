@@ -20,6 +20,9 @@ import '../../support/fake_api.dart';
 import '../../support/fake_maps_availability.dart';
 import '../../support/finders.dart';
 import '../../support/reference_location_fixtures.dart';
+import '../../support/keyboard.dart';
+import 'package:koala/product/widgets/dismiss_keyboard_on_tap.dart';
+import 'package:koala/product/widgets/keyboard_done_bar.dart';
 
 const _debounce = MapFirstAddressController.defaultReverseDebounce;
 const _pickerLocation = '/pick-address';
@@ -916,5 +919,52 @@ void main() {
         'source': 'USER_CONFIRMED_PIN',
       });
     });
+  });
+
+  group('klavye (is-koala/koala#190)', () {
+    for (final brightness in Brightness.values) {
+      testWidgets(
+        '${brightness.name} tema: kartın boş alanına dokununca odak düşer',
+        (tester) async {
+          final harness = _Harness(initialAddress: _initialAddress());
+          await harness.pump(tester, brightness: brightness);
+
+          await tester.ensureVisible(_field('Posta Kodu *'));
+          await tester.pump();
+          await tester.tap(_field('Posta Kodu *'));
+          await tester.pump();
+          expect(anyFieldFocused(tester), isTrue);
+
+          // Kartın tutamacının hemen yanı: alan yok, düğme yok.
+          final card = tester.getRect(find.byType(DismissKeyboardOnTap));
+          await tester.tapAt(card.topLeft + const Offset(4, 4));
+          await tester.pump();
+
+          expect(anyFieldFocused(tester), isFalse);
+        },
+      );
+    }
+
+    testWidgets(
+      'iOS: posta kodu alanı odaklanınca klavyenin üstünde Bitti çıkar',
+      (tester) async {
+        final harness = _Harness(initialAddress: _initialAddress());
+        await harness.pump(tester);
+        await showKeyboard(tester);
+
+        await tester.ensureVisible(_field('Posta Kodu *'));
+        await tester.pump();
+        await tester.tap(_field('Posta Kodu *'));
+        await tester.pump();
+
+        expect(find.text(KeyboardDoneBar.label), findsOneWidget);
+
+        await tester.tap(find.text(KeyboardDoneBar.label));
+        await tester.pump();
+
+        expect(anyFieldFocused(tester), isFalse);
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+    );
   });
 }

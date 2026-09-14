@@ -9,6 +9,7 @@ import 'package:koala/product/theme/theme.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../../support/fake_api.dart';
+import '../../../../../support/keyboard.dart';
 
 const PendingVerification _emailVerification = PendingVerification(
   id: 'ver-1',
@@ -489,5 +490,23 @@ void main() {
       expect(find.text('Onayla'), findsOneWidget);
       expect(find.text('Kodu tekrar gönder'), findsOneWidget);
     });
+  }
+
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      '${brightness.name} tema: klavye açıkken Onayla çubuğu klavyenin '
+      'üstüne çıkar, boş alana dokununca odak düşer',
+      (tester) async {
+        final api = FakeApi(
+          handler: (_) =>
+              const FakeApiResponse(statusCode: 200, body: {'success': true}),
+        );
+        await pumpPage(tester, api, brightness: brightness);
+        await showKeyboard(tester);
+
+        await expectAboveKeyboard(tester, findBottomBarButton());
+        await expectTapOutsideDropsFocus(tester, find.byType(TextField).first);
+      },
+    );
   }
 }

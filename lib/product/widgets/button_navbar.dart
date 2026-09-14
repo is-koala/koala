@@ -8,6 +8,12 @@ import 'package:koala/product/extensions/context_extensions.dart';
 ///
 /// Kendi zemini var: içeriğin altından kaydığında butonun okunur kalmasını
 /// sağlıyor. Alt güvenli alan payı çalışma zamanında ekleniyor.
+///
+/// Klavye açılınca çubuk klavyenin üstüne çıkıyor: `Scaffold`
+/// `bottomNavigationBar`'ı ekranın en altına sabitler, klavyeyi hesaba
+/// katmaz; bu yüzden alt pay klavye kadar büyütülüyor ve gövde çubuğun
+/// üstünde bitiyor. Klavye açıkken sistem güvenli alan payı zaten sıfır
+/// bildiriliyor, iki pay üst üste binmiyor.
 class ButtonNavbar extends StatelessWidget {
   const ButtonNavbar({
     super.key,
@@ -24,7 +30,10 @@ class ButtonNavbar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: AppPadding.bottomBar.copyWith(
-        bottom: context.padding.bottom + AppPadding.bottomBar.bottom,
+        bottom:
+            context.padding.bottom +
+            MediaQuery.viewInsetsOf(context).bottom +
+            AppPadding.bottomBar.bottom,
       ),
       decoration: BoxDecoration(
         color: context.backgroundColor,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
+import 'package:koala/product/widgets/form_page_body.dart';
 import 'package:koala/product/widgets/settings_hint.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -46,7 +47,7 @@ class _ChangePasswordPageState extends ChangePasswordPagemodel {
         title: 'Kaydet',
         isLoading: isSaving,
       ),
-      body: SingleChildScrollView(
+      body: FormPageBody(
         child: Padding(
           padding: AppPadding.primaryAll,
           child: Column(

@@ -11,6 +11,8 @@ import 'package:provider/provider.dart';
 
 import '../../../../../support/fake_api.dart';
 import '../../../../../support/pump.dart';
+import '../../../../../support/keyboard.dart';
+import 'package:flutter/material.dart';
 
 void main() {
   testWidgets('düzenleme formu opsiyonel ölçütleri temizleyebilir', (
@@ -125,5 +127,62 @@ void main() {
     expect(updateRequest.data, containsPair('cityName', null));
     expect(updateRequest.data, containsPair('districtName', null));
     expect(updateRequest.data, containsPair('minSalary', 1250.5));
+  });
+
+  group('klavye (is-koala/koala#190)', () {
+    Future<void> pumpCreateForm(
+      WidgetTester tester,
+      Brightness brightness,
+    ) async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 200,
+          body: {'success': true, 'data': []},
+        ),
+      );
+      await pumpInApp(
+        tester,
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider(
+              create: (_) => JobCategoryProvider(
+                service: JobCategoryService.withClient(api.client),
+              ),
+            ),
+            ChangeNotifierProvider(
+              create: (_) => JobAlertsProvider(
+                service: JobAlertService.withClient(api.client),
+              ),
+            ),
+          ],
+          child: JobAlertFormPage(
+            locationService: ReferenceLocationService.withClient(api.client),
+          ),
+        ),
+        brightness: brightness,
+      );
+      await tester.pumpAndSettle();
+    }
+
+    for (final brightness in Brightness.values) {
+      testWidgets(
+        '${brightness.name} tema: Alarmı Oluştur kaydırılarak klavyenin '
+        'üstüne gelir, boş alana dokununca odak düşer',
+        (tester) async {
+          await pumpCreateForm(tester, brightness);
+          await showKeyboard(tester);
+
+          await expectAboveKeyboard(tester, find.text('Alarmı Oluştur'));
+          await expectTapOutsideDropsFocus(
+            tester,
+            find.byWidgetPredicate(
+              (widget) =>
+                  widget is TextField &&
+                  widget.decoration?.labelText == 'Alarm adı',
+            ),
+          );
+        },
+      );
+    }
   });
 }

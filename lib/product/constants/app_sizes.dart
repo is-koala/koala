@@ -80,6 +80,10 @@ class AppSizes {
   static const double sheetHandleWidth = 40.0;
   static const double sheetHandleHeight = 4.0;
 
+  /// iOS sayısal klavyenin üstüne çizilen "Bitti" şeridi; sistemin kendi
+  /// klavye araç çubuğuyla aynı boyda dursun diye 44.
+  static const double keyboardToolbar = 44.0;
+
   // --------------------------------------------------------------- Boşluklar
 
   /// Etiket ile hemen altındaki değeri arası; iki satır tek blok gibi

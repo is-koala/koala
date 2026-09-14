@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/models/pending_verification.dart';
 import 'package:koala/employee/features/auth/services/verification_service.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
+import 'package:koala/product/widgets/form_page_body.dart';
 import 'package:koala/product/widgets/settings_hint.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
@@ -67,7 +68,7 @@ class _VerificationCodePageState extends VerificationCodePagemodel {
         title: 'Onayla',
         isLoading: isConfirming,
       ),
-      body: SingleChildScrollView(
+      body: FormPageBody(
         padding: AppPadding.primaryAll,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

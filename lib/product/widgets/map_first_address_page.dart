@@ -22,6 +22,7 @@ import 'package:koala/product/services/maps_availability.dart';
 import 'package:koala/product/services/reference_location_service.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
+import 'package:koala/product/widgets/dismiss_keyboard_on_tap.dart';
 import 'package:koala/product/widgets/empty_state.dart';
 import 'package:koala/product/widgets/my_button.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
@@ -283,27 +284,31 @@ class _MapFirstAddressPageState extends MapFirstAddressPagemodel {
           ),
           // Tek sütun, tembel liste değil: alanlar bir formun parçası, hepsi
           // birlikte kurulur ki odaklanma ve kaydırma tek ağaç üzerinde
-          // çalışsın.
-          child: SingleChildScrollView(
-            controller: scrollController,
-            padding: AppPadding.sheet.copyWith(
-              bottom:
-                  AppPadding.sheet.bottom + context.padding.bottom + keyboard,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _handle(),
-                const SizedBox(height: AppSizes.spaceMedium),
-                _searchSection(),
-                const SizedBox(height: AppSizes.spaceMedium),
-                ..._pinStatus(),
-                _sectionLabel('Adres bilgileri'),
-                const SizedBox(height: AppSizes.space),
-                ..._fields(),
-                const SizedBox(height: AppSizes.spaceLarge),
-                ..._saveSection(),
-              ],
+          // çalışsın. Kartın boş alanına dokunmak klavyeyi kapatıyor;
+          // harita dokunuşu odağı düşürmüyor ve sayfa `Scaffold`'u
+          // küçülmediği için kapatmanın başka yolu yoktu.
+          child: DismissKeyboardOnTap(
+            child: SingleChildScrollView(
+              controller: scrollController,
+              padding: AppPadding.sheet.copyWith(
+                bottom:
+                    AppPadding.sheet.bottom + context.padding.bottom + keyboard,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _handle(),
+                  const SizedBox(height: AppSizes.spaceMedium),
+                  _searchSection(),
+                  const SizedBox(height: AppSizes.spaceMedium),
+                  ..._pinStatus(),
+                  _sectionLabel('Adres bilgileri'),
+                  const SizedBox(height: AppSizes.space),
+                  ..._fields(),
+                  const SizedBox(height: AppSizes.spaceLarge),
+                  ..._saveSection(),
+                ],
+              ),
             ),
           ),
         );
