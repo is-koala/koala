@@ -515,6 +515,128 @@ void main() {
     });
   });
 
+  // Ödeme kapısı da engel gibi 403 + ACCESS_DENIED geliyor; ikisini yalnız
+  // `errorCode` ayırıyor. Kapı `gate`'e düşmeli, `blockedMessage` boş kalmalı
+  // ki ekran kırmızı engel şeridi değil ödeme açıklaması çizsin.
+  group('mesajlaşma kapısı', () {
+    const paymentRequired = FakeApiResponse(
+      statusCode: 403,
+      body: {
+        'success': false,
+        'message': 'Mesajlaşma, işveren ödemeyi tamamladığında açılır.',
+        'errorCode': 'MESSAGING_PAYMENT_REQUIRED',
+        'errorCategory': 'ACCESS_DENIED',
+      },
+    );
+    const windowClosed = FakeApiResponse(
+      statusCode: 409,
+      body: {
+        'success': false,
+        'message': 'Bu iş için mesajlaşma süresi doldu.',
+        'errorCode': 'MESSAGING_WINDOW_CLOSED',
+        'errorCategory': 'DATA_CONFLICT',
+      },
+    );
+    const emptyPage = FakeApiResponse(
+      statusCode: 200,
+      body: {
+        'success': true,
+        'data': {'content': []},
+      },
+    );
+
+    test('gönderirken 403 MESSAGING_PAYMENT_REQUIRED kapıyı kapatır', () async {
+      final api = FakeApi(
+        handler: (options) =>
+            options.method == 'GET' ? emptyPage : paymentRequired,
+      );
+      final thread = build(api);
+      await thread.load(currentUserId: _me);
+
+      final sent = await thread.send('Merhaba');
+
+      expect(sent, isFalse);
+      expect(thread.gate, isNotNull);
+      expect(thread.gate!.needsPayment, isTrue);
+      // Kapı hata değil: boş liste hata durumuna düşmemeli.
+      expect(thread.errorMessage, isNull);
+      expect(
+        thread.gate!.noteFor(asEmployer: false),
+        'Mesajlaşma, işveren ödemeyi tamamladığında açılır.',
+      );
+      expect(
+        thread.gate!.noteFor(asEmployer: true),
+        'Ödemeyi tamamlayınca ekip sohbeti açılır.',
+      );
+      // Engel değil: engel şeridi çizilmemeli.
+      expect(thread.blockedMessage, isNull);
+    });
+
+    test('gönderirken 409 MESSAGING_WINDOW_CLOSED kapıyı kapatır', () async {
+      final api = FakeApi(
+        handler: (options) =>
+            options.method == 'GET' ? emptyPage : windowClosed,
+      );
+      final thread = build(api);
+      await thread.load(currentUserId: _me);
+
+      final sent = await thread.send('Merhaba');
+
+      expect(sent, isFalse);
+      expect(thread.gate!.isClosed, isTrue);
+      expect(thread.gate!.noteFor(asEmployer: false), 'Bu sohbet kapandı');
+      expect(thread.blockedMessage, isNull);
+    });
+
+    test('sohbeti açarken gelen kapı hatası da yakalanır', () async {
+      final thread = build(FakeApi(handler: (_) => paymentRequired));
+
+      await thread.load(currentUserId: _me);
+
+      expect(thread.gate!.needsPayment, isTrue);
+      expect(thread.errorMessage, isNotNull);
+      expect(thread.blockedMessage, isNull);
+    });
+
+    // Ödeme geldiyse ekran yeniden açılınca kutu geri gelmeli.
+    test('başarılı yükleme kapıyı temizler', () async {
+      var getCount = 0;
+      final thread = build(
+        FakeApi(
+          handler: (options) {
+            if (options.method != 'GET') return paymentRequired;
+            getCount++;
+            return getCount == 1 ? paymentRequired : emptyPage;
+          },
+        ),
+      );
+
+      await thread.load(currentUserId: _me);
+      expect(thread.gate, isNotNull);
+
+      await thread.load(currentUserId: _me);
+
+      expect(thread.gate, isNull);
+      expect(thread.errorMessage, isNull);
+    });
+
+    test('kodsuz 403 hâlâ engel sayılır', () async {
+      const blocked = FakeApiResponse(
+        statusCode: 403,
+        body: {
+          'success': false,
+          'message': 'Bu kullanıcıyla mesajlaşamazsınız.',
+        },
+      );
+      final thread = build(FakeApi(handler: (_) => blocked));
+
+      await thread.load(currentUserId: _me);
+
+      expect(thread.gate, isNull);
+      expect(thread.blockedMessage, 'Bu kullanıcıyla mesajlaşamazsınız.');
+    });
+  });
+
   group('dispose', () {
     // Sohbetten hızlıca çıkıldığında geç gelen yanıt "used after being
     // disposed" ile uygulamayı düşürmemeli.

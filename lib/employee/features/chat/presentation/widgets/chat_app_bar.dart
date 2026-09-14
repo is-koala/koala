@@ -77,6 +77,15 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                       fontStyle: FontStyle.italic,
                     ),
                   )
+                // Grupta tek bir karşı taraf yok; çevrimiçi yerine ekibin
+                // kaç kişi olduğu yazılıyor.
+                else if (chat.isGroup)
+                  Text(
+                    chat.participantLabel,
+                    style: context.textTheme.labelMedium?.copyWith(
+                      color: context.textSecondary,
+                    ),
+                  )
                 else if (chat.isOnline)
                   Text(
                     'Çevrimiçi',
@@ -89,7 +98,9 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           ),
         ],
       ),
-      actions: [_overflowMenu(context)],
+      // Şikayet ve engel bir kişiye yönelik; grupta hedef alınacak tek bir
+      // karşı taraf olmadığı için menü çizilmiyor.
+      actions: [if (!chat.isGroup) _overflowMenu(context)],
     );
   }
 

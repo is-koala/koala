@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
+import 'package:koala/employee/features/chat/models/messaging_availability.dart';
+import 'package:koala/product/widgets/messaging_gate_note.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
 import 'package:koala/employee/features/jobs/models/cancellation.dart';
 import 'package:koala/employee/features/jobs/models/my_job.dart';
@@ -43,7 +45,11 @@ enum _AssignmentAction { cancel, dispute }
 enum _ApplicationAction { withdraw }
 
 class MyJobsPage extends StatefulWidget {
-  const MyJobsPage({super.key});
+  const MyJobsPage({super.key, this.assignmentService, this.chatService});
+
+  /// Testler için: verilmezse üretimdeki tekil servisler kullanılıyor.
+  final AssignmentService? assignmentService;
+  final ChatService? chatService;
 
   @override
   State<MyJobsPage> createState() => _MyJobsPageState();
@@ -566,6 +572,12 @@ class _MyJobsPageState extends MyJobsPagemodel {
 
   // ------------------------------------------------------------- Satırlar
 
+  /// Satır; sohbet açık değilse altına sebebini yazan bir satır ekleniyor.
+  ///
+  /// Düğme yalnızca sunucu "açık" dediğinde çiziliyor
+  /// (`messagingAvailable`). Ödeme bekleniyorsa ya da pencere kapandıysa
+  /// düğmenin yerini [MessagingGateNote] alıyor; düğmeyi bırakıp `403`
+  /// yedirmek yerine kullanıcı sebebi önden görüyor.
   Widget _jobTile(
     MyJob job,
     Color foreground, {
@@ -574,7 +586,12 @@ class _MyJobsPageState extends MyJobsPagemodel {
     ),
     Widget? menu,
   }) {
-    return ListTile(
+    final offersChat = _canChat(job);
+    final gateNote = offersChat
+        ? job.messaging.noteFor(asEmployer: false)
+        : null;
+
+    final tile = ListTile(
       contentPadding: contentPadding,
       title: _tileTitle(job.title, foreground),
       subtitle: _tileSubtitle(job, foreground, maxLines: 1),
@@ -582,7 +599,7 @@ class _MyJobsPageState extends MyJobsPagemodel {
         mainAxisSize: MainAxisSize.min,
         children: [
           _priceAndDate(job, foreground),
-          if (_canChat(job))
+          if (offersChat && job.messaging.isAvailable)
             IconButton(
               key: ValueKey('job-chat-${job.jobId}'),
               tooltip: 'İşverenle mesajlaş',
@@ -604,8 +621,30 @@ class _MyJobsPageState extends MyJobsPagemodel {
         ],
       ),
     );
+
+    if (gateNote == null) return tile;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        tile,
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSizes.spaceTiny),
+          child: MessagingGateNote(
+            key: ValueKey('job-chat-note-${job.jobId}'),
+            message: gateNote,
+            color: foreground.withValues(alpha: _dateAlpha),
+          ),
+        ),
+      ],
+    );
   }
 
+  /// Bu satırda sohbet teklif ediliyor mu — kapalı işlerde hiç edilmiyor.
+  ///
+  /// Kapının açık olup olmadığı ayrı bir soru ([MyJob.messaging]); burası
+  /// yalnızca satırın durumuna bakıyor.
   bool _canChat(MyJob job) {
     return job.jobId != null &&
         switch (job.status) {

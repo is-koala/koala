@@ -1,9 +1,34 @@
+/// Sohbetin türü. Backend `ConversationKind` karşılığı.
+enum ConversationKind {
+  /// İşveren ile tek bir çalışan arasında.
+  direct('DIRECT'),
+
+  /// İlanın ekip sohbeti: ödemesi emanete alınan çalışanlar, ilan sahibi ve
+  /// şirket yetkilileri. Ödemeyle kuruluyor, iş bitiminden 7 gün sonra
+  /// kapanıyor.
+  group('GROUP');
+
+  const ConversationKind(this.code);
+
+  final String code;
+
+  /// Tanınmayan ya da eksik değer [direct] sayılıyor: eski sunucu bu alanı
+  /// göndermiyor ve onun bütün sohbetleri ikili.
+  static ConversationKind fromCode(Object? value) {
+    for (final kind in values) {
+      if (kind.code == value) return kind;
+    }
+    return direct;
+  }
+}
+
 /// Bir ilan üzerinden yürüyen sohbet.
 ///
 /// Backend'deki `ConversationDto`'nun karşılığı. Sohbet **ilana bağlı**:
-/// `POST /conversations/jobs/{jobId}` ile açılıyor ve tarafları işveren ile
-/// çalışan olarak sabit. Şirket üzerinden, ilandan bağımsız bir sohbet
-/// kavramı sunucuda yok.
+/// `POST /jobs/{jobId}/conversation` ile açılıyor. İkili sohbetin tarafları
+/// işveren ile çalışan; ilan grubunun katılımcıları ödeme yapılan çalışanlar
+/// ve işveren tarafı. Şirket üzerinden, ilandan bağımsız bir sohbet kavramı
+/// sunucuda yok.
 class Conversation {
   const Conversation({
     required this.id,
@@ -17,6 +42,9 @@ class Conversation {
     this.lastMessage,
     this.unreadCount = 0,
     this.isOnline = false,
+    this.kind = ConversationKind.direct,
+    this.participantCount = 0,
+    this.closed = false,
   });
 
   final String id;
@@ -54,6 +82,22 @@ class Conversation {
   /// birleştiriliyor.
   final bool isOnline;
 
+  final ConversationKind kind;
+
+  /// Katılımcı sayısı; sunucunun `participants` listesinden. İkili sohbette
+  /// ve sohbeti açan `POST` yanıtında (liste boş geliyor) `0`.
+  final int participantCount;
+
+  /// Sohbet salt okunur mu: atama iptal/ret/iade edildi ya da iş bitiminden
+  /// 7 gün geçti. Sunucu okuma anında hesaplıyor; mesaj göndermek
+  /// `409 MESSAGING_WINDOW_CLOSED` ile reddediliyor.
+  final bool closed;
+
+  bool get isGroup => kind == ConversationKind.group;
+
+  /// Grup satırının başlığın yanındaki etiketi: "3 katılımcı".
+  String get participantLabel => '$participantCount katılımcı';
+
   /// Sohbet listesinde sağda görünen zaman etiketi.
   String get timeString {
     final lastMessageAt = this.lastMessageAt;
@@ -75,24 +119,38 @@ class Conversation {
   /// `ConversationDto`'yu modele çevirir.
   ///
   /// Karşı taraf sunucudan hazır gelmiyor: iki katılımcıdan hangisi
-  /// [currentUserId] değilse o alınıyor.
+  /// [currentUserId] değilse o alınıyor. **Grupta karşı taraf yok**: satır
+  /// ilan başlığıyla çiziliyor, `worker` boş geliyor ve `employer` yalnızca
+  /// ilan sahibini söylüyor — onu karşı taraf saymak işverene kendi adını,
+  /// çalışana ise ekibin tek bir üyesini gösterirdi. Presence ve engelleme
+  /// de kişiye bağlı; grup için ikisi de yok.
   factory Conversation.fromJson(
     Map<String, dynamic> json, {
     required String currentUserId,
   }) {
+    final kind = ConversationKind.fromCode(json['kind']);
+    final jobTitle = json['jobTitle'] as String? ?? '';
+    final participants = json['participants'];
+    final lastMessageAt = json['lastMessageAt'] as String?;
+
     final employer = json['employer'] as Map<String, dynamic>?;
     final worker = json['worker'] as Map<String, dynamic>?;
-    final counterpart = employer?['id'] == currentUserId ? worker : employer;
+    final counterpart = kind == ConversationKind.group
+        ? null
+        : employer?['id'] == currentUserId
+        ? worker
+        : employer;
 
     final firstName = counterpart?['firstName'] as String? ?? '';
     final lastName = counterpart?['lastName'] as String? ?? '';
-    final name = '$firstName $lastName'.trim();
-    final lastMessageAt = json['lastMessageAt'] as String?;
+    final name = kind == ConversationKind.group
+        ? jobTitle
+        : '$firstName $lastName'.trim();
 
     return Conversation(
       id: '${json['id']}',
       jobId: json['jobId'] as String? ?? '',
-      jobTitle: json['jobTitle'] as String? ?? '',
+      jobTitle: jobTitle,
       counterpartId: counterpart?['id'] == null ? '' : '${counterpart!['id']}',
       name: name,
       avatar: initialsOf(name),
@@ -102,6 +160,9 @@ class Conversation {
           : DateTime.tryParse(lastMessageAt),
       lastMessage: json['lastMessageBody'] as String?,
       unreadCount: (json['unreadCount'] as num?)?.toInt() ?? 0,
+      kind: kind,
+      participantCount: participants is List ? participants.length : 0,
+      closed: json['closed'] == true,
     );
   }
 
@@ -128,6 +189,9 @@ class Conversation {
     String? lastMessage,
     int? unreadCount,
     bool? isOnline,
+    ConversationKind? kind,
+    int? participantCount,
+    bool? closed,
   }) {
     return Conversation(
       id: id ?? this.id,
@@ -141,6 +205,9 @@ class Conversation {
       lastMessage: lastMessage ?? this.lastMessage,
       unreadCount: unreadCount ?? this.unreadCount,
       isOnline: isOnline ?? this.isOnline,
+      kind: kind ?? this.kind,
+      participantCount: participantCount ?? this.participantCount,
+      closed: closed ?? this.closed,
     );
   }
 
@@ -157,6 +224,9 @@ class Conversation {
       'lastMessage': lastMessage,
       'unreadCount': unreadCount,
       'isOnline': isOnline,
+      'kind': kind.code,
+      'participantCount': participantCount,
+      'closed': closed,
     };
   }
 }

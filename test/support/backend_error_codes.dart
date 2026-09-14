@@ -19,6 +19,7 @@ class BackendErrorCodes {
     'lib/business/features/home/presentation/providers/b_job_templates_provider.dart',
     'lib/employee/features/jobs/presentation/providers/review_provider.dart',
     'lib/employee/features/jobs/presentation/providers/timesheet_queue_provider.dart',
+    'lib/employee/features/chat/models/messaging_gate_error_codes.dart',
   ];
 
   static final _quotedCode = RegExp(r"'([A-Z][A-Z0-9_]{2,})'");

@@ -4,8 +4,9 @@ abstract class MyJobsPagemodel extends State<MyJobsPage> {
   /// Küçük buton göstergesi varsayılan kalınlıkta dolu görünmesin.
   static const double _spinnerStroke = 2;
 
-  final AssignmentService _service = AssignmentService();
-  final ChatService _chatService = ChatService();
+  AssignmentService get _service =>
+      widget.assignmentService ?? AssignmentService();
+  ChatService get _chatService => widget.chatService ?? ChatService();
 
   /// Geçmiş bölümü varsayılan olarak kısaltılmış; kullanıcı isterse açıyor.
   bool showAllPastJobs = false;
@@ -135,6 +136,11 @@ abstract class MyJobsPagemodel extends State<MyJobsPage> {
   }
 
   /// Başvurunun veya atamanın bağlı olduğu ilan üzerinden işverenle konuşur.
+  ///
+  /// Sunucu kapıyı kapattıysa (`403 MESSAGING_PAYMENT_REQUIRED`,
+  /// `409 MESSAGING_WINDOW_CLOSED`) düğmenin yerine yazılan metnin aynısı
+  /// gösteriliyor ve liste yeniden çekiliyor: düğme görünüyorsa elimizdeki
+  /// atama bayat demek — ödeme iade edilmiş ya da iş iptal olmuş olabilir.
   Future<void> openChat(MyJob job) async {
     final jobId = job.jobId;
     final currentUser = context.read<UserProvider>().user;
@@ -151,7 +157,14 @@ abstract class MyJobsPagemodel extends State<MyJobsPage> {
       if (!mounted) return;
       await context.push('/chat-detail', extra: conversation);
     } on ApiException catch (error) {
-      if (mounted) AppToast.error(context, error.message);
+      if (!mounted) return;
+      final gate = MessagingAvailability.fromErrorCode(error.errorCode);
+      if (gate == null) {
+        AppToast.error(context, error.message);
+        return;
+      }
+      AppToast.error(context, gate.noteFor(asEmployer: false) ?? error.message);
+      await _loadJobs();
     } finally {
       if (mounted) setState(() => openingChatJobId = null);
     }

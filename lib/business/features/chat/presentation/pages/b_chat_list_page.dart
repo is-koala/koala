@@ -15,14 +15,21 @@ import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:provider/provider.dart';
 
 class BChatListPage extends StatefulWidget {
-  const BChatListPage({super.key});
+  const BChatListPage({super.key, this.controller});
+
+  /// Dışarıdan verilirse yaşam döngüsü çağırana ait olan liste durumu;
+  /// testler için. Verilmezse sayfa kendi denetleyicisini kurup atıyor.
+  final ChatListController? controller;
 
   @override
   State<BChatListPage> createState() => _BChatListPageState();
 }
 
 class _BChatListPageState extends State<BChatListPage> {
-  late final ChatListController _controller = ChatListController();
+  late final ChatListController _controller =
+      widget.controller ?? ChatListController();
+
+  bool get _ownsController => widget.controller == null;
 
   /// Oturum sahibi yüklenemediyse gösterilecek mesaj; sohbetlerin kendi
   /// hataları [ChatListController] üzerinde.
@@ -50,7 +57,7 @@ class _BChatListPageState extends State<BChatListPage> {
   @override
   void dispose() {
     _controller.removeListener(_onChanged);
-    _controller.dispose();
+    if (_ownsController) _controller.dispose();
     super.dispose();
   }
 
@@ -183,13 +190,7 @@ class _BChatListPageState extends State<BChatListPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    chat.name,
-                    style: context.textTheme.bodyLarge?.copyWith(
-                      fontWeight: hasUnread ? FontWeight.w600 : FontWeight.w500,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  _chatTitle(chat, hasUnread: hasUnread),
                   const SizedBox(height: AppSizes.spaceTiny),
                   Text(
                     chat.lastMessage ?? '',
@@ -227,6 +228,35 @@ class _BChatListPageState extends State<BChatListPage> {
           ],
         ),
       ),
+    );
+  }
+
+  /// Satır başlığı: ikili sohbette karşı tarafın adı, grupta ilan başlığı
+  /// ve yanında katılımcı sayısı. Sayı başlığın yanında duruyor ki uzun bir
+  /// ilan adı üç noktayla kısalırken kaybolmasın.
+  Widget _chatTitle(Conversation chat, {required bool hasUnread}) {
+    return Row(
+      children: [
+        Flexible(
+          child: Text(
+            chat.name,
+            style: context.textTheme.bodyLarge?.copyWith(
+              fontWeight: hasUnread ? FontWeight.w600 : FontWeight.w500,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        if (chat.isGroup) ...[
+          const SizedBox(width: AppSizes.spaceTiny),
+          Text(
+            chat.participantLabel,
+            key: ValueKey('chat-participants-${chat.id}'),
+            style: context.textTheme.labelMedium?.copyWith(
+              color: context.textTertiary,
+            ),
+          ),
+        ],
+      ],
     );
   }
 

@@ -6,4 +6,7 @@ abstract class BChatPagemodel extends ChatThreadPagemodel<BChatPage> {
 
   @override
   ChatThreadController? get providedThreadController => widget.threadController;
+
+  @override
+  bool get asEmployer => true;
 }

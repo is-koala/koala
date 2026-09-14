@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/chat/presentation/providers/chat_list_controller.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/chat_list_tile.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
@@ -11,7 +14,11 @@ import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:provider/provider.dart';
 
 class ChatListPage extends StatefulWidget {
-  const ChatListPage({super.key});
+  const ChatListPage({super.key, this.controller});
+
+  /// Dışarıdan verilirse yaşam döngüsü çağırana ait olan liste durumu;
+  /// testler için. Verilmezse sayfa kendi denetleyicisini kurup atıyor.
+  final ChatListController? controller;
 
   @override
   State<ChatListPage> createState() => _ChatListPageState();
@@ -19,11 +26,20 @@ class ChatListPage extends StatefulWidget {
 
 class _ChatListPageState extends State<ChatListPage>
     with AutomaticKeepAliveClientMixin<ChatListPage> {
-  late final ChatListController _controller = ChatListController();
+  late final ChatListController _controller =
+      widget.controller ?? ChatListController();
+
+  bool get _ownsController => widget.controller == null;
 
   /// Oturum sahibi yüklenemediyse gösterilecek mesaj; sohbetlerin kendi
   /// hataları [ChatListController] üzerinde.
   String? _sessionError;
+
+  /// Son bağımlılık turunda sohbet sekmesi görünür müydü; ilk turda `null`.
+  bool? _wasOnChatTab;
+
+  /// Sekmenin yolu; `ShellPage` da aynı eşlemeyi kullanıyor.
+  static const String _tabLocation = '/chat';
 
   @override
   void initState() {
@@ -34,10 +50,34 @@ class _ChatListPageState extends State<ChatListPage>
     });
   }
 
+  /// Sekmeye her dönüşte listeyi sessizce tazeler.
+  ///
+  /// `ShellPage` bu sayfayı canlı tutuyor (bkz. [wantKeepAlive]), yani
+  /// sekmeye dönüşte `initState` bir daha çalışmıyor. Ödemeyle kurulan ilan
+  /// grubu için sunucu canlı olay göndermiyor; grup ilk mesaj gelene kadar
+  /// listeye ancak yeniden çekilince düşüyor. Ekrana dönüş o an. Yol,
+  /// `ShellPage`'in okuduğu aynı `GoRouterState`'ten geliyor: konum her
+  /// değiştiğinde bu metot çağrılıyor ve yalnızca "başka sekme → sohbet"
+  /// geçişi isteği tetikliyor. Router olmadan (widget testi) hiçbir şey
+  /// yapmıyor.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (GoRouter.maybeOf(context) == null) return;
+
+    final isOnChatTab =
+        GoRouterState.of(context).matchedLocation == _tabLocation;
+    final wasOnChatTab = _wasOnChatTab;
+    _wasOnChatTab = isOnChatTab;
+    if (wasOnChatTab != false || !isOnChatTab) return;
+
+    unawaited(_controller.refresh());
+  }
+
   @override
   void dispose() {
     _controller.removeListener(_onChanged);
-    _controller.dispose();
+    if (_ownsController) _controller.dispose();
     super.dispose();
   }
 
