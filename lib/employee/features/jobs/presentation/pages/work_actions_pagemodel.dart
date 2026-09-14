@@ -170,10 +170,11 @@ abstract class WorkActionsPagemodel<T extends StatefulWidget> extends State<T> {
 
     final confirmed = await ConfirmDialog.show(
       context,
-      title: 'Başvurunu geri çek',
+      title: 'Başvurunuzu geri çekin',
       message:
-          '"${job.title}" ilanına yaptığın başvuru geri çekilecek ve işveren '
-          'artık yanıtlayamayacak. İlan hâlâ açıksa yeniden başvurabilirsin.',
+          '"${job.title}" ilanına yaptığınız başvuru geri çekilecek ve '
+          'işveren artık yanıtlayamayacak. İlan hâlâ açıksa yeniden '
+          'başvurabilirsiniz.',
       actionLabel: 'Geri Çek',
     );
 
@@ -183,7 +184,7 @@ abstract class WorkActionsPagemodel<T extends StatefulWidget> extends State<T> {
     if (!mounted) return withdrawn;
 
     if (withdrawn) {
-      AppToast.success(context, 'Başvurun geri çekildi');
+      AppToast.success(context, 'Başvurunuz geri çekildi');
       return true;
     }
 
@@ -229,7 +230,7 @@ abstract class WorkActionsPagemodel<T extends StatefulWidget> extends State<T> {
       context,
       title: 'İşi iptal et',
       description: _cancellationDescription(job, preview),
-      fieldLabel: 'İptal gerekçen',
+      fieldLabel: 'İptal gerekçeniz',
       confirmLabel: 'İptal Et',
     );
 
@@ -257,15 +258,15 @@ abstract class WorkActionsPagemodel<T extends StatefulWidget> extends State<T> {
   String _cancellationDescription(MyJob job, CancellationPreview? preview) {
     final opening =
         '"${job.title}" işi iptal edilecek ve geri alınamayacak. '
-        'Sık iptal profilini etkileyebilir.';
+        'Sık iptal profilinizi etkileyebilir.';
 
     if (preview == null) {
-      return '$opening\n\nSenin iptalinde kesinti uygulanmıyor, ücret '
+      return '$opening\n\nSizin iptalinizde kesinti uygulanmıyor, ücret '
           'işverene iade ediliyor.';
     }
 
     if (!preview.hasFee) {
-      return '$opening\n\nBu iptalde senden kesinti yapılmayacak.';
+      return '$opening\n\nBu iptalde sizden kesinti yapılmayacak.';
     }
 
     return '$opening\n\nBu iptalde %${preview.feePercent} kesinti '
@@ -283,10 +284,10 @@ abstract class WorkActionsPagemodel<T extends StatefulWidget> extends State<T> {
       context,
       title: 'Sorun bildir',
       description:
-          '"${job.title}" işiyle ilgili bir sorun bildireceksin. Emanetteki '
-          'ücret, Koala konuyu inceleyip sonuçlandırana kadar dondurulur — '
-          'yani ödeme hızlanmaz, durur.',
-      fieldLabel: 'Yaşadığın sorun',
+          '"${job.title}" işiyle ilgili bir sorun bildireceksiniz. '
+          'Emanetteki ücret, Koala konuyu inceleyip sonuçlandırana kadar '
+          'dondurulur — yani ödeme hızlanmaz, durur.',
+      fieldLabel: 'Yaşadığınız sorun',
       confirmLabel: 'Bildir',
       isDestructive: false,
     );
@@ -400,7 +401,10 @@ abstract class WorkActionsPagemodel<T extends StatefulWidget> extends State<T> {
       }
     } catch (_) {
       if (!mounted) return;
-      AppToast.error(context, 'Mesai kaydı cihazda saklanamadı. Tekrar dene.');
+      AppToast.error(
+        context,
+        'Mesai kaydı cihazda saklanamadı. Tekrar deneyin.',
+      );
     } finally {
       if (mounted) setState(() => timesheetBusyAssignmentId = null);
     }
@@ -442,7 +446,10 @@ abstract class WorkActionsPagemodel<T extends StatefulWidget> extends State<T> {
         accepted: accepted,
       );
       if (!mounted) return;
-      AppToast.success(context, accepted ? 'İşi kabul ettin' : 'İşi reddettin');
+      AppToast.success(
+        context,
+        accepted ? 'İşi kabul ettiniz' : 'İşi reddettiniz',
+      );
       await refreshWork();
     } on ApiException catch (error) {
       if (!mounted) return;
@@ -466,8 +473,8 @@ abstract class WorkActionsPagemodel<T extends StatefulWidget> extends State<T> {
         ),
         title: Text('İşi reddet', style: dialogContext.textTheme.titleMedium),
         content: Text(
-          '"${job.title}" işini reddedersen bu iş sana kapanır ve geri '
-          'alamazsın. İşveren başka birini seçebilir.',
+          '"${job.title}" işini reddederseniz bu iş size kapanır ve geri '
+          'alamazsınız. İşveren başka birini seçebilir.',
           style: dialogContext.textTheme.bodyMedium?.copyWith(
             color: dialogContext.textSecondary,
             height: _dialogLineHeight,

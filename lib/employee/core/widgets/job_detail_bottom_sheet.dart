@@ -9,6 +9,7 @@ import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/saved_jobs_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
@@ -374,8 +375,8 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
               // Yayın tarihi yalnızca detayda (`JobDetailDto.createdAt`);
               // özet taşımıyor, detay gelmeden satır yok.
               if (_detail?.createdAt != null)
-                _buildInfoRow(
-                  Icons.schedule,
+                _appIconInfoRow(
+                  AppIcons.clock,
                   'Yayın tarihi',
                   _detail!.createdAt!.toLocal().asShortDate,
                 ),
@@ -413,8 +414,8 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
               if (widget.job.position != null)
                 _buildInfoRow(Icons.badge, 'Pozisyon', widget.job.position!),
               if (_headcount != null)
-                _buildInfoRow(
-                  Icons.group,
+                _appIconInfoRow(
+                  AppIcons.userMultiple,
                   'Aranan kişi',
                   '$_hiredCount / $_headcount alındı',
                 ),
@@ -819,12 +820,30 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     );
   }
 
+  /// Eski satırlar Material `Icons` taşıyor; yenisi eklenmiyor
+  /// (CONTRIBUTING). Yeni satırlar [AppIcon] ile çiziliyor, gövde aynı.
+  Widget _appIconInfoRow(AppIconData icon, String label, String value) {
+    return _infoRowBody(
+      AppIcon(icon, size: AppSizes.iconMedium, color: context.accentColor),
+      label,
+      value,
+    );
+  }
+
   Widget _buildInfoRow(IconData icon, String label, String value) {
+    return _infoRowBody(
+      Icon(icon, size: AppSizes.iconMedium, color: context.accentColor),
+      label,
+      value,
+    );
+  }
+
+  Widget _infoRowBody(Widget icon, String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSizes.space),
       child: Row(
         children: [
-          Icon(icon, size: AppSizes.iconMedium, color: context.accentColor),
+          icon,
           const SizedBox(width: AppSizes.space),
           Expanded(
             child: Column(
