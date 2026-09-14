@@ -162,10 +162,17 @@ abstract class MyJobsPagemodel extends WorkActionsPagemodel<MyJobsPage> {
     });
   }
 
-  /// Şirket detayına gider.
+  /// Satırın iş detayını açar; dönüşte liste tazelenir.
   ///
-  /// TODO(backend): `MyAssignmentDto.job` şirket kimliği taşımıyor (yalnızca
-  /// `companyId` bireysel ilanda boş kalır; satır o zaman tıklanmaz.
+  /// Detayda kabul, mesai ya da iptal yapılmış olabilir; satır o durumu
+  /// başka bir bölümde göstermeli. Detay kaydı `extra` ile taşıyor —
+  /// [MyJob.assignment] / [MyJob.application] orada okunuyor.
+  Future<void> openDetail(MyJob job) async {
+    await context.push('/work-detail', extra: job);
+    if (mounted) await reload();
+  }
+
+  /// Şirket detayına gider; bireysel ilanda kimlik yok, satır tıklanmaz.
   void navigateToCompany(MyJob job) {
     final companyId = job.companyId;
     if (companyId == null) return;

@@ -2,12 +2,16 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:koala/employee/features/jobs/models/my_job.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/earnings_page.dart';
 import 'package:koala/employee/features/jobs/services/assignment_service.dart';
 import 'package:koala/employee/features/jobs/services/payout_service.dart';
+import 'package:koala/product/theme/theme.dart';
 
 import '../../../../../support/fake_api.dart';
 import '../../../../../support/pump.dart';
+import '../../../../../support/work_test_support.dart';
 
 Future<void> pumpPage(WidgetTester tester, FakeApi api) {
   final assignmentsApi = FakeApi(
@@ -191,5 +195,65 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('{payout.settlement.failed}'), findsNothing);
+  });
+
+  // Kazançlar satırı da ölüydü (is-koala/koala#177): ödeme hangi işin
+  // ödemesiyse onun detayına açılmalı. Atama etiketi ikinci istekle
+  // geliyor; gelmeden satır dokunulmaz kalıyor.
+  testWidgets('ödeme satırı atamanın iş detayına açılır', (tester) async {
+    final payoutApi = FakeApi(
+      handler: (_) => dataResponse(const [
+        {
+          'id': 'payout-1',
+          'jobAssignmentId': 'assignment-1',
+          'amount': '950.00',
+          'currency': 'TRY',
+          'status': 'COMPLETED',
+          'completedAt': '2026-09-11T09:00:00Z',
+          'createdAt': '2026-09-11T08:00:00Z',
+        },
+      ]),
+    );
+    final assignmentsApi = FakeApi(
+      handler: (_) => pageResponse([
+        assignmentJson(
+          status: 'COMPLETED',
+          paymentStatus: 'RELEASED_TO_WORKER',
+        ),
+      ]),
+    );
+    final opened = <MyJob>[];
+    final router = GoRouter(
+      initialLocation: '/earnings',
+      routes: [
+        GoRoute(
+          path: '/earnings',
+          pageBuilder: (context, state) => MaterialPage<void>(
+            key: state.pageKey,
+            child: EarningsPage(
+              service: PayoutService.withClient(payoutApi.client),
+              assignmentService: AssignmentService.withClient(
+                assignmentsApi.client,
+              ),
+            ),
+          ),
+        ),
+        stubWorkDetailRoute(onOpened: opened.add),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp.router(theme: lightTheme, routerConfig: router),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Barista'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('payout-payout-1')));
+    await tester.pumpAndSettle();
+
+    expect(find.text(workDetailStubTitle), findsOneWidget);
+    expect(opened.single.assignmentId, 'assignment-1');
+    expect(opened.single.status, MyJobStatus.past);
   });
 }

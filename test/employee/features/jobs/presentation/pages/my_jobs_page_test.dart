@@ -1,153 +1,53 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:koala/employee/features/auth/services/user_service.dart';
+import 'package:go_router/go_router.dart';
+import 'package:koala/employee/core/widgets/employer_type_badge.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
-import 'package:koala/employee/features/jobs/models/timesheet_event.dart';
-import 'package:koala/employee/features/jobs/models/work_session.dart';
+import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/jobs/models/my_job.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/my_jobs_page.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/review_provider.dart';
-import 'package:koala/employee/features/jobs/presentation/providers/timesheet_queue_provider.dart';
 import 'package:koala/employee/features/jobs/services/assignment_service.dart';
 import 'package:koala/employee/features/jobs/services/job_application_service.dart';
 import 'package:koala/employee/features/jobs/services/review_service.dart';
-import 'package:koala/employee/features/jobs/services/timesheet_event_gateway.dart';
-import 'package:koala/employee/features/jobs/services/timesheet_event_store.dart';
-import 'package:koala/employee/features/jobs/services/timesheet_retry_trigger.dart';
-import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
+import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/providers/notification_provider.dart';
 import 'package:koala/product/services/notification_service.dart';
+import 'package:koala/product/theme/theme.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../../support/fake_api.dart';
-import '../../../../../support/pump.dart';
-
-const _me = 'worker-1';
-
-const _jobJson = {
-  'id': 'job-1',
-  'title': 'Barista',
-  'category': {'id': 'category-1', 'code': 'BARISTA', 'name': 'Barista'},
-  'type': 'ONE_TIME',
-  'employerType': 'INDIVIDUAL',
-  'salaryType': 'DAILY',
-  'salary': 1000,
-  'status': 'OPEN',
-  'startDateTime': '2026-09-10T09:00:00Z',
-  'endDateTime': '2026-09-10T17:00:00Z',
-};
+import '../../../../../support/work_test_support.dart';
 
 /// Onaylanmış atama; kapı alanları isteğe bağlı ki eski sunucu (alan yok)
-/// da denenebilsin.
-Map<String, Object?> assignmentJson({
+/// da denenebilsin. Ortak gövde `work_test_support.dart`'ta.
+Map<String, Object?> _assignment({
+  String status = 'CONFIRMED',
   String paymentStatus = 'HELD_IN_ESCROW',
   bool? messagingAvailable,
   String? messagingAvailableReason,
-}) => {
-  'id': 'assignment-1',
-  'status': 'CONFIRMED',
-  'paymentStatus': paymentStatus,
-  'assignmentDateTime': '2026-09-10T09:00:00Z',
-  'workerPayout': 950,
-  'job': _jobJson,
-  'messagingAvailable': ?messagingAvailable,
-  'messagingAvailableReason': ?messagingAvailableReason,
-};
-
-final _pendingApplicationJson = {
-  'id': 'application-1',
-  'status': 'APPLIED',
-  'applicationDateTime': '2026-09-08T10:00:00Z',
-  'job': {..._jobJson, 'id': 'job-2', 'title': 'Garson'},
-};
-
-FakeApiResponse _page(List<Map<String, Object?>> content) => FakeApiResponse(
-  statusCode: 200,
-  body: {
-    'success': true,
-    'data': {'content': content},
-  },
+}) => assignmentJson(
+  status: status,
+  paymentStatus: paymentStatus,
+  assignmentDateTime: '2026-09-10T09:00:00Z',
+  messagingAvailable: messagingAvailable,
+  messagingAvailableReason: messagingAvailableReason,
 );
 
-const _emptyList = FakeApiResponse(
-  statusCode: 200,
-  body: {'success': true, 'data': []},
-);
+final _pendingApplicationJson = applicationJson();
 
-class _MemoryStore implements TimesheetEventStore {
-  final List<TimesheetEvent> records = [];
-  String? lastActiveUserId;
+typedef Harness = ({
+  FakeApi assignmentApi,
+  FakeApi chatApi,
+  List<MyJob> openedDetails,
+});
 
-  @override
-  Future<void> add(TimesheetEvent event) async => records.add(event);
-
-  @override
-  Future<List<TimesheetEvent>> readForUser(String userId) async =>
-      records.where((event) => event.userId == userId).toList(growable: false);
-
-  @override
-  Future<void> remove(String clientEventId) async {
-    records.removeWhere((event) => event.clientEventId == clientEventId);
-  }
-
-  @override
-  Future<void> markRequiresSupport(
-    String clientEventId,
-    String message,
-  ) async {}
-
-  @override
-  Future<String?> readLastActiveUser() async => lastActiveUserId;
-
-  @override
-  Future<void> setLastActiveUser(String? userId) async {
-    lastActiveUserId = userId;
-  }
-}
-
-class _IdleGateway implements TimesheetEventGateway {
-  @override
-  Future<WorkSession> send(TimesheetEvent event) =>
-      throw UnimplementedError('Bu testte mesai gönderilmiyor.');
-
-  @override
-  Future<List<WorkSession>> fetchSessions(String assignmentId) async => [];
-}
-
-class _ManualRetryTrigger implements TimesheetRetryTrigger {
-  final StreamController<void> controller = StreamController<void>.broadcast();
-
-  @override
-  Stream<void> get onNetworkAvailable => controller.stream;
-}
-
-Future<UserProvider> _loadedWorker() async {
-  final api = FakeApi(
-    handler: (_) => const FakeApiResponse(
-      statusCode: 200,
-      body: {
-        'success': true,
-        'data': {
-          'id': _me,
-          'firstName': 'Yakup',
-          'lastName': 'Kahraman',
-          'email': 'yakup@example.com',
-          'isEmployer': false,
-        },
-      },
-    ),
-  );
-  final provider = UserProvider(
-    userService: UserService.withClient(api.client),
-  );
-  await provider.load();
-  return provider;
-}
-
-Future<({FakeApi assignmentApi, FakeApi chatApi})> pumpPage(
+/// Sayfayı gerçek temada, sahte sunucuya bağlı ve sahte bir `/work-detail`
+/// rotasıyla çizer; satırın hangi kaydı açtığı [Harness.openedDetails]'e
+/// düşüyor.
+Future<Harness> pumpPage(
   WidgetTester tester, {
   required List<Map<String, Object?>> assignments,
   List<Map<String, Object?>> applications = const [],
@@ -156,42 +56,45 @@ Future<({FakeApi assignmentApi, FakeApi chatApi})> pumpPage(
 }) async {
   final assignmentApi = FakeApi(
     handler: (request) => request.path.endsWith('/work-sessions')
-        ? _emptyList
-        : _page(assignments),
+        ? dataResponse(const [])
+        : pageResponse(assignments),
   );
-  final applicationApi = FakeApi(handler: (_) => _page(applications));
+  final applicationApi = FakeApi(handler: (_) => pageResponse(applications));
   final chatApi = FakeApi(
-    handler: (_) =>
-        chatResponse?.call() ??
-        const FakeApiResponse(
-          statusCode: 200,
-          body: {'success': true, 'data': {}},
-        ),
+    handler: (_) => chatResponse?.call() ?? dataResponse(const {}),
   );
   final notificationApi = FakeApi(
-    handler: (_) => const FakeApiResponse(
-      statusCode: 200,
-      body: {
-        'success': true,
-        'data': {
-          'notifications': {'content': [], 'page': 0, 'last': true},
-          'unreadCount': 0,
-        },
-      },
-    ),
+    handler: (_) => dataResponse(const {
+      'notifications': {'content': [], 'page': 0, 'last': true},
+      'unreadCount': 0,
+    }),
   );
-  final retryTrigger = _ManualRetryTrigger();
-  final queue = TimesheetQueueProvider.withAdapters(
-    store: _MemoryStore(),
-    gateway: _IdleGateway(),
-    retryTrigger: retryTrigger,
-  );
-  final userProvider = (await tester.runAsync(_loadedWorker))!;
-  addTearDown(() => retryTrigger.controller.close());
+  final queue = idleTimesheetQueue();
+  final userProvider = (await tester.runAsync(loadedWorkerProvider))!;
   addTearDown(userProvider.dispose);
+  final openedDetails = <MyJob>[];
 
-  await pumpInApp(
-    tester,
+  final router = GoRouter(
+    initialLocation: '/jobs',
+    routes: [
+      GoRoute(
+        path: '/jobs',
+        pageBuilder: (context, state) => MaterialPage<void>(
+          key: state.pageKey,
+          child: MyJobsPage(
+            assignmentService: AssignmentService.withClient(
+              assignmentApi.client,
+            ),
+            chatService: ChatService.withClient(chatApi.client),
+          ),
+        ),
+      ),
+      stubWorkDetailRoute(onOpened: openedDetails.add),
+    ],
+  );
+  addTearDown(router.dispose);
+
+  await tester.pumpWidget(
     MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: userProvider),
@@ -212,21 +115,28 @@ Future<({FakeApi assignmentApi, FakeApi chatApi})> pumpPage(
           ),
         ),
       ],
-      child: MyJobsPage(
-        assignmentService: AssignmentService.withClient(assignmentApi.client),
-        chatService: ChatService.withClient(chatApi.client),
+      child: MaterialApp.router(
+        theme: brightness == Brightness.dark ? darkTheme : lightTheme,
+        routerConfig: router,
       ),
     ),
-    brightness: brightness,
   );
-  // Yükleme birden çok async servis katmanından geçiyor; olay döngüsü sabit
-  // sayıda kareyle ilerletiliyor (bkz. b_job_detail harness).
+  await _settle(tester);
+
+  return (
+    assignmentApi: assignmentApi,
+    chatApi: chatApi,
+    openedDetails: openedDetails,
+  );
+}
+
+/// Yükleme birden çok async servis katmanından geçiyor; olay döngüsü sabit
+/// sayıda kareyle ilerletiliyor (bkz. b_job_detail harness).
+Future<void> _settle(WidgetTester tester) async {
   for (var index = 0; index < 20; index++) {
     await tester.pump(const Duration(milliseconds: 10));
   }
   await tester.pumpAndSettle();
-
-  return (assignmentApi: assignmentApi, chatApi: chatApi);
 }
 
 final _chatButton = find.byKey(const ValueKey('job-chat-job-1'));
@@ -244,7 +154,7 @@ void main() {
           tester,
           brightness: brightness,
           assignments: [
-            assignmentJson(
+            _assignment(
               messagingAvailable: true,
               messagingAvailableReason: 'AVAILABLE',
             ),
@@ -260,7 +170,7 @@ void main() {
           tester,
           brightness: brightness,
           assignments: [
-            assignmentJson(
+            _assignment(
               paymentStatus: 'PENDING_COLLECTION',
               messagingAvailable: false,
               messagingAvailableReason: 'PAYMENT_REQUIRED',
@@ -278,7 +188,7 @@ void main() {
           tester,
           brightness: brightness,
           assignments: [
-            assignmentJson(
+            _assignment(
               messagingAvailable: false,
               messagingAvailableReason: 'CLOSED',
             ),
@@ -294,7 +204,7 @@ void main() {
         await pumpPage(
           tester,
           brightness: brightness,
-          assignments: [assignmentJson()],
+          assignments: [_assignment()],
         );
 
         expect(_chatButton, findsNothing);
@@ -325,7 +235,7 @@ void main() {
     final harness = await pumpPage(
       tester,
       assignments: [
-        assignmentJson(
+        _assignment(
           messagingAvailable: true,
           messagingAvailableReason: 'AVAILABLE',
         ),
@@ -347,10 +257,7 @@ void main() {
     expect(fetchesBefore, greaterThan(0));
 
     await tester.tap(_chatButton);
-    for (var index = 0; index < 20; index++) {
-      await tester.pump(const Duration(milliseconds: 10));
-    }
-    await tester.pumpAndSettle();
+    await _settle(tester);
 
     expect(
       harness.chatApi.requests.map((r) => r.path),
@@ -366,7 +273,7 @@ void main() {
     await pumpPage(
       tester,
       assignments: [
-        assignmentJson(
+        _assignment(
           messagingAvailable: true,
           messagingAvailableReason: 'AVAILABLE',
         ),
@@ -383,12 +290,151 @@ void main() {
     );
 
     await tester.tap(_chatButton);
-    for (var index = 0; index < 20; index++) {
-      await tester.pump(const Duration(milliseconds: 10));
-    }
-    await tester.pumpAndSettle();
+    await _settle(tester);
 
     expect(find.text('Bu sohbet kapandı'), findsOneWidget);
     expect(find.text('Bu iş için mesajlaşma süresi doldu.'), findsNothing);
   });
+
+  // Satırların hiçbirinde `onTap` yoktu: kabul edilmiş işin adresi, işvereni
+  // ve çizelgesi mobilde ulaşılamazdı (is-koala/koala#177). Her durumun
+  // satırı detayı açmalı ve kaynağını (atama / başvuru) taşımalı.
+  group('satır → iş detayı', () {
+    for (final (status, paymentStatus, expected) in const [
+      (
+        'PENDING_CONFIRMATION',
+        'PENDING_COLLECTION',
+        MyJobStatus.awaitingApproval,
+      ),
+      ('CONFIRMED', 'HELD_IN_ESCROW', MyJobStatus.approved),
+      ('IN_PROGRESS', 'HELD_IN_ESCROW', MyJobStatus.inProgress),
+      ('COMPLETED', 'HELD_IN_ESCROW', MyJobStatus.completed),
+      ('COMPLETED', 'RELEASED_TO_WORKER', MyJobStatus.past),
+      ('CANCELLED', 'REFUNDED', MyJobStatus.cancelled),
+      ('REJECTED', 'PENDING_COLLECTION', MyJobStatus.rejected),
+    ]) {
+      testWidgets('atama $status/$paymentStatus → ${expected.name}', (
+        tester,
+      ) async {
+        final harness = await pumpPage(
+          tester,
+          assignments: [
+            _assignment(status: status, paymentStatus: paymentStatus),
+          ],
+        );
+
+        // Başlık ve kategori satırı aynı metni taşıyor; başlığa dokunulur.
+        await tester.tap(find.text('Barista').first);
+        await tester.pumpAndSettle();
+
+        expect(find.text(workDetailStubTitle), findsOneWidget);
+        final opened = harness.openedDetails.single;
+        expect(opened.status, expected);
+        expect(opened.assignment, isNotNull);
+        expect(opened.assignmentId, 'assignment-1');
+      });
+    }
+
+    for (final (status, expected) in const [
+      ('APPLIED', MyJobStatus.pending),
+      ('REJECTED', MyJobStatus.applicationRejected),
+      ('WITHDRAWN', MyJobStatus.withdrawn),
+    ]) {
+      testWidgets('başvuru $status → ${expected.name}', (tester) async {
+        final harness = await pumpPage(
+          tester,
+          assignments: const [],
+          applications: [
+            applicationJson(
+              status: status,
+              answeredDateTime: status == 'REJECTED'
+                  ? '2026-09-03T14:00:00Z'
+                  : null,
+            ),
+          ],
+        );
+
+        await tester.tap(find.text('Garson'));
+        await tester.pumpAndSettle();
+
+        expect(find.text(workDetailStubTitle), findsOneWidget);
+        final opened = harness.openedDetails.single;
+        expect(opened.status, expected);
+        expect(opened.application, isNotNull);
+        expect(opened.assignment, isNull);
+      });
+    }
+  });
+
+  for (final brightness in Brightness.values) {
+    group('satır rozetleri / ${brightness.name}', () {
+      testWidgets('işveren türü rozeti: bireysel ve kurumsal', (tester) async {
+        await pumpPage(
+          tester,
+          brightness: brightness,
+          assignments: [
+            _assignment(),
+            assignmentJson(
+              id: 'assignment-2',
+              status: 'CONFIRMED',
+              job: jobSummaryJson(
+                id: 'job-9',
+                title: 'Kasiyer',
+                employerType: 'COMPANY',
+                companyName: 'Koala Market',
+                companyId: 'comp-9',
+              ),
+            ),
+          ],
+        );
+
+        final badges = find.byType(EmployerTypeBadge);
+        expect(badges, findsNWidgets(2));
+        expect(
+          badges.evaluate().map((e) => (e.widget as EmployerTypeBadge).type),
+          containsAll([JobEmployerType.individual, JobEmployerType.company]),
+        );
+      });
+
+      testWidgets('yanıtlanmış başvuru satırında yanıt tarihi yazılır', (
+        tester,
+      ) async {
+        await pumpPage(
+          tester,
+          brightness: brightness,
+          assignments: const [],
+          applications: [
+            applicationJson(
+              status: 'REJECTED',
+              answeredDateTime: '2026-09-03T14:00:00Z',
+              rejectionReason: 'Kadro doldu',
+            ),
+          ],
+        );
+
+        final answered = find.byKey(
+          const ValueKey('job-answered-application-1'),
+        );
+        expect(answered, findsOneWidget);
+        expect(
+          tester.widget<Text>(answered).data,
+          'Yanıtlandı: ${DateTime.utc(2026, 9, 3, 14).toLocal().asShortDate}',
+        );
+      });
+
+      testWidgets('bekleyen başvuruda yanıt tarihi yok', (tester) async {
+        await pumpPage(
+          tester,
+          brightness: brightness,
+          assignments: const [],
+          applications: [_pendingApplicationJson],
+        );
+
+        expect(
+          find.byKey(const ValueKey('job-answered-application-1')),
+          findsNothing,
+        );
+      });
+    });
+  }
 }

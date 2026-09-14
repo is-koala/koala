@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/jobs/models/assignment.dart';
+import 'package:koala/employee/features/jobs/models/my_job.dart';
 import 'package:koala/employee/features/jobs/models/payout.dart';
 import 'package:koala/employee/features/jobs/services/assignment_service.dart';
 import 'package:koala/employee/features/jobs/services/payout_service.dart';
@@ -149,56 +151,70 @@ class _EarningsPageState extends EarningsPagemodel {
     );
   }
 
+  /// Ödeme satırı; atama biliniyorsa dokununca işin detayı açılıyor.
+  ///
+  /// Atamalar ikinci istekle geliyor ve gelmeyebiliyor; o zaman satır düz
+  /// kalıyor — ödeme kaydının kendisi bir detay sayfası taşımıyor.
   Widget _payoutCard(Payout payout) {
     final assignment = _assignments[payout.jobAssignmentId];
 
     return Material(
       color: context.tileColor,
       borderRadius: AppRadius.innerCircular,
-      child: Padding(
-        padding: AppPadding.card,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    TurkishMoneyFormatter.format(
-                      payout.amount,
-                      payout.currency,
-                    ),
-                    style: context.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                _statusBadge(payout.status),
-              ],
-            ),
-            if (assignment != null) ...[
-              const SizedBox(height: AppSizes.spaceSmall),
-              Text(assignment.job.title, style: context.textTheme.bodyMedium),
-            ],
-            const SizedBox(height: AppSizes.spaceSmall),
-            Text(
-              payout.createdAt.toLocal().asShortDate,
-              style: context.textTheme.bodySmall?.copyWith(
-                color: context.textTertiary,
-              ),
-            ),
-            if (payout.status == PayoutStatus.failed) ...[
-              const SizedBox(height: AppSizes.spaceSmall),
-              Text(
-                FinancialFailureMessage.payout(payout.failureReason),
-                style: context.textTheme.bodySmall?.copyWith(
-                  color: AppColors.danger,
-                ),
-              ),
-            ],
-          ],
+      child: InkWell(
+        key: ValueKey('payout-${payout.id}'),
+        borderRadius: AppRadius.innerCircular,
+        onTap: assignment == null ? null : () => _openWork(assignment),
+        child: Padding(
+          padding: AppPadding.card,
+          child: _payoutBody(payout, assignment),
         ),
       ),
+    );
+  }
+
+  Future<void> _openWork(Assignment assignment) async {
+    await context.push('/work-detail', extra: MyJob.fromAssignment(assignment));
+  }
+
+  Widget _payoutBody(Payout payout, Assignment? assignment) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                TurkishMoneyFormatter.format(payout.amount, payout.currency),
+                style: context.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            _statusBadge(payout.status),
+          ],
+        ),
+        if (assignment != null) ...[
+          const SizedBox(height: AppSizes.spaceSmall),
+          Text(assignment.job.title, style: context.textTheme.bodyMedium),
+        ],
+        const SizedBox(height: AppSizes.spaceSmall),
+        Text(
+          payout.createdAt.toLocal().asShortDate,
+          style: context.textTheme.bodySmall?.copyWith(
+            color: context.textTertiary,
+          ),
+        ),
+        if (payout.status == PayoutStatus.failed) ...[
+          const SizedBox(height: AppSizes.spaceSmall),
+          Text(
+            FinancialFailureMessage.payout(payout.failureReason),
+            style: context.textTheme.bodySmall?.copyWith(
+              color: AppColors.danger,
+            ),
+          ),
+        ],
+      ],
     );
   }
 

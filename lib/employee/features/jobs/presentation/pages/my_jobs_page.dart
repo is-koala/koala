@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:koala/employee/core/widgets/employer_type_badge.dart';
 import 'package:koala/product/widgets/messaging_gate_note.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
 import 'package:koala/employee/features/jobs/models/my_job.dart';
@@ -427,27 +428,30 @@ class _MyJobsPageState extends MyJobsPagemodel {
 
   // --------------------------------------------------------- Ortak parçalar
 
+  /// Bölüm kartı. Zemin bir `Material`: satırlar artık dokunulabilir
+  /// `ListTile` ve mürekkep dalgasını en yakın `Material`'a boyuyorlar —
+  /// renkli bir `DecoratedBox` altında kalsaydı dalga görünmez, Flutter da
+  /// bunu çalışma zamanında bildirirdi (AGENTS.md, bottom sheet notu).
   Widget _sectionCard({
     required Color background,
     required Color foreground,
     required Widget header,
     required Widget child,
   }) {
-    return Container(
-      width: double.infinity,
-      padding: AppPadding.primaryAll,
-      decoration: BoxDecoration(
-        borderRadius: AppRadius.secondaryCircular,
-        color: background,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          header,
-          const SizedBox(height: AppSizes.space),
-          child,
-        ],
+    return Material(
+      color: background,
+      borderRadius: AppRadius.secondaryCircular,
+      child: Padding(
+        padding: AppPadding.primaryAll,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            header,
+            const SizedBox(height: AppSizes.space),
+            child,
+          ],
+        ),
       ),
     );
   }
@@ -540,11 +544,26 @@ class _MyJobsPageState extends MyJobsPagemodel {
     style: context.textTheme.titleSmall?.copyWith(color: foreground),
   );
 
+  /// Satırın alt kısmı: işveren (adı + türü), özet ve varsa yanıt tarihi.
+  ///
+  /// `answeredDateTime` yalnızca başvurudan gelen satırda yazılıyor: orada
+  /// satırın tarihi başvuru günü, yanıtın ne zaman geldiği ayrı bir bilgi.
   Widget _tileSubtitle(MyJob job, Color foreground, {int? maxLines}) {
+    final answeredAt = job.application == null ? null : job.answeredDateTime;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _tappableCompanyName(job, foreground),
+        Row(
+          children: [
+            Flexible(child: _tappableCompanyName(job, foreground)),
+            const SizedBox(width: AppSizes.spaceSmall),
+            EmployerTypeBadge(
+              type: job.employerType,
+              color: foreground.withValues(alpha: _linkAlpha),
+            ),
+          ],
+        ),
         const SizedBox(height: AppSizes.smallGap),
         Text(
           job.subtitle,
@@ -554,6 +573,14 @@ class _MyJobsPageState extends MyJobsPagemodel {
           maxLines: maxLines,
           overflow: maxLines == null ? null : TextOverflow.ellipsis,
         ),
+        if (answeredAt != null)
+          Text(
+            'Yanıtlandı: ${answeredAt.toLocal().asShortDate}',
+            key: ValueKey('job-answered-${job.id}'),
+            style: context.textTheme.labelSmall?.copyWith(
+              color: foreground.withValues(alpha: _mutedAlpha),
+            ),
+          ),
       ],
     );
   }
@@ -574,13 +601,14 @@ class _MyJobsPageState extends MyJobsPagemodel {
     ),
     Widget? menu,
   }) {
-    final offersChat = _canChat(job);
+    final offersChat = job.offersChat;
     final gateNote = offersChat
         ? job.messaging.noteFor(asEmployer: false)
         : null;
 
     final tile = ListTile(
       contentPadding: contentPadding,
+      onTap: () => openDetail(job),
       title: _tileTitle(job.title, foreground),
       subtitle: _tileSubtitle(job, foreground, maxLines: 1),
       trailing: Row(
@@ -627,22 +655,6 @@ class _MyJobsPageState extends MyJobsPagemodel {
         ),
       ],
     );
-  }
-
-  /// Bu satırda sohbet teklif ediliyor mu — kapalı işlerde hiç edilmiyor.
-  ///
-  /// Kapının açık olup olmadığı ayrı bir soru ([MyJob.messaging]); burası
-  /// yalnızca satırın durumuna bakıyor.
-  bool _canChat(MyJob job) {
-    return job.jobId != null &&
-        switch (job.status) {
-          MyJobStatus.pending ||
-          MyJobStatus.awaitingApproval ||
-          MyJobStatus.approved ||
-          MyJobStatus.inProgress ||
-          MyJobStatus.completed => true,
-          _ => false,
-        };
   }
 
   Widget _priceAndDate(MyJob job, Color foreground) {
@@ -752,6 +764,7 @@ class _MyJobsPageState extends MyJobsPagemodel {
         children: [
           ListTile(
             contentPadding: AppPadding.zero,
+            onTap: () => openDetail(job),
             title: _tileTitle(job.title, foreground),
             subtitle: _tileSubtitle(job, foreground, maxLines: 1),
             trailing: Column(
@@ -1046,6 +1059,7 @@ class _MyJobsPageState extends MyJobsPagemodel {
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(vertical: AppSizes.spaceTiny),
+      onTap: () => openDetail(job),
       title: _tileTitle(job.title, foreground),
       subtitle: _tileSubtitle(job, foreground),
       trailing: Row(
@@ -1153,6 +1167,7 @@ class _MyJobsPageState extends MyJobsPagemodel {
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(vertical: AppSizes.spaceTiny),
+      onTap: () => openDetail(job),
       title: _tileTitle(job.title, foreground),
       subtitle: _tileSubtitle(job, foreground, maxLines: 1),
       trailing: Column(
