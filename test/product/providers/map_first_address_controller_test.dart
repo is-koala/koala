@@ -4,6 +4,7 @@ import 'package:koala/product/constants/app_map.dart';
 import 'package:koala/product/models/canonical_address.dart';
 import 'package:koala/product/models/confirmed_address.dart';
 import 'package:koala/product/models/reference_location.dart';
+import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/providers/map_first_address_controller.dart';
 import 'package:koala/product/services/device_location_source.dart';
 import 'package:koala/product/services/reference_location_service.dart';
@@ -226,7 +227,7 @@ void main() {
           await tester.pump(_debounce);
           await tester.pump();
 
-          expect(controller.reverseError, isNotNull);
+          expect(controller.reverseFailure, isNotNull);
           expect(controller.reverseGeocoding, isFalse);
           expect(controller.pin, _moda);
           expect(controller.hasCandidate, isFalse);
@@ -241,6 +242,258 @@ void main() {
         },
       );
     }
+
+    group('düşme nedeni sunucunun errorCode\'undan okunur', () {
+      testWidgets('hizmet alanı dışı: sunucu metni, eylem yok, kaydet kapalı', (
+        tester,
+      ) async {
+        final gateway = FakeAddressSearchGateway(
+          reverseFailure: FakeAddressSearchGateway.outsideServiceAreaFailure(),
+        );
+        final controller = _controller(gateway: gateway);
+        _fillManually(controller);
+
+        _dropPin(controller, _moda);
+        await tester.pump(_debounce);
+        await tester.pump();
+
+        final failure = controller.reverseFailure!;
+        expect(failure.kind, ReverseGeocodeFailureKind.outsideServiceArea);
+        expect(
+          failure.message,
+          'Adres İstanbul hizmet alanı içinde olmalıdır.',
+        );
+        expect(failure.retryLabel, isNull);
+        expect(failure.blocksSave, isTrue);
+        expect(
+          controller.saveBlockedReason,
+          'Kaydetmek için pini İstanbul içine taşıyın.',
+        );
+        expect(
+          controller.submit(),
+          isNull,
+          reason: 'alanlar dolu olsa da hizmet alanı dışı pin kaydedilmez',
+        );
+        expect(
+          controller.validationAttempted,
+          isFalse,
+          reason: 'kapalı kaydet satır içi hataları açmaz',
+        );
+        expect(controller.pin, _moda, reason: 'pin korunur');
+
+        controller.dispose();
+      });
+
+      testWidgets('sonuç yok: sunucu metni, tekrar dene, kaydet açık', (
+        tester,
+      ) async {
+        final gateway = FakeAddressSearchGateway(
+          reverseFailure: FakeAddressSearchGateway.noResultFailure(),
+        );
+        final controller = _controller(gateway: gateway);
+
+        _dropPin(controller, _moda);
+        await tester.pump(_debounce);
+        await tester.pump();
+
+        final failure = controller.reverseFailure!;
+        expect(failure.kind, ReverseGeocodeFailureKind.noResult);
+        expect(
+          failure.message,
+          'Bu konum için bir adres bulunamadı. Adresi elle tamamlayın.',
+        );
+        expect(failure.retryLabel, 'Tekrar dene');
+        expect(failure.blocksSave, isFalse);
+        expect(controller.saveBlockedReason, isNull);
+
+        _fillManually(controller);
+        expect(controller.submit(), isNotNull);
+
+        controller.dispose();
+      });
+
+      testWidgets('sağlayıcı düştü: sunucu metni, yenile, kaydet açık', (
+        tester,
+      ) async {
+        final gateway = FakeAddressSearchGateway(
+          reverseFailure: FakeAddressSearchGateway.providerFailure(),
+        );
+        final controller = _controller(gateway: gateway);
+
+        _dropPin(controller, _moda);
+        await tester.pump(_debounce);
+        await tester.pump();
+
+        final failure = controller.reverseFailure!;
+        expect(failure.kind, ReverseGeocodeFailureKind.providerUnavailable);
+        expect(failure.message, 'Adres arama servisine şu anda ulaşılamıyor.');
+        expect(failure.retryLabel, 'Yenile');
+        expect(failure.blocksSave, isFalse);
+        expect(controller.saveBlockedReason, isNull);
+
+        // Yenile: sağlayıcı toparlayınca aynı pin adayla dolar.
+        gateway.reverseFailure = null;
+        await controller.retryReverse();
+
+        expect(gateway.reverseCalls, [_moda, _moda]);
+        expect(controller.reverseFailure, isNull);
+        expect(controller.candidateToken, 'reverse-proof');
+
+        controller.dispose();
+      });
+
+      test('sunucu metin göndermediyse koda özel Türkçe yedek kullanılır', () {
+        final outside = ReverseGeocodeFailure.of(
+          FakeAddressSearchGateway.outsideServiceAreaFailure(message: ' '),
+        );
+        final noResult = ReverseGeocodeFailure.of(
+          FakeAddressSearchGateway.noResultFailure(message: ''),
+        );
+        final provider = ReverseGeocodeFailure.of(
+          FakeAddressSearchGateway.providerFailure(message: ''),
+        );
+
+        expect(
+          outside.message,
+          'Şimdilik yalnız İstanbul içinde adres kaydedilebiliyor; pini '
+          "İstanbul'a taşıyın.",
+        );
+        expect(
+          noResult.message,
+          'Bu konum için adres bulunamadı. Pini koruduk; adresi elle '
+          'tamamlayabilirsiniz.',
+        );
+        expect(
+          provider.message,
+          'Adres servisi şu an yanıt vermiyor; birazdan yeniden deneyin.',
+        );
+      });
+
+      test('tanınmayan kod ve ağ hatası genel cümleye düşer', () {
+        const generic =
+            'Bu konum için adres önerisi alınamadı. Pini koruduk; adresi '
+            'elle doldurabilirsiniz.';
+        final unknownCode = ReverseGeocodeFailure.of(
+          const ApiException(
+            message: 'Sunucunun yeni bir hatası.',
+            type: ApiErrorType.validation,
+            statusCode: 400,
+            errorCode: 'ADDRESS_SOMETHING_NEW',
+          ),
+        );
+        final network = ReverseGeocodeFailure.of(
+          const ApiException(
+            message: 'Sunucuya ulaşılamadı. İnternet bağlantını kontrol et.',
+            type: ApiErrorType.network,
+          ),
+        );
+
+        for (final failure in [unknownCode, network]) {
+          expect(failure.kind, ReverseGeocodeFailureKind.unknown);
+          expect(failure.message, generic);
+          expect(failure.retryLabel, 'Tekrar dene');
+          expect(failure.blocksSave, isFalse);
+        }
+      });
+
+      testWidgets('pin İstanbul içine taşınınca kaydet yeniden açılır', (
+        tester,
+      ) async {
+        final gateway = FakeAddressSearchGateway(
+          reverseFailure: FakeAddressSearchGateway.outsideServiceAreaFailure(),
+        );
+        final controller = _controller(gateway: gateway);
+        _dropPin(controller, const LatLng(39.925533, 32.866287));
+        await tester.pump(_debounce);
+        await tester.pump();
+        expect(controller.saveBlockedReason, isNotNull);
+
+        gateway.reverseFailure = null;
+        _dropPin(controller, _moda);
+        expect(
+          controller.saveBlockedReason,
+          isNull,
+          reason: 'pin oynar oynamaz eski gerekçe düşer, cevap beklenmez',
+        );
+        await tester.pump(_debounce);
+        await tester.pump();
+
+        expect(controller.reverseFailure, isNull);
+        expect(controller.candidateToken, 'reverse-proof');
+        expect(controller.saveBlockedReason, isNull);
+
+        controller.dispose();
+      });
+    });
+
+    group('precision', () {
+      testWidgets('sokak düzeyinde kalan aday bina numarası ipucu açar', (
+        tester,
+      ) async {
+        final gateway = FakeAddressSearchGateway(
+          reversePrecision: AddressCandidatePrecision.street,
+        );
+        final controller = _controller(gateway: gateway);
+
+        _dropPin(controller, _moda);
+        await tester.pump(_debounce);
+        await tester.pump();
+
+        expect(controller.candidatePrecision, AddressCandidatePrecision.street);
+        expect(controller.buildingNumber.text, isEmpty);
+        expect(controller.buildingNumberHintVisible, isTrue);
+
+        // Kullanıcı numarayı yazınca ipucu kalkar ve dinleyici uyanır.
+        var notified = 0;
+        controller.addListener(() => notified++);
+        controller.buildingNumber.text = '12';
+        expect(controller.buildingNumberHintVisible, isFalse);
+        expect(notified, 1);
+
+        controller.dispose();
+      });
+
+      testWidgets('mahalle düzeyi de ipucu açar, pin oynayınca düşer', (
+        tester,
+      ) async {
+        final gateway = FakeAddressSearchGateway(
+          reversePrecision: AddressCandidatePrecision.neighborhood,
+        );
+        final controller = _controller(gateway: gateway);
+
+        _dropPin(controller, _moda);
+        await tester.pump(_debounce);
+        await tester.pump();
+        expect(controller.buildingNumberHintVisible, isTrue);
+
+        _dropPin(controller, const LatLng(40.983, 29.026));
+
+        expect(controller.candidatePrecision, isNull);
+        expect(controller.buildingNumberHintVisible, isFalse);
+
+        controller.dispose();
+      });
+
+      for (final (label, precision) in [
+        ('bina düzeyi', AddressCandidatePrecision.building),
+        ('alan gelmediğinde', null),
+      ]) {
+        testWidgets('$label ipucu çıkmaz', (tester) async {
+          final gateway = FakeAddressSearchGateway(reversePrecision: precision);
+          final controller = _controller(gateway: gateway);
+
+          _dropPin(controller, _moda);
+          await tester.pump(_debounce);
+          await tester.pump();
+
+          expect(controller.candidatePrecision, precision);
+          expect(controller.buildingNumber.text, '12');
+          expect(controller.buildingNumberHintVisible, isFalse);
+
+          controller.dispose();
+        });
+      }
+    });
 
     testWidgets('"Sadece pini kullan" aday metinlerini boşaltır, pini korur', (
       tester,

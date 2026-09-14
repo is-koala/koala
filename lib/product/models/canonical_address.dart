@@ -18,6 +18,33 @@ enum AddressPositionSource {
   }
 }
 
+/// Ters geokod adayının hangi düzeyde bulunduğu; sunucunun opsiyonel
+/// `precision` alanı (is-koala/koala-backend#273).
+///
+/// Sağlayıcı bina bulamayınca sokak ya da mahalle düzeyine düşüyor ve bina
+/// numarası boş geliyor; ekran buna bakarak "bina numarasını girin" ipucu
+/// gösteriyor. Alan gelmezse ya da tanınmayan bir değer taşırsa `null`:
+/// eski sunucuyla davranış değişmez.
+enum AddressCandidatePrecision {
+  building('BUILDING'),
+  street('STREET'),
+  neighborhood('NEIGHBORHOOD');
+
+  const AddressCandidatePrecision(this.code);
+
+  final String code;
+
+  /// Bina numarası sağlayıcıdan gelmedi; kullanıcının girmesi gerekir.
+  bool get lacksBuildingNumber => this != building;
+
+  static AddressCandidatePrecision? fromCode(Object? value) {
+    for (final precision in values) {
+      if (precision.code == value) return precision;
+    }
+    return null;
+  }
+}
+
 class AddressComponents {
   const AddressComponents({
     required this.neighborhood,
@@ -176,6 +203,7 @@ class AddressCandidate {
     required this.candidateToken,
     required this.needsUserReview,
     required this.attribution,
+    this.precision,
   });
 
   final String countryId;
@@ -190,6 +218,9 @@ class AddressCandidate {
   final String candidateToken;
   final bool needsUserReview;
   final String attribution;
+
+  /// Sunucu göndermediyse `null`; ipucu o zaman çıkmaz.
+  final AddressCandidatePrecision? precision;
 
   factory AddressCandidate.fromJson(Map<String, dynamic> json) {
     return AddressCandidate(
@@ -209,6 +240,7 @@ class AddressCandidate {
       candidateToken: json['candidateToken'] as String,
       needsUserReview: json['needsUserReview'] as bool? ?? true,
       attribution: json['attribution'] as String? ?? '',
+      precision: AddressCandidatePrecision.fromCode(json['precision']),
     );
   }
 

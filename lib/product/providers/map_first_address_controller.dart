@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:koala/product/constants/app_map.dart';
+import 'package:koala/product/models/address_reverse_error_codes.dart';
 import 'package:koala/product/models/canonical_address.dart';
 import 'package:koala/product/models/confirmed_address.dart';
 import 'package:koala/product/models/reference_location.dart';
@@ -21,6 +22,86 @@ enum AddressField {
   buildingNumber,
   postalCode,
   position,
+}
+
+/// Ters geokodun neden düştüğü. Şeridin metnini ve eylemini, kaydet
+/// düğmesinin açık kalıp kalmayacağını bu belirler; sunucu üç durumu üç
+/// ayrı `errorCode` ile ayırıyor ve kullanıcı için üçünün çözümü farklı
+/// (is-koala/koala#173).
+enum ReverseGeocodeFailureKind {
+  /// Pin İstanbul hizmet alanı dışında: aynı pinle tekrar denemek boş,
+  /// adres de kaydedilemez; pinin taşınması gerekir.
+  outsideServiceArea,
+
+  /// Sağlayıcı bu nokta için adres bulamadı: pin geçerli, alanlar elle
+  /// tamamlanır.
+  noResult,
+
+  /// Sağlayıcıya ulaşılamadı: geçici; yenilemek anlamlı, elle giriş de açık.
+  providerUnavailable,
+
+  /// Ağ, zaman aşımı ya da tanınmayan kod: genel metin, tekrar dene.
+  unknown,
+}
+
+/// Düşen ters geokodun kullanıcıya söylenecek hâli.
+class ReverseGeocodeFailure {
+  const ReverseGeocodeFailure({required this.kind, required this.message});
+
+  /// Sunucunun `errorCode`'undan türetir. Metin sunucununki; sunucu metin
+  /// göndermediyse koda özel Türkçe yedek. Tanınmayan kod ve sunucuya hiç
+  /// varmamış hatalar [ReverseGeocodeFailureKind.unknown] olur ve sabit
+  /// genel cümleyi taşır — ağ hatasının kendi metni ("internet bağlantını
+  /// kontrol et") pinin altındaki şeride uymuyor.
+  factory ReverseGeocodeFailure.of(ApiException error) {
+    final kind = switch (error.errorCode) {
+      AddressReverseErrorCodes.outsideServiceArea =>
+        ReverseGeocodeFailureKind.outsideServiceArea,
+      AddressReverseErrorCodes.noResult => ReverseGeocodeFailureKind.noResult,
+      AddressReverseErrorCodes.providerUnavailable =>
+        ReverseGeocodeFailureKind.providerUnavailable,
+      _ => ReverseGeocodeFailureKind.unknown,
+    };
+    final serverMessage = error.message.trim();
+    final useServerMessage =
+        kind != ReverseGeocodeFailureKind.unknown && serverMessage.isNotEmpty;
+    return ReverseGeocodeFailure(
+      kind: kind,
+      message: useServerMessage ? serverMessage : _fallbackMessages[kind]!,
+    );
+  }
+
+  static const Map<ReverseGeocodeFailureKind, String> _fallbackMessages = {
+    ReverseGeocodeFailureKind.outsideServiceArea:
+        'Şimdilik yalnız İstanbul içinde adres kaydedilebiliyor; pini '
+        "İstanbul'a taşıyın.",
+    ReverseGeocodeFailureKind.noResult:
+        'Bu konum için adres bulunamadı. Pini koruduk; adresi elle '
+        'tamamlayabilirsiniz.',
+    ReverseGeocodeFailureKind.providerUnavailable:
+        'Adres servisi şu an yanıt vermiyor; birazdan yeniden deneyin.',
+    ReverseGeocodeFailureKind.unknown:
+        'Bu konum için adres önerisi alınamadı. Pini koruduk; adresi elle '
+        'doldurabilirsiniz.',
+  };
+
+  final ReverseGeocodeFailureKind kind;
+  final String message;
+
+  /// Şeridin eylem yazısı; `null` ise şerit eylem taşımaz.
+  ///
+  /// Hizmet alanı dışında aynı pinle yeniden istemek bir şey değiştirmez.
+  /// Sağlayıcı düştüyse "Yenile": geçici bir durum, kullanıcı biraz sonra
+  /// dener. Diğerlerinde "Tekrar dene".
+  String? get retryLabel => switch (kind) {
+    ReverseGeocodeFailureKind.outsideServiceArea => null,
+    ReverseGeocodeFailureKind.providerUnavailable => 'Yenile',
+    ReverseGeocodeFailureKind.noResult ||
+    ReverseGeocodeFailureKind.unknown => 'Tekrar dene',
+  };
+
+  /// Adres bu pinle kaydedilemez; kullanıcının pini taşıması gerekir.
+  bool get blocksSave => kind == ReverseGeocodeFailureKind.outsideServiceArea;
 }
 
 /// Harita-öncelikli adres ekranının durumu ve iş mantığı.
@@ -145,6 +226,9 @@ class MapFirstAddressController extends ChangeNotifier {
   String? providerAttribution;
   bool candidateNeedsReview = false;
 
+  /// Adayın bulunduğu düzey; sunucu göndermediyse ya da aday yokken `null`.
+  AddressCandidatePrecision? candidatePrecision;
+
   late final AddressAutocompleteController autocomplete;
 
   List<TextEditingController> get _textControllers => [
@@ -162,6 +246,13 @@ class MapFirstAddressController extends ChangeNotifier {
 
   /// Alanlar bir adaydan mı doldu; "Sadece pini kullan" bu durumda görünür.
   bool get hasCandidate => candidateToken != null;
+
+  /// Aday sokak ya da mahalle düzeyinde kaldı ve bina numarası hâlâ boş:
+  /// kullanıcıya "bina numarasını girin" ipucu gösterilir. Kullanıcı
+  /// numarayı yazınca ipucu kalkar; pin oynayınca adayla birlikte düşer.
+  bool get buildingNumberHintVisible =>
+      (candidatePrecision?.lacksBuildingNumber ?? false) &&
+      buildingNumber.text.trim().isEmpty;
 
   // ------------------------------------------------------------------ Harita
 
@@ -230,8 +321,9 @@ class MapFirstAddressController extends ChangeNotifier {
     candidateToken = null;
     providerAttribution = null;
     candidateNeedsReview = false;
+    candidatePrecision = null;
     _reverseRevision++;
-    _reverseError = null;
+    _reverseFailure = null;
     notifyListeners();
   }
 
@@ -244,16 +336,28 @@ class MapFirstAddressController extends ChangeNotifier {
   Timer? _reverseTimer;
   int _reverseRevision = 0;
   bool _reverseGeocoding = false;
-  String? _reverseError;
+  ReverseGeocodeFailure? _reverseFailure;
 
   bool get reverseGeocoding => _reverseGeocoding;
-  String? get reverseError => _reverseError;
+
+  /// Son ters geokod düştüyse nedeni ve metni; başarıda ve pin oynayınca
+  /// `null`.
+  ReverseGeocodeFailure? get reverseFailure => _reverseFailure;
+
+  /// Kaydet düğmesinin kapalı olmasının gerekçesi; açıkken `null`.
+  ///
+  /// Sunucu bu pini hizmet alanı dışı saydı: aynı pinle kaydetmeyi denemek
+  /// aynı `400` ile dönerdi, o yüzden düğme baştan kapalı ve yanında neden
+  /// yazıyor. Hizmet alanı kutusunun kendisi değişmez.
+  String? get saveBlockedReason => (_reverseFailure?.blocksSave ?? false)
+      ? 'Kaydetmek için pini İstanbul içine taşıyın.'
+      : null;
 
   Future<void> _reverseGeocode(LatLng target) async {
     _pinNeedsReverse = false;
     final revision = ++_reverseRevision;
     _reverseGeocoding = true;
-    _reverseError = null;
+    _reverseFailure = null;
     notifyListeners();
 
     try {
@@ -263,11 +367,9 @@ class MapFirstAddressController extends ChangeNotifier {
       );
       if (_disposed || revision != _reverseRevision) return;
       _applyCandidate(candidate);
-    } on ApiException {
+    } on ApiException catch (error) {
       if (_disposed || revision != _reverseRevision) return;
-      _reverseError =
-          'Bu konum için adres önerisi alınamadı. Pini koruduk; adresi elle '
-          'doldurabilirsiniz.';
+      _reverseFailure = ReverseGeocodeFailure.of(error);
     } finally {
       if (!_disposed && revision == _reverseRevision) {
         _reverseGeocoding = false;
@@ -299,6 +401,7 @@ class MapFirstAddressController extends ChangeNotifier {
     candidateToken = null;
     providerAttribution = null;
     candidateNeedsReview = false;
+    candidatePrecision = null;
     notifyListeners();
   }
 
@@ -325,6 +428,7 @@ class MapFirstAddressController extends ChangeNotifier {
     candidateToken = candidate.candidateToken;
     providerAttribution = candidate.attribution;
     candidateNeedsReview = candidate.needsUserReview;
+    candidatePrecision = candidate.precision;
     notifyListeners();
   }
 
@@ -345,7 +449,7 @@ class MapFirstAddressController extends ChangeNotifier {
     _pinNeedsReverse = false;
     _reverseRevision++;
     _reverseGeocoding = false;
-    _reverseError = null;
+    _reverseFailure = null;
 
     // Harita adayı izlesin; ardından gelen "durdu" olayı pinle aynı noktada
     // olacağı için ikinci bir ters geokod üretmez.
@@ -550,7 +654,10 @@ class MapFirstAddressController extends ChangeNotifier {
   }
 
   /// Kaydetme girişimi: satır içi hataları açar ve geçerliyse adresi döner.
+  /// Kaydet kapalıyken ([saveBlockedReason]) hiçbir şey yapmaz; düğme zaten
+  /// basılamıyor, bu yalnız programatik çağrıya karşı kapı.
   ConfirmedAddress? submit() {
+    if (saveBlockedReason != null) return null;
     _validationAttempted = true;
     notifyListeners();
     return confirmed;
@@ -561,8 +668,9 @@ class MapFirstAddressController extends ChangeNotifier {
   bool _disposed = false;
 
   void _textChanged() {
-    // Kaydet denendikten sonra kullanıcı düzelttikçe hata satırı kalksın.
-    if (_validationAttempted) notifyListeners();
+    // Kaydet denendikten sonra kullanıcı düzelttikçe hata satırı kalksın;
+    // bina numarası ipucu da kullanıcı numarayı yazınca kalksın.
+    if (_validationAttempted || candidatePrecision != null) notifyListeners();
   }
 
   @override

@@ -151,6 +151,51 @@ void main() {
       candidate.toWrite().position.source,
       AddressPositionSource.autocompleteConfirmed,
     );
+    expect(candidate.precision, isNull, reason: 'alan gelmedi');
+  });
+
+  group('adres adayı precision', () {
+    Map<String, dynamic> candidateJson(Object? precision) => {
+      'countryId': 'country-1',
+      'cityId': 'city-1',
+      'districtId': 'district-1',
+      'components': {
+        'neighborhood': 'Caferağa Mahallesi',
+        'thoroughfare': 'Moda Caddesi',
+        'postalCode': '34710',
+      },
+      'position': {
+        'latitude': 40.982512,
+        'longitude': 29.025411,
+        'source': 'REVERSE_GEOCODE_CONFIRMED',
+      },
+      'candidateToken': 'opaque-token',
+      'precision': ?precision,
+    };
+
+    test('sunucunun üç düzeyini okur; yalnız bina düzeyi numara taşır', () {
+      final building = AddressCandidate.fromJson(candidateJson('BUILDING'));
+      final street = AddressCandidate.fromJson(candidateJson('STREET'));
+      final neighborhood = AddressCandidate.fromJson(
+        candidateJson('NEIGHBORHOOD'),
+      );
+
+      expect(building.precision, AddressCandidatePrecision.building);
+      expect(street.precision, AddressCandidatePrecision.street);
+      expect(neighborhood.precision, AddressCandidatePrecision.neighborhood);
+      expect(building.precision!.lacksBuildingNumber, isFalse);
+      expect(street.precision!.lacksBuildingNumber, isTrue);
+      expect(neighborhood.precision!.lacksBuildingNumber, isTrue);
+    });
+
+    test('alan yoksa, null ise ya da tanınmıyorsa null: davranış değişmez', () {
+      expect(AddressCandidate.fromJson(candidateJson(null)).precision, isNull);
+      expect(
+        AddressCandidate.fromJson(candidateJson('ROOFTOP')).precision,
+        isNull,
+      );
+      expect(AddressCandidate.fromJson(candidateJson(3)).precision, isNull);
+    });
   });
 
   group('CanonicalAddress', () {

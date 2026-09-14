@@ -12,12 +12,21 @@ class MyButton extends StatelessWidget {
     required this.title,
     this.isReversed = false,
     this.isLoading = false,
+    this.semanticHint,
   });
 
   final VoidCallback? onPressed;
   final String title;
   final bool? isReversed;
   final bool isLoading;
+
+  /// Ekran okuyucunun düğmeye odaklanınca başlığın ardından okuduğu ipucu;
+  /// düğme kapalıyken nedenini söylemek için. Düğmenin **kendi** semantik
+  /// düğümüne yazılır: `ElevatedButton` çocuklarını kendi düğümünde
+  /// birleştirdiği için ipucu içeride durmalı — düğmeyi dışarıdan
+  /// `Semantics(hint:)` ile sarmak ayrı bir üst düğüm üretiyor ve odak
+  /// düğmedeyken okunmuyor (is-koala/koala#174 incelemesi).
+  final String? semanticHint;
 
   @override
   Widget build(BuildContext context) {
@@ -55,13 +64,16 @@ class MyButton extends StatelessWidget {
                         : context.onAccentColor,
                   ),
                 )
-              : Text(
-                  title,
-                  style: context.textTheme.titleMedium?.copyWith(
-                    color: isReversed!
-                        ? context.accentColor
-                        : context.onAccentColor,
-                    fontWeight: FontWeight.w700,
+              : Semantics(
+                  hint: semanticHint,
+                  child: Text(
+                    title,
+                    style: context.textTheme.titleMedium?.copyWith(
+                      color: isReversed!
+                          ? context.accentColor
+                          : context.onAccentColor,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
         ),
