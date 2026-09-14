@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:koala/employee/core/widgets/employer_type_badge.dart';
 import 'package:koala/employee/core/widgets/job_location_card.dart';
+import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
@@ -369,6 +371,14 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
                   'Bitiş',
                   _formatDateTime(widget.job.endDateTime!),
                 ),
+              // Yayın tarihi yalnızca detayda (`JobDetailDto.createdAt`);
+              // özet taşımıyor, detay gelmeden satır yok.
+              if (_detail?.createdAt != null)
+                _buildInfoRow(
+                  Icons.schedule,
+                  'Yayın tarihi',
+                  _detail!.createdAt!.toLocal().asShortDate,
+                ),
             ]),
             const SizedBox(height: AppSizes.spaceMedium),
             _buildInfoCard('Gereksinimler', [
@@ -393,13 +403,21 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
             ]),
           ],
           if (isExpanded &&
-              (widget.job.sector != null || widget.job.position != null)) ...[
+              (widget.job.sector != null ||
+                  widget.job.position != null ||
+                  _headcount != null)) ...[
             const SizedBox(height: AppSizes.spaceMedium),
             _buildInfoCard('İş Bilgileri', [
               if (widget.job.sector != null)
                 _buildInfoRow(Icons.business, 'Sektör', widget.job.sector!),
               if (widget.job.position != null)
                 _buildInfoRow(Icons.badge, 'Pozisyon', widget.job.position!),
+              if (_headcount != null)
+                _buildInfoRow(
+                  Icons.group,
+                  'Aranan kişi',
+                  '$_hiredCount / $_headcount alındı',
+                ),
             ]),
           ],
           _locationCard(expandProgress),
@@ -505,6 +523,12 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     return widget.job.coordinateLabel;
   }
 
+  /// Aranan kişi sayısı: detay geldiyse onunki, gelmediyse özetteki.
+  /// İkisi de göndermiyorsa (eski sunucu) `null` ve satır çizilmiyor.
+  int? get _headcount => _detail?.headcount ?? widget.job.headcount;
+
+  int get _hiredCount => _detail?.hiredCount ?? widget.job.hiredCount;
+
   String _formatDateTime(DateTime value) =>
       '${value.day}/${value.month}/${value.year} - '
       '${value.hour}:${value.minute.toString().padLeft(2, '0')}';
@@ -571,6 +595,10 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
               ),
             ),
           ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(left: AppSizes.spaceSmall),
+          child: EmployerTypeBadge(type: widget.job.employerType),
         ),
         Padding(
           padding: const EdgeInsets.only(left: AppSizes.spaceSmall),
