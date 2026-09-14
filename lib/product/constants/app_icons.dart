@@ -57,6 +57,11 @@ abstract final class AppIcons {
   static const String calendar = 'calendar';
   static const String clock = 'clock';
   static const String route = 'route';
+
+  /// Haritayı cihazın bulunduğu yere götüren düğme. Nişangâh biçimi
+  /// [location] pininden ayrışsın diye: pin "seçilen yer", bu "sizin
+  /// olduğunuz yer".
+  static const String myLocation = 'gps';
   static const String sort = 'sort';
 
   /// Süzgeç sheet'ini açan düğme. Sıralamadan ayrı bir kavram olduğu için

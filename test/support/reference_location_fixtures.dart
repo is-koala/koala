@@ -3,10 +3,10 @@ import 'fake_api.dart';
 /// `ReferenceLocationService`'in üç ucuna tek ülke / il / ilçe döndürür;
 /// eşleşmeyen yolda `null`, testin kendi sunucusu devam etsin diye.
 ///
-/// `CanonicalAddressForm` önceden dolu bir adresi bile ancak seçenek
-/// listeleri gelince "seçilmiş" sayıyor: listeler boş dönerse form
-/// "Ülke seçin" der ve kayıt sunucuya hiç gitmez. Şirket formunu süren her
-/// test bu üç yanıtı vermek zorunda.
+/// Harita-öncelikli adres ekranı bu listeleri yalnız elle giriş yolunda,
+/// il/ilçe seçicisi açılınca çekiyor; ters geokod ya da arama adayı gelmişse
+/// kimliği adaydan alıyor ve bu uçlara hiç gitmiyor. Elle giriş yolunu süren
+/// testler bu üç yanıtı verir.
 FakeApiResponse? istanbulReferenceResponse(String path) {
   return switch (path) {
     '/reference/countries' => const FakeApiResponse(

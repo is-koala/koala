@@ -7,7 +7,6 @@ import 'package:koala/employee/features/auth/services/user_service.dart';
 import 'package:koala/employee/features/home/presentation/providers/job_category_provider.dart';
 import 'package:koala/employee/features/home/services/job_category_service.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
-import 'package:koala/product/services/reference_location_service.dart';
 import 'package:koala/product/widgets/my_button.dart';
 import 'package:provider/provider.dart';
 
@@ -48,13 +47,6 @@ Future<void> pumpPage(WidgetTester tester, FakeApi quoteApi) async {
       body: {'success': true, 'data': []},
     ),
   );
-  final referenceApi = FakeApi(
-    handler: (_) => const FakeApiResponse(
-      statusCode: 200,
-      body: {'success': true, 'data': []},
-    ),
-  );
-
   await pumpInApp(
     tester,
     MultiProvider(
@@ -68,9 +60,6 @@ Future<void> pumpPage(WidgetTester tester, FakeApi quoteApi) async {
       ],
       child: BCreatePage(
         paymentService: BPaymentService.withClient(quoteApi.client),
-        referenceService: ReferenceLocationService.withClient(
-          referenceApi.client,
-        ),
       ),
     ),
   );

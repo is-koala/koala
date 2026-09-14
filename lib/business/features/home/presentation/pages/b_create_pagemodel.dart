@@ -35,7 +35,8 @@ abstract class BCreatePageModel extends State<BCreatePage> {
   final _minAgeController = TextEditingController();
   final _maxAgeController = TextEditingController();
 
-  final _addressController = CanonicalAddressFormController();
+  /// Haritada onaylanan ilan adresi; seçilene kadar `null`.
+  late ConfirmedAddress? _address = widget.initialAddress;
 
   /// Kategoriler `/reference/job-categories`'ten geldiği için başlangıçta
   /// seçili kategori yok; kullanıcı listeden seçiyor.
@@ -98,7 +99,6 @@ abstract class BCreatePageModel extends State<BCreatePage> {
       ..removeListener(_onPriceFocusChanged)
       ..dispose();
     _pricingTimer?.cancel();
-    _addressController.dispose();
     _sectorController.dispose();
     _positionController.dispose();
     _dutiesController.dispose();
@@ -327,12 +327,14 @@ abstract class BCreatePageModel extends State<BCreatePage> {
     }
   }
 
-  /// Haritadan koordinat seçtirir.
-  Future<LatLng?> _pickAddressPosition(LatLng? initialPosition) {
-    return context.push<LatLng>(
-      '/business/pick-location',
-      extra: initialPosition,
+  /// Harita-öncelikli adres ekranını açar; kullanıcı onaylarsa özet güncellenir.
+  Future<void> _pickAddress() async {
+    final picked = await context.push<ConfirmedAddress>(
+      '/pick-address',
+      extra: _address,
     );
+    if (picked == null || !mounted) return;
+    setState(() => _address = picked);
   }
 
   /// Tarih ve saati birlikte seçtirir; ikisinden biri iptal edilirse hiçbir
@@ -511,12 +513,8 @@ abstract class BCreatePageModel extends State<BCreatePage> {
       return _warn('Üst yaş sınırı alt sınırdan küçük olamaz');
     }
 
-    final address = _addressController.value;
-    if (address == null) {
-      return _warn(
-        _addressController.validationMessage ?? 'Adres bilgilerini tamamlayın',
-      );
-    }
+    final address = _address;
+    if (address == null) return _warn('İlan adresini haritadan seçin');
 
     return CreateJobRequest(
       categoryId: category.id,
@@ -535,7 +533,7 @@ abstract class BCreatePageModel extends State<BCreatePage> {
       maxAge: maxAge,
       experienceRequired: _experienceRequired,
       insuranceRequired: _insuranceRequired,
-      address: address,
+      address: address.toWrite(),
     );
   }
 

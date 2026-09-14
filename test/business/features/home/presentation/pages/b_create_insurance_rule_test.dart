@@ -7,7 +7,6 @@ import 'package:koala/employee/features/auth/services/user_service.dart';
 import 'package:koala/employee/features/home/presentation/providers/job_category_provider.dart';
 import 'package:koala/employee/features/home/services/job_category_service.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
-import 'package:koala/product/services/reference_location_service.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../../support/fake_api.dart';
@@ -112,7 +111,6 @@ Future<void> _pumpCompanyEmployer(WidgetTester tester) async {
       ],
       child: BCreatePage(
         paymentService: BPaymentService.withClient(emptyApi.client),
-        referenceService: ReferenceLocationService.withClient(emptyApi.client),
       ),
     ),
   );

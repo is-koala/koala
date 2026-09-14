@@ -1,8 +1,9 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:koala/business/features/home/presentation/providers/b_company_provider.dart';
 import 'package:koala/business/features/home/services/b_company_service.dart';
 import 'package:koala/employee/features/auth/presentation/pages/company_informations_page.dart';
@@ -14,13 +15,13 @@ import 'package:koala/employee/features/profile/presentation/providers/user_prov
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/theme/theme.dart';
 import 'package:koala/product/models/canonical_address.dart';
-import 'package:koala/product/services/reference_location_service.dart';
+import 'package:koala/product/models/confirmed_address.dart';
+import 'package:koala/product/models/reference_location.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../../support/fake_api.dart';
 import '../../../../../support/finders.dart';
 import '../../../../../support/identity_gate_test_support.dart';
-import '../../../../../support/reference_location_fixtures.dart';
 
 const _companyResponse = {
   'success': true,
@@ -45,6 +46,49 @@ const _membership = {
   'approved': false,
   'role': 'ADMIN',
 };
+
+/// Harita ekranının yerine geçen rota: açılır açılmaz Moda'daki adresi
+/// onaylanmış gibi döndürür. Gerçek `MapFirstAddressPage`'in kendi testleri
+/// var; burada formun sözleşmesi sürülüyor — `push<ConfirmedAddress>` ile
+/// açılır, dönen adres özet olarak gösterilir ve kayıtta gövdeye girer.
+const _pickerLocation = '/pick-address';
+const _pickedAddress = ConfirmedAddress(
+  country: ReferenceLocation(id: 'country-1', name: 'TÜRKİYE'),
+  city: ReferenceLocation(id: 'city-1', name: 'İSTANBUL'),
+  district: ReferenceLocation(id: 'district-1', name: 'KADIKÖY'),
+  components: AddressComponents(
+    neighborhood: 'Caferağa Mahallesi',
+    thoroughfare: 'Moda Caddesi',
+    buildingNumber: '12',
+    postalCode: '34710',
+  ),
+  position: AddressPosition(
+    latitude: 40.982512,
+    longitude: 29.025411,
+    source: AddressPositionSource.reverseGeocodeConfirmed,
+  ),
+  candidateToken: 'reverse-proof',
+);
+
+class _PickerStub extends StatefulWidget {
+  const _PickerStub();
+
+  @override
+  State<_PickerStub> createState() => _PickerStubState();
+}
+
+class _PickerStubState extends State<_PickerStub> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.pop(_pickedAddress);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => const Scaffold(body: SizedBox());
+}
 
 const _companyDraft = 'Kaydedilmemiş taslak';
 const _originDraft = 'Korunan taslak';
@@ -73,9 +117,6 @@ class _CompanyServer {
   late final FakeApi api = FakeApi(handler: handle);
 
   FakeApiResponse handle(RequestOptions request) {
-    final reference = istanbulReferenceResponse(request.path);
-    if (reference != null) return reference;
-
     switch (request.path) {
       case '/users/me':
         return FakeApiResponse(
@@ -117,29 +158,26 @@ void main() {
     server = _CompanyServer();
   });
 
-  /// Adres formunu atlayıp doğrudan kaydedilebilir bir şirket formu.
+  /// Harita ekranını atlayıp doğrudan kaydedilebilir bir şirket formu:
+  /// adres haritada onaylanmış gibi hazır veriliyor.
   CompanyInformationsPage companyPage({VoidCallback? onSaved}) {
     return CompanyInformationsPage(
       service: BCompanyService.withClient(server.api.client),
-      referenceService: ReferenceLocationService.withClient(server.api.client),
-      initialLocation: const LatLng(40.9819, 29.0263),
-      initialAddress: const CanonicalAddress(
-        id: 'address-1',
-        countryId: 'country-1',
-        countryName: 'TÜRKİYE',
-        countryCode: 'TR',
-        cityId: 'city-1',
-        cityName: 'İSTANBUL',
-        districtId: 'district-1',
-        districtName: 'KADIKÖY',
+      initialAddress: const ConfirmedAddress(
+        country: ReferenceLocation(id: 'country-1', name: 'TÜRKİYE'),
+        city: ReferenceLocation(id: 'city-1', name: 'İSTANBUL'),
+        district: ReferenceLocation(id: 'district-1', name: 'KADIKÖY'),
         components: AddressComponents(
           neighborhood: 'Caferağa Mahallesi',
           thoroughfare: 'Moda Caddesi',
           buildingNumber: '12',
           postalCode: '34710',
         ),
-        canonicalVersion: 1,
-        needsReview: false,
+        position: AddressPosition(
+          latitude: 40.9819,
+          longitude: 29.0263,
+          source: AddressPositionSource.userConfirmedPin,
+        ),
       ),
       onSaved: onSaved,
     );
@@ -177,9 +215,6 @@ void main() {
                 companyPageBuilder?.call() ??
                 CompanyInformationsPage(
                   service: BCompanyService.withClient(server.api.client),
-                  referenceService: ReferenceLocationService.withClient(
-                    server.api.client,
-                  ),
                 ),
           ),
         ),
@@ -195,6 +230,13 @@ void main() {
           pageBuilder: (context, state) => MaterialPage<void>(
             key: state.pageKey,
             child: const Scaffold(body: Text(_businessHomeTitle)),
+          ),
+        ),
+        GoRoute(
+          path: _pickerLocation,
+          pageBuilder: (context, state) => MaterialPage<ConfirmedAddress>(
+            key: state.pageKey,
+            child: const _PickerStub(),
           ),
         ),
         stubIdentityVerificationRoute(),
@@ -502,5 +544,80 @@ void main() {
       expect(find.byKey(_originDraftKey), findsOneWidget);
       expect(find.text(_businessHomeTitle), findsNothing);
     });
+  });
+
+  group('adres alanı', () {
+    testWidgets('adres seçilmeden kaydet haritaya yönlendiren uyarı verir', (
+      tester,
+    ) async {
+      await pumpRegistrationFlow(
+        tester,
+        initialLocation: RegistrationRoutes.companyInformations,
+      );
+
+      await fillRequiredFields(tester);
+      await tapSave(tester);
+
+      expect(
+        find.text('Lütfen şirket adresini haritadan seçiniz'),
+        findsOneWidget,
+      );
+      expect(server.paths, isNot(contains('/companies')));
+    });
+
+    testWidgets(
+      'harita ekranından dönen adres formda görünür ve kayıt gövdesine girer',
+      (tester) async {
+        await pumpRegistrationFlow(
+          tester,
+          initialLocation: RegistrationRoutes.companyInformations,
+        );
+        expect(find.text('Haritadan seçin'), findsOneWidget);
+
+        await tester.tap(find.text('Haritadan seçin'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Şirket Bilgilerini Giriniz'), findsOneWidget);
+        expect(find.text('Haritadan seçin'), findsNothing);
+        expect(
+          find.text('Moda Caddesi 12, Caferağa Mahallesi, KADIKÖY/İSTANBUL'),
+          findsOneWidget,
+        );
+
+        await fillRequiredFields(tester);
+        await tapSave(tester);
+
+        final request = server.api.requests.singleWhere(
+          (request) => request.path == '/companies',
+        );
+        final companyPart = (request.data as FormData).files.singleWhere(
+          (part) => part.key == 'company',
+        );
+        final bytes = await tester.runAsync(
+          () => companyPart.value.clone().finalize().fold<List<int>>(
+            <int>[],
+            (all, chunk) => all..addAll(chunk),
+          ),
+        );
+        final company = jsonDecode(utf8.decode(bytes!)) as Map<String, dynamic>;
+        expect(company['address'], {
+          'countryId': 'country-1',
+          'cityId': 'city-1',
+          'districtId': 'district-1',
+          'components': {
+            'neighborhood': 'Caferağa Mahallesi',
+            'thoroughfare': 'Moda Caddesi',
+            'buildingNumber': '12',
+            'postalCode': '34710',
+          },
+          'position': {
+            'latitude': 40.982512,
+            'longitude': 29.025411,
+            'source': 'REVERSE_GEOCODE_CONFIRMED',
+          },
+          'candidateToken': 'reverse-proof',
+        });
+      },
+    );
   });
 }

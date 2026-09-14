@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:koala/business/features/home/presentation/pages/b_company_info_page.dart';
 import 'package:koala/business/features/home/presentation/providers/b_company_provider.dart';
 import 'package:koala/business/features/home/services/b_company_service.dart';
@@ -12,13 +11,13 @@ import 'package:koala/employee/features/auth/services/user_service.dart';
 import 'package:koala/employee/features/company_detail/services/company_service.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/models/canonical_address.dart';
-import 'package:koala/product/services/reference_location_service.dart';
+import 'package:koala/product/models/confirmed_address.dart';
+import 'package:koala/product/models/reference_location.dart';
 import 'package:koala/product/theme/theme.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../../support/fake_api.dart';
 import '../../../../../support/identity_gate_test_support.dart';
-import '../../../../../support/reference_location_fixtures.dart';
 
 const _companyJson = {
   'id': 'company_1',
@@ -49,9 +48,6 @@ class _Server {
   late final FakeApi api = FakeApi(handler: handle);
 
   FakeApiResponse handle(RequestOptions request) {
-    final reference = istanbulReferenceResponse(request.path);
-    if (reference != null) return reference;
-
     switch (request.path) {
       case '/users/me':
         if (meFailuresLeft > 0) {
@@ -138,30 +134,25 @@ Future<_Server> _pumpCompanyInfo(
         path: RegistrationRoutes.companyInformations,
         pageBuilder: (context, state) => MaterialPage<void>(
           key: state.pageKey,
-          // Gerçek form; adres önceden dolu ki kayıt tek ekranda bitsin.
+          // Gerçek form; adres haritada onaylanmış gibi hazır ki kayıt tek
+          // ekranda bitsin.
           child: CompanyInformationsPage(
             service: BCompanyService.withClient(server.api.client),
-            referenceService: ReferenceLocationService.withClient(
-              server.api.client,
-            ),
-            initialLocation: const LatLng(40.9819, 29.0263),
-            initialAddress: const CanonicalAddress(
-              id: 'address-1',
-              countryId: 'country-1',
-              countryName: 'TÜRKİYE',
-              countryCode: 'TR',
-              cityId: 'city-1',
-              cityName: 'İSTANBUL',
-              districtId: 'district-1',
-              districtName: 'KADIKÖY',
+            initialAddress: const ConfirmedAddress(
+              country: ReferenceLocation(id: 'country-1', name: 'TÜRKİYE'),
+              city: ReferenceLocation(id: 'city-1', name: 'İSTANBUL'),
+              district: ReferenceLocation(id: 'district-1', name: 'KADIKÖY'),
               components: AddressComponents(
                 neighborhood: 'Caferağa Mahallesi',
                 thoroughfare: 'Moda Caddesi',
                 buildingNumber: '12',
                 postalCode: '34710',
               ),
-              canonicalVersion: 1,
-              needsReview: false,
+              position: AddressPosition(
+                latitude: 40.9819,
+                longitude: 29.0263,
+                source: AddressPositionSource.userConfirmedPin,
+              ),
             ),
           ),
         ),

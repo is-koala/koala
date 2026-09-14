@@ -26,4 +26,9 @@ class AppMap {
   /// Şehir ölçeğinde başlangıç yakınlaştırması; sokak seviyesine inmek
   /// kullanıcıya bırakılır.
   static const double initialZoom = 15;
+
+  /// Bilinen bir noktaya (cihaz konumu, kayıtlı adres, arama sonucu)
+  /// odaklanırken kullanılan sokak ölçeği: bina numarası okunacak kadar
+  /// yakın, cadde bağlamı kaybolmayacak kadar uzak.
+  static const double streetZoom = 17;
 }
