@@ -4,6 +4,7 @@ import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/jobs/models/cancellation.dart';
 import 'package:koala/employee/features/jobs/models/payout.dart';
 import 'package:koala/employee/features/jobs/models/review.dart';
+import 'package:koala/product/features/transport/models/transport_plan.dart';
 import 'package:koala/product/models/pricing_breakdown.dart';
 
 /// Atamanın durumu. Backend `AssignmentStatus` karşılığı.
@@ -110,6 +111,7 @@ class Assignment {
     this.payout,
     this.myReview,
     this.counterpartyReviewed = false,
+    this.transport,
   });
 
   final String id;
@@ -196,6 +198,11 @@ class Assignment {
   /// Alan yoksa `false`.
   final bool counterpartyReviewed;
 
+  /// İlanın ulaşım planı ve bu atamanın koltukları (koala-backend#297).
+  /// İşçi görünümünde plaka/şoför yalnız koltuk seçilen serviste. Planı
+  /// olmayan ilanda ve eski sunucuda `null`.
+  final AssignmentTransport? transport;
+
   /// İş bitti ve para çalışana geçti mi.
   bool get isPaidOut =>
       status == AssignmentStatus.completed && paymentStatus.isPaid;
@@ -262,6 +269,7 @@ class Assignment {
         _ => null,
       },
       counterpartyReviewed: json['counterpartyReviewed'] as bool? ?? false,
+      transport: AssignmentTransport.parse(json['transport']),
     );
   }
 

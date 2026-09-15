@@ -17,6 +17,12 @@ import 'package:koala/product/services/push_notification_dedupe.dart';
 ///   çünkü mesaj push'ının `IN_APP` satırı yok ve sohbeti açmak zaten
 ///   sohbeti okundu işaretliyor.
 ///
+/// - **Ulaşım** (`type=TRANSPORT`, `event`, `jobId`, `jobAssignmentId`,
+///   `notificationId`; is-koala/koala#197): ön planda sıradan bildirim gibi
+///   liste tazelenir (`IN_APP` satırı var). Dokununca iş detayı açılır
+///   ([onTransportOpened]) ve kayıt okundu işaretlenir; `SEAT_DROPPED`
+///   olayı sayfaya "yeniden seçin" bağlamıyla gider.
+///
 /// Dokunma dedupe anahtarı mesaj için `messageId`, yoksa `notificationId`:
 /// soğuk açılışta `getInitialMessage` ile `onMessageOpenedApp` aynı yükü
 /// iki kez verebiliyor.
@@ -29,11 +35,19 @@ class PushInbox {
     required this.onForeground,
     required this.onOpened,
     required this.onConversationOpened,
+    this.onTransportOpened,
   });
 
   /// Sohbet mesajı push'ının `data.type` değeri
   /// (`ActivityNotificationManager.messageSent`).
   static const String messageType = 'MESSAGE';
+
+  /// Ulaşım push'ının `data.type` değeri (`TransportManager.PUSH_TYPE`).
+  static const String transportType = 'TRANSPORT';
+
+  /// Ulaşım push'unun koltuk düştü olayı; diğerleri (`PLAN_UPDATED`,
+  /// `SHUTTLE_REMINDER_*`) aynı sayfayı bağlamsız açıyor.
+  static const String seatDroppedEvent = 'SEAT_DROPPED';
 
   final PushNotificationDedupe dedupe;
   final bool Function() sessionInitialized;
@@ -44,6 +58,15 @@ class PushInbox {
 
   /// `type=MESSAGE` dokunması: sohbeti getirip açmak çağıranın işi.
   final Future<void> Function(String conversationId) onConversationOpened;
+
+  /// `type=TRANSPORT` dokunması: atamayı getirip iş detayını açmak
+  /// çağıranın işi. Verilmezse ulaşım push'u sıradan bildirim gibi
+  /// bildirim ekranına gider.
+  final Future<void> Function({
+    required String assignmentId,
+    required bool seatDropped,
+  })?
+  onTransportOpened;
 
   Map<String, String>? _pendingOpen;
 
@@ -86,12 +109,25 @@ class PushInbox {
       return;
     }
 
+    final openTransport = onTransportOpened;
+    if (openTransport != null && _isTransport(data)) {
+      await openTransport(
+        assignmentId: data['jobAssignmentId']!,
+        seatDropped: data['event'] == seatDroppedEvent,
+      );
+      await onOpened(key);
+      return;
+    }
+
     navigate(notificationsRoute());
     await onOpened(key);
   }
 
   static bool _isMessage(Map<String, String> data) =>
       data['type'] == messageType && _present(data['conversationId']);
+
+  static bool _isTransport(Map<String, String> data) =>
+      data['type'] == transportType && _present(data['jobAssignmentId']);
 
   /// Dokunmanın dedupe anahtarı; yük tanınmıyorsa `null` ve dokunma yok
   /// sayılır.

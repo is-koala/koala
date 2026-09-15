@@ -10,4 +10,17 @@ class BusinessRoutes {
   /// Bir adayın profili. `extra`: `JobApplicant` ya da kullanıcı kimliği
   /// (`String`) — `BUserProfilePage.fromExtra` ikisini de kabul ediyor.
   static const String userProfile = '/business/user-profile';
+
+  /// Ulaşım planı düzenleyicisi (is-koala/koala#197). `extra`:
+  /// `BTransportPlanArgs`; ilan modunda `TransportPlan`, taslak modunda
+  /// `TransportPlanDraft` ile kapanır.
+  static const String transportPlan = '/business/transport-plan';
+
+  /// Tek servisin düzenleyicisi; `extra`: `BShuttleEditorArgs`, `ShuttleDraft`
+  /// ile kapanır.
+  static const String transportShuttle = '/business/transport-shuttle';
+
+  /// Tek durağın düzenleyicisi; `extra`: `BStopEditorArgs`, `StopDraft` ile
+  /// kapanır.
+  static const String transportStop = '/business/transport-stop';
 }

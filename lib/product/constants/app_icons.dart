@@ -61,6 +61,14 @@ abstract final class AppIcons {
   static const String clock = 'clock';
   static const String route = 'route';
 
+  /// Ulaşım planı: servis kartlarının ve "Ulaşım" başlığının ikonu
+  /// (is-koala/koala#197).
+  static const String bus = 'bus';
+
+  /// Koltuk seçimi; servisin içindeki yer. `armchair` sette koltuğa en yakın
+  /// biçim, `bus` ile karışmıyor.
+  static const String seat = 'armchair';
+
   /// Haritayı cihazın bulunduğu yere götüren düğme. Nişangâh biçimi
   /// [location] pininden ayrışsın diye: pin "seçilen yer", bu "sizin
   /// olduğunuz yer".

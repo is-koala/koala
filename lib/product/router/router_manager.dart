@@ -21,6 +21,9 @@ import 'package:koala/employee/features/notifications/presentation/pages/company
 import 'package:koala/employee/features/profile/presentation/pages/followed_companies_page.dart';
 import 'package:koala/business/features/chat/presentation/pages/b_chat_list_page.dart';
 import 'package:koala/business/features/chat/presentation/pages/b_chat_page.dart';
+import 'package:koala/business/features/transport/presentation/pages/b_shuttle_editor_page.dart';
+import 'package:koala/business/features/transport/presentation/pages/b_stop_editor_page.dart';
+import 'package:koala/business/features/transport/presentation/pages/b_transport_plan_page.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/presentation/pages/splash_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/auth_page.dart';
@@ -36,7 +39,6 @@ import 'package:koala/employee/features/jobs/presentation/pages/earnings_page.da
 import 'package:koala/employee/features/jobs/models/job_alert.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/review_page.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/work_detail_page.dart';
-import 'package:koala/employee/features/jobs/models/my_job.dart';
 import 'package:koala/employee/features/jobs/models/review.dart'
     show ReviewSubject;
 import 'package:koala/employee/features/chat/presentation/pages/chat_list_page.dart';
@@ -312,10 +314,13 @@ class RouterManager {
       GoRoute(
         path: '/work-detail',
         pageBuilder: (context, state) {
-          // İşlerim satırı ya da Kazançlar satırı; kayıt `MyJob.assignment`
-          // veya `MyJob.application` ile birlikte geliyor.
-          final job = state.extra as MyJob;
-          return _page(state, WorkDetailPage(job: job));
+          // İşlerim satırı ya da Kazançlar satırı `MyJob` veriyor; ulaşım
+          // push'u `WorkDetailArgs` ile açılış bağlamını da taşıyor.
+          final args = WorkDetailArgs.fromExtra(state.extra);
+          return _page(
+            state,
+            WorkDetailPage(job: args.job, seatDropped: args.seatDropped),
+          );
         },
       ),
 
@@ -513,6 +518,29 @@ class RouterManager {
           final jobId = state.extra as String;
           return _page(state, BJobDetailPage(jobId: jobId));
         },
+      ),
+
+      // Ulaşım planı düzenleyicisi ve alt sayfaları (is-koala/koala#197).
+      // Üçü de üst düzeyde: `/pick-address` gibi navbar'ın üstünü kaplar
+      // ve kaydedince `pop` ile taslağı geri verir.
+      GoRoute(
+        path: BusinessRoutes.transportPlan,
+        pageBuilder: (context, state) => _page(
+          state,
+          BTransportPlanPage(args: state.extra as BTransportPlanArgs),
+        ),
+      ),
+      GoRoute(
+        path: BusinessRoutes.transportShuttle,
+        pageBuilder: (context, state) => _page(
+          state,
+          BShuttleEditorPage(args: state.extra as BShuttleEditorArgs),
+        ),
+      ),
+      GoRoute(
+        path: BusinessRoutes.transportStop,
+        pageBuilder: (context, state) =>
+            _page(state, BStopEditorPage(args: state.extra as BStopEditorArgs)),
       ),
 
       GoRoute(

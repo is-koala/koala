@@ -31,6 +31,7 @@ Job buildJob({
   String? coverImageUrl,
   AddressPrecision addressPrecision = AddressPrecision.approximate,
   double? distanceKm,
+  bool hasShuttle = false,
 }) {
   return Job(
     id: id,
@@ -56,6 +57,7 @@ Job buildJob({
     coverImageUrl: coverImageUrl,
     addressPrecision: addressPrecision,
     distanceKm: distanceKm,
+    hasShuttle: hasShuttle,
   );
 }
 

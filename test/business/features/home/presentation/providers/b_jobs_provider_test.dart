@@ -576,7 +576,7 @@ void main() {
 
       final created = await provider.createJobPost(buildRequest());
 
-      expect(created, isTrue);
+      expect(created, isNotNull);
       final paths = api.requests.skip(before).map((r) => r.path);
       expect(paths, contains('/users/me/jobs'));
     });

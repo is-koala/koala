@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/core/widgets/employer_type_badge.dart';
 import 'package:koala/employee/core/widgets/job_location_card.dart';
+import 'package:koala/employee/core/widgets/job_transport_card.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
@@ -422,6 +423,12 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
             ]),
           ],
           _locationCard(expandProgress),
+          // Ulaşım yalnız detayla geliyor (`JobDetailDto.transport`); planı
+          // olmayan ilanda ve eski sunucuda alan `null`, kart yok.
+          if (isExpanded && _detail?.transport != null) ...[
+            const SizedBox(height: AppSizes.spaceMedium),
+            JobTransportCard(transport: _detail!.transport!),
+          ],
           SizedBox(height: context.padding.bottom + AppSizes.navBarClearance),
         ],
       ),

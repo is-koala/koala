@@ -60,6 +60,11 @@ class AppSizes {
   /// sheet'in kendi yüksekliği sınırlı.
   static const double buttonHeightCompact = 56.0;
 
+  /// Kart içindeki ve alt çubuktaki eylem düğmeleri (iş detayı: mesai,
+  /// kabul/ret, koltuk seçimi, yol tarifi). Tam boy [buttonHeight] form
+  /// CTA'sı için; kartın içinde o yükseklik baskın kalıyor.
+  static const double actionButtonHeight = 48.0;
+
   /// Filtre çubuğundaki hap butonun yüksekliği.
   static const double filterButton = 40.0;
 

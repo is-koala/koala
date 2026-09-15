@@ -72,6 +72,23 @@ void main() {
     expect(invitation.single.pageBuilder, isNotNull);
   });
 
+  test('ulaşım planı düzenleyicisi ve alt sayfaları shell dışında', () {
+    // Üçü de `/pick-address` gibi navbar'ın üstünü kaplar ve `pop` ile
+    // taslağı geri verir (is-koala/koala#197).
+    for (final path in [
+      '/business/transport-plan',
+      '/business/transport-shuttle',
+      '/business/transport-stop',
+    ]) {
+      final route = allGoRoutes(
+        RouterManager.router.configuration.routes,
+      ).where((route) => route.path == path);
+
+      expect(route, hasLength(1), reason: path);
+      expect(route.single.pageBuilder, isNotNull, reason: path);
+    }
+  });
+
   test('yetenek havuzu shell dışında, kendi rotasıyla açılıyor', () {
     final pool = allGoRoutes(
       RouterManager.router.configuration.routes,

@@ -11,6 +11,7 @@ import 'package:koala/employee/features/company_detail/services/company_service.
 import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:koala/employee/features/jobs/services/assignment_service.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
+import 'package:koala/product/features/transport/services/transport_service.dart';
 import 'package:koala/product/providers/job_gallery_provider.dart';
 import 'package:koala/product/services/job_gallery_service.dart';
 import 'package:provider/provider.dart';
@@ -57,6 +58,18 @@ Future<void> _pumpPage(
       body: {'success': true, 'data': []},
     ),
   );
+  // Planı olmayan ilan: ulaşım bölümü "plan ekle" düğmesine düşüyor.
+  final noPlanApi = FakeApi(
+    handler: (_) => const FakeApiResponse(
+      statusCode: 404,
+      body: {
+        'success': false,
+        'message': 'Ulaşım planı bulunamadı.',
+        'errorCategory': 'RESOURCE_NOT_FOUND',
+        'errorCode': 'TRANSPORT_PLAN_NOT_FOUND',
+      },
+    ),
+  );
 
   await pumpInApp(
     tester,
@@ -88,6 +101,7 @@ Future<void> _pumpPage(
         galleryProvider: JobGalleryProvider(
           service: JobGalleryService.withClient(emptyListApi.client),
         ),
+        transportService: TransportService.withClient(noPlanApi.client),
       ),
     ),
     brightness: brightness,

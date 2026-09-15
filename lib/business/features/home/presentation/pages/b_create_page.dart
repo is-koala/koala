@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:koala/business/core/date_time_picking.dart';
 import 'package:koala/business/features/home/models/create_job_request.dart';
 import 'package:koala/business/features/home/models/job_template.dart';
 import 'package:koala/business/features/home/models/b_pricing_breakdown.dart';
@@ -13,6 +14,11 @@ import 'package:koala/product/widgets/option_sheet.dart';
 import 'package:koala/business/features/home/presentation/widgets/b_selection_field.dart';
 import 'package:koala/business/features/home/presentation/widgets/b_pricing_breakdown_card.dart';
 import 'package:koala/business/features/home/services/b_payment_service.dart';
+import 'package:koala/business/features/transport/models/transport_plan_draft.dart';
+import 'package:koala/business/features/transport/presentation/pages/b_transport_plan_page.dart';
+import 'package:koala/business/features/transport/presentation/widgets/b_transport_add_button.dart';
+import 'package:koala/business/features/transport/presentation/widgets/b_transport_plan_summary.dart';
+import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/presentation/providers/job_category_provider.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
@@ -23,8 +29,10 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
+import 'package:koala/product/features/transport/services/transport_service.dart';
 import 'package:koala/product/models/confirmed_address.dart';
 import 'package:koala/product/network/api_exception.dart';
+import 'package:koala/product/router/business_routes.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/confirm_dialog.dart';
 import 'package:koala/product/widgets/confirmed_address_field.dart';
@@ -37,13 +45,30 @@ import 'package:provider/provider.dart';
 part 'b_create_pagemodel.dart';
 
 class BCreatePage extends StatefulWidget {
-  const BCreatePage({super.key, this.paymentService, this.initialAddress});
+  const BCreatePage({
+    super.key,
+    this.paymentService,
+    this.transportService,
+    this.initialAddress,
+    this.initialTransport,
+  });
 
   final BPaymentService? paymentService;
+
+  /// Testler için; verilmezse üretimdeki tekil servis.
+  final TransportService? transportService;
 
   /// Formun açılışta taşıdığı adres; testler harita ekranını atlamak için
   /// verir, üretimde işveren adresi haritadan seçer.
   final ConfirmedAddress? initialAddress;
+
+  /// Formun açılışta taşıdığı ulaşım taslağı; testler düzenleyiciyi atlamak
+  /// için verir.
+  final TransportPlanDraft? initialTransport;
+
+  /// Ulaşım planı yazılamadığında başarı kutusuna eklenen satır.
+  static const String transportFailedText =
+      'Ulaşım planı kaydedilemedi — ilan detayından ekleyin.';
 
   @override
   State<BCreatePage> createState() => _BCreatePageState();
@@ -138,6 +163,13 @@ class _BCreatePageState extends BCreatePageModel {
               _sectionLabel("Konum"),
               const SizedBox(height: AppSizes.spaceMedium),
               _locationSection(),
+
+              const SizedBox(height: AppSizes.spaceLarge),
+
+              // Ulaşım (isteğe bağlı)
+              _sectionLabel("Ulaşım"),
+              const SizedBox(height: AppSizes.spaceMedium),
+              _transportSection(),
 
               const SizedBox(height: AppSizes.spaceLarge),
 
@@ -376,10 +408,41 @@ class _BCreatePageState extends BCreatePageModel {
     );
   }
 
+  // ---------------------------------------------------------------- Ulaşım
+
+  /// Ulaşım planı isteğe bağlı: taslak yokken tek bir giriş düğmesi, varken
+  /// özet + Düzenle/Kaldır (is-koala/koala#197).
+  Widget _transportSection() {
+    final transport = _transport;
+    if (transport == null || transport.isBlank) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          BTransportAddButton(
+            key: const ValueKey('b-create-transport-add'),
+            onPressed: _editTransport,
+          ),
+          const SizedBox(height: AppSizes.spaceSmall),
+          const BInfoNotice(
+            message:
+                'İsteğe bağlı: servis, yol parası ya da çalışanın kendi '
+                'imkânı. Sonradan ilan detayından da ekleyebilirsiniz.',
+          ),
+        ],
+      );
+    }
+
+    return BTransportPlanSummary(
+      plan: transport,
+      onEdit: _editTransport,
+      onRemove: _removeTransport,
+    );
+  }
+
   // ------------------------------------------------------------ Başarı kutusu
 
   @override
-  void _showSuccessDialog() {
+  void _showSuccessDialog({required String jobId, String? transportError}) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -421,6 +484,39 @@ class _BCreatePageState extends BCreatePageModel {
                   height: 1.4,
                 ),
               ),
+              if (transportError != null) ...[
+                const SizedBox(height: AppSizes.spaceMedium),
+                Container(
+                  key: const ValueKey('b-create-transport-failed'),
+                  width: double.infinity,
+                  padding: AppPadding.card,
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(
+                      alpha: AppColors.surfaceTintAlpha,
+                    ),
+                    borderRadius: AppRadius.innerCircular,
+                  ),
+                  child: Text(
+                    '${BCreatePage.transportFailedText}\n$transportError',
+                    textAlign: TextAlign.center,
+                    style: context.textTheme.bodySmall,
+                  ),
+                ),
+                const SizedBox(height: AppSizes.spaceSmall),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    key: const ValueKey('b-create-open-job-detail'),
+                    onPressed: () {
+                      Navigator.pop(dialogContext);
+                      context.go('/business/posts');
+                      context.push('/business/job-detail', extra: jobId);
+                    },
+                    style: context.accentOutlinedButtonStyle,
+                    child: const Text('İlan Detayına Git'),
+                  ),
+                ),
+              ],
               const SizedBox(height: AppSizes.spaceLarge),
               SizedBox(
                 width: double.infinity,

@@ -25,6 +25,7 @@ class BackendErrorCodes {
     'lib/employee/features/chat/models/messaging_gate_error_codes.dart',
     'lib/product/features/account/models/address_required_error_codes.dart',
     'lib/product/models/address_reverse_error_codes.dart',
+    'lib/product/features/transport/models/transport_error_codes.dart',
   ];
 
   static final _quotedCode = RegExp(r"'([A-Z][A-Z0-9_]{2,})'");

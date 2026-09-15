@@ -338,6 +338,7 @@ class Job {
     this.longitude,
     this.distanceKm,
     this.addressPrecision = AddressPrecision.approximate,
+    this.hasShuttle = false,
   });
 
   final String id;
@@ -411,6 +412,10 @@ class Job {
   /// üzerine koyuyor). Bu yüzden bayrağı okumamak, yuvarlanmış bir noktayı
   /// kesin adres gibi çizmek demek — is-koala/koala#93 tam olarak buydu.
   final AddressPrecision addressPrecision;
+
+  /// İlanın en az bir servisi var mı (`JobSummaryDto.hasShuttle`,
+  /// koala-backend#297). Eski sunucuda alan yok, `false`.
+  final bool hasShuttle;
 
   /// Haritada pin çizilebilir mi.
   bool get hasLocation => latitude != null && longitude != null;
@@ -541,6 +546,7 @@ class Job {
       longitude: (json['longitude'] as num?)?.toDouble(),
       distanceKm: (json['distanceKm'] as num?)?.toDouble(),
       addressPrecision: AddressPrecision.fromCode(json['addressPrecision']),
+      hasShuttle: json['hasShuttle'] as bool? ?? false,
     );
   }
 
@@ -573,6 +579,7 @@ class Job {
       'longitude': longitude,
       'distanceKm': distanceKm,
       'addressPrecision': addressPrecision.code,
+      'hasShuttle': hasShuttle,
     };
   }
 

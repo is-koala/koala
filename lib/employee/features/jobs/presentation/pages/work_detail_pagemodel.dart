@@ -11,6 +11,9 @@ abstract class WorkDetailPagemodel
 
   JobService get _jobService => widget.jobService ?? JobService();
 
+  TransportService get _transportService =>
+      widget.transportService ?? TransportService();
+
   /// Ekranın gösterdiği kayıt. Rotadan gelenle başlıyor; bir eylemden sonra
   /// sunucudan yeniden okunup yerine konuyor.
   late MyJob job = widget.job;
@@ -38,6 +41,60 @@ abstract class WorkDetailPagemodel
   /// Bir eylem sonrası kayıt yeniden okunurken.
   bool refreshing = false;
 
+  /// Atamanın ulaşım görünümü (is-koala/koala#197). Satırın taşıdığı
+  /// `MyAssignmentDto.transport` ile açılıyor, aktif atamada
+  /// `GET /job-assignments/{id}/transport` ile tazeleniyor; koltuk seçimi
+  /// sunucunun döndürdüğü görünümü yerine koyuyor. Plan yoksa `null`.
+  late AssignmentTransport? transport = job.assignment?.transport;
+
+  /// Koltuk isteği sunucuda olan yön; kart o düğmeyi kilitliyor.
+  ShuttleDirection? seatBusyDirection;
+
+  /// Son bilinen görünümde koltuğu olup taze görünümde kalmayan yönler.
+  ///
+  /// Sunucu yön başına "düştü" bayrağı taşımıyor; satırın taşıdığı görünüm
+  /// (push'tan önceki son bilinen seçim) taze `GET` ile karşılaştırılıyor.
+  /// Kullanıcı o yöne yeniden koltuk seçince düşüyor.
+  Set<ShuttleDirection> droppedSeatDirections = const {};
+
+  static Set<ShuttleDirection> _seatedDirections(
+    AssignmentTransport? transport,
+  ) => {
+    if (transport != null)
+      for (final direction in ShuttleDirection.values)
+        if (transport.selectedStop(direction) != null) direction,
+  };
+
+  /// Taze görünümü yerine koyar ve düşen yönleri günceller.
+  void _applyTransport(AssignmentTransport? loaded) {
+    final before = _seatedDirections(transport);
+    final after = _seatedDirections(loaded);
+    droppedSeatDirections = {
+      ...droppedSeatDirections,
+      ...before.difference(after),
+    }..removeAll(after);
+    transport = loaded;
+  }
+
+  /// Koltuk seçilebilir mi: sunucu yalnız `PENDING_CONFIRMATION` /
+  /// `CONFIRMED` / `IN_PROGRESS` atamada kabul ediyor
+  /// (`TRANSPORT_ASSIGNMENT_NOT_ACTIVE`).
+  bool get canSelectSeat =>
+      job.assignmentId != null &&
+      switch (job.status) {
+        MyJobStatus.awaitingApproval ||
+        MyJobStatus.approved ||
+        MyJobStatus.inProgress => true,
+        MyJobStatus.pending ||
+        MyJobStatus.completed ||
+        MyJobStatus.past ||
+        MyJobStatus.rejected ||
+        MyJobStatus.applicationRejected ||
+        MyJobStatus.cancelled ||
+        MyJobStatus.withdrawn ||
+        MyJobStatus.unknown => false,
+      };
+
   /// Açık mesai süresini işleten sayaç; İşlerim'dekiyle aynı gerekçe.
   Timer? _elapsedTicker;
 
@@ -46,6 +103,7 @@ abstract class WorkDetailPagemodel
     super.initState();
     unawaited(_loadDetail());
     unawaited(_loadAssignmentRecords());
+    unawaited(_loadTransport());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaited(initializeTimesheetQueue());
     });
@@ -75,8 +133,14 @@ abstract class WorkDetailPagemodel
           assignmentId,
         );
         if (!mounted) return;
-        setState(() => job = MyJob.fromAssignment(assignment));
+        setState(() {
+          job = MyJob.fromAssignment(assignment);
+          if (assignment.transport != null) {
+            _applyTransport(assignment.transport);
+          }
+        });
         await _loadAssignmentRecords();
+        await _loadTransport();
         return;
       }
 
@@ -141,6 +205,81 @@ abstract class WorkDetailPagemodel
     }
 
     _syncElapsedTicker();
+  }
+
+  /// Ulaşım görünümünü sunucudan tazeler.
+  ///
+  /// Yalnız koltuk seçilebilen atamada: kapanmış atamada satırın taşıdığı
+  /// görünüm yeterli ve boşuna istek. `404` planın olmadığını söylüyor —
+  /// kart kalkıyor; başka hata eldeki görünümü koruyor, kart o hâliyle
+  /// duruyor.
+  Future<void> _loadTransport() async {
+    final assignmentId = job.assignmentId;
+    if (assignmentId == null || !canSelectSeat) return;
+
+    try {
+      final loaded = await _transportService.fetchAssignmentTransport(
+        assignmentId,
+      );
+      if (!mounted) return;
+      setState(() => _applyTransport(loaded));
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      if (error.type == ApiErrorType.notFound) {
+        setState(() => _applyTransport(null));
+      }
+    }
+  }
+
+  /// Yön için servis+durak seçtirir ve sunucuya yazar.
+  ///
+  /// `409` (dolu, aktif değil, aynı anda yazıldı) sunucunun mesajıyla
+  /// gösteriliyor ve görünüm yeniden okunuyor — elimizdeki doluluk bayat
+  /// demek. `404` de aynı yolu izliyor: servis/durak plandan kalkmış.
+  Future<void> selectSeat(ShuttleDirection direction) async {
+    final assignmentId = job.assignmentId;
+    final current = transport;
+    if (assignmentId == null || current == null || seatBusyDirection != null) {
+      return;
+    }
+
+    final choice = await SeatPickerSheet.show(
+      context,
+      direction: direction,
+      shuttles: current.shuttlesFor(direction),
+      selected: current.seatFor(direction),
+    );
+    if (choice == null || !mounted) return;
+
+    setState(() => seatBusyDirection = direction);
+    try {
+      final updated = await _transportService.selectSeat(
+        assignmentId,
+        shuttleId: choice.shuttleId,
+        stopId: choice.stopId,
+      );
+      if (!mounted) return;
+      setState(() => _applyTransport(updated));
+      AppToast.success(context, 'Koltuk seçiminiz kaydedildi.');
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      AppToast.error(context, error.message);
+      final stale =
+          error.type.serverStateMoved ||
+          error.type == ApiErrorType.notFound ||
+          TransportErrorCodes.seatConflicts.contains(error.errorCode);
+      if (stale) await _loadTransport();
+    } finally {
+      if (mounted) setState(() => seatBusyDirection = null);
+    }
+  }
+
+  /// Şoförü arar (`tel:`); açılamazsa toast.
+  Future<void> callDriver(String phone) async {
+    final digits = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+    final opened = await _openExternal(Uri(scheme: 'tel', path: digits));
+    if (!mounted || opened) return;
+    AppToast.error(context, 'Arama başlatılamadı');
   }
 
   /// Mesai yalnızca çalışan onayladıktan sonra başlayabiliyor; cevap

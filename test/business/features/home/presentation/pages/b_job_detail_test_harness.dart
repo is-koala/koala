@@ -20,6 +20,7 @@ import 'package:koala/employee/features/jobs/presentation/providers/review_provi
 import 'package:koala/employee/features/jobs/services/assignment_service.dart';
 import 'package:koala/employee/features/jobs/services/review_service.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
+import 'package:koala/product/features/transport/services/transport_service.dart';
 import 'package:koala/product/providers/job_gallery_provider.dart';
 import 'package:koala/product/services/job_gallery_service.dart';
 import 'package:koala/product/theme/theme.dart';
@@ -76,6 +77,7 @@ Future<
     FakeApi paymentApi,
     FakeApi chatApi,
     FakeApi reviewApi,
+    FakeApi transportApi,
     int Function() launches,
   })
 >
@@ -97,6 +99,7 @@ pumpPage(
   FutureOr<FakeApiResponse> Function(RequestOptions request)? paymentHandler,
   FutureOr<FakeApiResponse> Function(RequestOptions request)? chatHandler,
   FutureOr<FakeApiResponse> Function(RequestOptions request)? reviewHandler,
+  FutureOr<FakeApiResponse> Function(RequestOptions request)? transportHandler,
   Map<String, Object?>? currentUser,
   List<GoRoute> extraRoutes = const [],
   Future<bool> Function(Uri url)? openExternalUrl,
@@ -258,6 +261,20 @@ pumpPage(
     handler: (request) =>
         reviewHandler?.call(request) ?? reviewCreatedResponse(reviewDtoJson()),
   );
+  // Ulaşım planı: verilmezse planı olmayan ilan (`404 TRANSPORT_PLAN_NOT_FOUND`).
+  final transportApi = FakeApi(
+    handler: (request) =>
+        transportHandler?.call(request) ??
+        const FakeApiResponse(
+          statusCode: 404,
+          body: {
+            'success': false,
+            'message': 'Ulaşım planı bulunamadı.',
+            'errorCategory': 'RESOURCE_NOT_FOUND',
+            'errorCode': 'TRANSPORT_PLAN_NOT_FOUND',
+          },
+        ),
+  );
   // Sohbet açmak oturum sahibini istiyor; sayfa onu kendisi yüklemiyor.
   final userProvider = UserProvider(
     userService: UserService.withClient(assignmentApi.client),
@@ -306,6 +323,7 @@ pumpPage(
         service: JobGalleryService.withClient(galleryApi.client),
       ),
       chatService: ChatService.withClient(chatApi.client),
+      transportService: TransportService.withClient(transportApi.client),
       openExternalUrl: openExternalUrl,
     ),
   );
@@ -348,6 +366,7 @@ pumpPage(
     paymentApi: paymentApi,
     chatApi: chatApi,
     reviewApi: reviewClient,
+    transportApi: transportApi,
     launches: () => launchCount,
   );
 }
