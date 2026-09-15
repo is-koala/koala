@@ -109,9 +109,11 @@ class _ProfileReviewsState extends State<ProfileReviews> {
     );
   }
 
-  /// Başlık ve puan rozeti aynı satırda.
   Widget _header() {
     final summary = _summary;
+    final muted = context.textTheme.labelMedium?.copyWith(
+      color: context.textTertiary,
+    );
 
     return Row(
       children: [
@@ -122,9 +124,17 @@ class _ProfileReviewsState extends State<ProfileReviews> {
           ),
         ),
         const Spacer(),
-        // Değerlendirmesi olmayana "0.0" yazmak onu kötü puanlı gösterirdi.
         if (summary != null && summary.hasRating)
-          RatingSummaryBadge(summary: summary),
+          KeyedSubtree(
+            key: const ValueKey('profile-rating-summary'),
+            child: RatingSummaryBadge(summary: summary),
+          )
+        else if (_errorMessage == null)
+          Text(
+            'Henüz puan yok',
+            key: const ValueKey('profile-no-rating'),
+            style: muted,
+          ),
       ],
     );
   }
@@ -132,6 +142,7 @@ class _ProfileReviewsState extends State<ProfileReviews> {
   Widget _emptyText() => Text(
     'Henüz değerlendirilmedin. Tamamladığın işlerden sonra işverenler '
     'buraya yazabilir.',
+    key: const ValueKey('profile-no-reviews'),
     style: context.textTheme.bodyMedium?.copyWith(color: context.textSecondary),
   );
 
