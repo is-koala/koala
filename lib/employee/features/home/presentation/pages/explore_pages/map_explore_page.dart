@@ -5,24 +5,24 @@ import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:koala/employee/core/widgets/job_detail_bottom_sheet.dart';
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/home/models/job_filter_selection.dart';
 import 'package:koala/employee/features/home/models/job_map_bounds.dart';
 import 'package:koala/employee/features/home/models/job_search_query.dart';
-import 'package:koala/employee/features/home/models/job_start_on.dart';
+import 'package:koala/employee/features/home/presentation/providers/job_category_provider.dart';
 import 'package:koala/employee/features/home/presentation/providers/map_explore_controller.dart';
 import 'package:koala/employee/features/home/presentation/providers/page_provider.dart';
 import 'package:koala/employee/features/home/presentation/providers/search_provider.dart';
 import 'package:koala/employee/features/home/presentation/widgets/explore_brand_title.dart';
+import 'package:koala/employee/features/home/presentation/widgets/job_filter_sheet.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_marker_cache.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_marker_generator.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_sort_sheet.dart';
-import 'package:koala/employee/features/home/presentation/widgets/job_start_on_chips.dart';
 import 'package:koala/employee/features/home/presentation/widgets/map_explore_overlay.dart';
 import 'package:koala/employee/features/home/services/location_service.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_map.dart';
 import 'package:koala/product/constants/app_padding.dart';
-import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/services/maps_availability.dart';
@@ -80,23 +80,14 @@ class _MapExplorePageState extends MapExplorePageModel {
             top: context.padding.top + kToolbarHeight + AppSizes.spaceSmall,
             left: AppPadding.primary,
             right: AppPadding.primary,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                MapExploreOverlay(
-                  isSearching: isSearching,
-                  isLoading: _jobs.isLoading,
-                  errorMessage: _jobs.errorMessage,
-                  isTruncated: _jobs.isTruncated,
-                  jobs: _jobs.jobs,
-                  onRetry: _jobs.retry,
-                  onJobTap: _focusOnJob,
-                ),
-                if (!isSearching) ...[
-                  const SizedBox(height: AppSizes.spaceSmall),
-                  _startOnBar(),
-                ],
-              ],
+            child: MapExploreOverlay(
+              isSearching: isSearching,
+              isLoading: _jobs.isLoading,
+              errorMessage: _jobs.errorMessage,
+              isTruncated: _jobs.isTruncated,
+              jobs: _jobs.jobs,
+              onRetry: _jobs.retry,
+              onJobTap: _focusOnJob,
             ),
           ),
 
@@ -289,6 +280,11 @@ class _MapExplorePageState extends MapExplorePageModel {
       centerTitle: false,
       actions: [
         IconButton(
+          tooltip: 'Süzgeçler',
+          icon: AppIcon(AppIcons.filter, color: context.textPrimary),
+          onPressed: _openFilterSheet,
+        ),
+        IconButton(
           icon: AppIcon(AppIcons.sort, color: context.textPrimary),
           onPressed: _openSortSheet,
         ),
@@ -301,17 +297,6 @@ class _MapExplorePageState extends MapExplorePageModel {
         ),
         const SizedBox(width: AppSizes.spaceMedium),
       ],
-    );
-  }
-
-  Widget _startOnBar() {
-    return Material(
-      color: context.backgroundColor,
-      borderRadius: AppRadius.secondaryCircular,
-      child: Padding(
-        padding: const EdgeInsets.all(AppSizes.spaceSmall),
-        child: JobStartOnChips(selected: _startOn, onChanged: _setStartOn),
-      ),
     );
   }
 

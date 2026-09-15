@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_filter_selection.dart';
+import 'package:koala/employee/features/home/models/job_start_on.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_filter_sheet.dart';
 import 'package:koala/product/services/reference_location_service.dart';
 
@@ -114,6 +115,7 @@ void main() {
 
       expect(tester.takeException(), isNull);
       for (final section in const [
+        'Başlangıç günü',
         'Kategori',
         'Tür',
         'Konum',
@@ -151,6 +153,27 @@ void main() {
     expect(find.text('Çankaya'), findsOneWidget);
   });
 
+  testWidgets('Bugün çipi Uygula ile startOn olarak dönüyor', (tester) async {
+    JobFilterSelection? applied;
+    await pumpInApp(
+      tester,
+      sheetOpener(api: _referenceApi(), onApplied: (value) => applied = value),
+    );
+    await openSheet(tester);
+
+    expect(find.text('Başlangıç günü'), findsOneWidget);
+    expect(find.text('Bugün'), findsOneWidget);
+    expect(find.text('Yarın'), findsOneWidget);
+    expect(find.text('Hafta sonu'), findsOneWidget);
+
+    await tester.tap(find.text('Bugün'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Uygula'));
+    await tester.pumpAndSettle();
+
+    expect(applied?.startOn, JobStartOn.today);
+  });
+
   testWidgets('il seçimi ülke zincirinden geçip sorguya id koyuyor', (
     tester,
   ) async {
@@ -163,10 +186,8 @@ void main() {
     );
     await openSheet(tester);
 
-    await tester.tap(find.text('İl'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Ankara'));
-    await tester.pumpAndSettle();
+    await tapScrolled(tester, find.text('İl'));
+    await tapScrolled(tester, find.text('Ankara'));
     await tester.tap(find.text('Uygula'));
     await tester.pumpAndSettle();
 
@@ -191,21 +212,15 @@ void main() {
     );
     await openSheet(tester);
 
-    await tester.tap(find.text('İl'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Ankara'));
-    await tester.pumpAndSettle();
+    await tapScrolled(tester, find.text('İl'));
+    await tapScrolled(tester, find.text('Ankara'));
 
-    await tester.tap(find.text('İlçe'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Çankaya'));
-    await tester.pumpAndSettle();
+    await tapScrolled(tester, find.text('İlçe'));
+    await tapScrolled(tester, find.text('Çankaya'));
 
     // İkinci kez il seçilince ilçe düşmeli.
-    await tester.tap(find.text('İl'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('İstanbul'));
-    await tester.pumpAndSettle();
+    await tapScrolled(tester, find.text('İl'));
+    await tapScrolled(tester, find.text('İstanbul'));
     await tester.tap(find.text('Uygula'));
     await tester.pumpAndSettle();
 
