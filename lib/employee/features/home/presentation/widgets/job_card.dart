@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:koala/employee/core/widgets/job_detail_bottom_sheet.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
@@ -45,6 +46,12 @@ class JobCard extends StatelessWidget {
             if (distanceKm != null) ...[
               const SizedBox(height: AppSizes.spaceTiny),
               _distanceRow(context, distanceKm),
+            ],
+            // `JobSummaryDto.hasShuttle` (is-koala/koala#197): ilanın servisi
+            // var; ayrıntı ilan detayındaki ulaşım kartında.
+            if (job.hasShuttle) ...[
+              const SizedBox(height: AppSizes.spaceTiny),
+              _shuttleChip(context),
             ],
           ],
         ),
@@ -92,6 +99,37 @@ class JobCard extends StatelessWidget {
         job.category.icon,
         color: AppColors.onAccent,
         size: AppSizes.icon,
+      ),
+    );
+  }
+
+  Widget _shuttleChip(BuildContext context) {
+    return Container(
+      key: const ValueKey('job-card-shuttle'),
+      padding: AppPadding.badge,
+      decoration: BoxDecoration(
+        color: context.accentColor.withValues(
+          alpha: AppColors.surfaceTintAlpha,
+        ),
+        borderRadius: AppRadius.stadiumCircular,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AppIcon(
+            AppIcons.bus,
+            size: AppSizes.iconSmall,
+            color: context.accentColor,
+          ),
+          const SizedBox(width: AppSizes.spaceTiny),
+          Text(
+            'Servis var',
+            style: context.textTheme.labelSmall?.copyWith(
+              color: context.accentColor,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }

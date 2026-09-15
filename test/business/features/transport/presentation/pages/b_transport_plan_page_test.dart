@@ -455,6 +455,151 @@ void main() {
         },
       );
 
+      testWidgets('durak silme koltuk sayısıyla onay ister', (tester) async {
+        await pumpEditor(
+          tester,
+          args: const BTransportPlanArgs(jobId: 'job-1'),
+          brightness: brightness,
+          handler: (method, path, body) => FakeApiResponse(
+            statusCode: 200,
+            body: {
+              'success': true,
+              'data': transportPlanJson(
+                shuttles: [
+                  shuttleJson(
+                    stops: [
+                      stopJson(seatsTaken: 2),
+                      stopJson(id: 'stop-2', label: 'Bostancı'),
+                    ],
+                  ),
+                ],
+              ),
+            },
+          ),
+        );
+
+        await _tapKey(tester, 'b-transport-shuttle-0');
+        expect(find.text('2 koltuk seçildi'), findsOneWidget);
+
+        // Koltuklu durak: onay kutusu; vazgeç → durak kalır.
+        await _tapKey(tester, 'b-shuttle-remove-stop-0');
+        expect(find.text('Durağı sil'), findsOneWidget);
+        expect(
+          find.text(
+            '2 çalışanın koltuğu düşecek; plan kaydedilince yeniden koltuk '
+            'seçmeleri istenecek.',
+          ),
+          findsOneWidget,
+        );
+        await tester.tap(find.text('Vazgeç'));
+        await tester.pumpAndSettle();
+        expect(find.textContaining('Kadıköy İskele · '), findsOneWidget);
+
+        // Sil → onayla → durak gider.
+        await _tapKey(tester, 'b-shuttle-remove-stop-0');
+        await tester.tap(find.text('Sil'));
+        await tester.pumpAndSettle();
+        expect(find.textContaining('Kadıköy İskele · '), findsNothing);
+        expect(find.textContaining('Bostancı · '), findsOneWidget);
+
+        // Koltuksuz durak onaysuz silinir.
+        await _tapKey(tester, 'b-shuttle-remove-stop-0');
+        expect(find.text('Durağı sil'), findsNothing);
+        expect(find.textContaining('Bostancı · '), findsNothing);
+      });
+
+      testWidgets('ilan modu: kapasite 409\'unda plan yeniden okunur', (
+        tester,
+      ) async {
+        var reads = 0;
+        final harness = await pumpEditor(
+          tester,
+          args: const BTransportPlanArgs(jobId: 'job-1'),
+          brightness: brightness,
+          handler: (method, path, body) {
+            if (method == 'GET') {
+              reads++;
+              // Başka bir cihazda koltuklar arttı: ikinci okuma 8 diyor.
+              return FakeApiResponse(
+                statusCode: 200,
+                body: {
+                  'success': true,
+                  'data': transportPlanJson(
+                    shuttles: [shuttleJson(seatsTaken: reads == 1 ? 3 : 8)],
+                  ),
+                },
+              );
+            }
+            return const FakeApiResponse(
+              statusCode: 409,
+              body: {
+                'success': false,
+                'message':
+                    'Servis kapasitesi seçilmiş koltuk sayısının altına '
+                    'indirilemez.',
+                'errorCategory': 'DATA_CONFLICT',
+                'errorCode': 'TRANSPORT_SHUTTLE_CAPACITY_BELOW_SEATS',
+              },
+            );
+          },
+        );
+
+        expect(find.text('3 koltuk seçildi'), findsOneWidget);
+        await _tapSave(tester);
+
+        expect(
+          find.text(
+            'Servis kapasitesi seçilmiş koltuk sayısının altına indirilemez.',
+          ),
+          findsOneWidget,
+        );
+        expect(reads, 2);
+        expect(find.text('8 koltuk seçildi'), findsOneWidget);
+        expect(harness.results, isEmpty);
+      });
+
+      testWidgets('ilan modu: yön kilidi 409\'u düzenleyicinin cümlesiyle', (
+        tester,
+      ) async {
+        var reads = 0;
+        await pumpEditor(
+          tester,
+          args: const BTransportPlanArgs(jobId: 'job-1'),
+          brightness: brightness,
+          handler: (method, path, body) {
+            if (method == 'GET') {
+              reads++;
+              return FakeApiResponse(
+                statusCode: 200,
+                body: {'success': true, 'data': transportPlanJson()},
+              );
+            }
+            return const FakeApiResponse(
+              statusCode: 409,
+              body: {
+                'success': false,
+                'message': 'Var olan servisin yönü değiştirilemez.',
+                'errorCategory': 'DATA_CONFLICT',
+                'errorCode': 'TRANSPORT_SHUTTLE_DIRECTION_LOCKED',
+              },
+            );
+          },
+        );
+
+        await _tapSave(tester);
+
+        expect(
+          find.text(BTransportPlanPagemodel.directionLockedText),
+          findsOneWidget,
+        );
+        expect(
+          find.text('Var olan servisin yönü değiştirilemez.'),
+          findsNothing,
+        );
+        // Yön kilidi bayat plan demek değil; yeniden okuma yok.
+        expect(reads, 1);
+      });
+
       testWidgets('ilan modu: 404 durak kimliği planı yeniden okutur', (
         tester,
       ) async {

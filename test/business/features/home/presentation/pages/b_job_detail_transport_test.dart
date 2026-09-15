@@ -92,6 +92,44 @@ void main() {
         expect(find.byType(BTransportPlanSummary), findsNothing);
       });
 
+      testWidgets('eski sunucu (ENDPOINT_NOT_FOUND) bölümü hiç çizmez', (
+        tester,
+      ) async {
+        // Ucu tanımayan sunucuda 'plan ekle' çıksaydı PUT de 404 alırdı.
+        await pumpPage(
+          tester,
+          brightness: brightness,
+          transportHandler: (_) => const FakeApiResponse(
+            statusCode: 404,
+            body: {
+              'success': false,
+              'message': 'Böyle bir uç bulunamadı.',
+              'errorCategory': 'ENDPOINT_NOT_FOUND',
+              'errorCode': 'ENDPOINT_NOT_FOUND',
+            },
+          ),
+        );
+
+        expect(find.text('Ulaşım'), findsNothing);
+        expect(find.byKey(const ValueKey('b-transport-add')), findsNothing);
+        expect(find.byKey(const ValueKey('b-transport-error')), findsNothing);
+      });
+
+      testWidgets('kodsuz 404 de eski sunucu sayılır, bölüm gizli', (
+        tester,
+      ) async {
+        await pumpPage(
+          tester,
+          brightness: brightness,
+          transportHandler: (_) => const FakeApiResponse(
+            statusCode: 404,
+            body: {'success': false, 'message': 'Bulunamadı.'},
+          ),
+        );
+
+        expect(find.text('Ulaşım'), findsNothing);
+      });
+
       testWidgets('plan okunamazsa hata satırı ve tekrar dene', (tester) async {
         var calls = 0;
         await pumpPage(

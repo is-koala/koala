@@ -22,6 +22,30 @@ void main() {
     );
   });
 
+  for (final brightness in Brightness.values) {
+    testWidgets('${brightness.name}: servisi olan ilanda "Servis var" çipi', (
+      tester,
+    ) async {
+      await pumpInApp(
+        tester,
+        JobCard(job: buildJob(hasShuttle: true)),
+        brightness: brightness,
+      );
+
+      expect(find.byKey(const ValueKey('job-card-shuttle')), findsOneWidget);
+      expect(find.text('Servis var'), findsOneWidget);
+    });
+
+    testWidgets('${brightness.name}: servisi olmayan ilanda çip yok', (
+      tester,
+    ) async {
+      await pumpInApp(tester, JobCard(job: buildJob()), brightness: brightness);
+
+      expect(find.byKey(const ValueKey('job-card-shuttle')), findsNothing);
+      expect(find.text('Servis var'), findsNothing);
+    });
+  }
+
   testWidgets('kapak yoksa kategori avatarına dönüyor', (tester) async {
     await pumpInApp(tester, JobCard(job: buildJob()));
 
