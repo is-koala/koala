@@ -587,12 +587,15 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
         type: ApiErrorType.unknown,
       );
     }
-    if (mounted) {
-      AppToast.success(
-        context,
-        'Ödemeyi tamamladıktan sonra Koala uygulamasına döneceksin.',
-      );
+    if (!mounted) {
+      return;
     }
+    context.go(
+      Uri(
+        path: '/payment-result',
+        queryParameters: {'assignmentId': assignment.id},
+      ).toString(),
+    );
   }
 
   /// Fiyat dökümünü taşıyan ödeme onayı. Gövdesi arayüz dosyasında.

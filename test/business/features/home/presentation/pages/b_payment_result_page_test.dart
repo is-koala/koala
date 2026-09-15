@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:koala/business/features/home/presentation/pages/b_payment_result_page.dart';
 import 'package:koala/employee/features/jobs/services/assignment_service.dart';
+import 'package:koala/product/theme/theme.dart';
 
 import '../../../../../support/fake_api.dart';
 import '../../../../../support/pump.dart';
@@ -37,6 +39,8 @@ void main() {
 
     expect(find.text('Ödeme Güvende'), findsOneWidget);
     expect(find.textContaining('başarısız'), findsNothing);
+    expect(find.text('ANA SAYFA'), findsOneWidget);
+    expect(find.text('İLANA DÖN'), findsOneWidget);
     expect(api.requests, hasLength(1));
     expect(api.requests.single.path, '/job-assignments/asg_1');
     expect(api.requests.single.method, 'GET');
@@ -72,6 +76,8 @@ void main() {
     expect(find.text('Ödeme Başarısız'), findsOneWidget);
     expect(find.textContaining('yeniden deneyebilirsin'), findsOneWidget);
     expect(find.text('Ödeme Henüz Doğrulanmadı'), findsNothing);
+    expect(find.text('ANA SAYFA'), findsOneWidget);
+    expect(find.text('İLANA DÖN'), findsOneWidget);
   });
 
   for (final error in [
@@ -95,6 +101,7 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(find.text('Ödeme Henüz Doğrulanmadı'), findsOneWidget);
       expect(find.text('TEKRAR KONTROL ET'), findsOneWidget);
+      expect(find.text('ANA SAYFA'), findsOneWidget);
       expect(find.text('İLANA DÖN'), findsNothing);
       expect(api.requests.single.path, '/job-assignments/asg_1');
     });
@@ -109,6 +116,7 @@ void main() {
 
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     expect(find.text('Ödeme Güvende'), findsNothing);
+    expect(find.text('ANA SAYFA'), findsOneWidget);
 
     response.complete(
       const FakeApiResponse(
@@ -184,6 +192,8 @@ void main() {
 
       expect(find.text('Ödeme Sonucu Kontrol Ediliyor'), findsOneWidget);
       expect(find.textContaining('yeni ödeme başlatma'), findsOneWidget);
+      expect(find.text('ANA SAYFA'), findsOneWidget);
+      expect(find.text('İLANA DÖN'), findsOneWidget);
       expect(delays, hasLength(1));
       expect(delays.single, greaterThan(Duration.zero));
 
@@ -226,6 +236,8 @@ void main() {
     expect(api.requests, hasLength(4));
     expect(find.text('Ödeme Henüz Doğrulanmadı'), findsOneWidget);
     expect(find.textContaining('Yeni ödeme başlatmadan önce'), findsOneWidget);
+    expect(find.text('ANA SAYFA'), findsOneWidget);
+    expect(find.text('İLANA DÖN'), findsOneWidget);
 
     await tester.tap(find.text('TEKRAR KONTROL ET'));
     await tester.pumpAndSettle();
@@ -536,6 +548,7 @@ void main() {
         findsOne,
       );
       expect(find.bySemanticsLabel('TEKRAR KONTROL ET'), findsOneWidget);
+      expect(find.bySemanticsLabel('ANA SAYFA'), findsOneWidget);
       expect(
         Theme.of(tester.element(find.byType(BPaymentResultPage))).brightness,
         brightness,
@@ -543,6 +556,117 @@ void main() {
       semantics.dispose();
     });
   }
+
+  testWidgets('ana sayfa işveren ana ekranına gider', (tester) async {
+    await _pumpPaymentResult(
+      tester,
+      FakeApi(handler: (_) => _assignmentResponse('HELD_IN_ESCROW')),
+      extraRoutes: [
+        GoRoute(
+          path: '/business/home',
+          pageBuilder: (context, state) => const MaterialPage<void>(
+            child: Scaffold(body: Text('işveren ana sayfa')),
+          ),
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    final home = find.text('ANA SAYFA');
+    await tester.ensureVisible(home);
+    await tester.tap(home);
+    await tester.pumpAndSettle();
+
+    expect(find.text('işveren ana sayfa'), findsOneWidget);
+  });
+
+  testWidgets('ilana dön atamanın ilanına gider', (tester) async {
+    Object? extra;
+    await _pumpPaymentResult(
+      tester,
+      FakeApi(handler: (_) => _assignmentResponse('FAILED')),
+      extraRoutes: [
+        GoRoute(
+          path: '/business/job-detail',
+          pageBuilder: (context, state) {
+            extra = state.extra;
+            return const MaterialPage<void>(
+              child: Scaffold(body: Text('ilan detayı')),
+            );
+          },
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    final back = find.text('İLANA DÖN');
+    await tester.ensureVisible(back);
+    await tester.tap(back);
+    await tester.pumpAndSettle();
+
+    expect(find.text('ilan detayı'), findsOneWidget);
+    expect(extra, 'job_1');
+  });
+
+  testWidgets('atama bulunamayınca ana sayfa hâlâ kaçış bırakır', (
+    tester,
+  ) async {
+    await _pumpPaymentResult(
+      tester,
+      FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 404,
+          body: {'success': false, 'message': 'İş kaydı bulunamadı.'},
+        ),
+      ),
+      extraRoutes: [
+        GoRoute(
+          path: '/business/home',
+          pageBuilder: (context, state) => const MaterialPage<void>(
+            child: Scaffold(body: Text('işveren ana sayfa')),
+          ),
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('İLANA DÖN'), findsNothing);
+    final home = find.text('ANA SAYFA');
+    await tester.ensureVisible(home);
+    await tester.tap(home);
+    await tester.pumpAndSettle();
+
+    expect(find.text('işveren ana sayfa'), findsOneWidget);
+  });
+
+  testWidgets('yükleme sırasında ana sayfa işveren ana ekranına kaçar', (
+    tester,
+  ) async {
+    final response = Completer<FakeApiResponse>();
+    await _pumpPaymentResult(
+      tester,
+      FakeApi(handler: (_) => response.future),
+      extraRoutes: [
+        GoRoute(
+          path: '/business/home',
+          pageBuilder: (context, state) => const MaterialPage<void>(
+            child: Scaffold(body: Text('işveren ana sayfa')),
+          ),
+        ),
+      ],
+    );
+    await tester.pump();
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    final home = find.text('ANA SAYFA');
+    await tester.ensureVisible(home);
+    await tester.tap(home);
+    await tester.pumpAndSettle();
+
+    expect(find.text('işveren ana sayfa'), findsOneWidget);
+    response.complete(_assignmentResponse('HELD_IN_ESCROW'));
+    await tester.pumpAndSettle();
+  });
 }
 
 Future<void> _pumpPaymentResult(
@@ -551,16 +675,35 @@ Future<void> _pumpPaymentResult(
   Brightness brightness = Brightness.light,
   DateTime Function()? now,
   Future<void> Function(Duration)? delay,
-}) => pumpInApp(
-  tester,
-  BPaymentResultPage(
+  List<RouteBase> extraRoutes = const [],
+}) {
+  final page = BPaymentResultPage(
     assignmentId: 'asg_1',
     service: AssignmentService.withClient(api.client),
     now: now,
     delay: delay,
-  ),
-  brightness: brightness,
-);
+  );
+  if (extraRoutes.isEmpty) {
+    return pumpInApp(tester, page, brightness: brightness);
+  }
+  final router = GoRouter(
+    initialLocation: '/',
+    routes: [
+      GoRoute(
+        path: '/',
+        pageBuilder: (context, state) => MaterialPage<void>(child: page),
+      ),
+      ...extraRoutes,
+    ],
+  );
+  addTearDown(router.dispose);
+  return tester.pumpWidget(
+    MaterialApp.router(
+      theme: brightness == Brightness.dark ? darkTheme : lightTheme,
+      routerConfig: router,
+    ),
+  );
+}
 
 FakeApiResponse _assignmentResponse(String paymentStatus) => FakeApiResponse(
   statusCode: 200,

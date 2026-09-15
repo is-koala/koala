@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../../support/fake_api.dart';
 import 'b_job_detail_test_harness.dart';
@@ -29,7 +30,11 @@ void main() {
   testWidgets('Iyzico yalnız backend dökümü açıkça onaylanınca açılır', (
     tester,
   ) async {
-    final harness = await pumpPage(tester);
+    final queries = <Map<String, String>>[];
+    final harness = await pumpPage(
+      tester,
+      extraRoutes: [_paymentResultStub(queries)],
+    );
     final button = find.text('Güvenli Ödemeyi Tamamla');
     await tester.ensureVisible(button);
     await tester.tap(button);
@@ -74,6 +79,10 @@ void main() {
       hasLength(1),
     );
     expect(harness.launches(), 1);
+    expect(find.text('ödeme sonucu sahnesi'), findsOneWidget);
+    expect(queries, [
+      {'assignmentId': 'assignment-1'},
+    ]);
   });
 
   testWidgets(
@@ -145,9 +154,14 @@ void main() {
   });
 
   testWidgets(
-    'checkout dönüşünde yeni aktif deneme görünür ve yeniden ödeme kapanır',
+    'checkout kapanınca ödeme sonucu ekranına atama kimliğiyle gider',
     (tester) async {
-      final harness = await pumpPage(tester, progressiveAttempt: true);
+      final queries = <Map<String, String>>[];
+      final harness = await pumpPage(
+        tester,
+        progressiveAttempt: true,
+        extraRoutes: [_paymentResultStub(queries)],
+      );
 
       expect(find.text('Başarısız'), findsOneWidget);
       expect(find.text('Kart reddedildi.'), findsNothing);
@@ -161,16 +175,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(harness.launches(), 1);
-      expect(find.text('Başarısız'), findsOneWidget);
-
-      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
-      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-      await tester.pumpAndSettle();
-
-      expect(find.text('Başlatıldı'), findsOneWidget);
-      expect(find.text('Ödeme sonucu doğrulanıyor.'), findsOneWidget);
-      expect(find.text('Güvenli Ödemeyi Tamamla'), findsNothing);
-      expect(find.text('Kart reddedildi.'), findsNothing);
+      expect(find.text('ödeme sonucu sahnesi'), findsOneWidget);
+      expect(find.text('Başarısız'), findsNothing);
+      expect(queries, [
+        {'assignmentId': 'assignment-1'},
+      ]);
     },
   );
 
@@ -187,4 +196,16 @@ void main() {
     expect(find.text('Güvenli Ödemeyi Tamamla'), findsNothing);
     expect(harness.launches(), 0);
   });
+}
+
+GoRoute _paymentResultStub(List<Map<String, String>> queries) {
+  return GoRoute(
+    path: '/payment-result',
+    pageBuilder: (context, state) {
+      queries.add(Map<String, String>.from(state.uri.queryParameters));
+      return const MaterialPage<void>(
+        child: Scaffold(body: Text('ödeme sonucu sahnesi')),
+      );
+    },
+  );
 }
