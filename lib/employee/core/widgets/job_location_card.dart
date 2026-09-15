@@ -142,13 +142,7 @@ class JobLocationCard extends StatelessWidget {
           color: context.accentColor,
         ),
         label: const Text('Yol tarifi al'),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: context.accentColor,
-          side: BorderSide(color: context.accentColor),
-          shape: const RoundedRectangleBorder(
-            borderRadius: AppRadius.smallCircular,
-          ),
-        ),
+        style: context.accentOutlinedButtonStyle,
       ),
     );
   }

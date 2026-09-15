@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_radius.dart';
 
 extension ScaffoldExtension on BuildContext {
   void openDrawer() => Scaffold.of(this).openDrawer();
@@ -134,6 +135,20 @@ extension AppColorExtension on BuildContext {
   /// Yeşilin **üstü** demek: yeşilin *yerine* duran ters butonun zemini
   /// buradan değil [backgroundColor]'dan gelir.
   Color get onAccentColor => colorScheme.onPrimary;
+}
+
+extension ButtonStyleExtension on BuildContext {
+  /// Vurgu rengiyle çerçeveli ikincil eylem düğmesi: metin ve kenar
+  /// [accentColor], köşe [AppRadius.smallCircular].
+  ///
+  /// İş detayının "İşverenle mesajlaş"ı, hakediş sheet'inin "İş detayını
+  /// aç"ı ve konum kartının "Yol tarifi al"ı aynı düğme; üç yerde ayrı
+  /// `styleFrom` kopyası birinin değişip diğerlerinin kalmasına açıktı.
+  ButtonStyle get accentOutlinedButtonStyle => OutlinedButton.styleFrom(
+    foregroundColor: accentColor,
+    side: BorderSide(color: accentColor),
+    shape: const RoundedRectangleBorder(borderRadius: AppRadius.smallCircular),
+  );
 }
 
 extension PaddingExtension on BuildContext {

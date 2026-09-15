@@ -613,13 +613,7 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
                         color: context.accentColor,
                       ),
                 label: const Text('İşverenle mesajlaş'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: context.accentColor,
-                  side: BorderSide(color: context.accentColor),
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: AppRadius.smallCircular,
-                  ),
-                ),
+                style: context.accentOutlinedButtonStyle,
               ),
             )
           : MessagingGateNote(

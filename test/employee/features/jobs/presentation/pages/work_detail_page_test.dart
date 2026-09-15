@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/core/widgets/employer_type_badge.dart';
@@ -112,6 +113,18 @@ final _directionsButton = find.byKey(const ValueKey('job-location-directions'));
 /// (600 px'lik test penceresinde alt çubuk kartın üstüne biniyordu).
 final MyJob _confirmedRow = assignmentRow(
   assignmentJson(paymentStatus: 'PENDING_COLLECTION'),
+);
+
+/// Özetinde koordinat taşıyan atama; `JobSummaryDto.latitude/longitude`
+/// detaydan farklı ki bağlantının hangisini taşıdığı ayırt edilsin.
+MyJob _rowWithSummaryCoordinate(String precision) => assignmentRow(
+  assignmentJson(
+    paymentStatus: 'PENDING_COLLECTION',
+    job: jobSummaryJson()
+      ..['latitude'] = 41.0
+      ..['longitude'] = 29.0
+      ..['addressPrecision'] = precision,
+  ),
 );
 
 /// Sayfayı gerçek temada, sahte sunucuya bağlı çizer.
@@ -516,6 +529,52 @@ void main() {
         expect(find.text('Yol tarifi al'), findsNothing);
       });
 
+      // Detay `EXACT` ama `address.position` göndermiyor: koordinat özetten.
+      testWidgets('EXACT + detayda koordinat yok: özetin EXACT koordinatı', (
+        tester,
+      ) async {
+        final harness = await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: _rowWithSummaryCoordinate('EXACT'),
+          detail: detailJson(
+            precision: 'EXACT',
+            displayAddress: 'Moda',
+            creator: _ayse,
+          ),
+        );
+
+        expect(_directionsButton, findsOneWidget);
+        await tester.ensureVisible(_directionsButton);
+        await tester.tap(_directionsButton);
+        await tester.pumpAndSettle();
+
+        expect(
+          harness.openedUrls.single.queryParameters['destination'],
+          '41.000000,29.000000',
+        );
+      }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
+      // Sızıntı kilidi: detay `EXACT` derken özet `APPROXIMATE` — özetin
+      // koordinatı yuvarlanmış; ona rota, olmayan bir kapıya götürür.
+      testWidgets(
+        'EXACT + detayda koordinat yok + özet APPROXIMATE: düğme yok',
+        (tester) async {
+          await pumpDetail(
+            tester,
+            brightness: brightness,
+            job: _rowWithSummaryCoordinate('APPROXIMATE'),
+            detail: detailJson(
+              precision: 'EXACT',
+              displayAddress: 'Moda',
+              creator: _ayse,
+            ),
+          );
+
+          expect(_directionsButton, findsNothing);
+        },
+      );
+
       testWidgets('EXACT ama koordinat yok: düğme yok', (tester) async {
         await pumpDetail(
           tester,
@@ -615,6 +674,41 @@ void main() {
           'comgooglemaps://?daddr=$_modaCoordinate&directionsmode=transit',
           'https://www.google.com/maps/dir/?api=1'
               '&destination=$_modaCoordinate&travelmode=transit',
+        ]);
+        expect(find.text('Harita uygulaması açılamadı'), findsNothing);
+      }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+      // Android'de işleyicisi olmayan şema `PlatformException` fırlatıyor;
+      // yedek bağlantıya geçiş bunu da "açılamadı" saymalı.
+      testWidgets('iOS: Google uygulaması PlatformException fırlatırsa web '
+          'yedeği', (tester) async {
+        final harness = await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: _confirmedRow,
+          detail: detailJson(
+            precision: 'EXACT',
+            displayAddress: 'Moda',
+            position: _modaPosition,
+            creator: _ayse,
+          ),
+          openUrl: (url) {
+            if (url.scheme == 'comgooglemaps') {
+              throw PlatformException(code: 'ACTIVITY_NOT_FOUND');
+            }
+            return true;
+          },
+        );
+
+        await tester.ensureVisible(_directionsButton);
+        await tester.tap(_directionsButton);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Google Haritalar'));
+        await tester.pumpAndSettle();
+
+        expect(harness.openedUrls.map((url) => url.scheme), [
+          'comgooglemaps',
+          'https',
         ]);
         expect(find.text('Harita uygulaması açılamadı'), findsNothing);
       }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
