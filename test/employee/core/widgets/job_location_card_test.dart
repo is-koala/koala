@@ -25,13 +25,23 @@ Future<void> _pumpCard(
   required AddressPrecision precision,
   required String label,
   required Brightness brightness,
+  VoidCallback? onDirections,
+  DateTime? arrival,
 }) {
   return pumpInApp(
     tester,
-    JobLocationCard(precision: precision, label: label),
+    JobLocationCard(
+      precision: precision,
+      label: label,
+      onDirections: onDirections,
+      arrival: arrival,
+    ),
     brightness: brightness,
   );
 }
+
+/// "Yol tarifi al" düğmesi.
+final _directionsButton = find.byKey(const ValueKey('job-location-directions'));
 
 void main() {
   for (final brightness in Brightness.values) {
@@ -101,6 +111,97 @@ void main() {
           _inCard(find.textContaining('atama kurulduğunda')),
           findsOneWidget,
         );
+      });
+
+      // is-koala/koala#188: düğme yalnız kesin konumda ve sayfa bir hedef
+      // verdiyse. Kart varış saatini bağlantıya değil metne yazıyor.
+      group('yol tarifi', () {
+        testWidgets('kesin konum + hedef: düğme, ikon ve başlangıç notu', (
+          tester,
+        ) async {
+          var taps = 0;
+          await _pumpCard(
+            tester,
+            precision: AddressPrecision.exact,
+            label: _exactLabel,
+            brightness: brightness,
+            onDirections: () => taps++,
+            arrival: DateTime(2026, 9, 10, 9),
+          );
+
+          expect(_inCard(_directionsButton), findsOneWidget);
+          expect(_inCard(find.text('Yol tarifi al')), findsOneWidget);
+          expect(_inCard(findAppIcon(AppIcons.route)), findsOneWidget);
+          expect(
+            _inCard(
+              find.text(
+                'Toplu taşıma rotası harita uygulamasında açılır. İş '
+                'başlangıcı 10.09.2026 09:00; varış saatini orada '
+                'seçebilirsiniz.',
+              ),
+            ),
+            findsOneWidget,
+          );
+
+          await tester.tap(_directionsButton);
+          await tester.pump();
+
+          expect(taps, 1);
+        });
+
+        testWidgets('başlangıç bilinmiyorsa not saatsiz, "siz" hitabı', (
+          tester,
+        ) async {
+          await _pumpCard(
+            tester,
+            precision: AddressPrecision.exact,
+            label: _exactLabel,
+            brightness: brightness,
+            onDirections: () {},
+          );
+
+          expect(
+            _inCard(
+              find.text(
+                'Toplu taşıma rotası harita uygulamasında açılır; varış '
+                'saatini orada seçebilirsiniz.',
+              ),
+            ),
+            findsOneWidget,
+          );
+          expect(_inCard(find.textContaining('seçebilirsin.')), findsNothing);
+        });
+
+        testWidgets('hedef verilmediyse düğme yok', (tester) async {
+          await _pumpCard(
+            tester,
+            precision: AddressPrecision.exact,
+            label: _exactLabel,
+            brightness: brightness,
+          );
+
+          expect(_inCard(_directionsButton), findsNothing);
+          expect(_inCard(find.textContaining('Toplu taşıma')), findsNothing);
+        });
+
+        // Sunucu yaklaşık derken hedef verilmiş olsa bile düğme çizilmez:
+        // yuvarlanmış koordinata rota, olmayan bir kapıya götürür.
+        testWidgets('yaklaşık konumda hedef verilse de düğme yok', (
+          tester,
+        ) async {
+          await _pumpCard(
+            tester,
+            precision: AddressPrecision.approximate,
+            label: _maskedLabel,
+            brightness: brightness,
+            onDirections: () {},
+            arrival: DateTime(2026, 9, 10, 9),
+          );
+
+          expect(_inCard(_directionsButton), findsNothing);
+          expect(_inCard(find.text('Yol tarifi al')), findsNothing);
+          expect(_inCard(find.textContaining('Toplu taşıma')), findsNothing);
+        });
       });
     });
   }

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/core/widgets/employer_type_badge.dart';
+import 'package:koala/employee/core/widgets/job_location_card.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:koala/employee/features/jobs/models/assignment.dart';
@@ -34,6 +35,7 @@ Map<String, Object?> detailJson({
   Map<String, Object?>? creator,
   Map<String, Object?>? company,
   String employerType = 'INDIVIDUAL',
+  Map<String, Object?>? position,
 }) => {
   'id': 'job-1',
   'title': 'Barista',
@@ -55,6 +57,7 @@ Map<String, Object?> detailJson({
     'districtId': 'd-1',
     'districtName': 'Kadıköy',
     'displayAddress': ?displayAddress,
+    'position': ?position,
     if (directions != null)
       'components': {
         'neighborhood': 'Caferağa',
@@ -89,7 +92,27 @@ typedef Harness = ({
   FakeApi api,
   List<Object?> openedCompanies,
   List<Object?> openedReviews,
+  List<Uri> openedUrls,
 });
+
+/// Moda'nın koordinatı; `EXACT` detayın `address.position` alanı.
+const Map<String, Object?> _modaPosition = {
+  'latitude': 40.98765432,
+  'longitude': 29.02612345,
+  'source': 'USER_CONFIRMED_PIN',
+};
+
+/// Detaydaki Moda koordinatının bağlantıya yazılan hâli.
+const String _modaCoordinate = '40.987654,29.026123';
+
+/// "Yol tarifi al" düğmesi.
+final _directionsButton = find.byKey(const ValueKey('job-location-directions'));
+
+/// Onaylı, ödemesi henüz alınmamış atama: alt çubuk yok, kart tıklanabilir
+/// (600 px'lik test penceresinde alt çubuk kartın üstüne biniyordu).
+final MyJob _confirmedRow = assignmentRow(
+  assignmentJson(paymentStatus: 'PENDING_COLLECTION'),
+);
 
 /// Sayfayı gerçek temada, sahte sunucuya bağlı çizer.
 ///
@@ -107,9 +130,11 @@ Future<Harness> pumpDetail(
   Map<String, FakeApiResponse Function(RequestOptions request)> overrides =
       const {},
   Brightness brightness = Brightness.light,
+  bool Function(Uri url)? openUrl,
 }) async {
   final openedCompanies = <Object?>[];
   final openedReviews = <Object?>[];
+  final openedUrls = <Uri>[];
 
   final api = FakeApi(
     handler: (RequestOptions request) {
@@ -155,6 +180,10 @@ Future<Harness> pumpDetail(
             assignmentService: AssignmentService.withClient(api.client),
             chatService: ChatService.withClient(api.client),
             jobService: JobService.withClient(api.client),
+            openExternalUrl: (url) async {
+              openedUrls.add(url);
+              return openUrl?.call(url) ?? true;
+            },
           ),
         ),
       ),
@@ -209,6 +238,7 @@ Future<Harness> pumpDetail(
     api: api,
     openedCompanies: openedCompanies,
     openedReviews: openedReviews,
+    openedUrls: openedUrls,
   );
 }
 
@@ -439,6 +469,226 @@ void main() {
         );
         expect(find.textContaining('Tarif:'), findsNothing);
       });
+    });
+  }
+
+  // is-koala/koala#188: yol tarifi yalnız EXACT'te; hedef koordinat
+  // bağlantıda, kullanıcının konumu değil.
+  for (final brightness in Brightness.values) {
+    group('yol tarifi / ${brightness.name}', () {
+      testWidgets('EXACT + koordinat: düğme ve başlangıç notu var', (
+        tester,
+      ) async {
+        await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: _confirmedRow,
+          detail: detailJson(
+            precision: 'EXACT',
+            displayAddress: 'Caferağa Mah. Moda Cad. No:12 D:4, Kadıköy',
+            position: _modaPosition,
+            creator: _ayse,
+          )..['startDateTime'] = '2026-09-10T09:00:00',
+        );
+
+        expect(_directionsButton, findsOneWidget);
+        expect(find.text('Yol tarifi al'), findsOneWidget);
+        expect(
+          find.text(JobLocationCard.directionsNote(DateTime(2026, 9, 10, 9))),
+          findsOneWidget,
+        );
+      });
+
+      testWidgets('APPROXIMATE: koordinat gelse de düğme yok', (tester) async {
+        await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: applicationRow(applicationJson()),
+          detail: detailJson(
+            precision: 'APPROXIMATE',
+            displayAddress: 'Caferağa Mah. Moda Cad. No:12 D:4, Kadıköy',
+            position: _modaPosition,
+            creator: _ayse,
+          ),
+        );
+
+        expect(_directionsButton, findsNothing);
+        expect(find.text('Yol tarifi al'), findsNothing);
+      });
+
+      testWidgets('EXACT ama koordinat yok: düğme yok', (tester) async {
+        await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: _confirmedRow,
+          detail: detailJson(
+            precision: 'EXACT',
+            displayAddress: 'Caferağa Mah. Moda Cad. No:12 D:4, Kadıköy',
+            creator: _ayse,
+          ),
+        );
+
+        expect(_directionsButton, findsNothing);
+      });
+
+      testWidgets('Android: seçim yok, doğrudan Google web bağlantısı', (
+        tester,
+      ) async {
+        final harness = await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: _confirmedRow,
+          detail: detailJson(
+            precision: 'EXACT',
+            displayAddress: 'Moda',
+            position: _modaPosition,
+            creator: _ayse,
+          ),
+        );
+
+        await tester.ensureVisible(_directionsButton);
+        await tester.tap(_directionsButton);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Yol tarifini nerede açalım?'), findsNothing);
+        expect(harness.openedUrls.map((url) => url.toString()), [
+          'https://www.google.com/maps/dir/?api=1'
+              '&destination=$_modaCoordinate&travelmode=transit',
+        ]);
+      }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
+      testWidgets('iOS: seçim sayfası; Apple Haritalar maps:// açar', (
+        tester,
+      ) async {
+        final harness = await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: _confirmedRow,
+          detail: detailJson(
+            precision: 'EXACT',
+            displayAddress: 'Moda',
+            position: _modaPosition,
+            creator: _ayse,
+          ),
+        );
+
+        await tester.ensureVisible(_directionsButton);
+        await tester.tap(_directionsButton);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Yol tarifini nerede açalım?'), findsOneWidget);
+        expect(find.text('Apple Haritalar'), findsOneWidget);
+        expect(find.text('Google Haritalar'), findsOneWidget);
+        expect(harness.openedUrls, isEmpty);
+
+        await tester.tap(find.text('Apple Haritalar'));
+        await tester.pumpAndSettle();
+
+        expect(harness.openedUrls.map((url) => url.toString()), [
+          'maps://?daddr=$_modaCoordinate&dirflg=r',
+        ]);
+      }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+      testWidgets('iOS: Google uygulaması yoksa web bağlantısına düşer', (
+        tester,
+      ) async {
+        final harness = await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: _confirmedRow,
+          detail: detailJson(
+            precision: 'EXACT',
+            displayAddress: 'Moda',
+            position: _modaPosition,
+            creator: _ayse,
+          ),
+          openUrl: (url) => url.scheme != 'comgooglemaps',
+        );
+
+        await tester.ensureVisible(_directionsButton);
+        await tester.tap(_directionsButton);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Google Haritalar'));
+        await tester.pumpAndSettle();
+
+        expect(harness.openedUrls.map((url) => url.toString()), [
+          'comgooglemaps://?daddr=$_modaCoordinate&directionsmode=transit',
+          'https://www.google.com/maps/dir/?api=1'
+              '&destination=$_modaCoordinate&travelmode=transit',
+        ]);
+        expect(find.text('Harita uygulaması açılamadı'), findsNothing);
+      }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+      testWidgets('iOS: Google uygulaması varsa web bağlantısı açılmaz', (
+        tester,
+      ) async {
+        final harness = await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: _confirmedRow,
+          detail: detailJson(
+            precision: 'EXACT',
+            displayAddress: 'Moda',
+            position: _modaPosition,
+            creator: _ayse,
+          ),
+        );
+
+        await tester.ensureVisible(_directionsButton);
+        await tester.tap(_directionsButton);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Google Haritalar'));
+        await tester.pumpAndSettle();
+
+        expect(harness.openedUrls.map((url) => url.scheme), ['comgooglemaps']);
+      }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+      testWidgets('hiçbir bağlantı açılamazsa toast', (tester) async {
+        await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: _confirmedRow,
+          detail: detailJson(
+            precision: 'EXACT',
+            displayAddress: 'Moda',
+            position: _modaPosition,
+            creator: _ayse,
+          ),
+          openUrl: (_) => false,
+        );
+
+        await tester.ensureVisible(_directionsButton);
+        await tester.tap(_directionsButton);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+
+        expect(find.text('Harita uygulaması açılamadı'), findsOneWidget);
+      }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
+      // Kullanıcının konumu hiçbir bağlantıya yazılmıyor; bağlantı yalnız
+      // sunucunun verdiği hedefi taşıyor.
+      testWidgets('bağlantıda başlangıç noktası yok', (tester) async {
+        final harness = await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: _confirmedRow,
+          detail: detailJson(
+            precision: 'EXACT',
+            displayAddress: 'Moda',
+            position: _modaPosition,
+            creator: _ayse,
+          ),
+        );
+
+        await tester.ensureVisible(_directionsButton);
+        await tester.tap(_directionsButton);
+        await tester.pumpAndSettle();
+
+        final url = harness.openedUrls.single;
+        expect(url.queryParameters.keys, isNot(contains('origin')));
+        expect(url.queryParameters.keys, isNot(contains('saddr')));
+        expect(url.queryParameters['destination'], _modaCoordinate);
+      }, variant: TargetPlatformVariant.only(TargetPlatform.android));
     });
   }
 

@@ -1,7 +1,10 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:koala/employee/core/directions_links.dart';
 import 'package:koala/employee/core/widgets/employer_type_badge.dart';
 import 'package:koala/employee/core/widgets/job_detail_bottom_sheet.dart';
 import 'package:koala/employee/core/widgets/job_location_card.dart';
@@ -39,7 +42,9 @@ import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/messaging_gate_note.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
+import 'package:koala/product/widgets/option_sheet.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 part 'work_detail_pagemodel.dart';
 
@@ -61,6 +66,7 @@ class WorkDetailPage extends StatefulWidget {
     this.assignmentService,
     this.chatService,
     this.jobService,
+    this.openExternalUrl,
   });
 
   /// Açılan kayıt. [MyJob.assignment] ya da [MyJob.application] dolu olmalı;
@@ -71,6 +77,11 @@ class WorkDetailPage extends StatefulWidget {
   final AssignmentService? assignmentService;
   final ChatService? chatService;
   final JobService? jobService;
+
+  /// Harita bağlantısını açan kapı; verilmezse harici uygulama
+  /// (`url_launcher`). Testler sahte bir açıcı geçip hangi adresin
+  /// açıldığını ölçüyor — `BJobDetailPage.openExternalUrl` ile aynı kalıp.
+  final Future<bool> Function(Uri url)? openExternalUrl;
 
   @override
   State<WorkDetailPage> createState() => _WorkDetailPageState();
@@ -464,18 +475,19 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
   /// Yaklaşık yanıtta açık adres de tarif de **çizilmiyor**, gövdede gelmiş
   /// olsa bile: sunucu `APPROXIMATE` derken sokak yazmak ADR-0003'ün
   /// istemci tarafındaki ihlali olurdu. O zaman yalnız ilçe/il var.
+  ///
+  /// "Yol tarifi al" da aynı kapının arkasında (is-koala/koala#188): yalnız
+  /// kesin konumda ve hedef koordinat biliniyorsa ([directionsTarget]).
   Widget _addressCard() {
     final address = detail?.address;
-    final precision =
-        detail?.addressPrecision ??
-        summaryJob?.addressPrecision ??
-        AddressPrecision.approximate;
+    final precision = addressPrecision;
     final isApproximate = precision.isApproximate;
     final label =
         (isApproximate ? null : detail?.addressLabel) ??
         address?.shortLabel ??
         summaryJob?.locationLabel ??
         'Konum belirtilmemiş';
+    final target = directionsTarget;
 
     return JobLocationCard(
       precision: precision,
@@ -483,6 +495,8 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
       directions: isApproximate
           ? null
           : address?.components?.additionalDirections,
+      onDirections: target == null ? null : () => openDirections(target),
+      arrival: target?.arrival,
     );
   }
 
