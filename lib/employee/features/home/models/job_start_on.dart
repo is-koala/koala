@@ -94,6 +94,21 @@ class JobStartWindow {
 abstract final class IstanbulCalendar {
   static const Duration offset = Duration(hours: 3);
 
+  /// UTC Instant'ın İstanbul duvar saati (DST yok).
+  static DateTime wallClockOf(DateTime instant) {
+    final shifted = instant.toUtc().add(offset);
+    return DateTime(
+      shifted.year,
+      shifted.month,
+      shifted.day,
+      shifted.hour,
+      shifted.minute,
+      shifted.second,
+      shifted.millisecond,
+      shifted.microsecond,
+    );
+  }
+
   /// [now] anının İstanbul takvim günü (saat sıfır, UTC etiketli).
   static DateTime dateOf(DateTime now) {
     final wall = now.toUtc().add(offset);

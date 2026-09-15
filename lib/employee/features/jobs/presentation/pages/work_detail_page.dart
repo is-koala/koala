@@ -10,6 +10,7 @@ import 'package:koala/employee/core/widgets/job_detail_bottom_sheet.dart';
 import 'package:koala/employee/core/widgets/job_location_card.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/home/models/job_start_on.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:koala/employee/features/jobs/models/assignment.dart';
@@ -803,7 +804,7 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
       children: [
         if (session?.checkInAt != null) ...[
           Text(
-            "${session!.checkInAt!.toLocal().asShortTime}'de başladınız · "
+            "${IstanbulCalendar.wallClockOf(session!.checkInAt!).asShortTime}'de başladınız · "
             '${session.elapsed.asWorkDuration}',
             style: context.textTheme.labelMedium?.copyWith(
               color: AppColors.progress,

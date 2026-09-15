@@ -281,14 +281,12 @@ class TimesheetQueueProvider extends ChangeNotifier
       // demek; olayı kuyrukta kilitli bırakmamak için ikisi de uzlaştırmaya
       // gidiyor.
       if (error.type.serverStateMoved) {
-        if (error.errorCode == 'TIMESHEET_IDEMPOTENCY_CONFLICT') {
-          await _store.markRequiresSupport(
-            event.clientEventId,
-            _conflictMessage,
-          );
-          return false;
-        }
-        return _reconcileConflict(event, generation);
+        return _reconcileConflict(
+          event,
+          generation,
+          matchByIdentityOnly:
+              error.errorCode == 'TIMESHEET_IDEMPOTENCY_CONFLICT',
+        );
       }
       if (error.type == ApiErrorType.validation ||
           error.type == ApiErrorType.notFound) {
@@ -301,12 +299,20 @@ class TimesheetQueueProvider extends ChangeNotifier
     }
   }
 
-  Future<bool> _reconcileConflict(TimesheetEvent event, int generation) async {
+  Future<bool> _reconcileConflict(
+    TimesheetEvent event,
+    int generation, {
+    bool matchByIdentityOnly = false,
+  }) async {
     try {
       final sessions = await _gateway.fetchSessions(event.assignmentId);
       if (generation != _generation) return false;
       final matching = sessions
-          .where((session) => _matchesEvent(session, event))
+          .where(
+            (session) => matchByIdentityOnly
+                ? _isSameEvent(session, event)
+                : _matchesEvent(session, event),
+          )
           .firstOrNull;
 
       if (matching == null) {
@@ -327,23 +333,29 @@ class TimesheetQueueProvider extends ChangeNotifier
     _deliveryRevision++;
   }
 
+  bool _isSameEvent(WorkSession session, TimesheetEvent event) {
+    final eventId = switch (event.action) {
+      TimesheetEventAction.checkIn => session.checkInClientEventId,
+      TimesheetEventAction.checkOut => session.checkOutClientEventId,
+    };
+    return eventId == event.clientEventId;
+  }
+
   bool _matchesEvent(WorkSession session, TimesheetEvent event) {
-    final (eventId, capturedAt, latitude, longitude) = switch (event.action) {
+    final (capturedAt, latitude, longitude) = switch (event.action) {
       TimesheetEventAction.checkIn => (
-        session.checkInClientEventId,
         session.checkInCapturedAt,
         session.checkInLatitude,
         session.checkInLongitude,
       ),
       TimesheetEventAction.checkOut => (
-        session.checkOutClientEventId,
         session.checkOutCapturedAt,
         session.checkOutLatitude,
         session.checkOutLongitude,
       ),
     };
 
-    return eventId == event.clientEventId &&
+    return _isSameEvent(session, event) &&
         capturedAt?.toUtc() == event.capturedAt.toUtc() &&
         _normalizedCoordinate(latitude) ==
             _normalizedCoordinate(event.latitude) &&
