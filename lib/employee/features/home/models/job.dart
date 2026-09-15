@@ -336,6 +336,7 @@ class Job {
     this.hiredCount = 0,
     this.latitude,
     this.longitude,
+    this.distanceKm,
     this.addressPrecision = AddressPrecision.approximate,
   });
 
@@ -396,6 +397,11 @@ class Job {
   /// koordinata çevrilmemiş ilanlar haritada gösterilemiyor — bkz. [hasLocation].
   final double? latitude;
   final double? longitude;
+
+  /// `GET /jobs` `distanceKm`: yalnız istekte `lat`/`lng` varken dolar.
+  /// Kart bunu okur; istemci Haversine'i yeniden hesaplamaz. `null` satırı
+  /// gizler.
+  final double? distanceKm;
 
   /// [latitude]/[longitude] değerlerinin hangi kesinlikte geldiği.
   ///
@@ -533,6 +539,7 @@ class Job {
       hiredCount: (json['hiredCount'] as num?)?.toInt() ?? 0,
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
+      distanceKm: (json['distanceKm'] as num?)?.toDouble(),
       addressPrecision: AddressPrecision.fromCode(json['addressPrecision']),
     );
   }
@@ -564,6 +571,7 @@ class Job {
       'hiredCount': hiredCount,
       'latitude': latitude,
       'longitude': longitude,
+      'distanceKm': distanceKm,
       'addressPrecision': addressPrecision.code,
     };
   }

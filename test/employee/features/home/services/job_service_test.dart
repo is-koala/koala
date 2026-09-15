@@ -142,6 +142,59 @@ void main() {
       expect(query['size'], 100);
     });
 
+    test('yakınlık sıralaması lat/lng ve distanceKm okur', () async {
+      final api = FakeApi(
+        handler: (_) => FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {
+              'content': [
+                {..._jobBody, 'distanceKm': 3.4},
+              ],
+            },
+          },
+        ),
+      );
+
+      final result = await JobService.withClient(api.client).search(
+        const JobSearchQuery(
+          latitude: 41.008238123,
+          longitude: 28.978359456,
+          sort: JobSortOption.nearest,
+        ),
+      );
+
+      final query = api.requests.single.queryParameters;
+      expect(query['lat'], 41.008238);
+      expect(query['lng'], 28.978359);
+      expect(query['sort'], 'distance,asc');
+      expect(result.jobs.single.distanceKm, 3.4);
+    });
+
+    test('başlangıç penceresi Instant olarak gidiyor', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {'content': []},
+          },
+        ),
+      );
+
+      await JobService.withClient(api.client).search(
+        JobSearchQuery(
+          startFrom: DateTime.parse('2026-09-14T21:00:00.000Z'),
+          startTo: DateTime.parse('2026-09-15T20:59:59.999Z'),
+        ),
+      );
+
+      final query = api.requests.single.queryParameters;
+      expect(query['startFrom'], '2026-09-14T21:00:00.000Z');
+      expect(query['startTo'], '2026-09-15T20:59:59.999Z');
+    });
+
     test('sıralama sorgu modelinden geliyor', () async {
       final api = FakeApi(
         handler: (_) => const FakeApiResponse(

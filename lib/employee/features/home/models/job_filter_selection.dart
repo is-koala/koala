@@ -1,5 +1,6 @@
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_search_query.dart';
+import 'package:koala/employee/features/home/models/job_start_on.dart';
 import 'package:koala/product/extensions/num_extensions.dart';
 import 'package:koala/product/models/copy_with.dart';
 import 'package:koala/product/models/reference_location.dart';
@@ -19,6 +20,7 @@ enum JobFilterField {
   insurance,
   experience,
   distance,
+  startOn,
 }
 
 /// Çubukta özetlenen etkin bir süzgeç.
@@ -54,6 +56,7 @@ class JobFilterSelection {
     this.insuranceRequired,
     this.experienceRequired,
     this.radiusKm,
+    this.startOn,
     this.sort = JobSortOption.newest,
   });
 
@@ -72,6 +75,10 @@ class JobFilterSelection {
   /// değer [toQuery]'de sınırlayıcı kutuya çevriliyor ve yalnız konum
   /// biliniyorsa uygulanıyor.
   final double? radiusKm;
+
+  /// Başlangıç günü çipi. [toQuery] bunu `startFrom`/`startTo` Instant
+  /// penceresine çevirir.
+  final JobStartOn? startOn;
 
   final JobSortOption sort;
 
@@ -104,6 +111,8 @@ class JobFilterSelection {
         JobFilterField.distance,
         '${radiusKm!.toStringAsFixed(0)} km içinde',
       ),
+    if (startOn != null)
+      ActiveJobFilter(JobFilterField.startOn, startOn!.label),
   ];
 
   int get activeCount => activeFilters.length;
@@ -127,7 +136,9 @@ class JobFilterSelection {
     String? searchText,
     double? latitude,
     double? longitude,
+    DateTime? now,
   }) {
+    final window = startOn?.toWindow(now: now);
     final query = JobSearchQuery(
       query: searchText,
       categoryId: category?.id,
@@ -140,6 +151,10 @@ class JobFilterSelection {
       maxSalary: maxSalary,
       insuranceRequired: insuranceRequired,
       experienceRequired: experienceRequired,
+      latitude: latitude,
+      longitude: longitude,
+      startFrom: window?.startFrom,
+      startTo: window?.startTo,
       sort: sort,
     );
 
@@ -167,6 +182,7 @@ class JobFilterSelection {
       JobFilterField.insurance => copyWith(insuranceRequired: null),
       JobFilterField.experience => copyWith(experienceRequired: null),
       JobFilterField.distance => copyWith(radiusKm: null),
+      JobFilterField.startOn => copyWith(startOn: null),
     };
   }
 
@@ -188,6 +204,7 @@ class JobFilterSelection {
     Object? insuranceRequired = CopyWith.unset,
     Object? experienceRequired = CopyWith.unset,
     Object? radiusKm = CopyWith.unset,
+    Object? startOn = CopyWith.unset,
     JobSortOption? sort,
   }) {
     return JobFilterSelection(
@@ -208,6 +225,7 @@ class JobFilterSelection {
         this.experienceRequired,
       ),
       radiusKm: CopyWith.pick(radiusKm, this.radiusKm),
+      startOn: CopyWith.pick(startOn, this.startOn),
       sort: sort ?? this.sort,
     );
   }

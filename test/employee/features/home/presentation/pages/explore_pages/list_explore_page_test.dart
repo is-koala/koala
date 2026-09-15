@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/home/models/job_search_query.dart';
 import 'package:koala/employee/features/home/presentation/pages/explore_pages/list_explore_page.dart';
@@ -110,6 +111,28 @@ Future<void> tapScrolled(WidgetTester tester, Finder finder) async {
   await tester.pumpAndSettle();
   await tester.tap(finder);
   await tester.pumpAndSettle();
+}
+
+void _grantLocation() {
+  final messenger =
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+  messenger.setMockMethodCallHandler(
+    const MethodChannel('flutter.baseflow.com/geolocator'),
+    (call) async => switch (call.method) {
+      'getCurrentPosition' => {'latitude': 41.008238, 'longitude': 28.978359},
+      'checkPermission' => 3,
+      'isLocationServiceEnabled' => true,
+      _ => null,
+    },
+  );
+}
+
+void _clearLocation() {
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(
+        const MethodChannel('flutter.baseflow.com/geolocator'),
+        null,
+      );
 }
 
 void main() {
@@ -243,7 +266,7 @@ void main() {
     expect(last.containsKey('employerType'), isFalse);
   });
 
-  testWidgets('sıralama menüsü yalnız sunucunun dört alanını sunuyor', (
+  testWidgets('sıralama menüsü En yakını konum yokken kapalı gösteriyor', (
     tester,
   ) async {
     final api = _api({0: _pageBody(const [], last: true)});
@@ -256,12 +279,54 @@ void main() {
     for (final option in JobSortOption.values) {
       expect(find.text(option.label), findsOneWidget);
     }
-    expect(find.text('En yakın'), findsNothing);
+    expect(
+      find.text('Yakınlık sıralaması için konum izni gerekiyor.'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('En yakın'), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    expect(jobQueries(api).last.containsKey('sort'), isFalse);
 
     await tester.tap(find.text('Ücret (azalan)'));
     await tester.pumpAndSettle();
 
     expect(jobQueries(api).last['sort'], 'salary,desc');
+  });
+
+  testWidgets('Bugün çipi startFrom/startTo Instant penceresini gönderiyor', (
+    tester,
+  ) async {
+    final api = _api({0: _pageBody(const [], last: true)});
+
+    await pumpPage(tester, api);
+    await tester.tap(find.text('Bugün'));
+    await tester.pumpAndSettle();
+
+    final last = jobQueries(api).last;
+    expect(last['startFrom'], isA<String>());
+    expect(last['startTo'], isA<String>());
+    expect((last['startFrom'] as String).endsWith('Z'), isTrue);
+    expect((last['startTo'] as String).endsWith('Z'), isTrue);
+  });
+
+  testWidgets('konum varken En yakın lat/lng ve sort=distance gönderiyor', (
+    tester,
+  ) async {
+    _grantLocation();
+    addTearDown(_clearLocation);
+    final api = _api({0: _pageBody(const [], last: true)});
+
+    await pumpPage(tester, api);
+    await tester.tap(find.text('Sırala'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('En yakın'));
+    await tester.pumpAndSettle();
+
+    final last = jobQueries(api).last;
+    expect(last['sort'], 'distance,asc');
+    expect(last['lat'], 41.008238);
+    expect(last['lng'], 28.978359);
   });
 
   testWidgets(

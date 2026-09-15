@@ -22,6 +22,74 @@ void main() {
       expect(query.toQueryParameters()['sort'], 'salary,desc');
     });
 
+    test('yakınlık sıralaması lat/lng ve sort=distance,asc gönderiyor', () {
+      const query = JobSearchQuery(
+        latitude: 41.008238123,
+        longitude: 28.978359456,
+        sort: JobSortOption.nearest,
+      );
+
+      expect(query.toQueryParameters(), {
+        'lat': 41.008238,
+        'lng': 28.978359,
+        'sort': 'distance,asc',
+      });
+    });
+
+    test('konum yokken yakınlık sıralaması sort parametresini düşürüyor', () {
+      const query = JobSearchQuery(sort: JobSortOption.nearest);
+
+      expect(query.toQueryParameters().containsKey('sort'), isFalse);
+      expect(query.toQueryParameters().containsKey('lat'), isFalse);
+    });
+
+    test('konum altı ondalığa yuvarlanıyor', () {
+      const query = JobSearchQuery(
+        latitude: 41.01234567891,
+        longitude: 28.97654321098,
+      );
+
+      expect(query.toQueryParameters()['lat'], 41.012346);
+      expect(query.toQueryParameters()['lng'], 28.976543);
+    });
+
+    test('yalnız enlem veya yalnız boylam lat/lng üretmiyor', () {
+      expect(
+        const JobSearchQuery(
+          latitude: 41.0,
+        ).toQueryParameters().containsKey('lat'),
+        isFalse,
+      );
+      expect(
+        const JobSearchQuery(
+          longitude: 29.0,
+        ).toQueryParameters().containsKey('lng'),
+        isFalse,
+      );
+    });
+
+    test('başlangıç penceresi ISO Instant olarak gidiyor', () {
+      final query = JobSearchQuery(
+        startFrom: DateTime.parse('2026-09-14T21:00:00.000Z'),
+        startTo: DateTime.parse('2026-09-15T20:59:59.999Z'),
+      );
+
+      expect(
+        query.toQueryParameters()['startFrom'],
+        '2026-09-14T21:00:00.000Z',
+      );
+      expect(query.toQueryParameters()['startTo'], '2026-09-15T20:59:59.999Z');
+    });
+
+    test('pencerenin bir ucu eksikse ikisi de konmuyor', () {
+      final query = JobSearchQuery(
+        startFrom: DateTime.parse('2026-09-14T21:00:00.000Z'),
+      );
+
+      expect(query.toQueryParameters().containsKey('startFrom'), isFalse);
+      expect(query.toQueryParameters().containsKey('startTo'), isFalse);
+    });
+
     test('yalnız boşluktan ibaret arama metni atılıyor', () {
       const query = JobSearchQuery(query: '   ');
 
@@ -80,10 +148,16 @@ void main() {
   });
 
   group('JobSortOption', () {
-    test('yalnız sunucunun beyaz listesindeki dört alanı üretiyor', () {
+    test('yalnız sunucunun beyaz listesindeki alanları üretiyor', () {
       final fields = JobSortOption.values.map((option) => option.field).toSet();
 
-      expect(fields, {'createdAt', 'salary', 'startDateTime', 'title'});
+      expect(fields, {
+        'createdAt',
+        'distance',
+        'salary',
+        'startDateTime',
+        'title',
+      });
     });
 
     test('her seçenek `alan,yön` biçiminde parametre üretiyor', () {
@@ -124,6 +198,8 @@ void main() {
         query: 'garson',
         companyId: 'company-7',
         categoryId: 'cat-1',
+        latitude: 41.0,
+        longitude: 29.0,
       );
 
       final updated = query.copyWith(companyId: null, categoryId: null);
@@ -131,6 +207,7 @@ void main() {
       expect(updated.companyId, isNull);
       expect(updated.categoryId, isNull);
       expect(updated.query, 'garson');
+      expect(updated.latitude, 41.0);
     });
   });
 
@@ -153,6 +230,23 @@ void main() {
       const query = JobSearchQuery(sort: JobSortOption.salaryAsc);
 
       expect(query.hasFilters, isFalse);
+    });
+
+    test('konum süzgeç sayılmıyor', () {
+      const query = JobSearchQuery(latitude: 41.0, longitude: 29.0);
+
+      expect(query.hasFilters, isFalse);
+      expect(query.hasOrigin, isTrue);
+    });
+
+    test('başlangıç penceresi süzgeç sayılıyor', () {
+      final query = JobSearchQuery(
+        startFrom: DateTime.parse('2026-09-14T21:00:00.000Z'),
+        startTo: DateTime.parse('2026-09-15T20:59:59.999Z'),
+      );
+
+      expect(query.hasFilters, isTrue);
+      expect(query.hasStartWindow, isTrue);
     });
 
     test('şirket kimliği süzgeç sayılıyor', () {

@@ -85,6 +85,28 @@ void main() {
       expect(job.hasLocation, isTrue);
       expect(job.coverImageUrl, 'https://cdn.local/job_1-cover.webp');
       expect(job.companyId, isNull);
+      expect(job.distanceKm, isNull);
+    });
+
+    test('distanceKm sunucu gövdesinden okunur, yoksa null kalır', () {
+      final withDistance = Job.fromJson({
+        'id': 'job_1',
+        'title': 'Garson',
+        'category': {'id': 'cat-1', 'code': 'WAITER', 'name': 'Garsonluk'},
+        'type': 'ONE_TIME',
+        'salary': 500,
+        'distanceKm': 3.4,
+      });
+      final without = Job.fromJson({
+        'id': 'job_1',
+        'title': 'Garson',
+        'category': {'id': 'cat-1', 'code': 'WAITER', 'name': 'Garsonluk'},
+        'type': 'ONE_TIME',
+        'salary': 500,
+      });
+
+      expect(withDistance.distanceKm, 3.4);
+      expect(without.distanceKm, isNull);
     });
 
     test('sözleşmeden düşen ilan durumu açık sayılmaz', () {

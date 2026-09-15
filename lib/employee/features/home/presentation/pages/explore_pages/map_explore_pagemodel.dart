@@ -48,6 +48,9 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
 
+  JobSortOption _sort = JobSortOption.newest;
+  JobStartOn? _startOn;
+
   @override
   void initState() {
     super.initState();
@@ -62,6 +65,7 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
           _currentLatLng = LatLng(pos.latitude, pos.longitude);
           _loading = false;
         });
+        _jobs.setOrigin(latitude: pos.latitude, longitude: pos.longitude);
 
         // Haritayı konuma taşı
         if (_mapController != null) {
@@ -134,6 +138,27 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
       _markers = markers;
       _areas = JobMarkerGenerator.generateAreas(jobs: jobs);
     });
+  }
+
+  Future<void> _openSortSheet() async {
+    final picked = await JobSortSheet.show(
+      context,
+      selected: _sort,
+      hasLocation: _currentLatLng != null,
+    );
+    if (picked == null || !mounted) return;
+
+    setState(() => _sort = picked);
+    _jobs.setSort(picked);
+  }
+
+  void _setStartOn(JobStartOn? startOn) {
+    setState(() => _startOn = startOn);
+    final window = startOn?.toWindow();
+    _jobs.setStartWindow(
+      startFrom: window?.startFrom,
+      startTo: window?.startTo,
+    );
   }
 
   /// Haritada arama yap.

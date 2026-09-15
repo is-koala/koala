@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:koala/employee/features/home/models/job_search_query.dart';
 import 'package:koala/product/constants/app_sizes.dart';
+import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_bottom_sheet.dart';
 import 'package:koala/product/widgets/filter_pill.dart';
 
@@ -8,28 +9,30 @@ import 'package:koala/product/widgets/filter_pill.dart';
 ///
 /// Seçenekler [JobSortOption]'dan **türetiliyor**, elle yazılmıyor: sunucu
 /// sıralamayı beyaz listeliyor ve listede olmayan bir alan boş sonuç değil
-/// `400` (`PAGE_SORT_FIELD_NOT_ALLOWED`) döndürüyor. Menüye elle bir dize
-/// eklenirse ilk denemede hata alınır; enum bunu imkânsız kılıyor.
+/// `400` (`PAGE_SORT_FIELD_NOT_ALLOWED`) döndürüyor.
 ///
-/// **"En yakın" bilerek yok.** Sunucunun `SORTABLE_FIELDS` kümesinde mesafe
-/// yok, yani böyle bir seçenek yalnızca o ana kadar yüklenmiş sayfaları
-/// sıralardı ve sonsuz kaydırmayla birlikte kartlar gözün önünde yer
-/// değiştirirdi. Mesafe bunun yerine **süzgeç** tarafında duruyor: kullanıcının
-/// çevresinde bir sınırlayıcı kutu olarak sunucuya gidiyor, sonuç zaten yakın
-/// ilanlardan oluşuyor.
+/// "En yakın" konum ister: `lat`/`lng` + `sort=distance,asc`. İzin yoksa
+/// seçenek kapalı çizilir ve sebebi yazılır; sessizce yok sayılmaz.
 class JobSortSheet extends StatelessWidget {
-  const JobSortSheet({super.key, required this.selected});
+  const JobSortSheet({
+    super.key,
+    required this.selected,
+    this.hasLocation = false,
+  });
 
   final JobSortOption selected;
+  final bool hasLocation;
 
   /// Sheet'i açar ve seçilen sıralamayı döndürür; vazgeçilirse `null`.
   static Future<JobSortOption?> show(
     BuildContext context, {
     required JobSortOption selected,
+    bool hasLocation = false,
   }) {
     return AppBottomSheet.show<JobSortOption>(
       context,
-      builder: (_) => JobSortSheet(selected: selected),
+      builder: (_) =>
+          JobSortSheet(selected: selected, hasLocation: hasLocation),
     );
   }
 
@@ -37,16 +40,31 @@ class JobSortSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppBottomSheet(
       title: 'Sırala',
-      child: Wrap(
-        spacing: AppSizes.spaceSmall,
-        runSpacing: AppSizes.spaceSmall,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (final option in JobSortOption.values)
-            FilterPill(
-              label: option.label,
-              isSelected: option == selected,
-              onTap: () => Navigator.pop(context, option),
+          Wrap(
+            spacing: AppSizes.spaceSmall,
+            runSpacing: AppSizes.spaceSmall,
+            children: [
+              for (final option in JobSortOption.values)
+                FilterPill(
+                  label: option.label,
+                  isSelected: option == selected,
+                  enabled: !option.requiresOrigin || hasLocation,
+                  onTap: () => Navigator.pop(context, option),
+                ),
+            ],
+          ),
+          if (!hasLocation) ...[
+            const SizedBox(height: AppSizes.spaceSmall),
+            Text(
+              'Yakınlık sıralaması için konum izni gerekiyor.',
+              style: context.textTheme.labelMedium?.copyWith(
+                color: context.textSecondary,
+              ),
             ),
+          ],
         ],
       ),
     );

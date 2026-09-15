@@ -30,6 +30,7 @@ Job buildJob({
   DateTime? endDateTime,
   String? coverImageUrl,
   AddressPrecision addressPrecision = AddressPrecision.approximate,
+  double? distanceKm,
 }) {
   return Job(
     id: id,
@@ -54,6 +55,7 @@ Job buildJob({
     endDateTime: endDateTime,
     coverImageUrl: coverImageUrl,
     addressPrecision: addressPrecision,
+    distanceKm: distanceKm,
   );
 }
 
