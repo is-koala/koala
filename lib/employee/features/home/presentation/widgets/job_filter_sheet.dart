@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_filter_selection.dart';
+import 'package:koala/employee/features/home/presentation/widgets/job_start_on_chips.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -132,6 +133,7 @@ class _JobFilterSheetState extends State<JobFilterSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (_errorMessage != null) _errorRow(_errorMessage!),
+                      _startOnSection(),
                       _categorySection(),
                       _typeSection(),
                       _locationSection(),
@@ -154,6 +156,17 @@ class _JobFilterSheetState extends State<JobFilterSheet> {
   }
 
   // --------------------------------------------------------------- Bölümler
+
+  Widget _startOnSection() {
+    return _section(
+      'Başlangıç günü',
+      JobStartOnChips(
+        selected: _draft.startOn,
+        onChanged: (value) =>
+            setState(() => _draft = _draft.copyWith(startOn: value)),
+      ),
+    );
+  }
 
   Widget _section(String title, Widget child) {
     return Padding(

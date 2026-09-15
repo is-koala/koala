@@ -5,10 +5,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:koala/employee/features/home/models/job_map_bounds.dart';
 import 'package:koala/employee/features/home/presentation/pages/explore_pages/map_explore_page.dart';
+import 'package:koala/employee/features/home/presentation/providers/job_category_provider.dart';
 import 'package:koala/employee/features/home/presentation/providers/map_explore_controller.dart';
 import 'package:koala/employee/features/home/presentation/providers/page_provider.dart';
 import 'package:koala/employee/features/home/presentation/providers/search_provider.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_marker_generator.dart';
+import 'package:koala/employee/features/home/services/job_category_service.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:provider/provider.dart';
 
@@ -55,10 +57,24 @@ Map<String, dynamic> _page(Map<String, dynamic> job) => {
 /// Aynı ilanı sırayla veren sahte sunucu: ilk çağrıda yetkili görünüm, sonraki
 /// çağrılarda yetkisiz görünüm. Gerçek hayatta aradan geçen olay atamanın
 /// bitmesi ya da iptal edilmesi.
+bool _isJobCategories(RequestOptions options) =>
+    options.path.contains('job-categories');
+
+FakeApiResponse _emptyCategories() =>
+    const FakeApiResponse(statusCode: 200, body: {'success': true, 'data': []});
+
+/// İlan isteklerini kategori ucundan ayırır: Süzgeçler sheet'i kategoriyi
+/// yüklemese bile FakeApi'nin iş sırasını bozmasın.
+List<Map<String, dynamic>> _jobQueries(FakeApi api) => [
+  for (final request in api.requests)
+    if (!request.path.contains('job-categories')) request.queryParameters,
+];
+
 FakeApi _apiServing(List<Map<String, dynamic>> jobsInOrder) {
   var call = 0;
   return FakeApi(
     handler: (RequestOptions options) {
+      if (_isJobCategories(options)) return _emptyCategories();
       final job = jobsInOrder[call.clamp(0, jobsInOrder.length - 1)];
       call++;
       return FakeApiResponse(statusCode: 200, body: _page(job));
@@ -138,6 +154,13 @@ Future<void> _pumpMap(
         providers: [
           ChangeNotifierProvider(create: (_) => SearchProvider()),
           ChangeNotifierProvider.value(value: pageProvider ?? PageProvider()),
+          ChangeNotifierProvider(
+            create: (_) => JobCategoryProvider(
+              service: JobCategoryService.withClient(
+                FakeApi(handler: (_) => _emptyCategories()).client,
+              ),
+            ),
+          ),
         ],
         child: MapExplorePage(controller: controller),
       ),
@@ -318,6 +341,71 @@ void main() {
     expect(_map(tester).markers, isEmpty);
     expect(_map(tester).circles, isEmpty);
   });
+
+  testWidgets('başlangıç günü çipleri haritanın üstüne binmiyor', (
+    tester,
+  ) async {
+    final api = _apiServing([
+      _jobBody(
+        latitude: exactLatitude,
+        longitude: exactLongitude,
+        precision: 'EXACT',
+      ),
+    ]);
+    final controller = MapExploreController(
+      service: JobService.withClient(api.client),
+      debounce: Duration.zero,
+    );
+
+    await _pumpMap(tester, controller);
+
+    expect(find.text('Bugün'), findsNothing);
+    expect(find.text('Yarın'), findsNothing);
+    expect(find.text('Hafta sonu'), findsNothing);
+    expect(find.byTooltip('Süzgeçler'), findsOneWidget);
+  });
+
+  testWidgets(
+    'Süzgeçler Bugün çipi startFrom/startTo Instant penceresini gönderiyor',
+    (tester) async {
+      final api = _apiServing([
+        _jobBody(
+          latitude: exactLatitude,
+          longitude: exactLongitude,
+          precision: 'EXACT',
+        ),
+      ]);
+      final controller = MapExploreController(
+        service: JobService.withClient(api.client),
+        debounce: Duration.zero,
+      );
+
+      await _pumpMap(tester, controller);
+      controller.onCameraIdle(_bounds);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Süzgeçler'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Başlangıç günü'), findsOneWidget);
+      expect(find.text('Bugün'), findsOneWidget);
+      expect(find.text('Yarın'), findsOneWidget);
+      expect(find.text('Hafta sonu'), findsOneWidget);
+
+      await tester.tap(find.text('Bugün'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Uygula'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Uygula'));
+      await tester.pumpAndSettle();
+
+      final last = _jobQueries(api).last;
+      expect(last['startFrom'], isA<String>());
+      expect(last['startTo'], isA<String>());
+      expect((last['startFrom'] as String).endsWith('Z'), isTrue);
+      expect((last['startTo'] as String).endsWith('Z'), isTrue);
+    },
+  );
 
   group('harita bayrağı', () {
     // is-koala/koala#172: iOS'ta anahtar boşken ilk `GoogleMap` uygulamayı

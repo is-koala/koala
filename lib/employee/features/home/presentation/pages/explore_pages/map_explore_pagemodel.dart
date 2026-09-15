@@ -49,7 +49,12 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
   final FocusNode _searchFocusNode = FocusNode();
 
   JobSortOption _sort = JobSortOption.newest;
-  JobStartOn? _startOn;
+
+  /// Süzgeç sheet'inin uygulanmış hâli.
+  ///
+  /// Harita kameranın kutusunu koruduğu için sheet'ten yalnız başlangıç günü
+  /// penceresi sunucuya gider; mesafe yarıçapı kutuyu ezerdi.
+  JobFilterSelection _selection = const JobFilterSelection();
 
   @override
   void initState() {
@@ -152,9 +157,17 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
     _jobs.setSort(picked);
   }
 
-  void _setStartOn(JobStartOn? startOn) {
-    setState(() => _startOn = startOn);
-    final window = startOn?.toWindow();
+  Future<void> _openFilterSheet() async {
+    final picked = await JobFilterSheet.show(
+      context,
+      selection: _selection,
+      categories: context.read<JobCategoryProvider>().categories,
+      hasLocation: _currentLatLng != null,
+    );
+    if (picked == null || !mounted) return;
+
+    setState(() => _selection = picked);
+    final window = picked.startOn?.toWindow();
     _jobs.setStartWindow(
       startFrom: window?.startFrom,
       startTo: window?.startTo,
