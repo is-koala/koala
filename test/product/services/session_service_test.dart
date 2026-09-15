@@ -89,7 +89,7 @@ void main() {
       final request = api.requests.single;
       expect(request.path, '/users/me/sessions/ses_1');
       expect(request.method, 'GET');
-      expect(detail.deviceId, 'dev_1');
+      expect(detail.session.deviceId, 'dev_1');
       expect(detail.logins, 3);
       expect(detail.loginHistory.single.successful, isTrue);
     });

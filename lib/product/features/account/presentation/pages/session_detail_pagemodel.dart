@@ -19,7 +19,7 @@ abstract class SessionDetailPagemodel extends State<SessionDetailPage> {
   /// kendini tazeliyor.
   Future<void> reload() async {
     try {
-      final fresh = await _service.fetchDetail(detail.id);
+      final fresh = await _service.fetchDetail(detail.session.id);
       if (!mounted) return;
       setState(() => detail = fresh);
     } on ApiException catch (error) {
@@ -39,7 +39,7 @@ abstract class SessionDetailPagemodel extends State<SessionDetailPage> {
   /// konsaydı kullanıcı onu kendi yazmış sanırdı. Boş ad `400` — kutu boşken
   /// onayı kapalı tutuyor, sunucuya gitmeden.
   Future<void> rename() async {
-    final deviceId = detail.deviceId;
+    final deviceId = detail.session.deviceId;
     if (isWorking || deviceId == null) return;
 
     final name = await ReasonDialog.show(
@@ -78,7 +78,7 @@ abstract class SessionDetailPagemodel extends State<SessionDetailPage> {
       context,
       title: 'Oturumu kapat',
       message:
-          '"${detail.displayName}" cihazındaki oturum kapatılacak. '
+          '"${detail.session.displayName}" cihazındaki oturum kapatılacak. '
           'O cihaz yeniden giriş yapmak zorunda kalacak.',
       actionLabel: 'Kapat',
     );
@@ -87,7 +87,7 @@ abstract class SessionDetailPagemodel extends State<SessionDetailPage> {
     setState(() => isWorking = true);
 
     try {
-      await _service.revoke(detail.id);
+      await _service.revoke(detail.session.id);
       if (!mounted) return;
       AppToast.success(context, 'Oturum kapatıldı');
       context.pop(true);

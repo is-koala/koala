@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/product/constants/app_colors.dart';
-import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
-import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
@@ -16,6 +14,8 @@ import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/confirm_dialog.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/empty_state.dart';
+import 'package:koala/product/widgets/session_device_icon.dart';
+import 'package:koala/product/widgets/status_badge.dart';
 
 /// Hesaba giriş yapılmış cihazların listesi.
 ///
@@ -254,7 +254,10 @@ class _SessionViewState extends State<SessionView> {
       key: ValueKey('session-${session.id}'),
       decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: context.dividerColor, width: 1),
+          bottom: BorderSide(
+            color: context.dividerColor,
+            width: AppSizes.divider,
+          ),
         ),
       ),
       child: InkWell(
@@ -264,22 +267,7 @@ class _SessionViewState extends State<SessionView> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: AppSizes.iconTile,
-                height: AppSizes.iconTile,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: context.accentColor.withValues(
-                    alpha: AppColors.surfaceTintAlpha,
-                  ),
-                  borderRadius: AppRadius.innerCircular,
-                ),
-                child: AppIcon(
-                  _deviceIcon(session.deviceType),
-                  size: AppSizes.icon,
-                  color: context.accentColor,
-                ),
-              ),
+              SessionDeviceIcon(session.deviceType),
               const SizedBox(width: AppSizes.space),
               Expanded(child: _tileContent(session)),
               // Kendi oturumunu kapatmak çıkış yapmak demek; o iş ayarlardaki
@@ -330,7 +318,7 @@ class _SessionViewState extends State<SessionView> {
             ),
             if (session.isCurrent) ...[
               const SizedBox(width: AppSizes.spaceSmall),
-              _currentBadge(),
+              const CurrentSessionBadge(),
             ],
           ],
         ),
@@ -347,23 +335,6 @@ class _SessionViewState extends State<SessionView> {
     );
   }
 
-  Widget _currentBadge() {
-    return Container(
-      padding: AppPadding.badge,
-      decoration: BoxDecoration(
-        color: AppColors.success.withValues(alpha: AppColors.surfaceTintAlpha),
-        borderRadius: AppRadius.smallCircular,
-      ),
-      child: Text(
-        'Bu cihaz',
-        style: context.textTheme.labelSmall?.copyWith(
-          color: AppColors.success,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
   /// Yer ve son kullanım. İkisi de boş gelebiliyor, o zaman satır hiç
   /// çizilmiyor — "null · null" göstermektense boş bırakmak iyi.
   String _subtitle(UserSession session) {
@@ -374,13 +345,5 @@ class _SessionViewState extends State<SessionView> {
     ];
 
     return parts.join(' · ');
-  }
-
-  AppIconData _deviceIcon(SessionDeviceType type) {
-    return switch (type) {
-      SessionDeviceType.ios || SessionDeviceType.android => AppIcons.mobile,
-      SessionDeviceType.webBrowser => AppIcons.globe,
-      SessionDeviceType.other || SessionDeviceType.unknown => AppIcons.shield,
-    };
   }
 }

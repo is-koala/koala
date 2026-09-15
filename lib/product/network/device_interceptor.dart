@@ -9,8 +9,8 @@ import 'package:koala/product/network/device_identity.dart';
 /// `/auth/login` ve `/auth/complete-registration` sırasında oluşturuyor ve
 /// adını da o anda gelen [DeviceHints]'ten yazıyor.
 class DeviceInterceptor extends Interceptor {
-  DeviceInterceptor(this._deviceIdentity, {DeviceHints? hints})
-    : _hints = hints ?? DeviceHints.current();
+  DeviceInterceptor(this._deviceIdentity, {required DeviceHints hints})
+    : _hints = hints;
 
   final DeviceIdentity _deviceIdentity;
 

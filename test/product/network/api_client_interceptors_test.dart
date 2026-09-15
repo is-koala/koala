@@ -122,6 +122,10 @@ void main() {
       final refresh = seen[ApiPaths.refreshToken]!;
       expect(refresh[DeviceHints.osHeader], 'Android');
       expect(refresh[DeviceHints.appVersionHeader], '1.1.0');
+      // Sıradan (giriş dışı) istek de aynı başlıkları taşıyor.
+      final plain = seen[ApiPaths.currentUser]!;
+      expect(plain[DeviceHints.osHeader], 'Android');
+      expect(plain[DeviceHints.appVersionHeader], '1.1.0');
     });
   });
 

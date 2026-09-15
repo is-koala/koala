@@ -34,17 +34,23 @@ void main() {
         ],
       });
 
-      expect(detail.id, 'ses-1');
-      expect(detail.deviceId, 'dev-1');
-      expect(detail.deviceType, SessionDeviceType.ios);
-      expect(detail.displayName, 'iPhone 14 Pro Max · iOS 18.1 · Koala 1.1.0');
+      expect(detail.session.id, 'ses-1');
+      expect(detail.session.deviceId, 'dev-1');
+      expect(detail.session.deviceType, SessionDeviceType.ios);
+      expect(
+        detail.session.displayName,
+        'iPhone 14 Pro Max · iOS 18.1 · Koala 1.1.0',
+      );
       expect(detail.deviceCustomName, isNull);
       expect(detail.createdAt, DateTime.utc(2026, 9, 1, 10));
-      expect(detail.lastAccessedAt, DateTime.utc(2026, 9, 14, 8, 30));
-      expect(detail.refreshExpiresAt, DateTime.utc(2026, 10, 14, 8, 30));
-      expect(detail.ipAddress, '85.100.1.1');
-      expect(detail.location, 'İstanbul, TR');
-      expect(detail.isCurrent, isTrue);
+      expect(detail.session.lastAccessedAt, DateTime.utc(2026, 9, 14, 8, 30));
+      expect(
+        detail.session.refreshExpiresAt,
+        DateTime.utc(2026, 10, 14, 8, 30),
+      );
+      expect(detail.session.ipAddress, '85.100.1.1');
+      expect(detail.session.location, 'İstanbul, TR');
+      expect(detail.session.isCurrent, isTrue);
       expect(detail.logins, 7);
       expect(detail.loginHistory, hasLength(2));
       expect(detail.loginHistory.first.successful, isTrue);
@@ -63,13 +69,13 @@ void main() {
         'loginHistory': null,
       });
 
-      expect(detail.deviceId, isNull);
-      expect(detail.deviceType, SessionDeviceType.unknown);
-      expect(detail.displayName, 'Bilinmeyen cihaz');
-      expect(detail.ipAddress, isNull);
-      expect(detail.location, isNull);
+      expect(detail.session.deviceId, isNull);
+      expect(detail.session.deviceType, SessionDeviceType.unknown);
+      expect(detail.session.displayName, 'Bilinmeyen cihaz');
+      expect(detail.session.ipAddress, isNull);
+      expect(detail.session.location, isNull);
       expect(detail.createdAt, isNull);
-      expect(detail.isCurrent, isFalse);
+      expect(detail.session.isCurrent, isFalse);
       expect(detail.logins, 0);
       expect(detail.loginHistory, isEmpty);
     });
@@ -83,7 +89,7 @@ void main() {
         'current': false,
       });
 
-      expect(detail.displayName, 'İş telefonum');
+      expect(detail.session.displayName, 'İş telefonum');
       expect(detail.deviceCustomName, 'İş telefonum');
     });
   });

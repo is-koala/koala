@@ -129,7 +129,9 @@ void main() {
             return Scaffold(
               body: Column(
                 children: [
-                  Text('ayrıntı: ${detail.id} / ${detail.deviceId}'),
+                  Text(
+                    'ayrıntı: ${detail.session.id} / ${detail.session.deviceId}',
+                  ),
                   TextButton(
                     onPressed: () => context.pop(popResult),
                     child: const Text('geri'),
