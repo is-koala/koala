@@ -44,81 +44,100 @@ class BPaymentResultPage extends StatefulWidget {
 class _BPaymentResultPageState extends BPaymentResultPagemodel {
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return Scaffold(
-        body: Center(
-          child: Semantics(
-            container: true,
-            liveRegion: true,
-            label: 'Ödeme sonucu kontrol ediliyor.',
-            excludeSemantics: true,
-            child: const Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: AppSizes.spaceSmall),
-                Text('Ödeme sonucu kontrol ediliyor.'),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    final presentation = _presentation;
-
     return Scaffold(
       appBar: AppBar(title: const Text('Ödeme Sonucu')),
       body: SafeArea(
         child: Padding(
           padding: AppPadding.primaryAll,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Semantics(
-                key: const ValueKey('payment-result-status'),
-                container: true,
-                liveRegion: true,
-                label: '${presentation.title}. ${presentation.message}',
-                excludeSemantics: true,
-                child: Column(
-                  children: [
-                    AppIcon(
-                      presentation.icon,
-                      size: AppSizes.iconHuge,
-                      color: presentation.color,
-                    ),
-                    const SizedBox(height: AppSizes.spaceMedium),
-                    Text(
-                      presentation.title,
-                      style: Theme.of(context).textTheme.headlineSmall,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: AppSizes.spaceSmall),
-                    Text(presentation.message, textAlign: TextAlign.center),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSizes.sectionSpace),
-              MyButton(
-                onPressed: _isRefreshing ? null : _retry,
-                title: 'TEKRAR KONTROL ET',
-              ),
-              if (_assignment != null) ...[
-                const SizedBox(height: AppSizes.spaceMedium),
-                MyButton(
-                  isReversed: true,
-                  onPressed: () => context.go(
-                    '/business/job-detail',
-                    extra: _assignment!.job.id,
-                  ),
-                  title: 'İLANA DÖN',
-                ),
-              ],
-            ],
-          ),
+          child: _isLoading ? _loadingBody() : _resultBody(),
         ),
       ),
+    );
+  }
+
+  Widget _loadingBody() {
+    return Column(
+      children: [
+        Expanded(
+          child: Center(
+            child: Semantics(
+              container: true,
+              liveRegion: true,
+              label: 'Ödeme sonucu kontrol ediliyor.',
+              excludeSemantics: true,
+              child: const Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: AppSizes.spaceSmall),
+                  Text('Ödeme sonucu kontrol ediliyor.'),
+                ],
+              ),
+            ),
+          ),
+        ),
+        _homeButton(),
+      ],
+    );
+  }
+
+  Widget _resultBody() {
+    final presentation = _presentation;
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            child: Semantics(
+              key: const ValueKey('payment-result-status'),
+              container: true,
+              liveRegion: true,
+              label: '${presentation.title}. ${presentation.message}',
+              excludeSemantics: true,
+              child: Column(
+                children: [
+                  AppIcon(
+                    presentation.icon,
+                    size: AppSizes.iconHuge,
+                    color: presentation.color,
+                  ),
+                  const SizedBox(height: AppSizes.spaceMedium),
+                  Text(
+                    presentation.title,
+                    style: Theme.of(context).textTheme.headlineSmall,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: AppSizes.spaceSmall),
+                  Text(presentation.message, textAlign: TextAlign.center),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSizes.spaceMedium),
+        MyButton(
+          onPressed: _isRefreshing ? null : _retry,
+          title: 'TEKRAR KONTROL ET',
+        ),
+        if (_assignment != null) ...[
+          const SizedBox(height: AppSizes.spaceMedium),
+          MyButton(
+            isReversed: true,
+            onPressed: () =>
+                context.go('/business/job-detail', extra: _assignment!.job.id),
+            title: 'İLANA DÖN',
+          ),
+        ],
+        const SizedBox(height: AppSizes.spaceMedium),
+        _homeButton(),
+      ],
+    );
+  }
+
+  Widget _homeButton() {
+    return MyButton(
+      isReversed: true,
+      onPressed: () => context.go('/business/home'),
+      title: 'ANA SAYFA',
     );
   }
 }
