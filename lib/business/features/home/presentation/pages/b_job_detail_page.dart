@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/chat/models/messaging_availability.dart';
 import 'package:koala/product/router/business_routes.dart';
@@ -11,6 +12,8 @@ import 'package:koala/business/features/home/models/b_job_post.dart';
 import 'package:koala/business/features/home/models/b_payment_attempt.dart';
 import 'package:koala/business/features/home/models/b_pricing_breakdown.dart';
 import 'package:koala/business/features/home/models/job_applicant.dart';
+import 'package:koala/business/features/home/models/worker_identity.dart';
+import 'package:koala/business/features/home/models/worker_identity_error_codes.dart';
 import 'package:koala/business/features/home/presentation/providers/b_company_provider.dart';
 import 'package:koala/business/features/home/presentation/providers/b_job_templates_provider.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
@@ -18,6 +21,7 @@ import 'package:koala/business/features/home/presentation/widgets/b_job_gallery_
 import 'package:koala/business/features/home/presentation/widgets/b_talent_pool_button.dart';
 import 'package:koala/business/features/home/presentation/widgets/b_payment_attempts_section.dart';
 import 'package:koala/business/features/home/presentation/widgets/b_pricing_breakdown_card.dart';
+import 'package:koala/business/features/home/presentation/widgets/b_worker_identity_card.dart';
 import 'package:koala/business/features/home/services/employer_job_service.dart';
 import 'package:koala/business/features/home/services/b_payment_browser.dart';
 import 'package:koala/business/features/home/services/b_payment_service.dart';
@@ -51,6 +55,7 @@ import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/providers/job_gallery_provider.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
+import 'package:koala/product/widgets/confirm_dialog.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
 import 'package:koala/product/widgets/reason_dialog.dart';
@@ -290,6 +295,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
               const SizedBox(height: AppSizes.spaceMedium),
               _reviewRow(assignment),
             ],
+            ..._workerIdentitySection(assignment),
             ..._assignmentActions(assignment),
           ],
         ),
@@ -610,6 +616,49 @@ class _BJobDetailPageState extends BJobDetailPageModel {
         ),
       ),
     );
+  }
+
+  /// Sigorta bildirimi için kimlik bilgileri: düğme ya da açılmış kart.
+  ///
+  /// Düğme yalnız işe alınmış atamada ([_canRevealWorkerIdentity]); sunucu
+  /// bu atama için `404` dediyse hiç çizilmiyor. Kart açıkken düğme yok —
+  /// aynı bilgiyi ikinci kez istemek ikinci bir kayıt ve bildirim demek.
+  List<Widget> _workerIdentitySection(Assignment assignment) {
+    final identity = _revealedIdentityFor(assignment);
+    if (identity != null) {
+      return [
+        const SizedBox(height: AppSizes.spaceMedium),
+        BWorkerIdentityCard(
+          identity: identity,
+          onCopyIdentityNumber: () => _copyIdentityNumber(identity),
+          onHide: () => setState(_clearWorkerIdentity),
+        ),
+      ];
+    }
+
+    if (!_canRevealWorkerIdentity(assignment)) return const [];
+
+    return [
+      const SizedBox(height: AppSizes.spaceMedium),
+      SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          key: const ValueKey('reveal-worker-identity'),
+          onPressed: _isRevealingIdentity || _isRunningAssignmentAction
+              ? null
+              : () => _revealWorkerIdentity(assignment),
+          icon: _isRevealingIdentity
+              ? const SizedBox.square(
+                  dimension: AppSizes.iconSmall,
+                  child: CircularProgressIndicator(
+                    strokeWidth: BJobDetailPageModel._spinnerStroke,
+                  ),
+                )
+              : const AppIcon(AppIcons.eyeOpen, size: AppSizes.iconSmall),
+          label: const Text('Kimlik bilgilerini göster (sigorta için)'),
+        ),
+      ),
+    ];
   }
 
   /// İptal ve sorun bildirme.

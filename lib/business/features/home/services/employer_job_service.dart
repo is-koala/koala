@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:koala/business/features/home/models/create_job_request.dart';
 import 'package:koala/business/features/home/models/job_applicant.dart';
 import 'package:koala/business/features/home/models/b_payment_session.dart';
+import 'package:koala/business/features/home/models/worker_identity.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/home/models/job_page.dart';
 import 'package:koala/employee/features/jobs/models/assignment.dart';
@@ -203,6 +204,25 @@ class EmployerJobService {
     return _apiClient.post<Assignment>(
       ApiPaths.completeAssignment(assignmentId),
       parse: (data) => Assignment.fromJson(data! as Map<String, dynamic>),
+    );
+  }
+
+  /// İşe alınan çalışanın kimlik bilgilerini sigorta bildirimi için açar
+  /// (`GET /job-assignments/{id}/worker-identity`, koala-backend#312).
+  ///
+  /// Yalnızca işveren çağırabiliyor; işçi tarafında karşılığı yok. Sunucu
+  /// yalnız `CONFIRMED`, `IN_PROGRESS` ve `COMPLETED` atamada yanıt veriyor,
+  /// başka durumda ve yetkisiz çağrıda `404`. Çalışan kimliğini
+  /// doğrulamadıysa `409 WORKER_IDENTITY_NOT_VERIFIED`, saatlik bütçe
+  /// dolduysa `429`. Her başarılı okuma sunucuda kayda geçiyor ve çalışana
+  /// bildirim gidiyor — bu yüzden çağıran önce açık onay alıyor.
+  ///
+  /// Yanıt önbelleğe alınmıyor ve günlüğe yazılmıyor; çağıran bellekte
+  /// süreli tutup siliyor.
+  Future<WorkerIdentity> fetchWorkerIdentity(String assignmentId) {
+    return _apiClient.get<WorkerIdentity>(
+      ApiPaths.assignmentWorkerIdentity(assignmentId),
+      parse: (data) => WorkerIdentity.fromJson(data! as Map<String, dynamic>),
     );
   }
 
