@@ -25,10 +25,30 @@ const Map<String, dynamic> _me = {
   'identityVerified': false,
 };
 
+const Map<String, Object> _ratingSummary = {
+  'userId': 'user-1',
+  'reviewCount': 12,
+  'averageRating': 4.5,
+};
+
+const Map<String, Object> _writtenReview = {
+  'id': 'review-1',
+  'rating': 5,
+  'comment': 'Çok titiz çalıştı.',
+  'author': {'id': 'employer-1', 'firstName': 'Mehmet', 'lastName': 'Kaya'},
+};
+
 void main() {
   /// Profil sayfasının açılışta vurduğu her uç: kullanıcı, kimlik incelemesi,
   /// müsaitlik, değerlendirmeler. İnceleme yanıtı [review] ile değişiyor.
-  FakeApi serverWith(FakeApiResponse Function() review) {
+  ///
+  /// `/users/me` puan taşımıyor; kendi skoru `/users/{id}/rating-summary`
+  /// üzerinden geliyor. [summary] verilmezse uç `data: null` döner.
+  FakeApi serverWith(
+    FakeApiResponse Function() review, {
+    Map<String, Object>? summary,
+    List<Map<String, Object>> reviews = const [],
+  }) {
     return FakeApi(
       handler: (options) {
         switch (options.path) {
@@ -40,16 +60,20 @@ void main() {
           case '/users/me/identity-documents':
             return review();
           case '/users/user-1/rating-summary':
-            return const FakeApiResponse(
+            return FakeApiResponse(
               statusCode: 200,
-              body: {'success': true, 'data': null},
+              body: {'success': true, 'data': summary},
             );
           case '/users/user-1/reviews':
-            return const FakeApiResponse(
+            return FakeApiResponse(
               statusCode: 200,
               body: {
                 'success': true,
-                'data': {'content': [], 'last': true, 'totalElements': 0},
+                'data': {
+                  'content': reviews,
+                  'last': true,
+                  'totalElements': reviews.length,
+                },
               },
             );
           default:
@@ -147,6 +171,33 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('kimlik ekranı'), findsOneWidget);
+  });
+
+  testWidgets('kendi puanı profilde görünür, yorum sayısıyla', (tester) async {
+    await pumpProfile(
+      tester,
+      serverWith(
+        () => noIdentityReviewResponse,
+        summary: _ratingSummary,
+        reviews: [_writtenReview],
+      ),
+    );
+
+    expect(find.byKey(const ValueKey('profile-rating-summary')), findsOneWidget);
+    expect(find.text('4.5'), findsOneWidget);
+    expect(find.text('(12)'), findsOneWidget);
+    expect(find.text('0.0'), findsNothing);
+  });
+
+  // `/users/me` ortalama taşımıyor; özet ucu boşken sıfır yıldız uydurulmaz.
+  testWidgets('puanı yokken boş durum yazar, 0.0 yazmaz', (tester) async {
+    await pumpProfile(tester, serverWith(() => noIdentityReviewResponse));
+
+    expect(find.byKey(const ValueKey('profile-no-rating')), findsOneWidget);
+    expect(find.text('Henüz puan yok'), findsOneWidget);
+    expect(find.textContaining('Henüz değerlendirilmedin'), findsOneWidget);
+    expect(find.text('0.0'), findsNothing);
+    expect(find.byKey(const ValueKey('profile-rating-summary')), findsNothing);
   });
 
   testWidgets('aşağı çekince inceleme de tazeleniyor', (tester) async {

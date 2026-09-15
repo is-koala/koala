@@ -142,6 +142,8 @@ class _ProfilePageState extends ProfilePageModel {
             children: [
               profileHeader(user),
               const SizedBox(height: AppSizes.spaceLarge),
+              ProfileReviews(userId: user.id, service: widget.reviewService),
+              const SizedBox(height: AppSizes.spaceLarge),
               aboutProfile(user),
               const SizedBox(height: AppSizes.spaceLarge),
               cvArea(user),
@@ -158,8 +160,6 @@ class _ProfilePageState extends ProfilePageModel {
               experienceSection(user),
               const SizedBox(height: AppSizes.spaceMedium),
               educationSection(user),
-              const SizedBox(height: AppSizes.spaceMedium),
-              ProfileReviews(userId: user.id, service: widget.reviewService),
               const SizedBox(height: _bottomClearance),
             ],
           ),
