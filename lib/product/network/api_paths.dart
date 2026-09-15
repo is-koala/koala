@@ -226,6 +226,13 @@ class ApiPaths {
   static String assignmentPaymentSession(String assignmentId) =>
       '${jobAssignment(assignmentId)}/payment-session';
 
+  /// İşe alınan çalışanın sigorta bildirimi için kimlik bilgileri
+  /// (koala-backend#312, 0.9.27). Yalnız ilan sahibi / şirket yetkilisi,
+  /// atama `CONFIRMED|IN_PROGRESS|COMPLETED`; her okuma sunucuda kayda
+  /// geçiyor ve çalışana bildiriliyor.
+  static String assignmentWorkerIdentity(String assignmentId) =>
+      '${jobAssignment(assignmentId)}/worker-identity';
+
   /// Atamanın bütün ödeme denemeleri. Düz liste döner.
   static String assignmentPayments(String assignmentId) =>
       '${jobAssignment(assignmentId)}/payments';

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/business/features/home/models/create_job_request.dart';
+import 'package:koala/business/features/home/models/worker_identity.dart';
 import 'package:koala/business/features/home/services/employer_job_service.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/jobs/models/assignment.dart';
@@ -587,6 +588,102 @@ void main() {
             (error) => error.type,
             'type',
             ApiErrorType.dataConflict,
+          ),
+        ),
+      );
+    });
+  });
+
+  group('fetchWorkerIdentity', () {
+    test(
+      'GET /job-assignments/{id}/worker-identity ve alanlar okunur',
+      () async {
+        final api = FakeApi(
+          handler: (_) => const FakeApiResponse(
+            statusCode: 200,
+            body: {
+              'success': true,
+              'data': {
+                'fullName': 'Ayşe Yılmaz',
+                'tcIdentityNumber': '10000000146',
+                'birthDate': '1994-05-17',
+                'verifiedAt': '2026-09-01T09:30:00Z',
+                'verificationMethod': 'DOCUMENT',
+              },
+            },
+          ),
+        );
+
+        final identity = await EmployerJobService.withClient(
+          api.client,
+        ).fetchWorkerIdentity('asg_1');
+
+        expect(api.requests.single.method, 'GET');
+        expect(
+          api.requests.single.path,
+          '/job-assignments/asg_1/worker-identity',
+        );
+        expect(identity.fullName, 'Ayşe Yılmaz');
+        expect(identity.tcIdentityNumber, '10000000146');
+        expect(identity.birthDate, DateTime(1994, 5, 17));
+        expect(identity.verifiedAt, DateTime.utc(2026, 9, 1, 9, 30));
+        expect(
+          identity.verificationMethod,
+          IdentityVerificationMethod.document,
+        );
+      },
+    );
+
+    test(
+      '409 WORKER_IDENTITY_NOT_VERIFIED kodu ApiException ile yükselir',
+      () async {
+        final api = FakeApi(
+          handler: (_) => const FakeApiResponse(
+            statusCode: 409,
+            body: {
+              'success': false,
+              'message': 'İşçinin kimliği henüz doğrulanmamış.',
+              'errorCode': 'WORKER_IDENTITY_NOT_VERIFIED',
+            },
+          ),
+        );
+
+        await expectLater(
+          EmployerJobService.withClient(
+            api.client,
+          ).fetchWorkerIdentity('asg_1'),
+          throwsA(
+            isA<ApiException>()
+                .having((error) => error.statusCode, 'statusCode', 409)
+                .having(
+                  (error) => error.errorCode,
+                  'errorCode',
+                  'WORKER_IDENTITY_NOT_VERIFIED',
+                ),
+          ),
+        );
+      },
+    );
+
+    test('429 tooManyRequests tipine düşer', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 429,
+          body: {
+            'success': false,
+            'message': 'Saatlik sınıra ulaştınız.',
+            'errorCode': 'IDENTITY_REVEAL_TOO_MANY_REQUESTS',
+          },
+        ),
+      );
+
+      await expectLater(
+        EmployerJobService.withClient(api.client).fetchWorkerIdentity('asg_1'),
+        throwsA(
+          isA<ApiException>().having(
+            (error) => error.type,
+            'type',
+            ApiErrorType.tooManyRequests,
           ),
         ),
       );

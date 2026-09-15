@@ -143,6 +143,56 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
   /// Şablon çıkarma isteği sunucuya gitti mi; düğme kilitleniyor.
   bool _isSavingTemplate = false;
 
+  /// Sigorta bildirimi için açılan kimlik bilgileri; yalnız bellekte.
+  ///
+  /// Sunucu her okumayı kayda geçirip çalışana bildirdiği için değer
+  /// [_identityRevealWindow] boyunca tutuluyor, sonra ya da sayfa
+  /// kapanınca siliniyor. Provider'a, diske ve günlüğe yazılmıyor.
+  WorkerIdentity? _workerIdentity;
+
+  /// [_workerIdentity]'nin ait olduğu atama; başka atama seçilince kart
+  /// yanlış çalışanın altında kalmasın.
+  String? _workerIdentityAssignmentId;
+  Timer? _workerIdentityTimer;
+  bool _isRevealingIdentity = false;
+
+  /// Sunucunun `404` dediği atamalar: yetki ya da durum uymuyor. Düğme bir
+  /// daha çizilmiyor — karar sunucunun, tekrar sormanın anlamı yok.
+  final Set<String> _identityUnavailableAssignmentIds = {};
+
+  /// Kimlik bilgilerinin ekranda kaldığı süre. İşveren sigorta ekranına
+  /// yazacak kadar uzun, unutulup açık kalmayacak kadar kısa; issue #195'in
+  /// sözleşmesi.
+  static const Duration _identityRevealWindow = Duration(seconds: 60);
+
+  /// Düğme yalnız işe alınmış atamada: sunucu da `CONFIRMED`, `IN_PROGRESS`
+  /// ve `COMPLETED` dışını `404` ile kapatıyor. Onay bekleyen atamada
+  /// henüz sigorta bildirilecek bir iş yok.
+  bool _canRevealWorkerIdentity(Assignment assignment) =>
+      !_identityUnavailableAssignmentIds.contains(assignment.id) &&
+      switch (assignment.status) {
+        AssignmentStatus.confirmed ||
+        AssignmentStatus.inProgress ||
+        AssignmentStatus.completed => true,
+        AssignmentStatus.pendingConfirmation ||
+        AssignmentStatus.rejected ||
+        AssignmentStatus.cancelled => false,
+      };
+
+  /// Testler için: bellekte kimlik bilgisi ya da bekleyen silme
+  /// zamanlayıcısı var mı. Temizleme yolları (dispose, `paused`, atama
+  /// değişimi) ekrandan değil buradan doğrulanıyor — kart kaybolmuş ama
+  /// değer duruyor olabilirdi.
+  @visibleForTesting
+  bool get holdsWorkerIdentity =>
+      _workerIdentity != null ||
+      _workerIdentityAssignmentId != null ||
+      _workerIdentityTimer != null;
+
+  /// Seçili atamanın açık kimlik bilgileri; başka atamaya geçildiyse yok.
+  WorkerIdentity? _revealedIdentityFor(Assignment assignment) =>
+      _workerIdentityAssignmentId == assignment.id ? _workerIdentity : null;
+
   @override
   void initState() {
     super.initState();
@@ -169,6 +219,7 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _clearWorkerIdentity();
     super.dispose();
   }
 
@@ -178,6 +229,11 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       unawaited(_loadAssignment());
+    }
+    // Uygulama arkaya alınınca kimlik bilgileri açık kalmasın: geri
+    // dönüldüğünde sayfa TCKN'yle açılmamalı.
+    if (state == AppLifecycleState.paused && _workerIdentity != null) {
+      setState(_clearWorkerIdentity);
     }
   }
 
@@ -330,6 +386,8 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
       return;
     }
 
+    // Başka çalışana geçerken öncekinin kimlik bilgileri bellekte kalmasın.
+    if (_workerIdentity != null) setState(_clearWorkerIdentity);
     await _loadAssignment(selectedAssignmentId: assignmentId);
   }
 
@@ -625,6 +683,95 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
       expectedGeneration: generation,
       isEligible: _canOpenDisputeFor,
     );
+  }
+
+  // ------------------------------------------------------ Kimlik bilgileri
+
+  /// Çalışanın kimlik bilgilerini sigorta bildirimi için açar.
+  ///
+  /// Önce onay: sunucu her okumayı kayda geçirip çalışana bildiriyor, işveren
+  /// bunu bilmeden dokunmamalı. Onaydan sonra `GET .../worker-identity`;
+  /// yanıt [_identityRevealWindow] boyunca ekranda, sonra siliniyor.
+  ///
+  /// Sunucunun kapıları koda göre ayrılıyor: `409 WORKER_IDENTITY_NOT_VERIFIED`
+  /// çalışanın doğrulamasını, `429` saatlik bütçeyi söylüyor; `404` yetki ya
+  /// da durum uymuyor demek ve düğme bu atama için kalkıyor — karar
+  /// sunucunun.
+  Future<void> _revealWorkerIdentity(Assignment assignment) async {
+    if (_isRevealingIdentity || !_canRevealWorkerIdentity(assignment)) return;
+    final generation = _assignmentLoadGeneration;
+
+    final confirmed = await ConfirmDialog.show(
+      context,
+      title: 'Kimlik bilgilerini göster',
+      message:
+          'Görüntülemeniz kayda geçer ve çalışana bildirilir. Bilgiler '
+          'yalnızca sigorta bildirimi için gösterilir ve bir dakika sonra '
+          'gizlenir.',
+      actionLabel: 'Göster',
+      isDestructive: false,
+    );
+
+    if (confirmed != true ||
+        !mounted ||
+        generation != _assignmentLoadGeneration ||
+        _assignment?.id != assignment.id ||
+        !_canRevealWorkerIdentity(assignment)) {
+      return;
+    }
+
+    setState(() => _isRevealingIdentity = true);
+    try {
+      final identity = await _employerJobService.fetchWorkerIdentity(
+        assignment.id,
+      );
+      if (!mounted) return;
+      _workerIdentityTimer?.cancel();
+      setState(() {
+        _workerIdentity = identity;
+        _workerIdentityAssignmentId = assignment.id;
+      });
+      _workerIdentityTimer = Timer(_identityRevealWindow, () {
+        if (mounted) setState(_clearWorkerIdentity);
+      });
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      if (error.errorCode == WorkerIdentityErrorCodes.workerNotVerified) {
+        AppToast.error(context, 'Çalışanın kimliği doğrulanmamış');
+      } else if (error.errorCode == WorkerIdentityErrorCodes.tooManyRequests ||
+          error.type == ApiErrorType.tooManyRequests) {
+        // Kod bu uca özgü; tip ise `RATE_LIMITED` kategorisi ya da çıplak
+        // `429` — ikisi de aynı cümle.
+        AppToast.error(context, 'Çok sık görüntülendi, biraz sonra deneyin');
+      } else if (error.type == ApiErrorType.notFound) {
+        setState(() => _identityUnavailableAssignmentIds.add(assignment.id));
+        AppToast.info(
+          context,
+          'Kimlik bilgileri bu atama için görüntülenemiyor',
+        );
+      } else {
+        AppToast.error(context, error.message);
+      }
+    } finally {
+      if (mounted) setState(() => _isRevealingIdentity = false);
+    }
+  }
+
+  /// TCKN'yi panoya kopyalar. Ekrandaki değerden başka hiçbir alan
+  /// kopyalanmıyor.
+  Future<void> _copyIdentityNumber(WorkerIdentity identity) async {
+    await Clipboard.setData(ClipboardData(text: identity.tcIdentityNumber));
+    if (!mounted) return;
+    AppToast.success(context, 'TCKN kopyalandı');
+  }
+
+  /// Kimlik bilgilerini bellekten ve ekrandan siler. `setState` çağıranın;
+  /// `dispose` içinden de çağrılıyor.
+  void _clearWorkerIdentity() {
+    _workerIdentityTimer?.cancel();
+    _workerIdentityTimer = null;
+    _workerIdentity = null;
+    _workerIdentityAssignmentId = null;
   }
 
   // ------------------------------------------------------------ Şablonlar
