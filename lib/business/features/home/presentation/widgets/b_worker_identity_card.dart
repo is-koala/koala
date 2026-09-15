@@ -41,12 +41,12 @@ class BWorkerIdentityCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final verifiedAt = identity.verifiedAt?.toLocal().asShortDateTime;
-    final method = identity.verificationMethod;
+    final method = identity.verificationMethod.displayName;
     final verification = switch ((verifiedAt, method)) {
-      (null, IdentityVerificationMethod.unknown) => _unknown,
-      (null, _) => method.displayName,
-      (final at?, IdentityVerificationMethod.unknown) => at,
-      (final at?, _) => '$at · ${method.displayName}',
+      (null, null) => _unknown,
+      (null, final method?) => method,
+      (final at?, null) => at,
+      (final at?, final method?) => '$at · $method',
     };
 
     return Container(
@@ -95,6 +95,10 @@ class BWorkerIdentityCard extends StatelessWidget {
             'TCKN',
             identity.tcIdentityNumber,
             valueKey: const ValueKey('worker-identity-tckn'),
+            // Ekran okuyucu 11 haneyi sayı gibi ("on milyar…") okumasın:
+            // hane hane, boşluklu. `liveRegion` bilerek yok — kart her
+            // yeniden çizimde yeniden duyurulmamalı.
+            semanticsLabel: identity.tcIdentityNumber.split('').join(' '),
             trailing: IconButton(
               key: const ValueKey('worker-identity-copy'),
               tooltip: 'TCKN\'yi kopyala',
@@ -137,8 +141,16 @@ class BWorkerIdentityCard extends StatelessWidget {
     String label,
     String value, {
     required Key valueKey,
+    String? semanticsLabel,
     Widget? trailing,
   }) {
+    final text = Text(
+      value,
+      key: valueKey,
+      style: context.textTheme.bodyMedium?.copyWith(
+        fontWeight: FontWeight.w600,
+      ),
+    );
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSizes.spaceTiny),
       child: Row(
@@ -153,13 +165,13 @@ class BWorkerIdentityCard extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: Text(
-              value,
-              key: valueKey,
-              style: context.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            child: semanticsLabel == null
+                ? text
+                : Semantics(
+                    label: semanticsLabel,
+                    excludeSemantics: true,
+                    child: text,
+                  ),
           ),
           ?trailing,
         ],

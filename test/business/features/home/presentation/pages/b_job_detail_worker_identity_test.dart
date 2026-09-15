@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:koala/business/features/home/presentation/widgets/b_worker_identity_card.dart';
+import 'package:koala/business/features/home/presentation/pages/b_job_detail_page.dart';
 
 import '../../../../../support/fake_api.dart';
 import 'b_job_detail_test_harness.dart';
@@ -28,6 +28,12 @@ Map<String, Object?> _assignment({
       ? 'HELD_IN_ESCROW'
       : 'PENDING_COLLECTION',
   'worker': _worker,
+};
+
+const _secondWorker = {
+  'id': 'worker-2',
+  'firstName': 'Mehmet',
+  'lastName': 'Kaya',
 };
 
 final _button = find.byKey(const ValueKey('reveal-worker-identity'));
@@ -67,6 +73,16 @@ FakeApiResponse _error(int status, {String? code, String? message}) =>
         'errorCode': ?code,
       },
     );
+
+/// Sayfanın state'i; temizleme yolları ekrandan değil bellekten
+/// doğrulanıyor.
+BJobDetailPageModel _pageModel(WidgetTester tester) =>
+    tester.state<BJobDetailPageModel>(find.byType(BJobDetailPage));
+
+const _successIdentity = FakeApiResponse(
+  statusCode: 200,
+  body: {'success': true, 'data': _identityJson},
+);
 
 Future<void> _revealAndConfirm(WidgetTester tester) async {
   await tester.scrollUntilVisible(_button, 200);
@@ -235,30 +251,97 @@ void main() {
     expect(_button, findsOneWidget);
   });
 
-  testWidgets('sayfa kapanınca zamanlayıcı ve değer temizlenir', (
-    tester,
-  ) async {
-    await pumpPage(
-      tester,
-      assignments: [_assignment()],
-      employerHandler: _employerHandler(
-        [_assignment()],
-        identity: const FakeApiResponse(
-          statusCode: 200,
-          body: {'success': true, 'data': _identityJson},
+  group('temizleme yolları', () {
+    testWidgets('sayfa kapanınca değer ve zamanlayıcı silinir', (tester) async {
+      await pumpPage(
+        tester,
+        assignments: [_assignment()],
+        employerHandler: _employerHandler(
+          [_assignment()],
+          identity: _successIdentity,
+          revealRequests: [],
         ),
-        revealRequests: [],
-      ),
-    );
+      );
 
-    await _revealAndConfirm(tester);
-    expect(_card, findsOneWidget);
+      await _revealAndConfirm(tester);
+      final model = _pageModel(tester);
+      expect(model.holdsWorkerIdentity, isTrue);
 
-    // Sayfa sökülüyor; bekleyen zamanlayıcı kalsaydı test "pending timer"
-    // ile kırmızıya düşerdi.
-    await tester.pumpWidget(const SizedBox.shrink());
-    await tester.pump(const Duration(seconds: 60));
-    expect(find.byType(BWorkerIdentityCard), findsNothing);
+      // Sayfa sökülüyor. Süre ilerletilmiyor: `dispose` zamanlayıcıyı iptal
+      // etmezse flutter_test testi bekleyen zamanlayıcıyla kırmızıya
+      // düşürür; değer için de doğrudan state'e bakılıyor.
+      await tester.pumpWidget(const SizedBox.shrink());
+
+      expect(model.holdsWorkerIdentity, isFalse);
+    });
+
+    testWidgets('uygulama arkaya alınınca kart ve değer silinir', (
+      tester,
+    ) async {
+      await pumpPage(
+        tester,
+        assignments: [_assignment()],
+        employerHandler: _employerHandler(
+          [_assignment()],
+          identity: _successIdentity,
+          revealRequests: [],
+        ),
+      );
+
+      await _revealAndConfirm(tester);
+      expect(_card, findsOneWidget);
+
+      // Silme `paused` anında, çerçeve beklenmeden: arkaya alınmış uygulama
+      // çerçeve çizmiyor, bellekteki değer yine de gitmeli.
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      expect(_pageModel(tester).holdsWorkerIdentity, isFalse);
+
+      // Geri dönüş atamayı yeniden çekiyor; kart geri gelmemeli.
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+
+      expect(_card, findsNothing);
+      expect(find.text('10000000146'), findsNothing);
+      expect(_pageModel(tester).holdsWorkerIdentity, isFalse);
+      expect(_button, findsOneWidget);
+    });
+
+    testWidgets('başka atamaya geçince öncekinin değeri silinir', (
+      tester,
+    ) async {
+      final assignments = [
+        _assignment(),
+        {..._assignment(id: 'assignment-2'), 'worker': _secondWorker},
+      ];
+      final requests = <RequestOptions>[];
+      await pumpPage(
+        tester,
+        assignments: assignments,
+        employerHandler: _employerHandler(
+          assignments,
+          identity: _successIdentity,
+          revealRequests: requests,
+        ),
+      );
+
+      await _revealAndConfirm(tester);
+      expect(_card, findsOneWidget);
+      expect(requests.single.path, contains('assignment-1'));
+
+      final selector = find.byKey(const ValueKey('assignment-selector'));
+      await tester.ensureVisible(selector);
+      await tester.tap(selector);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Mehmet Kaya').last);
+      await tester.pumpAndSettle();
+
+      expect(_card, findsNothing);
+      expect(find.text('10000000146'), findsNothing);
+      expect(_pageModel(tester).holdsWorkerIdentity, isFalse);
+      // Yeni atama için düğme yeniden; ikinci istek çıkmadı.
+      expect(_button, findsOneWidget);
+      expect(requests, hasLength(1));
+    });
   });
 
   testWidgets('TCKN panoya kopyalanır', (tester) async {
@@ -294,6 +377,29 @@ void main() {
     expect(copied, ['10000000146']);
     expect(find.text('TCKN kopyalandı'), findsOneWidget);
     await tester.pumpAndSettle();
+  });
+
+  testWidgets('TCKN ekran okuyucuya hane hane okunur, canlı bölge değil', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    await pumpPage(
+      tester,
+      assignments: [_assignment()],
+      employerHandler: _employerHandler(
+        [_assignment()],
+        identity: _successIdentity,
+        revealRequests: [],
+      ),
+    );
+
+    await _revealAndConfirm(tester);
+
+    expect(
+      tester.getSemantics(_tckn),
+      isSemantics(label: '1 0 0 0 0 0 0 0 1 4 6', isLiveRegion: false),
+    );
+    semantics.dispose();
   });
 
   group('sunucu kapıları', () {
@@ -346,6 +452,27 @@ void main() {
         findsOneWidget,
       );
       expect(_card, findsNothing);
+      expect(_button, findsOneWidget);
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('429 kodsuz gelse de tipten aynı toast', (tester) async {
+      await pumpPage(
+        tester,
+        assignments: [_assignment()],
+        employerHandler: _employerHandler(
+          [_assignment()],
+          identity: _error(429, message: 'Too many requests'),
+          revealRequests: [],
+        ),
+      );
+
+      await _revealAndConfirm(tester);
+
+      expect(
+        find.text('Çok sık görüntülendi, biraz sonra deneyin'),
+        findsOneWidget,
+      );
       expect(_button, findsOneWidget);
       await tester.pumpAndSettle();
     });

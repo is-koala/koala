@@ -179,6 +179,16 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
         AssignmentStatus.cancelled => false,
       };
 
+  /// Testler için: bellekte kimlik bilgisi ya da bekleyen silme
+  /// zamanlayıcısı var mı. Temizleme yolları (dispose, `paused`, atama
+  /// değişimi) ekrandan değil buradan doğrulanıyor — kart kaybolmuş ama
+  /// değer duruyor olabilirdi.
+  @visibleForTesting
+  bool get holdsWorkerIdentity =>
+      _workerIdentity != null ||
+      _workerIdentityAssignmentId != null ||
+      _workerIdentityTimer != null;
+
   /// Seçili atamanın açık kimlik bilgileri; başka atamaya geçildiyse yok.
   WorkerIdentity? _revealedIdentityFor(Assignment assignment) =>
       _workerIdentityAssignmentId == assignment.id ? _workerIdentity : null;
@@ -726,28 +736,21 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
       });
     } on ApiException catch (error) {
       if (!mounted) return;
-      switch (error.errorCode) {
-        case WorkerIdentityErrorCodes.workerNotVerified:
-          AppToast.error(context, 'Çalışanın kimliği doğrulanmamış');
-        case WorkerIdentityErrorCodes.tooManyRequests:
-          AppToast.error(context, 'Çok sık görüntülendi, biraz sonra deneyin');
-        default:
-          if (error.type == ApiErrorType.tooManyRequests) {
-            AppToast.error(
-              context,
-              'Çok sık görüntülendi, biraz sonra deneyin',
-            );
-          } else if (error.type == ApiErrorType.notFound) {
-            setState(
-              () => _identityUnavailableAssignmentIds.add(assignment.id),
-            );
-            AppToast.info(
-              context,
-              'Kimlik bilgileri bu atama için görüntülenemiyor',
-            );
-          } else {
-            AppToast.error(context, error.message);
-          }
+      if (error.errorCode == WorkerIdentityErrorCodes.workerNotVerified) {
+        AppToast.error(context, 'Çalışanın kimliği doğrulanmamış');
+      } else if (error.errorCode == WorkerIdentityErrorCodes.tooManyRequests ||
+          error.type == ApiErrorType.tooManyRequests) {
+        // Kod bu uca özgü; tip ise `RATE_LIMITED` kategorisi ya da çıplak
+        // `429` — ikisi de aynı cümle.
+        AppToast.error(context, 'Çok sık görüntülendi, biraz sonra deneyin');
+      } else if (error.type == ApiErrorType.notFound) {
+        setState(() => _identityUnavailableAssignmentIds.add(assignment.id));
+        AppToast.info(
+          context,
+          'Kimlik bilgileri bu atama için görüntülenemiyor',
+        );
+      } else {
+        AppToast.error(context, error.message);
       }
     } finally {
       if (mounted) setState(() => _isRevealingIdentity = false);

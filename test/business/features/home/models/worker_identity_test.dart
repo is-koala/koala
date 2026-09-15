@@ -29,6 +29,7 @@ void main() {
       expect(identity.birthDate, isNull);
       expect(identity.verifiedAt, isNull);
       expect(identity.verificationMethod, IdentityVerificationMethod.unknown);
+      expect(identity.verificationMethod.displayName, isNull);
     });
 
     test('TCKN yoksa yanıt reddedilir', () {

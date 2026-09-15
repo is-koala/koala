@@ -9,15 +9,17 @@ enum IdentityVerificationMethod {
   /// Kimlik belgesinin fotoğrafı incelendi.
   document('DOCUMENT', 'Belge incelemesi'),
 
-  /// Sunucunun gönderdiği değer bu sürümde bilinmiyor. Yöntem gösterilmez
-  /// ama kimlik bilgileri yine okunur; eksik bir etiket için ekran
-  /// kapanmamalı.
-  unknown('', 'Bilinmiyor');
+  /// Sunucunun gönderdiği değer bu sürümde bilinmiyor. Etiketi yok: yöntem
+  /// gösterilmez ama kimlik bilgileri yine okunur; eksik bir etiket için
+  /// ekran kapanmamalı.
+  unknown('', null);
 
   const IdentityVerificationMethod(this.code, this.displayName);
 
   final String code;
-  final String displayName;
+
+  /// Kullanıcıya gösterilen ad; bilinmeyen yöntemde `null`.
+  final String? displayName;
 
   static IdentityVerificationMethod fromCode(Object? value) {
     return IdentityVerificationMethod.values.firstWhere(
