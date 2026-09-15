@@ -140,6 +140,7 @@ void main() {
       AccountRoutes.address,
       AccountRoutes.changePassword,
       AccountRoutes.sessions,
+      AccountRoutes.sessionDetail,
       AccountRoutes.notificationPreferences,
       AccountRoutes.reports,
       AccountRoutes.blockedUsers,

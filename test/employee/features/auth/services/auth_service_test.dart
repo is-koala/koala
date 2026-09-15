@@ -4,6 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/auth/services/auth_service.dart';
 import 'package:koala/product/network/api_exception.dart';
+import 'package:koala/product/network/device_hints.dart';
 import 'package:koala/product/network/session_manager.dart';
 import 'package:koala/product/network/token_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -110,6 +111,48 @@ void main() {
 
       expect(user.isEmployer, isFalse);
       expect(session.isLoggedIn, isTrue);
+    });
+
+    // Sunucu giriş isteğindeki üç başlıktan cihazın gerçek adını yazıyor
+    // (is-koala/koala#198). Model başlığı bilinçli olarak yok: projede
+    // `device_info_plus` bulunmuyor.
+    test('giriş isteği cihaz ipucu başlıklarını taşır', () async {
+      final loginHeaders = <String, dynamic>{};
+      final api = FakeApi(
+        handler: (request) {
+          if (request.path == '/auth/login') {
+            loginHeaders.addAll(request.headers);
+            return const FakeApiResponse(
+              statusCode: 200,
+              body: {
+                'success': true,
+                'data': {'token': 'access', 'refreshToken': 'refresh'},
+              },
+            );
+          }
+          return const FakeApiResponse(
+            statusCode: 200,
+            body: {
+              'success': true,
+              'data': {
+                'id': 'user-id',
+                'email': 'hesap@example.com',
+                'isEmployer': false,
+              },
+            },
+          );
+        },
+        deviceHints: const DeviceHints(os: 'iOS 18.1', appVersion: '1.1.0'),
+      );
+
+      await AuthService.withClient(
+        api.client,
+        sessionManager: session,
+      ).login(email: 'hesap@example.com', password: 'TestPassword1');
+
+      expect(loginHeaders[DeviceHints.osHeader], 'iOS 18.1');
+      expect(loginHeaders[DeviceHints.appVersionHeader], '1.1.0');
+      expect(loginHeaders.containsKey(DeviceHints.modelHeader), isFalse);
     });
 
     test(

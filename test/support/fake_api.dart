@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:koala/product/network/api_client.dart';
+import 'package:koala/product/network/device_hints.dart';
 import 'package:koala/product/network/device_identity.dart';
 import 'package:koala/product/network/token_storage.dart';
 
@@ -23,6 +24,7 @@ class FakeApi {
     required this.handler,
     TokenStorage? tokenStorage,
     DeviceIdentity? deviceIdentity,
+    this.deviceHints,
   }) : tokenStorage = tokenStorage ?? FakeTokenStorage(),
        deviceIdentity = deviceIdentity ?? FakeDeviceIdentity();
 
@@ -34,6 +36,10 @@ class FakeApi {
   final TokenStorage tokenStorage;
 
   final DeviceIdentity deviceIdentity;
+
+  /// Cihaz ipucu başlıkları (`X-Koala-OS` …). Verilmezse test makinesinin
+  /// kendi değerleri gidiyor; başlıkları ölçen test sabit bir ipucu geçiyor.
+  final DeviceHints? deviceHints;
 
   /// Sahte sunucuya ulaşan istekler, sırayla.
   final List<RequestOptions> requests = [];
@@ -83,6 +89,7 @@ class FakeApi {
       dio,
       tokenStorage: tokenStorage,
       deviceIdentity: deviceIdentity,
+      deviceHints: deviceHints,
       onSessionExpired: () async => sessionExpirationCount++,
     );
   }

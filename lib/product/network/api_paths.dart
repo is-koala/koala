@@ -97,8 +97,15 @@ class ApiPaths {
   /// kapatıyor.
   static const String currentUserSessions = '/users/me/sessions';
 
+  /// Tek oturum: `GET` ayrıntı (IP, konum, giriş geçmişi — koala-backend#306,
+  /// eski sunucuda `404`), `DELETE` kapatma.
   static String currentUserSession(String sessionId) =>
       '$currentUserSessions/$sessionId';
+
+  /// Kullanıcının bir cihazı. `PATCH {name}` cihaza özel ad veriyor; ad
+  /// oturum listesinde ve ayrıntısında `deviceName` olarak dönüyor.
+  static String currentUserDevice(String deviceId) =>
+      '/users/me/devices/$deviceId';
 
   // ------------------------------------------------------------- Bildirimler
 

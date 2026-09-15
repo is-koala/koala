@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/models/pending_verification.dart';
+import 'package:koala/product/models/session_detail.dart';
 import 'package:koala/product/features/account/presentation/pages/account_deletion_page.dart';
 import 'package:koala/product/features/account/presentation/pages/account_info_page.dart';
 import 'package:koala/product/features/account/presentation/pages/address_page.dart';
@@ -9,6 +10,7 @@ import 'package:koala/product/features/account/presentation/pages/blocked_users_
 import 'package:koala/product/features/account/presentation/pages/change_password_page.dart';
 import 'package:koala/product/features/account/presentation/pages/notification_preferences_page.dart';
 import 'package:koala/product/features/account/presentation/pages/reports_page.dart';
+import 'package:koala/product/features/account/presentation/pages/session_detail_page.dart';
 import 'package:koala/product/features/account/presentation/pages/sessions_page.dart';
 import 'package:koala/product/features/account/presentation/pages/verification_code_page.dart';
 
@@ -35,6 +37,11 @@ class AccountRoutes {
   static const String changePassword = '/change-password';
 
   static const String sessions = '/sessions';
+
+  /// Tek oturumun ayrıntısı. `extra`: yüklenmiş [SessionDetail] — liste
+  /// ayrıntıyı önce kendisi çekiyor ki eski sunucunun `404`'ü boş sayfa
+  /// açmasın. Oturum kapatıldıysa `true` ile kapanır.
+  static const String sessionDetail = '/session-detail';
 
   static const String notificationPreferences = '/notification-preferences';
 
@@ -82,6 +89,13 @@ class AccountRoutes {
       GoRoute(
         path: sessions,
         pageBuilder: (context, state) => page(state, const SessionsPage()),
+      ),
+      GoRoute(
+        path: sessionDetail,
+        pageBuilder: (context, state) {
+          final detail = state.extra as SessionDetail;
+          return page(state, SessionDetailPage(initial: detail));
+        },
       ),
       GoRoute(
         path: notificationPreferences,
