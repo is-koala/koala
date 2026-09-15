@@ -1,4 +1,5 @@
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/product/features/transport/models/transport_plan.dart';
 import 'package:koala/product/models/canonical_address.dart';
 
 /// İlanı açan kişi. Backend `SafeUserDto` karşılığı.
@@ -126,6 +127,7 @@ class JobDetail {
     this.createdAt,
     this.headcount,
     this.hiredCount = 0,
+    this.transport,
   });
 
   final String id;
@@ -171,6 +173,12 @@ class JobDetail {
 
   /// Şimdiye kadar işe alınan kişi sayısı.
   final int hiredCount;
+
+  /// Ulaşım özeti, herkese açık görünüm (koala-backend#297): yöntemler, yol
+  /// parası, servis sayısı ve durakların ilçe/semt + saati. Plaka, şoför ve
+  /// tam adres yok. Planı olmayan ilanda ve eski sunucuda `null` — kart o
+  /// zaman çizilmiyor.
+  final JobTransport? transport;
 
   /// Kartın ikinci satırı; [Job.subtitle] ile aynı kural.
   String get subtitle {
@@ -229,6 +237,7 @@ class JobDetail {
       createdAt: _parseDate(json['createdAt']),
       headcount: (json['headcount'] as num?)?.toInt(),
       hiredCount: (json['hiredCount'] as num?)?.toInt() ?? 0,
+      transport: JobTransport.parse(json['transport']),
     );
   }
 

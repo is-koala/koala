@@ -164,6 +164,12 @@ class ApiPaths {
   /// servisi o durumda [myAssignments] taramasına düşüyor.
   static String assignmentsOfJob(String jobId) => '$jobs/$jobId/assignments';
 
+  /// İlanın ulaşım planı (koala-backend#297, 0.9.28). `GET` işveren
+  /// görünümü (plaka, şoför, tam adres, `seatsTaken`); `PUT` planı bütünüyle
+  /// yazar. Yalnız ilan sahibi ya da şirket yetkilisi; başkası ve planı
+  /// olmayan ilan `404`.
+  static String jobTransportPlan(String jobId) => '$jobs/$jobId/transport-plan';
+
   /// Oturum açmış kullanıcının başvuruları.
   static const String myApplications = '/users/me/applications';
 
@@ -297,6 +303,19 @@ class ApiPaths {
   /// `CONFIRMED` ve `IN_PROGRESS` dışından çağrılırsa `409`.
   static String completeAssignment(String assignmentId) =>
       '${jobAssignment(assignmentId)}/complete';
+
+  /// Atamanın ulaşım görünümü (koala-backend#297, 0.9.28): ilanın
+  /// servisleri ve durakları tam adresle, bu atamanın koltukları. İşçi
+  /// görünümünde plaka/şoför yalnız koltuk seçilen serviste dolu. Taraf
+  /// olmayan `404`.
+  static String assignmentTransport(String assignmentId) =>
+      '${jobAssignment(assignmentId)}/transport';
+
+  /// Koltuk seçimi (`PUT {shuttleId, stopId}`). Yön servisten türer, o
+  /// yöndeki önceki seçimin yerine geçer. Dolu servis `409`
+  /// `TRANSPORT_SHUTTLE_FULL`; aktif olmayan atama `409`.
+  static String assignmentTransportSeat(String assignmentId) =>
+      '${assignmentTransport(assignmentId)}/seat';
 
   /// Tamamlanmış bir işin değerlendirmesi.
   ///
