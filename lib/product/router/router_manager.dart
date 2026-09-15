@@ -21,6 +21,9 @@ import 'package:koala/employee/features/notifications/presentation/pages/company
 import 'package:koala/employee/features/profile/presentation/pages/followed_companies_page.dart';
 import 'package:koala/business/features/chat/presentation/pages/b_chat_list_page.dart';
 import 'package:koala/business/features/chat/presentation/pages/b_chat_page.dart';
+import 'package:koala/business/features/transport/presentation/pages/b_shuttle_editor_page.dart';
+import 'package:koala/business/features/transport/presentation/pages/b_stop_editor_page.dart';
+import 'package:koala/business/features/transport/presentation/pages/b_transport_plan_page.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/presentation/pages/splash_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/auth_page.dart';
@@ -515,6 +518,29 @@ class RouterManager {
           final jobId = state.extra as String;
           return _page(state, BJobDetailPage(jobId: jobId));
         },
+      ),
+
+      // Ulaşım planı düzenleyicisi ve alt sayfaları (is-koala/koala#197).
+      // Üçü de üst düzeyde: `/pick-address` gibi navbar'ın üstünü kaplar
+      // ve kaydedince `pop` ile taslağı geri verir.
+      GoRoute(
+        path: BusinessRoutes.transportPlan,
+        pageBuilder: (context, state) => _page(
+          state,
+          BTransportPlanPage(args: state.extra as BTransportPlanArgs),
+        ),
+      ),
+      GoRoute(
+        path: BusinessRoutes.transportShuttle,
+        pageBuilder: (context, state) => _page(
+          state,
+          BShuttleEditorPage(args: state.extra as BShuttleEditorArgs),
+        ),
+      ),
+      GoRoute(
+        path: BusinessRoutes.transportStop,
+        pageBuilder: (context, state) =>
+            _page(state, BStopEditorPage(args: state.extra as BStopEditorArgs)),
       ),
 
       GoRoute(

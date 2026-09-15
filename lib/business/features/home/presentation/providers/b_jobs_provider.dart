@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:koala/business/features/home/models/b_job_post.dart';
 import 'package:koala/business/features/home/models/create_job_request.dart';
+import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/business/features/home/services/employer_job_service.dart';
 import 'package:koala/product/network/api_exception.dart';
 
@@ -168,9 +169,20 @@ class BJobsProvider extends ChangeNotifier {
     _jobPosts[index] = update(_jobPosts[index]);
   }
 
-  /// Yeni ilan açar. Başarılıysa liste yenilenir ve `true` döner.
-  Future<bool> createJobPost(CreateJobRequest request, {String? companyId}) {
-    return _mutate(() => _service.createJob(request, companyId: companyId));
+  /// Yeni ilan açar. Başarılıysa liste yenilenir ve açılan ilan döner;
+  /// başarısızsa `null` ve sebebi [errorMessage]'da.
+  ///
+  /// İlanın kendisi dönüyor çünkü ulaşım planı ayrı bir uçla, ilanın
+  /// kimliğiyle yazılıyor (is-koala/koala#197).
+  Future<JobDetail?> createJobPost(
+    CreateJobRequest request, {
+    String? companyId,
+  }) async {
+    JobDetail? created;
+    final ok = await _mutate(() async {
+      created = await _service.createJob(request, companyId: companyId);
+    });
+    return ok ? created : null;
   }
 
   /// İlanı başvuruya kapatır; ilan "Geçmiş" sekmesine geçer.

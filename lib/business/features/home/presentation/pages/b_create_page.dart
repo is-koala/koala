@@ -13,6 +13,10 @@ import 'package:koala/product/widgets/option_sheet.dart';
 import 'package:koala/business/features/home/presentation/widgets/b_selection_field.dart';
 import 'package:koala/business/features/home/presentation/widgets/b_pricing_breakdown_card.dart';
 import 'package:koala/business/features/home/services/b_payment_service.dart';
+import 'package:koala/business/features/transport/models/transport_plan_draft.dart';
+import 'package:koala/business/features/transport/presentation/pages/b_transport_plan_page.dart';
+import 'package:koala/business/features/transport/presentation/widgets/b_transport_plan_summary.dart';
+import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/presentation/providers/job_category_provider.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
@@ -23,8 +27,10 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
+import 'package:koala/product/features/transport/services/transport_service.dart';
 import 'package:koala/product/models/confirmed_address.dart';
 import 'package:koala/product/network/api_exception.dart';
+import 'package:koala/product/router/business_routes.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/confirm_dialog.dart';
 import 'package:koala/product/widgets/confirmed_address_field.dart';
@@ -37,13 +43,26 @@ import 'package:provider/provider.dart';
 part 'b_create_pagemodel.dart';
 
 class BCreatePage extends StatefulWidget {
-  const BCreatePage({super.key, this.paymentService, this.initialAddress});
+  const BCreatePage({
+    super.key,
+    this.paymentService,
+    this.transportService,
+    this.initialAddress,
+    this.initialTransport,
+  });
 
   final BPaymentService? paymentService;
+
+  /// Testler için; verilmezse üretimdeki tekil servis.
+  final TransportService? transportService;
 
   /// Formun açılışta taşıdığı adres; testler harita ekranını atlamak için
   /// verir, üretimde işveren adresi haritadan seçer.
   final ConfirmedAddress? initialAddress;
+
+  /// Formun açılışta taşıdığı ulaşım taslağı; testler düzenleyiciyi atlamak
+  /// için verir.
+  final TransportPlanDraft? initialTransport;
 
   @override
   State<BCreatePage> createState() => _BCreatePageState();
@@ -138,6 +157,13 @@ class _BCreatePageState extends BCreatePageModel {
               _sectionLabel("Konum"),
               const SizedBox(height: AppSizes.spaceMedium),
               _locationSection(),
+
+              const SizedBox(height: AppSizes.spaceLarge),
+
+              // Ulaşım (isteğe bağlı)
+              _sectionLabel("Ulaşım"),
+              const SizedBox(height: AppSizes.spaceMedium),
+              _transportSection(),
 
               const SizedBox(height: AppSizes.spaceLarge),
 
@@ -373,6 +399,47 @@ class _BCreatePageState extends BCreatePageModel {
       value: _address,
       label: 'İlan adresi *',
       onTap: _pickAddress,
+    );
+  }
+
+  // ---------------------------------------------------------------- Ulaşım
+
+  /// Ulaşım planı isteğe bağlı: taslak yokken tek bir giriş düğmesi, varken
+  /// özet + Düzenle/Kaldır (is-koala/koala#197).
+  Widget _transportSection() {
+    final transport = _transport;
+    if (transport == null || transport.isBlank) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              key: const ValueKey('b-create-transport-add'),
+              onPressed: _editTransport,
+              icon: AppIcon(
+                AppIcons.bus,
+                size: AppSizes.iconSmall,
+                color: context.accentColor,
+              ),
+              label: const Text('Ulaşım planı ekle'),
+              style: context.accentOutlinedButtonStyle,
+            ),
+          ),
+          const SizedBox(height: AppSizes.spaceSmall),
+          const BInfoNotice(
+            message:
+                'İsteğe bağlı: servis, yol parası ya da çalışanın kendi '
+                'imkânı. Sonradan ilan detayından da ekleyebilirsiniz.',
+          ),
+        ],
+      );
+    }
+
+    return BTransportPlanSummary(
+      plan: transport,
+      onEdit: _editTransport,
+      onRemove: _removeTransport,
     );
   }
 

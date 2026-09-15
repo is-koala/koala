@@ -38,6 +38,15 @@ abstract class BCreatePageModel extends State<BCreatePage> {
   /// Haritada onaylanan ilan adresi; seçilene kadar `null`.
   late ConfirmedAddress? _address = widget.initialAddress;
 
+  /// Ulaşım planı taslağı (is-koala/koala#197); düzenleyici açılana kadar
+  /// `null`. Plan ilan açıldıktan **sonra**, ilanın kimliğiyle
+  /// `PUT /jobs/{id}/transport-plan` ile yazılıyor — ilan gövdesinde yer
+  /// almıyor.
+  late TransportPlanDraft? _transport = widget.initialTransport;
+
+  TransportService get _transportService =>
+      widget.transportService ?? TransportService();
+
   /// Kategoriler `/reference/job-categories`'ten geldiği için başlangıçta
   /// seçili kategori yok; kullanıcı listeden seçiyor.
   JobCategory? _selectedCategory;
@@ -337,6 +346,41 @@ abstract class BCreatePageModel extends State<BCreatePage> {
     setState(() => _address = picked);
   }
 
+  /// Ulaşım planı düzenleyicisini taslak modunda açar; kaydedilirse taslak
+  /// forma yazılır.
+  Future<void> _editTransport() async {
+    final saved = await context.push<TransportPlanDraft>(
+      BusinessRoutes.transportPlan,
+      extra: BTransportPlanArgs(initial: _transport, jobStart: _startDateTime),
+    );
+    if (saved == null || !mounted) return;
+    setState(() => _transport = saved);
+  }
+
+  void _removeTransport() => setState(() => _transport = null);
+
+  /// İlan açıldıktan sonra taslağı ilana yazar.
+  ///
+  /// Boş taslak (iki yön de "sağlanmıyor", servis ve not yok) hiç
+  /// yazılmıyor — planı olmayan ilan zaten bu demek. Yazım düşerse ilan
+  /// yine açılmış durumda: kullanıcıya söyleniyor ve ilan detayından
+  /// eklemesi isteniyor; ilanı geri almak yok.
+  Future<void> _saveTransport(JobDetail created) async {
+    final draft = _transport;
+    if (draft == null || draft.isBlank) return;
+
+    try {
+      await _transportService.savePlan(created.id, draft.toWrite());
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      AppToast.error(
+        context,
+        'İlan açıldı ancak ulaşım planı kaydedilemedi: ${error.message} '
+        'İlan detayından ekleyebilirsiniz.',
+      );
+    }
+  }
+
   /// Tarih ve saati birlikte seçtirir; ikisinden biri iptal edilirse hiçbir
   /// şey değişmiyor.
   Future<DateTime?> _pickDateTime(DateTime? initial) async {
@@ -438,11 +482,14 @@ abstract class BCreatePageModel extends State<BCreatePage> {
     );
 
     if (!mounted) return;
-    setState(() => _isSubmitting = false);
 
-    if (created) {
+    if (created != null) {
+      await _saveTransport(created);
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
       _showSuccessDialog();
     } else {
+      setState(() => _isSubmitting = false);
       AppToast.error(context, provider.errorMessage ?? 'İlan oluşturulamadı');
     }
   }

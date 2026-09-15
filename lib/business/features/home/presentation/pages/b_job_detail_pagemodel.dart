@@ -42,6 +42,16 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
   AssignmentService get _assignmentService =>
       widget.assignmentService ?? AssignmentService();
 
+  TransportService get _transportService =>
+      widget.transportService ?? TransportService();
+
+  /// İlanın ulaşım planı, işveren görünümü (is-koala/koala#197). Planı
+  /// olmayan ilanda `404` → `null` ve "plan ekle" düğmesi; başka hata
+  /// [_transportError]'a düşüyor.
+  TransportPlan? _transportPlan;
+  bool _isTransportLoading = true;
+  String? _transportError;
+
   /// İlanın tam hâli. Liste ucu açıklama/görev/adres döndürmediği için ekran
   /// açılırken `GET /jobs/{id}` ayrıca çağrılıyor.
   JobDetail? _detail;
@@ -198,6 +208,7 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadDetail();
+    unawaited(_loadTransportPlan());
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       // İlan listesi bu ekrana doğrudan bağlantıyla gelinmişse henüz
@@ -235,6 +246,46 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     if (state == AppLifecycleState.paused && _workerIdentity != null) {
       setState(_clearWorkerIdentity);
     }
+  }
+
+  /// `GET /jobs/{id}/transport-plan`; `404` plan olmadığını söylüyor (ya da
+  /// görüntüleyen ilanın sahibi değil — sunucu ikisini ayırt ettirmiyor).
+  Future<void> _loadTransportPlan() async {
+    setState(() {
+      _isTransportLoading = true;
+      _transportError = null;
+    });
+    try {
+      final plan = await _transportService.fetchPlan(widget.jobId);
+      if (!mounted) return;
+      setState(() => _transportPlan = plan);
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      if (error.type == ApiErrorType.notFound) {
+        setState(() => _transportPlan = null);
+      } else {
+        setState(() => _transportError = error.message);
+      }
+    } finally {
+      if (mounted) setState(() => _isTransportLoading = false);
+    }
+  }
+
+  /// Düzenleyiciyi ilan modunda açar; kaydedilirse sunucunun döndürdüğü
+  /// plan yerine konuyor.
+  Future<void> _editTransportPlan() async {
+    final current = _transportPlan;
+    final saved = await context.push<TransportPlan>(
+      BusinessRoutes.transportPlan,
+      extra: BTransportPlanArgs(
+        jobId: widget.jobId,
+        initial: current == null ? null : TransportPlanDraft.fromPlan(current),
+        original: current,
+        jobStart: _detail?.startDateTime,
+      ),
+    );
+    if (saved == null || !mounted) return;
+    setState(() => _transportPlan = saved);
   }
 
   Future<void> _loadDetail() async {

@@ -23,6 +23,9 @@ import 'package:koala/business/features/home/presentation/widgets/b_payment_atte
 import 'package:koala/business/features/home/presentation/widgets/b_pricing_breakdown_card.dart';
 import 'package:koala/business/features/home/presentation/widgets/b_worker_identity_card.dart';
 import 'package:koala/business/features/home/services/employer_job_service.dart';
+import 'package:koala/business/features/transport/models/transport_plan_draft.dart';
+import 'package:koala/business/features/transport/presentation/pages/b_transport_plan_page.dart';
+import 'package:koala/business/features/transport/presentation/widgets/b_transport_plan_summary.dart';
 import 'package:koala/business/features/home/services/b_payment_browser.dart';
 import 'package:koala/business/features/home/services/b_payment_service.dart';
 import 'package:koala/employee/features/home/models/job.dart';
@@ -51,6 +54,8 @@ import 'package:koala/product/features/account/account_navigation.dart';
 import 'package:koala/product/features/account/models/address_required_error_codes.dart';
 import 'package:koala/product/formatters/turkish_money_formatter.dart';
 import 'package:koala/product/models/gallery_image.dart';
+import 'package:koala/product/features/transport/models/transport_plan.dart';
+import 'package:koala/product/features/transport/services/transport_service.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/providers/job_gallery_provider.dart';
 import 'package:koala/product/widgets/app_icon.dart';
@@ -79,6 +84,7 @@ class BJobDetailPage extends StatefulWidget {
     this.paymentBrowser,
     this.galleryProvider,
     this.chatService,
+    this.transportService,
     this.openExternalUrl,
   });
 
@@ -92,6 +98,7 @@ class BJobDetailPage extends StatefulWidget {
 
   /// Testler için; verilmezse üretimdeki tekil servis.
   final ChatService? chatService;
+  final TransportService? transportService;
 
   /// Özgeçmiş bağlantısını açan kapı; verilmezse harici tarayıcı
   /// (`url_launcher`). Testler sahte bir açıcı geçiyor.
@@ -180,6 +187,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
                 const SizedBox(height: AppSizes.space),
                 _detailsCard(context, job),
                 const SizedBox(height: AppSizes.spaceLarge),
+                ..._transportSection(),
                 ..._timesheetSection(),
                 ..._peopleSection(
                   post,
@@ -191,6 +199,73 @@ class _BJobDetailPageState extends BJobDetailPageModel {
                 const SizedBox(height: AppSizes.navBarClearance),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Ulaşım planı özeti + Düzenle (is-koala/koala#197). Plan yokken "plan
+  /// ekle"; yüklenirken ve hatada kendi satırı.
+  List<Widget> _transportSection() {
+    final plan = _transportPlan;
+    final Widget body;
+    if (_isTransportLoading) {
+      body = const LinearProgressIndicator(
+        key: ValueKey('b-transport-loading'),
+      );
+    } else if (_transportError != null) {
+      body = _transportErrorPanel(_transportError!);
+    } else if (plan == null) {
+      body = SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          key: const ValueKey('b-transport-add'),
+          onPressed: _editTransportPlan,
+          icon: AppIcon(
+            AppIcons.bus,
+            size: AppSizes.iconSmall,
+            color: context.accentColor,
+          ),
+          label: const Text('Ulaşım planı ekle'),
+          style: context.accentOutlinedButtonStyle,
+        ),
+      );
+    } else {
+      body = BTransportPlanSummary(
+        plan: TransportPlanDraft.fromPlan(plan),
+        onEdit: _editTransportPlan,
+      );
+    }
+
+    return [
+      _sectionTitle(context, 'Ulaşım'),
+      const SizedBox(height: AppSizes.space),
+      body,
+      const SizedBox(height: AppSizes.spaceLarge),
+    ];
+  }
+
+  Widget _transportErrorPanel(String message) {
+    return Container(
+      key: const ValueKey('b-transport-error'),
+      width: double.infinity,
+      padding: AppPadding.card,
+      decoration: _panelDecoration(context),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Ulaşım planı alınamadı: $message',
+              style: context.textTheme.bodySmall?.copyWith(
+                color: context.textSecondary,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSizes.spaceSmall),
+          TextButton(
+            onPressed: _loadTransportPlan,
+            child: const Text('Tekrar dene'),
           ),
         ],
       ),
