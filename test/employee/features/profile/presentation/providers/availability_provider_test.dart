@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/material.dart';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/product/models/availability_day.dart';
 import 'package:koala/product/models/availability_slot.dart';
@@ -53,6 +55,16 @@ const Map<String, dynamic> _savedAvailability = {
 
 AvailabilityProvider providerFor(FakeApi api) =>
     AvailabilityProvider(service: AvailabilityService.withClient(api.client));
+
+/// Sağlayıcı bugünden önceki tarihi reddettiği için istisna tarihi sabit
+/// değil, çalıştırma gününden 30 gün sonrası (takvim gerçek saate bağlı).
+final DateTime _futureDate = DateUtils.dateOnly(
+  DateTime.now().add(const Duration(days: 30)),
+);
+final String _futureIsoDate =
+    '${_futureDate.year.toString().padLeft(4, '0')}-'
+    '${_futureDate.month.toString().padLeft(2, '0')}-'
+    '${_futureDate.day.toString().padLeft(2, '0')}';
 
 void main() {
   test('tek bir günü düzenleyip kaydetmek bütün haftayı PUT eder', () async {
@@ -192,13 +204,13 @@ void main() {
           );
         }
         if (request.method == 'PUT') {
-          return const FakeApiResponse(
+          return FakeApiResponse(
             statusCode: 200,
             body: {
               'success': true,
               'data': {
                 'id': 'exception_2',
-                'date': '2026-09-14',
+                'date': _futureIsoDate,
                 'available': true,
                 'note': 'Fazladan çalışabilirim',
               },
@@ -214,7 +226,7 @@ void main() {
     expect(
       await provider.saveException(
         userId: 'user_1',
-        date: DateTime(2026, 9, 14),
+        date: _futureDate,
         available: true,
         note: 'Fazladan çalışabilirim',
       ),
