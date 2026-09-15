@@ -886,7 +886,7 @@ void main() {
         find.byKey(const ValueKey('work-detail-check-out')),
         findsOneWidget,
       );
-      expect(find.textContaining("'de başladınız"), findsOneWidget);
+      expect(find.textContaining("12:05'de başladınız"), findsOneWidget);
     });
 
     testWidgets('onaylı işte ücret emanette değilse mesai düğmesi yok', (

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:koala/employee/core/widgets/employer_type_badge.dart';
 import 'package:koala/product/widgets/messaging_gate_note.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
+import 'package:koala/employee/features/home/models/job_start_on.dart';
 import 'package:koala/employee/features/jobs/models/my_job.dart';
 import 'package:koala/employee/features/jobs/models/review.dart';
 import 'package:koala/employee/features/jobs/models/timesheet_event.dart';
@@ -997,7 +998,7 @@ class _MyJobsPageState extends MyJobsPagemodel {
         Text(
           startedAt == null
               ? session.elapsed.asWorkDuration
-              : "${startedAt.asShortTime}'de başladın · "
+              : "${IstanbulCalendar.wallClockOf(startedAt).asShortTime}'de başladın · "
                     '${session.elapsed.asWorkDuration}',
           style: context.textTheme.labelMedium?.copyWith(
             fontWeight: FontWeight.w600,

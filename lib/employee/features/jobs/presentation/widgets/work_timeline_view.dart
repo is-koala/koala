@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:koala/employee/features/home/models/job_start_on.dart';
 import 'package:koala/employee/features/jobs/models/work_timeline.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
@@ -7,7 +8,7 @@ import 'package:koala/product/extensions/date_extensions.dart';
 /// İşin zaman çizelgesi: sol kenarda noktalar ve çizgi, sağda olay ve anı.
 ///
 /// Satırların hangileri olduğuna [WorkTimeline.build] karar veriyor; burası
-/// yalnızca çiziyor. Damgalar UTC geliyor, ekrana yerel saatle yazılıyor.
+/// yalnızca çiziyor. Damgalar UTC geliyor, ekrana İstanbul duvar saatiyle yazılıyor.
 class WorkTimelineView extends StatelessWidget {
   const WorkTimelineView({super.key, required this.entries});
 
@@ -78,7 +79,7 @@ class WorkTimelineView extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    entry.at.toLocal().asShortDateTime,
+                    IstanbulCalendar.wallClockOf(entry.at).asShortDateTime,
                     style: context.textTheme.labelMedium?.copyWith(
                       color: context.textSecondary,
                     ),

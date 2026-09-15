@@ -101,4 +101,27 @@ void main() {
       );
     });
   });
+
+  group('IstanbulCalendar.wallClockOf', () {
+    test('UTC Instant İstanbul duvar saatine kayar', () {
+      final wall = IstanbulCalendar.wallClockOf(
+        DateTime.utc(2026, 9, 10, 9, 5),
+      );
+      expect(wall.isUtc, isFalse);
+      expect(wall.year, 2026);
+      expect(wall.month, 9);
+      expect(wall.day, 10);
+      expect(wall.hour, 12);
+      expect(wall.minute, 5);
+    });
+
+    test('UTC gece İstanbul ertesi güne taşır', () {
+      final wall = IstanbulCalendar.wallClockOf(
+        DateTime.utc(2026, 9, 10, 21, 30),
+      );
+      expect(wall.day, 11);
+      expect(wall.hour, 0);
+      expect(wall.minute, 30);
+    });
+  });
 }

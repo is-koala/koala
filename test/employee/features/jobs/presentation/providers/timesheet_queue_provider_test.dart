@@ -404,7 +404,7 @@ void main() {
   );
 
   test(
-    'idempotency payload çakışması aynı kimlik bulunsa da silinmez',
+    'idempotency payload çakışması aynı kimlikle teslim edilmiş sayılır',
     () async {
       final store = _MemoryStore();
       final gateway = _FakeGateway()
@@ -432,6 +432,85 @@ void main() {
 
       expect(
         await provider.recordCheckIn(assignmentId: 'assignment-a'),
+        TimesheetSubmission.sent,
+      );
+      expect(provider.events, isEmpty);
+      await provider.disposeAsync();
+    },
+  );
+
+  test(
+    'bitirmede GPS sapmalı idempotency çakışması kuyruğu uzlaştırır',
+    () async {
+      final capturedAt = DateTime.parse('2026-09-06T10:00:00Z');
+      final store = _MemoryStore();
+      final gateway = _FakeGateway()
+        ..sendError = const ApiException(
+          message: 'Aynı olay farklı gövdeyle tekrarlandı',
+          type: ApiErrorType.dataConflict,
+          statusCode: 409,
+          errorCode: 'TIMESHEET_IDEMPOTENCY_CONFLICT',
+        )
+        ..sessions = [
+          WorkSession(
+            id: 'session-a',
+            assignmentId: 'assignment-a',
+            checkOutClientEventId: 'event-conflict',
+            checkOutCapturedAt: capturedAt.add(const Duration(seconds: 1)),
+            checkOutLatitude: 41.0085,
+            checkOutLongitude: 28.9785,
+          ),
+        ];
+      final provider = TimesheetQueueProvider.withAdapters(
+        store: store,
+        gateway: gateway,
+        retryTrigger: _ManualRetryTrigger(),
+        utcNow: () => capturedAt,
+        eventIdFactory: () => 'event-conflict',
+      );
+      await provider.startForUser('user-a');
+
+      expect(
+        await provider.recordCheckOut(
+          assignmentId: 'assignment-a',
+          latitude: 41.0084,
+          longitude: 28.9784,
+        ),
+        TimesheetSubmission.sent,
+      );
+      expect(provider.events, isEmpty);
+      await provider.disposeAsync();
+    },
+  );
+
+  test(
+    'kimliği sunucuda bulunmayan idempotency çakışması silinmez',
+    () async {
+      final store = _MemoryStore();
+      final gateway = _FakeGateway()
+        ..sendError = const ApiException(
+          message: 'Çakışma',
+          type: ApiErrorType.dataConflict,
+          statusCode: 409,
+          errorCode: 'TIMESHEET_IDEMPOTENCY_CONFLICT',
+        )
+        ..sessions = [
+          WorkSession(
+            id: 'session-a',
+            assignmentId: 'assignment-a',
+            checkOutClientEventId: 'someone-else',
+          ),
+        ];
+      final provider = TimesheetQueueProvider.withAdapters(
+        store: store,
+        gateway: gateway,
+        retryTrigger: _ManualRetryTrigger(),
+        eventIdFactory: () => 'event-conflict',
+      );
+      await provider.startForUser('user-a');
+
+      expect(
+        await provider.recordCheckOut(assignmentId: 'assignment-a'),
         TimesheetSubmission.requiresSupport,
       );
       expect(provider.events.single.requiresSupport, isTrue);
