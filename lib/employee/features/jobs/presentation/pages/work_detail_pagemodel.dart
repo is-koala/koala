@@ -175,6 +175,93 @@ abstract class WorkDetailPagemodel
   /// Sayfanın gösterdiği ilan özeti; sohbet ve ilan sheet'i bunu istiyor.
   Job? get summaryJob => job.assignment?.job ?? job.application?.job;
 
+  /// Adresin kesinliği: detay karar veriyor, gelmediyse özet, o da yoksa
+  /// yaklaşık — kanıtlanmamış yetki kesin sayılmaz (ADR-0003).
+  AddressPrecision get addressPrecision =>
+      detail?.addressPrecision ??
+      summaryJob?.addressPrecision ??
+      AddressPrecision.approximate;
+
+  /// Yol tarifinin hedefi; yalnız **kesin** konumda ve koordinat varsa.
+  ///
+  /// Koordinat önce detayın adresinden (`address.position`), o yoksa özetten
+  /// — ama özetinki yalnız özet de `EXACT` derken: `APPROXIMATE` özet
+  /// yuvarlanmış koordinat taşır ve yol tarifi olmayan bir kapıya götürürdü.
+  /// Varış hedefi işin başlangıcı (is-koala/koala#188).
+  DirectionsTarget? get directionsTarget {
+    if (addressPrecision.isApproximate) return null;
+    final position = detail?.address?.position;
+    final summary = summaryJob;
+    final double latitude;
+    final double longitude;
+    if (position != null) {
+      latitude = position.latitude;
+      longitude = position.longitude;
+    } else if (summary != null &&
+        summary.hasLocation &&
+        !summary.addressPrecision.isApproximate) {
+      latitude = summary.latitude!;
+      longitude = summary.longitude!;
+    } else {
+      return null;
+    }
+    return DirectionsTarget(
+      latitude: latitude,
+      longitude: longitude,
+      arrival: detail?.startDateTime ?? summary?.startDateTime,
+    );
+  }
+
+  /// Toplu taşıma yol tarifini harici haritada açar.
+  ///
+  /// iOS'ta Apple Haritalar / Google Haritalar seçtiriyor; Google uygulaması
+  /// yoksa (`comgooglemaps://` açılamazsa) evrensel bağlantıya düşüyor.
+  /// Android'de doğrudan evrensel bağlantı: sistem seçicisi Google
+  /// Haritalar'ı ya da tarayıcıyı sunuyor. Kullanıcının konumu hiçbir
+  /// bağlantıda yok; harita uygulaması başlangıcı kendisi okuyor.
+  Future<void> openDirections(DirectionsTarget target) async {
+    final Uri primary;
+    Uri? fallback;
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      final app = await OptionSheet.show<DirectionsApp>(
+        context,
+        title: 'Yol tarifini nerede açalım?',
+        options: DirectionsApp.values,
+        labelOf: (app) => app.label,
+        iconOf: (_) => AppIcons.route,
+      );
+      if (app == null || !mounted) return;
+      switch (app) {
+        case DirectionsApp.apple:
+          primary = DirectionsLinks.appleMaps(target);
+        case DirectionsApp.google:
+          primary = DirectionsLinks.googleMapsApp(target);
+          fallback = DirectionsLinks.googleMapsWeb(target);
+      }
+    } else {
+      primary = DirectionsLinks.googleMapsWeb(target);
+    }
+
+    var opened = await _openExternal(primary);
+    if (!opened && fallback != null) opened = await _openExternal(fallback);
+    if (!mounted || opened) return;
+    AppToast.error(context, 'Harita uygulaması açılamadı');
+  }
+
+  /// Bağlantıyı açar; açıcı `false` dönerse ya da fırlatırsa `false`.
+  /// Android'de işleyicisi olmayan şema `PlatformException` fırlatabiliyor,
+  /// yedek bağlantıya geçiş bunu da "açılamadı" saymalı.
+  Future<bool> _openExternal(Uri url) async {
+    final open =
+        widget.openExternalUrl ??
+        (uri) => launchUrl(uri, mode: LaunchMode.externalApplication);
+    try {
+      return await open(url);
+    } on PlatformException {
+      return false;
+    }
+  }
+
   /// Şirket sayfasına gider; kimlik bilinmiyorsa dokunma bağlanmıyor.
   VoidCallback? get openCompany {
     final companyId = job.companyId ?? detail?.company?.id;

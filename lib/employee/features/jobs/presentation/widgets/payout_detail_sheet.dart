@@ -4,7 +4,6 @@ import 'package:koala/employee/features/jobs/models/payout.dart';
 import 'package:koala/employee/features/jobs/presentation/widgets/payout_status_badge.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
-import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
@@ -147,13 +146,7 @@ class PayoutDetailSheet extends StatelessWidget {
                   color: context.accentColor,
                 ),
                 label: const Text('İş detayını aç'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: context.accentColor,
-                  side: BorderSide(color: context.accentColor),
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: AppRadius.smallCircular,
-                  ),
-                ),
+                style: context.accentOutlinedButtonStyle,
               ),
             ),
           ],

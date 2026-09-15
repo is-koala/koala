@@ -164,6 +164,10 @@ void main() {
         expect(_inCard(find.text('Konum')), findsOneWidget);
         expect(_inCard(find.text('Yaklaşık konum')), findsNothing);
         expect(_inCard(find.text(_exactLabel)), findsOneWidget);
+        // İlan kartında ulaşım vaadi yok (is-koala/koala#188): yol tarifi
+        // yalnız atanmış işçinin iş detayında, kesin konum gelse bile burada
+        // değil.
+        expect(_inCard(find.text('Yol tarifi al')), findsNothing);
       });
 
       testWidgets('sunucu yaklaşık verdiyse satır "Yaklaşık konum" oluyor', (
