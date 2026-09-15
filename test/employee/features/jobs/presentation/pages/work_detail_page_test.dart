@@ -14,17 +14,20 @@ import 'package:koala/employee/features/jobs/models/job_application.dart';
 import 'package:koala/employee/features/jobs/models/my_job.dart';
 import 'package:koala/employee/features/jobs/models/review.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/work_detail_page.dart';
+import 'package:koala/employee/features/jobs/presentation/widgets/work_transport_card.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/review_provider.dart';
 import 'package:koala/employee/features/jobs/services/assignment_service.dart';
 import 'package:koala/employee/features/jobs/services/job_application_service.dart';
 import 'package:koala/employee/features/jobs/services/review_service.dart';
+import 'package:koala/product/features/transport/services/transport_service.dart';
 import 'package:koala/product/theme/theme.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../../support/fake_api.dart';
 import '../../../../../support/review_fixtures.dart';
+import '../../../../../support/transport_fixtures.dart';
 import '../../../../../support/work_test_support.dart';
 
 /// `GET /jobs/{id}` gövdesi; adres kesinliği ve ilanı açan taraf testin
@@ -144,6 +147,8 @@ Future<Harness> pumpDetail(
       const {},
   Brightness brightness = Brightness.light,
   bool Function(Uri url)? openUrl,
+  Map<String, Object?>? transport,
+  bool seatDropped = false,
 }) async {
   final openedCompanies = <Object?>[];
   final openedReviews = <Object?>[];
@@ -165,6 +170,20 @@ Future<Harness> pumpDetail(
             : dataResponse(detail);
       }
       if (path.endsWith('/work-sessions')) return dataResponse(sessions);
+      // Ulaşım görünümü: verilmediyse planı olmayan ilan (`404`).
+      if (path.endsWith('/transport')) {
+        return transport == null
+            ? const FakeApiResponse(
+                statusCode: 404,
+                body: {
+                  'success': false,
+                  'message': 'Ulaşım planı bulunamadı.',
+                  'errorCategory': 'RESOURCE_NOT_FOUND',
+                  'errorCode': 'TRANSPORT_PLAN_NOT_FOUND',
+                },
+              )
+            : dataResponse(transport);
+      }
       if (path.endsWith('/cancellation')) return dataResponse(cancellation);
       if (path.endsWith('/respond')) {
         return dataResponse({'status': 'CONFIRMED'});
@@ -193,6 +212,8 @@ Future<Harness> pumpDetail(
             assignmentService: AssignmentService.withClient(api.client),
             chatService: ChatService.withClient(api.client),
             jobService: JobService.withClient(api.client),
+            transportService: TransportService.withClient(api.client),
+            seatDropped: seatDropped,
             openExternalUrl: (url) async {
               openedUrls.add(url);
               return openUrl?.call(url) ?? true;
@@ -1387,6 +1408,241 @@ void main() {
         expect(find.textContaining('İşverenin ödediği'), findsNothing);
         expect(find.text('50,00 ₺'), findsNothing);
         expect(find.text('1.000,00 ₺'), findsNothing);
+      });
+    });
+
+    group('ulaşım kartı / ${brightness.name}', () {
+      final selectOutbound = find.byKey(
+        const ValueKey('work-transport-select-OUTBOUND'),
+      );
+      final seatRow = find.byKey(const ValueKey('seat-picker-stop-stop-1'));
+      final card = find.byKey(const ValueKey('work-transport-card'));
+
+      testWidgets('plan yoksa (404) kart çizilmez', (tester) async {
+        await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: _confirmedRow,
+          detail: detailJson(creator: _ayse),
+        );
+
+        expect(card, findsNothing);
+      });
+
+      testWidgets('eski sunucu: görünüm ucu atamayı döndürse de kart yok', (
+        tester,
+      ) async {
+        // Eski sunucu `/transport` yolunu tanımıyor; yanıt yöntemsiz.
+        await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: _confirmedRow,
+          detail: detailJson(creator: _ayse),
+          overrides: {'/transport': (_) => dataResponse(assignmentJson())},
+        );
+
+        expect(card, findsNothing);
+      });
+
+      testWidgets('koltuk seçimi 200: sunucunun görünümü karta yazılır', (
+        tester,
+      ) async {
+        final seatRequests = <Object?>[];
+        final harness = await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: _confirmedRow,
+          detail: detailJson(creator: _ayse),
+          transport: assignmentTransportJson(),
+          overrides: {
+            '/transport/seat': (request) {
+              seatRequests.add(request.data);
+              return dataResponse(assignmentTransportJson(seats: [seatJson()]));
+            },
+          },
+        );
+
+        await tester.scrollUntilVisible(card, 200);
+        expect(find.text('Henüz koltuk seçmediniz.'), findsOneWidget);
+        expect(find.text('Plaka: 34 ABC 12'), findsNothing);
+
+        await tester.scrollUntilVisible(selectOutbound, 200);
+        await tester.pumpAndSettle();
+        await tester.tap(selectOutbound);
+        await tester.pumpAndSettle();
+        expect(find.text('Gidiş için koltuk seçin'), findsOneWidget);
+
+        await tester.tap(seatRow);
+        await settle(tester);
+
+        expect(seatRequests, [
+          {'shuttleId': 'shuttle-1', 'stopId': 'stop-1'},
+        ]);
+        expect(
+          harness.api.requests
+              .where((r) => r.path.endsWith('/transport/seat'))
+              .single
+              .method,
+          'PUT',
+        );
+        expect(find.text('Koltuk seçiminiz kaydedildi.'), findsOneWidget);
+        expect(find.text('Plaka: 34 ABC 12'), findsOneWidget);
+        expect(find.text('Şoför: Mehmet Usta'), findsOneWidget);
+        expect(find.text('Değiştir'), findsOneWidget);
+      });
+
+      testWidgets(
+        'koltuk seçimi 409: sunucu mesajı ve görünüm yeniden okunur',
+        (tester) async {
+          var transportReads = 0;
+          final harness = await pumpDetail(
+            tester,
+            brightness: brightness,
+            job: _confirmedRow,
+            detail: detailJson(creator: _ayse),
+            overrides: {
+              '/transport/seat': (_) => const FakeApiResponse(
+                statusCode: 409,
+                body: {
+                  'success': false,
+                  'message': 'Servisin kapasitesi dolu.',
+                  'errorCategory': 'DATA_CONFLICT',
+                  'errorCode': 'TRANSPORT_SHUTTLE_FULL',
+                },
+              ),
+              '/transport': (_) {
+                transportReads++;
+                // İlk okuma boş servis; ikincisi (409 sonrası) dolu servis.
+                return dataResponse(
+                  assignmentTransportJson(
+                    shuttles: [
+                      shuttleJson(
+                        capacity: 4,
+                        seatsTaken: transportReads == 1 ? 3 : 4,
+                      ),
+                    ],
+                  ),
+                );
+              },
+            },
+          );
+
+          await tester.scrollUntilVisible(selectOutbound, 200);
+          await tester.pumpAndSettle();
+          await tester.tap(selectOutbound);
+          await tester.pumpAndSettle();
+          await tester.tap(seatRow);
+          await settle(tester);
+
+          expect(find.text('Servisin kapasitesi dolu.'), findsOneWidget);
+          expect(transportReads, 2);
+          expect(find.text('Henüz koltuk seçmediniz.'), findsOneWidget);
+          expect(
+            harness.api.requests.where((r) => r.path.endsWith('/seat')),
+            hasLength(1),
+          );
+
+          // Yeniden okunan görünümde servis dolu: seçici artık dokundurmuyor.
+          await tester.scrollUntilVisible(selectOutbound, 200);
+          await tester.pumpAndSettle();
+          await tester.tap(selectOutbound);
+          await tester.pumpAndSettle();
+          expect(find.text('Dolu · 4/4 dolu'), findsOneWidget);
+        },
+      );
+
+      testWidgets('SEAT_DROPPED bağlamıyla açılınca uyarı çizilir', (
+        tester,
+      ) async {
+        await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: _confirmedRow,
+          detail: detailJson(creator: _ayse),
+          transport: assignmentTransportJson(),
+          seatDropped: true,
+        );
+
+        await tester.scrollUntilVisible(
+          find.text(WorkTransportCard.seatDroppedText),
+          200,
+        );
+        expect(find.text(WorkTransportCard.seatDroppedText), findsOneWidget);
+        expect(selectOutbound, findsOneWidget);
+      });
+
+      testWidgets('tamamlanmış atamada kart satırın görünümüyle, düğmesiz', (
+        tester,
+      ) async {
+        final harness = await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: assignmentRow(
+            assignmentJson(
+              status: 'COMPLETED',
+              paymentStatus: 'RELEASED_TO_WORKER',
+              extra: {
+                'transport': assignmentTransportJson(seats: [seatJson()]),
+              },
+            ),
+          ),
+          detail: detailJson(creator: _ayse),
+        );
+
+        await tester.scrollUntilVisible(card, 200);
+        expect(find.text('Plaka: 34 ABC 12'), findsOneWidget);
+        expect(find.text('Değiştir'), findsNothing);
+        expect(selectOutbound, findsNothing);
+        // Kapanmış atamada görünüm ucu hiç çağrılmıyor.
+        expect(
+          harness.api.requests.where((r) => r.path.endsWith('/transport')),
+          isEmpty,
+        );
+      });
+
+      testWidgets('durağa yol tarifi durağın koordinatını taşır', (
+        tester,
+      ) async {
+        final harness = await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: _confirmedRow,
+          detail: detailJson(creator: _ayse),
+          transport: assignmentTransportJson(seats: [seatJson()]),
+        );
+
+        final directions = find.byKey(
+          const ValueKey('work-transport-directions-OUTBOUND'),
+        );
+        await tester.scrollUntilVisible(directions, 200);
+        await tester.pumpAndSettle();
+        await tester.tap(directions);
+        await tester.pumpAndSettle();
+
+        expect(harness.openedUrls, hasLength(1));
+        expect(
+          harness.openedUrls.single.queryParameters['destination'],
+          _modaCoordinate,
+        );
+      }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
+      testWidgets('şoför telefonu tel: bağlantısıyla açılır', (tester) async {
+        final harness = await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: _confirmedRow,
+          detail: detailJson(creator: _ayse),
+          transport: assignmentTransportJson(seats: [seatJson()]),
+        );
+
+        final call = find.byKey(const ValueKey('work-transport-call-OUTBOUND'));
+        await tester.scrollUntilVisible(call, 200);
+        await tester.pumpAndSettle();
+        await tester.tap(call);
+        await tester.pumpAndSettle();
+
+        expect(harness.openedUrls, hasLength(1));
+        expect(harness.openedUrls.single.toString(), 'tel:+905551112233');
       });
     });
   }

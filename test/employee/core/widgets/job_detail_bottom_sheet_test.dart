@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/core/widgets/employer_type_badge.dart';
 import 'package:koala/employee/core/widgets/job_detail_bottom_sheet.dart';
 import 'package:koala/employee/core/widgets/job_location_card.dart';
+import 'package:koala/employee/core/widgets/job_transport_card.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
@@ -17,6 +18,7 @@ import 'package:provider/provider.dart';
 import '../../../support/fake_api.dart';
 import '../../../support/fixtures.dart';
 import '../../../support/pump.dart';
+import '../../../support/transport_fixtures.dart';
 
 /// `APPROXIMATE` yanıtta sunucunun bıraktığı metin: sokak, bina ve daire
 /// silinmiş, ilçe/il kalmış.
@@ -31,10 +33,12 @@ Map<String, dynamic> _detailBody({
   String? createdAt,
   int? headcount,
   int hiredCount = 0,
+  Map<String, Object?>? transport,
 }) => {
   'success': true,
   'data': {
     'id': 'job_ayni',
+    'transport': ?transport,
     'title': 'Part-time Garson',
     'category': {'id': 'cat-1', 'code': 'WAITER', 'name': 'Garsonluk'},
     'type': 'ONE_TIME',
@@ -286,6 +290,59 @@ void main() {
 
         expect(find.text('Yayın tarihi'), findsNothing);
         expect(find.text('Aranan kişi'), findsNothing);
+      });
+    });
+
+    group('İlan detayı ulaşım kartı ($themeName tema)', () {
+      testWidgets('plan varsa yöntemler, servis sayısı ve duraklar yazılır', (
+        tester,
+      ) async {
+        await _pumpOpenSheet(
+          tester,
+          job: buildJob(id: 'job_ayni'),
+          api: _api(
+            _detailBody(
+              precision: 'APPROXIMATE',
+              displayAddress: _maskedLabel,
+              transport: jobTransportJson(),
+            ),
+          ),
+          brightness: brightness,
+        );
+        await tester.scrollUntilVisible(
+          find.byType(JobTransportCard),
+          300,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Ulaşım'), findsOneWidget);
+        expect(
+          find.text('Gidiş: Servis · Dönüş: Yol parası (₺150)'),
+          findsOneWidget,
+        );
+        expect(find.text('1 servis'), findsOneWidget);
+        expect(find.text('Anadolu yakası servisi · Gidiş'), findsOneWidget);
+        final time = DateTime.utc(2026, 9, 20, 3, 40).toLocal().asShortTime;
+        expect(find.text('Kadıköy · Caferağa · $time'), findsOneWidget);
+        // Başvuru öncesi görünümde plaka, şoför ve tam adres yok.
+        expect(find.textContaining('34 ABC'), findsNothing);
+        expect(find.textContaining('Şoför'), findsNothing);
+        expect(find.textContaining('Moda Caddesi'), findsNothing);
+      });
+
+      testWidgets('plan yoksa kart çizilmez', (tester) async {
+        await _pumpOpenSheet(
+          tester,
+          job: buildJob(id: 'job_ayni'),
+          api: _api(
+            _detailBody(precision: 'APPROXIMATE', displayAddress: _maskedLabel),
+          ),
+          brightness: brightness,
+        );
+
+        expect(find.byType(JobTransportCard), findsNothing);
+        expect(find.text('Ulaşım'), findsNothing);
       });
     });
   }

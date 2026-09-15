@@ -11,6 +11,7 @@ void main() {
   late List<String> opened;
   late List<String> routes;
   late List<String> conversations;
+  late List<({String assignmentId, bool seatDropped})> transports;
   late bool sessionReady;
   late PushInbox inbox;
 
@@ -24,6 +25,7 @@ void main() {
     opened = [];
     routes = [];
     conversations = [];
+    transports = [];
     sessionReady = true;
     inbox = PushInbox(
       dedupe: dedupe,
@@ -33,8 +35,23 @@ void main() {
       onForeground: () async => foreground.add('refresh'),
       onOpened: (id) async => opened.add(id),
       onConversationOpened: (id) async => conversations.add(id),
+      onTransportOpened:
+          ({required assignmentId, required seatDropped}) async => transports
+              .add((assignmentId: assignmentId, seatDropped: seatDropped)),
     );
   });
+
+  Map<String, String> transportPush({
+    String event = 'PLAN_UPDATED',
+    String? assignmentId = 'asg-1',
+    String? notificationId = 'ntf-t1',
+  }) => {
+    'type': 'TRANSPORT',
+    'event': event,
+    'jobId': 'job-1',
+    'jobAssignmentId': ?assignmentId,
+    'notificationId': ?notificationId,
+  };
 
   Map<String, String> messagePush({
     String conversationId = 'conv-1',
@@ -170,5 +187,76 @@ void main() {
         expect(opened, ['ntf-x']);
       },
     );
+  });
+
+  // Backend ulaşım push'unu `type=TRANSPORT, event, jobId, jobAssignmentId`
+  // ile gönderiyor (`TransportManager.notifyWorker`); `IN_APP` satırı da var,
+  // o yüzden ön planda liste tazelenir ve dokunma okundu işaretlenir. Hedef
+  // bildirim ekranı değil iş detayı (is-koala/koala#197).
+  group('ulaşım push\'ı', () {
+    test('ön planda sıradan bildirim gibi listeyi tazeler', () async {
+      await inbox.handleForeground(transportPush());
+
+      expect(foreground, ['refresh']);
+      expect(transports, isEmpty);
+      expect(routes, isEmpty);
+    });
+
+    test('dokunma iş detayını açar ve okundu işaretler', () async {
+      await inbox.handleOpened(transportPush());
+
+      expect(transports, [(assignmentId: 'asg-1', seatDropped: false)]);
+      expect(opened, ['ntf-t1']);
+      expect(routes, isEmpty);
+    });
+
+    test('SEAT_DROPPED olayı yeniden seçim bağlamıyla açılır', () async {
+      await inbox.handleOpened(transportPush(event: 'SEAT_DROPPED'));
+
+      expect(transports, [(assignmentId: 'asg-1', seatDropped: true)]);
+    });
+
+    test('aynı bildirimin ikinci dokunması yok sayılır', () async {
+      await inbox.handleOpened(transportPush());
+      await inbox.handleOpened(transportPush());
+
+      expect(transports, hasLength(1));
+    });
+
+    test('oturum okunmadan gelen dokunma bekler, sonra detayı açar', () async {
+      sessionReady = false;
+      await inbox.handleOpened(transportPush());
+      expect(transports, isEmpty);
+
+      sessionReady = true;
+      await inbox.flush();
+
+      expect(transports, hasLength(1));
+    });
+
+    test('jobAssignmentId olmayan TRANSPORT sıradan bildirim gibi', () async {
+      await inbox.handleOpened(transportPush(assignmentId: null));
+
+      expect(transports, isEmpty);
+      expect(routes, ['/notifications']);
+      expect(opened, ['ntf-t1']);
+    });
+
+    test('açıcı verilmemişse bildirim ekranına düşer', () async {
+      final plain = PushInbox(
+        dedupe: dedupe,
+        sessionInitialized: () => true,
+        notificationsRoute: () => '/business/notifications',
+        navigate: routes.add,
+        onForeground: () async {},
+        onOpened: (id) async => opened.add(id),
+        onConversationOpened: (_) async {},
+      );
+
+      await plain.handleOpened(transportPush());
+
+      expect(routes, ['/business/notifications']);
+      expect(opened, ['ntf-t1']);
+    });
   });
 }

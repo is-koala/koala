@@ -26,7 +26,9 @@ import 'package:koala/employee/features/jobs/presentation/providers/timesheet_qu
 import 'package:koala/employee/features/jobs/presentation/widgets/cancellation_card.dart';
 import 'package:koala/employee/features/jobs/presentation/widgets/employer_card.dart';
 import 'package:koala/employee/features/jobs/presentation/widgets/review_state_row.dart';
+import 'package:koala/employee/features/jobs/presentation/widgets/seat_picker_sheet.dart';
 import 'package:koala/employee/features/jobs/presentation/widgets/timesheet_queue_status.dart';
+import 'package:koala/employee/features/jobs/presentation/widgets/work_transport_card.dart';
 import 'package:koala/employee/features/jobs/presentation/widgets/work_timeline_view.dart';
 import 'package:koala/employee/features/jobs/services/assignment_service.dart';
 import 'package:koala/product/constants/app_colors.dart';
@@ -36,6 +38,9 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
+import 'package:koala/product/features/transport/models/transport_error_codes.dart';
+import 'package:koala/product/features/transport/models/transport_plan.dart';
+import 'package:koala/product/features/transport/services/transport_service.dart';
 import 'package:koala/product/formatters/turkish_money_formatter.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/app_icon.dart';
@@ -50,6 +55,27 @@ part 'work_detail_pagemodel.dart';
 
 /// Üst menüdeki ikincil eylemler.
 enum _WorkMenuAction { cancel, dispute, withdraw }
+
+/// `/work-detail` rotasının `extra`'sı: kayıt + açılış bağlamı.
+///
+/// İşlerim satırı yalnız [MyJob] veriyor; `TRANSPORT` push'u (`SEAT_DROPPED`)
+/// buradan geliyor ve ulaşım kartını "yeniden seçin" hâlinde açtırıyor
+/// (is-koala/koala#197). Rota ikisini de kabul ediyor.
+class WorkDetailArgs {
+  const WorkDetailArgs({required this.job, this.seatDropped = false});
+
+  final MyJob job;
+
+  /// Koltuğu düşmüş bir atamaya bildirimden gelindi.
+  final bool seatDropped;
+
+  /// `extra` bir [MyJob] ya da [WorkDetailArgs]; başka bir şeyse rota
+  /// eskisi gibi fırlatıyor.
+  static WorkDetailArgs fromExtra(Object? extra) => switch (extra) {
+    final WorkDetailArgs args => args,
+    _ => WorkDetailArgs(job: extra as MyJob),
+  };
+}
 
 /// Bir işin — başvurunun ya da atamanın — detay sayfası.
 ///
@@ -66,7 +92,9 @@ class WorkDetailPage extends StatefulWidget {
     this.assignmentService,
     this.chatService,
     this.jobService,
+    this.transportService,
     this.openExternalUrl,
+    this.seatDropped = false,
   });
 
   /// Açılan kayıt. [MyJob.assignment] ya da [MyJob.application] dolu olmalı;
@@ -77,6 +105,11 @@ class WorkDetailPage extends StatefulWidget {
   final AssignmentService? assignmentService;
   final ChatService? chatService;
   final JobService? jobService;
+  final TransportService? transportService;
+
+  /// `SEAT_DROPPED` push'undan açıldı: ulaşım kartı koltuğu olmayan servis
+  /// yönünü "plandan kaldırıldı, yeniden seçin" diye açıklıyor.
+  final bool seatDropped;
 
   /// Harita bağlantısını açan kapı; verilmezse harici uygulama
   /// (`url_launcher`). Testler sahte bir açıcı geçip hangi adresin
@@ -126,6 +159,10 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
             _employerCard(),
             const SizedBox(height: AppSizes.space),
             _addressCard(),
+            if (transport != null) ...[
+              const SizedBox(height: AppSizes.space),
+              _transportCard(transport!),
+            ],
             if (job.paymentStatus != null) ...[
               const SizedBox(height: AppSizes.space),
               _paymentCard(),
@@ -497,6 +534,21 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
           : address?.components?.additionalDirections,
       onDirections: target == null ? null : () => openDirections(target),
       arrival: target?.arrival,
+    );
+  }
+
+  /// Ulaşım kartı (is-koala/koala#197): koltuk seçimi, seçilen servisin
+  /// plakası/şoförü, durağın adresi ve yol tarifi. Plan yoksa (eski sunucu
+  /// dahil) [transport] `null` ve kart çizilmiyor.
+  Widget _transportCard(AssignmentTransport transport) {
+    return WorkTransportCard(
+      transport: transport,
+      canSelectSeat: canSelectSeat,
+      seatDropped: widget.seatDropped,
+      busyDirection: seatBusyDirection,
+      onSelectSeat: selectSeat,
+      onCall: callDriver,
+      onDirections: openDirections,
     );
   }
 

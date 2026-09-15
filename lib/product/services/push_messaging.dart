@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/widgets.dart';
 import 'package:koala/employee/features/chat/models/conversation.dart';
+import 'package:koala/employee/features/jobs/presentation/pages/work_detail_page.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/network/session_manager.dart';
@@ -14,6 +15,7 @@ import 'package:koala/product/services/push_conversation_opener.dart';
 import 'package:koala/product/services/push_inbox.dart';
 import 'package:koala/product/services/push_notification_dedupe.dart';
 import 'package:koala/product/services/push_token_lifecycle.dart';
+import 'package:koala/product/services/push_work_detail_opener.dart';
 import 'package:koala/product/services/firebase_messaging_push_token_source.dart';
 
 /// Firebase ve FCM dinleyicilerinin tek giriş noktası.
@@ -67,6 +69,7 @@ class PushMessaging {
       routes: () => isBusiness() ? ChatRoutes.business : ChatRoutes.employee,
       navigate: _openChat,
     );
+    final workDetail = PushWorkDetailOpener(navigate: _openWorkDetail);
     _inbox =
         inbox ??
         PushInbox(
@@ -76,6 +79,18 @@ class PushMessaging {
               isBusiness() ? '/business/notifications' : '/notifications',
           navigate: _navigate,
           onConversationOpened: conversations.open,
+          // Ulaşım push'u yalnız işçiye gidiyor; işveren oturumunda iş
+          // detayı rotası yok, bildirim ekranına düşülüyor.
+          onTransportOpened: ({required assignmentId, required seatDropped}) {
+            if (isBusiness()) {
+              _navigate('/business/notifications');
+              return Future.value();
+            }
+            return workDetail.open(
+              assignmentId: assignmentId,
+              seatDropped: seatDropped,
+            );
+          },
           onForeground: () async {
             debugPrint('Ön plan push alındı, bildirim listesi tazeleniyor');
             await feed?.load(silent: true);
@@ -130,6 +145,12 @@ class PushMessaging {
   static void _navigate(String route) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       RouterManager.router.go(route);
+    });
+  }
+
+  static void _openWorkDetail(WorkDetailArgs? args) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      openWorkDetailOn(RouterManager.router, args);
     });
   }
 

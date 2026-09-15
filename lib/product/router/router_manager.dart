@@ -36,7 +36,6 @@ import 'package:koala/employee/features/jobs/presentation/pages/earnings_page.da
 import 'package:koala/employee/features/jobs/models/job_alert.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/review_page.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/work_detail_page.dart';
-import 'package:koala/employee/features/jobs/models/my_job.dart';
 import 'package:koala/employee/features/jobs/models/review.dart'
     show ReviewSubject;
 import 'package:koala/employee/features/chat/presentation/pages/chat_list_page.dart';
@@ -312,10 +311,13 @@ class RouterManager {
       GoRoute(
         path: '/work-detail',
         pageBuilder: (context, state) {
-          // İşlerim satırı ya da Kazançlar satırı; kayıt `MyJob.assignment`
-          // veya `MyJob.application` ile birlikte geliyor.
-          final job = state.extra as MyJob;
-          return _page(state, WorkDetailPage(job: job));
+          // İşlerim satırı ya da Kazançlar satırı `MyJob` veriyor; ulaşım
+          // push'u `WorkDetailArgs` ile açılış bağlamını da taşıyor.
+          final args = WorkDetailArgs.fromExtra(state.extra);
+          return _page(
+            state,
+            WorkDetailPage(job: args.job, seatDropped: args.seatDropped),
+          );
         },
       ),
 
