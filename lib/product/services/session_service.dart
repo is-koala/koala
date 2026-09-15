@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:koala/product/models/session_detail.dart';
 import 'package:koala/product/models/user_session.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
@@ -31,6 +32,34 @@ class SessionService {
                 .map(UserSession.fromJson)
                 .toList()
           : const [],
+    );
+  }
+
+  /// Tek bir oturumun ayrıntısı: IP, konum, oluşturulma anı, giriş sayısı
+  /// ve son girişler.
+  ///
+  /// Başkasının ya da kapatılmış oturum `404` — bilinmeyen kimlikle aynı,
+  /// oturum kimliği sızmıyor. Ucu tanımayan eski sunucu da `404` veriyor;
+  /// çağıran ikisini ayırt edemiyor ve etmiyor: ayrıntı yoksa satır
+  /// açılmıyor.
+  Future<SessionDetail> fetchDetail(String sessionId) {
+    return _apiClient.get<SessionDetail>(
+      ApiPaths.currentUserSession(sessionId),
+      parse: (data) => SessionDetail.fromJson(data! as Map<String, dynamic>),
+    );
+  }
+
+  /// Cihaza özel ad verir (`≤ 60` karakter; boş ad `400`).
+  ///
+  /// Ad oturuma değil cihaza yazılıyor: aynı cihazın sonraki oturumları da
+  /// bu adla listelenir. Dönen `DeviceDto` okunmuyor; çağıran ayrıntıyı
+  /// yeniden çekiyor, çünkü ekranda gösterilen `deviceName` oturum
+  /// ayrıntısından geliyor.
+  Future<void> renameDevice(String deviceId, String name) {
+    return _apiClient.patch<void>(
+      ApiPaths.currentUserDevice(deviceId),
+      body: {'name': name},
+      parse: (_) {},
     );
   }
 

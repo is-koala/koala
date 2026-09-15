@@ -1,3 +1,7 @@
+import 'package:koala/product/constants/app_icon_data.dart';
+import 'package:koala/product/constants/app_icons.dart';
+import 'package:koala/product/network/json_field.dart';
+
 /// Oturumun açıldığı cihazın türü. Backend `DeviceType` karşılığı.
 enum SessionDeviceType {
   ios('IOS', 'iPhone'),
@@ -17,6 +21,16 @@ enum SessionDeviceType {
       orElse: () => SessionDeviceType.unknown,
     );
   }
+}
+
+/// Cihaz türünün görsel karşılığı; liste satırı ve ayrıntı sayfası aynı
+/// ikonu çiziyor (`JobCategoryStyle` kalıbı).
+extension SessionDeviceTypeStyle on SessionDeviceType {
+  AppIconData get icon => switch (this) {
+    SessionDeviceType.ios || SessionDeviceType.android => AppIcons.mobile,
+    SessionDeviceType.webBrowser => AppIcons.globe,
+    SessionDeviceType.other || SessionDeviceType.unknown => AppIcons.shield,
+  };
 }
 
 /// Hesaba açık bir oturum. Backend `SessionDto` karşılığı.
@@ -69,16 +83,9 @@ class UserSession {
       deviceName: json['deviceName'] as String?,
       ipAddress: json['ipAddress'] as String?,
       location: json['location'] as String?,
-      lastAccessedAt: _parseDate(json['lastAccessedAt']),
-      refreshExpiresAt: _parseDate(json['refreshExpiresAt']),
+      lastAccessedAt: JsonField.dateOrNull(json['lastAccessedAt']),
+      refreshExpiresAt: JsonField.dateOrNull(json['refreshExpiresAt']),
       isCurrent: json['current'] as bool? ?? false,
     );
-  }
-
-  static DateTime? _parseDate(Object? value) {
-    return switch (value) {
-      final String text => DateTime.tryParse(text),
-      _ => null,
-    };
   }
 }

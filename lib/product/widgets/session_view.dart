@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:koala/product/constants/app_colors.dart';
-import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
-import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
+import 'package:koala/product/features/account/account_routes.dart';
 import 'package:koala/product/models/user_session.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/services/session_service.dart';
@@ -14,6 +14,8 @@ import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/confirm_dialog.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/empty_state.dart';
+import 'package:koala/product/widgets/session_device_icon.dart';
+import 'package:koala/product/widgets/status_badge.dart';
 
 /// Hesaba giriş yapılmış cihazların listesi.
 ///
@@ -21,23 +23,42 @@ import 'package:koala/product/widgets/empty_state.dart';
 /// çünkü iki uygulamanın başlık çubuğu farklı kuruluyor —
 /// [NotificationView] ile aynı düzen.
 class SessionView extends StatefulWidget {
-  const SessionView({super.key, this.bottomPadding = AppSizes.space});
+  const SessionView({
+    super.key,
+    this.bottomPadding = AppSizes.space,
+    this.service,
+  });
 
   /// Listenin altındaki boşluk. İşveren tarafında navbar'ın altında
   /// kalmasın diye büyütülüyor.
   final double bottomPadding;
+
+  /// Testlerde sahte sunucuya bağlı örnek geçilebilsin diye.
+  final SessionService? service;
 
   @override
   State<SessionView> createState() => _SessionViewState();
 }
 
 class _SessionViewState extends State<SessionView> {
-  final SessionService _service = SessionService();
+  late final SessionService _service = widget.service ?? SessionService();
 
   List<UserSession> _sessions = const [];
   bool _isLoading = true;
   bool _isWorking = false;
   String? _errorMessage;
+
+  /// Sunucu oturum ayrıntısını veriyor mu.
+  ///
+  /// Ayrıntı ucu 0.9.28 ile geldi; eski sunucu `404` döndürüyor. İlk `404`
+  /// ekran boyunca akılda tutuluyor ve satırlar dokunulmaz oluyor: her
+  /// dokunuşta aynı `404`'ü alıp sessiz kalmak, kullanıcıya bozuk bir düğme
+  /// gibi görünürdü. Baştan "var" sayılıyor; bir istek atmadan bilmenin yolu
+  /// yok.
+  bool _detailAvailable = true;
+
+  /// Ayrıntısı şu anda çekilen oturum; aynı satıra ikinci dokunuş beklemiyor.
+  String? _openingId;
 
   @override
   void initState() {
@@ -86,6 +107,40 @@ class _SessionViewState extends State<SessionView> {
       if (mounted) AppToast.error(context, error.message);
     } finally {
       if (mounted) setState(() => _isWorking = false);
+    }
+  }
+
+  /// Satıra dokununca ayrıntıyı çekip sayfayı açar.
+  ///
+  /// Ayrıntı önce burada çekiliyor, sayfada değil: eski sunucunun `404`'ü
+  /// boş bir sayfa yerine burada yutuluyor — toast yok, satır bundan sonra
+  /// dokunulmuyor. Aynı `404` bu arada kapanmış bir oturum için de gelir;
+  /// liste sessizce yenilenip oturum hâlâ duruyorsa "sunucu ucu tanımıyor"
+  /// sayılıyor, düşmüşse yalnızca liste güncellenmiş oluyor.
+  Future<void> _openDetail(UserSession session) async {
+    if (_openingId != null || !_detailAvailable) return;
+    setState(() => _openingId = session.id);
+
+    try {
+      final detail = await _service.fetchDetail(session.id);
+      if (!mounted) return;
+      final revoked = await context.push<bool>(
+        AccountRoutes.sessionDetail,
+        extra: detail,
+      );
+      if (revoked == true && mounted) await _load(silent: true);
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      if (error.type == ApiErrorType.notFound) {
+        await _load(silent: true);
+        if (!mounted) return;
+        final stillListed = _sessions.any((row) => row.id == session.id);
+        if (stillListed) setState(() => _detailAvailable = false);
+        return;
+      }
+      AppToast.error(context, error.message);
+    } finally {
+      if (mounted) setState(() => _openingId = null);
     }
   }
 
@@ -193,47 +248,52 @@ class _SessionViewState extends State<SessionView> {
   }
 
   Widget _tile(UserSession session) {
+    final canOpen = _detailAvailable && _openingId == null;
+
     return Container(
+      key: ValueKey('session-${session.id}'),
       decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: context.dividerColor, width: 1),
+          bottom: BorderSide(
+            color: context.dividerColor,
+            width: AppSizes.divider,
+          ),
         ),
       ),
-      child: Padding(
-        padding: AppPadding.tileTall,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: AppSizes.iconTile,
-              height: AppSizes.iconTile,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: context.accentColor.withValues(
-                  alpha: AppColors.surfaceTintAlpha,
+      child: InkWell(
+        onTap: canOpen ? () => _openDetail(session) : null,
+        child: Padding(
+          padding: AppPadding.tileTall,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SessionDeviceIcon(session.deviceType),
+              const SizedBox(width: AppSizes.space),
+              Expanded(child: _tileContent(session)),
+              // Kendi oturumunu kapatmak çıkış yapmak demek; o iş ayarlardaki
+              // "Çıkış Yap"a ait, burada düğme çizilmiyor.
+              if (!session.isCurrent)
+                IconButton(
+                  onPressed: _isWorking ? null : () => _revoke(session),
+                  icon: const AppIcon(
+                    AppIcons.logout,
+                    color: AppColors.danger,
+                    size: AppSizes.iconMedium,
+                  ),
                 ),
-                borderRadius: AppRadius.innerCircular,
-              ),
-              child: AppIcon(
-                _deviceIcon(session.deviceType),
-                size: AppSizes.icon,
-                color: context.accentColor,
-              ),
-            ),
-            const SizedBox(width: AppSizes.space),
-            Expanded(child: _tileContent(session)),
-            // Kendi oturumunu kapatmak çıkış yapmak demek; o iş ayarlardaki
-            // "Çıkış Yap"a ait, burada düğme çizilmiyor.
-            if (!session.isCurrent)
-              IconButton(
-                onPressed: _isWorking ? null : () => _revoke(session),
-                icon: const AppIcon(
-                  AppIcons.logout,
-                  color: AppColors.danger,
-                  size: AppSizes.iconMedium,
+              // Ok yalnız ayrıntı açılabiliyorsa: eski sunucuda satır düz bir
+              // satır, gidilecek yeri yokmuş gibi görünmeli.
+              if (_detailAvailable)
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSizes.space),
+                  child: AppIcon(
+                    AppIcons.arrowRight,
+                    size: AppSizes.iconSmall,
+                    color: context.textTertiary,
+                  ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -258,7 +318,7 @@ class _SessionViewState extends State<SessionView> {
             ),
             if (session.isCurrent) ...[
               const SizedBox(width: AppSizes.spaceSmall),
-              _currentBadge(),
+              const CurrentSessionBadge(),
             ],
           ],
         ),
@@ -275,23 +335,6 @@ class _SessionViewState extends State<SessionView> {
     );
   }
 
-  Widget _currentBadge() {
-    return Container(
-      padding: AppPadding.badge,
-      decoration: BoxDecoration(
-        color: AppColors.success.withValues(alpha: AppColors.surfaceTintAlpha),
-        borderRadius: AppRadius.smallCircular,
-      ),
-      child: Text(
-        'Bu cihaz',
-        style: context.textTheme.labelSmall?.copyWith(
-          color: AppColors.success,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
   /// Yer ve son kullanım. İkisi de boş gelebiliyor, o zaman satır hiç
   /// çizilmiyor — "null · null" göstermektense boş bırakmak iyi.
   String _subtitle(UserSession session) {
@@ -302,13 +345,5 @@ class _SessionViewState extends State<SessionView> {
     ];
 
     return parts.join(' · ');
-  }
-
-  AppIconData _deviceIcon(SessionDeviceType type) {
-    return switch (type) {
-      SessionDeviceType.ios || SessionDeviceType.android => AppIcons.mobile,
-      SessionDeviceType.webBrowser => AppIcons.globe,
-      SessionDeviceType.other || SessionDeviceType.unknown => AppIcons.shield,
-    };
   }
 }

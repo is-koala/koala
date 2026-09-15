@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/network/api_paths.dart';
+import 'package:koala/product/network/device_hints.dart';
 import 'package:koala/product/network/device_identity.dart';
 
 import '../../support/fake_api.dart';
@@ -54,6 +55,77 @@ void main() {
         api.requests.single.headers[DeviceIdentity.deviceIdHeader],
         isNotNull,
       );
+    });
+
+    // Cihaz ipuçları (is-koala/koala#198): sunucu giriş ve yenileme
+    // isteklerinde okuyup cihaza gerçek adını yazıyor.
+    test('cihaz ipucu başlıklarını her isteğe koyuyor', () async {
+      final api = FakeApi(
+        handler: (_) => const FakeApiResponse(
+          statusCode: 200,
+          body: {'success': true, 'data': 'tamam'},
+        ),
+        deviceHints: const DeviceHints(os: 'iOS 18.1', appVersion: '1.1.0'),
+      );
+
+      await api.client.post<String>(
+        ApiPaths.login,
+        body: const {'email': 'a@b.c', 'password': 'x'},
+        parse: (data) => data! as String,
+      );
+
+      final headers = api.requests.single.headers;
+      expect(headers[DeviceHints.osHeader], 'iOS 18.1');
+      expect(headers[DeviceHints.appVersionHeader], '1.1.0');
+      expect(headers.containsKey(DeviceHints.modelHeader), isFalse);
+    });
+
+    test('yenileme isteği de cihaz ipuçlarını taşıyor', () async {
+      final seen = <String, Map<String, dynamic>>{};
+      final api = FakeApi(
+        handler: (request) {
+          // Yeniden denenen istek gönderdiği seçenekleri değiştiriyor;
+          // başlıklar yanıt verilmeden önce kopyalanıyor.
+          seen[request.path] = Map.of(request.headers);
+          if (request.path == ApiPaths.refreshToken) {
+            return const FakeApiResponse(
+              statusCode: 200,
+              body: {
+                'success': true,
+                'data': {'token': 'yeni', 'refreshToken': 'yeni-r'},
+              },
+            );
+          }
+          if (seen.length == 1) {
+            return const FakeApiResponse(
+              statusCode: 401,
+              body: {'success': false, 'errorCategory': 'TOKEN_EXPIRED'},
+            );
+          }
+          return const FakeApiResponse(
+            statusCode: 200,
+            body: {'success': true, 'data': 'tamam'},
+          );
+        },
+        tokenStorage: FakeTokenStorage(
+          accessToken: 'eski',
+          refreshToken: 'eski-r',
+        ),
+        deviceHints: const DeviceHints(os: 'Android', appVersion: '1.1.0'),
+      );
+
+      await api.client.get<String>(
+        ApiPaths.currentUser,
+        parse: (data) => data! as String,
+      );
+
+      final refresh = seen[ApiPaths.refreshToken]!;
+      expect(refresh[DeviceHints.osHeader], 'Android');
+      expect(refresh[DeviceHints.appVersionHeader], '1.1.0');
+      // Sıradan (giriş dışı) istek de aynı başlıkları taşıyor.
+      final plain = seen[ApiPaths.currentUser]!;
+      expect(plain[DeviceHints.osHeader], 'Android');
+      expect(plain[DeviceHints.appVersionHeader], '1.1.0');
     });
   });
 

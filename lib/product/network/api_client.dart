@@ -9,6 +9,7 @@ import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/network/api_response.dart';
 import 'package:koala/product/network/app_update_gate.dart';
 import 'package:koala/product/network/auth_interceptor.dart';
+import 'package:koala/product/network/device_hints.dart';
 import 'package:koala/product/network/device_identity.dart';
 import 'package:koala/product/network/device_interceptor.dart';
 import 'package:koala/product/network/session_manager.dart';
@@ -59,16 +60,20 @@ class ApiClient {
   ///
   /// Keychain ve `SharedPreferences` testte yok, o yüzden [tokenStorage] ile
   /// [deviceIdentity] dışarıdan veriliyor — üretim tekilleri varsayılan
-  /// yapılsaydı testler platform kanalına gitmeye çalışırdı.
+  /// yapılsaydı testler platform kanalına gitmeye çalışırdı. [deviceHints]
+  /// verilmezse test makinesinin kendi değerleri gidiyor; başlıkları ölçen
+  /// test sabit bir ipucu geçiyor.
   @visibleForTesting
   ApiClient.withDio(
     this._dio, {
     required TokenStorage tokenStorage,
     required DeviceIdentity deviceIdentity,
     required Future<void> Function() onSessionExpired,
+    DeviceHints? deviceHints,
   }) {
     _attachInterceptors(
       deviceIdentity: deviceIdentity,
+      deviceHints: deviceHints,
       tokenStorage: tokenStorage,
       // Yenileme ve tekrar deneme ayrı bir dio'dan gidiyor; testte o da aynı
       // sahte katmandan geçmeli, yoksa gerçek ağa çıkmaya çalışırdı.
@@ -88,13 +93,15 @@ class ApiClient {
     required TokenStorage tokenStorage,
     required Dio tokenDio,
     required Future<void> Function() onSessionExpired,
+    DeviceHints? deviceHints,
   }) {
-    // Cihaz başlığı hem ana istemciye hem yenileme istemcisine gerekiyor:
-    // backend oturumu yenilerken de cihazı doğruluyor.
-    tokenDio.interceptors.add(DeviceInterceptor(deviceIdentity));
+    // Cihaz başlıkları hem ana istemciye hem yenileme istemcisine gerekiyor:
+    // backend oturumu yenilerken de cihazı doğruluyor ve adını tazeliyor.
+    final hints = deviceHints ?? DeviceHints.current();
+    tokenDio.interceptors.add(DeviceInterceptor(deviceIdentity, hints: hints));
 
     _dio.interceptors
-      ..add(DeviceInterceptor(deviceIdentity))
+      ..add(DeviceInterceptor(deviceIdentity, hints: hints))
       ..add(
         AuthInterceptor(
           tokenStorage: tokenStorage,

@@ -23,6 +23,10 @@ class AppSizes {
 
   // ------------------------------------------------------------- Bileşenler
 
+  /// Liste satırlarını ayıran çizginin kalınlığı. Bir piksel: ayırıcı
+  /// satırları bölmeli, kendisi bir öğe gibi durmamalı.
+  static const double divider = 1.0;
+
   /// Liste satırındaki kare görsel (ilan kartı, sohbet satırı). Metin
   /// bloğundan kasıtlı olarak yüksek: satır yüksekliğini hep görsel
   /// belirlesin ve tüm satırlar eşit boyda kalsın.
