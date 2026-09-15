@@ -69,9 +69,9 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
 
   /// Konumu bir kez okur.
   ///
-  /// İki işi var: kartlardaki mesafe satırı ve mesafe süzgecinin sınırlayıcı
-  /// kutusu. İzin yoksa mesafe süzgeci sheet'te kapalı çiziliyor ve izin
-  /// istemeyi öneriyor — bkz. [_requestLocation].
+  /// İki işi var: `lat`/`lng` (kartın `distanceKm`'si ve yakınlık sıralaması)
+  /// ve mesafe süzgecinin sınırlayıcı kutusu. İzin yoksa mesafe süzgeci ve
+  /// "En yakın" kapalı çiziliyor — bkz. [_requestLocation].
   Future<void> _resolvePosition() async {
     Position? position;
     try {
@@ -82,62 +82,7 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
 
     if (!mounted) return;
     setState(() => _currentPosition = position);
-  }
-
-  /// İlana olan uzaklık, km. Konum izni yoksa ya da ilanın koordinatı
-  /// yoksa `null` — mesafe satırı o zaman hiç çizilmiyor.
-  ///
-  /// Uzaklık, ilanın koordinatı hangi kesinlikte geldiyse o kesinliği
-  /// **devralıyor**: yaklaşık konumda sunucunun yuvarladığı noktadan
-  /// ölçülüyor, yani ±557 m taşıyor. Burada düzeltilecek bir şey yok — düzeltme
-  /// gösterimde: kartın satırını [Job.distanceLabel] yazıyor ve çözünürlüğü
-  /// bayrağa göre kısıyor. Ham değeri burada yuvarlamak sıralamayı da bozardı.
-  double? _getDistance(Job job) {
-    if (_currentPosition == null || !job.hasLocation) return null;
-    final distance = Geolocator.distanceBetween(
-      _currentPosition!.latitude,
-      _currentPosition!.longitude,
-      job.latitude!,
-      job.longitude!,
-    );
-    return distance / 1000; // km'ye çevir
-  }
-
-  /// Ekrana çizilecek liste.
-  ///
-  /// Mesafeye göre sıralama **yalnız mesafe süzgeci seçiliyken** uygulanıyor.
-  /// Sunucuda mesafe sıralaması yok (`SORTABLE_FIELDS` dört alan taşıyor), yani
-  /// bu sıralama o ana kadar yüklenmiş sayfaların üzerinde çalışıyor ve yeni
-  /// sayfa geldikçe kartlar yer değiştiriyor. Süzgeç açıkken sonuç zaten
-  /// kullanıcının çevresindeki kutuyla sınırlı olduğu için sıralama orada
-  /// anlamlı; süzgeç kapalıyken sunucunun `createdAt DESC` sırası korunuyor,
-  /// aksi hâlde liste sebepsiz yere gözün önünde karışırdı.
-  /// Sıralama ham uzaklıkla yapılıyor, yuvarlanmışla değil.
-  ///
-  /// Yuvarlanmış değerle sıralamak eşit kalan uzaklıkları rastgele bir düzene
-  /// sokardı; ham değer en azından sunucunun verdiği noktaya sadık. Yaklaşık
-  /// konumlu iki ilanın **birbirine göre** sırası hata payı kadar belirsiz
-  /// kalıyor, ama sıra bir uzaklık iddiası değil — iddiayı taşıyan metin
-  /// [Job.distanceLabel]'dan geçiyor.
-  List<Job> _visibleJobs(List<Job> jobs) {
-    if (_selection.radiusKm == null || _currentPosition == null) return jobs;
-
-    final origin = _currentPosition!;
-    // Koordinatı olmayan ilanlar sona düşüyor: uzaklıkları bilinmiyor, en
-    // yakın diye göstermek yanlış olur.
-    return [...jobs]..sort(
-      (a, b) => _rawDistance(origin, a).compareTo(_rawDistance(origin, b)),
-    );
-  }
-
-  static double _rawDistance(Position origin, Job job) {
-    if (!job.hasLocation) return double.infinity;
-    return Geolocator.distanceBetween(
-      origin.latitude,
-      origin.longitude,
-      job.latitude!,
-      job.longitude!,
-    );
+    if (position != null) _applyQuery();
   }
 
   // ------------------------------------------------------------------- Arama
@@ -191,10 +136,19 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
   }
 
   Future<void> _openSortSheet() async {
-    final picked = await JobSortSheet.show(context, selected: _selection.sort);
+    final picked = await JobSortSheet.show(
+      context,
+      selected: _selection.sort,
+      hasLocation: _currentPosition != null,
+    );
     if (picked == null || !mounted) return;
 
     setState(() => _selection = _selection.copyWith(sort: picked));
+    _applyQuery();
+  }
+
+  void _setStartOn(JobStartOn? startOn) {
+    setState(() => _selection = _selection.copyWith(startOn: startOn));
     _applyQuery();
   }
 

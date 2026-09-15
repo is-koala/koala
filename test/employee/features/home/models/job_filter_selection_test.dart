@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_filter_selection.dart';
 import 'package:koala/employee/features/home/models/job_search_query.dart';
+import 'package:koala/employee/features/home/models/job_start_on.dart';
 import 'package:koala/product/models/reference_location.dart';
 
 const _ankara = ReferenceLocation(id: 'city-6', name: 'Ankara');
@@ -58,6 +59,29 @@ void main() {
       expect(query.hasBounds, isTrue);
       expect(query.bounds!.minLatitude, lessThan(39.92));
     });
+
+    test('konum lat/lng olarak gidiyor', () {
+      final query = const JobFilterSelection().toQuery(
+        latitude: 41.008238123,
+        longitude: 28.978359456,
+      );
+
+      expect(query.toQueryParameters()['lat'], 41.008238);
+      expect(query.toQueryParameters()['lng'], 28.978359);
+    });
+
+    test('başlangıç çipi Instant penceresine çevriliyor', () {
+      final now = DateTime.parse('2026-09-15T12:00:00+03:00');
+      final query = const JobFilterSelection(
+        startOn: JobStartOn.today,
+      ).toQuery(now: now);
+
+      expect(
+        query.toQueryParameters()['startFrom'],
+        '2026-09-14T21:00:00.000Z',
+      );
+      expect(query.toQueryParameters()['startTo'], '2026-09-15T20:59:59.999Z');
+    });
   });
 
   group('JobFilterSelection.activeFilters', () {
@@ -108,6 +132,7 @@ void main() {
         maxSalary: 2000,
         radiusKm: 10,
         insuranceRequired: true,
+        startOn: JobStartOn.today,
       );
       final labels = selection.activeFilters.map((f) => f.label).toList();
 
@@ -115,6 +140,7 @@ void main() {
       expect(labels, contains('500₺ - 2.000₺'));
       expect(labels, contains('10 km içinde'));
       expect(labels, contains('Sigortalı'));
+      expect(labels, contains('Bugün'));
     });
 
     test('üst sınırsız ücret etiketi açık uçlu yazılıyor', () {

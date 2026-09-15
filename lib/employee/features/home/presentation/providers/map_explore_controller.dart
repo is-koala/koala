@@ -57,6 +57,12 @@ class MapExploreController extends ChangeNotifier {
   bool _disposed = false;
   String? _errorMessage;
 
+  double? _latitude;
+  double? _longitude;
+  DateTime? _startFrom;
+  DateTime? _startTo;
+  JobSortOption _sort = JobSortOption.newest;
+
   List<Job> get jobs => List.unmodifiable(_jobs);
 
   String get searchText => _searchText;
@@ -68,6 +74,36 @@ class MapExploreController extends ChangeNotifier {
   bool get isTruncated => _isTruncated;
 
   String? get errorMessage => _errorMessage;
+
+  /// Kullanıcı konumu. Kartın `distanceKm`'si ve yakınlık sıralaması buna
+  /// bağlı; yokken `lat`/`lng` gönderilmez.
+  void setOrigin({double? latitude, double? longitude}) {
+    if (_latitude == latitude && _longitude == longitude) return;
+    _latitude = latitude;
+    _longitude = longitude;
+    _invalidateAndRefetch();
+  }
+
+  /// Sıralama. Mesafe sıralaması konum olmadan parametreye düşmez.
+  void setSort(JobSortOption sort) {
+    if (_sort == sort) return;
+    _sort = sort;
+    _invalidateAndRefetch();
+  }
+
+  /// Başlangıç günü penceresi. İkisi birden `null` süzgeci kaldırır.
+  void setStartWindow({DateTime? startFrom, DateTime? startTo}) {
+    if (_startFrom == startFrom && _startTo == startTo) return;
+    _startFrom = startFrom;
+    _startTo = startTo;
+    _invalidateAndRefetch();
+  }
+
+  void _invalidateAndRefetch() {
+    _loadedBounds = null;
+    _loadedComplete = false;
+    _schedule();
+  }
 
   /// Kamera durduğunda çağrılıyor.
   void onCameraIdle(JobMapBounds bounds) {
@@ -121,7 +157,15 @@ class MapExploreController extends ChangeNotifier {
 
     try {
       final page = await _service.search(
-        JobSearchQuery(query: _searchText, bounds: bounds),
+        JobSearchQuery(
+          query: _searchText,
+          bounds: bounds,
+          latitude: _latitude,
+          longitude: _longitude,
+          startFrom: _startFrom,
+          startTo: _startTo,
+          sort: _sort,
+        ),
         size: mapPageSize,
       );
 

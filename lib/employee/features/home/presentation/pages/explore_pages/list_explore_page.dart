@@ -2,15 +2,16 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_filter_selection.dart';
 import 'package:koala/employee/features/home/models/job_search_query.dart';
+import 'package:koala/employee/features/home/models/job_start_on.dart';
 import 'package:koala/employee/features/home/presentation/providers/job_category_provider.dart';
 import 'package:koala/employee/features/home/presentation/providers/job_search_provider.dart';
 import 'package:koala/employee/features/home/presentation/widgets/explore_brand_title.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_card.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_filter_sheet.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_sort_sheet.dart';
+import 'package:koala/employee/features/home/presentation/widgets/job_start_on_chips.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -45,7 +46,7 @@ class _ListExplorePageState extends ListExplorePagemodel {
   Widget build(BuildContext context) {
     super.build(context);
     final search = context.watch<JobSearchProvider>();
-    final jobs = _visibleJobs(search.jobs);
+    final jobs = search.jobs;
 
     return GestureDetector(
       onTap: () => _searchFocusNode.unfocus(),
@@ -77,7 +78,7 @@ class _ListExplorePageState extends ListExplorePagemodel {
                   delegate: SliverChildBuilderDelegate((context, index) {
                     if (index >= jobs.length) return _loadMoreIndicator();
                     final job = jobs[index];
-                    return JobCard(job: job, distance: _getDistance(job));
+                    return JobCard(job: job);
                   }, childCount: jobs.length + (search.hasMore ? 1 : 0)),
                 ),
               if (search.errorMessage != null && jobs.isNotEmpty)
@@ -298,6 +299,11 @@ class _ListExplorePageState extends ListExplorePagemodel {
                   onTap: _openSortSheet,
                 ),
               ],
+            ),
+            const SizedBox(height: AppSizes.spaceSmall),
+            JobStartOnChips(
+              selected: _selection.startOn,
+              onChanged: _setStartOn,
             ),
             if (activeCount > 0) _activeFilterChips(),
           ],

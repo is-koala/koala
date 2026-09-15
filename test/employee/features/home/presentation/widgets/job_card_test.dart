@@ -42,8 +42,10 @@ void main() {
     await pumpInApp(
       tester,
       JobCard(
-        job: buildJob(addressPrecision: AddressPrecision.exact),
-        distance: 2.34,
+        job: buildJob(
+          addressPrecision: AddressPrecision.exact,
+          distanceKm: 2.34,
+        ),
       ),
     );
 
@@ -58,13 +60,21 @@ void main() {
     await pumpInApp(
       tester,
       JobCard(
-        job: buildJob(addressPrecision: AddressPrecision.approximate),
-        distance: 2.34,
+        job: buildJob(
+          addressPrecision: AddressPrecision.approximate,
+          distanceKm: 2.34,
+        ),
       ),
     );
 
     expect(find.text('~2 km'), findsOneWidget);
     expect(find.text('2.3 km'), findsNothing);
+  });
+
+  testWidgets('distanceKm yokken mesafe satırı gizleniyor', (tester) async {
+    await pumpInApp(tester, JobCard(job: buildJob()));
+
+    expect(find.textContaining('km'), findsNothing);
   });
 
   testWidgets('390 piksel genişlikte kapaklı kart taşmıyor', (tester) async {

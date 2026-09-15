@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_map_bounds.dart';
 import 'package:koala/product/models/copy_with.dart';
+import 'package:koala/product/utils/coordinate_precision.dart';
 
 /// `GET /jobs` sıralama seçenekleri.
 ///
@@ -12,6 +13,7 @@ import 'package:koala/product/models/copy_with.dart';
 /// alan uygulamadan hiç çıkamıyor.
 enum JobSortOption {
   newest('createdAt', _descending, 'En yeni'),
+  nearest('distance', _ascending, 'En yakın'),
   salaryAsc('salary', _ascending, 'Ücret (artan)'),
   salaryDesc('salary', _descending, 'Ücret (azalan)'),
   startDateAsc('startDateTime', _ascending, 'Başlangıç tarihi'),
@@ -39,6 +41,10 @@ enum JobSortOption {
   /// Öyleyse parametre hiç gönderilmiyor: varsayılan durumda sorgunun boş
   /// kalması hem isteği kısaltıyor hem de "süzgeç yok" hâlini okunur tutuyor.
   bool get isDefault => this == JobSortOption.newest;
+
+  /// Mesafeye göre sıralama `lat`/`lng` olmadan 400 döner; konum izni yokken
+  /// seçenek kapalı çiziliyor.
+  bool get requiresOrigin => this == JobSortOption.nearest;
 }
 
 /// Keşfet'in sunucuya gönderdiği arama ölçütleri.
@@ -48,8 +54,8 @@ enum JobSortOption {
 /// sekmeleri aynı tipi kullanıyor; ayrı iki sorgu arayüzü olsaydı iki sekme
 /// zamanla ayrışırdı.
 ///
-/// Mesafe (yarıçap) sunucuda **yok**; en yakın karşılık sınırlayıcı kutu, bkz.
-/// [withRadius].
+/// Yarıçap süzgeci sunucuda yok; [withRadius] onu sınırlayıcı kutuya çevirir.
+/// Mesafe sıralaması ayrı: `lat`/`lng` + `sort=distance,asc` (koala-backend#271).
 class JobSearchQuery {
   const JobSearchQuery({
     this.query,
@@ -65,6 +71,10 @@ class JobSearchQuery {
     this.insuranceRequired,
     this.experienceRequired,
     this.bounds,
+    this.latitude,
+    this.longitude,
+    this.startFrom,
+    this.startTo,
     this.sort = JobSortOption.newest,
   });
 
@@ -101,7 +111,19 @@ class JobSearchQuery {
   /// kılıyordu ve [JobMapBounds] zaten vardı.
   final JobMapBounds? bounds;
 
+  /// Kullanıcının konumu. İkisi birlikte [toQueryParameters]'ta `lat`/`lng`
+  /// olur; kartın `distanceKm`'si yalnız bunlar gidince dolar.
+  final double? latitude;
+  final double? longitude;
+
+  /// İşin başladığı an penceresi (`Instant`). İkisi birlikte anlamlı.
+  final DateTime? startFrom;
+  final DateTime? startTo;
+
   final JobSortOption sort;
+
+  /// Konum hem enlem hem boylam olarak duruyor mu.
+  bool get hasOrigin => latitude != null && longitude != null;
 
   /// Serbest metin araması var mı.
   bool get hasQuery => query != null && query!.trim().isNotEmpty;
@@ -122,7 +144,8 @@ class JobSearchQuery {
       maxSalary != null ||
       insuranceRequired != null ||
       experienceRequired != null ||
-      hasBounds;
+      hasBounds ||
+      hasStartWindow;
 
   /// Sınırlayıcı kutu seçili mi.
   ///
@@ -130,6 +153,10 @@ class JobSearchQuery {
   /// "dördü de dolu mu" diyordu; tek alanla `true` dönen bir "dördü de" ifadesi
   /// okuyanı yanıltıyordu. Kutu tek bir alan olunca soru da tekilleşti.
   bool get hasBounds => bounds != null;
+
+  /// Başlangıç günü penceresi seçili mi. Ters aralık üretilmiyor: yalnız
+  /// ikisi de doluysa istekte görünür.
+  bool get hasStartWindow => startFrom != null && startTo != null;
 
   /// `GET /jobs` sorgu parametreleri. Boş alanlar **konmuyor** — seçilmemiş bir
   /// süzgeç istekte görünmemeli.
@@ -151,8 +178,33 @@ class JobSearchQuery {
       'maxLatitude': ?bounds?.maxLatitude,
       'minLongitude': ?bounds?.minLongitude,
       'maxLongitude': ?bounds?.maxLongitude,
-      'sort': ?(sort.isDefault ? null : sort.parameter),
+      'lat': ?_roundedLatitude,
+      'lng': ?_roundedLongitude,
+      'startFrom': ?_startFromIso,
+      'startTo': ?_startToIso,
+      'sort': ?(_sortParameter),
     };
+  }
+
+  /// Altı ondalık: backend `@Digits(fraction = 6)` ile reddediyor.
+  double? get _roundedLatitude =>
+      hasOrigin ? CoordinatePrecision.round6(latitude!) : null;
+
+  double? get _roundedLongitude =>
+      hasOrigin ? CoordinatePrecision.round6(longitude!) : null;
+
+  String? get _startFromIso =>
+      hasStartWindow ? startFrom!.toUtc().toIso8601String() : null;
+
+  String? get _startToIso =>
+      hasStartWindow ? startTo!.toUtc().toIso8601String() : null;
+
+  /// Mesafe sıralaması konum olmadan 400; o durumda parametre düşer ve
+  /// sunucunun varsayılanı kalır.
+  String? get _sortParameter {
+    if (sort.isDefault) return null;
+    if (sort.requiresOrigin && !hasOrigin) return null;
+    return sort.parameter;
   }
 
   /// Alan güncelleyip yeni bir sorgu üretir.
@@ -173,6 +225,10 @@ class JobSearchQuery {
     Object? insuranceRequired = CopyWith.unset,
     Object? experienceRequired = CopyWith.unset,
     Object? bounds = CopyWith.unset,
+    Object? latitude = CopyWith.unset,
+    Object? longitude = CopyWith.unset,
+    Object? startFrom = CopyWith.unset,
+    Object? startTo = CopyWith.unset,
     JobSortOption? sort,
   }) {
     return JobSearchQuery(
@@ -195,6 +251,10 @@ class JobSearchQuery {
         this.experienceRequired,
       ),
       bounds: CopyWith.pick(bounds, this.bounds),
+      latitude: CopyWith.pick(latitude, this.latitude),
+      longitude: CopyWith.pick(longitude, this.longitude),
+      startFrom: CopyWith.pick(startFrom, this.startFrom),
+      startTo: CopyWith.pick(startTo, this.startTo),
       sort: sort ?? this.sort,
     );
   }

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/home/models/job_map_bounds.dart';
+import 'package:koala/employee/features/home/models/job_search_query.dart';
 import 'package:koala/employee/features/home/presentation/providers/map_explore_controller.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
 
@@ -102,6 +103,41 @@ void main() {
     expect(query['maxLatitude'], 41.0);
     expect(query['minLongitude'], 32.0);
     expect(query['maxLongitude'], 34.0);
+    controller.dispose();
+  });
+
+  testWidgets('konum ve yakınlık sıralaması lat/lng + sort=distance gider', (
+    tester,
+  ) async {
+    final api = _api();
+    final controller = _controller(api);
+
+    controller.setOrigin(latitude: 41.008238123, longitude: 28.978359456);
+    controller.setSort(JobSortOption.nearest);
+    controller.onCameraIdle(_wide);
+    await settle(tester);
+
+    final query = api.requests.single.queryParameters;
+    expect(query['lat'], 41.008238);
+    expect(query['lng'], 28.978359);
+    expect(query['sort'], 'distance,asc');
+    controller.dispose();
+  });
+
+  testWidgets('tarih penceresi startFrom/startTo olarak gider', (tester) async {
+    final api = _api();
+    final controller = _controller(api);
+
+    controller.setStartWindow(
+      startFrom: DateTime.parse('2026-09-14T21:00:00.000Z'),
+      startTo: DateTime.parse('2026-09-15T20:59:59.999Z'),
+    );
+    controller.onCameraIdle(_wide);
+    await settle(tester);
+
+    final query = api.requests.single.queryParameters;
+    expect(query['startFrom'], '2026-09-14T21:00:00.000Z');
+    expect(query['startTo'], '2026-09-15T20:59:59.999Z');
     controller.dispose();
   });
 

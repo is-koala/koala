@@ -10,15 +10,15 @@ import 'package:koala/product/widgets/app_icon.dart';
 
 class JobCard extends StatelessWidget {
   final Job job;
-  final double? distance;
 
-  const JobCard({super.key, required this.job, this.distance});
+  const JobCard({super.key, required this.job});
 
   @override
   Widget build(BuildContext context) {
     final shape = RoundedRectangleBorder(
       borderRadius: AppRadius.secondaryCircular,
     );
+    final distanceKm = job.distanceKm;
 
     return Card(
       elevation: 0,
@@ -42,9 +42,9 @@ class JobCard extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            if (distance != null) ...[
+            if (distanceKm != null) ...[
               const SizedBox(height: AppSizes.spaceTiny),
-              _distanceRow(context),
+              _distanceRow(context, distanceKm),
             ],
           ],
         ),
@@ -96,7 +96,7 @@ class JobCard extends StatelessWidget {
     );
   }
 
-  Widget _distanceRow(BuildContext context) {
+  Widget _distanceRow(BuildContext context, double kilometersAway) {
     return Row(
       children: [
         Icon(
@@ -109,7 +109,7 @@ class JobCard extends StatelessWidget {
           // Çözünürlüğü ilanın kesinliği belirliyor: yuvarlanmış bir
           // koordinattan çıkan uzaklığı ondalıklı yazmak, veride olmayan bir
           // hassasiyeti iddia etmek olurdu.
-          job.distanceLabel(distance!),
+          job.distanceLabel(kilometersAway),
           style: context.textTheme.labelMedium?.copyWith(
             color: context.accentColor,
           ),
