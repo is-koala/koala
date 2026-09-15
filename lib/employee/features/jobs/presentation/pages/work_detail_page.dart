@@ -121,9 +121,6 @@ class WorkDetailPage extends StatefulWidget {
 }
 
 class _WorkDetailPageState extends WorkDetailPagemodel {
-  /// Alt çubuktaki butonların yüksekliği.
-  static const double _actionButtonHeight = 48;
-
   /// Buton içindeki bekleme halkasının kalınlığı.
   static const double _spinnerStroke = 2;
 
@@ -545,6 +542,7 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
       transport: transport,
       canSelectSeat: canSelectSeat,
       seatDropped: widget.seatDropped,
+      droppedDirections: droppedSeatDirections,
       busyDirection: seatBusyDirection,
       onSelectSeat: selectSeat,
       onCall: callDriver,
@@ -646,7 +644,7 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
       child: job.messaging.isAvailable
           ? SizedBox(
               width: double.infinity,
-              height: _actionButtonHeight,
+              height: AppSizes.actionButtonHeight,
               child: OutlinedButton.icon(
                 key: const ValueKey('work-detail-chat'),
                 onPressed: openingChatJobId != null
@@ -730,7 +728,7 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
       children: [
         Expanded(
           child: SizedBox(
-            height: _actionButtonHeight,
+            height: AppSizes.actionButtonHeight,
             child: OutlinedButton(
               key: const ValueKey('work-detail-reject'),
               onPressed: isLocked ? null : () => confirmReject(job),
@@ -748,7 +746,7 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
         const SizedBox(width: AppSizes.spaceSmall),
         Expanded(
           child: SizedBox(
-            height: _actionButtonHeight,
+            height: AppSizes.actionButtonHeight,
             child: ElevatedButton(
               key: const ValueKey('work-detail-accept'),
               onPressed: isLocked
@@ -815,7 +813,7 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
           const SizedBox(height: AppSizes.spaceSmall),
         ],
         SizedBox(
-          height: _actionButtonHeight,
+          height: AppSizes.actionButtonHeight,
           child: ElevatedButton.icon(
             key: ValueKey(
               isCheckOut ? 'work-detail-check-out' : 'work-detail-check-in',

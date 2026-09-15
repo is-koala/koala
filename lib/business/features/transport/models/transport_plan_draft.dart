@@ -15,7 +15,7 @@ import 'package:koala/product/models/confirmed_address.dart';
 /// alanı Türkçe ve sırayla söylemek, `400`'ün tek alan adını göstermekten
 /// iyi. Sunucunun `409`ları (kapasite koltukların altında, yön kilitli)
 /// yine de yakalanıyor — ekran başka bir cihazda değişmiş olabilir.
-class TransportPlanDraft {
+class TransportPlanDraft with TransportMethods {
   TransportPlanDraft({
     this.outboundMethod = TransportMethod.none,
     this.returnMethod = TransportMethod.none,
@@ -35,8 +35,11 @@ class TransportPlanDraft {
     shuttles: [for (final shuttle in plan.shuttles) ShuttleDraft.from(shuttle)],
   );
 
+  @override
   TransportMethod outboundMethod;
+  @override
   TransportMethod returnMethod;
+  @override
   double? allowanceAmount;
   String allowanceNote;
   String notes;
@@ -45,11 +48,6 @@ class TransportPlanDraft {
   /// Sunucudaki alan sınırları (`TransportPlanWriteDto`).
   static const int maxAllowanceNoteLength = 500;
   static const int maxNotesLength = 1000;
-
-  TransportMethod methodFor(ShuttleDirection direction) => switch (direction) {
-    ShuttleDirection.outbound => outboundMethod,
-    ShuttleDirection.returnTrip => returnMethod,
-  };
 
   void setMethod(ShuttleDirection direction, TransportMethod method) {
     switch (direction) {
@@ -60,15 +58,19 @@ class TransportPlanDraft {
     }
   }
 
-  bool get hasCashAllowance =>
-      outboundMethod == TransportMethod.cashAllowance ||
-      returnMethod == TransportMethod.cashAllowance;
-
-  bool usesShuttle(ShuttleDirection direction) =>
-      methodFor(direction) == TransportMethod.shuttle;
-
   List<ShuttleDraft> shuttlesFor(ShuttleDirection direction) =>
       shuttles.where((shuttle) => shuttle.direction == direction).toList();
+
+  /// Derin kopya: düzenleyici kopya üstünde çalışır ki geri çıkınca
+  /// çağıranın elindeki taslak değişmemiş olsun.
+  TransportPlanDraft copy() => TransportPlanDraft(
+    outboundMethod: outboundMethod,
+    returnMethod: returnMethod,
+    allowanceAmount: allowanceAmount,
+    allowanceNote: allowanceNote,
+    notes: notes,
+    shuttles: [for (final shuttle in shuttles) shuttle.copy()],
+  );
 
   /// Hiç plan girilmemiş hâl: iki yön de "sağlanmıyor", servis ve not yok.
   /// İlan oluşturma bu hâlde planı hiç yazmıyor.
@@ -191,6 +193,10 @@ class ShuttleDraft {
   static const int maxPlateLength = 20;
   static const int maxDriverNameLength = 120;
   static const int maxDriverPhoneLength = 32;
+
+  /// Kapasite alanının kabul ettiği basamak sayısı; [maxCapacity]'den
+  /// türüyor ki üst sınır değişince alan da değişsin.
+  static final int capacityDigits = maxCapacity.toString().length;
 
   bool get isNew => id == null;
 

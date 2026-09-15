@@ -15,8 +15,8 @@ import 'package:koala/product/network/api_exception.dart';
 /// listesi açılıyor: dokunan kullanıcı bir yere varmalı.
 ///
 /// Ulaşım push'u yalnız işçiye gider (`TransportManager.notifyWorker`);
-/// işveren oturumunda [routes] `null` döner ve çağıran bildirim ekranına
-/// düşer.
+/// işveren oturumunda `PushMessaging` bu açıcıyı hiç çağırmaz, bildirim
+/// ekranına düşer.
 class PushWorkDetailOpener {
   PushWorkDetailOpener({
     required this.navigate,

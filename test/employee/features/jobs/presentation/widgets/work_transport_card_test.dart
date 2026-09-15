@@ -45,6 +45,7 @@ Future<void> _pump(
   required AssignmentTransport transport,
   bool canSelectSeat = true,
   bool seatDropped = false,
+  Set<ShuttleDirection> droppedDirections = const {},
   ShuttleDirection? busyDirection,
   void Function(ShuttleDirection)? onSelectSeat,
   void Function(String)? onCall,
@@ -58,6 +59,7 @@ Future<void> _pump(
         transport: transport,
         canSelectSeat: canSelectSeat,
         seatDropped: seatDropped,
+        droppedDirections: droppedDirections,
         busyDirection: busyDirection,
         onSelectSeat: onSelectSeat,
         onCall: onCall,
@@ -222,9 +224,11 @@ void main() {
         expect(find.text('Koltuk seçin'), findsOneWidget);
       });
 
-      testWidgets('SEAT_DROPPED bağlamı koltuksuz yönü uyarıyla açar', (
+      testWidgets('SEAT_DROPPED bağlamı kartın üstünde yön bağımsız satır', (
         tester,
       ) async {
+        // Push hangi yön olduğunu söylemiyor; hiç koltuk seçilmemiş gidiş
+        // "kaldırıldı" demiyor, kartın üstü "seçimlerinizi kontrol edin".
         await _pump(
           tester,
           transport: _transport(),
@@ -232,8 +236,48 @@ void main() {
           brightness: brightness,
         );
 
-        expect(find.text(WorkTransportCard.seatDroppedText), findsOneWidget);
-        expect(find.text('Henüz koltuk seçmediniz.'), findsNothing);
+        expect(
+          find.byKey(const ValueKey('work-transport-dropped-notice')),
+          findsOneWidget,
+        );
+        expect(
+          find.text(WorkTransportCard.seatDroppedNoticeText),
+          findsOneWidget,
+        );
+        expect(find.text(WorkTransportCard.seatDroppedText), findsNothing);
+        expect(find.text('Henüz koltuk seçmediniz.'), findsOneWidget);
+      });
+
+      testWidgets('sayfanın düşen saydığı yön satırında uyarı, diğeri değil', (
+        tester,
+      ) async {
+        await _pump(
+          tester,
+          transport: _transport(
+            outboundMethod: 'SHUTTLE',
+            returnMethod: 'SHUTTLE',
+            shuttles: [
+              shuttleJson(),
+              shuttleJson(id: 'shuttle-r', direction: 'RETURN'),
+            ],
+          ),
+          droppedDirections: const {ShuttleDirection.outbound},
+          brightness: brightness,
+        );
+
+        expect(
+          find.byKey(const ValueKey('work-transport-dropped-OUTBOUND')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('work-transport-dropped-RETURN')),
+          findsNothing,
+        );
+        expect(find.text('Henüz koltuk seçmediniz.'), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('work-transport-dropped-notice')),
+          findsNothing,
+        );
       });
 
       testWidgets('kapanmış atamada düğmeler yok, bilgi duruyor', (

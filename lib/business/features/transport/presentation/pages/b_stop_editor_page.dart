@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:koala/business/core/date_time_picking.dart';
 import 'package:koala/business/features/home/presentation/widgets/b_info_notice.dart';
 import 'package:koala/business/features/home/presentation/widgets/b_selection_field.dart';
 import 'package:koala/business/features/transport/models/transport_plan_draft.dart';
@@ -14,6 +15,8 @@ import 'package:koala/product/widgets/confirmed_address_field.dart';
 import 'package:koala/product/widgets/form_page_body.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
+
+part 'b_stop_editor_pagemodel.dart';
 
 /// `/business/transport-stop` rotasının `extra`'sı.
 class BStopEditorArgs {
@@ -43,81 +46,7 @@ class BStopEditorPage extends StatefulWidget {
   State<BStopEditorPage> createState() => _BStopEditorPageState();
 }
 
-class _BStopEditorPageState extends State<BStopEditorPage> {
-  /// Kalkış saatinin varsayılanı: işin başlangıcından bu kadar önce.
-  static const Duration _defaultLeadBeforeJob = Duration(hours: 1);
-
-  /// İş başlangıcı bilinmiyorsa seçici bugünden bir gün sonra açılıyor.
-  static const Duration _defaultStartOffset = Duration(days: 1);
-
-  late final StopDraft _stop = widget.args.stop.copy();
-  late final _labelController = TextEditingController(text: _stop.label);
-
-  @override
-  void dispose() {
-    _labelController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _pickTime() async {
-    final now = DateTime.now();
-    final jobStart = widget.args.jobStart;
-    final base =
-        _stop.scheduledAt ??
-        (jobStart != null
-            ? jobStart.subtract(_defaultLeadBeforeJob)
-            : now.add(_defaultStartOffset));
-    final firstDate = DateTime(now.year, now.month, now.day);
-
-    final date = await showDatePicker(
-      context: context,
-      initialDate: base.isBefore(firstDate) ? firstDate : base,
-      firstDate: firstDate,
-      lastDate: firstDate.add(const Duration(days: 365)),
-    );
-    if (date == null || !mounted) return;
-
-    final time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(base),
-    );
-    if (time == null || !mounted) return;
-
-    setState(() {
-      _stop.scheduledAt = DateTime(
-        date.year,
-        date.month,
-        date.day,
-        time.hour,
-        time.minute,
-      );
-    });
-  }
-
-  Future<void> _pickAddress() async {
-    final picked = await context.push<ConfirmedAddress>(
-      '/pick-address',
-      extra: _stop.addressForMap,
-    );
-    if (picked == null || !mounted) return;
-    setState(() => _stop.pickedAddress = picked);
-  }
-
-  void _save() {
-    _stop.label = _labelController.text;
-    final error = _stop.validate();
-    if (error != null) {
-      // Durak doğrulaması "durağın ..." diye küçük harfle başlıyor; servis
-      // düzenleyicisi adın önüne koyuyor. Burada tek başına yazılıyor.
-      AppToast.error(context, _capitalize(error));
-      return;
-    }
-    context.pop(_stop);
-  }
-
-  static String _capitalize(String text) =>
-      text.isEmpty ? text : text[0].toUpperCase() + text.substring(1);
-
+class _BStopEditorPageState extends BStopEditorPagemodel {
   @override
   Widget build(BuildContext context) {
     final seats = _stop.seatsTaken;

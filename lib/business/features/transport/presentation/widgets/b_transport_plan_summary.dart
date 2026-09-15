@@ -6,7 +6,6 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
-import 'package:koala/product/features/transport/models/transport_plan.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
 /// İşverenin ulaşım planı özeti (is-koala/koala#197).
@@ -30,21 +29,6 @@ class BTransportPlanSummary extends StatelessWidget {
 
   /// "Kaldır" düğmesi (yalnız ilan oluşturma taslağında).
   final VoidCallback? onRemove;
-
-  /// Yöntem satırı: `Gidiş: Servis · Dönüş: Yol parası (₺150)`.
-  static String methodsLine(TransportPlanDraft plan) {
-    String label(ShuttleDirection direction) {
-      final method = plan.methodFor(direction);
-      final amount = plan.allowanceAmount;
-      final suffix = method == TransportMethod.cashAllowance && amount != null
-          ? ' (${formatAllowance(amount)})'
-          : '';
-      return '${direction.displayName}: ${method.displayName}$suffix';
-    }
-
-    return '${label(ShuttleDirection.outbound)} · '
-        '${label(ShuttleDirection.returnTrip)}';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +55,7 @@ class BTransportPlanSummary extends StatelessWidget {
               const SizedBox(width: AppSizes.spaceSmall),
               Expanded(
                 child: Text(
-                  methodsLine(plan),
+                  plan.methodsLine,
                   style: context.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),

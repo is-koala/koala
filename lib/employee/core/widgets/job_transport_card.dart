@@ -19,21 +19,6 @@ class JobTransportCard extends StatelessWidget {
 
   final JobTransport transport;
 
-  /// Yöntem satırı: `Gidiş: Servis · Dönüş: Yol parası (₺150)`.
-  static String methodsLine(JobTransport transport) {
-    String label(ShuttleDirection direction) {
-      final method = transport.methodFor(direction);
-      final amount = transport.allowanceAmount;
-      final suffix = method == TransportMethod.cashAllowance && amount != null
-          ? ' (${formatAllowance(amount)})'
-          : '';
-      return '${direction.displayName}: ${method.displayName}$suffix';
-    }
-
-    return '${label(ShuttleDirection.outbound)} · '
-        '${label(ShuttleDirection.returnTrip)}';
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -59,7 +44,7 @@ class JobTransportCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSizes.spaceSmall),
           Text(
-            methodsLine(transport),
+            transport.methodsLine,
             style: context.textTheme.bodyMedium?.copyWith(
               fontWeight: FontWeight.w500,
             ),

@@ -25,6 +25,7 @@ import 'package:koala/business/features/home/presentation/widgets/b_worker_ident
 import 'package:koala/business/features/home/services/employer_job_service.dart';
 import 'package:koala/business/features/transport/models/transport_plan_draft.dart';
 import 'package:koala/business/features/transport/presentation/pages/b_transport_plan_page.dart';
+import 'package:koala/business/features/transport/presentation/widgets/b_transport_add_button.dart';
 import 'package:koala/business/features/transport/presentation/widgets/b_transport_plan_summary.dart';
 import 'package:koala/business/features/home/services/b_payment_browser.dart';
 import 'package:koala/business/features/home/services/b_payment_service.dart';
@@ -54,6 +55,7 @@ import 'package:koala/product/features/account/account_navigation.dart';
 import 'package:koala/product/features/account/models/address_required_error_codes.dart';
 import 'package:koala/product/formatters/turkish_money_formatter.dart';
 import 'package:koala/product/models/gallery_image.dart';
+import 'package:koala/product/features/transport/models/transport_error_codes.dart';
 import 'package:koala/product/features/transport/models/transport_plan.dart';
 import 'package:koala/product/features/transport/services/transport_service.dart';
 import 'package:koala/product/network/api_exception.dart';
@@ -208,6 +210,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
   /// Ulaşım planı özeti + Düzenle (is-koala/koala#197). Plan yokken "plan
   /// ekle"; yüklenirken ve hatada kendi satırı.
   List<Widget> _transportSection() {
+    if (_transportUnavailable) return const [];
     final plan = _transportPlan;
     final Widget body;
     if (_isTransportLoading) {
@@ -217,19 +220,9 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     } else if (_transportError != null) {
       body = _transportErrorPanel(_transportError!);
     } else if (plan == null) {
-      body = SizedBox(
-        width: double.infinity,
-        child: OutlinedButton.icon(
-          key: const ValueKey('b-transport-add'),
-          onPressed: _editTransportPlan,
-          icon: AppIcon(
-            AppIcons.bus,
-            size: AppSizes.iconSmall,
-            color: context.accentColor,
-          ),
-          label: const Text('Ulaşım planı ekle'),
-          style: context.accentOutlinedButtonStyle,
-        ),
+      body = BTransportAddButton(
+        key: const ValueKey('b-transport-add'),
+        onPressed: _editTransportPlan,
       );
     } else {
       body = BTransportPlanSummary(

@@ -107,6 +107,7 @@ typedef Harness = ({
   FakeApi jobsApi,
   FakeApi transportApi,
   List<Object?> opened,
+  List<Object?> openedJobDetails,
 });
 
 Future<Harness> _pumpCreate(
@@ -203,6 +204,7 @@ Future<Harness> _pumpCreate(
   );
 
   final opened = <Object?>[];
+  final openedJobDetails = <Object?>[];
   final router = GoRouter(
     initialLocation: _createLocation,
     routes: [
@@ -234,6 +236,15 @@ Future<Harness> _pumpCreate(
         pageBuilder: (context, state) =>
             const MaterialPage<void>(child: Scaffold(body: Text('ilanlarım'))),
       ),
+      GoRoute(
+        path: '/business/job-detail',
+        pageBuilder: (context, state) {
+          openedJobDetails.add(state.extra);
+          return const MaterialPage<void>(
+            child: Scaffold(body: Text('ilan detayı')),
+          );
+        },
+      ),
     ],
   );
   addTearDown(router.dispose);
@@ -260,7 +271,12 @@ Future<Harness> _pumpCreate(
     ),
   );
   await tester.pumpAndSettle();
-  return (jobsApi: jobsApi, transportApi: transportApi, opened: opened);
+  return (
+    jobsApi: jobsApi,
+    transportApi: transportApi,
+    opened: opened,
+    openedJobDetails: openedJobDetails,
+  );
 }
 
 Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
@@ -417,11 +433,40 @@ void main() {
         await _publish(tester);
 
         expect(harness.transportApi.requests, hasLength(1));
+        expect(find.text('İlan Oluşturuldu!'), findsOneWidget);
+        // Toast kutunun altında kalırdı; satır kutunun içinde.
         expect(
-          find.textContaining('İlan açıldı ancak ulaşım planı kaydedilemedi'),
+          find.byKey(const ValueKey('b-create-transport-failed')),
           findsOneWidget,
         );
+        expect(
+          find.text(
+            '${BCreatePage.transportFailedText}\n'
+            'Servis yalnız yöntemi SHUTTLE olan yönde tanımlanabilir.',
+          ),
+          findsOneWidget,
+        );
+
+        await tester.tap(find.text('İlan Detayına Git'));
+        await tester.pumpAndSettle();
+        expect(harness.openedJobDetails, ['job-new']);
+      });
+
+      testWidgets('plan yazılınca kutuda uyarı yok', (tester) async {
+        await _pumpCreate(
+          tester,
+          initialTransport: _draft(),
+          brightness: brightness,
+        );
+        await _fillRequired(tester);
+
+        await _publish(tester);
+
         expect(find.text('İlan Oluşturuldu!'), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('b-create-transport-failed')),
+          findsNothing,
+        );
       });
 
       testWidgets('taslak yoksa plan ucu hiç çağrılmaz', (tester) async {

@@ -177,6 +177,22 @@ mixin TransportMethods {
   bool get hasCashAllowance =>
       outboundMethod == TransportMethod.cashAllowance ||
       returnMethod == TransportMethod.cashAllowance;
+
+  /// Yöntem satırı, iki kabuğun kartlarında aynı:
+  /// `Gidiş: Servis · Dönüş: Yol parası (₺150)`.
+  String get methodsLine {
+    String label(ShuttleDirection direction) {
+      final method = methodFor(direction);
+      final amount = allowanceAmount;
+      final suffix = method == TransportMethod.cashAllowance && amount != null
+          ? ' (${formatAllowance(amount)})'
+          : '';
+      return '${direction.displayName}: ${method.displayName}$suffix';
+    }
+
+    return '${label(ShuttleDirection.outbound)} · '
+        '${label(ShuttleDirection.returnTrip)}';
+  }
 }
 
 /// İşverenin gördüğü plan (`TransportPlanDto`): plaka, şoför, tam adres ve

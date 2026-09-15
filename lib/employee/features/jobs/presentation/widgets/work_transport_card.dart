@@ -24,12 +24,21 @@ import 'package:koala/product/widgets/app_icon.dart';
 /// bilmiyor. Koltuk seçimi, "yeniden seçin" uyarısı ve "Değiştir" yalnız
 /// [canSelectSeat] iken; tamamlanmış ya da iptal edilmiş atamada kart salt
 /// okunur.
+///
+/// "Koltuğunuz düştü" iki kaynaktan biliniyor ve ikisi ayrı çiziliyor:
+/// sunucunun görünümü yön başına böyle bir bayrak taşımıyor. Sayfa, son
+/// bilinen seçimle taze görünümü karşılaştırıp düşen yönleri
+/// [droppedDirections] olarak veriyor (yön satırında uyarı); `SEAT_DROPPED`
+/// push'u ise hangi yön olduğunu söylemiyor, o yüzden [seatDropped] kartın
+/// üstünde yön bağımsız tek bir bilgi satırı. Hiç koltuk seçmemiş bir yön
+/// hiçbir koşulda "kaldırıldı" demiyor.
 class WorkTransportCard extends StatelessWidget {
   const WorkTransportCard({
     super.key,
     required this.transport,
     required this.canSelectSeat,
     this.seatDropped = false,
+    this.droppedDirections = const {},
     this.busyDirection,
     this.onSelectSeat,
     this.onCall,
@@ -43,9 +52,13 @@ class WorkTransportCard extends StatelessWidget {
   /// TRANSPORT_ASSIGNMENT_NOT_ACTIVE` ile çeviriyor; düğme o zaman yok.
   final bool canSelectSeat;
 
-  /// `SEAT_DROPPED` push'undan gelindi: koltuğu olmayan servis yönü
-  /// "plandan kaldırıldı, yeniden seçin" diye açıklanıyor.
+  /// `SEAT_DROPPED` push'undan gelindi: kartın üstünde "seçimlerinizi
+  /// kontrol edin" satırı.
   final bool seatDropped;
+
+  /// Daha önce koltuğu olup taze görünümde koltuğu kalmayan yönler; yön
+  /// satırı "plandan kaldırıldı, yeniden seçin" diyor.
+  final Set<ShuttleDirection> droppedDirections;
 
   /// Koltuk isteği sunucuda olan yön; düğmesi kilitli.
   final ShuttleDirection? busyDirection;
@@ -57,9 +70,6 @@ class WorkTransportCard extends StatelessWidget {
 
   /// Durağa yol tarifi; verilmezse düğme yok.
   final void Function(DirectionsTarget target)? onDirections;
-
-  /// Düğmelerin yüksekliği; sayfanın diğer kart düğmeleriyle aynı.
-  static const double _buttonHeight = 44;
 
   /// Bekleme halkasının kalınlığı.
   static const double _spinnerStroke = 2;
@@ -73,6 +83,10 @@ class WorkTransportCard extends StatelessWidget {
   static const String seatDroppedText =
       'Seçtiğiniz servis ya da durak plandan kaldırıldı; lütfen yeniden '
       'koltuk seçin.';
+
+  /// Push'tan gelindiğinde kartın üstündeki yön bağımsız satır.
+  static const String seatDroppedNoticeText =
+      'Bir koltuğunuz plandan kaldırıldı; seçimlerinizi kontrol edin.';
 
   @override
   Widget build(BuildContext context) {
@@ -99,6 +113,14 @@ class WorkTransportCard extends StatelessWidget {
               Text('Ulaşım', style: context.textTheme.titleSmall),
             ],
           ),
+          if (seatDropped) ...[
+            const SizedBox(height: AppSizes.space),
+            _warning(
+              context,
+              seatDroppedNoticeText,
+              key: const ValueKey('work-transport-dropped-notice'),
+            ),
+          ],
           const SizedBox(height: AppSizes.space),
           _direction(context, ShuttleDirection.outbound),
           const SizedBox(height: AppSizes.space),
@@ -207,33 +229,35 @@ class WorkTransportCard extends StatelessWidget {
 
   /// Koltuk yok: düşmüş koltuk uyarısı (varsa) ve seçme düğmesi.
   Widget _unselected(BuildContext context, ShuttleDirection direction) {
-    // Sunucuda koltuk kaydı var ama servisi/durağı planda yok: plandan
-    // kaldırılmış. Push olmadan gelinse bile aynı durum.
-    final dropped = seatDropped || transport.seatFor(direction) != null;
+    // Düşme iki yoldan belli: sayfa son bilinen seçimle karşılaştırdı, ya da
+    // sunucuda koltuk kaydı var ama servisi/durağı artık planda yok.
+    final dropped =
+        droppedDirections.contains(direction) ||
+        transport.seatFor(direction) != null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (dropped) ...[
-          _warning(context, seatDroppedText, direction),
+          _warning(
+            context,
+            seatDroppedText,
+            key: ValueKey('work-transport-dropped-${direction.code}'),
+          ),
           const SizedBox(height: AppSizes.spaceSmall),
         ] else
           _line(context, 'Henüz koltuk seçmediniz.'),
         if (canSelectSeat) ...[
           if (!dropped) const SizedBox(height: AppSizes.spaceSmall),
-          _selectButton(context, direction, label: 'Koltuk seçin'),
+          _seatButton(context, direction, label: 'Koltuk seçin'),
         ],
       ],
     );
   }
 
-  Widget _warning(
-    BuildContext context,
-    String text,
-    ShuttleDirection direction,
-  ) {
+  Widget _warning(BuildContext context, String text, {required Key key}) {
     return Container(
-      key: ValueKey('work-transport-dropped-${direction.code}'),
+      key: key,
       padding: AppPadding.card,
       decoration: BoxDecoration(
         color: AppColors.warning.withValues(alpha: AppColors.surfaceTintAlpha),
@@ -254,25 +278,42 @@ class WorkTransportCard extends StatelessWidget {
     );
   }
 
-  Widget _selectButton(
+  /// Koltuk seçme / değiştirme düğmesi; iki hâlde tek yapı.
+  ///
+  /// [outlined] koltuk yokken tam genişlikte çerçeveli düğme, seçilmiş
+  /// serviste yol tarifinin yanında metin düğmesi. İstek sürerken kilitli
+  /// ve kendi yönü halka çiziyor.
+  Widget _seatButton(
     BuildContext context,
     ShuttleDirection direction, {
     required String label,
+    bool outlined = true,
   }) {
     final busy = busyDirection == direction;
     final locked = busyDirection != null || onSelectSeat == null;
+    final key = ValueKey('work-transport-select-${direction.code}');
+    final onPressed = locked ? null : () => onSelectSeat!(direction);
+    final spinner = SizedBox.square(
+      dimension: AppSizes.iconSmall,
+      child: CircularProgressIndicator(strokeWidth: _spinnerStroke),
+    );
+
+    if (!outlined) {
+      return TextButton(
+        key: key,
+        onPressed: onPressed,
+        child: busy ? spinner : Text(label),
+      );
+    }
 
     return SizedBox(
       width: double.infinity,
-      height: _buttonHeight,
+      height: AppSizes.actionButtonHeight,
       child: OutlinedButton.icon(
-        key: ValueKey('work-transport-select-${direction.code}'),
-        onPressed: locked ? null : () => onSelectSeat!(direction),
+        key: key,
+        onPressed: onPressed,
         icon: busy
-            ? const SizedBox.square(
-                dimension: AppSizes.iconSmall,
-                child: CircularProgressIndicator(strokeWidth: _spinnerStroke),
-              )
+            ? spinner
             : AppIcon(
                 AppIcons.seat,
                 size: AppSizes.iconSmall,
@@ -344,7 +385,7 @@ class WorkTransportCard extends StatelessWidget {
             if (target != null && onDirections != null)
               Expanded(
                 child: SizedBox(
-                  height: _buttonHeight,
+                  height: AppSizes.actionButtonHeight,
                   child: OutlinedButton.icon(
                     key: ValueKey(
                       'work-transport-directions-${direction.code}',
@@ -363,19 +404,11 @@ class WorkTransportCard extends StatelessWidget {
             if (canSelectSeat) ...[
               if (target != null && onDirections != null)
                 const SizedBox(width: AppSizes.spaceSmall),
-              TextButton(
-                key: ValueKey('work-transport-select-${direction.code}'),
-                onPressed: busyDirection != null || onSelectSeat == null
-                    ? null
-                    : () => onSelectSeat!(direction),
-                child: busyDirection == direction
-                    ? const SizedBox.square(
-                        dimension: AppSizes.iconSmall,
-                        child: CircularProgressIndicator(
-                          strokeWidth: _spinnerStroke,
-                        ),
-                      )
-                    : const Text('Değiştir'),
+              _seatButton(
+                context,
+                direction,
+                label: 'Değiştir',
+                outlined: false,
               ),
             ],
           ],

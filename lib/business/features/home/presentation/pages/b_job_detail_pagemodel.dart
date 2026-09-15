@@ -46,10 +46,13 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
       widget.transportService ?? TransportService();
 
   /// İlanın ulaşım planı, işveren görünümü (is-koala/koala#197). Planı
-  /// olmayan ilanda `404` → `null` ve "plan ekle" düğmesi; başka hata
-  /// [_transportError]'a düşüyor.
+  /// olmayan ilanda `404 TRANSPORT_PLAN_NOT_FOUND` → `null` ve "plan ekle"
+  /// düğmesi; ucu tanımayan eski sunucuda (`404 ENDPOINT_NOT_FOUND` ya da
+  /// kodsuz `404`) bölüm hiç çizilmiyor ([_transportUnavailable]); başka
+  /// hata [_transportError]'a düşüyor.
   TransportPlan? _transportPlan;
   bool _isTransportLoading = true;
+  bool _transportUnavailable = false;
   String? _transportError;
 
   /// İlanın tam hâli. Liste ucu açıklama/görev/adres döndürmediği için ekran
@@ -248,11 +251,18 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     }
   }
 
-  /// `GET /jobs/{id}/transport-plan`; `404` plan olmadığını söylüyor (ya da
-  /// görüntüleyen ilanın sahibi değil — sunucu ikisini ayırt ettirmiyor).
+  /// `GET /jobs/{id}/transport-plan`.
+  ///
+  /// `404` iki şey olabiliyor ve yalnız `errorCode` ayırıyor:
+  /// `TRANSPORT_PLAN_NOT_FOUND` "henüz plan yok" (ya da görüntüleyen sahibi
+  /// değil — sunucu ikisini ayırt ettirmiyor) → "plan ekle"; diğer her
+  /// `404` (`ENDPOINT_NOT_FOUND`, kodsuz) ucu tanımayan eski sunucu → bölüm
+  /// gizli, işçi kabuğuyla aynı. Aksi hâlde eski sunucuda "plan ekle"
+  /// çıkar ve `PUT` de `404` alırdı.
   Future<void> _loadTransportPlan() async {
     setState(() {
       _isTransportLoading = true;
+      _transportUnavailable = false;
       _transportError = null;
     });
     try {
@@ -262,7 +272,11 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     } on ApiException catch (error) {
       if (!mounted) return;
       if (error.type == ApiErrorType.notFound) {
-        setState(() => _transportPlan = null);
+        final noPlan = error.errorCode == TransportErrorCodes.planNotFound;
+        setState(() {
+          _transportPlan = null;
+          _transportUnavailable = !noPlan;
+        });
       } else {
         setState(() => _transportError = error.message);
       }

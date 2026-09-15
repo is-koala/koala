@@ -7,9 +7,8 @@ abstract class BTransportPlanPagemodel extends State<BTransportPlanPage> {
 
   /// Üzerinde çalışılan taslak. Açılış değeri kopyalanıyor ki geri çıkınca
   /// çağıranın elindeki taslak değişmemiş olsun.
-  late TransportPlanDraft _draft = _copyOf(
-    widget.args.initial ?? TransportPlanDraft(),
-  );
+  late TransportPlanDraft _draft = (widget.args.initial ?? TransportPlanDraft())
+      .copy();
 
   /// İlan modunda sunucudaki plan; silme uyarısı koltukları buradan sayıyor.
   late TransportPlan? _original = widget.args.original;
@@ -43,16 +42,6 @@ abstract class BTransportPlanPagemodel extends State<BTransportPlanPage> {
     _notesController.dispose();
     super.dispose();
   }
-
-  static TransportPlanDraft _copyOf(TransportPlanDraft source) =>
-      TransportPlanDraft(
-        outboundMethod: source.outboundMethod,
-        returnMethod: source.returnMethod,
-        allowanceAmount: source.allowanceAmount,
-        allowanceNote: source.allowanceNote,
-        notes: source.notes,
-        shuttles: [for (final shuttle in source.shuttles) shuttle.copy()],
-      );
 
   static String _allowanceText(double? amount) {
     if (amount == null) return '';
@@ -198,19 +187,31 @@ abstract class BTransportPlanPagemodel extends State<BTransportPlanPage> {
     } on ApiException catch (error) {
       if (!mounted) return;
       AppToast.error(context, _messageFor(error));
-      // Elimizdeki servis/durak kimliği sunucuda artık yok: plan yeniden
-      // okunmalı, yoksa her deneme aynı 404'e çarpar.
-      if (TransportErrorCodes.staleReferences.contains(error.errorCode)) {
-        await _loadPlan();
-      }
+      // Elimizdeki plan bayat: servis/durak kimliği sunucuda artık yok
+      // (404) ya da koltuk tabanı (`seatsTaken`) yükselmiş ve kapasite onun
+      // altında kalmış (409). İkisinde de plan yeniden okunmalı, yoksa her
+      // deneme aynı hataya çarpar.
+      final stale =
+          TransportErrorCodes.staleReferences.contains(error.errorCode) ||
+          error.errorCode == TransportErrorCodes.capacityBelowSeats;
+      if (stale) await _loadPlan();
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
   }
 
-  /// Sunucu mesajı Türkçe ve yeterli; alan hatasında (`400`) ilk alanın
-  /// mesajı, kalan `409`larda doğrudan mesaj.
+  /// Yön kilidi düzenleyicinin diliyle: sunucunun mesajı doğru ama ekranda
+  /// yön alanı olmadığı için "ne yapmalıyım"ı söylemiyor.
+  static const String directionLockedText =
+      'Kayıtlı bir servisin yönü değiştirilemez; diğer yön için yeni servis '
+      'ekleyin.';
+
+  /// Alan hatasında (`400`) ilk alanın mesajı; `409`larda sunucunun Türkçe
+  /// mesajı, yön kilidinde düzenleyicinin kendi cümlesi.
   static String _messageFor(ApiException error) {
+    if (error.errorCode == TransportErrorCodes.directionLocked) {
+      return directionLockedText;
+    }
     final field = error.fieldErrors.firstOrNull;
     if (field != null && field.message.isNotEmpty) return field.message;
     return error.message;

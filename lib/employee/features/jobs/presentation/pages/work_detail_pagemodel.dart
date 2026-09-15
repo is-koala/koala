@@ -50,6 +50,32 @@ abstract class WorkDetailPagemodel
   /// Koltuk isteği sunucuda olan yön; kart o düğmeyi kilitliyor.
   ShuttleDirection? seatBusyDirection;
 
+  /// Son bilinen görünümde koltuğu olup taze görünümde kalmayan yönler.
+  ///
+  /// Sunucu yön başına "düştü" bayrağı taşımıyor; satırın taşıdığı görünüm
+  /// (push'tan önceki son bilinen seçim) taze `GET` ile karşılaştırılıyor.
+  /// Kullanıcı o yöne yeniden koltuk seçince düşüyor.
+  Set<ShuttleDirection> droppedSeatDirections = const {};
+
+  static Set<ShuttleDirection> _seatedDirections(
+    AssignmentTransport? transport,
+  ) => {
+    if (transport != null)
+      for (final direction in ShuttleDirection.values)
+        if (transport.selectedStop(direction) != null) direction,
+  };
+
+  /// Taze görünümü yerine koyar ve düşen yönleri günceller.
+  void _applyTransport(AssignmentTransport? loaded) {
+    final before = _seatedDirections(transport);
+    final after = _seatedDirections(loaded);
+    droppedSeatDirections = {
+      ...droppedSeatDirections,
+      ...before.difference(after),
+    }..removeAll(after);
+    transport = loaded;
+  }
+
   /// Koltuk seçilebilir mi: sunucu yalnız `PENDING_CONFIRMATION` /
   /// `CONFIRMED` / `IN_PROGRESS` atamada kabul ediyor
   /// (`TRANSPORT_ASSIGNMENT_NOT_ACTIVE`).
@@ -109,7 +135,9 @@ abstract class WorkDetailPagemodel
         if (!mounted) return;
         setState(() {
           job = MyJob.fromAssignment(assignment);
-          transport = assignment.transport ?? transport;
+          if (assignment.transport != null) {
+            _applyTransport(assignment.transport);
+          }
         });
         await _loadAssignmentRecords();
         await _loadTransport();
@@ -194,11 +222,11 @@ abstract class WorkDetailPagemodel
         assignmentId,
       );
       if (!mounted) return;
-      setState(() => transport = loaded);
+      setState(() => _applyTransport(loaded));
     } on ApiException catch (error) {
       if (!mounted) return;
       if (error.type == ApiErrorType.notFound) {
-        setState(() => transport = null);
+        setState(() => _applyTransport(null));
       }
     }
   }
@@ -231,7 +259,7 @@ abstract class WorkDetailPagemodel
         stopId: choice.stopId,
       );
       if (!mounted) return;
-      setState(() => transport = updated);
+      setState(() => _applyTransport(updated));
       AppToast.success(context, 'Koltuk seçiminiz kaydedildi.');
     } on ApiException catch (error) {
       if (!mounted) return;

@@ -13,10 +13,6 @@ abstract class BCreatePageModel extends State<BCreatePage> {
   static const int _minAllowedAge = 15;
   static const int _maxAllowedAge = 99;
 
-  /// İlanın varsayılan başlangıcı: yarın. Bugünün geçmiş bir saatine ilan
-  /// açılmasın diye tarih seçici de bugünden öncesini kapatıyor.
-  static const Duration _defaultStartOffset = Duration(days: 1);
-
   /// Başlangıç seçildiğinde bitişin varsayılan olarak kaydırıldığı süre.
   static const Duration _defaultShiftDuration = Duration(hours: 8);
 
@@ -83,7 +79,11 @@ abstract class BCreatePageModel extends State<BCreatePage> {
   bool _isLoadingTemplates = false;
 
   /// Başarı kutusunu açar. Gövdesi arayüz tarafında ([BCreatePage]).
-  void _showSuccessDialog();
+  ///
+  /// [transportError] doluysa kutu ulaşım planının yazılamadığını söylüyor
+  /// ve ilan detayına götürüyor — toast kutunun altında kalıyor, kullanıcı
+  /// görmüyordu.
+  void _showSuccessDialog({required String jobId, String? transportError});
 
   @override
   void initState() {
@@ -359,53 +359,27 @@ abstract class BCreatePageModel extends State<BCreatePage> {
 
   void _removeTransport() => setState(() => _transport = null);
 
-  /// İlan açıldıktan sonra taslağı ilana yazar.
+  /// İlan açıldıktan sonra taslağı ilana yazar; düşerse sunucunun mesajını
+  /// döndürür, başarıda (ve boş taslakta) `null`.
   ///
   /// Boş taslak (iki yön de "sağlanmıyor", servis ve not yok) hiç
   /// yazılmıyor — planı olmayan ilan zaten bu demek. Yazım düşerse ilan
-  /// yine açılmış durumda: kullanıcıya söyleniyor ve ilan detayından
-  /// eklemesi isteniyor; ilanı geri almak yok.
-  Future<void> _saveTransport(JobDetail created) async {
+  /// yine açılmış durumda: başarı kutusu bunu söylüyor ve ilan detayından
+  /// eklemesini istiyor; ilanı geri almak yok.
+  Future<String?> _saveTransport(JobDetail created) async {
     final draft = _transport;
-    if (draft == null || draft.isBlank) return;
+    if (draft == null || draft.isBlank) return null;
 
     try {
       await _transportService.savePlan(created.id, draft.toWrite());
+      return null;
     } on ApiException catch (error) {
-      if (!mounted) return;
-      AppToast.error(
-        context,
-        'İlan açıldı ancak ulaşım planı kaydedilemedi: ${error.message} '
-        'İlan detayından ekleyebilirsiniz.',
-      );
+      return error.message;
     }
   }
 
-  /// Tarih ve saati birlikte seçtirir; ikisinden biri iptal edilirse hiçbir
-  /// şey değişmiyor.
-  Future<DateTime?> _pickDateTime(DateTime? initial) async {
-    final now = DateTime.now();
-    final base = initial ?? now.add(_defaultStartOffset);
-
-    final date = await showDatePicker(
-      context: context,
-      initialDate: base.isBefore(now) ? now : base,
-      firstDate: now,
-      lastDate: now.add(const Duration(days: 365)),
-    );
-    if (date == null || !mounted) return null;
-
-    final time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(base),
-    );
-    if (time == null) return null;
-
-    return DateTime(date.year, date.month, date.day, time.hour, time.minute);
-  }
-
   Future<void> _pickStartDateTime() async {
-    final picked = await _pickDateTime(_startDateTime);
+    final picked = await DateTimePicking.pick(context, initial: _startDateTime);
     if (picked == null || !mounted) return;
 
     setState(() {
@@ -420,7 +394,10 @@ abstract class BCreatePageModel extends State<BCreatePage> {
   }
 
   Future<void> _pickEndDateTime() async {
-    final picked = await _pickDateTime(_endDateTime ?? _startDateTime);
+    final picked = await DateTimePicking.pick(
+      context,
+      initial: _endDateTime ?? _startDateTime,
+    );
     if (picked == null || !mounted) return;
 
     setState(() => _endDateTime = picked);
@@ -484,10 +461,10 @@ abstract class BCreatePageModel extends State<BCreatePage> {
     if (!mounted) return;
 
     if (created != null) {
-      await _saveTransport(created);
+      final transportError = await _saveTransport(created);
       if (!mounted) return;
       setState(() => _isSubmitting = false);
-      _showSuccessDialog();
+      _showSuccessDialog(jobId: created.id, transportError: transportError);
     } else {
       setState(() => _isSubmitting = false);
       AppToast.error(context, provider.errorMessage ?? 'İlan oluşturulamadı');

@@ -1564,12 +1564,65 @@ void main() {
         );
 
         await tester.scrollUntilVisible(
-          find.text(WorkTransportCard.seatDroppedText),
+          find.text(WorkTransportCard.seatDroppedNoticeText),
           200,
         );
-        expect(find.text(WorkTransportCard.seatDroppedText), findsOneWidget);
+        expect(
+          find.text(WorkTransportCard.seatDroppedNoticeText),
+          findsOneWidget,
+        );
+        // Hiç koltuk seçilmemiş yön "kaldırıldı" demiyor.
+        expect(find.text(WorkTransportCard.seatDroppedText), findsNothing);
         expect(selectOutbound, findsOneWidget);
       });
+
+      testWidgets(
+        'satırda koltuğu olan yön taze görünümde yoksa o yön uyarır',
+        (tester) async {
+          // Satır (push'tan önceki son bilinen görünüm) gidişte koltuk taşıyor;
+          // taze GET koltuksuz dönüyor: gidiş "kaldırıldı", dönüş sessiz.
+          await pumpDetail(
+            tester,
+            brightness: brightness,
+            job: assignmentRow(
+              assignmentJson(
+                paymentStatus: 'PENDING_COLLECTION',
+                extra: {
+                  'transport': assignmentTransportJson(
+                    returnMethod: 'SHUTTLE',
+                    shuttles: [
+                      shuttleJson(),
+                      shuttleJson(id: 'shuttle-r', direction: 'RETURN'),
+                    ],
+                    seats: [seatJson()],
+                  ),
+                },
+              ),
+            ),
+            detail: detailJson(creator: _ayse),
+            transport: assignmentTransportJson(
+              returnMethod: 'SHUTTLE',
+              shuttles: [
+                shuttleJson(),
+                shuttleJson(id: 'shuttle-r', direction: 'RETURN'),
+              ],
+            ),
+          );
+
+          await tester.scrollUntilVisible(
+            find.text(WorkTransportCard.seatDroppedText),
+            200,
+          );
+          expect(
+            find.byKey(const ValueKey('work-transport-dropped-OUTBOUND')),
+            findsOneWidget,
+          );
+          expect(
+            find.byKey(const ValueKey('work-transport-dropped-RETURN')),
+            findsNothing,
+          );
+        },
+      );
 
       testWidgets('tamamlanmış atamada kart satırın görünümüyle, düğmesiz', (
         tester,

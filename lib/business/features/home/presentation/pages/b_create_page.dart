@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:koala/business/core/date_time_picking.dart';
 import 'package:koala/business/features/home/models/create_job_request.dart';
 import 'package:koala/business/features/home/models/job_template.dart';
 import 'package:koala/business/features/home/models/b_pricing_breakdown.dart';
@@ -15,6 +16,7 @@ import 'package:koala/business/features/home/presentation/widgets/b_pricing_brea
 import 'package:koala/business/features/home/services/b_payment_service.dart';
 import 'package:koala/business/features/transport/models/transport_plan_draft.dart';
 import 'package:koala/business/features/transport/presentation/pages/b_transport_plan_page.dart';
+import 'package:koala/business/features/transport/presentation/widgets/b_transport_add_button.dart';
 import 'package:koala/business/features/transport/presentation/widgets/b_transport_plan_summary.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/home/models/job.dart';
@@ -63,6 +65,10 @@ class BCreatePage extends StatefulWidget {
   /// Formun açılışta taşıdığı ulaşım taslağı; testler düzenleyiciyi atlamak
   /// için verir.
   final TransportPlanDraft? initialTransport;
+
+  /// Ulaşım planı yazılamadığında başarı kutusuna eklenen satır.
+  static const String transportFailedText =
+      'Ulaşım planı kaydedilemedi — ilan detayından ekleyin.';
 
   @override
   State<BCreatePage> createState() => _BCreatePageState();
@@ -412,19 +418,9 @@ class _BCreatePageState extends BCreatePageModel {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              key: const ValueKey('b-create-transport-add'),
-              onPressed: _editTransport,
-              icon: AppIcon(
-                AppIcons.bus,
-                size: AppSizes.iconSmall,
-                color: context.accentColor,
-              ),
-              label: const Text('Ulaşım planı ekle'),
-              style: context.accentOutlinedButtonStyle,
-            ),
+          BTransportAddButton(
+            key: const ValueKey('b-create-transport-add'),
+            onPressed: _editTransport,
           ),
           const SizedBox(height: AppSizes.spaceSmall),
           const BInfoNotice(
@@ -446,7 +442,7 @@ class _BCreatePageState extends BCreatePageModel {
   // ------------------------------------------------------------ Başarı kutusu
 
   @override
-  void _showSuccessDialog() {
+  void _showSuccessDialog({required String jobId, String? transportError}) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -488,6 +484,39 @@ class _BCreatePageState extends BCreatePageModel {
                   height: 1.4,
                 ),
               ),
+              if (transportError != null) ...[
+                const SizedBox(height: AppSizes.spaceMedium),
+                Container(
+                  key: const ValueKey('b-create-transport-failed'),
+                  width: double.infinity,
+                  padding: AppPadding.card,
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(
+                      alpha: AppColors.surfaceTintAlpha,
+                    ),
+                    borderRadius: AppRadius.innerCircular,
+                  ),
+                  child: Text(
+                    '${BCreatePage.transportFailedText}\n$transportError',
+                    textAlign: TextAlign.center,
+                    style: context.textTheme.bodySmall,
+                  ),
+                ),
+                const SizedBox(height: AppSizes.spaceSmall),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    key: const ValueKey('b-create-open-job-detail'),
+                    onPressed: () {
+                      Navigator.pop(dialogContext);
+                      context.go('/business/posts');
+                      context.push('/business/job-detail', extra: jobId);
+                    },
+                    style: context.accentOutlinedButtonStyle,
+                    child: const Text('İlan Detayına Git'),
+                  ),
+                ),
+              ],
               const SizedBox(height: AppSizes.spaceLarge),
               SizedBox(
                 width: double.infinity,
