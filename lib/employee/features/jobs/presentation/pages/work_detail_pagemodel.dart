@@ -38,6 +38,10 @@ abstract class WorkDetailPagemodel
   /// atamanın içinde gelen özet ([Assignment.cancellation]) kullanılıyor.
   Cancellation? cancellation;
 
+  /// Atamanın uyuşmazlıkları, en yeni önde (is-koala/koala#215). Çekilemezse
+  /// boş kalıyor ve özet kartı çizilmiyor — sayfanın geri kalanı etkilenmez.
+  List<Dispute> disputes = const [];
+
   /// Bir eylem sonrası kayıt yeniden okunurken.
   bool refreshing = false;
 
@@ -204,7 +208,41 @@ abstract class WorkDetailPagemodel
       }
     }
 
+    // Uyuşmazlık her durumda olabilir (para emanetteyken açılıyor, sonra iş
+    // iptal edilse de kayıt duruyor); özet kartı yalnız varsa çizilir.
+    try {
+      final loaded = await assignmentService.fetchDisputes(assignmentId);
+      if (!mounted) return;
+      setState(() => disputes = _newestFirst(loaded));
+    } on ApiException {
+      if (!mounted) return;
+    }
+
     _syncElapsedTicker();
+  }
+
+  static List<Dispute> _newestFirst(List<Dispute> loaded) {
+    final sorted = [...loaded];
+    sorted.sort((a, b) {
+      final left = a.createdAt;
+      final right = b.createdAt;
+      if (left == null && right == null) return 0;
+      if (left == null) return 1;
+      if (right == null) return -1;
+      return right.compareTo(left);
+    });
+    return sorted;
+  }
+
+  /// Uyuşmazlık ekranını açar; dönünce özet (durum) tazeleniyor — karar bu
+  /// arada verilmiş olabilir.
+  Future<void> openDisputeScreen() async {
+    final assignmentId = job.assignmentId;
+    if (assignmentId == null) return;
+
+    await context.push(DisputeRoutes.location(assignmentId));
+    if (!mounted) return;
+    unawaited(_loadAssignmentRecords());
   }
 
   /// Ulaşım görünümünü sunucudan tazeler.

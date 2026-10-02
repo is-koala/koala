@@ -22,12 +22,14 @@ import 'package:koala/employee/features/jobs/services/assignment_service.dart';
 import 'package:koala/employee/features/jobs/services/job_application_service.dart';
 import 'package:koala/employee/features/jobs/services/review_service.dart';
 import 'package:koala/employee/features/profile/models/public_profile_args.dart';
+import 'package:koala/product/features/dispute/dispute_routes.dart';
 import 'package:koala/product/features/transport/services/transport_service.dart';
 import 'package:koala/product/router/employee_routes.dart';
 import 'package:koala/product/theme/theme.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../../support/dispute_evidence_fixtures.dart' show disputeJson;
 import '../../../../../support/fake_api.dart';
 import '../../../../../support/review_fixtures.dart';
 import '../../../../../support/transport_fixtures.dart';
@@ -101,6 +103,7 @@ typedef Harness = ({
   List<Object?> openedProfiles,
   List<String> openedProfileLocations,
   List<Object?> openedReviews,
+  List<String> openedDisputes,
   List<Uri> openedUrls,
 });
 
@@ -159,6 +162,7 @@ Future<Harness> pumpDetail(
   final openedProfiles = <Object?>[];
   final openedProfileLocations = <String>[];
   final openedReviews = <Object?>[];
+  final openedDisputes = <String>[];
   final openedUrls = <Uri>[];
 
   final api = FakeApi(
@@ -250,6 +254,24 @@ Future<Harness> pumpDetail(
         },
       ),
       GoRoute(
+        path: DisputeRoutes.pattern,
+        pageBuilder: (context, state) {
+          openedDisputes.add(state.matchedLocation);
+          return MaterialPage<void>(
+            key: state.pageKey,
+            child: Scaffold(
+              body: Center(
+                child: ElevatedButton(
+                  key: const ValueKey('stub-dispute-back'),
+                  onPressed: context.pop,
+                  child: const Text('uyuşmazlık ekranı'),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+      GoRoute(
         path: '/review',
         pageBuilder: (context, state) {
           openedReviews.add(state.extra);
@@ -292,6 +314,7 @@ Future<Harness> pumpDetail(
     openedProfiles: openedProfiles,
     openedProfileLocations: openedProfileLocations,
     openedReviews: openedReviews,
+    openedDisputes: openedDisputes,
     openedUrls: openedUrls,
   );
 }
@@ -305,11 +328,128 @@ Future<void> settle(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+/// Uzun sayfada kart ekran dışında; liste tembel kurulduğu için kaydırmadan
+/// bulunamıyor.
+Future<void> _scrollToDispute(WidgetTester tester) async {
+  await tester.scrollUntilVisible(
+    find.byKey(const ValueKey('dispute-summary')),
+    300,
+    scrollable: find.byType(Scrollable).first,
+  );
+  await tester.pumpAndSettle();
+}
+
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   for (final brightness in Brightness.values) {
     group('İş detayı / ${brightness.name}', () {
+      testWidgets('uyuşmazlık yoksa Sorun Bildirimi kartı çizilmez', (
+        tester,
+      ) async {
+        await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: _confirmedRow,
+          detail: detailJson(creator: _ayse),
+        );
+
+        expect(find.byKey(const ValueKey('dispute-summary')), findsNothing);
+      });
+
+      testWidgets(
+        'açık uyuşmazlık kartı gerekçeyi yazar, dokununca ekranı açar ve dönünce tazeler',
+        (tester) async {
+          var disputeReads = 0;
+          final harness = await pumpDetail(
+            tester,
+            brightness: brightness,
+            job: _confirmedRow,
+            detail: detailJson(creator: _ayse),
+            overrides: {
+              '/disputes': (request) {
+                disputeReads++;
+                return dataResponse([
+                  disputeJson(
+                    'dispute-old',
+                    status: 'RESOLVED',
+                    createdAt: '2026-08-01T09:00:00Z',
+                    reason: 'Eski',
+                  ),
+                  disputeJson('dispute-new', reason: 'Ücret eksik ödendi'),
+                ]);
+              },
+            },
+          );
+
+          // En yeni uyuşmazlık özetleniyor; açık olduğu için eylem "ekle".
+          await _scrollToDispute(tester);
+          expect(find.byKey(const ValueKey('dispute-summary')), findsOneWidget);
+          expect(find.text('Sorun Bildirimi'), findsOneWidget);
+          expect(find.text('Açık'), findsOneWidget);
+          expect(find.text('Ücret eksik ödendi'), findsOneWidget);
+          expect(find.text('Eski'), findsNothing);
+          expect(find.text('Kanıt ekle ya da görüntüle'), findsOneWidget);
+          expect(disputeReads, 1);
+
+          await tester.ensureVisible(
+            find.byKey(const ValueKey('dispute-summary')),
+          );
+          await tester.tap(find.byKey(const ValueKey('dispute-summary')));
+          await settle(tester);
+
+          expect(harness.openedDisputes, ['/assignment-dispute/assignment-1']);
+          expect(find.text('uyuşmazlık ekranı'), findsOneWidget);
+
+          await tester.tap(find.byKey(const ValueKey('stub-dispute-back')));
+          await settle(tester);
+
+          // Karar bu arada verilmiş olabilir: dönüşte yeniden okunuyor.
+          expect(disputeReads, 2);
+        },
+      );
+
+      testWidgets('sonuçlanmış uyuşmazlıkta eylem yalnız görüntülemek', (
+        tester,
+      ) async {
+        await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: _confirmedRow,
+          detail: detailJson(creator: _ayse),
+          overrides: {
+            '/disputes': (_) =>
+                dataResponse([disputeJson('d', status: 'RESOLVED')]),
+          },
+        );
+
+        await _scrollToDispute(tester);
+        expect(find.text('Sonuçlandı'), findsOneWidget);
+        expect(find.text('Kanıtları görüntüle'), findsOneWidget);
+        expect(find.text('Kanıt ekle ya da görüntüle'), findsNothing);
+      });
+
+      testWidgets('uyuşmazlık okunamazsa sayfa kartsız çizilir', (
+        tester,
+      ) async {
+        await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: _confirmedRow,
+          detail: detailJson(creator: _ayse),
+          overrides: {
+            '/disputes': (_) => const FakeApiResponse(
+              statusCode: 500,
+              body: {'success': false, 'message': 'Uyuşmazlıklar alınamadı'},
+            ),
+          },
+        );
+
+        expect(find.byKey(const ValueKey('dispute-summary')), findsNothing);
+        expect(find.text('İş Detayı'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+
       testWidgets('çizelge: bütün damgalar geldiğinde her satır çizilir', (
         tester,
       ) async {

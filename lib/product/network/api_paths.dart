@@ -297,6 +297,21 @@ class ApiPaths {
   static String assignmentDisputes(String assignmentId) =>
       '${jobAssignment(assignmentId)}/disputes';
 
+  /// Bir uyuşmazlığın kanıtları (is-koala/koala#215).
+  ///
+  /// `GET` metadata dizisi, `POST` tek dosya (`multipart`, parça adı `file`).
+  /// Yalnızca atamanın tarafları; başkasına uyuşmazlık yokmuş gibi `404`.
+  /// Yükleme yalnız sonuçlanmamış uyuşmazlığa, uyuşmazlık başına en çok 5.
+  static String disputeEvidence(String disputeId) =>
+      '$disputes/$disputeId/evidence';
+
+  /// Kanıtın indirme ucu: `Bearer` ister ve kısa ömürlü imzalı depo adresine
+  /// `302` verir (yerel depoda baytları akıtır).
+  static String disputeEvidenceDownload(String disputeId, String evidenceId) =>
+      '${disputeEvidence(disputeId)}/$evidenceId/download';
+
+  static const String disputes = '/disputes';
+
   /// İşi tamamlanmış işaretleme.
   ///
   /// Yalnızca **işveren** çağırabiliyor: ilan sahibi ya da şirket yetkilisi.

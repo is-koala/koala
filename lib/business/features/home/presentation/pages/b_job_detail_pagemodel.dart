@@ -711,6 +711,15 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
         'Tutar iptal anında yeniden hesaplanır.';
   }
 
+  /// Açık uyuşmazlığın ekranını açar (kanıt ekleme / görüntüleme,
+  /// is-koala/koala#215); dönünce durum tazeleniyor — karar bu arada
+  /// verilmiş olabilir ve uyarı bandı bayat kalmasın.
+  Future<void> _openDisputeScreen(Dispute dispute) async {
+    await context.push(DisputeRoutes.location(dispute.assignmentId));
+    if (!mounted) return;
+    unawaited(_loadDisputes(dispute.assignmentId));
+  }
+
   /// Uyuşmazlık açar.
   ///
   /// Yalnızca para emanetteyken açılabiliyor ve emanetteki parayı donduruyor:

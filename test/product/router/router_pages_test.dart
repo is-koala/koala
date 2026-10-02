@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/profile/models/public_profile_args.dart';
 import 'package:koala/employee/features/profile/presentation/pages/public_profile_page.dart';
 import 'package:koala/product/features/account/account_routes.dart';
+import 'package:koala/product/features/dispute/dispute_routes.dart';
 import 'package:koala/product/router/business_routes.dart';
 import 'package:koala/product/router/employee_routes.dart';
 import 'package:koala/product/router/router_manager.dart';
@@ -101,6 +102,24 @@ void main() {
 
     expect(pool, hasLength(1));
     expect(pool.single.pageBuilder, isNotNull);
+  });
+
+  test('uyuşmazlık ekranı shell dışında, atama kimliği yol parametresi', () {
+    final routes = allGoRoutes(
+      RouterManager.router.configuration.routes,
+    ).where((route) => route.path == DisputeRoutes.pattern);
+
+    // Navbar'ın üstünü kaplıyor ve iki kabuk da açıyor (is-koala/koala#215).
+    expect(DisputeRoutes.pattern, '/assignment-dispute/:assignmentId');
+    expect(DisputeRoutes.location('abc-1'), '/assignment-dispute/abc-1');
+    expect(
+      DisputeRoutes.location('a/b c'),
+      '/assignment-dispute/a%2Fb%20c',
+      reason: 'kimlik yola kaçışlanarak giriyor',
+    );
+    expect(routes, hasLength(1));
+    expect(routes.single.pageBuilder, isNotNull);
+    expect(routes.single.builder, isNull);
   });
 
   test('adres seçici tek rotayla iki uygulamaya da açık', () {

@@ -16,6 +16,7 @@ import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:koala/employee/features/jobs/models/assignment.dart';
 import 'package:koala/employee/features/jobs/models/cancellation.dart';
+import 'package:koala/employee/features/jobs/models/dispute.dart';
 import 'package:koala/employee/features/jobs/models/my_job.dart';
 import 'package:koala/employee/features/jobs/models/review.dart';
 import 'package:koala/employee/features/jobs/models/timesheet_event.dart';
@@ -41,6 +42,8 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
+import 'package:koala/product/features/dispute/dispute_routes.dart';
+import 'package:koala/product/features/dispute/presentation/widgets/dispute_summary_card.dart';
 import 'package:koala/product/features/transport/models/transport_error_codes.dart';
 import 'package:koala/product/features/transport/models/transport_plan.dart';
 import 'package:koala/product/features/transport/services/transport_service.dart';
@@ -178,6 +181,13 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
             if (cancellationRecord != null) ...[
               const SizedBox(height: AppSizes.space),
               CancellationCard(cancellation: cancellationRecord),
+            ],
+            if (disputes.isNotEmpty) ...[
+              const SizedBox(height: AppSizes.space),
+              DisputeSummaryCard(
+                dispute: disputes.first,
+                onOpen: openDisputeScreen,
+              ),
             ],
             if (_canReview) ...[
               const SizedBox(height: AppSizes.space),

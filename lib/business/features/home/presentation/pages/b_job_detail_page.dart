@@ -55,6 +55,7 @@ import 'package:koala/product/features/account/account_navigation.dart';
 import 'package:koala/product/features/account/models/address_required_error_codes.dart';
 import 'package:koala/product/formatters/turkish_money_formatter.dart';
 import 'package:koala/product/models/gallery_image.dart';
+import 'package:koala/product/features/dispute/dispute_routes.dart';
 import 'package:koala/product/features/transport/models/transport_error_codes.dart';
 import 'package:koala/product/features/transport/models/transport_plan.dart';
 import 'package:koala/product/features/transport/services/transport_service.dart';
@@ -644,43 +645,58 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     final open = _disputes.where((dispute) => dispute.isOpen).firstOrNull;
     if (open == null) return null;
 
+    // Uyarı aynı zamanda uyuşmazlık ekranının girişi: kanıt ekleme ve
+    // görüntüleme orada (is-koala/koala#215).
     return Padding(
       padding: const EdgeInsets.only(top: AppSizes.spaceMedium),
-      child: Container(
-        width: double.infinity,
-        padding: AppPadding.primaryAll,
-        decoration: BoxDecoration(
-          color: AppColors.warning.withValues(
-            alpha: BJobDetailPageModel._tintAlpha,
-          ),
-          borderRadius: AppRadius.innerCircular,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Açık sorun bildirimi · ${open.status.displayName}',
-              style: context.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+      child: InkWell(
+        key: const ValueKey('open-dispute-banner'),
+        borderRadius: AppRadius.innerCircular,
+        onTap: () => _openDisputeScreen(open),
+        child: Container(
+          width: double.infinity,
+          padding: AppPadding.primaryAll,
+          decoration: BoxDecoration(
+            color: AppColors.warning.withValues(
+              alpha: BJobDetailPageModel._tintAlpha,
             ),
-            if (open.reason != null) ...[
+            borderRadius: AppRadius.innerCircular,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Açık sorun bildirimi · ${open.status.displayName}',
+                style: context.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (open.reason != null) ...[
+                const SizedBox(height: AppSizes.spaceTiny),
+                Text(
+                  open.reason!,
+                  style: context.textTheme.bodyMedium?.copyWith(
+                    color: context.textSecondary,
+                  ),
+                ),
+              ],
               const SizedBox(height: AppSizes.spaceTiny),
               Text(
-                open.reason!,
-                style: context.textTheme.bodyMedium?.copyWith(
+                'Emanetteki ücret, Koala sonuçlandırana kadar dondurulur.',
+                style: context.textTheme.labelMedium?.copyWith(
                   color: context.textSecondary,
                 ),
               ),
-            ],
-            const SizedBox(height: AppSizes.spaceTiny),
-            Text(
-              'Emanetteki ücret, Koala sonuçlandırana kadar dondurulur.',
-              style: context.textTheme.labelMedium?.copyWith(
-                color: context.textSecondary,
+              const SizedBox(height: AppSizes.spaceSmall),
+              Text(
+                'Kanıt ekle ya da görüntüle',
+                style: context.textTheme.bodyMedium?.copyWith(
+                  color: context.accentColor,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

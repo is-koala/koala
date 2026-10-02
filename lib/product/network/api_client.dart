@@ -248,6 +248,84 @@ class ApiClient {
     );
   }
 
+  /// Tek dosya yükleyen, ad ve içerik tipini kendisi yazan `POST` isteği.
+  ///
+  /// [postFile]'dan farkı, parçanın `filename` ve `Content-Type`'ının
+  /// [UploadFile]'dan gelmesi ve ilerleme: sunucu uzantıya bakıyor, seçicinin
+  /// verdiği ad ise içeriği yansıtmayabiliyor (Android'in `.heic` adlı JPEG'i).
+  /// [onSendProgress] gönderilen ve toplam bayt sayısını veriyor. Dosya
+  /// eşzamanlı açılıyor: [postMultipartJsonFiles] ile aynı gerekçe, eşzamansız
+  /// `fromFile` widget testlerinin sahte saatinde hiç dönmüyor.
+  Future<T> postUploadFile<T>(
+    String path, {
+    required String fieldName,
+    required UploadFile file,
+    void Function(int sent, int total)? onSendProgress,
+    required T Function(Object? data) parse,
+  }) {
+    final contentType = file.contentType;
+    final formData = FormData.fromMap({
+      fieldName: MultipartFile.fromFileSync(
+        file.path,
+        filename: file.filename,
+        contentType: contentType == null
+            ? null
+            : DioMediaType.parse(contentType),
+      ),
+    });
+
+    return _send<T>(
+      () => _dio.post<dynamic>(
+        path,
+        data: formData,
+        options: _multipartOptions,
+        onSendProgress: onSendProgress,
+      ),
+      parse: parse,
+    );
+  }
+
+  /// Yönlendirmeyle cevap veren bir `GET`'in hedef adresini döndürür.
+  ///
+  /// Dosya indirme uçları (`.../download`) imzalı bir depo adresine `302`
+  /// veriyor ve kendileri `Authorization` istiyor. Yönlendirmeyi **izlemek**
+  /// o başlığı depoya taşıyabilir (S3 imzalı adres + ikinci kimlik doğrulama
+  /// `400` döner, üstelik token üçüncü bir sunucuya gider); o yüzden `302`
+  /// burada duruyor ve `Location` okunuyor.
+  ///
+  /// Sunucu depo imzası yapamıyorsa baytları kendisi akıtıyor (`200`); o
+  /// durumda `null` dönüyor — dosya bellekte tutulmuyor, çağıran "uygulama
+  /// içinde açılamıyor" demeli. Hata durumları (`401`, `404` ...) zarfıyla
+  /// birlikte olağan [ApiException]'a çevriliyor.
+  Future<Uri?> getRedirectLocation(String path) async {
+    try {
+      final response = await _dio.get<dynamic>(
+        path,
+        options: Options(
+          followRedirects: false,
+          validateStatus: (status) =>
+              status != null && status >= 200 && status < 400,
+        ),
+      );
+
+      final status = response.statusCode ?? 0;
+      if (status >= 300) {
+        final location = response.headers.value(HttpHeaders.locationHeader);
+        final target = location == null ? null : Uri.tryParse(location);
+        if (target != null && target.hasScheme && target.host.isNotEmpty) {
+          return target;
+        }
+        throw const ApiException(
+          message: 'Sunucudan beklenmeyen bir yanıt geldi.',
+          type: ApiErrorType.unknown,
+        );
+      }
+      return null;
+    } on DioException catch (error) {
+      throw _toApiException(error);
+    }
+  }
+
   /// Tek dosya yükleyen `POST` isteği.
   ///
   /// [postMultipartJson]'dan farkı, JSON parçası istememesi: galeriye görsel
