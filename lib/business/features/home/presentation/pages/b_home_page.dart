@@ -15,6 +15,7 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/widgets/notification_bell.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/router/business_routes.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:provider/provider.dart';
 
@@ -298,6 +299,9 @@ class _BHomePageState extends State<BHomePage> {
             label: 'Başvuru',
             value: '$applicantCount',
             color: AppColors.info,
+            // Sayı bütün başvuruları sayıyor; gelen kutusu da hepsini
+            // listeliyor (is-koala/koala#213).
+            onTap: () => context.push(BusinessRoutes.applications),
           ),
         ),
         const SizedBox(width: AppSizes.space),
@@ -320,8 +324,9 @@ class _BHomePageState extends State<BHomePage> {
     required String label,
     required String value,
     required Color color,
+    VoidCallback? onTap,
   }) {
-    return Container(
+    final card = Container(
       padding: const EdgeInsets.symmetric(
         vertical: AppSizes.spaceMedium,
         horizontal: AppSizes.space,
@@ -361,6 +366,14 @@ class _BHomePageState extends State<BHomePage> {
           ),
         ],
       ),
+    );
+
+    if (onTap == null) return card;
+    return GestureDetector(
+      key: ValueKey('home-stat-$label'),
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: card,
     );
   }
 
@@ -469,10 +482,10 @@ class _BHomePageState extends State<BHomePage> {
 
   /// Ana sayfadaki "Son Başvurular" listesi.
   ///
-  /// Başvuranların kim olduğunu gösteren tek yer burası ve sunucuda "bütün
-  /// ilanlarıma gelen başvurular" diye bir uç yok. O yüzden istek yalnızca
-  /// **ilk [_previewCount] aktif ilan** için atılıyor; liste zaten o kadarını
-  /// gösteriyor.
+  /// Bu bir **pencere**, gelen kutusu değil: istek yalnızca **ilk
+  /// [_previewCount] aktif ilan** için atılıyor ve yalnız bekleyenleri
+  /// çiziyor. Tamamı için başlıktaki *Tümünü Gör* ilanlar arası gelen kutusunu
+  /// açıyor (`GET /users/me/received-applications`, is-koala/koala#213).
   Widget _recentApplicantsSection(
     BuildContext context,
     BJobsProvider provider,
@@ -505,7 +518,21 @@ class _BHomePageState extends State<BHomePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionHeader(context, 'Son Başvurular'),
+        _sectionHeader(
+          context,
+          'Son Başvurular',
+          action: GestureDetector(
+            key: const ValueKey('home-applications-see-all'),
+            onTap: () => context.push(BusinessRoutes.applications),
+            child: Text(
+              'Tümünü Gör',
+              style: context.textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: context.accentColor,
+              ),
+            ),
+          ),
+        ),
         const SizedBox(height: AppSizes.space),
         if (failedPosts.isNotEmpty) ...[
           _recentApplicantsErrorPanel(context, provider, failedPosts),
