@@ -183,7 +183,10 @@ void main() {
       ),
     );
 
-    expect(find.byKey(const ValueKey('profile-rating-summary')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('profile-rating-summary')),
+      findsOneWidget,
+    );
     expect(find.text('4.5'), findsOneWidget);
     expect(find.text('(12)'), findsOneWidget);
     expect(find.text('0.0'), findsNothing);
