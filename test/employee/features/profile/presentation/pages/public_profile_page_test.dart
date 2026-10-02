@@ -126,7 +126,7 @@ Future<_Harness> _pump(
   FutureOr<FakeApiResponse> Function()? profile,
   FakeApiResponse? ratingSummary,
   FakeApiResponse? reviews,
-  FakeApiResponse? jobDetail,
+  FutureOr<FakeApiResponse>? jobDetail,
   Brightness brightness = Brightness.light,
   bool awaitsProfile = false,
 }) async {
@@ -259,6 +259,16 @@ void main() {
     role: ChatParticipantRole.employer,
   );
 
+  // Şirket ilanına bağlı bir sohbetten gelen işveren: şirket satırı için ilan
+  // uçlarına gitmesi **mümkün** olan açılış. "Profil gelmeden ilan istenmez"
+  // testleri bununla çalışıyor; `jobId`'siz `ayse` ile o koşul hiç ısırmazdı.
+  const ayseAtJob = PublicProfileArgs(
+    userId: 'user-9',
+    name: 'Ayşe Yılmaz',
+    role: ChatParticipantRole.employer,
+    jobId: 'job-1',
+  );
+
   for (final brightness in Brightness.values) {
     final theme = brightness == Brightness.light ? 'açık' : 'koyu';
 
@@ -305,7 +315,7 @@ void main() {
           'durumu, çağıranın verdiği ad bile çizilmez', (tester) async {
         final notFoundHarness = await _pump(
           tester,
-          args: ayse,
+          args: ayseAtJob,
           profile: () => _notFound,
           brightness: brightness,
         );
@@ -333,7 +343,7 @@ void main() {
 
         final forbiddenHarness = await _pump(
           tester,
-          args: ayse,
+          args: ayseAtJob,
           profile: () => _forbidden,
           brightness: brightness,
         );
@@ -405,7 +415,7 @@ void main() {
     final response = Completer<FakeApiResponse>();
     final harness = await _pump(
       tester,
-      args: ayse,
+      args: ayseAtJob,
       profile: () => response.future,
       awaitsProfile: true,
     );
@@ -416,14 +426,20 @@ void main() {
     expect(find.text('Kafe işletmecisi'), findsNothing);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     expect(find.text(PublicProfilePage.unavailableTitle), findsNothing);
-    // Profil gelmeden değerlendirme ve ilan uçları istenmiyor.
+    // Profil gelmeden değerlendirme ve ilan uçları istenmiyor; henüz
+    // bildirilecek bir profil de yok.
     _expectNothingBeyondTheProfileRequested(harness.api);
+    expect(find.byTooltip('Şikayet Et'), findsNothing);
 
     response.complete(dataResponse(_ayseProfile));
     await _settle(tester);
 
     expect(find.text('Kafe işletmecisi'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsNothing);
+    // Profil geldikten sonra ilan da isteniyor (şirket satırı için): yukarıdaki
+    // "istenmedi" iddiası boş bir iddia değil.
+    expect(_requestedPaths(harness.api), contains('/jobs/job-1'));
+    expect(find.byTooltip('Şikayet Et'), findsOneWidget);
   });
 
   testWidgets('yalnız kimlikle açılınca kapak profil yanıtından dolar', (
@@ -442,6 +458,9 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     expect(find.text('Profil'), findsOneWidget);
     expect(find.text('Ayşe Yılmaz'), findsNothing);
+    // Derin bağlantıda profil henüz yokken şikayet formu açılamıyor: sonra
+    // 404 gelirse kullanıcı var olmayan birini bildirmiş olurdu.
+    expect(find.byTooltip('Şikayet Et'), findsNothing);
 
     response.complete(dataResponse(_ayseProfile));
     await _settle(tester);
@@ -523,6 +542,50 @@ void main() {
       expect(args.name, 'Ayşe Yılmaz');
       expect(args.imageUrl, 'https://cdn.example/ayse.png');
       expect(args.role, ChatParticipantRole.companyContact);
+    });
+
+    // Şirketten ayrılan yetkili (`leaveCompanyCrews`) satırı silinmeden
+    // `COMPANY_CONTACT` rolüyle kalıyor: ilan taşırsak ayrıldığı şirketin adı
+    // profilinde yazardı.
+    test('ayrılan katılımcı ilan taşımaz, aktif olan taşır', () {
+      const active = ChatParticipant(
+        id: 'user-9',
+        firstName: 'Yetkili',
+        lastName: 'Kişi',
+        role: ChatParticipantRole.companyContact,
+      );
+      const left = ChatParticipant(
+        id: 'user-9',
+        firstName: 'Yetkili',
+        lastName: 'Kişi',
+        role: ChatParticipantRole.companyContact,
+        left: true,
+      );
+
+      expect(
+        PublicProfileArgs.fromParticipant(active, jobId: 'job-1').jobId,
+        'job-1',
+      );
+      expect(
+        PublicProfileArgs.fromParticipant(left, jobId: 'job-1').jobId,
+        isNull,
+      );
+    });
+
+    // Grup sohbetinin `jobId`'si boş dize olabiliyor; "ilan yok" demek.
+    test('boş ilan kimliği ilan yok sayılır', () {
+      const active = ChatParticipant(
+        id: 'user-9',
+        firstName: 'Ayşe',
+        lastName: 'Yılmaz',
+        role: ChatParticipantRole.employer,
+      );
+
+      expect(
+        PublicProfileArgs.fromParticipant(active, jobId: '').jobId,
+        isNull,
+      );
+      expect(PublicProfileArgs.fromParticipant(active).jobId, isNull);
     });
   });
 
@@ -625,6 +688,60 @@ void main() {
       );
       expect(find.text('Koala Cafe'), findsNothing);
     });
+
+    // `GET /jobs/` (kimliksiz) bir grup sohbetinde ilan yokken atılmamalı.
+    testWidgets('boş ilan kimliği ilan isteği atmaz', (tester) async {
+      final harness = await _pump(
+        tester,
+        args: const PublicProfileArgs(
+          userId: 'user-9',
+          name: 'Ayşe Yılmaz',
+          role: ChatParticipantRole.employer,
+          jobId: '',
+        ),
+        jobDetail: dataResponse(_jobJson()),
+      );
+
+      expect(
+        _requestedPaths(harness.api).where((p) => p.startsWith('/jobs')),
+        isEmpty,
+      );
+      expect(find.text('Kafe işletmecisi'), findsOneWidget);
+      expect(find.text('Koala Cafe'), findsNothing);
+    });
+
+    // Şirket satırı ikinci (ağır) ilan isteğinden sonra geliyor; üstte
+    // belirince "Hakkında" ve yorumlar aşağı sıçramasın, boyut animasyonla
+    // açılsın.
+    testWidgets('şirket satırı geç gelince içerik sıçramaz, animasyonla iner', (
+      tester,
+    ) async {
+      final job = Completer<FakeApiResponse>();
+      await _pump(tester, args: contact, jobDetail: job.future);
+
+      double aboutTop() => tester.getTopLeft(find.text('Hakkında')).dy;
+      final companyRow = find.byKey(const ValueKey('public-profile-company'));
+      final before = aboutTop();
+      expect(companyRow, findsNothing);
+
+      job.complete(dataResponse(_jobJson()));
+      // Satır ağaca girdiği ilk kareyi yakalamak için milisaniye adımlarıyla.
+      for (var step = 0; step < 200 && companyRow.evaluate().isEmpty; step++) {
+        await tester.pump(const Duration(milliseconds: 1));
+      }
+      expect(companyRow, findsOneWidget);
+
+      final justAfter = aboutTop();
+      await tester.pump(const Duration(milliseconds: 60));
+      final midway = aboutTop();
+      await tester.pumpAndSettle();
+      final settled = aboutTop();
+
+      expect(justAfter, closeTo(before, 2), reason: 'ilk karede sıçrama yok');
+      expect(midway, greaterThan(justAfter));
+      expect(midway, lessThan(settled), reason: 'boyut kademeli açılıyor');
+      expect(settled, greaterThan(before));
+    });
   });
 
   testWidgets('kendi profili: sekmeye yönlenir, profil çekilmez', (
@@ -681,6 +798,28 @@ void main() {
     );
     expect(find.text('4.5'), findsOneWidget);
     expect(find.text('(12)'), findsOneWidget);
+  });
+
+  // Yarım özet (sayı var, ortalama yok) "0.0" çizdirirdi; ikisi birlikte
+  // gelmiyorsa uca düşülüyor.
+  testWidgets('ortalama yoksa profildeki yarım özet kullanılmaz', (
+    tester,
+  ) async {
+    final harness = await _pump(
+      tester,
+      args: ayse,
+      profile: () => dataResponse({
+        for (final entry in _ayseProfile.entries)
+          if (entry.key != 'averageRating') entry.key: entry.value,
+      }),
+    );
+
+    expect(
+      _requestedPaths(harness.api),
+      contains('/users/user-9/rating-summary'),
+    );
+    expect(find.text('4.5'), findsOneWidget);
+    expect(find.text('0.0'), findsNothing);
   });
 
   testWidgets('hakkında boşsa boş bir kart çizilmez', (tester) async {

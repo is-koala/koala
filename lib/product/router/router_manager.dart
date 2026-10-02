@@ -557,8 +557,9 @@ class RouterManager {
 
       // Çalışanın başkasının profilini açtığı sayfa (is-koala/koala#182):
       // sohbet katılımcıları ve bireysel işveren kartı. Navbar'ın üstünü
-      // kaplıyor, o yüzden shell'in dışında. `extra`: `PublicProfileArgs` ya
-      // da kullanıcı kimliği.
+      // kaplıyor, o yüzden shell'in dışında. Kimlik yol parametresi; `extra`
+      // isteğe bağlı bir `PublicProfileArgs` ve yalnız kapağı önceden doldurur
+      // (yoksa, başka türdeyse ya da başka kişiye aitse yok sayılır).
       GoRoute(
         path: EmployeeRoutes.publicProfilePattern,
         pageBuilder: (context, state) => _page(

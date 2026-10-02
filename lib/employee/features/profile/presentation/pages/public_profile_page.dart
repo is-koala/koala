@@ -99,6 +99,9 @@ class PublicProfilePage extends StatefulWidget {
   static const String retryNote =
       'Profil şu an yüklenemedi. Biraz sonra tekrar deneyin.';
 
+  /// Şirket satırının boyutunun açılma süresi.
+  static const Duration companyRevealDuration = Duration(milliseconds: 200);
+
   /// Hiç değerlendirmesi olmayan birinin yorum bölümü; sahibine değil,
   /// başkasına konuşuyor.
   static const String noReviewsNote = 'Henüz değerlendirme yok.';
@@ -158,10 +161,7 @@ class _PublicProfilePageState extends PublicProfilePagemodel {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (company case final company?) ...[
-            _companyRow(context, company),
-            const SizedBox(height: AppSizes.spaceLarge),
-          ],
+          _companySlot(context),
           // Boş bir "hakkında" kartı başkasının profilinde bir şey söylemiyor.
           if (about != null && about.isNotEmpty) ...[
             _aboutSection(context, about),
@@ -263,10 +263,33 @@ class _PublicProfilePageState extends PublicProfilePagemodel {
     );
   }
 
-  /// Başlıktaki şikayet düğmesi; çizilecek profil olmadığında (hata,
-  /// yönlendirme) yok.
+  /// Şirket satırının yeri. Satır ikinci (ağır) ilan isteğinden sonra
+  /// geliyor ve en üstte; aniden eklense "Hakkında" ile yorumlar aşağı
+  /// sıçrardı. Boyut animasyonla açılıyor; genişlik sabit kalsın diye boşken
+  /// de tam genişlikte, sıfır yükseklikli bir kutu duruyor.
+  Widget _companySlot(BuildContext context) {
+    final found = company;
+
+    return AnimatedSize(
+      duration: PublicProfilePage.companyRevealDuration,
+      alignment: Alignment.topCenter,
+      child: found == null
+          ? const SizedBox(width: double.infinity)
+          : Column(
+              children: [
+                _companyRow(context, found),
+                const SizedBox(height: AppSizes.spaceLarge),
+              ],
+            ),
+    );
+  }
+
+  /// Başlıktaki şikayet düğmesi; yalnız profil geldikten sonra. Beklerken
+  /// (derin bağlantıda, önceden doldurma yokken) form açılsa ve profil sonra
+  /// `404` dönse kullanıcı var olmayan birini bildirmiş olurdu; hata ve
+  /// yönlendirmede de bildirilecek bir profil yok.
   Widget? _reportAction() {
-    if (failure != null || isRedirecting) return null;
+    if (profile == null || failure != null || isRedirecting) return null;
 
     return IconButton(
       tooltip: 'Şikayet Et',

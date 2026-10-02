@@ -28,16 +28,18 @@ abstract class PublicProfilePagemodel extends State<PublicProfilePage> {
     return type == ApiErrorType.notFound || type == ApiErrorType.forbidden;
   }
 
-  /// Puan özeti profil yanıtından; yanıt `reviewCount` taşımıyorsa (eski
-  /// sunucu) `null` ve `ProfileReviews` özeti kendi ucundan çekiyor.
+  /// Puan özeti profil yanıtından; yanıt `reviewCount` **ve** `averageRating`
+  /// taşımıyorsa (eski sunucu, yarım yanıt) `null` ve `ProfileReviews` özeti
+  /// kendi ucundan çekiyor. Yarım özet "0.0" çizdirirdi.
   RatingSummary? get ratingSummary {
     final loaded = profile;
     final count = loaded?.reviewCount;
-    if (loaded == null || count == null) return null;
+    final average = loaded?.averageRating;
+    if (loaded == null || count == null || average == null) return null;
     return RatingSummary(
       userId: loaded.id,
       reviewCount: count,
-      averageRating: loaded.averageRating ?? 0,
+      averageRating: average,
     );
   }
 
@@ -102,8 +104,8 @@ abstract class PublicProfilePagemodel extends State<PublicProfilePage> {
   /// Profil geldikten sonra isteniyor ve sessiz başarısız oluyor: şirket
   /// satırı profilin tamamlayıcısı, ön koşulu değil.
   Future<void> _loadCompany() async {
-    final jobId = widget.args.jobId;
-    if (jobId == null || !widget.args.mayRepresentCompany) return;
+    final jobId = widget.args.companyLookupJobId;
+    if (jobId == null) return;
 
     try {
       final job = await _jobService.getById(jobId);

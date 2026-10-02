@@ -8,6 +8,7 @@ import 'package:koala/employee/features/chat/presentation/providers/chat_thread_
 import 'package:koala/employee/features/chat/presentation/widgets/chat_participants_sheet.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/message_bubble.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
+import 'package:koala/employee/features/profile/models/public_profile_args.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/network/realtime_event.dart';
@@ -508,6 +509,42 @@ void registerChatPageGroupTests({
           }
         },
       );
+
+      // Ayrılan katılımcı (şirketten çıkan yetkili de böyle kalıyor) profili
+      // açılabilir ama ilan taşımaz: şirket satırı ayrıldığı şirketi yazmasın.
+      if (!isEmployer) {
+        testWidgets('ayrılan katılımcının profili ilan kimliği taşımaz', (
+          tester,
+        ) async {
+          final chat = _group(
+            currentUserId: currentUserId,
+            isEmployer: isEmployer,
+          );
+          final setup = await setUpThread(tester, chat: chat);
+          final opened = await pumpPageInRouter(
+            tester,
+            chat: chat,
+            thread: setup.thread,
+            userProvider: setup.userProvider,
+            brightness: brightness,
+          );
+
+          await tester.tap(find.text('3 katılımcı'));
+          await tester.pumpAndSettle();
+          await tester.tap(
+            find.descendant(
+              of: find.byType(ChatParticipantsSheet),
+              matching: find.text('Eski Üye'),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          expect(opened.locations, [EmployeeRoutes.publicProfile(_gone)]);
+          final args = opened.extras.single! as PublicProfileArgs;
+          expect(args.userId, _gone);
+          expect(args.jobId, isNull);
+        });
+      }
 
       testWidgets('ikili sohbette ne gönderen adı ne görüldü sayısı var', (
         tester,

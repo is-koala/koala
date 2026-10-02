@@ -22,16 +22,22 @@ class PublicProfileArgs {
   /// Grup sohbetinin katılımcı satırından: kimlik, ad, fotoğraf ve sohbetteki
   /// rolü. [jobId] sohbetin bağlı olduğu ilan; kişi şirket tarafındaysa şirket
   /// satırı o ilandan çözülüyor.
+  ///
+  /// İlan **yalnız hâlâ sohbette olan** katılımcıya veriliyor: şirketten
+  /// ayrılan yetkilinin satırı silinmiyor, `COMPANY_CONTACT` rolüyle kalıyor
+  /// (`left=true`); ona ilan verilseydi profilinde ayrıldığı şirketin adı
+  /// yazardı. Boş [jobId] (ilanı olmayan sohbet) "ilan yok" demek.
   factory PublicProfileArgs.fromParticipant(
     ChatParticipant participant, {
     String? jobId,
   }) {
+    final hasJob = !participant.left && jobId != null && jobId.isNotEmpty;
     return PublicProfileArgs(
       userId: participant.id,
       name: participant.fullName,
       imageUrl: participant.profilePictureUrl,
       role: participant.role,
-      jobId: jobId,
+      jobId: hasJob ? jobId : null,
     );
   }
 
@@ -56,4 +62,13 @@ class PublicProfileArgs {
   bool get mayRepresentCompany =>
       role == ChatParticipantRole.employer ||
       role == ChatParticipantRole.companyContact;
+
+  /// Şirket satırı için ilan detayı okunacaksa ilanın kimliği; okunmayacaksa
+  /// (rol uygun değil, ilan yok ya da boş dize) `null`. Boş kimlik
+  /// `GET /jobs/` (kimliksiz) isteği atardı.
+  String? get companyLookupJobId {
+    final id = jobId;
+    if (id == null || id.isEmpty || !mayRepresentCompany) return null;
+    return id;
+  }
 }
