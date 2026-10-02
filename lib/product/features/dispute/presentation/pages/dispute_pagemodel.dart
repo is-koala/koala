@@ -24,6 +24,18 @@ abstract class DisputePagemodel extends State<DisputePage> {
     super.dispose();
   }
 
+  /// Çekip yenileme. Eldeki uyuşmazlıklar varken başarısız olursa liste yerinde
+  /// kalıyor ve nedenini bir toast söylüyor; boş ekranda hata durumu zaten
+  /// kendi mesajını çiziyor.
+  Future<void> _onRefresh() async {
+    await _provider.refresh();
+    if (!mounted) return;
+    final message = _provider.errorMessage;
+    if (message != null && _provider.cases.isNotEmpty) {
+      AppToast.error(context, message);
+    }
+  }
+
   /// Kanıt ekleme: kaynak seç → dosyayı al → doğrula ve yükle.
   ///
   /// Seçici vazgeçilirse sessizce dönüyor. Sınırlardan dönen dosya ve sunucu

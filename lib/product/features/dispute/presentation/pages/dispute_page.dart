@@ -108,7 +108,7 @@ class _DisputePageState extends DisputePagemodel {
   }
 
   Widget _refreshable(Widget child) {
-    return RefreshIndicator(onRefresh: _provider.refresh, child: child);
+    return RefreshIndicator(onRefresh: _onRefresh, child: child);
   }
 
   Widget _emptyState() {

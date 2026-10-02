@@ -557,6 +557,27 @@ void main() {
         expect(find.text('Ücret eksik ödendi'), findsOneWidget);
       });
 
+      testWidgets('başarısız yenileme listeyi korur ve toast ile söyler', (
+        tester,
+      ) async {
+        final backend = _Backend()
+          ..evidence['dispute-1'] = [
+            evidenceJson('ev-1', fileName: 'vardiya.jpg'),
+          ];
+        await _pump(tester, backend, brightness: brightness);
+
+        backend.failDisputes = true;
+        await tester.drag(find.byType(ListView).first, const Offset(0, 400));
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Uyuşmazlıklar alınamadı'), findsOneWidget);
+        // Satırlar yerinde; tam hata ekranına düşülmedi.
+        expect(find.text('vardiya.jpg'), findsOneWidget);
+        expect(find.byKey(const ValueKey('dispute-retry')), findsNothing);
+      });
+
       testWidgets('çekip yenileme uyuşmazlıkları yeniden okur', (tester) async {
         final backend = _Backend();
         await _pump(tester, backend, brightness: brightness);
