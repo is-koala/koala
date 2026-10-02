@@ -483,41 +483,38 @@ void main() {
     },
   );
 
-  test(
-    'kimliği sunucuda bulunmayan idempotency çakışması silinmez',
-    () async {
-      final store = _MemoryStore();
-      final gateway = _FakeGateway()
-        ..sendError = const ApiException(
-          message: 'Çakışma',
-          type: ApiErrorType.dataConflict,
-          statusCode: 409,
-          errorCode: 'TIMESHEET_IDEMPOTENCY_CONFLICT',
-        )
-        ..sessions = [
-          WorkSession(
-            id: 'session-a',
-            assignmentId: 'assignment-a',
-            checkOutClientEventId: 'someone-else',
-          ),
-        ];
-      final provider = TimesheetQueueProvider.withAdapters(
-        store: store,
-        gateway: gateway,
-        retryTrigger: _ManualRetryTrigger(),
-        eventIdFactory: () => 'event-conflict',
-      );
-      await provider.startForUser('user-a');
+  test('kimliği sunucuda bulunmayan idempotency çakışması silinmez', () async {
+    final store = _MemoryStore();
+    final gateway = _FakeGateway()
+      ..sendError = const ApiException(
+        message: 'Çakışma',
+        type: ApiErrorType.dataConflict,
+        statusCode: 409,
+        errorCode: 'TIMESHEET_IDEMPOTENCY_CONFLICT',
+      )
+      ..sessions = [
+        WorkSession(
+          id: 'session-a',
+          assignmentId: 'assignment-a',
+          checkOutClientEventId: 'someone-else',
+        ),
+      ];
+    final provider = TimesheetQueueProvider.withAdapters(
+      store: store,
+      gateway: gateway,
+      retryTrigger: _ManualRetryTrigger(),
+      eventIdFactory: () => 'event-conflict',
+    );
+    await provider.startForUser('user-a');
 
-      expect(
-        await provider.recordCheckOut(assignmentId: 'assignment-a'),
-        TimesheetSubmission.requiresSupport,
-      );
-      expect(provider.events.single.requiresSupport, isTrue);
-      expect(provider.events.single.supportMessage, contains('Destek'));
-      await provider.disposeAsync();
-    },
-  );
+    expect(
+      await provider.recordCheckOut(assignmentId: 'assignment-a'),
+      TimesheetSubmission.requiresSupport,
+    );
+    expect(provider.events.single.requiresSupport, isTrue);
+    expect(provider.events.single.supportMessage, contains('Destek'));
+    await provider.disposeAsync();
+  });
 
   // İki çakışma kategorisi de uzlaştırmaya gitmeli: olay kuyrukta kilitli
   // kalırsa aynı atamanın sonraki bütün check-in/check-out'ları da tıkanır.
