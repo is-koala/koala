@@ -10,10 +10,13 @@ import 'package:koala/business/features/home/services/b_candidate_profile_servic
 import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/jobs/models/job_application.dart';
 import 'package:koala/employee/features/jobs/services/review_service.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/services/availability_service.dart';
+import 'package:koala/product/widgets/profile_cover.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../../support/fake_api.dart';
+import '../../../../../support/finders.dart';
 import '../../../../../support/pump.dart';
 
 const _applicant = JobApplicant(
@@ -141,6 +144,49 @@ void main() {
         // Eski sunucu profilde tamamlanan iş sayısını göndermiyor; satır yok.
         expect(
           find.byKey(const ValueKey('candidate-completed-jobs')),
+          findsNothing,
+        );
+      },
+    );
+  }
+
+  // Kapak iki ekranın ortak `ProfileCover`'ı (is-koala/koala#182); işveren
+  // aday sayfası mesleği ve konumu hâlâ aynı kapakta çizmeli.
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      'kapakta meslek ve konum etiketi çizilir (${brightness.name})',
+      (tester) async {
+        await _pumpProfile(
+          tester,
+          brightness: brightness,
+          profile: const {
+            ..._profileJson,
+            'cityName': 'İstanbul',
+            'districtName': 'Kadıköy',
+          },
+        );
+
+        final cover = find.byType(ProfileCover);
+        expect(cover, findsOneWidget);
+        expect(
+          find.descendant(of: cover, matching: find.text('Ayşe Yılmaz')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(of: cover, matching: find.text('Barista')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(of: cover, matching: find.text('Kadıköy/İstanbul')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(of: cover, matching: findAppIcon(AppIcons.location)),
+          findsOneWidget,
+        );
+        // Aday sayfasında rol etiketi yok.
+        expect(
+          find.descendant(of: cover, matching: find.text('İşveren')),
           findsNothing,
         );
       },

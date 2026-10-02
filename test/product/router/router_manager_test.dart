@@ -75,7 +75,7 @@ void main() {
         '/profile',
         '/availability',
         '/earnings',
-        EmployeeRoutes.publicProfile,
+        EmployeeRoutes.publicProfile('user-9'),
       ]) {
         expect(
           redirect(loggedIn: true, userType: 'employee', location: location),
@@ -99,6 +99,27 @@ void main() {
           reason: '$location business tarafına sızdırıyor',
         );
       }
+    });
+
+    // Kendi profil sekmesinin yolu tek sabitte: bekçi, shell rotası ve
+    // "kendi profiline yönlendir" aynı dizgeyi okuyor.
+    test('kendi profil sekmesi serbest, işverene kapalı', () {
+      expect(
+        redirect(
+          loggedIn: true,
+          userType: 'employee',
+          location: EmployeeRoutes.ownProfile,
+        ),
+        isNull,
+      );
+      expect(
+        redirect(
+          loggedIn: true,
+          userType: 'business',
+          location: EmployeeRoutes.ownProfile,
+        ),
+        '/business/home',
+      );
     });
 
     test('auth sayfasına dönerse explore\'a alınır', () {
@@ -132,7 +153,7 @@ void main() {
         '/profile',
         '/availability',
         '/earnings',
-        EmployeeRoutes.publicProfile,
+        EmployeeRoutes.publicProfile('user-9'),
       ]) {
         expect(
           redirect(loggedIn: true, userType: 'business', location: location),

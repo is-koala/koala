@@ -126,12 +126,12 @@ class RouterManager {
       '/jobs',
       '/job-alerts',
       '/chat',
-      '/profile',
+      EmployeeRoutes.ownProfile,
       '/availability',
       '/earnings',
       // Başkasının profilini çalışan açıyor; işverenin karşılığı
       // `BusinessRoutes.userProfile`.
-      EmployeeRoutes.publicProfile,
+      EmployeeRoutes.publicProfilePrefix,
     ];
     final isEmployeeRoute = employeeRoutes.any(
       (route) => location.startsWith(route),
@@ -560,9 +560,14 @@ class RouterManager {
       // kaplıyor, o yüzden shell'in dışında. `extra`: `PublicProfileArgs` ya
       // da kullanıcı kimliği.
       GoRoute(
-        path: EmployeeRoutes.publicProfile,
-        pageBuilder: (context, state) =>
-            _page(state, PublicProfilePage.fromExtra(state.extra)),
+        path: EmployeeRoutes.publicProfilePattern,
+        pageBuilder: (context, state) => _page(
+          state,
+          PublicProfilePage.fromRoute(
+            userId: state.pathParameters['userId']!,
+            extra: state.extra,
+          ),
+        ),
       ),
 
       GoRoute(
@@ -626,7 +631,7 @@ class RouterManager {
                 NoTransitionPage(child: const ChatListPage()),
           ),
           GoRoute(
-            path: '/profile',
+            path: EmployeeRoutes.ownProfile,
             pageBuilder: (context, state) =>
                 NoTransitionPage(child: const ProfilePage()),
           ),

@@ -99,6 +99,7 @@ typedef Harness = ({
   FakeApi api,
   List<Object?> openedCompanies,
   List<Object?> openedProfiles,
+  List<String> openedProfileLocations,
   List<Object?> openedReviews,
   List<Uri> openedUrls,
 });
@@ -156,6 +157,7 @@ Future<Harness> pumpDetail(
 }) async {
   final openedCompanies = <Object?>[];
   final openedProfiles = <Object?>[];
+  final openedProfileLocations = <String>[];
   final openedReviews = <Object?>[];
   final openedUrls = <Uri>[];
 
@@ -237,9 +239,10 @@ Future<Harness> pumpDetail(
         },
       ),
       GoRoute(
-        path: EmployeeRoutes.publicProfile,
+        path: EmployeeRoutes.publicProfilePattern,
         pageBuilder: (context, state) {
           openedProfiles.add(state.extra);
+          openedProfileLocations.add(state.matchedLocation);
           return MaterialPage<void>(
             key: state.pageKey,
             child: const Scaffold(body: Text('profil ekranı')),
@@ -287,6 +290,7 @@ Future<Harness> pumpDetail(
     api: api,
     openedCompanies: openedCompanies,
     openedProfiles: openedProfiles,
+    openedProfileLocations: openedProfileLocations,
     openedReviews: openedReviews,
     openedUrls: openedUrls,
   );
@@ -418,6 +422,8 @@ void main() {
         await tester.tap(link);
         await tester.pumpAndSettle();
 
+        // Kimlik yol parametresi, ad ve rol kapağı önceden doldurmak için.
+        expect(harness.openedProfileLocations, ['/public-profile/user-9']);
         expect(harness.openedProfiles, hasLength(1));
         expect(
           harness.openedProfiles.single,

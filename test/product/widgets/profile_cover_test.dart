@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/widgets/profile_cover.dart';
 
+import '../../support/finders.dart';
 import '../../support/pump.dart';
 
 /// Profil kapağı iki ekranda ortak: işverenin aday sayfası ve çalışanın
@@ -31,6 +33,10 @@ void main() {
       expect(find.text('Kafe işletmecisi'), findsOneWidget);
       expect(find.text('İşveren'), findsOneWidget);
       expect(find.text('Kadıköy/İstanbul'), findsOneWidget);
+      // Konum işareti ikon kataloğundan (`AppIcon`), Material `Icons`'tan
+      // değil (AGENTS.md §Icons).
+      expect(findAppIcon(AppIcons.location), findsOneWidget);
+      expect(find.byType(Icon), findsNothing);
     });
 
     testWidgets('kapaktaki yazı iki temada da aynı beyaz ($theme tema)', (

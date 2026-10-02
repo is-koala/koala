@@ -3,6 +3,8 @@ part of 'public_profile_page.dart';
 abstract class PublicProfilePagemodel extends State<PublicProfilePage> {
   UserService get _userService => widget.userService ?? UserService();
 
+  JobService get _jobService => widget.jobService ?? JobService();
+
   /// Sunucudaki profil; gelene kadar `null`.
   PublicProfile? profile;
 
@@ -12,15 +14,31 @@ abstract class PublicProfilePagemodel extends State<PublicProfilePage> {
   /// geçici mi* ayrımı kullanılıyor ([isRefused]).
   ApiException? failure;
 
+  /// Kişinin temsil ettiği şirket; çözülene kadar ya da yoksa `null`.
+  JobCompany? company;
+
   /// Kendi profili açıldı, profil sekmesine yönleniyor.
   bool isRedirecting = false;
 
-  /// Sunucu bu profili vermiyor: yok/silinmiş (`404`) ya da görme yetkisi yok
-  /// (`403`). İkisi aynı ekranı çiziyor ve tekrar denemek bir şey
-  /// değiştirmiyor.
+  /// Sunucu bu profili vermiyor: yok/silinmiş (`404`) ya da — savunmacı
+  /// olarak, bugün üretilmiyor — görme yetkisi yok (`403`). İkisi aynı ekranı
+  /// çiziyor ve tekrar denemek bir şey değiştirmiyor.
   bool get isRefused {
     final type = failure?.type;
     return type == ApiErrorType.notFound || type == ApiErrorType.forbidden;
+  }
+
+  /// Puan özeti profil yanıtından; yanıt `reviewCount` taşımıyorsa (eski
+  /// sunucu) `null` ve `ProfileReviews` özeti kendi ucundan çekiyor.
+  RatingSummary? get ratingSummary {
+    final loaded = profile;
+    final count = loaded?.reviewCount;
+    if (loaded == null || count == null) return null;
+    return RatingSummary(
+      userId: loaded.id,
+      reviewCount: count,
+      averageRating: loaded.averageRating ?? 0,
+    );
   }
 
   /// Kapaktaki ad: sunucunun söylediği, yoksa çağıranın verdiği.
@@ -66,12 +84,38 @@ abstract class PublicProfilePagemodel extends State<PublicProfilePage> {
         profile = fetched;
         isLoading = false;
       });
+      unawaited(_loadCompany());
     } on ApiException catch (error) {
       if (!mounted) return;
       setState(() {
         failure = error;
         isLoading = false;
       });
+    }
+  }
+
+  /// Kişi bir şirketi temsil edebiliyorsa (işveren ya da şirket yetkilisi)
+  /// ve sohbetin ilanı biliniyorsa şirketi o ilanın detayından çözer.
+  ///
+  /// Ne profil yanıtında ne katılımcı satırında şirket var; tek kaynak ilan
+  /// detayı (`company{id,name}`). Yalnız **şirket ilanında** satır çiziliyor.
+  /// Profil geldikten sonra isteniyor ve sessiz başarısız oluyor: şirket
+  /// satırı profilin tamamlayıcısı, ön koşulu değil.
+  Future<void> _loadCompany() async {
+    final jobId = widget.args.jobId;
+    if (jobId == null || !widget.args.mayRepresentCompany) return;
+
+    try {
+      final job = await _jobService.getById(jobId);
+      if (!mounted) return;
+      final found = job.employerType == JobEmployerType.company
+          ? job.company
+          : null;
+      if (found != null && found.name.isNotEmpty) {
+        setState(() => company = found);
+      }
+    } on ApiException {
+      // Satır yok; profilin geri kalanı yerinde.
     }
   }
 }

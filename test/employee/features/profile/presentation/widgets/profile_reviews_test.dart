@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:koala/employee/features/jobs/models/rating_summary.dart';
 import 'package:koala/employee/features/jobs/services/review_service.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/profile_reviews.dart';
 
@@ -9,7 +10,10 @@ import '../../../../../support/pump.dart';
 FakeApiResponse _ok(Object? data) =>
     FakeApiResponse(statusCode: 200, body: {'success': true, 'data': data});
 
-FakeApi _server({Object? summary, List<Map<String, Object?>> reviews = const []}) {
+FakeApi _server({
+  Object? summary,
+  List<Map<String, Object?>> reviews = const [],
+}) {
   return FakeApi(
     handler: (options) {
       return switch (options.path) {
@@ -43,11 +47,7 @@ Future<void> _pumpReviews(
 }
 
 void main() {
-  const summary = {
-    'userId': 'user-1',
-    'reviewCount': 12,
-    'averageRating': 4.5,
-  };
+  const summary = {'userId': 'user-1', 'reviewCount': 12, 'averageRating': 4.5};
   const review = {
     'id': 'review-1',
     'rating': 5,
@@ -56,28 +56,27 @@ void main() {
   };
 
   for (final brightness in Brightness.values) {
-    testWidgets(
-      'kendi puanını ve yorum sayısını çizer (${brightness.name})',
-      (tester) async {
-        await _pumpReviews(
-          tester,
-          _server(summary: summary, reviews: [review]),
-          brightness: brightness,
-        );
-        await tester.pumpAndSettle();
+    testWidgets('kendi puanını ve yorum sayısını çizer (${brightness.name})', (
+      tester,
+    ) async {
+      await _pumpReviews(
+        tester,
+        _server(summary: summary, reviews: [review]),
+        brightness: brightness,
+      );
+      await tester.pumpAndSettle();
 
-        expect(
-          find.byKey(const ValueKey('profile-rating-summary')),
-          findsOneWidget,
-        );
-        expect(find.text('4.5'), findsOneWidget);
-        expect(find.text('(12)'), findsOneWidget);
-        expect(find.text('Mehmet Kaya'), findsOneWidget);
-        expect(find.text('Çok titiz çalıştı.'), findsOneWidget);
-        expect(find.byKey(const ValueKey('profile-no-rating')), findsNothing);
-        expect(find.text('0.0'), findsNothing);
-      },
-    );
+      expect(
+        find.byKey(const ValueKey('profile-rating-summary')),
+        findsOneWidget,
+      );
+      expect(find.text('4.5'), findsOneWidget);
+      expect(find.text('(12)'), findsOneWidget);
+      expect(find.text('Mehmet Kaya'), findsOneWidget);
+      expect(find.text('Çok titiz çalıştı.'), findsOneWidget);
+      expect(find.byKey(const ValueKey('profile-no-rating')), findsNothing);
+      expect(find.text('0.0'), findsNothing);
+    });
   }
 
   // Başkasının profilinde aynı bölüm var ama sahibine konuşan "Henüz
@@ -103,6 +102,54 @@ void main() {
     expect(find.textContaining('Henüz değerlendirilmedin'), findsNothing);
   });
 
+  // Başkasının profilinde puan özeti profil yanıtında zaten geliyor
+  // (`GET /users/{id}`): ikinci kez sorulmuyor, yalnız yorumlar çekiliyor.
+  testWidgets('özet çağıran tarafından verilirse rating-summary çağrılmaz', (
+    tester,
+  ) async {
+    final api = _server(summary: summary, reviews: [review]);
+    await pumpInApp(
+      tester,
+      SingleChildScrollView(
+        child: ProfileReviews(
+          userId: 'user-1',
+          service: ReviewService.withClient(api.client),
+          summary: const RatingSummary(
+            userId: 'user-1',
+            reviewCount: 3,
+            averageRating: 4.0,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final paths = api.requests.map((request) => request.path).toList();
+    expect(paths, contains('/users/user-1/reviews'));
+    expect(paths, isNot(contains('/users/user-1/rating-summary')));
+    // Verilen özet çiziliyor, sunucunun (farklı) özeti değil.
+    expect(find.text('4.0'), findsOneWidget);
+    expect(find.text('(3)'), findsOneWidget);
+    expect(find.text('Mehmet Kaya'), findsOneWidget);
+  });
+
+  testWidgets('verilen özette değerlendirme yoksa 0.0 yazmaz', (tester) async {
+    await pumpInApp(
+      tester,
+      SingleChildScrollView(
+        child: ProfileReviews(
+          userId: 'user-1',
+          service: ReviewService.withClient(_server().client),
+          summary: const RatingSummary(userId: 'user-1'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Henüz puan yok'), findsOneWidget);
+    expect(find.text('0.0'), findsNothing);
+  });
+
   // `/users/me` puan taşımıyor; özet ucu `data: null` dönünce sıfır yıldız
   // uydurulmamalı. Aday kartındaki "Henüz puan yok" ile aynı dürüst boşluk.
   testWidgets('değerlendirmesi yokken 0.0 yazmaz', (tester) async {
@@ -112,10 +159,7 @@ void main() {
     expect(find.byKey(const ValueKey('profile-no-rating')), findsOneWidget);
     expect(find.text('Henüz puan yok'), findsOneWidget);
     expect(find.byKey(const ValueKey('profile-no-reviews')), findsOneWidget);
-    expect(
-      find.textContaining('Henüz değerlendirilmedin'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('Henüz değerlendirilmedin'), findsOneWidget);
     expect(find.text('0.0'), findsNothing);
     expect(find.byKey(const ValueKey('profile-rating-summary')), findsNothing);
   });

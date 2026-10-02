@@ -4,14 +4,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
+import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:koala/employee/features/chat/models/chat_participant.dart';
 import 'package:koala/employee/features/jobs/services/review_service.dart';
 import 'package:koala/employee/features/profile/models/public_profile_args.dart';
 import 'package:koala/employee/features/profile/presentation/pages/public_profile_page.dart';
+import 'package:koala/product/constants/app_icons.dart';
+import 'package:koala/product/router/employee_routes.dart';
 import 'package:koala/product/theme/theme.dart';
+import 'package:koala/product/widgets/profile_cover.dart';
+import 'package:koala/product/widgets/report_sheet.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../../support/fake_api.dart';
+import '../../../../../support/finders.dart';
 import '../../../../../support/review_fixtures.dart';
 import '../../../../../support/work_test_support.dart';
 
@@ -24,13 +30,58 @@ const Map<String, Object?> _ayseProfile = {
   'about': 'Moda\'da küçük bir kafe işletiyorum.',
   'cityName': 'İstanbul',
   'districtName': 'Kadıköy',
+  // koala-backend#282: özet profil yanıtında da geliyor.
+  'reviewCount': 12,
+  'averageRating': 4.5,
 };
 
+/// `GET /users/{id}/rating-summary` gövdesi; yalnızca profil yanıtı özeti
+/// taşımıyorsa (eski sunucu) çekiliyor.
 const Map<String, Object?> _rating = {
   'userId': 'user-9',
   'reviewCount': 12,
   'averageRating': 4.5,
 };
+
+const Map<String, Object?> _koalaCafe = {'id': 'comp-7', 'name': 'Koala Cafe'};
+
+/// `GET /jobs/{id}` gövdesi; ilan sahibi şirket mi bireysel mi testin
+/// verdiği hâlde.
+Map<String, Object?> _jobJson({
+  String employerType = 'COMPANY',
+  Map<String, Object?>? company = _koalaCafe,
+}) => {
+  'id': 'job-1',
+  'title': 'Hafta Sonu Garson',
+  'description': 'Hafta sonu vardiyası.',
+  'category': {'id': 'category-1', 'code': 'WAITER', 'name': 'Garson'},
+  'type': 'ONE_TIME',
+  'employerType': employerType,
+  'salaryType': 'DAILY',
+  'salary': 1000,
+  'status': 'OPEN',
+  'addressPrecision': 'APPROXIMATE',
+  'address': {
+    'id': 'adr-1',
+    'countryId': 'c-1',
+    'countryName': 'Türkiye',
+    'countryCode': 'TR',
+    'cityId': 'ct-1',
+    'cityName': 'İstanbul',
+    'districtId': 'd-1',
+    'districtName': 'Kadıköy',
+  },
+  'company': ?company,
+};
+
+const FakeApiResponse _jobNotFound = FakeApiResponse(
+  statusCode: 404,
+  body: {
+    'success': false,
+    'message': 'İlan bulunamadı.',
+    'errorCategory': 'RESOURCE_NOT_FOUND',
+  },
+);
 
 /// Sunucunun var/yok bilgisini sızdırabileceği iki ayrı ret: farklı durum
 /// kodu, farklı kategori, farklı mesaj. Ekran ikisini ayırt etmemeli.
@@ -75,6 +126,7 @@ Future<_Harness> _pump(
   FutureOr<FakeApiResponse> Function()? profile,
   FakeApiResponse? ratingSummary,
   FakeApiResponse? reviews,
+  FakeApiResponse? jobDetail,
   Brightness brightness = Brightness.light,
   bool awaitsProfile = false,
 }) async {
@@ -87,6 +139,7 @@ Future<_Harness> _pump(
       if (path == '/users/${args.userId}') {
         return profile?.call() ?? dataResponse(_ayseProfile);
       }
+      if (path.startsWith('/jobs/')) return jobDetail ?? _jobNotFound;
       if (path.endsWith('/rating-summary')) {
         return ratingSummary ?? dataResponse(_rating);
       }
@@ -114,11 +167,12 @@ Future<_Harness> _pump(
             args: args,
             userService: UserService.withClient(api.client),
             reviewService: ReviewService.withClient(api.client),
+            jobService: JobService.withClient(api.client),
           ),
         ),
       ),
       GoRoute(
-        path: '/profile',
+        path: EmployeeRoutes.ownProfile,
         pageBuilder: (context, state) {
           ownProfileVisits.add(state.matchedLocation);
           return MaterialPage<void>(
@@ -181,6 +235,23 @@ Future<void> _pumpFrames(WidgetTester tester) async {
 List<String> _requestedPaths(FakeApi api) =>
     api.requests.map((request) => request.path).toList();
 
+/// Profil gelmeden (ya da hiç gelmeyecekken) yalnız profil isteniyor:
+/// değerlendirme, puan özeti ve ilan uçları sonraya bırakılıyor.
+void _expectNothingBeyondTheProfileRequested(FakeApi api) {
+  final paths = _requestedPaths(api);
+  expect(paths, contains('/users/user-9'));
+  expect(
+    paths.where(
+      (path) =>
+          path.endsWith('/reviews') ||
+          path.endsWith('/rating-summary') ||
+          path.startsWith('/jobs/'),
+    ),
+    isEmpty,
+    reason: 'profil gelmeden ek uçlar istenmemeli: $paths',
+  );
+}
+
 void main() {
   const ayse = PublicProfileArgs(
     userId: 'user-9',
@@ -216,15 +287,23 @@ void main() {
           expect(find.text('4.5'), findsOneWidget);
           expect(find.text('(12)'), findsOneWidget);
           expect(find.text('Ödemeyi zamanında yaptı.'), findsOneWidget);
-          expect(_requestedPaths(harness.api), contains('/users/user-9'));
+          final paths = _requestedPaths(harness.api);
+          expect(paths, contains('/users/user-9'));
+          expect(paths, contains('/users/user-9/reviews'));
+          // Özet profil yanıtında zaten var: ayrı uç çağrılmıyor.
+          expect(paths, isNot(contains('/users/user-9/rating-summary')));
           // Hata durumunun hiçbir parçası görünmüyor.
           expect(find.text(PublicProfilePage.unavailableTitle), findsNothing);
         },
       );
 
+      // `GET /users/{id}` bugün 403 üretmiyor (giriş yapmış herkes var olan
+      // her kullanıcıyı görüyor); 404 ile 403'ün aynılığı savunmacı eşitlik —
+      // ileride bir görünürlük kuralı gelirse hesabın var olup olmadığı
+      // ekrandan okunamasın.
       testWidgets('hata: 404 ve 403 aynı tek "profil görüntülenemiyor" '
           'durumu, çağıranın verdiği ad bile çizilmez', (tester) async {
-        await _pump(
+        final notFoundHarness = await _pump(
           tester,
           args: ayse,
           profile: () => _notFound,
@@ -244,12 +323,15 @@ void main() {
         expect(find.text('İşveren'), findsNothing);
         expect(find.text('Hakkında'), findsNothing);
         expect(find.text('Değerlendirmeler'), findsNothing);
-        // Kesin ret: tekrar denemenin anlamı yok.
+        // Kesin ret: tekrar denemenin anlamı yok; şikayet edilecek bir
+        // profil de yok.
         expect(find.text('Tekrar Dene'), findsNothing);
+        expect(find.byTooltip('Şikayet Et'), findsNothing);
+        _expectNothingBeyondTheProfileRequested(notFoundHarness.api);
 
         final notFoundTexts = _visibleTexts(tester);
 
-        await _pump(
+        final forbiddenHarness = await _pump(
           tester,
           args: ayse,
           profile: () => _forbidden,
@@ -257,6 +339,7 @@ void main() {
         );
 
         expect(find.text('Bu profili görme yetkiniz yok.'), findsNothing);
+        _expectNothingBeyondTheProfileRequested(forbiddenHarness.api);
         // İki ret ekranda birebir aynı.
         expect(_visibleTexts(tester), notFoundTexts);
       });
@@ -289,6 +372,30 @@ void main() {
         expect(find.text('Profil görüntülenemiyor'), findsNothing);
         expect(find.text('Kafe işletmecisi'), findsOneWidget);
       });
+
+      // Grup sohbetinde şikayet/engelle yok ve sunucu grupta engeli
+      // uygulamıyor: çalışanın ekip arkadaşını ya da şirket yetkilisini
+      // bildirebileceği yer burası.
+      testWidgets('şikayet eylemi mevcut ReportSheet\'i açar, engelle yok', (
+        tester,
+      ) async {
+        await _pump(tester, args: ayse, brightness: brightness);
+
+        expect(findAppIcon(AppIcons.flag), findsOneWidget);
+        expect(find.byTooltip('Engelle'), findsNothing);
+
+        await tester.tap(find.byTooltip('Şikayet Et'));
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        final sheet = tester.widget<ReportSheet>(find.byType(ReportSheet));
+        expect(sheet.target.reportedUserId, 'user-9');
+        // Form hedefin adını taşıyor: yanlış kişiyi bildirmek kolay olmasın.
+        expect(
+          find.text('Ayşe Yılmaz hakkında bildirimde bulunuyorsun.'),
+          findsOneWidget,
+        );
+      });
     });
   }
 
@@ -296,7 +403,7 @@ void main() {
     tester,
   ) async {
     final response = Completer<FakeApiResponse>();
-    await _pump(
+    final harness = await _pump(
       tester,
       args: ayse,
       profile: () => response.future,
@@ -309,6 +416,8 @@ void main() {
     expect(find.text('Kafe işletmecisi'), findsNothing);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     expect(find.text(PublicProfilePage.unavailableTitle), findsNothing);
+    // Profil gelmeden değerlendirme ve ilan uçları istenmiyor.
+    _expectNothingBeyondTheProfileRequested(harness.api);
 
     response.complete(dataResponse(_ayseProfile));
     await _settle(tester);
@@ -328,13 +437,16 @@ void main() {
       awaitsProfile: true,
     );
 
-    // Ad bilinmiyorken boş bir kapak çizilmiyor.
+    // Ad bilinmiyorken boş bir kapak çizilmiyor: yalnız bekleme halkası.
+    expect(find.byType(ProfileCover), findsNothing);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
     expect(find.text('Profil'), findsOneWidget);
     expect(find.text('Ayşe Yılmaz'), findsNothing);
 
     response.complete(dataResponse(_ayseProfile));
     await _settle(tester);
 
+    expect(find.byType(ProfileCover), findsOneWidget);
     expect(find.text('Ayşe Yılmaz'), findsOneWidget);
     // Rol çağıranda yok: uydurulmuyor.
     expect(find.text('İşveren'), findsNothing);
@@ -342,16 +454,38 @@ void main() {
     expect(find.text('Şirket yetkilisi'), findsNothing);
   });
 
-  testWidgets('rota extra\'sı kimlik dizgesi de olabilir', (tester) async {
-    final page = PublicProfilePage.fromExtra('user-9');
-    expect(page.args.userId, 'user-9');
-    expect(page.args.name, isNull);
+  // Kimlik yol parametresi; `extra` yalnızca kapağı önceden doldurur ve
+  // eksik ya da yanlış olması sayfayı açılmaktan alıkoymaz.
+  test('rota: kimlik yol parametresinden, extra yalnız aynı kişiyse', () {
+    final bare = PublicProfilePage.fromRoute(userId: 'user-9');
+    expect(bare.args.userId, 'user-9');
+    expect(bare.args.name, isNull);
 
-    final fromArgs = PublicProfilePage.fromExtra(ayse);
-    expect(fromArgs.args, same(ayse));
+    expect(
+      PublicProfilePage.fromRoute(userId: 'user-9', extra: ayse).args,
+      same(ayse),
+    );
 
-    expect(() => PublicProfilePage.fromExtra(42), throwsArgumentError);
-    expect(() => PublicProfilePage.fromExtra(null), throwsArgumentError);
+    // Başka kişinin extra'sı: kimlik de ad da yol parametresine uyuyor.
+    const other = PublicProfileArgs(userId: 'user-1', name: 'Başkası');
+    final mismatched = PublicProfilePage.fromRoute(
+      userId: 'user-9',
+      extra: other,
+    );
+    expect(mismatched.args.userId, 'user-9');
+    expect(mismatched.args.name, isNull);
+
+    // Beklenmeyen türler fırlatmıyor.
+    for (final extra in <Object?>[
+      null,
+      42,
+      'user-9',
+      const {'a': 1},
+    ]) {
+      final page = PublicProfilePage.fromRoute(userId: 'user-9', extra: extra);
+      expect(page.args.userId, 'user-9', reason: '$extra');
+      expect(page.args.name, isNull, reason: '$extra');
+    }
   });
 
   group('rol etiketi', () {
@@ -392,31 +526,58 @@ void main() {
     });
   });
 
+  // Şirket, profil yanıtında da sohbet katılımcısında da yok: sohbetin
+  // bağlı olduğu ilanın detayından çözülüyor.
   group('şirket', () {
-    testWidgets('biliniyorsa ad ve şirket sayfasına bağlantı çizilir', (
-      tester,
-    ) async {
-      final harness = await _pump(
+    const contact = PublicProfileArgs(
+      userId: 'user-9',
+      name: 'Yetkili Kişi',
+      role: ChatParticipantRole.companyContact,
+      jobId: 'job-1',
+    );
+
+    for (final brightness in Brightness.values) {
+      testWidgets('şirket ilanında şirket adı ve şirket sayfasına bağlantı '
+          '(${brightness.name})', (tester) async {
+        final harness = await _pump(
+          tester,
+          args: contact,
+          jobDetail: dataResponse(_jobJson()),
+          brightness: brightness,
+        );
+
+        expect(find.text('Koala Cafe'), findsOneWidget);
+        expect(_requestedPaths(harness.api), contains('/jobs/job-1'));
+
+        await tester.tap(find.byKey(const ValueKey('public-profile-company')));
+        await tester.pumpAndSettle();
+
+        expect(harness.openedCompanies, ['comp-7']);
+      });
+    }
+
+    testWidgets('işveren rolü de şirketi ilandan çözer', (tester) async {
+      await _pump(
         tester,
-        args: const PublicProfileArgs(
-          userId: 'user-9',
-          name: 'Ayşe Yılmaz',
-          role: ChatParticipantRole.companyContact,
-          companyId: 'comp-7',
-          companyName: 'Koala Cafe',
+        args: PublicProfileArgs(
+          userId: contact.userId,
+          name: contact.name,
+          role: ChatParticipantRole.employer,
+          jobId: 'job-1',
         ),
+        jobDetail: dataResponse(_jobJson()),
       );
 
       expect(find.text('Koala Cafe'), findsOneWidget);
-
-      await tester.tap(find.byKey(const ValueKey('public-profile-company')));
-      await tester.pumpAndSettle();
-
-      expect(harness.openedCompanies, ['comp-7']);
     });
 
-    testWidgets('bilinmiyorsa satır da bağlantı da yok', (tester) async {
-      await _pump(tester, args: ayse);
+    testWidgets('bireysel ilanda şirket satırı yok', (tester) async {
+      await _pump(
+        tester,
+        args: contact,
+        // Bireysel ilan: `company` alanı gelse bile satır çizilmiyor.
+        jobDetail: dataResponse(_jobJson(employerType: 'INDIVIDUAL')),
+      );
 
       expect(
         find.byKey(const ValueKey('public-profile-company')),
@@ -424,21 +585,45 @@ void main() {
       );
     });
 
-    testWidgets('kimliği yoksa ad çizilir ama dokunulmaz', (tester) async {
-      final harness = await _pump(
-        tester,
-        args: const PublicProfileArgs(
-          userId: 'user-9',
-          name: 'Ayşe Yılmaz',
-          companyName: 'Koala Cafe',
-        ),
+    testWidgets('ilan okunamazsa satır yok, profil yine çizilir', (
+      tester,
+    ) async {
+      await _pump(tester, args: contact, jobDetail: _jobNotFound);
+
+      expect(
+        find.byKey(const ValueKey('public-profile-company')),
+        findsNothing,
       );
+      expect(find.text('Kafe işletmecisi'), findsOneWidget);
+      expect(find.text(PublicProfilePage.unavailableTitle), findsNothing);
+    });
 
-      expect(find.text('Koala Cafe'), findsOneWidget);
-      await tester.tap(find.text('Koala Cafe'));
-      await tester.pumpAndSettle();
+    testWidgets('çalışan rolü ya da ilansız açılış ilanı hiç istemez', (
+      tester,
+    ) async {
+      final worker = await _pump(
+        tester,
+        args: PublicProfileArgs(
+          userId: contact.userId,
+          name: contact.name,
+          role: ChatParticipantRole.worker,
+          jobId: 'job-1',
+        ),
+        jobDetail: dataResponse(_jobJson()),
+      );
+      expect(_requestedPaths(worker.api), isNot(contains('/jobs/job-1')));
+      expect(find.text('Koala Cafe'), findsNothing);
 
-      expect(harness.openedCompanies, isEmpty);
+      final withoutJob = await _pump(
+        tester,
+        args: ayse,
+        jobDetail: dataResponse(_jobJson()),
+      );
+      expect(
+        _requestedPaths(withoutJob.api).where((p) => p.startsWith('/jobs/')),
+        isEmpty,
+      );
+      expect(find.text('Koala Cafe'), findsNothing);
     });
   });
 
@@ -465,7 +650,8 @@ void main() {
     await _pump(
       tester,
       args: ayse,
-      ratingSummary: dataResponse(null),
+      profile: () =>
+          dataResponse({..._ayseProfile, 'reviewCount': 0, 'averageRating': 0}),
       reviews: reviewsPageResponse(const []),
     );
 
@@ -473,6 +659,28 @@ void main() {
     expect(find.text('Henüz değerlendirme yok.'), findsOneWidget);
     expect(find.textContaining('Henüz değerlendirilmedin'), findsNothing);
     expect(find.text('0.0'), findsNothing);
+  });
+
+  // Eski sunucu profil yanıtına özet koymuyor: o zaman özet ayrı uçtan.
+  testWidgets('profil yanıtında özet yoksa rating-summary ucuna düşer', (
+    tester,
+  ) async {
+    final harness = await _pump(
+      tester,
+      args: ayse,
+      profile: () => dataResponse({
+        for (final entry in _ayseProfile.entries)
+          if (entry.key != 'reviewCount' && entry.key != 'averageRating')
+            entry.key: entry.value,
+      }),
+    );
+
+    expect(
+      _requestedPaths(harness.api),
+      contains('/users/user-9/rating-summary'),
+    );
+    expect(find.text('4.5'), findsOneWidget);
+    expect(find.text('(12)'), findsOneWidget);
   });
 
   testWidgets('hakkında boşsa boş bir kart çizilmez', (tester) async {

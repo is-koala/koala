@@ -22,6 +22,7 @@ class ProfileReviews extends StatefulWidget {
     required this.userId,
     this.service,
     this.emptyMessage,
+    this.summary,
   });
 
   /// Hakkında değerlendirme okunacak kişi.
@@ -34,6 +35,12 @@ class ProfileReviews extends StatefulWidget {
   /// konuşuyor ("Henüz değerlendirilmedin"); başkasının profilinde bu cümle
   /// yanlış olurdu, orada çağıran kendi cümlesini veriyor.
   final String? emptyMessage;
+
+  /// Çağıranın zaten bildiği puan özeti. Verilirse `rating-summary` ucu
+  /// çağrılmıyor (başkasının profilinde `GET /users/{id}` özeti taşıyor);
+  /// `reviewCount`'u sıfır olan özet "henüz puan yok" çiziyor. Verilmezse —
+  /// kendi profili, eski sunucu — özet kendi ucundan çekiliyor.
+  final RatingSummary? summary;
 
   /// Kendi profilinde boş durumun cümlesi.
   static const String ownEmptyMessage =
@@ -76,8 +83,14 @@ class _ProfileReviewsState extends State<ProfileReviews> {
 
     try {
       // İkisi paralel gidiyor; özet, yorum listesinden bağımsız bir uç.
+      // Çağıran özeti zaten biliyorsa (profil yanıtı taşıyor) ayrı uç
+      // çağrılmıyor.
+      final known = widget.summary;
+      final Future<RatingSummary?> summary = known != null
+          ? Future<RatingSummary?>.value(known)
+          : _service.fetchRatingSummary(widget.userId);
       final results = await Future.wait([
-        _service.fetchRatingSummary(widget.userId),
+        summary,
         _service.fetchReviewsAbout(widget.userId, size: _visibleCount),
       ]);
 

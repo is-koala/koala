@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/profile_avatar.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icon_data.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/widgets/app_icon.dart';
 
 /// Bir kişinin profil kapağı: marka yeşili gradyan üstünde fotoğraf, ad,
 /// meslek ve küçük etiketler (rol, konum).
@@ -61,7 +64,7 @@ class ProfileCover extends StatelessWidget {
       if (roleLabel != null && roleLabel.isNotEmpty)
         _badge(context, label: roleLabel),
       if (location != null && location.isNotEmpty)
-        _badge(context, label: location, icon: Icons.location_on_outlined),
+        _badge(context, label: location, icon: AppIcons.location),
     ];
 
     return Container(
@@ -121,7 +124,11 @@ class ProfileCover extends StatelessWidget {
   }
 
   /// Kapak üstündeki yarı saydam hap: rol ya da konum.
-  Widget _badge(BuildContext context, {required String label, IconData? icon}) {
+  Widget _badge(
+    BuildContext context, {
+    required String label,
+    AppIconData? icon,
+  }) {
     final muted = AppColors.onAccent.withValues(alpha: _onCoverMuted);
 
     return Container(
@@ -134,7 +141,7 @@ class ProfileCover extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: AppSizes.iconSmall, color: muted),
+            AppIcon(icon, size: AppSizes.iconSmall, color: muted),
             const SizedBox(width: AppSizes.spaceTiny),
           ],
           Text(

@@ -81,7 +81,8 @@ abstract class ChatThreadPagemodel<T extends StatefulWidget> extends State<T> {
       messages[index + 1].senderId == messages[index].senderId;
 
   /// Katılımcılar sheet'i; satırlar iki kabukta da profile gidiyor
-  /// (is-koala/koala#182), yalnız açılan sayfa farklı.
+  /// (is-koala/koala#182), yalnız açılan sayfa farklı. Kendi satırın yalnız
+  /// çalışan kabuğunda dokunulabilir.
   void openParticipants() {
     ChatParticipantsSheet.show(
       context,
@@ -89,6 +90,8 @@ abstract class ChatThreadPagemodel<T extends StatefulWidget> extends State<T> {
       participants: thread.participants,
       currentUserId: context.read<UserProvider>().user?.id,
       onOpenProfile: openProfile,
+      // Kendi satırın: çalışanda profil sekmesi, işverende dokunulmaz.
+      onOpenOwnProfile: asEmployer ? null : openOwnProfile,
     );
   }
 
@@ -102,10 +105,14 @@ abstract class ChatThreadPagemodel<T extends StatefulWidget> extends State<T> {
       return;
     }
     context.push(
-      EmployeeRoutes.publicProfile,
-      extra: PublicProfileArgs.fromParticipant(participant),
+      EmployeeRoutes.publicProfile(participant.id),
+      extra: PublicProfileArgs.fromParticipant(participant, jobId: chat.jobId),
     );
   }
+
+  /// Çalışanın sohbetteki kendi satırı: kendi profil sekmesine gider
+  /// (`go`; sekme yığının tabanı, sohbete geri dönüş yok).
+  void openOwnProfile() => context.go(EmployeeRoutes.ownProfile);
 
   @override
   void initState() {

@@ -13,6 +13,7 @@ void main() {
         BChatPage(chat: chat, threadController: thread),
     // İşveren kabuğu aday sayfasını açıyor; o sayfa kimliği yeterli buluyor.
     profileRoute: BusinessRoutes.userProfile,
+    profileLocation: BusinessRoutes.userProfile,
     profileExtra: equals('user_other'),
   );
 }

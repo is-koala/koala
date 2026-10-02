@@ -27,6 +27,7 @@ class ChatParticipantsSheet extends StatelessWidget {
     required this.participants,
     this.currentUserId,
     this.onOpenProfile,
+    this.onOpenOwnProfile,
   });
 
   final Conversation chat;
@@ -35,11 +36,17 @@ class ChatParticipantsSheet extends StatelessWidget {
   /// kalan anlık görüntü olabilir.
   final List<ChatParticipant> participants;
 
-  /// Oturum sahibi; satırı "Siz" etiketi alıyor ve profil bağlantısı yok.
+  /// Oturum sahibi; satırı "Siz" etiketi alıyor ve kendi satırı
+  /// [onOpenProfile]'a değil [onOpenOwnProfile]'a bağlı.
   final String? currentUserId;
 
   /// Bir katılımcının profilini açar; `null` ise satırlar dokunulmuyor.
   final ValueChanged<ChatParticipant>? onOpenProfile;
+
+  /// Oturum sahibinin kendi satırına dokunma (çalışan kabuğunda profil
+  /// sekmesine gider). `null` ise kendi satırı dokunulmuyor — işveren
+  /// kabuğunda öyle.
+  final VoidCallback? onOpenOwnProfile;
 
   static const String title = 'Katılımcılar';
   static const String closedNote =
@@ -60,6 +67,7 @@ class ChatParticipantsSheet extends StatelessWidget {
     required List<ChatParticipant> participants,
     String? currentUserId,
     ValueChanged<ChatParticipant>? onOpenProfile,
+    VoidCallback? onOpenOwnProfile,
   }) {
     return AppBottomSheet.show<void>(
       context,
@@ -68,6 +76,7 @@ class ChatParticipantsSheet extends StatelessWidget {
         participants: participants,
         currentUserId: currentUserId,
         onOpenProfile: onOpenProfile,
+        onOpenOwnProfile: onOpenOwnProfile,
       ),
     );
   }
@@ -138,7 +147,10 @@ class ChatParticipantsSheet extends StatelessWidget {
   Widget _row(BuildContext context, ChatParticipant participant) {
     final isMe = participant.id == currentUserId;
     final onOpenProfile = this.onOpenProfile;
-    final canOpen = onOpenProfile != null && !isMe;
+    final VoidCallback? open = isMe
+        ? onOpenOwnProfile
+        : (onOpenProfile == null ? null : () => onOpenProfile(participant));
+    final canOpen = open != null;
     final nameColor = participant.left
         ? context.textTertiary
         : context.textPrimary;
@@ -156,7 +168,7 @@ class ChatParticipantsSheet extends StatelessWidget {
               ? () {
                   // Sheet kapanıp profil açılıyor; dönüşte sohbet görünsün.
                   Navigator.pop(context);
-                  onOpenProfile(participant);
+                  open();
                 }
               : null,
           child: Padding(

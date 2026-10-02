@@ -491,7 +491,7 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
           detail?.company?.logoUrl ??
           summaryJob?.companyLogoUrl;
     } else {
-      final person = assignment?.employer ?? detail?.creator;
+      final person = individualEmployer;
       final fullName = person?.fullName;
       name = fullName == null || fullName.isEmpty ? null : fullName;
       imageUrl = person?.profilePictureUrl;
