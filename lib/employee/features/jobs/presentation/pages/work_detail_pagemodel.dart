@@ -408,6 +408,30 @@ abstract class WorkDetailPagemodel
     return () => context.push('/company-detail', extra: companyId);
   }
 
+  /// Bireysel ilanın sahibi olan kişi: atamanın `employer`'ı, yoksa ilan
+  /// detayının `creator`'ı (koala-backend#282 sırası). Bilinmiyorsa `null`.
+  /// İşveren kartının adı ve fotoğrafı ile profile bağlantısı **aynı**
+  /// kişiyi buradan okuyor; ikisi iki yerde hesaplanırsa ayrışabilir.
+  JobCreator? get individualEmployer =>
+      job.assignment?.employer ?? detail?.creator;
+
+  /// Bireysel işverenin herkese açık profilini açar (is-koala/koala#182);
+  /// kişi bilinmiyorsa dokunma bağlanmıyor. Kişi, şirket ilanında kart
+  /// şirketi gösterdiği için yalnız bireysel ilanda aranıyor.
+  VoidCallback? get openEmployerProfile {
+    final person = individualEmployer;
+    if (person == null || person.id.isEmpty) return null;
+    return () => context.push(
+      EmployeeRoutes.publicProfile(person.id),
+      extra: PublicProfileArgs(
+        userId: person.id,
+        name: person.fullName.isEmpty ? null : person.fullName,
+        imageUrl: person.profilePictureUrl,
+        role: ChatParticipantRole.employer,
+      ),
+    );
+  }
+
   /// Başvuruyu geri çeker; başarılıysa sayfayı provider'daki hâline
   /// çevirir.
   ///

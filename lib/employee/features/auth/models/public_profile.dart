@@ -22,6 +22,8 @@ class PublicProfile {
     this.cityName,
     this.districtName,
     this.cvUrl,
+    this.reviewCount,
+    this.averageRating,
   });
 
   final String id;
@@ -41,6 +43,13 @@ class PublicProfile {
 
   /// Özgeçmişin indirme adresi; yoksa ya da görme yetkisi yoksa `null`.
   final String? cvUrl;
+
+  /// Hakkındaki değerlendirme sayısı ve ortalaması (koala-backend#282,
+  /// `GET /users/{id}/rating-summary` ile aynı kaynak). Alan yoksa — eski
+  /// sunucu — `null`: "değerlendirme yok" ile "sunucu göndermedi" farklı
+  /// şeyler, ikincisinde özet ayrı uçtan çekiliyor.
+  final int? reviewCount;
+  final double? averageRating;
 
   String get fullName => '$firstName $lastName'.trim();
 
@@ -68,6 +77,16 @@ class PublicProfile {
       cityName: json['cityName'] as String?,
       districtName: json['districtName'] as String?,
       cvUrl: json['cvUrl'] as String?,
+      reviewCount: (json['reviewCount'] as num?)?.toInt(),
+      averageRating: _decimal(json['averageRating']),
     );
   }
+
+  /// `averageRating` sunucuda `BigDecimal`; JSON'da sayı ya da dize olarak
+  /// gelebiliyor. Alan yoksa ya da tanınmıyorsa `null`.
+  static double? _decimal(Object? value) => switch (value) {
+    final num number => number.toDouble(),
+    final String text => double.tryParse(text),
+    _ => null,
+  };
 }

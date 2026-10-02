@@ -17,13 +17,35 @@ import 'package:koala/product/widgets/review_tile.dart';
 /// Bu yüzden bölüm başarısız olduğunda profil boşalmıyor, yalnızca bu şerit
 /// hatayı gösteriyor.
 class ProfileReviews extends StatefulWidget {
-  const ProfileReviews({super.key, required this.userId, this.service});
+  const ProfileReviews({
+    super.key,
+    required this.userId,
+    this.service,
+    this.emptyMessage,
+    this.summary,
+  });
 
   /// Hakkında değerlendirme okunacak kişi.
   final String userId;
 
   /// Testlerde sahte sunucuya bağlı servis; verilmezse üretim tekili.
   final ReviewService? service;
+
+  /// Hiç değerlendirme yokken yazılan cümle. Varsayılanı profilin sahibine
+  /// konuşuyor ("Henüz değerlendirilmedin"); başkasının profilinde bu cümle
+  /// yanlış olurdu, orada çağıran kendi cümlesini veriyor.
+  final String? emptyMessage;
+
+  /// Çağıranın zaten bildiği puan özeti. Verilirse `rating-summary` ucu
+  /// çağrılmıyor (başkasının profilinde `GET /users/{id}` özeti taşıyor);
+  /// `reviewCount`'u sıfır olan özet "henüz puan yok" çiziyor. Verilmezse —
+  /// kendi profili, eski sunucu — özet kendi ucundan çekiliyor.
+  final RatingSummary? summary;
+
+  /// Kendi profilinde boş durumun cümlesi.
+  static const String ownEmptyMessage =
+      'Henüz değerlendirilmedin. Tamamladığın işlerden sonra işverenler '
+      'buraya yazabilir.';
 
   @override
   State<ProfileReviews> createState() => _ProfileReviewsState();
@@ -61,8 +83,14 @@ class _ProfileReviewsState extends State<ProfileReviews> {
 
     try {
       // İkisi paralel gidiyor; özet, yorum listesinden bağımsız bir uç.
+      // Çağıran özeti zaten biliyorsa (profil yanıtı taşıyor) ayrı uç
+      // çağrılmıyor.
+      final known = widget.summary;
+      final Future<RatingSummary?> summary = known != null
+          ? Future<RatingSummary?>.value(known)
+          : _service.fetchRatingSummary(widget.userId);
       final results = await Future.wait([
-        _service.fetchRatingSummary(widget.userId),
+        summary,
         _service.fetchReviewsAbout(widget.userId, size: _visibleCount),
       ]);
 
@@ -140,8 +168,7 @@ class _ProfileReviewsState extends State<ProfileReviews> {
   }
 
   Widget _emptyText() => Text(
-    'Henüz değerlendirilmedin. Tamamladığın işlerden sonra işverenler '
-    'buraya yazabilir.',
+    widget.emptyMessage ?? ProfileReviews.ownEmptyMessage,
     key: const ValueKey('profile-no-reviews'),
     style: context.textTheme.bodyMedium?.copyWith(color: context.textSecondary),
   );

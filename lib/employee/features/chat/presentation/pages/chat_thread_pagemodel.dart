@@ -7,8 +7,10 @@ import 'package:koala/employee/features/chat/models/message_sender.dart';
 import 'package:koala/employee/features/chat/models/messaging_availability.dart';
 import 'package:koala/employee/features/chat/presentation/providers/chat_thread_controller.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/chat_participants_sheet.dart';
+import 'package:koala/employee/features/profile/models/public_profile_args.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/router/business_routes.dart';
+import 'package:koala/product/router/employee_routes.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:provider/provider.dart';
 
@@ -78,22 +80,39 @@ abstract class ChatThreadPagemodel<T extends StatefulWidget> extends State<T> {
       index < messages.length - 1 &&
       messages[index + 1].senderId == messages[index].senderId;
 
-  /// Katılımcılar sheet'i. Profil bağlantısı yalnız işverende: başkasının
-  /// profilini açan rota ([BusinessRoutes.userProfile]) çalışan kabuğunda
-  /// yok ve yönlendirme bekçisi çalışanı oradan geri çevirir.
+  /// Katılımcılar sheet'i; satırlar iki kabukta da profile gidiyor
+  /// (is-koala/koala#182), yalnız açılan sayfa farklı. Kendi satırın yalnız
+  /// çalışan kabuğunda dokunulabilir.
   void openParticipants() {
     ChatParticipantsSheet.show(
       context,
       chat: chat,
       participants: thread.participants,
       currentUserId: context.read<UserProvider>().user?.id,
-      onOpenProfile: asEmployer ? openProfile : null,
+      onOpenProfile: openProfile,
+      // Kendi satırın: çalışanda profil sekmesi, işverende dokunulmaz.
+      onOpenOwnProfile: asEmployer ? null : openOwnProfile,
     );
   }
 
+  /// Katılımcının profilini kabuğun kendi sayfasında açar. Rota seçimi
+  /// yönlendirme bekçisinin bölünmesinden geliyor: işverenin aday sayfası
+  /// ([BusinessRoutes.userProfile]) çalışanı, çalışanın herkese açık profili
+  /// ([EmployeeRoutes.publicProfile]) işvereni geri çevirir.
   void openProfile(ChatParticipant participant) {
-    context.push(BusinessRoutes.userProfile, extra: participant.id);
+    if (asEmployer) {
+      context.push(BusinessRoutes.userProfile, extra: participant.id);
+      return;
+    }
+    context.push(
+      EmployeeRoutes.publicProfile(participant.id),
+      extra: PublicProfileArgs.fromParticipant(participant, jobId: chat.jobId),
+    );
   }
+
+  /// Çalışanın sohbetteki kendi satırı: kendi profil sekmesine gider
+  /// (`go`; sekme yığının tabanı, sohbete geri dönüş yok).
+  void openOwnProfile() => context.go(EmployeeRoutes.ownProfile);
 
   @override
   void initState() {

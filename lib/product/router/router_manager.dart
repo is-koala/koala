@@ -45,6 +45,7 @@ import 'package:koala/employee/features/chat/presentation/pages/chat_list_page.d
 import 'package:koala/employee/features/chat/presentation/pages/chat_page.dart';
 import 'package:koala/employee/features/chat/models/conversation.dart';
 import 'package:koala/employee/features/profile/presentation/pages/profile_page.dart';
+import 'package:koala/employee/features/profile/presentation/pages/public_profile_page.dart';
 import 'package:koala/employee/features/profile/presentation/pages/availability_page.dart';
 import 'package:koala/employee/features/home/presentation/pages/shell_page.dart';
 import 'package:koala/employee/features/company_detail/presentation/pages/company_detail_page.dart';
@@ -66,6 +67,7 @@ import 'package:koala/product/features/account/account_routes.dart';
 import 'package:koala/product/models/confirmed_address.dart';
 import 'package:koala/product/network/session_manager.dart';
 import 'package:koala/product/router/business_routes.dart';
+import 'package:koala/product/router/employee_routes.dart';
 import 'package:koala/product/widgets/map_first_address_page.dart';
 
 class RouterManager {
@@ -124,9 +126,12 @@ class RouterManager {
       '/jobs',
       '/job-alerts',
       '/chat',
-      '/profile',
+      EmployeeRoutes.ownProfile,
       '/availability',
       '/earnings',
+      // Başkasının profilini çalışan açıyor; işverenin karşılığı
+      // `BusinessRoutes.userProfile`.
+      EmployeeRoutes.publicProfilePrefix,
     ];
     final isEmployeeRoute = employeeRoutes.any(
       (route) => location.startsWith(route),
@@ -550,6 +555,22 @@ class RouterManager {
         },
       ),
 
+      // Çalışanın başkasının profilini açtığı sayfa (is-koala/koala#182):
+      // sohbet katılımcıları ve bireysel işveren kartı. Navbar'ın üstünü
+      // kaplıyor, o yüzden shell'in dışında. Kimlik yol parametresi; `extra`
+      // isteğe bağlı bir `PublicProfileArgs` ve yalnız kapağı önceden doldurur
+      // (yoksa, başka türdeyse ya da başka kişiye aitse yok sayılır).
+      GoRoute(
+        path: EmployeeRoutes.publicProfilePattern,
+        pageBuilder: (context, state) => _page(
+          state,
+          PublicProfilePage.fromRoute(
+            userId: state.pathParameters['userId']!,
+            extra: state.extra,
+          ),
+        ),
+      ),
+
       GoRoute(
         path: '/followed-companies',
         pageBuilder: (context, state) =>
@@ -611,7 +632,7 @@ class RouterManager {
                 NoTransitionPage(child: const ChatListPage()),
           ),
           GoRoute(
-            path: '/profile',
+            path: EmployeeRoutes.ownProfile,
             pageBuilder: (context, state) =>
                 NoTransitionPage(child: const ProfilePage()),
           ),

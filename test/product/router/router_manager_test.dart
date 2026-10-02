@@ -2,6 +2,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/product/features/account/account_routes.dart';
 import 'package:koala/product/network/session_manager.dart';
+import 'package:koala/product/router/employee_routes.dart';
 import 'package:koala/product/router/router_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -74,10 +75,12 @@ void main() {
         '/profile',
         '/availability',
         '/earnings',
+        EmployeeRoutes.publicProfile('user-9'),
       ]) {
         expect(
           redirect(loggedIn: true, userType: 'employee', location: location),
           isNull,
+          reason: '$location çalışanın önünü kesiyor',
         );
       }
     });
@@ -96,6 +99,27 @@ void main() {
           reason: '$location business tarafına sızdırıyor',
         );
       }
+    });
+
+    // Kendi profil sekmesinin yolu tek sabitte: bekçi, shell rotası ve
+    // "kendi profiline yönlendir" aynı dizgeyi okuyor.
+    test('kendi profil sekmesi serbest, işverene kapalı', () {
+      expect(
+        redirect(
+          loggedIn: true,
+          userType: 'employee',
+          location: EmployeeRoutes.ownProfile,
+        ),
+        isNull,
+      );
+      expect(
+        redirect(
+          loggedIn: true,
+          userType: 'business',
+          location: EmployeeRoutes.ownProfile,
+        ),
+        '/business/home',
+      );
     });
 
     test('auth sayfasına dönerse explore\'a alınır', () {
@@ -129,6 +153,7 @@ void main() {
         '/profile',
         '/availability',
         '/earnings',
+        EmployeeRoutes.publicProfile('user-9'),
       ]) {
         expect(
           redirect(loggedIn: true, userType: 'business', location: location),

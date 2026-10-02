@@ -155,6 +155,35 @@ void main() {
         expect(opened?.id, 'employer');
       });
 
+      // Çalışan kabuğunda kendi satır profil sekmesine gidiyor
+      // (is-koala/koala#182); başkasının satırı `onOpenProfile`'a.
+      testWidgets('kendi satırı: onOpenOwnProfile verilince o çağrılır', (
+        tester,
+      ) async {
+        ChatParticipant? opened;
+        var ownOpened = 0;
+        await pumpInApp(
+          tester,
+          ChatParticipantsSheet(
+            chat: _chat,
+            participants: _participants,
+            currentUserId: 'me',
+            onOpenProfile: (participant) => opened = participant,
+            onOpenOwnProfile: () => ownOpened++,
+          ),
+          brightness: brightness,
+        );
+
+        // Dört satırın dördünde de ok var.
+        expect(findAppIcon(AppIcons.arrowRight), findsNWidgets(4));
+
+        await tester.tap(find.text('Yakup Kahraman'));
+        await tester.pumpAndSettle();
+
+        expect(ownOpened, 1);
+        expect(opened, isNull, reason: 'kendi satırı başkasının profili değil');
+      });
+
       testWidgets('profil bağlantısı yoksa satırlar dokunulmuyor', (
         tester,
       ) async {

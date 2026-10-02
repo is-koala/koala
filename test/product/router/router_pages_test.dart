@@ -1,6 +1,11 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:koala/employee/features/profile/models/public_profile_args.dart';
+import 'package:koala/employee/features/profile/presentation/pages/public_profile_page.dart';
 import 'package:koala/product/features/account/account_routes.dart';
+import 'package:koala/product/router/business_routes.dart';
+import 'package:koala/product/router/employee_routes.dart';
 import 'package:koala/product/router/router_manager.dart';
 
 /// Bir rotanın sayfasını go_router'a seçtirmek (`builder:`) bu sürümde
@@ -145,6 +150,96 @@ void main() {
     // sayfaya açılıyor (is-koala/koala#177).
     expect(detail, hasLength(1));
     expect(detail.single.pageBuilder, isNotNull);
+  });
+
+  test('başkasının profili tek rota, shell dışında; işveren sayfası ayrı', () {
+    final topLevel = RouterManager.router.configuration.routes
+        .whereType<GoRoute>()
+        .map((route) => route.path)
+        .toList();
+    final all = allGoRoutes(RouterManager.router.configuration.routes).toList();
+
+    // Çalışanın başkasının profilini açtığı rota navbar'ın üstünü kaplıyor
+    // (is-koala/koala#182): shell'in içine değil üst düzeye konuyor. Kimlik
+    // yol parametresi.
+    expect(EmployeeRoutes.publicProfilePattern, '/public-profile/:userId');
+    expect(EmployeeRoutes.publicProfile('user-9'), '/public-profile/user-9');
+    expect(
+      topLevel.where((path) => path == EmployeeRoutes.publicProfilePattern),
+      hasLength(1),
+    );
+    final route = all.singleWhere(
+      (route) => route.path == EmployeeRoutes.publicProfilePattern,
+    );
+    expect(route.pageBuilder, isNotNull);
+
+    // İşverenin `/business/user-profile` sayfası ayrı kalıyor: iki kabuk iki
+    // ayrı sayfa açıyor, biri ötekinin yerine geçmiyor.
+    expect(
+      all.where((route) => route.path == BusinessRoutes.userProfile),
+      hasLength(1),
+    );
+  });
+
+  // Kendi profiline yönlendirenler (`go`) ve bekçi `EmployeeRoutes.ownProfile`
+  // sabitini okuyor; shell rotası da aynı sabitte durmalı, yoksa biri
+  // değiştiğinde yönlendirme sessizce hiçbir yere gitmez.
+  test('kendi profil sekmesi, sabitle aynı yolda tek shell rotası', () {
+    final own = allGoRoutes(
+      RouterManager.router.configuration.routes,
+    ).where((route) => route.path == EmployeeRoutes.ownProfile);
+
+    expect(EmployeeRoutes.ownProfile, '/profile');
+    expect(own, hasLength(1));
+    expect(own.single.pageBuilder, isNotNull);
+  });
+
+  // Yol parametresi doğru kaynak: gerçek rotanın sayfa kurucusu eksik ya da
+  // yanlış `extra` ile fırlatmamalı ve kimliği yoldan almalı.
+  testWidgets('herkese açık profil rotası: extra eksik ya da yanlışsa açılır', (
+    tester,
+  ) async {
+    late BuildContext context;
+    await tester.pumpWidget(
+      Builder(
+        builder: (built) {
+          context = built;
+          return const SizedBox.shrink();
+        },
+      ),
+    );
+
+    final route = allGoRoutes(
+      RouterManager.router.configuration.routes,
+    ).singleWhere((route) => route.path == EmployeeRoutes.publicProfilePattern);
+
+    PublicProfilePage pageFor(Object? extra) {
+      final state = GoRouterState(
+        RouterManager.router.configuration,
+        uri: Uri.parse(EmployeeRoutes.publicProfile('user-9')),
+        matchedLocation: EmployeeRoutes.publicProfile('user-9'),
+        fullPath: EmployeeRoutes.publicProfilePattern,
+        pathParameters: const {'userId': 'user-9'},
+        pageKey: const ValueKey('public-profile'),
+        extra: extra,
+      );
+      final page = route.pageBuilder!(context, state) as MaterialPage<void>;
+      return page.child as PublicProfilePage;
+    }
+
+    for (final extra in <Object?>[
+      null,
+      42,
+      'user-9',
+      const PublicProfileArgs(userId: 'user-1', name: 'Başkası'),
+    ]) {
+      final page = pageFor(extra);
+      expect(page.args.userId, 'user-9', reason: '$extra');
+      expect(page.args.name, isNull, reason: '$extra');
+    }
+
+    const matching = PublicProfileArgs(userId: 'user-9', name: 'Ayşe Yılmaz');
+    expect(pageFor(matching).args, same(matching));
   });
 
   test('hesap modülünün rotaları tek, /business/ kopyaları yok', () {

@@ -14,9 +14,11 @@ import 'package:koala/product/widgets/app_icon.dart';
 ///
 /// Şirket ilanında şirketin adı ve logosu; dokununca şirket sayfası açılıyor
 /// ([onOpenCompany] verildiyse). Bireysel ilanda ilanı açan kişinin adı ve
-/// fotoğrafı — çalışan tarafında bir işveren profili ekranı olmadığı için
-/// bu kart bağlantı taşımıyor. Ad henüz gelmediyse (ilan detayı yükleniyor
-/// ya da eski sunucu) satır yer tutucuyla çiziliyor, kart boş kalmıyor.
+/// fotoğrafı; dokununca kişinin herkese açık profili açılıyor
+/// ([onOpenProfile] verildiyse, is-koala/koala#182). Ad henüz gelmediyse
+/// (ilan detayı yükleniyor ya da eski sunucu) satır yer tutucuyla çiziliyor,
+/// kart boş kalmıyor; kişinin kimliği de o zaman bilinmediği için dokunma
+/// bağlanmıyor.
 class EmployerCard extends StatelessWidget {
   const EmployerCard({
     super.key,
@@ -24,6 +26,7 @@ class EmployerCard extends StatelessWidget {
     this.name,
     this.imageUrl,
     this.onOpenCompany,
+    this.onOpenProfile,
   });
 
   final JobEmployerType employerType;
@@ -37,6 +40,11 @@ class EmployerCard extends StatelessWidget {
   /// Şirket sayfasını açan dokunma; yalnızca şirket kimliği bilindiğinde.
   final VoidCallback? onOpenCompany;
 
+  /// Bireysel işverenin profilini açan dokunma; yalnızca kişinin kimliği
+  /// bilindiğinde. Şirket ilanında kullanılmıyor: orada kart şirketi
+  /// gösteriyor.
+  final VoidCallback? onOpenProfile;
+
   /// Avatar karesinin kenarı ve köşe yuvarlaklığı.
   static const double _avatarSize = AppSizes.avatar;
 
@@ -45,7 +53,8 @@ class EmployerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final displayName = name ?? (_isCompany ? 'Şirket' : 'Bireysel işveren');
-    final tappable = _isCompany && onOpenCompany != null;
+    final onTap = _isCompany ? onOpenCompany : onOpenProfile;
+    final tappable = onTap != null;
 
     final content = Padding(
       padding: AppPadding.primaryAll,
@@ -89,9 +98,11 @@ class EmployerCard extends StatelessWidget {
       borderRadius: AppRadius.innerCircular,
       child: tappable
           ? InkWell(
-              key: const ValueKey('employer-card-company'),
+              key: ValueKey(
+                _isCompany ? 'employer-card-company' : 'employer-card-profile',
+              ),
               borderRadius: AppRadius.innerCircular,
-              onTap: onOpenCompany,
+              onTap: onTap,
               child: content,
             )
           : content,

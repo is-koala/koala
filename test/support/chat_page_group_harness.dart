@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
 import 'package:koala/employee/features/chat/models/chat_participant.dart';
 import 'package:koala/employee/features/chat/models/conversation.dart';
@@ -7,9 +8,12 @@ import 'package:koala/employee/features/chat/presentation/providers/chat_thread_
 import 'package:koala/employee/features/chat/presentation/widgets/chat_participants_sheet.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/message_bubble.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
+import 'package:koala/employee/features/profile/models/public_profile_args.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/network/realtime_event.dart';
+import 'package:koala/product/router/employee_routes.dart';
+import 'package:koala/product/theme/theme.dart';
 import 'package:provider/provider.dart';
 
 import 'chat_page_retry_harness.dart';
@@ -123,12 +127,23 @@ List<Map<String, dynamic>> _messages(String currentUserId) => [
 
 /// Grup sohbeti ekranının iki kabukta aynı davranışını doğrular
 /// (is-koala/koala#179): gönderen adı, görüldü sayısı ve canlı
-/// güncellenmesi, başlığa dokununca katılımcılar sheet'i.
+/// güncellenmesi, başlığa dokununca katılımcılar sheet'i ve oradan
+/// başkasının profiline gidiş (is-koala/koala#182).
+///
+/// Profil iki kabukta farklı sayfa: [profileRoute] kabuğun açtığı rotanın
+/// kalıbı, [profileLocation] başkasının satırına dokununca açılan adres,
+/// [profileExtra] o rotaya verilen `extra`'nın beklentisi. Bağlantının
+/// **var** olması iki kabukta aynı; **kendi satırı** ise yalnız çalışan
+/// kabuğunda profil sekmesine gidiyor (`EmployeeRoutes.ownProfile`),
+/// işverende dokunulmuyor.
 void registerChatPageGroupTests({
   required String role,
   required String currentUserId,
   required bool isEmployer,
   required ChatPageBuilder buildPage,
+  required String profileRoute,
+  required String profileLocation,
+  required Matcher profileExtra,
 }) {
   Future<
     ({
@@ -194,6 +209,71 @@ void registerChatPageGroupTests({
       brightness: brightness,
     );
     await tester.pumpAndSettle();
+  }
+
+  /// Sayfayı bir [GoRouter] içinde çizer: katılımcı satırı `context.push`
+  /// ile profile gidiyor, düz `MaterialApp` bunu karşılayamaz. Profil rotası
+  /// ve kendi profil sekmesi sahte; açılan adresler, `extra`'lar ve sekme
+  /// ziyaretleri dönen kayıtta birikiyor.
+  Future<
+    ({List<String> locations, List<Object?> extras, List<String> ownVisits})
+  >
+  pumpPageInRouter(
+    WidgetTester tester, {
+    required Conversation chat,
+    required ChatThreadController thread,
+    required UserProvider userProvider,
+    required Brightness brightness,
+  }) async {
+    final extras = <Object?>[];
+    final locations = <String>[];
+    final ownVisits = <String>[];
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(
+          path: '/',
+          pageBuilder: (context, state) => MaterialPage<void>(
+            key: state.pageKey,
+            child: buildPage(chat, thread),
+          ),
+        ),
+        GoRoute(
+          path: profileRoute,
+          pageBuilder: (context, state) {
+            extras.add(state.extra);
+            locations.add(state.matchedLocation);
+            return MaterialPage<void>(
+              key: state.pageKey,
+              child: const Scaffold(body: Text('profil ekranı')),
+            );
+          },
+        ),
+        GoRoute(
+          path: EmployeeRoutes.ownProfile,
+          pageBuilder: (context, state) {
+            ownVisits.add(state.matchedLocation);
+            return MaterialPage<void>(
+              key: state.pageKey,
+              child: const Scaffold(body: Text('profil sekmesi')),
+            );
+          },
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider.value(
+        value: userProvider,
+        child: MaterialApp.router(
+          theme: brightness == Brightness.dark ? darkTheme : lightTheme,
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    return (locations: locations, extras: extras, ownVisits: ownVisits);
   }
 
   for (final brightness in Brightness.values) {
@@ -339,13 +419,132 @@ void registerChatPageGroupTests({
           findsOneWidget,
         );
         expect(find.text(ChatParticipantsSheet.closedNote), findsOneWidget);
-        // Profil bağlantısı yalnız işverende: çalışan kabuğunda başkasının
-        // profilini açan rota yok.
+        // Profil bağlantısı iki kabukta da var (is-koala/koala#182): ayrılan
+        // dahil diğer üç satır. Kendi satırım yalnız çalışan kabuğunda
+        // dokunulabilir (profil sekmesi), işverende ok yok.
         expect(
           findAppIcon(AppIcons.arrowRight),
-          isEmployer ? findsNWidgets(3) : findsNothing,
+          findsNWidgets(isEmployer ? 3 : 4),
         );
       });
+
+      testWidgets('katılımcı satırına dokununca kabuğun profil rotası açılır', (
+        tester,
+      ) async {
+        final chat = _group(
+          currentUserId: currentUserId,
+          isEmployer: isEmployer,
+        );
+        final setup = await setUpThread(tester, chat: chat);
+        final opened = await pumpPageInRouter(
+          tester,
+          chat: chat,
+          thread: setup.thread,
+          userProvider: setup.userProvider,
+          brightness: brightness,
+        );
+
+        await tester.tap(find.text('3 katılımcı'));
+        await tester.pumpAndSettle();
+        await tester.tap(
+          find.descendant(
+            of: find.byType(ChatParticipantsSheet),
+            matching: find.text('Ayşe Yılmaz'),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        expect(opened.extras, hasLength(1));
+        expect(opened.extras.single, profileExtra);
+        expect(opened.locations, [profileLocation]);
+        expect(opened.ownVisits, isEmpty);
+        expect(find.text('profil ekranı'), findsOneWidget);
+        // Sheet profil açılmadan kapanıyor: dönüşte sohbet görünsün.
+        expect(find.byType(ChatParticipantsSheet), findsNothing);
+      });
+
+      testWidgets(
+        isEmployer
+            ? 'kendi satırı dokunulmaz: profil açılmaz, sheet kalır'
+            : 'kendi satırı profil sekmesine gider, başkasının profili açılmaz',
+        (tester) async {
+          final chat = _group(
+            currentUserId: currentUserId,
+            isEmployer: isEmployer,
+          );
+          final setup = await setUpThread(tester, chat: chat);
+          final opened = await pumpPageInRouter(
+            tester,
+            chat: chat,
+            thread: setup.thread,
+            userProvider: setup.userProvider,
+            brightness: brightness,
+          );
+
+          await tester.tap(find.text('3 katılımcı'));
+          await tester.pumpAndSettle();
+          await tester.tap(
+            find.descendant(
+              of: find.byType(ChatParticipantsSheet),
+              matching: find.text(
+                isEmployer ? 'İşveren Kullanıcı' : 'Yakup Kahraman',
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          // Başkasının profili iki kabukta da açılmadı.
+          expect(opened.extras, isEmpty);
+          expect(opened.locations, isEmpty);
+          if (isEmployer) {
+            // İşveren: davranış değişmedi, satır dokunulmaz.
+            expect(opened.ownVisits, isEmpty);
+            expect(find.byType(ChatParticipantsSheet), findsOneWidget);
+          } else {
+            // Çalışan: sheet kapanır, kendi profil sekmesi açılır.
+            expect(opened.ownVisits, [EmployeeRoutes.ownProfile]);
+            expect(find.text('profil sekmesi'), findsOneWidget);
+            expect(find.byType(ChatParticipantsSheet), findsNothing);
+          }
+        },
+      );
+
+      // Ayrılan katılımcı (şirketten çıkan yetkili de böyle kalıyor) profili
+      // açılabilir ama ilan taşımaz: şirket satırı ayrıldığı şirketi yazmasın.
+      if (!isEmployer) {
+        testWidgets('ayrılan katılımcının profili ilan kimliği taşımaz', (
+          tester,
+        ) async {
+          final chat = _group(
+            currentUserId: currentUserId,
+            isEmployer: isEmployer,
+          );
+          final setup = await setUpThread(tester, chat: chat);
+          final opened = await pumpPageInRouter(
+            tester,
+            chat: chat,
+            thread: setup.thread,
+            userProvider: setup.userProvider,
+            brightness: brightness,
+          );
+
+          await tester.tap(find.text('3 katılımcı'));
+          await tester.pumpAndSettle();
+          await tester.tap(
+            find.descendant(
+              of: find.byType(ChatParticipantsSheet),
+              matching: find.text('Eski Üye'),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          expect(opened.locations, [EmployeeRoutes.publicProfile(_gone)]);
+          final args = opened.extras.single! as PublicProfileArgs;
+          expect(args.userId, _gone);
+          expect(args.jobId, isNull);
+        });
+      }
 
       testWidgets('ikili sohbette ne gönderen adı ne görüldü sayısı var', (
         tester,

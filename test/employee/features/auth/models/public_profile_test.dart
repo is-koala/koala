@@ -53,4 +53,47 @@ void main() {
     // Adres yalnızca yetkili görene doluyor; boş gelmesi hata değil.
     expect(profile.hasCv, isFalse);
   });
+
+  // koala-backend#282: özet profil yanıtında; çalışan tarafındaki herkese
+  // açık profil sayfası puan için ayrı uç çağırmıyor.
+  group('puan özeti', () {
+    test('sayı ve dize olarak gelen ortalama okunuyor', () {
+      for (final average in <Object>[4.5, '4.50']) {
+        final profile = PublicProfile.fromJson({
+          'id': 'u',
+          'firstName': 'A',
+          'lastName': 'B',
+          'reviewCount': 12,
+          'averageRating': average,
+        });
+
+        expect(profile.reviewCount, 12, reason: '$average');
+        expect(profile.averageRating, 4.5, reason: '$average');
+      }
+    });
+
+    test('alanlar yoksa null: eski sunucu "değerlendirme yok" demiyor', () {
+      final profile = PublicProfile.fromJson(const {
+        'id': 'u',
+        'firstName': 'A',
+        'lastName': 'B',
+      });
+
+      expect(profile.reviewCount, isNull);
+      expect(profile.averageRating, isNull);
+    });
+
+    test('sıfır değerlendirme null değil, sıfır', () {
+      final profile = PublicProfile.fromJson(const {
+        'id': 'u',
+        'firstName': 'A',
+        'lastName': 'B',
+        'reviewCount': 0,
+        'averageRating': 0,
+      });
+
+      expect(profile.reviewCount, 0);
+      expect(profile.averageRating, 0);
+    });
+  });
 }
