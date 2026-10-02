@@ -17,13 +17,28 @@ import 'package:koala/product/widgets/review_tile.dart';
 /// Bu yüzden bölüm başarısız olduğunda profil boşalmıyor, yalnızca bu şerit
 /// hatayı gösteriyor.
 class ProfileReviews extends StatefulWidget {
-  const ProfileReviews({super.key, required this.userId, this.service});
+  const ProfileReviews({
+    super.key,
+    required this.userId,
+    this.service,
+    this.emptyMessage,
+  });
 
   /// Hakkında değerlendirme okunacak kişi.
   final String userId;
 
   /// Testlerde sahte sunucuya bağlı servis; verilmezse üretim tekili.
   final ReviewService? service;
+
+  /// Hiç değerlendirme yokken yazılan cümle. Varsayılanı profilin sahibine
+  /// konuşuyor ("Henüz değerlendirilmedin"); başkasının profilinde bu cümle
+  /// yanlış olurdu, orada çağıran kendi cümlesini veriyor.
+  final String? emptyMessage;
+
+  /// Kendi profilinde boş durumun cümlesi.
+  static const String ownEmptyMessage =
+      'Henüz değerlendirilmedin. Tamamladığın işlerden sonra işverenler '
+      'buraya yazabilir.';
 
   @override
   State<ProfileReviews> createState() => _ProfileReviewsState();
@@ -140,8 +155,7 @@ class _ProfileReviewsState extends State<ProfileReviews> {
   }
 
   Widget _emptyText() => Text(
-    'Henüz değerlendirilmedin. Tamamladığın işlerden sonra işverenler '
-    'buraya yazabilir.',
+    widget.emptyMessage ?? ProfileReviews.ownEmptyMessage,
     key: const ValueKey('profile-no-reviews'),
     style: context.textTheme.bodyMedium?.copyWith(color: context.textSecondary),
   );

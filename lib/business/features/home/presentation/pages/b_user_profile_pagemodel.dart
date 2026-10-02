@@ -1,20 +1,9 @@
 part of 'b_user_profile_page.dart';
 
 abstract class BUserProfilePageModel extends State<BUserProfilePage> {
-  /// Kapaktaki profil fotoğrafı ve çevresindeki beyaz halka.
-  static const double _avatarSize = 100;
-  static const double _avatarBorder = 3;
-
   /// Bilgi satırındaki etiket sütununun genişliği; değerler hizalı dursun
   /// diye sabit.
   static const double _infoLabelWidth = 100;
-
-  /// Kapaktaki gradyanın koyu ucu.
-  static const double _gradientEndAlpha = 0.8;
-
-  /// Kapak üzerindeki ikincil metin ve rozetlerin opaklıkları.
-  static const double _onCoverMuted = 0.9;
-  static const double _onCoverSurface = 0.2;
 
   /// Karşılığı henüz gelmemiş alanların yerine yazılan işaret.
   static const String _missing = '—';

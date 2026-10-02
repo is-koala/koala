@@ -45,6 +45,7 @@ import 'package:koala/employee/features/chat/presentation/pages/chat_list_page.d
 import 'package:koala/employee/features/chat/presentation/pages/chat_page.dart';
 import 'package:koala/employee/features/chat/models/conversation.dart';
 import 'package:koala/employee/features/profile/presentation/pages/profile_page.dart';
+import 'package:koala/employee/features/profile/presentation/pages/public_profile_page.dart';
 import 'package:koala/employee/features/profile/presentation/pages/availability_page.dart';
 import 'package:koala/employee/features/home/presentation/pages/shell_page.dart';
 import 'package:koala/employee/features/company_detail/presentation/pages/company_detail_page.dart';
@@ -66,6 +67,7 @@ import 'package:koala/product/features/account/account_routes.dart';
 import 'package:koala/product/models/confirmed_address.dart';
 import 'package:koala/product/network/session_manager.dart';
 import 'package:koala/product/router/business_routes.dart';
+import 'package:koala/product/router/employee_routes.dart';
 import 'package:koala/product/widgets/map_first_address_page.dart';
 
 class RouterManager {
@@ -127,6 +129,9 @@ class RouterManager {
       '/profile',
       '/availability',
       '/earnings',
+      // Başkasının profilini çalışan açıyor; işverenin karşılığı
+      // `BusinessRoutes.userProfile`.
+      EmployeeRoutes.publicProfile,
     ];
     final isEmployeeRoute = employeeRoutes.any(
       (route) => location.startsWith(route),
@@ -548,6 +553,16 @@ class RouterManager {
         pageBuilder: (context, state) {
           return _page(state, BUserProfilePage.fromExtra(state.extra));
         },
+      ),
+
+      // Çalışanın başkasının profilini açtığı sayfa (is-koala/koala#182):
+      // sohbet katılımcıları ve bireysel işveren kartı. Navbar'ın üstünü
+      // kaplıyor, o yüzden shell'in dışında. `extra`: `PublicProfileArgs` ya
+      // da kullanıcı kimliği.
+      GoRoute(
+        path: EmployeeRoutes.publicProfile,
+        pageBuilder: (context, state) =>
+            _page(state, PublicProfilePage.fromExtra(state.extra)),
       ),
 
       GoRoute(

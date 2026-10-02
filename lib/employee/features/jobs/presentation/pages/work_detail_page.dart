@@ -8,6 +8,7 @@ import 'package:koala/employee/core/directions_links.dart';
 import 'package:koala/employee/core/widgets/employer_type_badge.dart';
 import 'package:koala/employee/core/widgets/job_detail_bottom_sheet.dart';
 import 'package:koala/employee/core/widgets/job_location_card.dart';
+import 'package:koala/employee/features/chat/models/chat_participant.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_start_on.dart';
@@ -32,6 +33,7 @@ import 'package:koala/employee/features/jobs/presentation/widgets/timesheet_queu
 import 'package:koala/employee/features/jobs/presentation/widgets/work_transport_card.dart';
 import 'package:koala/employee/features/jobs/presentation/widgets/work_timeline_view.dart';
 import 'package:koala/employee/features/jobs/services/assignment_service.dart';
+import 'package:koala/employee/features/profile/models/public_profile_args.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -44,6 +46,7 @@ import 'package:koala/product/features/transport/models/transport_plan.dart';
 import 'package:koala/product/features/transport/services/transport_service.dart';
 import 'package:koala/product/formatters/turkish_money_formatter.dart';
 import 'package:koala/product/network/api_exception.dart';
+import 'package:koala/product/router/employee_routes.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/messaging_gate_note.dart';
@@ -471,9 +474,10 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
     );
   }
 
-  /// İşveren kartı: şirket ilanında ad + logo + bağlantı, bireyselde ad +
-  /// fotoğraf. Kaynak sırası: atamanın kendi alanları (koala-backend#282),
-  /// sonra ilan detayı, sonra özetteki şirket adı.
+  /// İşveren kartı: şirket ilanında ad + logo + şirket bağlantısı, bireyselde
+  /// ad + fotoğraf + kişinin profiline bağlantı. Kaynak sırası: atamanın kendi
+  /// alanları (koala-backend#282), sonra ilan detayı, sonra özetteki şirket
+  /// adı.
   Widget _employerCard() {
     final assignment = job.assignment;
     final isCompany = job.employerType == JobEmployerType.company;
@@ -498,6 +502,7 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
       name: name,
       imageUrl: imageUrl,
       onOpenCompany: isCompany ? openCompany : null,
+      onOpenProfile: isCompany ? null : openEmployerProfile,
     );
   }
 

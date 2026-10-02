@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/product/features/account/account_routes.dart';
+import 'package:koala/product/router/business_routes.dart';
+import 'package:koala/product/router/employee_routes.dart';
 import 'package:koala/product/router/router_manager.dart';
 
 /// Bir rotanın sayfasını go_router'a seçtirmek (`builder:`) bu sürümde
@@ -145,6 +147,33 @@ void main() {
     // sayfaya açılıyor (is-koala/koala#177).
     expect(detail, hasLength(1));
     expect(detail.single.pageBuilder, isNotNull);
+  });
+
+  test('başkasının profili tek rota, shell dışında; işveren sayfası ayrı', () {
+    final topLevel = RouterManager.router.configuration.routes
+        .whereType<GoRoute>()
+        .map((route) => route.path)
+        .toList();
+    final all = allGoRoutes(RouterManager.router.configuration.routes).toList();
+
+    // Çalışanın başkasının profilini açtığı rota navbar'ın üstünü kaplıyor
+    // (is-koala/koala#182): shell'in içine değil üst düzeye konuyor.
+    expect(EmployeeRoutes.publicProfile, '/public-profile');
+    expect(
+      topLevel.where((path) => path == EmployeeRoutes.publicProfile),
+      hasLength(1),
+    );
+    final route = all.singleWhere(
+      (route) => route.path == EmployeeRoutes.publicProfile,
+    );
+    expect(route.pageBuilder, isNotNull);
+
+    // İşverenin `/business/user-profile` sayfası ayrı kalıyor: iki kabuk iki
+    // ayrı sayfa açıyor, biri ötekinin yerine geçmiyor.
+    expect(
+      all.where((route) => route.path == BusinessRoutes.userProfile),
+      hasLength(1),
+    );
   });
 
   test('hesap modülünün rotaları tek, /business/ kopyaları yok', () {

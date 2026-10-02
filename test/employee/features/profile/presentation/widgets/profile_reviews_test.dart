@@ -80,6 +80,29 @@ void main() {
     );
   }
 
+  // Başkasının profilinde aynı bölüm var ama sahibine konuşan "Henüz
+  // değerlendirilmedin" cümlesi orada yanlış olurdu; sayfa kendi cümlesini
+  // veriyor.
+  testWidgets('boş durum cümlesi çağıran tarafından değiştirilebilir', (
+    tester,
+  ) async {
+    await pumpInApp(
+      tester,
+      SingleChildScrollView(
+        child: ProfileReviews(
+          userId: 'user-1',
+          service: ReviewService.withClient(_server().client),
+          emptyMessage: 'Henüz değerlendirme yok.',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('profile-no-reviews')), findsOneWidget);
+    expect(find.text('Henüz değerlendirme yok.'), findsOneWidget);
+    expect(find.textContaining('Henüz değerlendirilmedin'), findsNothing);
+  });
+
   // `/users/me` puan taşımıyor; özet ucu `data: null` dönünce sıfır yıldız
   // uydurulmamalı. Aday kartındaki "Henüz puan yok" ile aynı dürüst boşluk.
   testWidgets('değerlendirmesi yokken 0.0 yazmaz', (tester) async {

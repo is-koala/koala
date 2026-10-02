@@ -11,7 +11,6 @@ import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/jobs/models/rating_summary.dart';
 import 'package:koala/employee/features/jobs/models/review.dart';
 import 'package:koala/employee/features/jobs/services/review_service.dart';
-import 'package:koala/employee/features/profile/presentation/widgets/profile_avatar.dart';
 import 'package:koala/product/models/availability.dart';
 import 'package:koala/product/services/availability_service.dart';
 import 'package:koala/product/constants/app_colors.dart';
@@ -28,6 +27,7 @@ import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/block_user_action.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
+import 'package:koala/product/widgets/profile_cover.dart';
 import 'package:koala/product/widgets/report_sheet.dart';
 import 'package:koala/product/widgets/availability_view.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -208,97 +208,13 @@ class _BUserProfilePageState extends BUserProfilePageModel {
 
   // -------------------------------------------------------------------- Kapak
 
-  /// Kapak marka yeşili bir gradyan; üstündeki her şey temadan bağımsız beyaz.
+  /// Kapak marka yeşili bir gradyan; çizimi iki ekranın ortak `ProfileCover`'ı.
   Widget _profileHeader(BuildContext context) {
-    final jobTitle = _jobTitle;
-    final location = _profile?.locationLabel;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: AppSizes.spaceXLarge),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.primaryColor,
-            AppColors.primaryColor.withValues(
-              alpha: BUserProfilePageModel._gradientEndAlpha,
-            ),
-          ],
-        ),
-      ),
-      child: Column(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              borderRadius: AppRadius.secondaryCircular,
-              border: Border.all(
-                color: AppColors.onAccent,
-                width: BUserProfilePageModel._avatarBorder,
-              ),
-            ),
-            child: ProfileAvatar(
-              imageUrl: _photoUrl,
-              size: BUserProfilePageModel._avatarSize,
-            ),
-          ),
-          const SizedBox(height: AppSizes.spaceMedium),
-          Text(
-            _displayName,
-            style: context.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: AppColors.onAccent,
-            ),
-          ),
-          if (jobTitle != null && jobTitle.isNotEmpty) ...[
-            const SizedBox(height: AppSizes.spaceTiny),
-            Text(
-              jobTitle,
-              style: context.textTheme.bodyLarge?.copyWith(
-                color: AppColors.onAccent.withValues(
-                  alpha: BUserProfilePageModel._onCoverMuted,
-                ),
-              ),
-            ),
-          ],
-          if (location != null) ...[
-            const SizedBox(height: AppSizes.spaceSmall),
-            _locationBadge(context, location),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _locationBadge(BuildContext context, String location) {
-    final muted = AppColors.onAccent.withValues(
-      alpha: BUserProfilePageModel._onCoverMuted,
-    );
-
-    return Container(
-      padding: AppPadding.badge,
-      decoration: BoxDecoration(
-        color: AppColors.onAccent.withValues(
-          alpha: BUserProfilePageModel._onCoverSurface,
-        ),
-        borderRadius: AppRadius.secondaryCircular,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.location_on_outlined,
-            size: AppSizes.iconSmall,
-            color: muted,
-          ),
-          const SizedBox(width: AppSizes.spaceTiny),
-          Text(
-            location,
-            style: context.textTheme.bodySmall?.copyWith(color: muted),
-          ),
-        ],
-      ),
+    return ProfileCover(
+      name: _displayName,
+      imageUrl: _photoUrl,
+      subtitle: _jobTitle,
+      location: _profile?.locationLabel,
     );
   }
 

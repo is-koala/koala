@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/core/widgets/employer_type_badge.dart';
 import 'package:koala/employee/core/widgets/job_location_card.dart';
+import 'package:koala/employee/features/chat/models/chat_participant.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:koala/employee/features/jobs/models/assignment.dart';
@@ -20,7 +21,9 @@ import 'package:koala/employee/features/jobs/presentation/providers/review_provi
 import 'package:koala/employee/features/jobs/services/assignment_service.dart';
 import 'package:koala/employee/features/jobs/services/job_application_service.dart';
 import 'package:koala/employee/features/jobs/services/review_service.dart';
+import 'package:koala/employee/features/profile/models/public_profile_args.dart';
 import 'package:koala/product/features/transport/services/transport_service.dart';
+import 'package:koala/product/router/employee_routes.dart';
 import 'package:koala/product/theme/theme.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -95,6 +98,7 @@ MyJob applicationRow(Map<String, Object?> body) =>
 typedef Harness = ({
   FakeApi api,
   List<Object?> openedCompanies,
+  List<Object?> openedProfiles,
   List<Object?> openedReviews,
   List<Uri> openedUrls,
 });
@@ -151,6 +155,7 @@ Future<Harness> pumpDetail(
   bool seatDropped = false,
 }) async {
   final openedCompanies = <Object?>[];
+  final openedProfiles = <Object?>[];
   final openedReviews = <Object?>[];
   final openedUrls = <Uri>[];
 
@@ -232,6 +237,16 @@ Future<Harness> pumpDetail(
         },
       ),
       GoRoute(
+        path: EmployeeRoutes.publicProfile,
+        pageBuilder: (context, state) {
+          openedProfiles.add(state.extra);
+          return MaterialPage<void>(
+            key: state.pageKey,
+            child: const Scaffold(body: Text('profil ekranı')),
+          );
+        },
+      ),
+      GoRoute(
         path: '/review',
         pageBuilder: (context, state) {
           openedReviews.add(state.extra);
@@ -271,6 +286,7 @@ Future<Harness> pumpDetail(
   return (
     api: api,
     openedCompanies: openedCompanies,
+    openedProfiles: openedProfiles,
     openedReviews: openedReviews,
     openedUrls: openedUrls,
   );
@@ -387,6 +403,54 @@ void main() {
         );
       });
 
+      testWidgets('bireysel işveren: karta dokununca herkese açık profili '
+          'açılır (is-koala/koala#182)', (tester) async {
+        final harness = await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: assignmentRow(assignmentJson()),
+          detail: detailJson(creator: _ayse),
+        );
+
+        final link = find.byKey(const ValueKey('employer-card-profile'));
+        expect(link, findsOneWidget);
+
+        await tester.tap(link);
+        await tester.pumpAndSettle();
+
+        expect(harness.openedProfiles, hasLength(1));
+        expect(
+          harness.openedProfiles.single,
+          isA<PublicProfileArgs>()
+              .having((args) => args.userId, 'userId', 'user-9')
+              .having((args) => args.name, 'name', 'Ayşe Yılmaz')
+              .having(
+                (args) => args.role,
+                'role',
+                ChatParticipantRole.employer,
+              ),
+        );
+        expect(harness.openedCompanies, isEmpty);
+      });
+
+      testWidgets('bireysel işveren: kimliği henüz bilinmiyorsa bağlantı yok', (
+        tester,
+      ) async {
+        // İlan detayı gelemedi (`500`) ve atama işvereni taşımıyor: kartta
+        // yer tutucu var, kimlik olmadan açılacak profil yok.
+        await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: assignmentRow(assignmentJson()),
+        );
+
+        expect(find.text('Bireysel işveren'), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('employer-card-profile')),
+          findsNothing,
+        );
+      });
+
       testWidgets('şirket ilanı: ad, logo ve şirket sayfasına bağlantı', (
         tester,
       ) async {
@@ -415,6 +479,11 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(harness.openedCompanies, ['comp-7']);
+        // Şirket ilanında kişi değil şirket var: profil bağlantısı çizilmez.
+        expect(
+          find.byKey(const ValueKey('employer-card-profile')),
+          findsNothing,
+        );
       });
 
       testWidgets('iptal kartı: kayıt sunucudan çekilir ve yazılır', (

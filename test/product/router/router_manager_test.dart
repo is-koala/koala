@@ -2,6 +2,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/product/features/account/account_routes.dart';
 import 'package:koala/product/network/session_manager.dart';
+import 'package:koala/product/router/employee_routes.dart';
 import 'package:koala/product/router/router_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -74,10 +75,12 @@ void main() {
         '/profile',
         '/availability',
         '/earnings',
+        EmployeeRoutes.publicProfile,
       ]) {
         expect(
           redirect(loggedIn: true, userType: 'employee', location: location),
           isNull,
+          reason: '$location çalışanın önünü kesiyor',
         );
       }
     });
@@ -129,6 +132,7 @@ void main() {
         '/profile',
         '/availability',
         '/earnings',
+        EmployeeRoutes.publicProfile,
       ]) {
         expect(
           redirect(loggedIn: true, userType: 'business', location: location),

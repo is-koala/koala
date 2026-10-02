@@ -18,9 +18,8 @@ import 'package:koala/product/widgets/messaging_gate_note.dart';
 /// İlan başlığı, katılımcı sayısı ve kişi başına ad, rol, katılma tarihi.
 /// Ayrılanlar listenin sonunda ve gri; oturum sahibi "Siz" etiketiyle.
 /// Sohbet kapandıysa üstte not var. İki kabuk aynı sheet'i çiziyor; profil
-/// bağlantısı [onOpenProfile] ile dışarıdan geliyor, çünkü başkasının
-/// profilini açan rota bugün yalnız işveren kabuğunda var
-/// (`/business/user-profile`).
+/// bağlantısı [onOpenProfile] ile dışarıdan geliyor, çünkü her kabuk kendi
+/// sayfasını açıyor (`/business/user-profile` ve `/public-profile`).
 class ChatParticipantsSheet extends StatelessWidget {
   const ChatParticipantsSheet({
     super.key,
