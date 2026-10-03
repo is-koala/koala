@@ -91,11 +91,13 @@ abstract class BApplicationsPagemodel extends State<BApplicationsPage> {
 
   /// Kartın kendisi: başvurunun geldiği ilanın karar ekranı. Karar orada
   /// veriliyor, dönünce satırın durumu bayat kalmasın diye liste tazeleniyor
-  /// (eldeki derinlik korunarak).
+  /// (eldeki derinlik korunarak). Yenileme başarısız olursa çekip yenilemeyle
+  /// aynı yoldan söyleniyor ([_onRefresh]): kullanıcı bayat durumu güncel
+  /// sanmasın.
   Future<void> _openReview(ReceivedApplication application) async {
     await context.push('/business/job-detail', extra: application.jobId);
     if (!mounted) return;
-    unawaited(_inbox.refresh());
+    unawaited(_onRefresh());
   }
 
   Future<void> _openProfile(ReceivedApplication application) {

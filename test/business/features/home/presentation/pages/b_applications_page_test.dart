@@ -29,6 +29,14 @@ const _companyA = {
   'role': 'ADMIN',
 };
 
+/// Henüz onaylanmamış şirket üyeliği: ilan açamıyor, süzecek bir şey yok.
+const _companyPending = {
+  'companyId': 'company-pending',
+  'companyName': 'Onay Bekleyen Ltd.',
+  'approved': false,
+  'role': 'ADMIN',
+};
+
 const _ownJob = {
   'id': 'job-own',
   'title': 'Garson',
@@ -355,6 +363,8 @@ void main() {
 
         expect(find.text('Bu süzgeçte başvuru yok'), findsOneWidget);
         expect(find.text('Henüz başvuru yok'), findsNothing);
+        // Üç süzgecin üçü de söyleniyor: ilan süzgeci de açıklamada geçiyor.
+        expect(find.textContaining('durum, şirket ya da ilan'), findsOneWidget);
 
         await tester.tap(find.byKey(const ValueKey('inbox-clear-filters')));
         await tester.pumpAndSettle();
@@ -383,6 +393,33 @@ void main() {
         expect(
           find.byKey(const ValueKey('inbox-company-company-a')),
           findsOneWidget,
+        );
+      });
+
+      testWidgets('onaylanmamış şirket çip olmaz', (tester) async {
+        await _pump(
+          tester,
+          brightness: brightness,
+          companies: const [_companyPending],
+          inbox: _alwaysReturning([receivedApplicationJson('a')]),
+        );
+
+        // Onaysız şirketin tek üyeliği varsa şirket satırı hiç çıkmıyor.
+        expect(find.byKey(const ValueKey('inbox-company-all')), findsNothing);
+
+        await _pump(
+          tester,
+          brightness: brightness,
+          companies: const [_companyA, _companyPending],
+          inbox: _alwaysReturning([receivedApplicationJson('a')]),
+        );
+        expect(
+          find.byKey(const ValueKey('inbox-company-company-a')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('inbox-company-company-pending')),
+          findsNothing,
         );
       });
 
@@ -464,6 +501,34 @@ void main() {
           // Kabul/ret orada verildiği için dönüşte liste yeniden okunuyor.
           expect(harness.inboxQueries, hasLength(2));
           expect(find.text('Ayşe Yılmaz'), findsOneWidget);
+        },
+      );
+
+      testWidgets(
+        'karar ekranından dönüşteki başarısız yenileme toast ile söylenir',
+        (tester) async {
+          var calls = 0;
+          final harness = await _pump(
+            tester,
+            brightness: brightness,
+            inbox: (_) => ++calls == 1
+                ? receivedApplicationsResponse([
+                    receivedApplicationJson('app-1'),
+                  ])
+                : receivedApplicationsFailure,
+          );
+
+          await tester.tap(find.byKey(const ValueKey('application-app-1')));
+          await tester.pumpAndSettle();
+          await tester.tap(find.byKey(const ValueKey('stub-review-back')));
+          await tester.pumpAndSettle();
+
+          // Yenileme sessizce yutulsaydı kullanıcı bayat durumu güncel sanırdı.
+          expect(harness.inboxQueries, hasLength(2));
+          expect(find.text('Başvurular alınamadı'), findsOneWidget);
+          // Satır yerinde; tam hata ekranına düşülmedi.
+          expect(find.text('Ayşe Yılmaz'), findsOneWidget);
+          expect(find.byKey(const ValueKey('inbox-retry')), findsNothing);
         },
       );
 

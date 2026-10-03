@@ -130,6 +130,33 @@ void main() {
         expect(find.text('Gelen kutusu açıldı'), findsOneWidget);
       });
 
+      // Süslü bir `Container`'ın altında mürekkep görünmezdi: kart `Material` +
+      // `InkWell`, ayrıca ekran okuyucuya düğme olarak tanıtılıyor.
+      testWidgets('Başvuru sayaç kartı mürekkep verir ve düğme olarak okunur', (
+        tester,
+      ) async {
+        await _pumpHome(tester, brightness);
+
+        final stat = find.byKey(const ValueKey('home-stat-Başvuru'));
+        expect(tester.widget(stat), isA<InkWell>());
+        expect(
+          find.ancestor(of: stat, matching: find.byType(Material)),
+          findsWidgets,
+        );
+        expect(
+          find.ancestor(
+            of: stat,
+            matching: find.byWidgetPredicate(
+              (widget) =>
+                  widget is Semantics &&
+                  widget.properties.button == true &&
+                  widget.properties.hint == 'Tüm başvuruları aç',
+            ),
+          ),
+          findsOneWidget,
+        );
+      });
+
       testWidgets('diğer sayaç kartları tıklanabilir değil', (tester) async {
         await _pumpHome(tester, brightness);
 

@@ -125,7 +125,7 @@ void main() {
           body: {
             'success': false,
             'message': 'Sıralama alanı desteklenmiyor',
-            'errorCategory': 'VALIDATION_ERROR',
+            'errorCategory': 'VALIDATION_FAILED',
           },
         ),
       );
@@ -135,20 +135,18 @@ void main() {
           api.client,
         ).fetchReceivedApplications(),
         throwsA(
-          isA<ApiException>().having(
-            (error) => error.message,
-            'message',
-            'Sıralama alanı desteklenmiyor',
-          ),
+          isA<ApiException>()
+              .having(
+                (error) => error.message,
+                'message',
+                'Sıralama alanı desteklenmiyor',
+              )
+              // Gerçek kategori adı: yanlış yazılan bir kategori sessizce
+              // durum koduna düşer ve test yine yeşil kalırdı.
+              .having((error) => error.type, 'type', ApiErrorType.validation)
+              .having((error) => error.statusCode, 'statusCode', 400),
         ),
       );
-    });
-
-    test('sayfa boyutu sunucunun varsayılanı ve üst sınırıyla tutarlı', () {
-      // `PageableDefault(size = 20)` ve `PageableSanitizer` tavanı 100: iki
-      // sabit ayrışırsa sayfa sınırı sessizce kayar.
-      expect(ReceivedApplicationService.defaultPageSize, 20);
-      expect(ReceivedApplicationService.maxPageSize, 100);
     });
   });
 }

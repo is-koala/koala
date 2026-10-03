@@ -45,8 +45,13 @@ class BApplicationsPage extends StatefulWidget {
 class _BApplicationsPageState extends BApplicationsPagemodel {
   @override
   Widget build(BuildContext context) {
+    // Yalnız onaylı şirketler çip oluyor: onaysız bir şirketin ilan açması
+    // mümkün değil, süzecek bir şey de yok.
     final companies = context.select<UserProvider, List<CompanyMembership>>(
-      (provider) => provider.user?.companies ?? const [],
+      (provider) => [
+        for (final company in provider.user?.companies ?? const [])
+          if (company.approved) company,
+      ],
     );
     final ownPosts = context.watch<BJobsProvider>().allPosts;
 
@@ -234,7 +239,7 @@ class _BApplicationsPageState extends BApplicationsPagemodel {
         icon: AppIcons.userMultiple,
         title: 'Bu süzgeçte başvuru yok',
         description:
-            'Başka bir durum ya da şirket seçerek diğer başvurulara '
+            'Başka bir durum, şirket ya da ilan seçerek diğer başvurulara '
             'bakabilirsiniz.',
         action: OutlinedButton(
           key: const ValueKey('inbox-clear-filters'),

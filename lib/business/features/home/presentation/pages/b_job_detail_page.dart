@@ -884,7 +884,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
         else if (jobsLoading || !jobsHaveLoaded)
           const Center(child: CircularProgressIndicator())
         else
-          _applicantsErrorPanel('Başvuran bilgisi bu ilan için alınamadı'),
+          _otherContactsJobNotice(),
       ];
     }
 
@@ -947,6 +947,24 @@ class _BJobDetailPageState extends BJobDetailPageModel {
         ),
       ],
     ];
+  }
+
+  /// İlan, `GET /users/me/jobs` (yalnız **kendi açtıkların**) içinde yok: bu
+  /// ekrana şirketin başka bir yetkilisinin açtığı ilan için gelinmiş (gelen
+  /// kutusu bunları da listeliyor). Başvuranlar bu ekranda henüz okunamıyor;
+  /// "Tekrar Dene" hiçbir zaman işe yaramayacağı için sunulmuyor.
+  Widget _otherContactsJobNotice() {
+    return Container(
+      key: const ValueKey('other-contact-job-notice'),
+      width: double.infinity,
+      padding: AppPadding.card,
+      decoration: _panelDecoration(context),
+      child: Text(
+        'Bu ilanı şirketin başka bir yetkilisi açtığı için başvuranları burada '
+        'gösteremiyoruz. Başvuranlar şimdilik web sitesinden görülebilir.',
+        style: context.textTheme.bodyMedium,
+      ),
+    );
   }
 
   Widget _applicantsErrorPanel(String message) {

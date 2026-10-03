@@ -238,6 +238,41 @@ void main() {
       expect(find.text('Ayşe Yılmaz'), findsOneWidget);
     });
 
+    // `GET /users/me/jobs` yalnız kendi açtığın ilanları veriyor: şirketin başka
+    // bir yetkilisinin açtığı ilan (gelen kutusundan gelinir) listede yok. Hiçbir
+    // zaman işe yaramayacak bir "Tekrar Dene" yerine açık bir not çiziliyor.
+    testWidgets('listede olmayan ilanda dürüst not çizer, boş Tekrar Dene değil '
+        '(${brightness.name})', (tester) async {
+      final jobsApi = FakeApi(
+        handler: (request) => const FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {'content': []},
+          },
+        ),
+      );
+      await _pumpPage(tester, jobsApi: jobsApi, brightness: brightness);
+
+      expect(
+        find.byKey(const ValueKey('other-contact-job-notice')),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('şirketin başka bir yetkilisi açtığı'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('web sitesinden'), findsOneWidget);
+      // Çözümü olmayan bir yeniden deneme önerilmiyor.
+      expect(find.byKey(const ValueKey('applicants-retry')), findsNothing);
+      expect(find.text('Tekrar Dene'), findsNothing);
+      expect(
+        find.text('Başvuran bilgisi bu ilan için alınamadı'),
+        findsNothing,
+      );
+      // Gerçek ilan listesi hatasında yeniden deneme hâlâ var (yukarıdaki test).
+    });
+
     testWidgets('200 boş başvuru yanıtı gerçek boş durumu çizer '
         '(${brightness.name})', (tester) async {
       final jobsApi = FakeApi(

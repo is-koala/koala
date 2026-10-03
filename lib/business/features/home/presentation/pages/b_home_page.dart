@@ -299,9 +299,13 @@ class _BHomePageState extends State<BHomePage> {
             label: 'Başvuru',
             value: '$applicantCount',
             color: AppColors.info,
-            // Sayı bütün başvuruları sayıyor; gelen kutusu da hepsini
-            // listeliyor (is-koala/koala#213).
+            // Sayı yalnız **kendi açtığınız aktif** ilanların başvurularını
+            // topluyor (`BJobsProvider.totalApplicantCount`); gelen kutusu
+            // şirketin diğer yetkililerinin ilanlarını ve kapanmış ilanları da
+            // kapsıyor, yani liste sayıyla birebir örtüşmeyebilir
+            // (is-koala/koala#213).
             onTap: () => context.push(BusinessRoutes.applications),
+            tapHint: 'Tüm başvuruları aç',
           ),
         ),
         const SizedBox(width: AppSizes.space),
@@ -325,16 +329,12 @@ class _BHomePageState extends State<BHomePage> {
     required String value,
     required Color color,
     VoidCallback? onTap,
+    String? tapHint,
   }) {
-    final card = Container(
+    final content = Padding(
       padding: const EdgeInsets.symmetric(
         vertical: AppSizes.spaceMedium,
         horizontal: AppSizes.space,
-      ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: _panelAlpha),
-        borderRadius: AppRadius.secondaryCircular,
-        border: Border.all(color: color.withValues(alpha: 0.15)),
       ),
       child: Column(
         children: [
@@ -368,13 +368,27 @@ class _BHomePageState extends State<BHomePage> {
       ),
     );
 
-    if (onTap == null) return card;
-    return GestureDetector(
-      key: ValueKey('home-stat-$label'),
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: card,
+    // Zemin ve çerçeve `Material`'ın şeklinde: süslü bir `Container`'ın altında
+    // `InkWell` mürekkebi görünmezdi. Dokunulabilir kart ayrıca bir düğme
+    // olarak okunuyor (ekran okuyucu).
+    final card = Material(
+      color: color.withValues(alpha: _panelAlpha),
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadius.secondaryCircular,
+        side: BorderSide(color: color.withValues(alpha: 0.15)),
+      ),
+      child: onTap == null
+          ? content
+          : InkWell(
+              key: ValueKey('home-stat-$label'),
+              onTap: onTap,
+              child: content,
+            ),
     );
+
+    if (onTap == null) return card;
+    return Semantics(button: true, hint: tapHint, child: card);
   }
 
   // --------------------------------------------------------- Hızlı işlemler
