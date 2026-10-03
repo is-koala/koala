@@ -8,6 +8,7 @@ import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/features/dispute/models/dispute_case.dart';
 import 'package:koala/product/features/dispute/models/dispute_evidence.dart';
 import 'package:koala/product/features/dispute/models/evidence_file.dart';
 import 'package:koala/product/features/dispute/presentation/providers/dispute_provider.dart';
@@ -38,6 +39,7 @@ class DisputePage extends StatefulWidget {
     this.evidenceService,
     this.picker,
     this.openExternalUrl,
+    this.clock,
   });
 
   final String assignmentId;
@@ -51,6 +53,10 @@ class DisputePage extends StatefulWidget {
   /// `BJobDetailPage.openExternalUrl` / `WorkDetailPage.openExternalUrl` ile
   /// aynı kalıp: testler hangi adresin açıldığını ölçüyor.
   final Future<bool> Function(Uri url)? openExternalUrl;
+
+  /// Yükleme anı; adı olmayan dosya buna göre adlanıyor. Testler sabit saat
+  /// veriyor.
+  final DateTime Function()? clock;
 
   @override
   State<DisputePage> createState() => _DisputePageState();

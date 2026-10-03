@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -88,6 +89,7 @@ void main() {
             head: jpegSignatureBytes.take(12).toList(),
             displayName: 'IMG_7.heic',
           ),
+          now: DateTime(2026, 10, 3, 10, 42, 31),
         ).file!;
 
         final saved = await _serviceOn(api).upload('dispute-1', file);
@@ -253,7 +255,11 @@ void main() {
     });
   });
 
-  test('UTF-8 dosya adı bozulmadan gider', () async {
+  // Dio çok parçalı gövdeyi kendisi kodluyor; `filename` UTF-8 baytları olarak
+  // gitmeli (Spring isteği UTF-8 çözüyor). Gövde sonuna kadar akıtılıp başlık
+  // satırındaki baytlar okunuyor — adı yalnız `part.filename` ile karşılaştırmak
+  // kodlamayı hiç sınamazdı.
+  test('UTF-8 dosya adı gövdede UTF-8 baytlarıyla gider', () async {
     final api = FakeApi(
       handler: (_) => dataResponse(evidenceJson('e'), statusCode: 201),
     );
@@ -267,7 +273,55 @@ void main() {
 
     await _serviceOn(api).upload('d', file);
 
-    final part = (api.requests.single.data as FormData).files.single.value;
-    expect(utf8.decode(utf8.encode(part.filename!)), 'şikâyet-çağrı.pdf');
+    final form = api.requests.single.data as FormData;
+    final body = await form.clone().finalize().fold<List<int>>(
+      <int>[],
+      (all, chunk) => all..addAll(chunk),
+    );
+    final expected = utf8.encode('filename="şikâyet-çağrı.pdf"');
+    expect(_indexOf(body, expected), isNonNegative, reason: 'UTF-8 başlık');
+    // Yüzde-kodlu bir ad (`%C5%9F…`) Spring'de olduğu gibi saklanırdı.
+    expect(_indexOf(body, ascii.encode('filename="%C5')), -1);
   });
+
+  group('dosya okunamazsa', () {
+    // Seçicinin geçici kopyası iOS `tmp` temizliğiyle silinmiş olabilir.
+    // `FileSystemException` değil `ApiException` çıkmalı: servisler yalnız onu
+    // yükseltir ve sayfa tek hata yolu yönetir.
+    test('yükleme ApiException ile döner, sunucuya hiç gitmez', () async {
+      final api = FakeApi(handler: (_) => dataResponse(evidenceJson('e')));
+      final path = writeEvidenceFile('gecici.pdf', pdfBytes);
+      File(path).deleteSync();
+      final file = EvidenceFile(
+        path: path,
+        bytes: pdfBytes.length,
+        format: EvidenceFormat.pdf,
+        uploadName: 'gecici.pdf',
+      );
+
+      await expectLater(
+        _serviceOn(api).upload('d', file),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.message, 'message', contains('yeniden seçin'))
+              .having((e) => e.type, 'type', ApiErrorType.unknown),
+        ),
+      );
+      expect(api.requests, isEmpty);
+    });
+  });
+}
+
+int _indexOf(List<int> haystack, List<int> needle) {
+  for (var i = 0; i + needle.length <= haystack.length; i++) {
+    var match = true;
+    for (var j = 0; j < needle.length; j++) {
+      if (haystack[i + j] != needle[j]) {
+        match = false;
+        break;
+      }
+    }
+    if (match) return i;
+  }
+  return -1;
 }

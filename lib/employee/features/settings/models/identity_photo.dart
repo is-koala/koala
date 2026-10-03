@@ -1,5 +1,6 @@
 import 'package:koala/employee/features/settings/models/identity_photo_slot.dart';
 import 'package:koala/product/constants/upload_limits.dart';
+import 'package:koala/product/services/picked_file_probe.dart';
 
 /// Karenin nereden alındığı.
 enum IdentityPhotoSource {
@@ -19,8 +20,7 @@ enum IdentityPhotoSource {
 /// adı ve içerik tipi de buradan yazılıyor.
 enum IdentityImageFormat {
   jpeg('jpg', 'image/jpeg'),
-  png('png', 'image/png'),
-  webp('webp', 'image/webp');
+  png('png', 'image/png');
 
   const IdentityImageFormat(this.extension, this.mimeType);
 
@@ -31,14 +31,15 @@ enum IdentityImageFormat {
   /// Multipart parçasının `Content-Type`'ı.
   final String mimeType;
 
-  /// Dosya başındaki imzayı okumak için yeten bayt sayısı: WEBP'nin
-  /// `RIFF....WEBP` başlığı ve HEIF'in `....ftyp` kutusu 12 bayt.
-  static const int signatureLength = 12;
+  /// Dosya başındaki imzayı okumak için yeten bayt sayısı: HEIF'in
+  /// `....ftyp` kutusunu görmek için 12 bayt ([PickedFileProbe] okuyor).
+  static const int signatureLength = PickedFileProbe.headLength;
 
   /// Baş baytlardan biçimi bulur; tanımıyorsa `null`.
   ///
-  /// JPEG `FF D8 FF`, PNG `89 50 4E 47 0D 0A 1A 0A`, WEBP `RIFF` + 4 bayt
-  /// boyut + `WEBP`.
+  /// JPEG `FF D8 FF`, PNG `89 50 4E 47 0D 0A 1A 0A`. WEBP **yok**: sunucuda
+  /// WebP okuyan bir ImageIO eklentisi bulunmadığı için gerçek bir WebP
+  /// her zaman `STORAGE_UNSUPPORTED_TYPE` ile düşüyor (koala-backend#348).
   static IdentityImageFormat? detect(List<int> head) {
     if (_startsWith(head, const [0xFF, 0xD8, 0xFF])) return jpeg;
     if (_startsWith(head, const [
@@ -52,11 +53,6 @@ enum IdentityImageFormat {
       0x0A,
     ])) {
       return png;
-    }
-    if (_startsWith(head, 'RIFF'.codeUnits) &&
-        head.length >= 12 &&
-        String.fromCharCodes(head.sublist(8, 12)) == 'WEBP') {
-      return webp;
     }
     return null;
   }
@@ -154,8 +150,8 @@ enum IdentityPhotoRejection {
     'olarak kaydedip yeniden seç.',
   ),
 
-  /// İçeriği JPEG, PNG ya da WEBP olarak tanınmayan dosya.
-  unsupportedType('PNG, JPG, JPEG veya WEBP biçiminde bir fotoğraf seç.'),
+  /// İçeriği JPEG ya da PNG olarak tanınmayan dosya.
+  unsupportedType('PNG, JPG veya JPEG biçiminde bir fotoğraf seç.'),
 
   /// Tek dosya sunucunun dosya başına sınırını aşıyor.
   tooLarge(
@@ -181,7 +177,7 @@ enum IdentityPhotoRejection {
 /// `UploadProperties` / `spring.servlet.multipart` ayarlarıyla aynı:
 /// dosya başına 10 MiB, dört dosya toplamı 40 MiB (sunucunun 42 MB'lik
 /// istek sınırı JSON parçası ve multipart başlıkları için pay bırakıyor),
-/// uzantı PNG / JPG / JPEG / WEBP.
+/// uzantı PNG / JPG / JPEG.
 abstract final class IdentityPhotoPolicy {
   /// Tek karenin en büyük boyutu; şirket logosuyla aynı sunucu sınırı.
   static const int maxPhotoBytes = UploadLimits.maxImageBytes;
@@ -212,7 +208,7 @@ abstract final class IdentityPhotoPolicy {
 
   /// Adayı biçim ve boyut sınırlarından geçirir.
   ///
-  /// Biçim **içerikten**: JPEG/PNG/WEBP imzası yoksa reddediliyor, HEIF
+  /// Biçim **içerikten**: JPEG/PNG imzası yoksa reddediliyor, HEIF
   /// imzası kendi mesajını alıyor. Kabulde [IdentityPhoto] biçimiyle birlikte
   /// dönüyor; ikisi birden dolu ya da boş olamaz.
   static ({IdentityPhoto? photo, IdentityPhotoRejection? rejection}) accept(

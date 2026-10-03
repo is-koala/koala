@@ -64,7 +64,7 @@ void main() {
         EvidenceKind.pdf,
       );
       expect(
-        EvidenceKind.of(contentType: 'image/webp', name: 'a'),
+        EvidenceKind.of(contentType: 'image/png', name: 'a'),
         EvidenceKind.image,
       );
     });

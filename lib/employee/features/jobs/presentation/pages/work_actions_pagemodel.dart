@@ -15,6 +15,7 @@ import 'package:koala/employee/features/profile/presentation/providers/user_prov
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/features/dispute/dispute_routes.dart';
 import 'package:koala/product/formatters/turkish_money_formatter.dart';
 import 'package:koala/product/models/report.dart';
 import 'package:koala/product/network/api_exception.dart';
@@ -294,36 +295,48 @@ abstract class WorkActionsPagemodel<T extends StatefulWidget> extends State<T> {
 
     if (reason == null || !mounted) return;
 
-    await _runAssignmentAction(
+    final opened = await _runAssignmentAction(
       job,
       action: (id) async {
         await assignmentService.openDispute(assignmentId: id, reason: reason);
         return 'Sorun bildirildi, Koala inceleyecek';
       },
     );
+
+    // Açılır açılmaz kanıt ekleme ekranına (is-koala/koala#215): dosya çoğu
+    // zaman bildirimle aynı anda elde. Ekran kapanınca satır/kart yeniden
+    // okunuyor — karar bu arada verilmiş olabilir.
+    final assignmentId = job.assignmentId;
+    if (opened && assignmentId != null && mounted) {
+      await context.push(DisputeRoutes.location(assignmentId));
+      if (mounted) await refreshWork();
+    }
   }
 
-  /// İptal ve uyuşmazlığın ortak gövdesi: kilit, hata ve tazeleme.
-  Future<void> _runAssignmentAction(
+  /// İptal ve uyuşmazlığın ortak gövdesi: kilit, hata ve tazeleme. Eylem
+  /// sunucuda başarılı olduysa `true`.
+  Future<bool> _runAssignmentAction(
     MyJob job, {
     required Future<String> Function(String assignmentId) action,
   }) async {
     final assignmentId = job.assignmentId;
-    if (assignmentId == null || assignmentActionId != null) return;
+    if (assignmentId == null || assignmentActionId != null) return false;
 
     setState(() => assignmentActionId = assignmentId);
 
     try {
       final message = await action(assignmentId);
-      if (!mounted) return;
+      if (!mounted) return true;
       AppToast.success(context, message);
       await refreshWork();
+      return true;
     } on ApiException catch (error) {
-      if (!mounted) return;
+      if (!mounted) return false;
       AppToast.error(context, error.message);
       // 409: durum sunucuda değişmiş — iş zaten iptal edilmiş ya da emanette
       // para kalmamış olabilir. Doğrusunu göstermek için tazeleniyor.
       if (error.type.serverStateMoved) await refreshWork();
+      return false;
     } finally {
       if (mounted) setState(() => assignmentActionId = null);
     }

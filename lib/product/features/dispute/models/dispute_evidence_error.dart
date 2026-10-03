@@ -49,24 +49,24 @@ enum DisputeEvidenceError {
   /// `400` — dosya boş.
   empty(
     code: 'DISPUTE_EVIDENCE_EMPTY',
-    message: 'Dosya boş. İçeriği olan bir dosya seçip yeniden dene.',
+    message: 'Dosya boş. İçeriği olan bir dosya seçip yeniden deneyin.',
     action: DisputeEvidenceAction.pickAnother,
   ),
 
   /// `400` — dosya 10 MB sınırını aşıyor.
   tooLarge(
     code: 'DISPUTE_EVIDENCE_TOO_LARGE',
-    message: 'Dosya 10 MB sınırını aşıyor. Daha küçük bir dosya seç.',
+    message: 'Dosya 10 MB sınırını aşıyor. Daha küçük bir dosya seçin.',
     action: DisputeEvidenceAction.pickAnother,
   ),
 
   /// `400` — uzantı listede yok ya da içerik uzantıyla uyuşmuyor / açılamıyor
-  /// (HEIC dahil).
+  /// (HEIC dahil; WEBP de — koala-backend#348).
   unsupportedType(
     code: 'STORAGE_UNSUPPORTED_TYPE',
     message:
-        'Bu dosya biçimi kabul edilmiyor. PDF, PNG, JPG veya WEBP bir dosya '
-        'seç; HEIC kabul edilmiyor.',
+        'Bu dosya biçimi kabul edilmiyor. PDF, PNG veya JPG bir dosya '
+        'seçin; HEIC kabul edilmiyor.',
     action: DisputeEvidenceAction.pickAnother,
   ),
 
@@ -75,7 +75,7 @@ enum DisputeEvidenceError {
     code: 'STORAGE_IMAGE_TOO_LARGE',
     message:
         'Görselin çözünürlüğü çok yüksek. Daha düşük çözünürlükte çekilmiş '
-        'bir kopya seç.',
+        'bir kopya seçin.',
     action: DisputeEvidenceAction.pickAnother,
   ),
 
@@ -83,7 +83,8 @@ enum DisputeEvidenceError {
   requestTooLarge(
     code: 'REQUEST_BODY_TOO_LARGE',
     message:
-        'Dosya sunucunun kabul ettiği boyutu aşıyor. Daha küçük bir dosya seç.',
+        'Dosya sunucunun kabul ettiği boyutu aşıyor. Daha küçük bir dosya '
+        'seçin.',
     action: DisputeEvidenceAction.pickAnother,
   ),
 
@@ -107,7 +108,7 @@ enum DisputeEvidenceError {
   /// kalan nesneyi siliyor, tekrar denemek güvenli.
   uploadFailed(
     code: 'DISPUTE_EVIDENCE_UPLOAD_FAILED',
-    message: 'Kanıt dosyası yüklenemedi. Biraz sonra yeniden dene.',
+    message: 'Kanıt dosyası yüklenemedi. Biraz sonra yeniden deneyin.',
     action: DisputeEvidenceAction.retry,
   );
 
@@ -157,17 +158,18 @@ class DisputeEvidenceFailure {
     }
 
     if (error.statusCode == 413) {
-      return const DisputeEvidenceFailure(
-        message:
-            'Dosya sunucunun kabul ettiği boyutu aşıyor. Daha küçük bir dosya seç.',
-        action: DisputeEvidenceAction.pickAnother,
+      const tooLarge = DisputeEvidenceError.requestTooLarge;
+      return DisputeEvidenceFailure(
+        message: tooLarge.message,
+        action: tooLarge.action,
       );
     }
 
     if (error.type == ApiErrorType.tooManyRequests) {
       return const DisputeEvidenceFailure(
         message:
-            'Kısa sürede çok fazla yükleme yaptın. Biraz bekleyip yeniden dene.',
+            'Kısa sürede çok fazla yükleme yaptınız. Biraz bekleyip yeniden '
+            'deneyin.',
         action: DisputeEvidenceAction.retry,
       );
     }

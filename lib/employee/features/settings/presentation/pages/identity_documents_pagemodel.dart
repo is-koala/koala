@@ -197,7 +197,7 @@ abstract class IdentityDocumentsPagemodel extends State<IdentityDocumentsPage> {
         photos: Map.of(photos),
         onProgress: (sent, total) {
           if (!mounted) return;
-          setState(() => progress = total > 0 ? sent / total : null);
+          setState(() => progress = uploadFraction(sent, total));
         },
       );
       if (!mounted) return;

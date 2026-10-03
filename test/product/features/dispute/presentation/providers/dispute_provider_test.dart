@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/jobs/services/assignment_service.dart';
+import 'package:koala/product/features/dispute/models/dispute_case.dart';
 import 'package:koala/product/features/dispute/models/dispute_evidence.dart';
 import 'package:koala/product/features/dispute/models/evidence_file.dart';
 import 'package:koala/product/features/dispute/presentation/providers/dispute_provider.dart';
@@ -99,6 +101,7 @@ class _Fixture {
       assignmentId: 'assignment-1',
       assignmentService: AssignmentService.withClient(assignmentApi.client),
       evidenceService: evidence,
+      clock: _fixedClock,
     );
   }
 
@@ -124,6 +127,9 @@ class _Fixture {
 
 EvidenceCandidate _jpeg([String name = 'foto.jpg']) =>
     candidateFrom(name, jpegSignatureBytes);
+
+/// Yükleme anı: adı olmayan dosya buna göre adlanıyor.
+DateTime _fixedClock() => DateTime(2026, 10, 3, 10, 42, 31);
 
 ApiException _conflict(String code) => ApiException(
   message: 'Sunucu mesajı',
@@ -324,6 +330,103 @@ void main() {
       await first;
     });
 
+    // Adı olmayan (kamera/galeri) dosya yükleme anına göre adlanıyor: personel
+    // adı çekim zamanı sanmasın.
+    test('adı olmayan dosya kanit-<yükleme anı> adıyla gider', () async {
+      final fx = _Fixture();
+      await fx.provider.start();
+
+      await fx.provider.attach(
+        'dispute-1',
+        photoCandidate('image_picker_8F2A.jpg', jpegSignatureBytes),
+      );
+
+      expect(
+        fx.evidence.uploads.single.file.uploadName,
+        'kanit-20261003-104231.jpg',
+      );
+    });
+
+    // Beklenmeyen bir hata da (ApiException dışı) ilerleme çubuğunu açık,
+    // "Kanıt Ekle"yi kapalı bırakmamalı.
+    test(
+      'beklenmeyen hata yükleme durumunu temizler ve yeniden fırlar',
+      () async {
+        final fx = _Fixture();
+        await fx.provider.start();
+        fx.evidence.uploadError = StateError('beklenmeyen');
+
+        await expectLater(
+          fx.provider.attach('dispute-1', _jpeg()),
+          throwsA(isA<StateError>()),
+        );
+
+        expect(fx.provider.isUploading, isFalse);
+        expect(fx.provider.upload, isNull);
+        // Sonraki yükleme yine başlayabiliyor.
+        fx.evidence.uploadError = null;
+        expect(
+          (await fx.provider.attach('dispute-1', _jpeg())).isAttached,
+          isTrue,
+        );
+      },
+    );
+
+    // Seçicinin geçici dosyası (iOS `tmp` temizliği) yükleme başlamadan
+    // silinmiş: servis ApiException verir, çubuk açık kalmaz.
+    test('silinmiş geçici dosya yüklemeyi kilitlemez', () async {
+      final api = FakeApi(handler: (_) => dataResponse(evidenceJson('e')));
+      final provider = DisputeProvider(
+        assignmentId: 'assignment-1',
+        assignmentService: AssignmentService.withClient(
+          FakeApi(
+            handler: (_) => dataResponse([disputeJson('dispute-1')]),
+          ).client,
+        ),
+        evidenceService: DisputeEvidenceService.withClient(api.client),
+        clock: _fixedClock,
+      );
+      final candidate = _jpeg('gecici.jpg');
+      File(candidate.path).deleteSync();
+
+      final result = await provider.attach('dispute-1', candidate);
+
+      expect(result.isAttached, isFalse);
+      expect(result.message, contains('Dosyayı yeniden seçin'));
+      expect(provider.isUploading, isFalse);
+      expect(api.requests, isEmpty);
+    });
+
+    // Yükleme sürerken bir yenileme başlamış: sonrasında yapılan yeniden okuma
+    // onun numarasıyla atılmamalı, karşı tarafın eklediği dosya da görünmeli.
+    test(
+      'yükleme sürerken başlayan yenileme sonrası yeniden okumayı bozmaz',
+      () async {
+        final fx = _Fixture();
+        await fx.provider.start();
+        fx.evidence.uploadGate = Completer<DisputeEvidence>();
+
+        final attaching = fx.provider.attach('dispute-1', _jpeg());
+        await Future<void>.delayed(Duration.zero);
+        await fx.provider.refresh();
+
+        final created = DisputeEvidence.fromJson(
+          evidenceJson('created-1', fileName: 'kanit.jpg'),
+        );
+        // Karşı taraf da bu arada bir dosya eklemiş.
+        fx.evidence.lists['dispute-1'] = [
+          DisputeEvidence.fromJson(
+            evidenceJson('other-1', fileName: 'onlar.jpg'),
+          ),
+          created,
+        ];
+        fx.evidence.uploadGate!.complete(created);
+        await attaching;
+
+        expect(fx.only.evidence.map((e) => e.id), ['other-1', 'created-1']);
+      },
+    );
+
     test(
       'sonuçlanmış uyuşmazlık 409: mesaj söyler, sayfa kendini yeniden okur',
       () async {
@@ -372,7 +475,7 @@ void main() {
         errorCode: 'STORAGE_UNSUPPORTED_TYPE',
       );
       final unsupported = await fx.provider.attach('dispute-1', _jpeg());
-      expect(unsupported.message, contains('PDF, PNG, JPG'));
+      expect(unsupported.message, contains('PDF, PNG veya JPG'));
 
       fx.evidence.uploadError = const ApiException(
         message: 'x',

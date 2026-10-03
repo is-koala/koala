@@ -178,12 +178,18 @@ abstract class WorkDetailPagemodel
     }
   }
 
-  /// Mesai oturumlarını ve iptal kaydını çeker.
+  /// Mesai oturumlarını, iptal kaydını ve uyuşmazlıkları çeker.
   ///
-  /// İkisi de yalnızca ilgili durumda isteniyor: oturum, onaydan önce
+  /// Üçü de yalnızca ilgili durumda isteniyor: oturum, onaydan önce
   /// olamaz; iptal kaydı, iptal edilmemiş atamada `null` döner ve boşuna
-  /// bir istektir. Hata sayfayı kapatmıyor — çizelge o satırlar olmadan
-  /// çiziliyor, iptal kartı atamanın içindeki özete düşüyor.
+  /// bir istektir; uyuşmazlık emanette para yokken açılamaz
+  /// ([_mayHaveDispute]). Hata sayfayı kapatmıyor — çizelge o satırlar
+  /// olmadan çiziliyor, iptal kartı atamanın içindeki özete düşüyor,
+  /// uyuşmazlık kartı çizilmiyor.
+  ///
+  /// Sayaç oturumlardan hemen sonra kuruluyor: iptal ve uyuşmazlık okumaları
+  /// birbirinden bağımsız ve paralel, açık mesainin geçen süresi onların
+  /// ağ gecikmesini beklemiyor.
   Future<void> _loadAssignmentRecords() async {
     final assignmentId = job.assignmentId;
     if (assignmentId == null) return;
@@ -197,42 +203,44 @@ abstract class WorkDetailPagemodel
         if (!mounted) return;
       }
     }
+    _syncElapsedTicker();
 
-    if (job.status == MyJobStatus.cancelled) {
-      try {
-        final loaded = await assignmentService.fetchCancellation(assignmentId);
-        if (!mounted) return;
-        setState(() => cancellation = loaded);
-      } on ApiException {
-        if (!mounted) return;
-      }
-    }
+    await Future.wait([
+      if (job.status == MyJobStatus.cancelled) _loadCancellation(assignmentId),
+      if (_mayHaveDispute) _loadDisputes(assignmentId),
+    ]);
+  }
 
-    // Uyuşmazlık her durumda olabilir (para emanetteyken açılıyor, sonra iş
-    // iptal edilse de kayıt duruyor); özet kartı yalnız varsa çizilir.
+  Future<void> _loadCancellation(String assignmentId) async {
     try {
-      final loaded = await assignmentService.fetchDisputes(assignmentId);
+      final loaded = await assignmentService.fetchCancellation(assignmentId);
       if (!mounted) return;
-      setState(() => disputes = _newestFirst(loaded));
+      setState(() => cancellation = loaded);
     } on ApiException {
       if (!mounted) return;
     }
-
-    _syncElapsedTicker();
   }
 
-  static List<Dispute> _newestFirst(List<Dispute> loaded) {
-    final sorted = [...loaded];
-    sorted.sort((a, b) {
-      final left = a.createdAt;
-      final right = b.createdAt;
-      if (left == null && right == null) return 0;
-      if (left == null) return 1;
-      if (right == null) return -1;
-      return right.compareTo(left);
-    });
-    return sorted;
+  Future<void> _loadDisputes(String assignmentId) async {
+    try {
+      final loaded = await assignmentService.fetchDisputes(assignmentId);
+      if (!mounted) return;
+      setState(() => disputes = Dispute.newestFirst(loaded));
+    } on ApiException {
+      if (!mounted) return;
+    }
   }
+
+  /// Bu atamada uyuşmazlık olabilir mi.
+  ///
+  /// Uyuşmazlık yalnız emanette para varken açılabiliyor
+  /// (`dispute.nothing.to.dispute`): onay bekleyen (`PENDING_CONFIRMATION`)
+  /// ve reddedilmiş atamada para hiç emanete girmedi, o yüzden istek boşuna.
+  /// Sonuçlanmış uyuşmazlık, iş iptal olsa bile kayıt olarak kalıyor.
+  bool get _mayHaveDispute => switch (job.status) {
+    MyJobStatus.awaitingApproval || MyJobStatus.rejected => false,
+    _ => true,
+  };
 
   /// Uyuşmazlık ekranını açar; dönünce özet (durum) tazeleniyor — karar bu
   /// arada verilmiş olabilir.

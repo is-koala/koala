@@ -103,7 +103,8 @@ String writeEvidenceFile(String name, List<int> content) {
   return file.path;
 }
 
-/// Seçicinin vereceği aday: dosya diskte, boyut ve baş baytlar içerikten.
+/// Belge seçicisinin vereceği aday: dosya diskte, boyut ve baş baytlar
+/// içerikten; ad kullanıcının dosyasının adı (ya da [displayName]).
 EvidenceCandidate candidateFrom(
   String name,
   List<int> content, {
@@ -111,6 +112,13 @@ EvidenceCandidate candidateFrom(
 }) {
   final path = writeEvidenceFile(name, content);
   return EvidencePicker.candidateFor(path, displayName: displayName ?? name);
+}
+
+/// Kamera ya da galerinin vereceği aday: **adı yok** — seçicinin geçici adı
+/// taşınmıyor, ad yükleme anında üretiliyor.
+EvidenceCandidate photoCandidate(String name, List<int> content) {
+  final path = writeEvidenceFile(name, content);
+  return EvidencePicker.candidateFor(path);
 }
 
 /// Kamera/galeri/belge seçicisinin yerine geçer: sırayla verilen adayları

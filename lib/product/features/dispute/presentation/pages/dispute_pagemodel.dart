@@ -14,6 +14,7 @@ abstract class DisputePagemodel extends State<DisputePage> {
       assignmentId: widget.assignmentId,
       assignmentService: widget.assignmentService,
       evidenceService: widget.evidenceService,
+      clock: widget.clock,
     );
     unawaited(_provider.start());
   }
@@ -103,9 +104,9 @@ abstract class DisputePagemodel extends State<DisputePage> {
   }
 
   static String _sourceLabel(EvidenceSource source) => switch (source) {
-    EvidenceSource.camera => 'Fotoğraf çek',
-    EvidenceSource.gallery => 'Galeriden seç',
-    EvidenceSource.document => 'PDF belgesi seç',
+    EvidenceSource.camera => 'Kamerayla Çek',
+    EvidenceSource.gallery => 'Galeriden Seç',
+    EvidenceSource.document => 'PDF Belgesi Seç',
   };
 
   static AppIconData? _sourceIcon(EvidenceSource source) => switch (source) {
@@ -125,10 +126,11 @@ abstract class DisputePagemodel extends State<DisputePage> {
         error.code == 'photo_access_denied';
     if (denied) {
       return source == EvidenceSource.camera
-          ? 'Kameraya erişim izni verilmemiş. Ayarlardan izin verip yeniden dene.'
+          ? 'Kameraya erişim izni verilmemiş. Ayarlardan izin verip yeniden '
+                'deneyin.'
           : 'Fotoğraflara erişim izni verilmemiş. Ayarlardan izin verip '
-                'yeniden dene.';
+                'yeniden deneyin.';
     }
-    return 'Dosya seçilemedi. Yeniden dene.';
+    return 'Dosya seçilemedi. Yeniden deneyin.';
   }
 }

@@ -1,8 +1,7 @@
-import 'dart:io';
-
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:koala/product/features/dispute/models/evidence_file.dart';
+import 'package:koala/product/services/picked_file_probe.dart';
 
 /// Kanıtın nereden alınacağı.
 enum EvidenceSource {
@@ -26,15 +25,16 @@ enum EvidenceSource {
 /// ([DisputeEvidencePolicy.maxDimension]): dosya sunucu sınırının altında
 /// kalıyor ve iPhone'un HEIC karesi JPEG'e çevriliyor; sunucu HEIC açamıyor.
 ///
-/// **Metadata silinmiyor.** `image_picker` yeniden kodlarken EXIF'i (çekim
-/// saati, cihaz modeli ve — kamerada konum açıksa — GPS) yeni dosyaya
-/// kopyalıyor; uygulamanın bütün fotoğraf yüklemeleri aynı yoldan gidiyor.
-/// Kanıtta çekim zamanı ve yeri delil değeri taşıyabiliyor ve sunucu dosyayı
-/// olduğu gibi saklıyor; ekleme ekranı bunu kullanıcıya söylüyor.
+/// **Metadata istemcide silinmiyor.** `image_picker` yeniden kodlarken EXIF'i
+/// (çekim saati, cihaz modeli, varsa GPS) yeni dosyaya kopyalıyor: iOS galeri
+/// asıl dosyanın metadata'sını taşıyor, iOS kamerası konum yazmıyor, Android
+/// kamerası konum etiketleyebiliyor, Android Photo Picker genellikle konumu
+/// çıkarıyor. Kanıtta çekim zamanı ve yeri delil değeri taşıyabilir ama sunucu
+/// şu an dosyayı olduğu gibi saklıyor ve karşı taraf indirebiliyor
+/// (koala-backend#347 sunucuda ayıklamayı getirecek); ekleme ekranı bu gerçeği
+/// kullanıcıya söylüyor.
 class EvidencePicker {
-  const EvidencePicker({DateTime Function()? clock}) : _clock = clock;
-
-  final DateTime Function()? _clock;
+  const EvidencePicker();
 
   /// Dosyayı alır; kullanıcı vazgeçtiyse `null`. Dönen aday henüz sınırlardan
   /// geçmedi: biçim ve boyut kararı [DisputeEvidencePolicy.accept]'in işi.
@@ -56,9 +56,10 @@ class EvidencePicker {
     );
     if (picked == null) return null;
 
-    // Seçicinin geçici adı (`image_picker_8F2A….jpg`) kullanıcıya da
-    // sunucuya anlamlı gelmiyor; çekim anından ad üretiliyor.
-    return candidateFor(picked.path, displayName: photoName(_now()));
+    // Ad verilmiyor: seçicinin geçici adı (`image_picker_8F2A….jpg`) kimseye
+    // bir şey söylemiyor; ad yükleme anında üretiliyor
+    // ([DisputeEvidencePolicy.accept]).
+    return candidateFor(picked.path);
   }
 
   Future<EvidenceCandidate?> _pickDocument() async {
@@ -69,37 +70,19 @@ class EvidencePicker {
     final path = selection?.path;
     if (path == null) return null;
 
+    // PDF'in kendi adı kullanıcıya anlamlı ("tutanak.pdf"), korunuyor.
     return candidateFor(path, displayName: selection!.name);
   }
 
-  DateTime _now() => (_clock ?? DateTime.now)();
-
-  /// `foto-20261003-104231`: aynı uyuşmazlıkta birkaç fotoğraf birbirinden
-  /// ayırt edilsin diye saniyeye kadar.
-  static String photoName(DateTime moment) {
-    String two(int value) => value.toString().padLeft(2, '0');
-    return 'foto-${moment.year}${two(moment.month)}${two(moment.day)}'
-        '-${two(moment.hour)}${two(moment.minute)}${two(moment.second)}';
-  }
-
-  /// Diskteki dosyadan aday kurar: boyut ve içerik imzası için baş baytlar.
-  ///
-  /// Eşzamanlı okuma: dosyanın tamamı değil ilk on iki baytı; sahte saatli
-  /// widget testlerinde de eşzamansız IO gibi takılmıyor.
-  static EvidenceCandidate candidateFor(
-    String path, {
-    required String displayName,
-  }) {
-    final handle = File(path).openSync();
-    try {
-      return EvidenceCandidate(
-        path: path,
-        bytes: handle.lengthSync(),
-        head: handle.readSync(EvidenceFormat.signatureLength),
-        displayName: displayName,
-      );
-    } finally {
-      handle.closeSync();
-    }
+  /// Diskteki dosyadan aday kurar: boyut ve içerik imzası için baş baytlar
+  /// ([PickedFileProbe]; kimlik fotoğrafı seçicisiyle ortak okuma).
+  static EvidenceCandidate candidateFor(String path, {String? displayName}) {
+    final probe = PickedFileProbe.read(path);
+    return EvidenceCandidate(
+      path: path,
+      bytes: probe.bytes,
+      head: probe.head,
+      displayName: displayName,
+    );
   }
 }

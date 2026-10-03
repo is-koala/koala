@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -64,7 +65,9 @@ class EvidenceTile extends StatelessWidget {
                 height: _iconBox,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: context.accentColor.withValues(alpha: 0.12),
+                  color: context.accentColor.withValues(
+                    alpha: AppColors.surfaceTintAlpha,
+                  ),
                   borderRadius: AppRadius.innerCircular,
                 ),
                 child: AppIcon(

@@ -1,8 +1,7 @@
-import 'dart:io';
-
 import 'package:image_picker/image_picker.dart';
 import 'package:koala/employee/features/settings/models/identity_photo.dart';
 import 'package:koala/employee/features/settings/models/identity_photo_slot.dart';
+import 'package:koala/product/services/picked_file_probe.dart';
 
 /// Kimlik fotoğrafını kameradan ya da galeriden alan sınır.
 ///
@@ -43,25 +42,18 @@ class IdentityPhotoPicker {
     return candidateFor(slot, picked.path);
   }
 
-  /// Diskteki dosyadan aday kurar: boyut ve içerik imzası için baş baytlar.
-  ///
-  /// Eşzamanlı okuma: dosyanın tamamı değil ilk on iki baytı; sahte saatli
-  /// widget testlerinde de eşzamansız IO gibi takılmıyor.
+  /// Diskteki dosyadan aday kurar: boyut ve içerik imzası için baş baytlar
+  /// ([PickedFileProbe]; uyuşmazlık kanıtı seçicisiyle ortak okuma).
   static IdentityPhotoCandidate candidateFor(
     IdentityPhotoSlot slot,
     String path,
   ) {
-    final file = File(path);
-    final handle = file.openSync();
-    try {
-      return IdentityPhotoCandidate(
-        slot: slot,
-        path: path,
-        bytes: handle.lengthSync(),
-        head: handle.readSync(IdentityImageFormat.signatureLength),
-      );
-    } finally {
-      handle.closeSync();
-    }
+    final probe = PickedFileProbe.read(path);
+    return IdentityPhotoCandidate(
+      slot: slot,
+      path: path,
+      bytes: probe.bytes,
+      head: probe.head,
+    );
   }
 }

@@ -3,16 +3,23 @@ import 'package:koala/product/features/dispute/models/evidence_file.dart';
 
 import '../../../../support/dispute_evidence_fixtures.dart';
 
+/// Yükleme anı; adı olmayan dosyanın adı buradan.
+final DateTime _now = DateTime(2026, 10, 3, 10, 42, 31);
+
 EvidenceCandidate _candidate(
   List<int> content, {
-  String name = 'dosya',
+  String? name = 'dosya',
   int? bytes,
 }) => EvidenceCandidate(
-  path: '/tmp/$name',
+  path: '/tmp/${name ?? 'gecici'}',
   bytes: bytes ?? content.length,
   head: content.take(EvidenceFormat.signatureLength).toList(),
   displayName: name,
 );
+
+({EvidenceFile? file, EvidenceRejection? rejection}) _accept(
+  EvidenceCandidate candidate,
+) => DisputeEvidencePolicy.accept(candidate, now: _now);
 
 void main() {
   group('EvidenceFormat.detect', () {
@@ -20,16 +27,22 @@ void main() {
       expect(EvidenceFormat.detect(jpegSignatureBytes), EvidenceFormat.jpeg);
       expect(EvidenceFormat.detect(onePixelPng), EvidenceFormat.png);
       expect(EvidenceFormat.detect(pdfBytes), EvidenceFormat.pdf);
+    });
+
+    // Sunucuda WebP okuyan bir ImageIO eklentisi yok; gerçek bir WebP hep
+    // `STORAGE_UNSUPPORTED_TYPE` ile düşüyor (koala-backend#348), o yüzden
+    // vaat edilmiyor.
+    test('WebP tanınmaz ve reddedilir', () {
+      final webp = [...'RIFF'.codeUnits, 0, 0, 0, 0, ...'WEBP'.codeUnits];
+
+      expect(EvidenceFormat.detect(webp), isNull);
       expect(
-        EvidenceFormat.detect([
-          ...'RIFF'.codeUnits,
-          0,
-          0,
-          0,
-          0,
-          ...'WEBP'.codeUnits,
-        ]),
-        EvidenceFormat.webp,
+        _accept(_candidate(webp, name: 'foto.webp')).rejection,
+        EvidenceRejection.unsupportedType,
+      );
+      expect(
+        EvidenceFormat.values.map((format) => format.extension),
+        isNot(contains('webp')),
       );
     });
 
@@ -45,7 +58,7 @@ void main() {
       expect(EvidenceFormat.pdf.extension, 'pdf');
       expect(EvidenceFormat.pdf.mimeType, 'application/pdf');
       expect(EvidenceFormat.pdf.isImage, isFalse);
-      expect(EvidenceFormat.webp.isImage, isTrue);
+      expect(EvidenceFormat.png.isImage, isTrue);
     });
 
     // Sunucunun uzantı beyaz listesi ile içerik biçimleri aynı küme olmalı:
@@ -63,7 +76,6 @@ void main() {
         'png',
         'jpg',
         'jpeg',
-        'webp',
       });
     });
   });
@@ -71,7 +83,7 @@ void main() {
   group('DisputeEvidencePolicy.accept', () {
     test('geçerli dosyayı içerikten yazılmış adla kabul eder', () {
       // Ad `.heic`, içerik JPEG: Android seçicisinin yeniden kodladığı kare.
-      final result = DisputeEvidencePolicy.accept(
+      final result = _accept(
         _candidate(jpegSignatureBytes, name: 'IMG_1.heic'),
       );
 
@@ -81,34 +93,28 @@ void main() {
     });
 
     test('PDF kabul edilir', () {
-      final result = DisputeEvidencePolicy.accept(
-        _candidate(pdfBytes, name: 'tutanak.pdf'),
-      );
+      final result = _accept(_candidate(pdfBytes, name: 'tutanak.pdf'));
 
       expect(result.file!.format, EvidenceFormat.pdf);
       expect(result.file!.uploadName, 'tutanak.pdf');
     });
 
     test('boş dosya reddedilir', () {
-      final result = DisputeEvidencePolicy.accept(
-        _candidate(const [], name: 'bos.pdf', bytes: 0),
-      );
+      final result = _accept(_candidate(const [], name: 'bos.pdf', bytes: 0));
 
       expect(result.rejection, EvidenceRejection.empty);
       expect(result.file, isNull);
     });
 
     test('HEIC kendi mesajıyla reddedilir', () {
-      final result = DisputeEvidencePolicy.accept(
-        _candidate(heicSignatureBytes, name: 'IMG.heic'),
-      );
+      final result = _accept(_candidate(heicSignatureBytes, name: 'IMG.heic'));
 
       expect(result.rejection, EvidenceRejection.heic);
       expect(result.rejection!.message, contains('HEIC'));
     });
 
     test('uzantısı doğru ama içeriği tanınmayan dosya reddedilir', () {
-      final result = DisputeEvidencePolicy.accept(
+      final result = _accept(
         _candidate('MZ-bir-exe'.codeUnits, name: 'kanit.pdf'),
       );
 
@@ -116,14 +122,14 @@ void main() {
     });
 
     test('10 MiB sınırı: sınırda kabul, bir bayt fazlada ret', () {
-      final atLimit = DisputeEvidencePolicy.accept(
+      final atLimit = _accept(
         _candidate(
           pdfBytes,
           name: 'a.pdf',
           bytes: DisputeEvidencePolicy.maxFileBytes,
         ),
       );
-      final over = DisputeEvidencePolicy.accept(
+      final over = _accept(
         _candidate(
           pdfBytes,
           name: 'a.pdf',
@@ -140,6 +146,45 @@ void main() {
       for (final rejection in EvidenceRejection.values) {
         expect(rejection.message, isNotEmpty, reason: rejection.name);
       }
+    });
+  });
+
+  group('adı olmayan dosya', () {
+    test('kanit-<yükleme anı> adını alır, uzantı içerikten', () {
+      final result = _accept(_candidate(jpegSignatureBytes, name: null));
+
+      expect(result.file!.uploadName, 'kanit-20261003-104231.jpg');
+    });
+
+    // Seçim ya da çekim anı değil, yükleme anı: personel adı çekim zamanı
+    // sanmasın.
+    test('ad yüklemenin saatinden, adayın değil', () {
+      final candidate = _candidate(jpegSignatureBytes, name: null);
+
+      final first = DisputeEvidencePolicy.accept(
+        candidate,
+        now: DateTime(2026, 10, 3, 10, 42, 31),
+      );
+      final later = DisputeEvidencePolicy.accept(
+        candidate,
+        now: DateTime(2026, 10, 3, 10, 43, 2),
+      );
+
+      expect(first.file!.uploadName, 'kanit-20261003-104231.jpg');
+      expect(later.file!.uploadName, 'kanit-20261003-104302.jpg');
+    });
+
+    test('PDF kendi adını korur', () {
+      final result = _accept(_candidate(pdfBytes, name: 'Tutanak 1.pdf'));
+
+      expect(result.file!.uploadName, 'Tutanak 1.pdf');
+    });
+
+    test('tek haneli ay, gün ve saat sıfırla doldurulur', () {
+      expect(
+        DisputeEvidencePolicy.generatedBaseName(DateTime(2026, 1, 2, 3, 4, 5)),
+        'kanit-20260102-030405',
+      );
     });
   });
 

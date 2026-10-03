@@ -32,12 +32,14 @@ void main() {
   });
 
   group('IdentityImageFormat', () {
-    test('JPEG, PNG ve WEBP imzaları biçimleriyle tanınıyor', () {
+    test('JPEG ve PNG imzaları biçimleriyle tanınıyor, WebP tanınmıyor', () {
       expect(
         IdentityImageFormat.detect(jpegSignatureBytes),
         IdentityImageFormat.jpeg,
       );
       expect(IdentityImageFormat.detect(onePixelPng), IdentityImageFormat.png);
+      // Sunucuda WebP okuyan bir ImageIO eklentisi yok (koala-backend#348):
+      // gerçek bir WebP hep `STORAGE_UNSUPPORTED_TYPE` ile düşüyor.
       expect(
         IdentityImageFormat.detect([
           ...'RIFF'.codeUnits,
@@ -45,7 +47,7 @@ void main() {
           ...'WEBP'.codeUnits,
           ...'VP8 '.codeUnits,
         ]),
-        IdentityImageFormat.webp,
+        isNull,
       );
       expect(IdentityImageFormat.detect('GIF89a'.codeUnits), isNull);
       expect(IdentityImageFormat.detect(const []), isNull);
@@ -95,12 +97,7 @@ void main() {
       expect(IdentityPhotoPolicy.maxPhotoBytes, UploadLimits.maxImageBytes);
       expect(IdentityPhotoPolicy.photoCount, IdentityPhotoSlot.values.length);
       expect(IdentityPhotoPolicy.maxTotalBytes, 4 * 10 * 1024 * 1024);
-      expect(IdentityPhotoPolicy.allowedExtensions, {
-        'png',
-        'jpg',
-        'jpeg',
-        'webp',
-      });
+      expect(IdentityPhotoPolicy.allowedExtensions, {'png', 'jpg', 'jpeg'});
     });
 
     test('seçici yeniden kodlamaya zorlanıyor', () {

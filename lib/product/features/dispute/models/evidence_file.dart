@@ -1,5 +1,6 @@
 import 'package:koala/employee/features/settings/models/identity_photo.dart';
 import 'package:koala/product/constants/upload_limits.dart';
+import 'package:koala/product/services/picked_file_probe.dart';
 
 /// Kanıt olarak gönderilebilen biçimler, **içerik imzasıyla** tanınmış.
 ///
@@ -8,10 +9,13 @@ import 'package:koala/product/constants/upload_limits.dart';
 /// olarak yeniden kodlayıp dosya adını `.heic` bırakabiliyor. Görsel imzaları
 /// kimlik fotoğraflarıyla **aynı** koddan okunuyor ([IdentityImageFormat]) —
 /// iki yerde yazılmış bir imza tablosu zamanla ayrışırdı.
+///
+/// **WEBP yok:** sunucu listesinde duruyor ama WebP okuyan bir ImageIO
+/// eklentisi olmadığı için gerçek bir WebP hep `STORAGE_UNSUPPORTED_TYPE` ile
+/// düşüyor (koala-backend#348).
 enum EvidenceFormat {
   jpeg('jpg', 'image/jpeg'),
   png('png', 'image/png'),
-  webp('webp', 'image/webp'),
   pdf('pdf', 'application/pdf');
 
   const EvidenceFormat(this.extension, this.mimeType);
@@ -25,8 +29,8 @@ enum EvidenceFormat {
 
   bool get isImage => this != pdf;
 
-  /// İmzayı okumak için yeten bayt sayısı: kimlik görselleriyle aynı 12.
-  static const int signatureLength = IdentityImageFormat.signatureLength;
+  /// İmzayı okumak için yeten bayt sayısı ([PickedFileProbe] okuyor).
+  static const int signatureLength = PickedFileProbe.headLength;
 
   /// Baş baytlardan biçimi bulur; tanımıyorsa `null`.
   static EvidenceFormat? detect(List<int> head) {
@@ -41,7 +45,6 @@ enum EvidenceFormat {
     return switch (IdentityImageFormat.detect(head)) {
       IdentityImageFormat.jpeg => jpeg,
       IdentityImageFormat.png => png,
-      IdentityImageFormat.webp => webp,
       null => null,
     };
   }
@@ -53,7 +56,7 @@ class EvidenceCandidate {
     required this.path,
     required this.bytes,
     required this.head,
-    required this.displayName,
+    this.displayName,
   });
 
   /// Cihazdaki dosya yolu; seçicinin verdiği geçici kopya.
@@ -64,10 +67,14 @@ class EvidenceCandidate {
   /// Dosyanın ilk [EvidenceFormat.signatureLength] baytı.
   final List<int> head;
 
-  /// Kullanıcıya ve sunucuya yazılacak ad (uzantısız ya da uzantılı);
-  /// kameradan gelen karede seçicinin geçici adı değil, çekim zamanından
-  /// üretilmiş bir ad.
-  final String displayName;
+  /// Kullanıcının verdiği ad (PDF'in kendi adı); `null` ise ad **yükleme
+  /// anında** üretiliyor ([DisputeEvidencePolicy.accept]).
+  ///
+  /// Kamera ve galeriden gelen karelerde `null`: seçicinin geçici adı
+  /// (`image_picker_8F2A….jpg`) kimseye bir şey söylemiyor. Ad olarak çekim ya
+  /// da seçim anı da yazılmıyor — personel onu çekim zamanı sanabilir; yazılan
+  /// tek zaman yüklemenin zamanı.
+  final String? displayName;
 }
 
 /// Gönderilmeye hazır dosya: yol, boyut, biçim ve parça adı.
@@ -92,21 +99,21 @@ class EvidenceFile {
 /// reddedilmekten kurtarmak. Metinler **ne yapılacağını** söylüyor.
 enum EvidenceRejection {
   /// Dosya boş (`DISPUTE_EVIDENCE_EMPTY`).
-  empty('Dosya boş. İçeriği olan bir dosya seç.'),
+  empty('Dosya boş. İçeriği olan bir dosya seçin.'),
 
   /// iPhone'un varsayılan biçimi; sunucu açamıyor. Seçici JPEG'e çeviremediyse
   /// kullanıcıya söylemek gerekiyor.
   heic(
-    'Bu fotoğraf HEIC biçiminde; sunucu bu biçimi kabul etmiyor. Telefonun '
-    'kamera ayarlarından "En Uyumlu" biçimini seç ya da fotoğrafı JPEG '
-    'olarak kaydedip yeniden seç.',
+    'Bu fotoğraf HEIC biçiminde; sunucu bu biçimi kabul etmiyor. '
+    'Telefonunuzun kamera ayarlarından "En Uyumlu" biçimini seçin ya da '
+    'fotoğrafı JPEG olarak kaydedip yeniden seçin.',
   ),
 
-  /// İçeriği PDF, JPEG, PNG ya da WEBP olarak tanınmayan dosya.
-  unsupportedType('PDF, PNG, JPG veya WEBP biçiminde bir dosya seç.'),
+  /// İçeriği PDF, JPEG ya da PNG olarak tanınmayan dosya.
+  unsupportedType('PDF, PNG veya JPG biçiminde bir dosya seçin.'),
 
   /// Dosya sunucunun dosya başına sınırını aşıyor.
-  tooLarge('Dosya en fazla 10 MB olabilir. Daha küçük bir dosya seç.');
+  tooLarge('Dosya en fazla 10 MB olabilir. Daha küçük bir dosya seçin.');
 
   const EvidenceRejection(this.message);
 
@@ -117,9 +124,10 @@ enum EvidenceRejection {
 ///
 /// Değerler backend `UploadProperties` ile aynı: dosya başına 10 MiB
 /// (`upload.max-evidence-size-mb`), uyuşmazlık başına 5
-/// (`upload.max-evidence-per-dispute`), uzantı `pdf, png, jpg, jpeg, webp`
-/// (`upload.evidence-extensions`); web'deki `disputeEvidenceLimits` ile de
-/// aynı.
+/// (`upload.max-evidence-per-dispute`), uzantı `pdf, png, jpg, jpeg`
+/// (`upload.evidence-extensions` bir de `webp` sayıyor ama onu okuyan bir
+/// ImageIO eklentisi yok, koala-backend#348; vaat edilmiyor). Web'deki
+/// `disputeEvidenceLimits` WebP'yi hâlâ listeliyor.
 abstract final class DisputeEvidencePolicy {
   /// Tek dosyanın en büyük boyutu.
   static const int maxFileBytes = 10 * 1024 * 1024;
@@ -146,12 +154,14 @@ abstract final class DisputeEvidencePolicy {
 
   /// Adayı biçim ve boyut sınırlarından geçirir.
   ///
-  /// Biçim **içerikten**: PDF/JPEG/PNG/WEBP imzası yoksa reddediliyor, HEIF
-  /// imzası kendi mesajını alıyor. Kabulde [EvidenceFile] içerikten yazılmış
-  /// adla dönüyor; ikisi birden dolu ya da boş olamaz.
+  /// Biçim **içerikten**: PDF/JPEG/PNG imzası yoksa reddediliyor, HEIF imzası
+  /// kendi mesajını alıyor. Kabulde [EvidenceFile] içerikten yazılmış adla
+  /// dönüyor; ikisi birden dolu ya da boş olamaz. [now] yükleme anı: adı
+  /// olmayan dosya `kanit-<yyyyMMdd-HHmmss>` adını alıyor.
   static ({EvidenceFile? file, EvidenceRejection? rejection}) accept(
-    EvidenceCandidate candidate,
-  ) {
+    EvidenceCandidate candidate, {
+    required DateTime now,
+  }) {
     if (candidate.bytes <= 0) {
       return (file: null, rejection: EvidenceRejection.empty);
     }
@@ -171,10 +181,21 @@ abstract final class DisputeEvidencePolicy {
         path: candidate.path,
         bytes: candidate.bytes,
         format: format,
-        uploadName: uploadNameFor(candidate.displayName, format),
+        uploadName: uploadNameFor(
+          candidate.displayName ?? generatedBaseName(now),
+          format,
+        ),
       ),
       rejection: null,
     );
+  }
+
+  /// Adı olmayan dosyanın gövdesi: `kanit-20261003-104231`. **Yükleme anı**,
+  /// cihazın yerel saati; çekim zamanı değil (o EXIF'te, varsa).
+  static String generatedBaseName(DateTime moment) {
+    String two(int value) => value.toString().padLeft(2, '0');
+    return 'kanit-${moment.year}${two(moment.month)}${two(moment.day)}'
+        '-${two(moment.hour)}${two(moment.minute)}${two(moment.second)}';
   }
 
   /// Gönderilecek ad: [displayName]'in temizlenmiş gövdesi + **gerçek

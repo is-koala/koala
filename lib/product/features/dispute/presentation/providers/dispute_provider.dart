@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:koala/employee/features/jobs/models/dispute.dart';
 import 'package:koala/employee/features/jobs/services/assignment_service.dart';
+import 'package:koala/product/features/dispute/models/dispute_case.dart';
 import 'package:koala/product/features/dispute/models/dispute_evidence.dart';
 import 'package:koala/product/features/dispute/models/dispute_evidence_error.dart';
 import 'package:koala/product/features/dispute/models/evidence_file.dart';
@@ -17,90 +18,6 @@ enum DisputeLoad {
 
   /// Uyuşmazlık listesi okunamadı ve elde eski liste yok.
   failed,
-}
-
-/// Bir uyuşmazlık ve onun kanıtları.
-///
-/// Kanıtlar uyuşmazlıktan **ayrı** isteniyor ve ayrı başarısız olabiliyor:
-/// liste gelmiş, kanıtlar gelmemiş bir uyuşmazlık "kanıt yok" demiyor,
-/// "kanıtlar alınamadı" diyor ve yeni dosya eklemeye izin vermiyor (sayı
-/// bilinmiyor).
-class DisputeCase {
-  const DisputeCase({
-    required this.dispute,
-    this.evidence = const [],
-    this.isEvidenceLoading = true,
-    this.evidenceError,
-  });
-
-  final Dispute dispute;
-  final List<DisputeEvidence> evidence;
-
-  /// Kanıt listesi isteği sürüyor ve elde gösterilecek bir liste yok.
-  final bool isEvidenceLoading;
-
-  /// Kanıt listesinin hata mesajı; elde eski liste varsa o korunur.
-  final String? evidenceError;
-
-  /// Sayının bilindiği hâl: yüklenmiş ve hatasız.
-  bool get isEvidenceKnown => !isEvidenceLoading && evidenceError == null;
-
-  /// Bu uyuşmazlığa şimdi kanıt eklenebilir mi ([DisputeEvidencePolicy]).
-  bool get canAttach =>
-      isEvidenceKnown &&
-      DisputeEvidencePolicy.canAttach(
-        isOpen: dispute.isOpen,
-        count: evidence.length,
-      );
-
-  /// Sınır doldu ama uyuşmazlık hâlâ açık: ekran nedenini söylüyor.
-  bool get isLimitReached =>
-      dispute.isOpen &&
-      isEvidenceKnown &&
-      evidence.length >= DisputeEvidencePolicy.maxPerDispute;
-
-  DisputeCase copyWith({
-    Dispute? dispute,
-    List<DisputeEvidence>? evidence,
-    bool? isEvidenceLoading,
-    Object? evidenceError = _keep,
-  }) {
-    return DisputeCase(
-      dispute: dispute ?? this.dispute,
-      evidence: evidence ?? this.evidence,
-      isEvidenceLoading: isEvidenceLoading ?? this.isEvidenceLoading,
-      evidenceError: identical(evidenceError, _keep)
-          ? this.evidenceError
-          : evidenceError as String?,
-    );
-  }
-
-  static const Object _keep = Object();
-}
-
-/// Süren yüklemenin ilerlemesi.
-class EvidenceUpload {
-  const EvidenceUpload({
-    required this.disputeId,
-    required this.fileName,
-    this.sent = 0,
-    this.total = 0,
-  });
-
-  final String disputeId;
-  final String fileName;
-  final int sent;
-  final int total;
-
-  /// 0-1 arası oran; gövde boyutu henüz bilinmiyorsa `null` (belirsiz çubuk).
-  double? get fraction => total <= 0 ? null : (sent / total).clamp(0.0, 1.0);
-
-  EvidenceUpload withProgress(int sent, int total) => EvidenceUpload(
-    disputeId: disputeId,
-    fileName: fileName,
-    sent: sent,
-    total: total,
-  );
 }
 
 /// Bir yükleme isteğinin sonucu: kanıt, ya da neden olmadığı.
@@ -173,12 +90,18 @@ class DisputeProvider extends ChangeNotifier {
     required this.assignmentId,
     AssignmentService? assignmentService,
     DisputeEvidenceService? evidenceService,
+    DateTime Function()? clock,
   }) : _assignments = assignmentService ?? AssignmentService(),
-       _evidence = evidenceService ?? DisputeEvidenceService();
+       _evidence = evidenceService ?? DisputeEvidenceService(),
+       _clock = clock ?? DateTime.now;
 
   final String assignmentId;
   final AssignmentService _assignments;
   final DisputeEvidenceService _evidence;
+
+  /// Yükleme anı; adı olmayan dosya buna göre adlanıyor
+  /// ([DisputeEvidencePolicy.generatedBaseName]). Testler sabit saat veriyor.
+  final DateTime Function() _clock;
 
   List<DisputeCase> _cases = const [];
   DisputeLoad _load = DisputeLoad.loading;
@@ -233,7 +156,7 @@ class DisputeProvider extends ChangeNotifier {
 
       final previous = {for (final entry in _cases) entry.dispute.id: entry};
       _cases = [
-        for (final dispute in _sorted(disputes))
+        for (final dispute in Dispute.newestFirst(disputes))
           // Yenilemede eldeki kanıt listesi yeni liste gelene kadar korunuyor:
           // satır çark çizip "kanıt yok" yanıp sönmesin.
           previous[dispute.id]?.copyWith(dispute: dispute) ??
@@ -255,24 +178,6 @@ class DisputeProvider extends ChangeNotifier {
       if (_cases.isEmpty) _load = DisputeLoad.failed;
       _notify();
     }
-  }
-
-  /// Yeni olan önde; tarihi olmayan en sona. Eşitlikte sunucu sırası korunur.
-  static List<Dispute> _sorted(List<Dispute> disputes) {
-    final indexed = [
-      for (var i = 0; i < disputes.length; i++)
-        (index: i, dispute: disputes[i]),
-    ];
-    indexed.sort((a, b) {
-      final left = a.dispute.createdAt;
-      final right = b.dispute.createdAt;
-      if (left == null && right == null) return a.index.compareTo(b.index);
-      if (left == null) return 1;
-      if (right == null) return -1;
-      final byDate = right.compareTo(left);
-      return byDate != 0 ? byDate : a.index.compareTo(b.index);
-    });
-    return [for (final entry in indexed) entry.dispute];
   }
 
   /// Bir uyuşmazlığın kanıtlarını yeniden okur (liste hatasındaki *Tekrar
@@ -337,11 +242,10 @@ class DisputeProvider extends ChangeNotifier {
   ) async {
     if (_upload != null) return const AttachResult.busy();
 
-    final accepted = DisputeEvidencePolicy.accept(candidate);
+    final accepted = DisputeEvidencePolicy.accept(candidate, now: _clock());
     final file = accepted.file;
     if (file == null) return AttachResult.rejected(accepted.rejection!);
 
-    final generation = _generation;
     _upload = EvidenceUpload(disputeId: disputeId, fileName: file.uploadName);
     _notify();
 
@@ -360,6 +264,7 @@ class DisputeProvider extends ChangeNotifier {
       );
       if (_disposed) return AttachResult.attached(evidence);
 
+      _upload = null;
       _updateCase(
         disputeId,
         (entry) => entry.copyWith(
@@ -371,22 +276,31 @@ class DisputeProvider extends ChangeNotifier {
           evidenceError: null,
         ),
       );
-      _upload = null;
-      _notify();
       // Aynı anda başlamış eski bir okuma yeni dosyayı silmesin: sunucudaki
       // liste yeniden okunuyor (kendi nesliyle, eskisini geçersiz kılar).
-      await _readEvidence(disputeId, generation: generation);
+      // Nesil **şimdiki**: yükleme sürerken bir yenileme başlamışsa onun
+      // numarasıyla okumak bu okumayı atılmış sayardı.
+      await _readEvidence(disputeId, generation: _generation);
       return AttachResult.attached(evidence);
     } on ApiException catch (error) {
       final failure = DisputeEvidenceFailure.from(error);
       if (_disposed) return AttachResult.failed(failure);
-      _upload = null;
-      _notify();
+      _clearUpload();
       if (failure.action == DisputeEvidenceAction.reload) {
         await _read(keepCases: true);
       }
       return AttachResult.failed(failure);
+    } finally {
+      // Beklenmeyen bir hata da ilerleme çubuğunu açık, "Kanıt Ekle"yi kapalı
+      // bırakmamalı.
+      _clearUpload();
     }
+  }
+
+  void _clearUpload() {
+    if (_upload == null) return;
+    _upload = null;
+    _notify();
   }
 
   /// Kanıtın indirileceği imzalı adresi ister.

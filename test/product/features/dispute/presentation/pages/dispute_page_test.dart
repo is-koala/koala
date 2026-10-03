@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -118,6 +119,8 @@ Future<List<Uri>> _pump(
           opened.add(url);
           return opensExternally;
         },
+        // Yükleme anı sabit: adı olmayan dosya buna göre adlanıyor.
+        clock: () => DateTime(2026, 10, 3, 10, 42, 31),
       ),
     ),
   );
@@ -217,7 +220,10 @@ void main() {
         expect(note, findsOneWidget);
         expect(
           (tester.widget(note) as Text).data,
-          allOf(contains('konum'), contains('Karşı taraf')),
+          allOf(
+            contains('Galeriden seçilen fotoğraflar konum bilgisi taşıyabilir'),
+            contains('karşı taraf indirebilir'),
+          ),
         );
       });
 
@@ -262,25 +268,22 @@ void main() {
       ) async {
         final backend = _Backend();
         final picker = FakeEvidencePicker([
-          candidateFrom(
-            'IMG_1.heic',
-            jpegSignatureBytes,
-            displayName: 'foto-20261003-104231',
-          ),
+          // Android'in `.heic` adlı JPEG'i: ad zaten taşınmıyor.
+          photoCandidate('IMG_1.heic', jpegSignatureBytes),
         ]);
         await _pump(tester, backend, picker: picker, brightness: brightness);
 
-        await _chooseSource(tester, 'Galeriden seç');
+        await _chooseSource(tester, 'Galeriden Seç');
 
         expect(picker.sources, [EvidenceSource.gallery]);
         final upload = backend.uploads.single;
         final part = (upload.data as FormData).files.single;
         expect(part.key, 'file');
-        expect(part.value.filename, 'foto-20261003-104231.jpg');
+        expect(part.value.filename, 'kanit-20261003-104231.jpg');
         expect(part.value.contentType?.mimeType, 'image/jpeg');
 
         expect(find.text('Kanıt eklendi.'), findsOneWidget);
-        expect(find.text('foto-20261003-104231.jpg'), findsOneWidget);
+        expect(find.text('kanit-20261003-104231.jpg'), findsOneWidget);
         expect(find.text('Kanıtlar (1/5)'), findsOneWidget);
       });
 
@@ -289,13 +292,13 @@ void main() {
       ) async {
         final backend = _Backend();
         final picker = FakeEvidencePicker([
-          candidateFrom('a.jpg', jpegSignatureBytes, displayName: 'foto-1'),
+          photoCandidate('a.jpg', jpegSignatureBytes),
           candidateFrom('tutanak.pdf', pdfBytes),
         ]);
         await _pump(tester, backend, picker: picker, brightness: brightness);
 
-        await _chooseSource(tester, 'Fotoğraf çek');
-        await _chooseSource(tester, 'PDF belgesi seç');
+        await _chooseSource(tester, 'Kamerayla Çek');
+        await _chooseSource(tester, 'PDF Belgesi Seç');
 
         expect(picker.sources, [
           EvidenceSource.camera,
@@ -310,18 +313,21 @@ void main() {
       ) async {
         final backend = _Backend()..uploadGate = Completer<FakeApiResponse>();
         final picker = FakeEvidencePicker([
-          candidateFrom('a.jpg', jpegSignatureBytes, displayName: 'kanit-foto'),
+          photoCandidate('a.jpg', jpegSignatureBytes),
         ]);
         await _pump(tester, backend, picker: picker, brightness: brightness);
 
         await tester.tap(find.byKey(const ValueKey('evidence-add-dispute-1')));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Galeriden seç'));
+        await tester.tap(find.text('Galeriden Seç'));
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 50));
 
         expect(find.byKey(const ValueKey('evidence-upload')), findsOneWidget);
-        expect(find.textContaining('kanit-foto.jpg'), findsOneWidget);
+        expect(
+          find.textContaining('kanit-20261003-104231.jpg'),
+          findsOneWidget,
+        );
         expect(
           find.byKey(const ValueKey('evidence-upload-bar')),
           findsOneWidget,
@@ -343,11 +349,33 @@ void main() {
         ]);
         await _pump(tester, backend, picker: picker, brightness: brightness);
 
-        await _chooseSource(tester, 'Galeriden seç');
+        await _chooseSource(tester, 'Galeriden Seç');
 
         expect(find.textContaining('HEIC biçiminde'), findsOneWidget);
         expect(backend.uploads, isEmpty);
       });
+
+      testWidgets(
+        'silinmiş geçici dosya mesajla bırakır, yükleme kilitlenmez',
+        (tester) async {
+          final backend = _Backend();
+          final candidate = photoCandidate('gecici.jpg', jpegSignatureBytes);
+          File(candidate.path).deleteSync();
+          final picker = FakeEvidencePicker([candidate]);
+          await _pump(tester, backend, picker: picker, brightness: brightness);
+
+          await _chooseSource(tester, 'Galeriden Seç');
+
+          expect(find.textContaining('Dosyayı yeniden seçin'), findsOneWidget);
+          expect(find.byKey(const ValueKey('evidence-upload')), findsNothing);
+          expect(backend.uploads, isEmpty);
+          // Düğme kapalı kalmadı: kullanıcı başka dosya seçebilir.
+          final add = tester.widget<OutlinedButton>(
+            find.byKey(const ValueKey('evidence-add-dispute-1')),
+          );
+          expect(add.onPressed, isNotNull);
+        },
+      );
 
       testWidgets('seçici vazgeçilirse hiçbir şey olmaz', (tester) async {
         final backend = _Backend();
@@ -358,7 +386,7 @@ void main() {
           brightness: brightness,
         );
 
-        await _chooseSource(tester, 'Galeriden seç');
+        await _chooseSource(tester, 'Galeriden Seç');
 
         expect(backend.uploads, isEmpty);
         expect(find.byType(SnackBar), findsNothing);
@@ -374,7 +402,7 @@ void main() {
         );
         await _pump(tester, backend, picker: picker, brightness: brightness);
 
-        await _chooseSource(tester, 'Fotoğraf çek');
+        await _chooseSource(tester, 'Kamerayla Çek');
 
         expect(find.textContaining('Kameraya erişim izni'), findsOneWidget);
         expect(backend.uploads, isEmpty);
@@ -397,7 +425,7 @@ void main() {
         backend.disputes
           ..clear()
           ..add(disputeJson('dispute-1', status: 'RESOLVED'));
-        await _chooseSource(tester, 'PDF belgesi seç');
+        await _chooseSource(tester, 'PDF Belgesi Seç');
 
         expect(
           find.textContaining('Bu uyuşmazlık sonuçlanmış'),
@@ -425,7 +453,7 @@ void main() {
             evidenceJson('ev-$i', fileName: 'f$i.jpg'),
         ];
 
-        await _chooseSource(tester, 'PDF belgesi seç');
+        await _chooseSource(tester, 'PDF Belgesi Seç');
 
         expect(find.textContaining('en fazla 5 kanıt'), findsWidgets);
         expect(

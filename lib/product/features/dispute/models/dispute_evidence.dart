@@ -16,7 +16,7 @@ enum EvidenceKind {
     final dot = name.lastIndexOf('.');
     final extension = dot < 0 ? '' : name.substring(dot + 1).toLowerCase();
     return switch (extension) {
-      'png' || 'jpg' || 'jpeg' || 'webp' => image,
+      'png' || 'jpg' || 'jpeg' => image,
       'pdf' => pdf,
       _ => other,
     };

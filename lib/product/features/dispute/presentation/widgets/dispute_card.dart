@@ -7,9 +7,9 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
+import 'package:koala/product/features/dispute/models/dispute_case.dart';
 import 'package:koala/product/features/dispute/models/dispute_evidence.dart';
 import 'package:koala/product/features/dispute/models/evidence_file.dart';
-import 'package:koala/product/features/dispute/presentation/providers/dispute_provider.dart';
 import 'package:koala/product/features/dispute/presentation/widgets/evidence_tile.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/status_badge.dart';
@@ -282,17 +282,19 @@ class DisputeCard extends StatelessWidget {
       ),
       const SizedBox(height: AppSizes.spaceSmall),
       Text(
-        'PDF, PNG, JPG veya WEBP · dosya başına en fazla 10 MB · her '
-        'yüklemede bir dosya.',
+        'PDF, PNG veya JPG · dosya başına en fazla 10 MB · her yüklemede bir '
+        'dosya.',
         style: style,
       ),
       const SizedBox(height: AppSizes.spaceTiny),
-      // Metadata silinmiyor (EvidencePicker): kullanıcı neyin gittiğini
-      // bilmeli, karşı taraf da dosyayı indirebiliyor.
+      // Konum bilgisi istemcide silinmiyor (EvidencePicker) ve sunucu dosyayı
+      // olduğu gibi saklıyor (koala-backend#347): kullanıcı neyin gittiğini
+      // bilmeli, karşı taraf da dosyayı indirebiliyor. Galeriyi anıyoruz:
+      // iOS galeri asıl dosyanın metadata'sını taşıyor, Android kamerası da
+      // etiketleyebilir — bu cümle kamera için de doğru.
       Text(
-        'Fotoğraflar çekim saati ve — kamerada konum açıksa — konum '
-        'bilgisiyle birlikte gönderilir. Karşı taraf ve Koala destek ekibi '
-        'dosyayı görebilir.',
+        'Galeriden seçilen fotoğraflar konum bilgisi taşıyabilir. Yüklediğiniz '
+        'dosyayı karşı taraf indirebilir, Koala destek ekibi de görür.',
         key: const ValueKey('evidence-metadata-note'),
         style: style,
       ),

@@ -226,8 +226,8 @@ void main() {
             'front': UploadFile(imageFile.path),
             'back': UploadFile(
               second.path,
-              filename: 'arka.webp',
-              contentType: 'image/webp',
+              filename: 'arka.png',
+              contentType: 'image/png',
             ),
           },
           parse: (data) => (data! as Map<String, dynamic>)['id'] as String,
@@ -252,8 +252,8 @@ void main() {
         expect(byKey['front']!.filename, 'galeri.jpg');
         expect(byKey['front']!.contentType?.mimeType, 'image/jpeg');
         // Ad ve tip verildiyse dosyanın kendi adı değil onlar gidiyor.
-        expect(byKey['back']!.filename, 'arka.webp');
-        expect(byKey['back']!.contentType?.mimeType, 'image/webp');
+        expect(byKey['back']!.filename, 'arka.png');
+        expect(byKey['back']!.contentType?.mimeType, 'image/png');
         expect(byKey['back']!.length, 'koala-arka'.length);
       },
     );
