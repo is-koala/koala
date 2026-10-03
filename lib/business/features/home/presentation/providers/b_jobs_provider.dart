@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:koala/business/features/home/models/b_job_post.dart';
 import 'package:koala/business/features/home/models/create_job_request.dart';
+import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/business/features/home/services/employer_job_service.dart';
 import 'package:koala/product/network/api_exception.dart';
@@ -16,6 +17,15 @@ import 'package:koala/product/network/api_exception.dart';
 /// gerekiyor: ilan detayı, ana sayfadaki son başvurular ve geçmiş ilanın işi
 /// alan kişisi. O yüzden başvurular toptan değil, [ensureApplicants] ile ilan
 /// ilan ve istendiğinde çekiliyor — listeyi çizmek için asla.
+///
+/// **Liste ile yönetilen ilan aynı küme değil.** `GET /users/me/jobs` yalnız
+/// ilanı açan kullanıcının ilanlarını getiriyor (ve ilk sayfayı), oysa sunucu
+/// başvuruları şirket ilanının her güncel yetkilisine de açıyor. Başka bir
+/// yetkilinin açtığı şirket ilanı ya da ilk sayfaya sığmayan eski ilan
+/// listede yok ama başvuruları bu kullanıcıya ait; ilan detayı onları
+/// [adoptJob] ile benimsiyor. Benimsenen ilanlar listelerin, sekmelerin ve
+/// sayaçların dışında; yalnız kimliğe göre bakışta ([getPostByJobId]) ve
+/// başvuran/karar akışında görünüyor.
 class BJobsProvider extends ChangeNotifier {
   BJobsProvider({EmployerJobService? service})
     : _service = service ?? EmployerJobService();
@@ -23,6 +33,13 @@ class BJobsProvider extends ChangeNotifier {
   final EmployerJobService _service;
 
   List<BJobPost> _jobPosts = const [];
+
+  /// Kullanıcının yönettiği ama ilan listesinde olmayan ilanlar; kimliğe göre.
+  ///
+  /// Ayrı tutuluyor çünkü [load] listeyi her seferinde sunucunun yanıtıyla
+  /// baştan kuruyor: benimsenen ilan o listede olsaydı kabul/ret içindeki
+  /// yenilemede düşerdi.
+  final Map<String, BJobPost> _adoptedPosts = {};
   bool _isLoading = false;
   bool _hasLoaded = false;
   String? _errorMessage;
@@ -84,12 +101,19 @@ class BJobsProvider extends ChangeNotifier {
       // Başvuran isteği liste isteğinden sonra tamamlanmış olabilir. Bir
       // liste yanıtı, istek başlarken alınmış eski snapshot'ı değil tam
       // yanıt anındaki başvuran durumunu yeni ilan özetiyle birleştirir.
-      final currentPosts = {for (final post in _jobPosts) post.job.id: post};
+      final currentPosts = {
+        ..._adoptedPosts,
+        for (final post in _jobPosts) post.job.id: post,
+      };
       _jobPosts = [
         for (final job in page.jobs)
           currentPosts[job.id]?.withJob(job) ?? BJobPost(job: job),
       ];
-      final retainedJobIds = {for (final post in _jobPosts) post.job.id};
+      // Liste artık ilanı kendisi getiriyor; benimsenmiş kopya geçerli
+      // kaydın yerine ikinci bir kayıt olarak kalmasın.
+      final listedJobIds = {for (final post in _jobPosts) post.job.id};
+      _adoptedPosts.removeWhere((jobId, _) => listedJobIds.contains(jobId));
+      final retainedJobIds = {...listedJobIds, ..._adoptedPosts.keys};
       _pendingApplicantRequests.removeWhere(
         (jobId, _) => !retainedJobIds.contains(jobId),
       );
@@ -125,10 +149,10 @@ class BJobsProvider extends ChangeNotifier {
   /// Başvurular alınamazsa eldeki liste korunur ve ilan bazındaki hata
   /// çağıran ekranın tekrar deneme sunabilmesi için ayrıca tutulur.
   Future<void> ensureApplicants(String jobId, {bool force = false}) async {
-    final index = _jobPosts.indexWhere((post) => post.job.id == jobId);
-    if (index == -1) return;
-    if (_jobPosts[index].applicantsLoaded && !force) return;
-    if (_jobPosts[index].applicantsError != null && !force) return;
+    final post = getPostByJobId(jobId);
+    if (post == null) return;
+    if (post.applicantsLoaded && !force) return;
+    if (post.applicantsError != null && !force) return;
     if (_pendingApplicantRequests.containsKey(jobId) && !force) return;
 
     final generation = _generation;
@@ -164,9 +188,41 @@ class BJobsProvider extends ChangeNotifier {
 
   void _updatePost(String jobId, BJobPost Function(BJobPost post) update) {
     final index = _jobPosts.indexWhere((post) => post.job.id == jobId);
-    if (index == -1) return;
-    _jobPosts = [..._jobPosts];
-    _jobPosts[index] = update(_jobPosts[index]);
+    if (index != -1) {
+      _jobPosts = [..._jobPosts];
+      _jobPosts[index] = update(_jobPosts[index]);
+      return;
+    }
+
+    final adopted = _adoptedPosts[jobId];
+    if (adopted != null) _adoptedPosts[jobId] = update(adopted);
+  }
+
+  /// Listede olmayan bir ilanı, bu kullanıcının yönettiği ilan olarak
+  /// benimser; benimsendiyse `true`.
+  ///
+  /// [detail] `GET /jobs/{id}`'den geliyor. Yetki sunucuda, burada yalnız
+  /// "bu ilanın başvuranlarını istemeye değer mi" ayrımı yapılıyor:
+  /// - ilan **şirket ilanıysa**: sunucu başvuruları şirketin güncel her
+  ///   yetkilisine açıyor, ilanı kimin açtığına bakmıyor;
+  /// - ya da ilanı **[viewerId] açtıysa** (ilk sayfaya sığmayan eski ilan).
+  ///
+  /// Başkasının bireysel ilanı benimsenmiyor: sunucu o başvuruları zaten
+  /// vermez, istemek yalnız bir hata paneli çizdirirdi. İlan listede varsa
+  /// kayıt çiftlenmesin diye hiçbir şey yapılmıyor. Aynı ilan yeniden
+  /// benimsenirse özeti tazelenir, başvuranları korunur.
+  bool adoptJob(JobDetail detail, {required String? viewerId}) {
+    if (_jobPosts.any((post) => post.job.id == detail.id)) return false;
+
+    final isCompanyJob = detail.employerType == JobEmployerType.company;
+    final openedByViewer = viewerId != null && detail.creator?.id == viewerId;
+    if (!isCompanyJob && !openedByViewer) return false;
+
+    final summary = detail.toSummary();
+    _adoptedPosts[detail.id] =
+        _adoptedPosts[detail.id]?.withJob(summary) ?? BJobPost(job: summary);
+    notifyListeners();
+    return true;
   }
 
   /// Yeni ilan açar. Başarılıysa liste yenilenir ve açılan ilan döner;
@@ -265,18 +321,20 @@ class BJobsProvider extends ChangeNotifier {
     }
   }
 
-  /// Kimliğine göre tek ilan; liste henüz gelmediyse `null`.
+  /// Kimliğine göre tek ilan; liste henüz gelmediyse ve ilan benimsenmediyse
+  /// `null`. Listedeki kayıt, benimsenmiş kopyadan önce gelir.
   BJobPost? getPostByJobId(String jobId) {
     for (final post in _jobPosts) {
       if (post.job.id == jobId) return post;
     }
-    return null;
+    return _adoptedPosts[jobId];
   }
 
   /// Çıkışta önceki işverenin ilanları kalmasın.
   void clear() {
     _generation++;
     _jobPosts = const [];
+    _adoptedPosts.clear();
     _latestLoadRequestId = null;
     _isLoading = false;
     _pendingApplicantRequests.clear();

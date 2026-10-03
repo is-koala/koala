@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/business/features/home/presentation/providers/b_jobs_provider.dart';
 import 'package:koala/business/features/home/services/employer_job_service.dart';
+import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/jobs/models/job_application.dart';
 
 import '../../../../../support/fake_api.dart';
@@ -78,6 +79,28 @@ FakeApi buildApi({
     },
   );
 }
+
+/// `GET /jobs/{id}` yanıtı: [creatorId] ilanı açan kişi, [companyId] doluysa
+/// şirket ilanı (backend `JobDetailDto`).
+JobDetail detailOf(
+  String id, {
+  String? creatorId = 'baska',
+  String? companyId,
+  String status = 'OPEN',
+}) => JobDetail.fromJson({
+  'id': id,
+  'title': 'İlan $id',
+  'salary': 800,
+  'status': status,
+  'type': 'ONE_TIME',
+  'salaryType': 'DAILY',
+  'employerType': companyId == null ? 'INDIVIDUAL' : 'COMPANY',
+  'category': {'id': 'c', 'code': 'WAITER', 'name': 'Garsonluk'},
+  'creator': ?(creatorId == null
+      ? null
+      : {'id': creatorId, 'firstName': 'Ece', 'lastName': 'Kaya'}),
+  'company': ?(companyId == null ? null : {'id': companyId, 'name': 'Acme'}),
+});
 
 BJobsProvider providerFor(FakeApi api) =>
     BJobsProvider(service: EmployerJobService.withClient(api.client));
@@ -919,5 +942,432 @@ void main() {
     expect(provider.isLoading, isFalse);
     expect(provider.hasLoaded, isTrue);
     expect(provider.errorMessage, isNull);
+  });
+  group('listeden bağımsız ilan', () {
+    // `GET /users/me/jobs` yalnız ilanı açan kullanıcının ilanlarını getiriyor.
+    // Şirket ilanını başka bir yetkili açtıysa ya da kullanıcının ilanı ilk
+    // sayfaya sığmadıysa ilan listede yok; ama sunucu başvuruları bu
+    // kullanıcıya açıyor (company contact ya da ilan sahibi).
+    test('başka yetkilinin açtığı şirket ilanı benimsenir', () async {
+      final api = buildApi(
+        jobs: [jobJson('benim')],
+        applicantsByJob: {
+          'sirket': [applicantJson('app_1')],
+        },
+      );
+      final provider = providerFor(api);
+      await provider.load();
+
+      final adopted = provider.adoptJob(
+        detailOf('sirket', companyId: 'co-1'),
+        viewerId: 'ben',
+      );
+      await provider.ensureApplicants('sirket');
+
+      expect(adopted, isTrue);
+      final post = provider.getPostByJobId('sirket')!;
+      expect(post.job.title, 'İlan sirket');
+      expect(post.applicantsLoaded, isTrue);
+      expect(post.applicants.single.id, 'app_1');
+      expect(
+        api.requests.map((r) => r.path),
+        contains('/jobs/sirket/applications'),
+      );
+    });
+
+    test('benimsenen ilan listelere ve sayaçlara girmez', () async {
+      final provider = providerFor(
+        buildApi(jobs: [jobJson('benim', applicationCount: 2)]),
+      );
+      await provider.load();
+
+      provider.adoptJob(detailOf('sirket', companyId: 'co-1'), viewerId: 'ben');
+
+      expect(provider.allPosts.map((p) => p.job.id), ['benim']);
+      expect(provider.activePosts.map((p) => p.job.id), ['benim']);
+      expect(provider.pastPosts, isEmpty);
+      expect(provider.totalApplicantCount, 2);
+      expect(provider.isEmpty, isFalse);
+    });
+
+    test('liste yenilenince benimsenen ilan ve başvuranları düşmez', () async {
+      final api = buildApi(
+        jobs: [jobJson('benim')],
+        applicantsByJob: {
+          'sirket': [applicantJson('app_1')],
+        },
+      );
+      final provider = providerFor(api);
+      await provider.load();
+      provider.adoptJob(detailOf('sirket', companyId: 'co-1'), viewerId: 'ben');
+      await provider.ensureApplicants('sirket');
+
+      await provider.load(force: true);
+
+      final post = provider.getPostByJobId('sirket');
+      expect(post, isNotNull);
+      expect(post!.applicants.single.id, 'app_1');
+      expect(provider.allPosts.map((p) => p.job.id), ['benim']);
+    });
+
+    test('kabul, liste yenilemesinden sonra benimsenen ilanın başvuranlarını '
+        'tazeler', () async {
+      var applicantCalls = 0;
+      final api = FakeApi(
+        handler: (options) {
+          if (options.path == '/users/me/jobs') {
+            return FakeApiResponse(
+              statusCode: 200,
+              body: {
+                'success': true,
+                'data': {
+                  'content': [jobJson('benim')],
+                },
+              },
+            );
+          }
+          if (options.path == '/jobs/sirket/applications') {
+            applicantCalls++;
+            return FakeApiResponse(
+              statusCode: 200,
+              body: {
+                'success': true,
+                'data': [
+                  applicantJson(
+                    'app_1',
+                    status: applicantCalls == 1 ? 'APPLIED' : 'ACCEPTED',
+                  ),
+                ],
+              },
+            );
+          }
+          return const FakeApiResponse(
+            statusCode: 200,
+            body: {'success': true},
+          );
+        },
+      );
+      final provider = providerFor(api);
+      await provider.load();
+      provider.adoptJob(detailOf('sirket', companyId: 'co-1'), viewerId: 'ben');
+      await provider.ensureApplicants('sirket');
+      expect(provider.getPostByJobId('sirket')!.applicants, hasLength(1));
+
+      final approved = await provider.approveApplicant(
+        jobId: 'sirket',
+        applicationId: 'app_1',
+      );
+
+      expect(approved, isTrue);
+      final paths = api.requests.map((r) => r.path).toList();
+      expect(paths, contains('/job-applications/app_1/respond'));
+      expect(applicantCalls, 2, reason: 'Kabulden sonra başvuranlar tazelenir');
+      final post = provider.getPostByJobId('sirket')!;
+      expect(post.applicantsLoaded, isTrue);
+      expect(post.acceptedApplicants.single.id, 'app_1');
+      expect(post.applicants, isEmpty);
+    });
+
+    test('red de aynı yoldan benimsenen ilanda çalışır', () async {
+      final api = buildApi(
+        jobs: [jobJson('benim')],
+        applicantsByJob: {
+          'sirket': [applicantJson('app_1')],
+        },
+      );
+      final provider = providerFor(api);
+      await provider.load();
+      provider.adoptJob(detailOf('sirket', companyId: 'co-1'), viewerId: 'ben');
+
+      final rejected = await provider.rejectApplicant(
+        jobId: 'sirket',
+        applicationId: 'app_1',
+        reason: 'Uygun değil',
+      );
+
+      expect(rejected, isTrue);
+      expect(provider.getPostByJobId('sirket')!.applicantsLoaded, isTrue);
+    });
+
+    test('ilk sayfaya sığmayan kendi ilanım benimsenir', () async {
+      final provider = providerFor(buildApi(jobs: [jobJson('benim')]));
+      await provider.load();
+
+      final adopted = provider.adoptJob(
+        detailOf('eski', creatorId: 'ben'),
+        viewerId: 'ben',
+      );
+
+      expect(adopted, isTrue);
+      expect(provider.getPostByJobId('eski'), isNotNull);
+    });
+
+    test('başkasının bireysel ilanı benimsenmez', () async {
+      final api = buildApi(jobs: [jobJson('benim')]);
+      final provider = providerFor(api);
+      await provider.load();
+
+      final adopted = provider.adoptJob(
+        detailOf('yabanci', creatorId: 'baska'),
+        viewerId: 'ben',
+      );
+      await provider.ensureApplicants('yabanci');
+
+      expect(adopted, isFalse);
+      expect(provider.getPostByJobId('yabanci'), isNull);
+      expect(
+        api.requests.map((r) => r.path),
+        isNot(contains('/jobs/yabanci/applications')),
+      );
+    });
+
+    test('oturum sahibi bilinmiyorsa yalnız şirket ilanı benimsenir', () async {
+      final provider = providerFor(buildApi(jobs: const []));
+      await provider.load();
+
+      expect(
+        provider.adoptJob(detailOf('eski', creatorId: 'ben'), viewerId: null),
+        isFalse,
+      );
+      expect(
+        provider.adoptJob(
+          detailOf('sirket', companyId: 'co-1'),
+          viewerId: null,
+        ),
+        isTrue,
+      );
+    });
+
+    test('listede olan ilan benimsenmez, kayıt çiftlenmez', () async {
+      final provider = providerFor(buildApi(jobs: [jobJson('benim')]));
+      await provider.load();
+
+      final adopted = provider.adoptJob(
+        detailOf('benim', creatorId: 'ben'),
+        viewerId: 'ben',
+      );
+
+      expect(adopted, isFalse);
+      expect(provider.allPosts, hasLength(1));
+    });
+
+    test('ilan sonradan listeye girerse liste kaydı geçerli olur, başvuranlar '
+        'korunur', () async {
+      var listed = false;
+      final api = FakeApi(
+        handler: (options) {
+          if (options.path == '/users/me/jobs') {
+            return FakeApiResponse(
+              statusCode: 200,
+              body: {
+                'success': true,
+                'data': {
+                  'content': [jobJson('benim'), if (listed) jobJson('eski')],
+                },
+              },
+            );
+          }
+          return FakeApiResponse(
+            statusCode: 200,
+            body: {
+              'success': true,
+              'data': [applicantJson('app_1')],
+            },
+          );
+        },
+      );
+      final provider = providerFor(api);
+      await provider.load();
+      provider.adoptJob(detailOf('eski', creatorId: 'ben'), viewerId: 'ben');
+      await provider.ensureApplicants('eski');
+
+      listed = true;
+      await provider.load(force: true);
+
+      expect(provider.allPosts.map((p) => p.job.id), ['benim', 'eski']);
+      expect(provider.getPostByJobId('eski')!.applicants.single.id, 'app_1');
+      // Çıkışta ikinci bir kopya kalmamalı.
+      provider.clear();
+      expect(provider.getPostByJobId('eski'), isNull);
+    });
+
+    test(
+      'yeniden benimsemek ilan özetini tazeler, başvuranları korur',
+      () async {
+        final provider = providerFor(buildApi(jobs: [jobJson('benim')]));
+        await provider.load();
+        provider.adoptJob(
+          detailOf('sirket', companyId: 'co-1'),
+          viewerId: 'ben',
+        );
+        await provider.ensureApplicants('sirket');
+
+        provider.adoptJob(
+          detailOf('sirket', companyId: 'co-1', status: 'CLOSED'),
+          viewerId: 'ben',
+        );
+
+        final post = provider.getPostByJobId('sirket')!;
+        expect(post.isActive, isFalse);
+        expect(post.applicantsLoaded, isTrue);
+      },
+    );
+
+    test('başvuru hatası benimsenen ilanda da ilan bazında tutulur', () async {
+      final provider = providerFor(
+        buildApi(jobs: const [], applicantsByJob: {'sirket': null}),
+      );
+      await provider.load();
+      provider.adoptJob(detailOf('sirket', companyId: 'co-1'), viewerId: 'ben');
+
+      await provider.ensureApplicants('sirket');
+
+      expect(provider.applicantErrorFor('sirket'), 'Sunucu hatası');
+      expect(provider.getPostByJobId('sirket')!.applicantsLoaded, isFalse);
+    });
+
+    test('ilanı açan ve oturum sahibi bilinmiyorsa ilan benimsenmez', () async {
+      final provider = providerFor(buildApi(jobs: const []));
+      await provider.load();
+
+      // İki bilinmeyen birbirine eşit sayılmamalı.
+      final adopted = provider.adoptJob(
+        detailOf('yabanci', creatorId: null),
+        viewerId: null,
+      );
+
+      expect(adopted, isFalse);
+      expect(provider.getPostByJobId('yabanci'), isNull);
+    });
+
+    test('liste yenilenirken uçuştaki başvuru isteği benimsenen ilanda '
+        'düşmez', () async {
+      final applicants = Completer<FakeApiResponse>();
+      final api = FakeApi(
+        handler: (options) {
+          if (options.path == '/jobs/sirket/applications') {
+            return applicants.future;
+          }
+          return FakeApiResponse(
+            statusCode: 200,
+            body: {
+              'success': true,
+              'data': {
+                'content': [jobJson('benim')],
+              },
+            },
+          );
+        },
+      );
+      final provider = providerFor(api);
+      await provider.load();
+      provider.adoptJob(detailOf('sirket', companyId: 'co-1'), viewerId: 'ben');
+      final request = provider.ensureApplicants('sirket');
+      await api.requestsReach(2);
+
+      await provider.load(force: true);
+      applicants.complete(
+        FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': [applicantJson('app_1')],
+          },
+        ),
+      );
+      await request;
+
+      expect(
+        provider.getPostByJobId('sirket')!.applicants.single.id,
+        'app_1',
+        reason: 'Yenileme uçuştaki isteği geçersiz kılmamalı',
+      );
+    });
+
+    test('listeye girip sonra listeden düşen ilan eski kopyayla geri '
+        'gelmez', () async {
+      var phase = 0;
+      final api = FakeApi(
+        handler: (options) {
+          if (options.path == '/users/me/jobs') {
+            return FakeApiResponse(
+              statusCode: 200,
+              body: {
+                'success': true,
+                'data': {
+                  'content': [
+                    jobJson('benim'),
+                    if (phase == 1) jobJson('eski'),
+                  ],
+                },
+              },
+            );
+          }
+          return const FakeApiResponse(
+            statusCode: 200,
+            body: {'success': true, 'data': []},
+          );
+        },
+      );
+      final provider = providerFor(api);
+      await provider.load();
+      provider.adoptJob(detailOf('eski', creatorId: 'ben'), viewerId: 'ben');
+
+      phase = 1;
+      await provider.load(force: true);
+      phase = 2;
+      await provider.load(force: true);
+
+      // Listedeyken geçerli kayıt listenindi; benimsenmiş kopya ondan sonra
+      // yaşamıyor, ilan detayı tekrar açılırsa yeniden benimsenir.
+      expect(provider.getPostByJobId('eski'), isNull);
+    });
+
+    test('çıkışta benimsenen ilanlar da silinir', () async {
+      final provider = providerFor(buildApi(jobs: [jobJson('benim')]));
+      await provider.load();
+      provider.adoptJob(detailOf('sirket', companyId: 'co-1'), viewerId: 'ben');
+
+      provider.clear();
+
+      expect(provider.getPostByJobId('sirket'), isNull);
+    });
+
+    test('çıkıştan önce başlayan başvuru isteği yeni oturuma benimsenmiş ilan '
+        'yazmaz', () async {
+      final pending = Completer<FakeApiResponse>();
+      final api = FakeApi(
+        handler: (options) {
+          if (options.path == '/jobs/sirket/applications') {
+            return pending.future;
+          }
+          return FakeApiResponse(
+            statusCode: 200,
+            body: {
+              'success': true,
+              'data': {'content': const []},
+            },
+          );
+        },
+      );
+      final provider = providerFor(api);
+      provider.adoptJob(detailOf('sirket', companyId: 'co-1'), viewerId: 'ben');
+      final request = provider.ensureApplicants('sirket');
+      await api.requestsReach(1);
+
+      provider.clear();
+      pending.complete(
+        FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': [applicantJson('eski_oturum')],
+          },
+        ),
+      );
+      await request;
+
+      expect(provider.getPostByJobId('sirket'), isNull);
+    });
   });
 }
