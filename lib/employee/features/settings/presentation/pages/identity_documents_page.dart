@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/employee/features/settings/models/identity_declaration.dart';
+import 'package:koala/product/models/upload_progress.dart';
 import 'package:koala/employee/features/settings/models/identity_document_error.dart';
 import 'package:koala/employee/features/settings/models/identity_photo.dart';
 import 'package:koala/employee/features/settings/models/identity_photo_slot.dart';
@@ -186,7 +187,7 @@ class _IdentityDocumentsPageState extends IdentityDocumentsPagemodel {
         'Kimliğini dört fotoğrafla doğruluyoruz: kartın ön ve arka yüzü, '
         'yüzün ve kimlikle birlikte yüzün. Personel inceledikten sonra '
         'kimliğin doğrulanır; bilgiler kimlik kartındakiyle birebir aynı '
-        'olmalı. Fotoğraflar tek seferde gönderilir; PNG, JPG veya WEBP, '
+        'olmalı. Fotoğraflar tek seferde gönderilir; PNG veya JPG, '
         'her biri en fazla 10 MB.',
         style: context.textTheme.bodyMedium?.copyWith(
           color: context.textSecondary,

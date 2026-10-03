@@ -55,6 +55,8 @@ import 'package:koala/product/features/account/account_navigation.dart';
 import 'package:koala/product/features/account/models/address_required_error_codes.dart';
 import 'package:koala/product/formatters/turkish_money_formatter.dart';
 import 'package:koala/product/models/gallery_image.dart';
+import 'package:koala/product/features/dispute/dispute_routes.dart';
+import 'package:koala/product/features/dispute/presentation/widgets/dispute_summary_card.dart';
 import 'package:koala/product/features/transport/models/transport_error_codes.dart';
 import 'package:koala/product/features/transport/models/transport_plan.dart';
 import 'package:koala/product/features/transport/services/transport_service.dart';
@@ -343,7 +345,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
                 ),
               ),
             ],
-            ?_openDisputeBanner(),
+            ?_disputeEntry(),
             if (!_isDisputeStateVerified) ...[
               const SizedBox(height: AppSizes.spaceMedium),
               _disputeStatePanel(assignment),
@@ -636,51 +638,87 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     );
   }
 
+  /// Uyuşmazlığın girişi: açıksa uyarı bandı, sonuçlanmışsa özet kartı.
+  ///
+  /// İkisi de uyuşmazlık ekranını açıyor (kanıt ekleme ve görüntüleme,
+  /// is-koala/koala#215). Karardan sonra da bir giriş kalıyor: işveren
+  /// sonucu, destek notunu ve kanıtları ekranda görebilmeli (liste ve indirme
+  /// karardan sonra da açık).
+  Widget? _disputeEntry() {
+    if (_disputes.isEmpty) return null;
+
+    final open = _disputes.where((dispute) => dispute.isOpen).firstOrNull;
+    if (open != null) return _openDisputeBanner(open);
+
+    final newest = Dispute.newestFirst(_disputes).first;
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSizes.spaceMedium),
+      child: DisputeSummaryCard(
+        dispute: newest,
+        onOpen: () => _openDisputeScreen(newest),
+      ),
+    );
+  }
+
   /// Açık uyuşmazlık uyarısı.
   ///
   /// Açık uyuşmazlık emanetteki parayı donduruyor; tamamlama butonunun
-  /// neden beklediğini söylemek gerekiyor.
-  Widget? _openDisputeBanner() {
-    final open = _disputes.where((dispute) => dispute.isOpen).firstOrNull;
-    if (open == null) return null;
-
+  /// neden beklediğini söylemek gerekiyor. Aynı zamanda ekranın girişi:
+  /// `Material` + `InkWell` (süslü bir `Container`'ın altında mürekkep
+  /// görünmez — `DisputeSummaryCard` ile aynı kalıp).
+  Widget _openDisputeBanner(Dispute open) {
     return Padding(
       padding: const EdgeInsets.only(top: AppSizes.spaceMedium),
-      child: Container(
-        width: double.infinity,
-        padding: AppPadding.primaryAll,
-        decoration: BoxDecoration(
-          color: AppColors.warning.withValues(
-            alpha: BJobDetailPageModel._tintAlpha,
-          ),
-          borderRadius: AppRadius.innerCircular,
+      child: Material(
+        color: AppColors.warning.withValues(
+          alpha: BJobDetailPageModel._tintAlpha,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Açık sorun bildirimi · ${open.status.displayName}',
-              style: context.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
+        borderRadius: AppRadius.innerCircular,
+        child: InkWell(
+          key: const ValueKey('open-dispute-banner'),
+          borderRadius: AppRadius.innerCircular,
+          onTap: () => _openDisputeScreen(open),
+          child: Padding(
+            padding: AppPadding.primaryAll,
+            child: SizedBox(
+              width: double.infinity,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Açık sorun bildirimi · ${open.status.displayName}',
+                    style: context.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (open.reason != null) ...[
+                    const SizedBox(height: AppSizes.spaceTiny),
+                    Text(
+                      open.reason!,
+                      style: context.textTheme.bodyMedium?.copyWith(
+                        color: context.textSecondary,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: AppSizes.spaceTiny),
+                  Text(
+                    'Emanetteki ücret, Koala sonuçlandırana kadar dondurulur.',
+                    style: context.textTheme.labelMedium?.copyWith(
+                      color: context.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSizes.spaceSmall),
+                  Text(
+                    'Kanıt ekle ya da görüntüle',
+                    style: context.textTheme.bodyMedium?.copyWith(
+                      color: context.accentColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
             ),
-            if (open.reason != null) ...[
-              const SizedBox(height: AppSizes.spaceTiny),
-              Text(
-                open.reason!,
-                style: context.textTheme.bodyMedium?.copyWith(
-                  color: context.textSecondary,
-                ),
-              ),
-            ],
-            const SizedBox(height: AppSizes.spaceTiny),
-            Text(
-              'Emanetteki ücret, Koala sonuçlandırana kadar dondurulur.',
-              style: context.textTheme.labelMedium?.copyWith(
-                color: context.textSecondary,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

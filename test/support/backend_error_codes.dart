@@ -26,6 +26,7 @@ class BackendErrorCodes {
     'lib/product/features/account/models/address_required_error_codes.dart',
     'lib/product/models/address_reverse_error_codes.dart',
     'lib/product/features/transport/models/transport_error_codes.dart',
+    'lib/product/features/dispute/models/dispute_evidence_error.dart',
   ];
 
   static final _quotedCode = RegExp(r"'([A-Z][A-Z0-9_]{2,})'");

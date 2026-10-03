@@ -8,7 +8,12 @@ abstract final class UploadLimits {
   static const int maxImageBytes = 10 * 1024 * 1024;
 
   /// Kabul edilen uzantılar (`upload.image-extensions`).
-  static const Set<String> imageExtensions = {'png', 'jpg', 'jpeg', 'webp'};
+  ///
+  /// **WEBP bilerek yok.** Sunucu listesinde duruyor ama yüklenen görsel
+  /// ImageIO ile açılabilmek zorunda ve backend'de WebP okuyan bir eklenti
+  /// yok: gerçek bir WebP hep `STORAGE_UNSUPPORTED_TYPE` ile düşüyor
+  /// (koala-backend#348). Kullanıcıya vaat edilmiyor.
+  static const Set<String> imageExtensions = {'png', 'jpg', 'jpeg'};
 
   /// Bir şirket ya da ilan galerisindeki en fazla görsel.
   ///
@@ -19,7 +24,7 @@ abstract final class UploadLimits {
 
   /// Yükleme kurallarını kullanıcıya anlatan tek satır; ekleme düğmesinin
   /// altında ve logo alanında aynı cümle görünsün diye burada.
-  static const String imageRuleLabel = 'PNG, JPG veya WEBP · en fazla 10 MB';
+  static const String imageRuleLabel = 'PNG veya JPG · en fazla 10 MB';
 
   /// [filePath] kabul edilen bir uzantı taşıyor mu.
   static bool hasAllowedImageExtension(String filePath) {

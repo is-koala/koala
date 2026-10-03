@@ -64,6 +64,7 @@ import 'package:koala/employee/features/settings/presentation/pages/identity_chi
 import 'package:koala/employee/features/settings/presentation/pages/identity_documents_page.dart';
 import 'package:koala/employee/features/settings/presentation/pages/identity_verification_page.dart';
 import 'package:koala/product/features/account/account_routes.dart';
+import 'package:koala/product/features/dispute/dispute_routes.dart';
 import 'package:koala/product/models/confirmed_address.dart';
 import 'package:koala/product/network/session_manager.dart';
 import 'package:koala/product/router/business_routes.dart';
@@ -410,6 +411,11 @@ class RouterManager {
       // Hesap kullanıcıya ait, tarafına değil — iki kabuk da aynı rotalara
       // gidiyor, `/business/` kopyaları yok.
       ...AccountRoutes.routes(_page),
+
+      // Uyuşmazlık ve kanıtları (is-koala/koala#215): çalışan da işveren de
+      // açıyor, o yüzden `/business/` öneki yok — `AccountRoutes` ile aynı
+      // gerekçe.
+      ...DisputeRoutes.routes(_page),
 
       ShellRoute(
         builder: (context, state, child) => BShellPage(child: child),

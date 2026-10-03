@@ -81,6 +81,29 @@ class Dispute {
   /// Hâlâ sürüyor mu. Süren uyuşmazlık ikinci bir uyuşmazlığı engelliyor.
   bool get isOpen => status != DisputeStatus.resolved;
 
+  /// En yeni önde; tarihi olmayan en sona, eşitlikte sunucunun sırası.
+  ///
+  /// Uyuşmazlık özetini (iş detayı) ve ekranı (kanıtlar) sıralayan tek yer:
+  /// ikisi kendi karşılaştırıcısını yazdığında eşitlikte ayrı sırayla
+  /// diziliyordu. `List.sort` kararlı olmadığı için sunucu sırası dizinle
+  /// korunuyor.
+  static List<Dispute> newestFirst(Iterable<Dispute> disputes) {
+    final ordered = [
+      for (final (index, dispute) in disputes.indexed)
+        (index: index, dispute: dispute),
+    ];
+    ordered.sort((a, b) {
+      final left = a.dispute.createdAt;
+      final right = b.dispute.createdAt;
+      if (left == null && right == null) return a.index.compareTo(b.index);
+      if (left == null) return 1;
+      if (right == null) return -1;
+      final byDate = right.compareTo(left);
+      return byDate != 0 ? byDate : a.index.compareTo(b.index);
+    });
+    return [for (final entry in ordered) entry.dispute];
+  }
+
   factory Dispute.fromJson(Map<String, dynamic> json) {
     final openedBy = json['openedBy'];
 

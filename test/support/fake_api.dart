@@ -159,17 +159,23 @@ class FakeDeviceIdentity implements DeviceIdentity {
 
 /// Sahte sunucunun döndüreceği yanıt.
 class FakeApiResponse {
-  const FakeApiResponse({required this.statusCode, this.body}) : rawBody = null;
+  const FakeApiResponse({
+    required this.statusCode,
+    this.body,
+    this.headers = const {},
+  }) : rawBody = null;
 
   /// JSON olmayan gövde döndüren yanıt (ör. bir hata sayfası).
   const FakeApiResponse.raw({required this.statusCode, required String body})
     : body = null,
+      headers = const {},
       rawBody = body;
 
   /// Ağa hiç çıkılamamış gibi davranan yanıt (bağlantı hatası).
   const FakeApiResponse.connectionError()
     : statusCode = -1,
       body = null,
+      headers = const {},
       rawBody = null;
 
   /// Sunucuya ulaşılmış ama zamanında yanıt gelmemiş hâl.
@@ -180,10 +186,14 @@ class FakeApiResponse {
   const FakeApiResponse.timeout()
     : statusCode = -2,
       body = null,
+      headers = const {},
       rawBody = null;
 
   final int statusCode;
   final Map<String, dynamic>? body;
+
+  /// Yanıta eklenen başlıklar (`location` gibi); yönlendirmeler için.
+  final Map<String, String> headers;
 
   /// Doluysa gövde JSON'a çevrilmeden olduğu gibi gönderilir.
   final String? rawBody;
@@ -238,6 +248,7 @@ class _FakeAdapter implements HttpClientAdapter {
       response.statusCode,
       headers: {
         Headers.contentTypeHeader: [Headers.jsonContentType],
+        for (final entry in response.headers.entries) entry.key: [entry.value],
       },
     );
   }

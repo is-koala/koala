@@ -7,7 +7,16 @@ void main() {
   test('desteklenmeyen görsel türünü yüklemeden reddediyor', () async {
     expect(
       await BGalleryUploadValidator.errorFor('/tmp/image.gif'),
-      'Yalnızca PNG, JPG veya WEBP yükleyebilirsiniz',
+      'Yalnızca PNG veya JPG yükleyebilirsiniz',
+    );
+  });
+
+  // Sunucuda WebP okuyan bir ImageIO eklentisi yok; gerçek bir WebP hep
+  // `STORAGE_UNSUPPORTED_TYPE` ile düşüyor (koala-backend#348).
+  test('WebP görseli yüklemeden reddediyor', () async {
+    expect(
+      await BGalleryUploadValidator.errorFor('/tmp/image.webp'),
+      'Yalnızca PNG veya JPG yükleyebilirsiniz',
     );
   });
 
@@ -28,7 +37,7 @@ void main() {
   });
 
   test('desteklenen ve küçük görseli kabul ediyor', () async {
-    final file = File('${Directory.systemTemp.path}/koala_small_gallery.webp')
+    final file = File('${Directory.systemTemp.path}/koala_small_gallery.png')
       ..writeAsBytesSync(const [1, 2, 3]);
     addTearDown(() => file.deleteSync());
 

@@ -89,6 +89,52 @@ void main() {
       );
     }
 
+    // `getRedirectLocation` yönlendirmeyi izlemiyor ve `302`'yi başarı sayıyor;
+    // oturum yenileme ve tekrar deneme bu özel seçeneklerle de çalışmalı.
+    test(
+      'indirme yönlendirmesi 401 sonrası yeni token ile tekrar denenir',
+      () async {
+        var businessCalls = 0;
+        final adapter = _RecordingAdapter((options) {
+          if (options.path == ApiPaths.refreshToken) {
+            return const _FakeResponse(200, {
+              'success': true,
+              'data': {'token': 'tazelenmis-erisim'},
+            });
+          }
+          businessCalls++;
+          if (businessCalls == 1) {
+            return const _FakeResponse(401, {
+              'success': false,
+              'message': 'Oturum bulunamadı',
+            });
+          }
+          return const _FakeResponse(
+            302,
+            {},
+            headers: {'location': 'https://depo.example/k?imza=1'},
+          );
+        });
+        final client = _clientWithAuthInterceptor(
+          adapter: adapter,
+          tokenStorage: tokenStorage,
+          onSessionExpired: () async {},
+        );
+
+        final url = await client.getRedirectLocation(
+          ApiPaths.disputeEvidenceDownload('d-1', 'e-1'),
+        );
+
+        expect(url, Uri.parse('https://depo.example/k?imza=1'));
+        expect(adapter.sent, hasLength(3));
+        expect(
+          adapter.sent.last.path,
+          ApiPaths.disputeEvidenceDownload('d-1', 'e-1'),
+        );
+        expect(adapter.sent.last.authorization, 'Bearer tazelenmis-erisim');
+      },
+    );
+
     test('JSON gövdeli istek tekrar denendiğinde gövdesini koruyor', () async {
       final adapter = _RecordingAdapter(_refreshOnceHandler());
       final client = _clientWithAuthInterceptor(
@@ -112,8 +158,8 @@ void main() {
   });
 }
 
-/// Dört multipart yardımcısının hepsi tek tekrar deneme yolundan geçiyor;
-/// dördü de aynı testle korunuyor.
+/// Multipart yardımcıların hepsi tek tekrar deneme yolundan geçiyor; hepsi
+/// aynı testle korunuyor.
 final List<_MultipartCall> _multipartCalls = [
   _MultipartCall(
     name: 'postFile',
@@ -145,6 +191,21 @@ final List<_MultipartCall> _multipartCalls = [
       ApiPaths.currentUserProfilePicture,
       fieldName: 'image',
       filePath: filePath,
+    ),
+  ),
+  _MultipartCall(
+    name: 'postUploadFile',
+    path: ApiPaths.disputeEvidence('dispute-1'),
+    fieldName: 'file',
+    invoke: (client, filePath) => client.postUploadFile<String>(
+      ApiPaths.disputeEvidence('dispute-1'),
+      fieldName: 'file',
+      file: UploadFile(
+        filePath,
+        filename: 'galeri.jpg',
+        contentType: 'image/jpeg',
+      ),
+      parse: (data) => data! as String,
     ),
   ),
   _MultipartCall(
@@ -221,10 +282,11 @@ class _MultipartCall {
 }
 
 class _FakeResponse {
-  const _FakeResponse(this.statusCode, this.body);
+  const _FakeResponse(this.statusCode, this.body, {this.headers = const {}});
 
   final int statusCode;
   final Map<String, dynamic> body;
+  final Map<String, String> headers;
 }
 
 /// Sunucuya giden baytları da saklayan sahte HTTP katmanı.
@@ -270,6 +332,7 @@ class _RecordingAdapter implements HttpClientAdapter {
       response.statusCode,
       headers: {
         Headers.contentTypeHeader: [Headers.jsonContentType],
+        for (final entry in response.headers.entries) entry.key: [entry.value],
       },
     );
   }

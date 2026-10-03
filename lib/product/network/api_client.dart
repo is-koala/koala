@@ -1,5 +1,7 @@
+import 'dart:async' show unawaited;
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data' show BytesBuilder;
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -222,19 +224,7 @@ class ApiClient {
     };
 
     for (final entry in files.entries) {
-      // Boyut eşzamanlı okunuyor: dört `stat` çağrısı, dosyanın kendisi
-      // gönderim sırasında akıtılıyor. Eşzamansız `fromFile` widget
-      // testlerinin sahte saatinde hiç dönmüyor ve akış ekranda takılı
-      // kalıyordu; gerçek cihazda iki yol arasında ölçülebilir fark yok.
-      final file = entry.value;
-      final contentType = file.contentType;
-      parts[entry.key] = MultipartFile.fromFileSync(
-        file.path,
-        filename: file.filename,
-        contentType: contentType == null
-            ? null
-            : DioMediaType.parse(contentType),
-      );
+      parts[entry.key] = _multipartFile(entry.value);
     }
 
     return _send<T>(
@@ -247,6 +237,171 @@ class ApiClient {
       parse: parse,
     );
   }
+
+  /// Tek dosya yükleyen, ad ve içerik tipini kendisi yazan `POST` isteği.
+  ///
+  /// [postFile]'dan farkı, parçanın `filename` ve `Content-Type`'ının
+  /// [UploadFile]'dan gelmesi ve ilerleme: sunucu uzantıya bakıyor, seçicinin
+  /// verdiği ad ise içeriği yansıtmayabiliyor (Android'in `.heic` adlı JPEG'i).
+  /// [onSendProgress] gönderilen ve toplam bayt sayısını veriyor.
+  ///
+  /// `async`: dosya açılamazsa (seçicinin geçici kopyası bu arada silinmiş
+  /// olabilir) hata eşzamanlı fırlamak yerine `Future`'dan, yani çağıranın
+  /// `await`'inden [ApiException] olarak çıkıyor.
+  Future<T> postUploadFile<T>(
+    String path, {
+    required String fieldName,
+    required UploadFile file,
+    void Function(int sent, int total)? onSendProgress,
+    required T Function(Object? data) parse,
+  }) async {
+    final formData = FormData.fromMap({fieldName: _multipartFile(file)});
+
+    return _send<T>(
+      () => _dio.post<dynamic>(
+        path,
+        data: formData,
+        options: _multipartOptions,
+        onSendProgress: onSendProgress,
+      ),
+      parse: parse,
+    );
+  }
+
+  /// [UploadFile]'ı multipart parçasına çevirir; ad ve içerik tipi dosyanın
+  /// kendisinden değil [UploadFile]'dan.
+  ///
+  /// Dosya **eşzamanlı** açılıyor: boyut tek `stat` ile okunuyor, içerik
+  /// gönderim sırasında akıtılıyor. Eşzamansız `fromFile` widget testlerinin
+  /// sahte saatinde hiç dönmüyor ve akış ekranda takılı kalıyordu; gerçek
+  /// cihazda iki yol arasında ölçülebilir fark yok.
+  ///
+  /// Dosya yoksa ya da okunamıyorsa `FileSystemException` değil
+  /// [ApiException]: servisler yalnızca onu yükseltir (CONTRIBUTING, "Veri
+  /// Katmanı") ve sayfa tek bir hata yolu yönetir. Seçicinin geçici dosyası
+  /// işletim sistemi tarafından temizlenmiş olabilir (iOS `tmp`).
+  MultipartFile _multipartFile(UploadFile file) {
+    final contentType = file.contentType;
+    try {
+      return MultipartFile.fromFileSync(
+        file.path,
+        filename: file.filename,
+        contentType: contentType == null
+            ? null
+            : DioMediaType.parse(contentType),
+      );
+    } on FileSystemException {
+      throw const ApiException(
+        message: 'Dosya okunamadı. Dosyayı yeniden seçin.',
+        type: ApiErrorType.unknown,
+      );
+    }
+  }
+
+  /// Yönlendirmeyle cevap veren bir `GET`'in hedef adresini döndürür.
+  ///
+  /// Dosya indirme uçları (`.../download`) imzalı bir depo adresine `302`
+  /// veriyor ve kendileri `Authorization` istiyor. Yönlendirmeyi **izlemek**
+  /// o başlığı depoya taşıyabilir (S3 imzalı adres + ikinci kimlik doğrulama
+  /// `400` döner, üstelik token üçüncü bir sunucuya gider); o yüzden `302`
+  /// burada duruyor ve `Location` okunuyor.
+  ///
+  /// Yanıt gövdesi **akış** olarak alınıyor ve hiç okunmadan bırakılıyor:
+  /// yalnız başlık gerekiyor. Varsayılan JSON yanıt tipinde sunucunun
+  /// akıttığı üç megabaytlık bir dosya bütünüyle belleğe alınıp metne
+  /// çevriliyordu. Hata yanıtlarının (küçük) zarfı ise okunup olağan
+  /// [ApiException]'a çevriliyor.
+  ///
+  /// Hedefin şeması [allowedSchemes] içinde olmalı (varsayılan:
+  /// [ApiConfig.externalUrlSchemes] — yalnız `https`, dev'de `http` de): bu
+  /// adres harici uygulamaya veriliyor, `intent:` ya da şifresiz `http`
+  /// buraya sızmamalı. Sunucu depo imzası yapamıyorsa baytları kendisi
+  /// akıtıyor (`200`); o durumda `null` dönüyor — çağıran "uygulama içinde
+  /// açılamıyor" demeli.
+  Future<Uri?> getRedirectLocation(
+    String path, {
+    @visibleForTesting Set<String>? allowedSchemes,
+  }) async {
+    final schemes = allowedSchemes ?? ApiConfig.externalUrlSchemes;
+    try {
+      final response = await _dio.get<ResponseBody>(
+        path,
+        options: Options(
+          responseType: ResponseType.stream,
+          followRedirects: false,
+          validateStatus: (status) =>
+              status != null && status >= 200 && status < 400,
+        ),
+      );
+      _discardBody(response.data);
+
+      final status = response.statusCode ?? 0;
+      if (status < 300) return null;
+
+      final location = response.headers.value(HttpHeaders.locationHeader);
+      final target = location == null ? null : Uri.tryParse(location);
+      if (target != null &&
+          target.host.isNotEmpty &&
+          schemes.contains(target.scheme)) {
+        return target;
+      }
+      throw const ApiException(
+        message: 'Sunucudan beklenmeyen bir yanıt geldi.',
+        type: ApiErrorType.unknown,
+      );
+    } on DioException catch (error) {
+      throw _toApiException(await _withReadBody(error));
+    }
+  }
+
+  /// Gövdesi okunmayacak bir akışı kapatır: bağlantı dosyanın geri kalanını
+  /// beklemeden bırakılıyor. İptal **beklenmiyor**: bağlantıyı kapatmak
+  /// çağıranın sonucunu geciktirmemeli (ve sahte saatli widget testlerinde
+  /// bu iptal hiç tamamlanmıyor); iptalin hatası da kimsenin işi değil.
+  void _discardBody(ResponseBody? body) {
+    if (body == null) return;
+    unawaited(body.stream.listen(null).cancel().catchError((Object _) {}));
+  }
+
+  /// Akış olarak alınmış bir hata yanıtının gövdesini okuyup JSON zarfı olarak
+  /// yerine koyar; [_toApiException] zarfı ancak çözülmüş hâliyle okuyabiliyor.
+  /// Zarf küçük: [_maxErrorBodyBytes]'ı aşan ya da JSON olmayan gövde okunmamış
+  /// sayılıyor ve karar durum koduna kalıyor.
+  Future<DioException> _withReadBody(DioException error) async {
+    final response = error.response;
+    final body = response?.data;
+    if (response == null || body is! ResponseBody) return error;
+
+    final bytes = BytesBuilder(copy: false);
+    await for (final chunk in body.stream) {
+      bytes.add(chunk);
+      if (bytes.length > _maxErrorBodyBytes) break;
+    }
+
+    Object? decoded;
+    if (bytes.length <= _maxErrorBodyBytes) {
+      try {
+        decoded = jsonDecode(utf8.decode(bytes.takeBytes()));
+      } on FormatException {
+        decoded = null;
+      }
+    }
+    return error.copyWith(
+      response: Response<dynamic>(
+        requestOptions: response.requestOptions,
+        data: decoded,
+        statusCode: response.statusCode,
+        statusMessage: response.statusMessage,
+        headers: response.headers,
+        isRedirect: response.isRedirect,
+        redirects: response.redirects,
+        extra: response.extra,
+      ),
+    );
+  }
+
+  /// Akış olarak alınan hata gövdesinin okunacak en büyük boyutu.
+  static const int _maxErrorBodyBytes = 64 * 1024;
 
   /// Tek dosya yükleyen `POST` isteği.
   ///

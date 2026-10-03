@@ -711,6 +711,18 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
         'Tutar iptal anında yeniden hesaplanır.';
   }
 
+  /// Açık uyuşmazlığın ekranını açar (kanıt ekleme / görüntüleme,
+  /// is-koala/koala#215); dönünce durum tazeleniyor — karar bu arada
+  /// verilmiş olabilir ve uyarı bandı bayat kalmasın.
+  Future<void> _openDisputeScreen(Dispute dispute) =>
+      _openDisputeScreenFor(dispute.assignmentId);
+
+  Future<void> _openDisputeScreenFor(String assignmentId) async {
+    await context.push(DisputeRoutes.location(assignmentId));
+    if (!mounted) return;
+    unawaited(_loadDisputes(assignmentId));
+  }
+
   /// Uyuşmazlık açar.
   ///
   /// Yalnızca para emanetteyken açılabiliyor ve emanetteki parayı donduruyor:
@@ -742,7 +754,7 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
       return;
     }
 
-    await _runAssignmentAction(
+    final opened = await _runAssignmentAction(
       (id) async {
         await _assignmentService.openDispute(assignmentId: id, reason: reason);
         return 'Sorun bildirildi, Koala inceleyecek';
@@ -751,6 +763,10 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
       expectedGeneration: generation,
       isEligible: _canOpenDisputeFor,
     );
+
+    // Açılır açılmaz kanıt ekleme ekranına: dosya çoğu zaman bildirimle aynı
+    // anda elde (ekran görüntüsü, tutanak) ve ayrı bir yol aramak gerekmiyor.
+    if (opened && mounted) await _openDisputeScreenFor(assignment.id);
   }
 
   // ------------------------------------------------------ Kimlik bilgileri
@@ -909,8 +925,9 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     }
   }
 
-  /// İptal ve uyuşmazlığın ortak gövdesi: kilit, hata ve tazeleme.
-  Future<void> _runAssignmentAction(
+  /// İptal ve uyuşmazlığın ortak gövdesi: kilit, hata ve tazeleme. Eylem
+  /// sunucuda başarılı olduysa `true`.
+  Future<bool> _runAssignmentAction(
     Future<String> Function(String assignmentId) action, {
     required String expectedAssignmentId,
     required int expectedGeneration,
@@ -922,21 +939,23 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
         _assignmentLoadGeneration != expectedGeneration ||
         _isRunningAssignmentAction ||
         !isEligible(assignment)) {
-      return;
+      return false;
     }
 
     setState(() => _isRunningAssignmentAction = true);
 
     try {
       final message = await action(assignment.id);
-      if (!mounted) return;
+      if (!mounted) return true;
       AppToast.success(context, message);
       await _loadDetail();
       if (mounted) await _loadAssignment();
+      return true;
     } on ApiException catch (error) {
-      if (!mounted) return;
+      if (!mounted) return false;
       AppToast.error(context, error.message);
       if (error.type.serverStateMoved) await _loadAssignment();
+      return false;
     } finally {
       if (mounted) setState(() => _isRunningAssignmentAction = false);
     }

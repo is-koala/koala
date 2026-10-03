@@ -13,6 +13,7 @@ doğrulandıktan sonra hesap sahibi tarafından mağaza konsollarında yayımlan
 | Kimlik belgesi | TCKN, belge no, doğum tarihi; çip okunduğunda SOD/DG1 ve varsa DG11/DG14/DG15 + imza; fotoğraflı yolda TCKK ön/arka yüzü, yüz ve kimlikle yüz fotoğrafları (`POST /users/me/identity-documents`) | Kimlik doğrulama ve dolandırıcılık önleme; fotoğraflar yalnız personel incelemesi için | Backend saklama/anonimleştirme kapsamı ayrıca onaylanır; **DG2 hiç gönderilmez**. Fotoğraflar tek istekte Koala backend'ine gider, dosya deposunda incelemeye bağlı saklanır, yalnız `IDENTITY_REVIEW` yetkili personel indirir; uygulama kareyi seçicinin geçici kopyasından akıtır, kendi kopyasını tutmaz | Other Personal Info, Sensitive Info, Photos |
 | Kamera görüntüsü | Kimlik kartının arka yüzünün canlı kamera kareleri | Kartın makine okunabilir alanını (MRZ) okumak | **Cihazdan çıkmıyor**: yalnız kadraj bölgesi yerel ML Kit modeliyle, sırayla tek kare işlenir; yalnız türetilen belge no / doğum / son geçerlilik çipi açmak için kullanılır. Ham kare dosyaya, geçici alana veya loga yazılmaz; backend'e gönderilmez ve saklanmaz | Photos (yalnız cihaz içi işleme) |
 | Özgeçmiş ve profil | CV dosyası, profil resmi, deneyim, eğitim, nitelik ve ilgi alanı | İş başvurusu ve profil | Koala dosya deposu/backend; yetkili işveren erişimi | Files and Docs, Photos, User Content |
+| Uyuşmazlık kanıtı | Uyuşmazlığa eklenen fotoğraf (kamera/galeri) ve PDF; fotoğrafta EXIF çekim saati, cihaz modeli ve konum (iOS galeri asıl dosyanın metadata'sını taşır; iOS kamerası konum yazmaz; Android kamerası konum etiketleyebilir; Android Photo Picker genellikle çıkarır) (`POST /disputes/{id}/evidence`) | Uyuşmazlığın çözümü | Koala dosya deposu (özel nesne, yalnız atamanın tarafları ve destek ekibi okur; imzalı adres 3 dk). Sunucu herkese açık görsel yollarında konumu siler, kanıtta **silmiyor** (koala-backend#347 getirecek); karşı taraf dosyayı indirebilir, ekleme ekranı bunu söyler | Photos, Files and Docs, User Content, Precise Location (EXIF) |
 | Mesaj ve başvuru içeriği | Sohbet metni, ön yazı, değerlendirme, uyuşmazlık gerekçesi | Pazaryeri iletişimi ve işlem desteği | Koala backend; yetki ve saklama süresi ayrıca doğrulanır | Messages, Other User Content |
 | Ödeme ve çalışma | Ödeme denemesi/sonucu, IBAN'ın girilen değeri, atama, mesai, fatura bağı | Escrow, ödeme, yasal kayıt ve destek | Iyzico ve Koala backend; ödeme kartı uygulama tarafından tutulmaz | Purchases, Payment Info |
 | Cihaz ve güvenlik | Install/device id, oturum, IP'nin sunucu tarafı kullanımı, User-Agent | Oturum güvenliği, kötüye kullanım önleme | Secure storage ve backend; provider logları dahil incelenir | Device or Other IDs |
@@ -27,6 +28,9 @@ doğrulandıktan sonra hesap sahibi tarafından mağaza konsollarında yayımlan
   bütün galeriye sürekli erişim varsayılmaz. Kimlik fotoğrafları için
   `image_picker` kamerayı da açar (`ImageSource.camera`); kare ölçeklenip
   JPEG yazılır ve yalnız `POST /users/me/identity-documents` ile gönderilir.
+  Uyuşmazlık kanıtı fotoğrafı/PDF'i aynı seçicilerle alınır ve yalnız
+  `POST /disputes/{id}/evidence` ile gönderilir; `image_picker` yeniden
+  kodlarken EXIF'i platforma göre korur (iOS galeri: asıl dosyanın metadata'sı).
 - `camera`: TCKK MRZ taramasında canlı arka kamera önizlemesi ve bellek içi
   kare akışı; ham kare saklanmaz, loglanmaz veya ağ üzerinden gönderilmez.
 - `flutter_nfc_kit` ve `dmrtd`: kimlik kartının çipini ICAO 9303 üzerinden

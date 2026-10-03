@@ -22,12 +22,14 @@ import 'package:koala/employee/features/jobs/services/assignment_service.dart';
 import 'package:koala/employee/features/jobs/services/job_application_service.dart';
 import 'package:koala/employee/features/jobs/services/review_service.dart';
 import 'package:koala/employee/features/profile/models/public_profile_args.dart';
+import 'package:koala/product/features/dispute/dispute_routes.dart';
 import 'package:koala/product/features/transport/services/transport_service.dart';
 import 'package:koala/product/router/employee_routes.dart';
 import 'package:koala/product/theme/theme.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../../support/dispute_evidence_fixtures.dart' show disputeJson;
 import '../../../../../support/fake_api.dart';
 import '../../../../../support/review_fixtures.dart';
 import '../../../../../support/transport_fixtures.dart';
@@ -101,6 +103,7 @@ typedef Harness = ({
   List<Object?> openedProfiles,
   List<String> openedProfileLocations,
   List<Object?> openedReviews,
+  List<String> openedDisputes,
   List<Uri> openedUrls,
 });
 
@@ -148,17 +151,20 @@ Future<Harness> pumpDetail(
   Map<String, Object?>? cancellation,
   Map<String, Object?>? refreshedAssignment,
   List<Map<String, Object?>> applications = const [],
-  Map<String, FakeApiResponse Function(RequestOptions request)> overrides =
+  Map<String, FutureOr<FakeApiResponse> Function(RequestOptions request)>
+      overrides =
       const {},
   Brightness brightness = Brightness.light,
   bool Function(Uri url)? openUrl,
   Map<String, Object?>? transport,
   bool seatDropped = false,
+  bool settleAfterPump = true,
 }) async {
   final openedCompanies = <Object?>[];
   final openedProfiles = <Object?>[];
   final openedProfileLocations = <String>[];
   final openedReviews = <Object?>[];
+  final openedDisputes = <String>[];
   final openedUrls = <Uri>[];
 
   final api = FakeApi(
@@ -250,6 +256,24 @@ Future<Harness> pumpDetail(
         },
       ),
       GoRoute(
+        path: DisputeRoutes.pattern,
+        pageBuilder: (context, state) {
+          openedDisputes.add(state.matchedLocation);
+          return MaterialPage<void>(
+            key: state.pageKey,
+            child: Scaffold(
+              body: Center(
+                child: ElevatedButton(
+                  key: const ValueKey('stub-dispute-back'),
+                  onPressed: context.pop,
+                  child: const Text('uyuşmazlık ekranı'),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+      GoRoute(
         path: '/review',
         pageBuilder: (context, state) {
           openedReviews.add(state.extra);
@@ -284,7 +308,13 @@ Future<Harness> pumpDetail(
       ),
     ),
   );
-  await settle(tester);
+  // Yanıtı bekleyen istek varken sayfa yüklemede kalıyor: `pumpAndSettle`
+  // bitmez, yalnız ilk kare çiziliyor.
+  if (settleAfterPump) {
+    await settle(tester);
+  } else {
+    await tester.pump();
+  }
 
   return (
     api: api,
@@ -292,6 +322,7 @@ Future<Harness> pumpDetail(
     openedProfiles: openedProfiles,
     openedProfileLocations: openedProfileLocations,
     openedReviews: openedReviews,
+    openedDisputes: openedDisputes,
     openedUrls: openedUrls,
   );
 }
@@ -305,11 +336,270 @@ Future<void> settle(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+/// Uzun sayfada kart ekran dışında; liste tembel kurulduğu için kaydırmadan
+/// bulunamıyor.
+Future<void> _scrollToDispute(WidgetTester tester) async {
+  await tester.scrollUntilVisible(
+    find.byKey(const ValueKey('dispute-summary')),
+    300,
+    scrollable: find.byType(Scrollable).first,
+  );
+  await tester.pumpAndSettle();
+}
+
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   for (final brightness in Brightness.values) {
     group('İş detayı / ${brightness.name}', () {
+      testWidgets('uyuşmazlık yoksa Sorun Bildirimi kartı çizilmez', (
+        tester,
+      ) async {
+        await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: _confirmedRow,
+          detail: detailJson(creator: _ayse),
+        );
+
+        expect(find.byKey(const ValueKey('dispute-summary')), findsNothing);
+      });
+
+      testWidgets(
+        'açık uyuşmazlık kartı gerekçeyi yazar, dokununca ekranı açar ve dönünce tazeler',
+        (tester) async {
+          var disputeReads = 0;
+          final harness = await pumpDetail(
+            tester,
+            brightness: brightness,
+            job: _confirmedRow,
+            detail: detailJson(creator: _ayse),
+            overrides: {
+              '/disputes': (request) {
+                disputeReads++;
+                return dataResponse([
+                  disputeJson(
+                    'dispute-old',
+                    status: 'RESOLVED',
+                    createdAt: '2026-08-01T09:00:00Z',
+                    reason: 'Eski',
+                  ),
+                  disputeJson('dispute-new', reason: 'Ücret eksik ödendi'),
+                ]);
+              },
+            },
+          );
+
+          // En yeni uyuşmazlık özetleniyor; açık olduğu için eylem "ekle".
+          await _scrollToDispute(tester);
+          expect(find.byKey(const ValueKey('dispute-summary')), findsOneWidget);
+          expect(find.text('Sorun Bildirimi'), findsOneWidget);
+          expect(find.text('Açık'), findsOneWidget);
+          expect(find.text('Ücret eksik ödendi'), findsOneWidget);
+          expect(find.text('Eski'), findsNothing);
+          expect(find.text('Kanıt ekle ya da görüntüle'), findsOneWidget);
+          expect(disputeReads, 1);
+
+          await tester.ensureVisible(
+            find.byKey(const ValueKey('dispute-summary')),
+          );
+          await tester.tap(find.byKey(const ValueKey('dispute-summary')));
+          await settle(tester);
+
+          expect(harness.openedDisputes, ['/assignment-dispute/assignment-1']);
+          expect(find.text('uyuşmazlık ekranı'), findsOneWidget);
+
+          await tester.tap(find.byKey(const ValueKey('stub-dispute-back')));
+          await settle(tester);
+
+          // Karar bu arada verilmiş olabilir: dönüşte yeniden okunuyor.
+          expect(disputeReads, 2);
+        },
+      );
+
+      testWidgets('sonuçlanmış uyuşmazlıkta eylem yalnız görüntülemek', (
+        tester,
+      ) async {
+        await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: _confirmedRow,
+          detail: detailJson(creator: _ayse),
+          overrides: {
+            '/disputes': (_) =>
+                dataResponse([disputeJson('d', status: 'RESOLVED')]),
+          },
+        );
+
+        await _scrollToDispute(tester);
+        expect(find.text('Sonuçlandı'), findsOneWidget);
+        expect(find.text('Kanıtları görüntüle'), findsOneWidget);
+        expect(find.text('Kanıt ekle ya da görüntüle'), findsNothing);
+      });
+
+      testWidgets('uyuşmazlık okunamazsa sayfa kartsız çizilir', (
+        tester,
+      ) async {
+        await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: _confirmedRow,
+          detail: detailJson(creator: _ayse),
+          overrides: {
+            '/disputes': (_) => const FakeApiResponse(
+              statusCode: 500,
+              body: {'success': false, 'message': 'Uyuşmazlıklar alınamadı'},
+            ),
+          },
+        );
+
+        expect(find.byKey(const ValueKey('dispute-summary')), findsNothing);
+        expect(find.text('İş Detayı'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('onay bekleyen atamada uyuşmazlık hiç istenmez', (
+        tester,
+      ) async {
+        final harness = await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: assignmentRow(
+            assignmentJson(
+              status: 'PENDING_CONFIRMATION',
+              paymentStatus: 'PENDING_COLLECTION',
+            ),
+          ),
+          detail: detailJson(creator: _ayse),
+        );
+
+        // Para emanete girmediği için uyuşmazlık açılamaz; istek boşuna olurdu.
+        expect(
+          harness.api.requests.where((r) => r.path.endsWith('/disputes')),
+          isEmpty,
+        );
+        expect(find.byKey(const ValueKey('dispute-summary')), findsNothing);
+      });
+
+      testWidgets('iptal kaydı ve uyuşmazlık okumaları paralel başlar', (
+        tester,
+      ) async {
+        final cancellation = Completer<FakeApiResponse>();
+        final disputes = Completer<FakeApiResponse>();
+        final harness = await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: assignmentRow(
+            assignmentJson(
+              status: 'CANCELLED',
+              paymentStatus: 'REFUNDED_TO_EMPLOYER',
+            ),
+          ),
+          detail: detailJson(creator: _ayse),
+          overrides: {
+            '/cancellation': (_) => cancellation.future,
+            '/disputes': (_) => disputes.future,
+          },
+          settleAfterPump: false,
+        );
+
+        // İkisi de yanıt gelmeden istenmiş olmalı: biri ötekini beklemiyor.
+        for (var index = 0; index < 10; index++) {
+          await tester.pump(const Duration(milliseconds: 10));
+        }
+        final paths = [for (final r in harness.api.requests) r.path];
+        expect(paths.any((path) => path.endsWith('/cancellation')), isTrue);
+        expect(paths.any((path) => path.endsWith('/disputes')), isTrue);
+
+        cancellation.complete(dataResponse(null));
+        disputes.complete(dataResponse(const []));
+        await settle(tester);
+      });
+
+      testWidgets(
+        'sorun bildirilince uyuşmazlık ekranı açılır, dönünce kart tazelenir',
+        (tester) async {
+          var opened = false;
+          var disputeReads = 0;
+          final harness = await pumpDetail(
+            tester,
+            brightness: brightness,
+            job: assignmentRow(assignmentJson(status: 'COMPLETED')),
+            detail: detailJson(creator: _ayse),
+            overrides: {
+              '/disputes': (request) {
+                if (request.method == 'POST') {
+                  opened = true;
+                  return dataResponse(
+                    disputeJson('dispute-new', reason: 'Ücret eksik'),
+                  );
+                }
+                disputeReads++;
+                return dataResponse([
+                  if (opened) disputeJson('dispute-new', reason: 'Ücret eksik'),
+                ]);
+              },
+            },
+          );
+          expect(harness.openedDisputes, isEmpty);
+
+          await tester.tap(find.byKey(const ValueKey('work-detail-menu')));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('Sorun Bildir'));
+          await tester.pumpAndSettle();
+          await tester.enterText(find.byType(TextField), 'Ücret eksik');
+          // Onay düğmesi metin girilince açılıyor: yeniden çizilmeli.
+          await tester.pump();
+          await tester.tap(find.text('Bildir'));
+          await settle(tester);
+
+          // Açılır açılmaz kanıt ekleme ekranına geçiliyor.
+          expect(harness.openedDisputes, ['/assignment-dispute/assignment-1']);
+          final readsBeforeReturn = disputeReads;
+
+          await tester.tap(find.byKey(const ValueKey('stub-dispute-back')));
+          await settle(tester);
+
+          // Ekran kapanınca özet yeniden okunuyor ve kart çiziliyor.
+          expect(disputeReads, greaterThan(readsBeforeReturn));
+          await _scrollToDispute(tester);
+          expect(find.text('Ücret eksik'), findsOneWidget);
+        },
+      );
+
+      testWidgets('sorun bildirimi reddedilirse ekran açılmaz', (tester) async {
+        final harness = await pumpDetail(
+          tester,
+          brightness: brightness,
+          job: assignmentRow(assignmentJson(status: 'COMPLETED')),
+          detail: detailJson(creator: _ayse),
+          overrides: {
+            '/disputes': (request) => request.method == 'POST'
+                ? const FakeApiResponse(
+                    statusCode: 409,
+                    body: {
+                      'success': false,
+                      'message': 'Zaten açık bir uyuşmazlık var.',
+                      'errorCategory': 'DATA_CONFLICT',
+                    },
+                  )
+                : dataResponse(const []),
+          },
+        );
+
+        await tester.tap(find.byKey(const ValueKey('work-detail-menu')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Sorun Bildir'));
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextField), 'Ücret eksik');
+        await tester.pump();
+        await tester.tap(find.text('Bildir'));
+        await settle(tester);
+
+        expect(find.text('Zaten açık bir uyuşmazlık var.'), findsOneWidget);
+        expect(harness.openedDisputes, isEmpty);
+      });
+
       testWidgets('çizelge: bütün damgalar geldiğinde her satır çizilir', (
         tester,
       ) async {
