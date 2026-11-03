@@ -322,6 +322,71 @@ void main() {
       expect(fresh.headcount, 2);
       expect(fresh.hiredCount, 2);
     });
+
+    // BJobsProvider.adoptJob: listede olmayan ilan, detaydan liste satırı
+    // biçimine çevriliyor.
+    test('toSummary liste satırı alanlarını detaydan taşır', () {
+      final detail = JobDetail.fromJson({
+        'id': 'job_1',
+        'title': 'Garson',
+        'category': {'id': 'cat-1', 'code': 'WAITER', 'name': 'Garsonluk'},
+        'type': 'RECURRING',
+        'employerType': 'COMPANY',
+        'salaryType': 'HOURLY',
+        'salary': 250,
+        'status': 'CLOSED',
+        'position': 'Şef garson',
+        'sector': 'Yeme içme',
+        'insuranceRequired': true,
+        'experienceRequired': true,
+        'startDateTime': '2026-09-10T09:00:00Z',
+        'endDateTime': '2026-09-10T17:00:00Z',
+        'headcount': 3,
+        'hiredCount': 1,
+        'addressPrecision': 'EXACT',
+        'company': {
+          'id': 'co-1',
+          'name': 'Acme',
+          'logoUrl': 'https://cdn.example.com/acme.png',
+        },
+      });
+
+      final job = detail.toSummary();
+
+      expect(job.id, 'job_1');
+      expect(job.title, 'Garson');
+      expect(job.category.code, 'WAITER');
+      expect(job.type, JobType.recurring);
+      expect(job.employerType, JobEmployerType.company);
+      expect(job.salaryType, SalaryType.hourly);
+      expect(job.price, 250);
+      expect(job.status, JobStatus.closed);
+      expect(job.position, 'Şef garson');
+      expect(job.sector, 'Yeme içme');
+      expect(job.insuranceRequired, isTrue);
+      expect(job.experienceRequired, isTrue);
+      expect(job.startDateTime, DateTime.utc(2026, 9, 10, 9));
+      expect(job.endDateTime, DateTime.utc(2026, 9, 10, 17));
+      expect(job.company, 'Acme');
+      expect(job.companyId, 'co-1');
+      expect(job.companyLogoUrl, 'https://cdn.example.com/acme.png');
+      expect(job.headcount, 3);
+      expect(job.hiredCount, 1);
+      expect(job.addressPrecision, AddressPrecision.exact);
+    });
+
+    test('toSummary bireysel ilanda şirket alanlarını boş bırakır', () {
+      final job = JobDetail.fromJson({
+        'id': 'job_1',
+        'title': 'Garson',
+        'category': {'id': 'cat-1', 'code': 'WAITER', 'name': 'Garsonluk'},
+        'employerType': 'INDIVIDUAL',
+      }).toSummary();
+
+      expect(job.company, isNull);
+      expect(job.companyId, isNull);
+      expect(job.applicationCount, 0);
+    });
   });
 
   group('JobCategory', () {

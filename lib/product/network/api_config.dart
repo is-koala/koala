@@ -120,6 +120,19 @@ class ApiConfig {
     );
   }
 
+  /// Harici uygulamaya (tarayıcı) verilebilecek sunucu kaynaklı adreslerin
+  /// şemaları.
+  ///
+  /// Sunucunun yönlendirdiği imzalı depo adresi gibi adresler `launchUrl`'e
+  /// gitmeden önce bununla süzülüyor: `intent:`, `file:` ve şifresiz `http`
+  /// girmez. [resolveBaseUrl] ile aynı kural: `http` yalnız dev'de.
+  static Set<String> get externalUrlSchemes =>
+      resolveExternalUrlSchemes(flavor: appFlavor);
+
+  @visibleForTesting
+  static Set<String> resolveExternalUrlSchemes({required String? flavor}) =>
+      flavor == 'dev' ? const {'https', 'http'} : const {'https'};
+
   /// STOMP/WebSocket adresi.
   ///
   /// [baseUrl]'den türetiliyor: şema `http` → `ws`, `https` → `wss`.

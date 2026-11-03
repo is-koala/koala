@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/business/features/home/presentation/pages/b_job_detail_page.dart';
@@ -32,16 +34,39 @@ const _jobJson = {
   'endDateTime': '2026-09-10T17:00:00Z',
 };
 
+/// Şirket ilanı; ilanı oturum sahibi değil başka bir yetkili açmış.
+final _companyJobJson = <String, Object?>{
+  ..._jobJson,
+  'employerType': 'COMPANY',
+  'company': {'id': 'company-1', 'name': 'Acme'},
+  'creator': {'id': 'other-contact', 'firstName': 'Ece', 'lastName': 'Kaya'},
+};
+
+const _employer = {
+  'id': 'employer-1',
+  'firstName': 'Ayşe',
+  'lastName': 'İşveren',
+  'email': 'ayse@ornek.com',
+  'isEmployer': true,
+  'identityVerified': true,
+  'companies': <Object>[],
+};
+
 Future<void> _pumpPage(
   WidgetTester tester, {
   required FakeApi jobsApi,
   required Brightness brightness,
+  Map<String, Object?> detailJson = _jobJson,
+  Map<String, Object?>? currentUser,
+  Completer<FakeApiResponse>? detailResponse,
 }) async {
   final detailApi = FakeApi(
-    handler: (_) => const FakeApiResponse(
-      statusCode: 200,
-      body: {'success': true, 'data': _jobJson},
-    ),
+    handler: (_) =>
+        detailResponse?.future ??
+        FakeApiResponse(
+          statusCode: 200,
+          body: {'success': true, 'data': detailJson},
+        ),
   );
   final emptyApi = FakeApi(
     handler: (_) => const FakeApiResponse(
@@ -71,6 +96,19 @@ Future<void> _pumpPage(
     ),
   );
 
+  // Oturum sahibini sayfa yüklemiyor; verilmezse kullanıcı bilinmiyor.
+  final userProvider = UserProvider(
+    userService: UserService.withClient(
+      FakeApi(
+        handler: (_) => FakeApiResponse(
+          statusCode: 200,
+          body: {'success': true, 'data': currentUser ?? const {}},
+        ),
+      ).client,
+    ),
+  );
+  if (currentUser != null) await tester.runAsync(userProvider.load);
+
   await pumpInApp(
     tester,
     MultiProvider(
@@ -86,11 +124,7 @@ Future<void> _pumpPage(
             companyService: CompanyService.withClient(emptyApi.client),
           ),
         ),
-        ChangeNotifierProvider(
-          create: (_) => UserProvider(
-            userService: UserService.withClient(emptyApi.client),
-          ),
-        ),
+        ChangeNotifierProvider.value(value: userProvider),
         ChangeNotifierProvider(create: (_) => BTalentPoolProvider()),
       ],
       child: BJobDetailPage(
@@ -238,41 +272,6 @@ void main() {
       expect(find.text('Ayşe Yılmaz'), findsOneWidget);
     });
 
-    // `GET /users/me/jobs` yalnız kendi açtığın ilanları veriyor: şirketin başka
-    // bir yetkilisinin açtığı ilan (gelen kutusundan gelinir) listede yok. Hiçbir
-    // zaman işe yaramayacak bir "Tekrar Dene" yerine açık bir not çiziliyor.
-    testWidgets('listede olmayan ilanda dürüst not çizer, boş Tekrar Dene değil '
-        '(${brightness.name})', (tester) async {
-      final jobsApi = FakeApi(
-        handler: (request) => const FakeApiResponse(
-          statusCode: 200,
-          body: {
-            'success': true,
-            'data': {'content': []},
-          },
-        ),
-      );
-      await _pumpPage(tester, jobsApi: jobsApi, brightness: brightness);
-
-      expect(
-        find.byKey(const ValueKey('other-contact-job-notice')),
-        findsOneWidget,
-      );
-      expect(
-        find.textContaining('şirketin başka bir yetkilisi açtığı'),
-        findsOneWidget,
-      );
-      expect(find.textContaining('web sitesinden'), findsOneWidget);
-      // Çözümü olmayan bir yeniden deneme önerilmiyor.
-      expect(find.byKey(const ValueKey('applicants-retry')), findsNothing);
-      expect(find.text('Tekrar Dene'), findsNothing);
-      expect(
-        find.text('Başvuran bilgisi bu ilan için alınamadı'),
-        findsNothing,
-      );
-      // Gerçek ilan listesi hatasında yeniden deneme hâlâ var (yukarıdaki test).
-    });
-
     testWidgets('200 boş başvuru yanıtı gerçek boş durumu çizer '
         '(${brightness.name})', (tester) async {
       final jobsApi = FakeApi(
@@ -304,6 +303,235 @@ void main() {
       expect(find.text('Başvuranlar (0)'), findsOneWidget);
       expect(find.text('Henüz başvuru yok'), findsOneWidget);
       expect(find.byKey(const ValueKey('applicants-retry')), findsNothing);
+    });
+    testWidgets('başka yetkilinin açtığı şirket ilanında başvuranlar yüklenir '
+        've kabul edilir (${brightness.name})', (tester) async {
+      var applicantRequestCount = 0;
+      final jobsApi = FakeApi(
+        handler: (request) {
+          // Kullanıcının kendi ilan listesi boş: ilanı başkası açmış.
+          if (request.path == '/users/me/jobs') {
+            return const FakeApiResponse(
+              statusCode: 200,
+              body: {
+                'success': true,
+                'data': {'content': []},
+              },
+            );
+          }
+          if (request.path == '/jobs/job-1/applications') {
+            applicantRequestCount++;
+            return FakeApiResponse(
+              statusCode: 200,
+              body: {
+                'success': true,
+                'data': [
+                  {
+                    'id': 'application-1',
+                    'status': applicantRequestCount == 1
+                        ? 'APPLIED'
+                        : 'ACCEPTED',
+                    'applicationDateTime': '2026-09-08T10:00:00Z',
+                    'applicant': {
+                      'id': 'worker-1',
+                      'firstName': 'Ayşe',
+                      'lastName': 'Yılmaz',
+                    },
+                  },
+                ],
+              },
+            );
+          }
+          return const FakeApiResponse(
+            statusCode: 200,
+            body: {'success': true},
+          );
+        },
+      );
+
+      await _pumpPage(
+        tester,
+        jobsApi: jobsApi,
+        brightness: brightness,
+        detailJson: _companyJobJson,
+        currentUser: _employer,
+      );
+
+      expect(find.text('Başvuranlar (1)'), findsOneWidget);
+      expect(find.text('Ayşe Yılmaz'), findsOneWidget);
+      expect(find.byKey(const ValueKey('applicants-retry')), findsNothing);
+
+      final approve = find.text('Onayla');
+      await tester.ensureVisible(approve);
+      await tester.tap(approve);
+      await tester.pumpAndSettle();
+
+      final respond = jobsApi.requests.singleWhere(
+        (request) => request.path == '/job-applications/application-1/respond',
+      );
+      expect((respond.data as Map)['status'], 'ACCEPTED');
+      // Kabul ilan listesini yeniliyor; ilan o yenilemeden sağ çıkmalı ve
+      // başvuranlar tazelenmeli.
+      expect(applicantRequestCount, 2);
+      expect(find.text('Onaylananlar (1)'), findsOneWidget);
+      expect(find.byKey(const ValueKey('applicants-retry')), findsNothing);
+    });
+
+    testWidgets('yetkisi olmayan bireysel ilanda başvuran bölümü çizilmez '
+        '(${brightness.name})', (tester) async {
+      final jobsApi = FakeApi(
+        handler: (request) {
+          if (request.path == '/users/me/jobs') {
+            return const FakeApiResponse(
+              statusCode: 200,
+              body: {
+                'success': true,
+                'data': {'content': []},
+              },
+            );
+          }
+          return const FakeApiResponse(
+            statusCode: 200,
+            body: {'success': true, 'data': []},
+          );
+        },
+      );
+
+      await _pumpPage(
+        tester,
+        jobsApi: jobsApi,
+        brightness: brightness,
+        detailJson: {
+          ..._jobJson,
+          'creator': {
+            'id': 'other-user',
+            'firstName': 'Ece',
+            'lastName': 'Kaya',
+          },
+        },
+        currentUser: _employer,
+      );
+
+      expect(find.text('Barista'), findsWidgets);
+      expect(
+        jobsApi.requests.map((request) => request.path),
+        isNot(contains('/jobs/job-1/applications')),
+      );
+      expect(find.textContaining('Başvuranlar'), findsNothing);
+      expect(find.byKey(const ValueKey('applicants-retry')), findsNothing);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+    });
+
+    testWidgets('listeye sığmayan kendi ilanında başvuranlar yüklenir '
+        '(${brightness.name})', (tester) async {
+      final jobsApi = FakeApi(
+        handler: (request) {
+          if (request.path == '/users/me/jobs') {
+            return const FakeApiResponse(
+              statusCode: 200,
+              body: {
+                'success': true,
+                'data': {'content': []},
+              },
+            );
+          }
+          return const FakeApiResponse(
+            statusCode: 200,
+            body: {
+              'success': true,
+              'data': [
+                {
+                  'id': 'application-1',
+                  'status': 'APPLIED',
+                  'applicationDateTime': '2026-09-08T10:00:00Z',
+                  'applicant': {
+                    'id': 'worker-1',
+                    'firstName': 'Ayşe',
+                    'lastName': 'Yılmaz',
+                  },
+                },
+              ],
+            },
+          );
+        },
+      );
+
+      await _pumpPage(
+        tester,
+        jobsApi: jobsApi,
+        brightness: brightness,
+        detailJson: {
+          ..._jobJson,
+          'creator': {
+            'id': 'employer-1',
+            'firstName': 'Ayşe',
+            'lastName': 'İşveren',
+          },
+        },
+        currentUser: _employer,
+      );
+
+      expect(find.text('Başvuranlar (1)'), findsOneWidget);
+      expect(find.text('Ayşe Yılmaz'), findsOneWidget);
+    });
+    testWidgets('ilan detayı başvuran yüklemesinden sonra gelse de başvuranlar '
+        'yüklenir (${brightness.name})', (tester) async {
+      final detail = Completer<FakeApiResponse>();
+      final jobsApi = FakeApi(
+        handler: (request) {
+          if (request.path == '/users/me/jobs') {
+            return const FakeApiResponse(
+              statusCode: 200,
+              body: {
+                'success': true,
+                'data': {'content': []},
+              },
+            );
+          }
+          return const FakeApiResponse(
+            statusCode: 200,
+            body: {
+              'success': true,
+              'data': [
+                {
+                  'id': 'application-1',
+                  'status': 'APPLIED',
+                  'applicationDateTime': '2026-09-08T10:00:00Z',
+                  'applicant': {
+                    'id': 'worker-1',
+                    'firstName': 'Ayşe',
+                    'lastName': 'Yılmaz',
+                  },
+                },
+              ],
+            },
+          );
+        },
+      );
+
+      await _pumpPage(
+        tester,
+        jobsApi: jobsApi,
+        brightness: brightness,
+        detailResponse: detail,
+        currentUser: _employer,
+      );
+      // Sayfanın açılışta yaptığı liste yüklemesi bitti; ilan detayı hâlâ
+      // yolda, yani ilanın şirket ilanı olduğu henüz bilinmiyor.
+      final paths = jobsApi.requests.map((request) => request.path);
+      expect(paths, contains('/users/me/jobs'));
+      expect(paths, isNot(contains('/jobs/job-1/applications')));
+
+      detail.complete(
+        FakeApiResponse(
+          statusCode: 200,
+          body: {'success': true, 'data': _companyJobJson},
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Başvuranlar (1)'), findsOneWidget);
+      expect(find.text('Ayşe Yılmaz'), findsOneWidget);
     });
   }
 }

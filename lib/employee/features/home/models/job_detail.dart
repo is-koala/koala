@@ -187,6 +187,35 @@ class JobDetail {
     return category.displayName;
   }
 
+  /// Liste/özet karşılığı. İlan listesinde olmayan ama detayı elde olan ilanı
+  /// (`BJobsProvider.adoptJob`) liste satırı gibi tutmak için.
+  ///
+  /// Detayda olmayan ya da yalnız kartın çizdiği alanlar özetteki varsayılanında
+  /// kalıyor: başvuru sayısı, kapak görseli, uzaklık, servis bayrağı, konum ve
+  /// ilçe/il adı. Benimsenen ilan hiçbir kartta çizilmiyor.
+  Job toSummary() => Job(
+    id: id,
+    title: title,
+    category: category,
+    type: type,
+    employerType: employerType,
+    salaryType: salaryType,
+    price: price,
+    status: status,
+    position: position,
+    sector: sector,
+    insuranceRequired: insuranceRequired,
+    experienceRequired: experienceRequired,
+    startDateTime: startDateTime,
+    endDateTime: endDateTime,
+    company: company?.name,
+    companyId: company?.id,
+    companyLogoUrl: company?.logoUrl,
+    headcount: headcount,
+    hiredCount: hiredCount,
+    addressPrecision: addressPrecision,
+  );
+
   /// İlanı açan tarafın görünen adı: şirket varsa şirket, yoksa kişi.
   String? get employerName => company?.name ?? creator?.fullName;
 

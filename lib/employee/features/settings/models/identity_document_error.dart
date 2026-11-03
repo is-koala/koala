@@ -125,7 +125,7 @@ enum IdentityDocumentError {
     code: 'STORAGE_UNSUPPORTED_TYPE',
     message:
         'Fotoğraflardan biri kabul edilen biçimde değil. PNG, JPG, JPEG veya '
-        'WEBP bir kare seç; HEIC kabul edilmiyor.',
+        'bir kare seç; HEIC kabul edilmiyor.',
     action: IdentityDocumentAction.reselectPhotos,
   ),
 

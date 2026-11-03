@@ -1,6 +1,7 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/product/features/account/account_routes.dart';
+import 'package:koala/product/features/dispute/dispute_routes.dart';
 import 'package:koala/product/network/session_manager.dart';
 import 'package:koala/product/router/employee_routes.dart';
 import 'package:koala/product/router/router_manager.dart';
@@ -235,6 +236,35 @@ void main() {
           );
         }
       }
+    });
+  });
+
+  // Uyuşmazlık ekranını çalışan da işveren de açıyor (is-koala/koala#215): yol
+  // ne `/business` öneki taşıyor ne çalışan listesine giriyor, yoksa bir taraf
+  // geri çevrilirdi.
+  group('uyuşmazlık ekranı', () {
+    test('her iki tarafa da açık', () {
+      for (final userType in ['employee', 'business']) {
+        expect(
+          redirect(
+            loggedIn: true,
+            userType: userType,
+            location: DisputeRoutes.location('assignment-1'),
+          ),
+          isNull,
+          reason: '$userType uyuşmazlık ekranına ulaşamıyor',
+        );
+      }
+    });
+
+    test('giriş yapmamış kullanıcı giriş ekranına atılır', () {
+      expect(
+        redirect(
+          loggedIn: false,
+          location: DisputeRoutes.location('assignment-1'),
+        ),
+        '/auth',
+      );
     });
   });
 

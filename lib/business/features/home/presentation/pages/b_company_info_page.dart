@@ -140,7 +140,7 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
     if (picked == null || !mounted) return;
 
     if (!UploadLimits.hasAllowedImageExtension(picked.path)) {
-      AppToast.error(context, 'Yalnızca PNG, JPG veya WEBP yükleyebilirsiniz');
+      AppToast.error(context, 'Yalnızca PNG veya JPG yükleyebilirsiniz');
       return;
     }
 
