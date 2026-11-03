@@ -73,15 +73,15 @@ extension JobCategoryStyle on JobCategory {
       case JobCategoryCodes.photography:
         return AppIcons.camera;
       case JobCategoryCodes.waiter:
-        return AppIcons.restaurant;
+        return AppIcons.foodTray;
       case JobCategoryCodes.petCare:
-        return AppIcons.penTool;
+        return AppIcons.pet;
       case JobCategoryCodes.design:
-        return AppIcons.paint;
+        return AppIcons.paintbrush;
       case JobCategoryCodes.barista:
         return AppIcons.coffee;
       default:
-        return AppIcons.work;
+        return AppIcons.briefcase;
     }
   }
 
@@ -100,27 +100,6 @@ extension JobCategoryStyle on JobCategory {
         return AppColors.categoryBarista;
       default:
         return AppColors.primaryColor;
-    }
-  }
-
-  /// Haritadaki pinin SVG yolu.
-  ///
-  /// TODO(tasarım): Tanınmayan kategori için nötr bir pin görseli yok; şimdilik
-  /// garson pini marka yeşiline boyanarak kullanılıyor (`JobMarkerGenerator`
-  /// SVG'deki rengi değiştiriyor). `assets/map_pins/default.svg` eklenmeli.
-  String get pinAsset {
-    switch (code) {
-      case JobCategoryCodes.photography:
-        return 'assets/map_pins/photography.svg';
-      case JobCategoryCodes.petCare:
-        return 'assets/map_pins/pet_care.svg';
-      case JobCategoryCodes.design:
-        return 'assets/map_pins/design.svg';
-      case JobCategoryCodes.barista:
-        return 'assets/map_pins/barista.svg';
-      case JobCategoryCodes.waiter:
-      default:
-        return 'assets/map_pins/waiter.svg';
     }
   }
 }

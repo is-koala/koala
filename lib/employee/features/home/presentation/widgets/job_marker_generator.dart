@@ -1,12 +1,54 @@
+import 'dart:typed_data';
 import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:koala/employee/features/home/models/job.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:koala/product/constants/app_colors.dart';
+import 'package:reicon_flutter/reicon_flutter.dart';
 
+/// İlan pinlerini ve yaklaşık konum dairelerini üretir.
+///
+/// Pin bir dosyadan okunmuyor, burada kuruluyor: tek bir damla şekli,
+/// kategorinin rengiyle dolu, ince beyaz kenarlı; ortasında kategorinin liste
+/// kartında da görünen Reicon ikonu (`JobCategoryStyle.icon`), Filled
+/// ağırlığında ve beyaz. Böylece bütün pinler aynı çizgi ailesinden geliyor,
+/// harita ile liste aynı ikonu gösteriyor ve tanınmayan bir kategori de
+/// nötr ikonla düzgün bir pin alıyor.
 class JobMarkerGenerator {
   static final Map<JobCategory, BitmapDescriptor> _iconCache = {};
+
+  /// Damla şekli, 396 × 568 birimlik bir çerçevede; daire kısmının merkezi
+  /// (198, 198), yarıçapı 198.
+  static const String _pinPath =
+      'M395.89 197.95C395.89 320.68 197.95 567.78 197.95 567.78'
+      'C197.95 567.78 0 333.38 0 197.95C0 88.6201 88.6201 0 197.95 0'
+      'C307.28 0 395.89 88.6201 395.89 197.95Z';
+
+  /// Beyaz kenar kalınlığı (şekil birimi). Pini her iki tema zemininden de
+  /// ayırıyor; görünür çerçeve kenarın yarısı kadar dışarı genişletiliyor.
+  static const double _pinStroke = 20;
+
+  /// İkonun dairedeki kenar uzunluğu (şekil birimi); daire çapının ~%53'ü.
+  static const double _pinIconSize = 210;
+
+  /// Reicon ikonları 24 × 24 birimlik bir çerçevede çiziliyor.
+  static const double _reiconGrid = 24;
+
+  /// Pinin ekrandaki yüksekliği (mantıksal piksel).
+  static const double _pinHeight = 70;
+
+  /// Ekran yoğunluğu okunamazsa (test, görünüm henüz yok) kullanılan oran;
+  /// bugünkü telefonların çoğu 3x.
+  static const double _fallbackPixelRatio = 3;
+
+  /// Pinin çizildiği yoğunluk. Görüntü bu oranda üretilip haritaya aynı oranla
+  /// veriliyor: oran verilmezse eklenti görüntüyü 1x sayıyor ve 70 piksellik
+  /// pini 3x ekranda üç kat büyütüp pikselli gösteriyor.
+  static double get _pixelRatio =>
+      ui.PlatformDispatcher.instance.implicitView?.devicePixelRatio ??
+      _fallbackPixelRatio;
 
   /// Belirsizlik dairesinin dolgu saydamlığı. Altındaki harita okunur kalmalı;
   /// daire bir alanı işaret ediyor, bir yüzeyi kaplamıyor.
@@ -80,38 +122,65 @@ class JobMarkerGenerator {
     return icon;
   }
 
+  /// Bir kategorinin pin SVG'si.
+  ///
+  /// Kategori ikonunun Filled karşılığı yoksa (katalogda olmayan bir ad)
+  /// pin ikonsuz çiziliyor; boş bir kutu çizmektense yalnız renkli damla.
+  @visibleForTesting
+  static String pinSvg(JobCategory category) {
+    const half = _pinStroke / 2;
+    const offset = 198 - _pinIconSize / 2;
+    const scale = _pinIconSize / _reiconGrid;
+    final iconPaths = (Reicon.filled[category.icon] ?? '').replaceAll(
+      'currentColor',
+      _hex(AppColors.onAccent),
+    );
+    return '<svg xmlns="http://www.w3.org/2000/svg" '
+        'width="${396 + _pinStroke}" height="${568 + _pinStroke}" '
+        'viewBox="${-half} ${-half} ${396 + _pinStroke} ${568 + _pinStroke}">'
+        '<path d="$_pinPath" fill="${_hex(category.color)}" '
+        'stroke="${_hex(AppColors.onAccent)}" stroke-width="$_pinStroke" '
+        'stroke-linejoin="round"/>'
+        '<g transform="translate($offset $offset) scale($scale)">$iconPaths</g>'
+        '</svg>';
+  }
+
   static Future<BitmapDescriptor> _createIconFromSvg(
     JobCategory category,
   ) async {
-    const double size = 70;
-    String svgString = await rootBundle.loadString(category.pinAsset);
-    final String categoryColorHex =
-        // ignore: deprecated_member_use
-        '#${category.color.value.toRadixString(16).substring(2)}';
-    svgString = svgString.replaceAll('#82C180', categoryColorHex);
     final PictureInfo pictureInfo = await vg.loadPicture(
-      SvgStringLoader(svgString),
+      SvgStringLoader(pinSvg(category)),
       null,
     );
-    final double svgWidth = pictureInfo.size.width;
-    final double svgHeight = pictureInfo.size.height;
-    final double scale = size / svgHeight;
-    final double scaledWidth = svgWidth * scale;
+
+    final double pixelRatio = _pixelRatio;
+    final double scale = _pinHeight * pixelRatio / pictureInfo.size.height;
+    final double scaledWidth = pictureInfo.size.width * scale;
+
     final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
     final Canvas canvas = Canvas(pictureRecorder);
     canvas.scale(scale);
     canvas.drawPicture(pictureInfo.picture);
+
     final ui.Image image = await pictureRecorder.endRecording().toImage(
-      scaledWidth.toInt(),
-      size.toInt(),
+      scaledWidth.round(),
+      (_pinHeight * pixelRatio).round(),
     );
     final ByteData? byteData = await image.toByteData(
       format: ui.ImageByteFormat.png,
     );
     pictureInfo.picture.dispose();
+    image.dispose();
 
-    return BitmapDescriptor.bytes(byteData!.buffer.asUint8List());
+    return BitmapDescriptor.bytes(
+      byteData!.buffer.asUint8List(),
+      imagePixelRatio: pixelRatio,
+    );
   }
+
+  /// SVG `#RRGGBB` bekler; saydamlık taşınmaz.
+  static String _hex(Color color) =>
+      '#${(color.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
 
   static void clearCache() {
     _iconCache.clear();

@@ -5,7 +5,6 @@
 /// çalışma zamanında değil, derlemede yakalanır.
 class AppAssets {
   static const String _images = 'assets/images';
-  static const String _mapPins = 'assets/map_pins';
   static const String _lottie = 'assets/lottie';
 
   // ----------------------------------------------------------------- Logo
@@ -46,14 +45,6 @@ class AppAssets {
 
   /// Harita yüklenene kadar arkada duran yer tutucu görsel.
   static const String backgroundMap = '$_images/background_map.png';
-
-  /// İş kategorisine göre harita pini. Kategori adı `Job.category`
-  /// değeriyle eşleşir; eşleşmeyen kategori için pin çizilmez.
-  static const String pinBarista = '$_mapPins/barista.svg';
-  static const String pinWaiter = '$_mapPins/waiter.svg';
-  static const String pinDesign = '$_mapPins/design.svg';
-  static const String pinPetCare = '$_mapPins/pet_care.svg';
-  static const String pinPhotography = '$_mapPins/photography.svg';
 
   // ---------------------------------------------------------------- Lottie
 

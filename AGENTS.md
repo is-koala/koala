@@ -259,7 +259,7 @@ The icon, colour and map pin are *presentation*, resolved from `code` by the `Jo
 
 `JobCategorySeeds` exists only so the tests can build a `Job` without a live category list; its ids are deliberately `seed-` prefixed rather than UUIDs so they can never match a real record. Nothing in `lib/` reads it — keep it that way.
 
-> There is no neutral map pin for an unknown category — the waiter pin is reused, recoloured. Marked `TODO(tasarım)` in `job.dart`.
+> An unknown category gets the neutral pin: brand green with `AppIcons.briefcase`, the same fallback the list card draws.
 
 The employer flag is spelled **`isEmployer`** everywhere — the server pins it with `@JsonProperty("isEmployer")` on `AuthStartRegistrationDto`, `AuthSetPasswordDto` and `UserMeResponseDto`, and the request field is `@NotNull`. Read it through `CurrentUser.readEmployerFlag` so the two models that carry it stay in step.
 
@@ -469,7 +469,7 @@ Endpoints that exist on the server and have no app surface yet: the employer tal
 
   **What the map says out loud lives in `MapExploreOverlay`** (`home/presentation/widgets/`), not in the page's `Stack`. It alone decides which card sits on top — loading, error + *Tekrar Dene*, the crop warning, "no results", the search result list — and the page just positions it. The split exists because the overlay's decision is worth asserting on its own, and that gap is exactly how the original defect survived: the whole status card was drawn under `if (!isSearching)`, so a `500` arriving while the search bar was open showed the user *"Sonuç bulunamadı"* and no way to retry. Error and crop warning are **not** search-conditional; the crop warning stacks **above** the result list rather than replacing it.
 
-  > **The page *can* be widget-tested, and it is** — this file used to say it could not. `GoogleMap` pumps fine in `flutter test`; what it does not do is create a platform view, so `onMapCreated` never fires and `_mapController` stays null. Everything else works: `MapExplorePage` takes a `controller`, the two device plugins are answered with `setMockMethodCallHandler` (`flutter.baseflow.com/permissions/methods` and `.../geolocator` — leave them unanswered and the loading spinner turns forever, so `pumpAndSettle` never returns), the camera box is fed by calling `MapExploreController.onCameraIdle` directly, and the pins are read off the `GoogleMap` widget's own `markers` / `circles`. One real trap: the pin artwork is loaded from an SVG asset and encoded to PNG on the **real** event loop, which the test's fake clock does not advance — warm it once inside `tester.runAsync` (`JobMarkerGenerator` caches icons statically) or the first assertion sees an empty marker set.
+  > **The page *can* be widget-tested, and it is** — this file used to say it could not. `GoogleMap` pumps fine in `flutter test`; what it does not do is create a platform view, so `onMapCreated` never fires and `_mapController` stays null. Everything else works: `MapExplorePage` takes a `controller`, the two device plugins are answered with `setMockMethodCallHandler` (`flutter.baseflow.com/permissions/methods` and `.../geolocator` — leave them unanswered and the loading spinner turns forever, so `pumpAndSettle` never returns), the camera box is fed by calling `MapExploreController.onCameraIdle` directly, and the pins are read off the `GoogleMap` widget's own `markers` / `circles`. One real trap: the pin artwork is rasterised from SVG and encoded to PNG on the **real** event loop, which the test's fake clock does not advance — warm it once inside `tester.runAsync` (`JobMarkerGenerator` caches icons statically) or the first assertion sees an empty marker set.
 - Sessions are no longer faked: `SessionManager` writes `is_logged_in` / `user_type` **and** the tokens together. Do not write those prefs keys by hand; a flag without a token is a user who looks logged in and gets 401s.
 
 > A service class is named after its file: `job_service.dart` → `JobService`. There is no `*Repository` naming in the codebase.
@@ -574,7 +574,7 @@ UI icons come from **`reicon_flutter`**, and pages never touch the package direc
 - **`AppIcons`** (`product/constants/app_icons.dart`) is the catalogue — a name per icon, `static const String home = 'home';`. Nothing outside it may invent a name.
 - **`AppIcon`** (`product/widgets/app_icon.dart`) is the widget that draws one: `AppIcon(AppIcons.home)`, with optional `size`, `color` and `filled`.
 
-Map pins are separate and unchanged: **`flutter_svg`** over `assets/map_pins/`, through `employee/features/home/presentation/widgets/job_marker_generator.dart`.
+Map pins use the **same icons**: `job_marker_generator.dart` builds each pin in code — one teardrop shape filled with the category colour, a white outline, and the category's `JobCategoryStyle.icon` drawn from `Reicon.filled` in white — and rasterises it with `flutter_svg`. There are no pin assets. A category icon therefore needs a **Filled** variant; `job_marker_generator_test.dart` fails for one that has none.
 
 Material **`Icons`** still appears in older files. Do not add new ones; when you touch such a file, moving it to `AppIcon` is welcome but not mandatory.
 
