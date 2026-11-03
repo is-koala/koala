@@ -44,6 +44,23 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
   /// yenisinin üzerine yazmasın diye jetonla korunuyor.
   int _markerToken = 0;
 
+  /// Kameranın son yakınlaştırması. Gruplama ekran pikseliyle ölçüyor, yani
+  /// yakınlaştırma değişince ilanlar değişmese de gruplar yeniden kuruluyor.
+  /// Kamera hareket ederken her karede güncelleniyor ama yeniden çizim
+  /// yalnız kamera durunca yapılıyor.
+  double _zoom = AppMap.initialZoom;
+
+  /// Pinlerin en son hangi yakınlaştırmaya göre gruplandığı.
+  double? _clusteredZoom;
+
+  /// Bu yakınlaştırmadan sonra gruba dokunmak kamerayı yaklaştırmıyor, listeyi
+  /// açıyor: sokak ölçeğinin de ötesinde hâlâ ayrılmayan ilanlar pratikte
+  /// aynı binada.
+  static const double _clusterListZoom = 19;
+
+  /// Gruba yaklaşırken ilanların ekran kenarına bırakılan payı (piksel).
+  static const double _clusterFitPadding = 80;
+
   // Arama
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
@@ -127,22 +144,65 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
         maxLongitude: region.northeast.longitude,
       ),
     );
+
+    // İlanlar değişmese de yakınlaştırma değiştiyse gruplar değişti.
+    if (_clusteredZoom != _zoom) unawaited(_rebuildMarkers());
   }
 
+  /// Pinleri gruplayıp yeniden üretir.
+  ///
+  /// Tek kalan ilan sıradan pinini (ve yaklaşık konumdaysa çemberini) alıyor;
+  /// birden fazla ilanlı grup tek bir sayı rozetli pin oluyor. Gruptaki
+  /// ilanların çemberleri çizilmiyor: üst üste binen çemberler, pinlerin
+  /// birleşmesinden kazanılan sadeliği geri götürürdü.
   Future<void> _rebuildMarkers() async {
-    final jobs = _jobs.jobs;
+    final zoom = _zoom;
     final token = ++_markerToken;
 
+    final clusters = JobClusterer.cluster(_jobs.jobs, zoom: zoom);
+    final singles = [
+      for (final cluster in clusters)
+        if (cluster.isSingle) cluster.jobs.single,
+    ];
+
     final markers = await _markerCache.markersFor(
-      jobs: jobs,
+      jobs: singles,
       onMarkerTap: _onJobMarkerTap,
     );
+    final groups = await Future.wait([
+      for (final cluster in clusters)
+        if (!cluster.isSingle)
+          JobMarkerGenerator.clusterMarkerFor(cluster, _onClusterTap),
+    ]);
 
     if (!mounted || token != _markerToken) return;
     setState(() {
-      _markers = markers;
-      _areas = JobMarkerGenerator.generateAreas(jobs: jobs);
+      _markers = {...markers, ...groups};
+      _areas = JobMarkerGenerator.generateAreas(jobs: singles);
+      _clusteredZoom = zoom;
     });
+  }
+
+  /// Gruba dokunuldu: ilanları ayıracak kadar yaklaş, ayrılmıyorsa listele.
+  void _onClusterTap(JobCluster cluster) {
+    HapticFeedback.lightImpact();
+
+    final controller = _mapController;
+    if (cluster.isStacked || _zoom >= _clusterListZoom || controller == null) {
+      JobClusterSheet.show(context, cluster.jobs);
+      return;
+    }
+
+    final bounds = cluster.bounds;
+    controller.animateCamera(
+      CameraUpdate.newLatLngBounds(
+        LatLngBounds(
+          southwest: LatLng(bounds.minLatitude, bounds.minLongitude),
+          northeast: LatLng(bounds.maxLatitude, bounds.maxLongitude),
+        ),
+        _clusterFitPadding,
+      ),
+    );
   }
 
   Future<void> _openSortSheet() async {

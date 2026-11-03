@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:koala/employee/features/home/models/job_cluster.dart';
 import 'package:koala/employee/features/home/models/job_map_bounds.dart';
 import 'package:koala/employee/features/home/presentation/pages/explore_pages/map_explore_page.dart';
 import 'package:koala/employee/features/home/presentation/providers/job_category_provider.dart';
@@ -520,5 +521,68 @@ void main() {
         expect(map.mapToolbarEnabled, isFalse);
       });
     }
+  });
+
+  group('gruplama', () {
+    testWidgets('aynı noktadaki iki ilan tek grup pini olur, çember çizilmez', (
+      tester,
+    ) async {
+      Map<String, dynamic> job(String id) => {
+        ..._jobBody(
+          latitude: roundedLatitude,
+          longitude: roundedLongitude,
+          precision: 'APPROXIMATE',
+        ),
+        'id': id,
+      };
+      final api = FakeApi(
+        handler: (RequestOptions options) {
+          if (_isJobCategories(options)) return _emptyCategories();
+          return FakeApiResponse(
+            statusCode: 200,
+            body: {
+              'success': true,
+              'data': {
+                'content': [job('ilan_a'), job('ilan_b')],
+                'page': 0,
+                'size': 100,
+                'totalElements': 2,
+                'totalPages': 1,
+                'first': true,
+                'last': true,
+              },
+            },
+          );
+        },
+      );
+      final controller = MapExploreController(
+        service: JobService.withClient(api.client),
+        debounce: Duration.zero,
+      );
+
+      // Grup pininin görseli de gerçek olay döngüsünde üretiliyor; tek pin
+      // gibi harita kurulmadan önce ısıtılıyor.
+      await tester.runAsync(
+        () => JobMarkerGenerator.clusterMarkerFor(
+          JobClusterer.cluster([
+            maskedView(),
+            buildJob(
+              id: 'isitma',
+              latitude: roundedLatitude,
+              longitude: roundedLongitude,
+            ),
+          ], zoom: 15).single,
+          (_) {},
+        ),
+      );
+      await _pumpMap(tester, controller);
+      controller.onCameraIdle(_bounds);
+      await tester.pumpAndSettle();
+
+      final markers = _map(tester).markers;
+      expect(markers, hasLength(1));
+      expect(markers.single.markerId.value, 'cluster:ilan_a,ilan_b');
+      expect(_map(tester).circles, isEmpty);
+    });
   });
 }

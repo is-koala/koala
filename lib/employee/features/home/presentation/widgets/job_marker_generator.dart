@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/home/models/job_cluster.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:reicon_flutter/reicon_flutter.dart';
 
@@ -18,6 +19,31 @@ import 'package:reicon_flutter/reicon_flutter.dart';
 /// nötr ikonla düzgün bir pin alıyor.
 class JobMarkerGenerator {
   static final Map<JobCategory, BitmapDescriptor> _iconCache = {};
+
+  /// Grup pinleri etikete göre ("7", "99+") saklanıyor; aynı sayı aynı görsel.
+  static final Map<String, BitmapDescriptor> _clusterIconCache = {};
+
+  /// Grup pininin çapı (mantıksal piksel). Tek pinle aynı boyda; grup
+  /// haritada daha "önemli" görünmesin, yalnız farklı görünsün.
+  static const double _clusterDiameter = 50;
+
+  /// Üç karakterlik etikette ("99+") dairenin büyüdüğü oran.
+  static const double _clusterWideScale = 1.15;
+
+  /// Grup pininin beyaz kenarı (mantıksal piksel); tek pinin kenarıyla aynı
+  /// görsel kalınlıkta.
+  static const double _clusterStroke = 3;
+
+  /// Sayının yazı boyutu (mantıksal piksel). Tuval temayı okuyamadığı için
+  /// font burada adıyla veriliyor.
+  static const double _clusterFontSize = 18;
+
+  /// Rozetin gösterdiği en büyük sayı; üstü "99+".
+  static const int _clusterMaxCount = 99;
+
+  /// Grup pini tek pinlerin üstünde çiziliyor: iki gruptan biri tek bir pinin
+  /// altında kalırsa sayısı okunmaz.
+  static const int _clusterZIndex = 1;
 
   /// Damla şekli, 396 × 568 birimlik bir çerçevede; daire kısmının merkezi
   /// (198, 198), yarıçapı 198.
@@ -57,6 +83,74 @@ class JobMarkerGenerator {
   /// Dairenin kenar saydamlığı. Dolgudan belirgin, ama pinin önüne geçmeyecek
   /// kadar; kenar olmadan düşük alfalı dolgu açık haritada kayboluyor.
   static const double _areaStrokeAlpha = 0.5;
+
+  /// Birden fazla ilanın grup pini: Koala yeşili, beyaz kenarlı daire ve
+  /// ilan sayısı.
+  static Future<Marker> clusterMarkerFor(
+    JobCluster cluster,
+    void Function(JobCluster cluster) onClusterTap,
+  ) async {
+    final label = clusterLabel(cluster.jobs.length);
+    final icon = _clusterIconCache[label] ??= await _createClusterIcon(label);
+    return Marker(
+      markerId: MarkerId('cluster:${cluster.id}'),
+      position: LatLng(cluster.latitude, cluster.longitude),
+      icon: icon,
+      anchor: const Offset(0.5, 0.5),
+      zIndexInt: _clusterZIndex,
+      onTap: () => onClusterTap(cluster),
+    );
+  }
+
+  /// Rozette yazan metin.
+  @visibleForTesting
+  static String clusterLabel(int count) =>
+      count > _clusterMaxCount ? '$_clusterMaxCount+' : '$count';
+
+  static Future<BitmapDescriptor> _createClusterIcon(String label) async {
+    final pixelRatio = _pixelRatio;
+    final logical =
+        _clusterDiameter * (label.length > 2 ? _clusterWideScale : 1);
+    final size = (logical * pixelRatio).roundToDouble();
+    final center = Offset(size / 2, size / 2);
+    final stroke = _clusterStroke * pixelRatio;
+
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    canvas
+      ..drawCircle(center, size / 2, Paint()..color = AppColors.onAccent)
+      ..drawCircle(
+        center,
+        size / 2 - stroke,
+        Paint()..color = AppColors.primaryColor,
+      );
+
+    final text = TextPainter(
+      text: TextSpan(
+        text: label,
+        style: TextStyle(
+          color: AppColors.onAccent,
+          fontFamily: 'Poppins',
+          fontWeight: FontWeight.w600,
+          fontSize: _clusterFontSize * pixelRatio,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    text.paint(canvas, center - Offset(text.width / 2, text.height / 2));
+    text.dispose();
+
+    final image = await recorder.endRecording().toImage(
+      size.toInt(),
+      size.toInt(),
+    );
+    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+    image.dispose();
+    return BitmapDescriptor.bytes(
+      bytes!.buffer.asUint8List(),
+      imagePixelRatio: pixelRatio,
+    );
+  }
 
   /// Belirsizlik dairesinin kenar kalınlığı (piksel).
   static const int _areaStrokeWidth = 2;
@@ -184,5 +278,6 @@ class JobMarkerGenerator {
 
   static void clearCache() {
     _iconCache.clear();
+    _clusterIconCache.clear();
   }
 }
