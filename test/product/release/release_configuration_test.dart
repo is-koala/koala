@@ -13,7 +13,7 @@ void main() {
 
     expect(
       releaseValidationError(
-        tag: 'mobile-v1.1.0',
+        tag: 'mobile-v1.1.1',
         pubspecContent: pubspec,
         appInfoContent: appInfo,
       ),

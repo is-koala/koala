@@ -39,7 +39,7 @@ gizlemiyor ve kimlik doğrulama beyan formuyla tamamlanabiliyor.
 - Bir production etiketi, iki mağazanın **iç test** kanalına yayın demektir;
   production mağaza yayını anlamına gelmez.
 
-`dart run tool/validate_release_tag.dart mobile-v1.1.0` etiketi, pubspec ve
+`dart run tool/validate_release_tag.dart mobile-v1.1.1` etiketi, pubspec ve
 istemci başlık sürümünü tek sınırda doğrular.
 
 ## Bir kez yapılacak insan adımları
