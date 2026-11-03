@@ -237,14 +237,14 @@ class _BApplicationsPageState extends BApplicationsPagemodel {
     if (_inbox.isFiltered) {
       return EmptyState(
         icon: AppIcons.userMultiple,
-        title: 'Bu süzgeçte başvuru yok',
+        title: 'Bu filtrede başvuru yok',
         description:
             'Başka bir durum, şirket ya da ilan seçerek diğer başvurulara '
             'bakabilirsiniz.',
         action: OutlinedButton(
           key: const ValueKey('inbox-clear-filters'),
           onPressed: _inbox.clearFilters,
-          child: const Text('Süzgeçleri Temizle'),
+          child: const Text('Filtreleri Temizle'),
         ),
       );
     }

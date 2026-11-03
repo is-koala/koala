@@ -66,7 +66,8 @@ class _ListExplorePageState extends ListExplorePagemodel {
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               appBar(context),
-              const SliverToBoxAdapter(child: SizedBox(height: AppSizes.space)),
+              // Uygulama çubuğu ile filtreler arasında ayrı boşluk yok: çubuğun
+              // kendi alt payı ve filtre çubuğunun üst payı zaten ayırıyor.
               filters(),
               if (_searchController.text.isNotEmpty)
                 SliverToBoxAdapter(child: _searchSummary(search)),
@@ -247,7 +248,7 @@ class _ListExplorePageState extends ListExplorePagemodel {
           TextButton(
             onPressed: _clearFilters,
             child: Text(
-              'Süzgeçleri Temizle',
+              'Filtreleri Temizle',
               style: context.textTheme.labelLarge?.copyWith(
                 color: context.accentColor,
               ),
@@ -284,7 +285,7 @@ class _ListExplorePageState extends ListExplorePagemodel {
               children: [
                 _buildFilterButton(
                   icon: AppIcons.filter,
-                  label: 'Süzgeçler',
+                  label: 'Filtreler',
                   isActive: activeCount > 0,
                   badge: activeCount,
                   onTap: _openFilterSheet,

@@ -117,7 +117,7 @@ class _JobFilterSheetState extends State<JobFilterSheet> {
   @override
   Widget build(BuildContext context) {
     return AppBottomSheet(
-      title: 'Süzgeçler',
+      title: 'Filtreler',
       child: Flexible(
         child: Column(
           mainAxisSize: MainAxisSize.min,

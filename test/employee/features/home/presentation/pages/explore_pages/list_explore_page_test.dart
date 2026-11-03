@@ -217,7 +217,7 @@ void main() {
 
     await pumpPage(tester, api);
 
-    await tester.tap(find.text('Süzgeçler'));
+    await tester.tap(find.text('Filtreler'));
     await tester.pumpAndSettle();
     await tapScrolled(tester, find.text('Tekrarlı'));
     await tapScrolled(tester, find.text('Saatlik'));
@@ -236,7 +236,7 @@ void main() {
     await pumpPage(tester, api);
     final before = jobQueries(api).length;
 
-    await tester.tap(find.text('Süzgeçler'));
+    await tester.tap(find.text('Filtreler'));
     await tester.pumpAndSettle();
     await tapScrolled(tester, find.text('Tekrarlı'));
     // Sheet'in kapatma düğmesi `AppBottomSheet`'in kendi Material ikonu; çipin
@@ -254,7 +254,7 @@ void main() {
 
     await pumpPage(tester, api);
 
-    await tester.tap(find.text('Süzgeçler'));
+    await tester.tap(find.text('Filtreler'));
     await tester.pumpAndSettle();
     await tapScrolled(tester, find.text('Tekrarlı'));
     await tapScrolled(tester, find.text('Kurumsal'));
@@ -336,7 +336,7 @@ void main() {
 
       await pumpPage(tester, api);
 
-      await tester.tap(find.text('Süzgeçler'));
+      await tester.tap(find.text('Filtreler'));
       await tester.pumpAndSettle();
       await tapScrolled(tester, find.text('Tekrarlı'));
       await tapScrolled(tester, find.text('Saatlik'));
@@ -362,7 +362,7 @@ void main() {
 
     await pumpPage(tester, api);
 
-    await tester.tap(find.text('Süzgeçler'));
+    await tester.tap(find.text('Filtreler'));
     await tester.pumpAndSettle();
 
     expect(

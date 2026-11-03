@@ -289,7 +289,7 @@ class _MapExplorePageState extends MapExplorePageModel {
       centerTitle: false,
       actions: [
         IconButton(
-          tooltip: 'Süzgeçler',
+          tooltip: 'Filtreler',
           icon: AppIcon(AppIcons.filter, color: context.textPrimary),
           onPressed: _openFilterSheet,
         ),
