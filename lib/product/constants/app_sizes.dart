@@ -27,6 +27,10 @@ class AppSizes {
   /// satırları bölmeli, kendisi bir öğe gibi durmamalı.
   static const double divider = 1.0;
 
+  /// Haritadaki sessiz yenileme çizgisinin kalınlığı: pinler ekrandayken
+  /// arka planda süren isteği bir kart açmadan haber veriyor.
+  static const double refreshBar = 3.0;
+
   /// Liste satırındaki kare görsel (ilan kartı, sohbet satırı). Metin
   /// bloğundan kasıtlı olarak yüksek: satır yüksekliğini hep görsel
   /// belirlesin ve tüm satırlar eşit boyda kalsın.

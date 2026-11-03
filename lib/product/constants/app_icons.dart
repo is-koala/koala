@@ -128,8 +128,14 @@ abstract final class AppIcons {
   static const String gallery = 'gallery';
 
   // ────────────────────────────────────── İş Kategorileri
+  // Liste kartları ve harita pinleri aynı ikonu çiziyor; pinde Filled ağırlığı
+  // kullanıldığı için her adın Filled karşılığı olmalı (job_marker_generator).
   static const String camera = 'camera';
-  static const String restaurant = 'forkKnife';
-  static const String penTool = 'penTool';
-  static const String coffee = 'teaCup';
+  static const String foodTray = 'foodTray';
+  static const String pet = 'pet';
+  static const String paintbrush = 'paintbrush';
+  static const String coffee = 'coffee';
+
+  /// Uygulamanın tanımadığı kategori kodu için nötr ikon.
+  static const String briefcase = 'briefcase';
 }

@@ -7,6 +7,7 @@ import 'package:koala/employee/core/widgets/job_detail_bottom_sheet.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_filter_selection.dart';
 import 'package:koala/employee/features/home/models/job_map_bounds.dart';
+import 'package:koala/employee/features/home/models/job_cluster.dart';
 import 'package:koala/employee/features/home/models/job_search_query.dart';
 import 'package:koala/employee/features/home/presentation/providers/job_category_provider.dart';
 import 'package:koala/employee/features/home/presentation/providers/map_explore_controller.dart';
@@ -16,12 +17,14 @@ import 'package:koala/employee/features/home/presentation/widgets/explore_brand_
 import 'package:koala/employee/features/home/presentation/widgets/job_filter_sheet.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_marker_cache.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_marker_generator.dart';
+import 'package:koala/employee/features/home/presentation/widgets/job_cluster_sheet.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_sort_sheet.dart';
 import 'package:koala/employee/features/home/presentation/widgets/map_explore_overlay.dart';
 import 'package:koala/employee/features/home/services/location_service.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_map.dart';
+import 'package:koala/product/constants/app_map_style.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
@@ -82,7 +85,8 @@ class _MapExplorePageState extends MapExplorePageModel {
             right: AppPadding.primary,
             child: MapExploreOverlay(
               isSearching: isSearching,
-              isLoading: _jobs.isLoading,
+              isLoading: _jobs.isInitialLoading,
+              isRefreshing: _jobs.isRefreshing,
               errorMessage: _jobs.errorMessage,
               isTruncated: _jobs.isTruncated,
               jobs: _jobs.jobs,
@@ -179,9 +183,13 @@ class _MapExplorePageState extends MapExplorePageModel {
         zoom: 15.0,
       ),
       mapType: MapType.normal,
+      style: AppMapStyle.of(context),
       myLocationEnabled: true,
       myLocationButtonEnabled: false,
       zoomControlsEnabled: false,
+      // Android'de pine dokununca çıkan "yol tarifi / Haritalar'da aç"
+      // düğmeleri; ilan kartı zaten kendi aksiyonlarını taşıyor.
+      mapToolbarEnabled: false,
       markers: _markers,
       // Yaklaşık konumlu ilanın altındaki belirsizlik dairesi. Pin tek başına
       // bir nokta iddiası; daire o iddiayı ilanın gerçekten taşıdığı
@@ -189,6 +197,7 @@ class _MapExplorePageState extends MapExplorePageModel {
       circles: _areas,
       // Kamera durduğunda görünen alan sunucuya gidiyor; hangi ilanların
       // çekileceğini artık kullanıcının baktığı yer belirliyor.
+      onCameraMove: (position) => _zoom = position.zoom,
       onCameraIdle: _onCameraIdle,
       onMapCreated: (GoogleMapController controller) {
         _mapController = controller;

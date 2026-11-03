@@ -1,14 +1,99 @@
 import 'dart:math';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/home/models/job_cluster.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_marker_generator.dart';
+import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icons.dart';
+import 'package:reicon_flutter/reicon_flutter.dart';
 
 import '../../../../../support/fixtures.dart';
 
+/// Uygulamanın artwork'ü olmayan bir kategori kodu.
+const _unknownCategory = JobCategory(
+  id: 'seed-bilinmeyen',
+  name: 'Bilinmeyen',
+  code: 'UNKNOWN_CODE',
+);
+
+String _hex(Color color) =>
+    '#${(color.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  group('Pin görseli', () {
+    final categories = [...JobCategorySeeds.all, _unknownCategory];
+
+    for (final category in categories) {
+      test('${category.code} pini kendi rengini ve Filled ikonunu taşır', () {
+        final iconPaths = Reicon.filled[category.icon];
+        expect(
+          iconPaths,
+          isNotNull,
+          reason: '${category.icon} ikonunun Filled karşılığı yok',
+        );
+
+        final svg = JobMarkerGenerator.pinSvg(category);
+        expect(svg, contains('fill="${_hex(category.color)}"'));
+        expect(svg, contains(iconPaths!.replaceAll('currentColor', '#ffffff')));
+        // İkon beyaza boyanmış olmalı; çözülmemiş renk siyah çizilir.
+        expect(svg, isNot(contains('currentColor')));
+      });
+    }
+
+    test('bütün pinler aynı şekil ve kenarla çizilir', () {
+      final shapes = {
+        for (final category in categories)
+          JobMarkerGenerator.pinSvg(
+            category,
+          ).split('<g ').first.replaceAll(_hex(category.color), ''),
+      };
+      expect(shapes, hasLength(1));
+    });
+
+    test('tanınmayan kategori nötr ikon ve marka rengiyle çizilir', () {
+      final svg = JobMarkerGenerator.pinSvg(_unknownCategory);
+      expect(_unknownCategory.icon, AppIcons.briefcase);
+      expect(svg, contains('fill="${_hex(AppColors.primaryColor)}"'));
+    });
+
+    testWidgets('her kategori için pin görüntüsü üretilir', (tester) async {
+      JobMarkerGenerator.clearCache();
+      for (final category in categories) {
+        final marker = await tester.runAsync(
+          () => JobMarkerGenerator.markerFor(
+            buildJob(id: category.code, category: category),
+            (_) {},
+          ),
+        );
+        expect(marker, isNotNull, reason: category.code);
+        expect(marker!.icon, isA<BytesMapBitmap>(), reason: category.code);
+      }
+    });
+
+    testWidgets('pin ekran yoğunluğunda çizilir, harita 1x saymaz', (
+      tester,
+    ) async {
+      JobMarkerGenerator.clearCache();
+      final marker = await tester.runAsync(
+        () => JobMarkerGenerator.markerFor(buildJob(), (_) {}),
+      );
+      final icon = marker!.icon as BytesMapBitmap;
+      final ratio = tester.view.devicePixelRatio;
+      expect(icon.imagePixelRatio, ratio);
+
+      // Görüntünün piksel yüksekliği mantıksal yükseklik × yoğunluk olmalı;
+      // oran ile çözünürlük birlikte değişmezse pin ya bulanık ya da dev olur.
+      final image = await tester.runAsync(
+        () => decodeImageFromList(icon.byteData),
+      );
+      expect(image!.height, (70 * ratio).round());
+    });
+  });
 
   group('Belirsizlik dairesi', () {
     test('kesin konumda daire çizilmiyor', () {
@@ -90,5 +175,40 @@ void main() {
         expect(marker.position, const LatLng(exactLatitude, exactLongitude));
       },
     );
+  });
+
+  group('Grup pini', () {
+    test('rozet sayıyı yazar, 99 üstünü kısaltır', () {
+      expect(JobMarkerGenerator.clusterLabel(2), '2');
+      expect(JobMarkerGenerator.clusterLabel(99), '99');
+      expect(JobMarkerGenerator.clusterLabel(100), '99+');
+    });
+
+    testWidgets('grup pini ortasından bağlanır, tek pinlerin üstünde durur', (
+      tester,
+    ) async {
+      JobMarkerGenerator.clearCache();
+      final cluster = JobClusterer.cluster([
+        buildJob(id: 'a', latitude: 41.0, longitude: 29.0),
+        buildJob(id: 'b', latitude: 41.0, longitude: 29.0),
+      ], zoom: 15).single;
+      JobCluster? tapped;
+
+      final marker = await tester.runAsync(
+        () => JobMarkerGenerator.clusterMarkerFor(cluster, (c) => tapped = c),
+      );
+
+      expect(marker!.markerId.value, 'cluster:a,b');
+      expect(marker.anchor, const Offset(0.5, 0.5));
+      expect(marker.zIndexInt, greaterThan(0));
+      expect(marker.icon, isA<BytesMapBitmap>());
+      expect(
+        (marker.icon as BytesMapBitmap).imagePixelRatio,
+        tester.view.devicePixelRatio,
+      );
+
+      marker.onTap!();
+      expect(tapped, same(cluster));
+    });
   });
 }

@@ -398,13 +398,9 @@ void main() {
       expect(JobCategorySeeds.petCare.displayName, 'Hayvan Bakımı');
     });
 
-    test('her kategorinin pin asset yolu benzersiz', () {
-      final assets = JobCategorySeeds.all.map((c) => c.pinAsset).toList();
-      expect(assets.toSet().length, JobCategorySeeds.all.length);
-      for (final asset in assets) {
-        expect(asset, startsWith('assets/map_pins/'));
-        expect(asset, endsWith('.svg'));
-      }
+    test('her kategorinin ikonu benzersiz', () {
+      final icons = JobCategorySeeds.all.map((c) => c.icon).toSet();
+      expect(icons.length, JobCategorySeeds.all.length);
     });
 
     test('her kategorinin rengi benzersiz', () {
@@ -424,7 +420,7 @@ void main() {
         );
         expect(
           category.icon,
-          isNot(AppIcons.work),
+          isNot(AppIcons.briefcase),
           reason: '${category.code} varsayılan ikona düştü',
         );
       }

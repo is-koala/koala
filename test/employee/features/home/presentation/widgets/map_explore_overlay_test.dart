@@ -26,6 +26,7 @@ Future<void> pumpOverlay(
   WidgetTester tester, {
   required bool isSearching,
   bool isLoading = false,
+  bool isRefreshing = false,
   String? errorMessage,
   bool isTruncated = false,
   List<Job> jobs = const [],
@@ -38,6 +39,7 @@ Future<void> pumpOverlay(
     MapExploreOverlay(
       isSearching: isSearching,
       isLoading: isLoading,
+      isRefreshing: isRefreshing,
       errorMessage: errorMessage,
       isTruncated: isTruncated,
       jobs: jobs,
@@ -193,4 +195,53 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  group('sessiz yenileme', () {
+    const refreshBar = ValueKey('map-refresh-bar');
+    const loadingText = 'Bu alandaki ilanlar aranıyor...';
+
+    for (final brightness in Brightness.values) {
+      testWidgets('${brightness.name} temada yenileme kart değil çizgi çizer', (
+        tester,
+      ) async {
+        await pumpOverlay(
+          tester,
+          isSearching: false,
+          isRefreshing: true,
+          jobs: [_job('a')],
+          brightness: brightness,
+        );
+
+        expect(find.byKey(refreshBar), findsOneWidget);
+        expect(find.text(loadingText), findsNothing);
+      });
+    }
+
+    testWidgets('ilk yüklemede kart çizilir, çizgi çizilmez', (tester) async {
+      await pumpOverlay(
+        tester,
+        isSearching: false,
+        isLoading: true,
+        isRefreshing: true,
+      );
+
+      expect(find.text(loadingText), findsOneWidget);
+      expect(find.byKey(refreshBar), findsNothing);
+    });
+
+    testWidgets('yenileme sırasında hata ve kırpılma uyarısı kaybolmaz', (
+      tester,
+    ) async {
+      await pumpOverlay(
+        tester,
+        isSearching: false,
+        isRefreshing: true,
+        isTruncated: true,
+        jobs: [_job('a')],
+      );
+
+      expect(find.byKey(refreshBar), findsOneWidget);
+      expect(find.textContaining('ilandan fazlası'), findsOneWidget);
+    });
+  });
 }

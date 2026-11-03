@@ -361,7 +361,7 @@ UI ikonları `AppIcons` kataloğundan seçilir ve `AppIcon` ile çizilir:
 AppIcon(AppIcons.arrowLeft, color: context.textPrimary)
 ```
 
-Eski dosyalarda hâlâ Material `Icons.*` var; yenisini ekleme. Harita pinleri `assets/map_pins/` altındaki SVG'lerden `flutter_svg` ile çizilir (`job_marker_generator.dart`).
+Eski dosyalarda hâlâ Material `Icons.*` var; yenisini ekleme. Harita pinleri dosyadan değil koddan kurulur: kategori renginde damla + `JobCategoryStyle.icon`'un Filled Reicon karşılığı, `flutter_svg` ile çizilir (`job_marker_generator.dart`). Kategori ikonu seçerken Filled karşılığı olduğundan emin ol.
 
 ---
 
