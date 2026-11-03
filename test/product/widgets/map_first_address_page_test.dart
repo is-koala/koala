@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_map.dart';
+import 'package:koala/product/constants/app_map_style.dart';
 import 'package:koala/product/models/canonical_address.dart';
 import 'package:koala/product/models/confirmed_address.dart';
 import 'package:koala/product/models/reference_location.dart';
@@ -219,6 +220,24 @@ ConfirmedAddress _initialAddress() => const ConfirmedAddress(
 );
 
 void main() {
+  group('harita stili', () {
+    for (final brightness in Brightness.values) {
+      testWidgets('${brightness.name} temada Koala stilini kullanır', (
+        tester,
+      ) async {
+        final harness = _Harness(initialAddress: _initialAddress());
+        await harness.pump(tester, brightness: brightness);
+
+        final map = tester.widget<GoogleMap>(find.byType(GoogleMap));
+        expect(
+          map.style,
+          brightness == Brightness.dark ? AppMapStyle.dark : AppMapStyle.light,
+        );
+        expect(map.mapToolbarEnabled, isFalse);
+      });
+    }
+  });
+
   group('pin → ters geokod', () {
     for (final brightness in Brightness.values) {
       testWidgets(

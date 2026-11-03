@@ -12,6 +12,7 @@ import 'package:koala/employee/features/home/presentation/providers/search_provi
 import 'package:koala/employee/features/home/presentation/widgets/job_marker_generator.dart';
 import 'package:koala/employee/features/home/services/job_category_service.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
+import 'package:koala/product/constants/app_map_style.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../../../support/fake_api.dart';
@@ -488,5 +489,34 @@ void main() {
       expect(find.byType(GoogleMap), findsOneWidget);
       expect(find.byKey(const ValueKey('map-unavailable')), findsNothing);
     });
+  });
+
+  group('harita stili', () {
+    for (final brightness in Brightness.values) {
+      testWidgets('${brightness.name} temada Koala stilini kullanır, '
+          'Haritalar araç çubuğu kapalıdır', (tester) async {
+        final controller = MapExploreController(
+          service: JobService.withClient(
+            _apiServing([
+              _jobBody(
+                latitude: exactLatitude,
+                longitude: exactLongitude,
+                precision: 'EXACT',
+              ),
+            ]).client,
+          ),
+          debounce: Duration.zero,
+        );
+
+        await _pumpMap(tester, controller, brightness: brightness);
+
+        final map = _map(tester);
+        expect(
+          map.style,
+          brightness == Brightness.dark ? AppMapStyle.dark : AppMapStyle.light,
+        );
+        expect(map.mapToolbarEnabled, isFalse);
+      });
+    }
   });
 }

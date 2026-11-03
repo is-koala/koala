@@ -7,6 +7,7 @@ import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_map.dart';
+import 'package:koala/product/constants/app_map_style.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
@@ -136,6 +137,7 @@ class _MapFirstAddressPageState extends MapFirstAddressPagemodel {
   Widget _map() {
     return GoogleMap(
       initialCameraPosition: initialCamera,
+      style: AppMapStyle.of(context),
       zoomControlsEnabled: false,
       mapToolbarEnabled: false,
       myLocationEnabled: controller.locationGranted,

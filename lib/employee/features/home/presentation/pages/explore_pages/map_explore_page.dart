@@ -22,6 +22,7 @@ import 'package:koala/employee/features/home/services/location_service.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_map.dart';
+import 'package:koala/product/constants/app_map_style.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
@@ -179,9 +180,13 @@ class _MapExplorePageState extends MapExplorePageModel {
         zoom: 15.0,
       ),
       mapType: MapType.normal,
+      style: AppMapStyle.of(context),
       myLocationEnabled: true,
       myLocationButtonEnabled: false,
       zoomControlsEnabled: false,
+      // Android'de pine dokununca çıkan "yol tarifi / Haritalar'da aç"
+      // düğmeleri; ilan kartı zaten kendi aksiyonlarını taşıyor.
+      mapToolbarEnabled: false,
       markers: _markers,
       // Yaklaşık konumlu ilanın altındaki belirsizlik dairesi. Pin tek başına
       // bir nokta iddiası; daire o iddiayı ilanın gerçekten taşıdığı
