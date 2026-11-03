@@ -315,12 +315,26 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
         _detail = detail;
         _isLoading = false;
       });
+      unawaited(_adoptIfOutsideList(detail));
     } on ApiException catch (error) {
       if (!mounted) return;
       setState(() {
         _errorMessage = error.message;
         _isLoading = false;
       });
+    }
+  }
+
+  /// İlan, kullanıcının ilan listesinde olmayabilir: başka bir yetkilinin
+  /// açtığı şirket ilanı ya da ilk sayfaya sığmayan eski ilan. Sunucu
+  /// başvuruları yine de bu kullanıcıya açıyor; ilan provider'a benimsetilip
+  /// başvuranları çekiliyor. Liste yenilemeleri (kabul/ret içinde de) ilanı
+  /// düşürmüyor — bkz. [BJobsProvider.adoptJob].
+  Future<void> _adoptIfOutsideList(JobDetail detail) async {
+    final provider = context.read<BJobsProvider>();
+    final viewerId = context.read<UserProvider>().user?.id;
+    if (provider.adoptJob(detail, viewerId: viewerId)) {
+      await provider.ensureApplicants(detail.id);
     }
   }
 

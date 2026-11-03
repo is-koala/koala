@@ -914,15 +914,19 @@ class _BJobDetailPageState extends BJobDetailPageModel {
   }) {
     final sectionTitle = isActive ? 'Başvuranlar' : 'Yapan Kişi';
     if (post == null) {
+      // Liste geldi ve ilan ne listede ne benimsenmiş (BJobsProvider.adoptJob):
+      // başkasının bireysel ilanı. Sunucu o başvuruları vermez; bölüm
+      // çizilmiyor, tekrar denemenin gidecek yeri yok.
+      final settled = jobsError == null && !jobsLoading && jobsHaveLoaded;
+      if (settled) return const [];
+
       return [
         _sectionTitle(context, sectionTitle),
         const SizedBox(height: AppSizes.space),
         if (jobsError != null)
           _applicantsErrorPanel(jobsError)
-        else if (jobsLoading || !jobsHaveLoaded)
-          const Center(child: CircularProgressIndicator())
         else
-          _applicantsErrorPanel('Başvuran bilgisi bu ilan için alınamadı'),
+          const Center(child: CircularProgressIndicator()),
       ];
     }
 
