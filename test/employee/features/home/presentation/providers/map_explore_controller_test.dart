@@ -62,15 +62,32 @@ FakeApi _api({List<String> ids = const ['a'], bool last = true}) {
   );
 }
 
+/// Varsayılan olarak **paysız** controller: eski testler kutunun sunucuya
+/// birebir gittiğini ölçüyor. Pay davranışı kendi grubunda, üretimdeki
+/// varsayılanla sınanıyor.
 MapExploreController _controller(
   FakeApi api, {
   Duration debounce = Duration.zero,
+  double fetchMargin = 0,
+  Duration refreshIndicatorDelay = const Duration(milliseconds: 400),
 }) {
   return MapExploreController(
     service: JobService.withClient(api.client),
     debounce: debounce,
+    fetchMargin: fetchMargin,
+    refreshIndicatorDelay: refreshIndicatorDelay,
   );
 }
+
+Map<String, double> _sentBox(RequestOptions request) => {
+  for (final key in [
+    'minLatitude',
+    'maxLatitude',
+    'minLongitude',
+    'maxLongitude',
+  ])
+    key: (request.queryParameters[key] as num).toDouble(),
+};
 
 /// Debounce zamanlayıcısını **sahte saatte** ilerletir ve yanıtın controller'a
 /// dönmesi için mikro-görev turlarını boşaltır.
@@ -364,5 +381,211 @@ void main() {
     await settle(tester, const Duration(milliseconds: 120));
 
     expect(api.requests, isEmpty);
+  });
+
+  group('pay', () {
+    testWidgets('varsayılan pay görünen alanı her yöne yarım kutu genişletir', (
+      tester,
+    ) async {
+      final api = _api();
+      final controller = _controller(
+        api,
+        fetchMargin: MapExploreController.defaultFetchMargin,
+      );
+
+      controller.onCameraIdle(_wide);
+      await settle(tester);
+
+      expect(_sentBox(api.requests.single), {
+        'minLatitude': 38.0,
+        'maxLatitude': 42.0,
+        'minLongitude': 31.0,
+        'maxLongitude': 35.0,
+      });
+      controller.dispose();
+    });
+
+    testWidgets('pay içinde kalan kaydırma istek atmıyor', (tester) async {
+      final api = _api();
+      final controller = _controller(
+        api,
+        fetchMargin: MapExploreController.defaultFetchMargin,
+      );
+
+      controller.onCameraIdle(_wide);
+      await settle(tester);
+
+      // Çeyrek kutu sağa-yukarı: görünen alan eski kutudan taşıyor ama
+      // yüklenen geniş kutunun içinde.
+      controller.onCameraIdle(
+        const JobMapBounds(
+          minLatitude: 39.5,
+          maxLatitude: 41.5,
+          minLongitude: 32.5,
+          maxLongitude: 34.5,
+        ),
+      );
+      await settle(tester);
+
+      expect(api.requests, hasLength(1));
+      controller.dispose();
+    });
+
+    testWidgets('paydan taşan kaydırma yeni istek atar', (tester) async {
+      final api = _api();
+      final controller = _controller(
+        api,
+        fetchMargin: MapExploreController.defaultFetchMargin,
+      );
+
+      controller.onCameraIdle(_wide);
+      await settle(tester);
+      controller.onCameraIdle(_elsewhere);
+      await settle(tester);
+
+      expect(api.requests, hasLength(2));
+      controller.dispose();
+    });
+
+    testWidgets('geniş kutu kırpılırsa yalnız görünen alan yeniden sorulur', (
+      tester,
+    ) async {
+      var call = 0;
+      final api = FakeApi(
+        handler: (_) {
+          call++;
+          // Geniş kutu 100'ü aşıyor, görünen alan aşmıyor.
+          return FakeApiResponse(
+            statusCode: 200,
+            body: _body([call == 1 ? 'uzak' : 'ekranda'], last: call != 1),
+          );
+        },
+      );
+      final controller = _controller(
+        api,
+        fetchMargin: MapExploreController.defaultFetchMargin,
+      );
+
+      controller.onCameraIdle(_wide);
+      await settle(tester);
+      await settle(tester);
+
+      expect(api.requests, hasLength(2));
+      expect(_sentBox(api.requests.last), {
+        'minLatitude': 39.0,
+        'maxLatitude': 41.0,
+        'minLongitude': 32.0,
+        'maxLongitude': 34.0,
+      });
+      expect(controller.jobs.map((job) => job.id), ['ekranda']);
+      expect(controller.isTruncated, isFalse);
+      controller.dispose();
+    });
+
+    testWidgets('180. meridyeni aşan kutu genişletilmez', (tester) async {
+      final api = _api();
+      final controller = _controller(
+        api,
+        fetchMargin: MapExploreController.defaultFetchMargin,
+      );
+      const wrapping = JobMapBounds(
+        minLatitude: 10,
+        maxLatitude: 20,
+        minLongitude: 170,
+        maxLongitude: -170,
+      );
+
+      controller.onCameraIdle(wrapping);
+      await settle(tester);
+
+      expect(_sentBox(api.requests.single), {
+        'minLatitude': 10.0,
+        'maxLatitude': 20.0,
+        'minLongitude': 170.0,
+        'maxLongitude': -170.0,
+      });
+      controller.dispose();
+    });
+  });
+
+  group('yükleme durumları', () {
+    testWidgets('ilk yükleme belirgin, yenileme değil', (tester) async {
+      final response = Completer<FakeApiResponse>();
+      final api = FakeApi(handler: (_) => response.future);
+      final controller = _controller(api);
+
+      controller.onCameraIdle(_wide);
+      await settle(tester, const Duration(seconds: 1));
+
+      expect(controller.isInitialLoading, isTrue);
+      expect(controller.isRefreshing, isFalse);
+
+      response.complete(
+        FakeApiResponse(statusCode: 200, body: _body(['a'], last: true)),
+      );
+      await settle(tester);
+
+      expect(controller.isInitialLoading, isFalse);
+      expect(controller.isLoading, isFalse);
+      controller.dispose();
+    });
+
+    testWidgets('hızlı yenileme göstergeyi hiç açmaz', (tester) async {
+      final api = _api();
+      final controller = _controller(api);
+      final refreshing = <bool>[];
+      controller.addListener(() => refreshing.add(controller.isRefreshing));
+
+      controller.onCameraIdle(_wide);
+      await settle(tester);
+      controller.onCameraIdle(_elsewhere);
+      await settle(tester);
+      // Gecikme dolsa bile istek çoktan bittiği için gösterge açılmamalı.
+      await settle(tester, const Duration(seconds: 1));
+
+      expect(api.requests, hasLength(2));
+      expect(refreshing, everyElement(isFalse));
+      expect(controller.isInitialLoading, isFalse);
+      controller.dispose();
+    });
+
+    testWidgets('yavaş yenileme gecikmeden sonra sessiz göstergeyi açar', (
+      tester,
+    ) async {
+      final slow = Completer<FakeApiResponse>();
+      var call = 0;
+      final api = FakeApi(
+        handler: (_) {
+          call++;
+          return call == 1
+              ? FakeApiResponse(statusCode: 200, body: _body(['a'], last: true))
+              : slow.future;
+        },
+      );
+      final controller = _controller(api);
+
+      controller.onCameraIdle(_wide);
+      await settle(tester);
+      controller.onCameraIdle(_elsewhere);
+      await settle(tester, const Duration(milliseconds: 300));
+
+      expect(controller.isLoading, isTrue);
+      expect(controller.isInitialLoading, isFalse);
+      expect(controller.isRefreshing, isFalse);
+
+      await settle(tester, const Duration(milliseconds: 200));
+      expect(controller.isRefreshing, isTrue);
+      // Eldeki pinler yenileme boyunca duruyor.
+      expect(controller.jobs.map((job) => job.id), ['a']);
+
+      slow.complete(
+        FakeApiResponse(statusCode: 200, body: _body(['b'], last: true)),
+      );
+      await settle(tester);
+
+      expect(controller.isRefreshing, isFalse);
+      expect(controller.jobs.map((job) => job.id), ['b']);
+      controller.dispose();
+    });
   });
 }

@@ -83,7 +83,8 @@ class _MapExplorePageState extends MapExplorePageModel {
             right: AppPadding.primary,
             child: MapExploreOverlay(
               isSearching: isSearching,
-              isLoading: _jobs.isLoading,
+              isLoading: _jobs.isInitialLoading,
+              isRefreshing: _jobs.isRefreshing,
               errorMessage: _jobs.errorMessage,
               isTruncated: _jobs.isTruncated,
               jobs: _jobs.jobs,

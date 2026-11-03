@@ -27,6 +27,7 @@ class MapExploreOverlay extends StatelessWidget {
     super.key,
     required this.isSearching,
     required this.isLoading,
+    this.isRefreshing = false,
     required this.errorMessage,
     required this.isTruncated,
     required this.jobs,
@@ -37,7 +38,13 @@ class MapExploreOverlay extends StatelessWidget {
   /// Arama kutusu açık ve içinde metin var mı.
   final bool isSearching;
 
+  /// Henüz hiç sonuç yokken süren yükleme: belirgin kart çiziliyor.
   final bool isLoading;
+
+  /// Pinler ekrandayken süren yenileme: kart yerine yalnız ince bir çizgi.
+  /// Eskiden her kaydırma "aranıyor" kartını açıp kapatıyordu; pinler zaten
+  /// görünürken bu yalnızca dikkat dağıtıyordu.
+  final bool isRefreshing;
 
   /// Doluysa son istek başarısız: mesaj ve "Tekrar Dene" çiziliyor.
   final String? errorMessage;
@@ -63,11 +70,20 @@ class MapExploreOverlay extends StatelessWidget {
     final status = _statusCard(context);
     final showResults = isSearching && jobs.isNotEmpty;
 
-    if (status == null && !showResults) return const SizedBox.shrink();
+    final refresh = isRefreshing && !isLoading ? _refreshBar(context) : null;
+
+    if (status == null && !showResults && refresh == null) {
+      return const SizedBox.shrink();
+    }
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        if (refresh != null) ...[
+          refresh,
+          if (status != null || showResults)
+            const SizedBox(height: AppSizes.spaceSmall),
+        ],
         ?status,
         if (status != null && showResults)
           const SizedBox(height: AppSizes.spaceSmall),
@@ -123,6 +139,20 @@ class MapExploreOverlay extends StatelessWidget {
     if (isSearching && jobs.isEmpty) return _noResultsCard(context);
 
     return null;
+  }
+
+  /// Sessiz yenileme çizgisi.
+  Widget _refreshBar(BuildContext context) {
+    return ClipRRect(
+      key: const ValueKey('map-refresh-bar'),
+      borderRadius: AppRadius.secondaryCircular,
+      child: LinearProgressIndicator(
+        minHeight: AppSizes.refreshBar,
+        color: context.accentColor,
+        backgroundColor: context.backgroundColor,
+        semanticsLabel: 'Bu alandaki ilanlar güncelleniyor',
+      ),
+    );
   }
 
   /// Harita üstünde duran kartların ortak sarmalayıcısı.

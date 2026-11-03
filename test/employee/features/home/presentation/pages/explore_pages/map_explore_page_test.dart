@@ -321,6 +321,8 @@ void main() {
     final controller = MapExploreController(
       service: JobService.withClient(api.client),
       debounce: Duration.zero,
+      // Sunucu kutuyu birebir karşılaştırıyor; pay kendi testinde sınanıyor.
+      fetchMargin: 0,
     );
 
     await _pumpMap(tester, controller);
