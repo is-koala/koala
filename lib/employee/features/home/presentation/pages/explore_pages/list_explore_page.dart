@@ -275,10 +275,8 @@ class _ListExplorePageState extends ListExplorePagemodel {
           horizontal: AppPadding.primary,
           vertical: AppSizes.spaceSmall,
         ),
-        decoration: BoxDecoration(
-          color: context.tileColor,
-          borderRadius: AppRadius.secondaryCircular,
-        ),
+        // Süzgeç çubuğu bir kart değil, sayfanın parçası: zemin sayfa rengi.
+        color: context.backgroundColor,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -306,6 +304,7 @@ class _ListExplorePageState extends ListExplorePagemodel {
             JobStartOnChips(
               selected: _selection.startOn,
               onChanged: _setStartOn,
+              scrollable: true,
             ),
             if (activeCount > 0) _activeFilterChips(),
           ],
