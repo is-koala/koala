@@ -517,7 +517,7 @@ The app defines a light and a dark theme. Colors are split across **two sources*
 
 **Theme-independent colors stay in `AppColors`:** the brand green (`primaryColor`), status colors, content on a saturated surface (`onAccent`), and content on a surface that is light in *both* themes (`onLightSurface` — the auth screen's map backdrop).
 
-> **Surfaces that swap direction.** In the light theme a page can be grey with white cards on it; in the dark theme the page is the darkest tone and cards sit *above* it. That is the one case a single `ColorScheme` role cannot express, so it is handled by two accessors: **`context.recessedColor`** (the page) and **`context.raisedColor`** (a card on it). Use them together or not at all — the explore list is the screen that needs them. `context.isDarkTheme` exists for the same reason; reach for it only when the two themes genuinely disagree about direction, never to pick a color that the scheme already handles.
+> **One page/card rule everywhere.** A page is `context.backgroundColor`, a card or row on it is `context.tileColor` — in both themes, on every screen, sheets included. The explore list used to invert this through a `recessedColor` / `raisedColor` pair (grey page, white cards in the light theme); the colours swapped places as the user moved between the list and the job sheet, so the pair was removed. Do not bring it back. `context.isDarkTheme` is for the rare place the two themes genuinely disagree about direction, never to pick a color that the scheme already handles.
 >
 > The tinted status sections on *İşlerim* work the same way: `context.pendingSurface` and `context.payoutSurface` each have a light and a dark value.
 
