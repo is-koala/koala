@@ -113,10 +113,18 @@ class _ListExplorePageState extends ListExplorePagemodel {
     child: Center(child: CircularProgressIndicator(color: context.accentColor)),
   );
 
+  /// Listenin bölüm başlığı. Kart başlıklarıyla aynı boyda olunca (18)
+  /// kaybolup filtrelere ve ilk karta yapışıyordu; bölüm başlığı ölçeğinde
+  /// (`titleLarge`) ve üstte filtrelerden, altta listeden ayrılarak duruyor.
   Widget _listHeader() {
     return Padding(
-      padding: AppPadding.primaryHorizontal,
-      child: Text('Yakındaki İşler', style: context.textTheme.titleMedium),
+      padding: const EdgeInsets.fromLTRB(
+        AppPadding.primary,
+        AppSizes.spaceMedium,
+        AppPadding.primary,
+        AppSizes.space,
+      ),
+      child: Text('Yakındaki İşler', style: context.textTheme.titleLarge),
     );
   }
 
