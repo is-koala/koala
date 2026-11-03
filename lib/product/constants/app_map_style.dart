@@ -22,40 +22,41 @@ class AppMapStyle {
   static String of(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark ? dark : light;
 
-  /// Açık tema: hafif yeşile çalan kırık beyaz zemin, Koala yeşili parklar.
+  /// Açık tema: hafif yeşile çalan kırık beyaz zemin, belirgin yeşil parklar,
+  /// kenar çizgili beyaz yollar ve okunaklı koyu etiketler.
   static final String light = _encode(
     const _Palette(
-      land: Color(0xFFF6F7F4),
-      builtUp: Color(0xFFEFF1EC),
-      park: AppColors.primarySoft,
-      water: Color(0xFFD3E6E4),
+      land: Color(0xFFF2F4EF),
+      builtUp: Color(0xFFE7EAE3),
+      park: Color(0xFFC8E3C6),
+      water: Color(0xFFB4D8DC),
       road: Color(0xFFFFFFFF),
       arterial: Color(0xFFFFFFFF),
-      highway: Color(0xFFE6EEE3),
-      roadStroke: Color(0xFFE2E6DF),
-      transitLine: Color(0xFFDDE3DA),
-      label: Color(0xFF878D84),
-      labelStrong: Color(0xFF5E6A5B),
+      highway: Color(0xFFE0EDD6),
+      roadStroke: Color(0xFFD2D9CE),
+      transitLine: Color(0xFFC4CEC0),
+      label: Color(0xFF5F675C),
+      labelStrong: Color(0xFF3B4738),
       parkLabel: AppColors.primaryDeep,
       labelHalo: Color(0xFFFFFFFF),
     ),
   );
 
   /// Koyu tema: uygulamanın koyu zeminine (`darkBackground`) yakın, yeşil
-  /// tonlu; yollar zeminden yalnızca bir kademe açık, parlamaz.
+  /// tonlu; yollar ve etiketler zeminden net ayrılır ama parlamaz.
   static final String dark = _encode(
     const _Palette(
-      land: Color(0xFF181B18),
-      builtUp: Color(0xFF1D201D),
-      park: Color(0xFF1E2A1E),
-      water: Color(0xFF132326),
-      road: Color(0xFF2A2E2A),
-      arterial: Color(0xFF2F342F),
-      highway: Color(0xFF353B35),
-      roadStroke: Color(0xFF181B18),
-      transitLine: Color(0xFF2B302B),
-      label: Color(0xFF8A9287),
-      labelStrong: Color(0xFFAAB4A7),
+      land: Color(0xFF161916),
+      builtUp: Color(0xFF1D211D),
+      park: Color(0xFF223622),
+      water: Color(0xFF0E2B31),
+      road: Color(0xFF373D37),
+      arterial: Color(0xFF3F463F),
+      highway: Color(0xFF4B544B),
+      roadStroke: Color(0xFF121412),
+      transitLine: Color(0xFF3B423B),
+      label: Color(0xFFA4AD9F),
+      labelStrong: Color(0xFFCBD4C7),
       parkLabel: AppColors.primaryColor,
       labelHalo: AppColors.darkBackground,
     ),
