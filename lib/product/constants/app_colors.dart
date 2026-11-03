@@ -106,11 +106,16 @@ class AppColors {
   /// İş kategorilerinin ayırt edici renkleri. Harita pini, liste avatarı ve
   /// kategori rozeti aynı rengi kullanıyor; kullanıcı ilanı listede gördüğü
   /// renkten haritada da tanısın diye.
-  static const Color categoryPhotography = Color(0xFF9C27B0);
-  static const Color categoryWaiter = Color(0xFFFF5722);
-  static const Color categoryPetCare = Color(0xFF4CAF50);
-  static const Color categoryDesign = Color(0xFF2196F3);
-  static const Color categoryBarista = Color(0xFF795548);
+  ///
+  /// Tonlar bilerek sönük: Material'ın doygun 500 tonları sade haritanın
+  /// üstünde göz yoruyordu. Ton (mor, turuncu, yeşil, mavi, kahve) korunuyor,
+  /// doygunluk düşük; kategoriler bir bakışta ayrılmaya devam ediyor. Beyaz
+  /// ikon ve yazı iki temada da okunur kalacak koyulukta.
+  static const Color categoryPhotography = Color(0xFF9479AD);
+  static const Color categoryWaiter = Color(0xFFD4845F);
+  static const Color categoryPetCare = Color(0xFF6E9E73);
+  static const Color categoryDesign = Color(0xFF6690C4);
+  static const Color categoryBarista = Color(0xFF9C7B63);
 
   // ------------------------------------------------------- Avatar paleti
 
