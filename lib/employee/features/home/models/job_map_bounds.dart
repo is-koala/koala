@@ -35,6 +35,16 @@ class JobMapBounds {
         maxLongitude >= other.maxLongitude;
   }
 
+  /// Nokta kutunun içinde mi (kenarlar dahil). 180. meridyeni aşan kutuda
+  /// boylam iki parçadan birine düşmesi yetiyor.
+  bool containsPoint(double latitude, double longitude) {
+    if (latitude < minLatitude || latitude > maxLatitude) return false;
+    if (wrapsAntimeridian) {
+      return longitude >= minLongitude || longitude <= maxLongitude;
+    }
+    return longitude >= minLongitude && longitude <= maxLongitude;
+  }
+
   @override
   bool operator ==(Object other) =>
       other is JobMapBounds &&

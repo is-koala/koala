@@ -108,4 +108,35 @@ void main() {
       );
     });
   });
+
+  group('containsPoint', () {
+    const box = JobMapBounds(
+      minLatitude: 40.9,
+      maxLatitude: 41.1,
+      minLongitude: 28.8,
+      maxLongitude: 29.1,
+    );
+
+    test('içteki ve kenardaki nokta kutudadır', () {
+      expect(box.containsPoint(41.0, 29.0), isTrue);
+      expect(box.containsPoint(40.9, 28.8), isTrue);
+    });
+
+    test('dıştaki nokta kutuda değildir', () {
+      expect(box.containsPoint(41.2, 29.0), isFalse);
+      expect(box.containsPoint(41.0, 29.2), isFalse);
+    });
+
+    test('180. meridyeni aşan kutuda iki parça da sayılır', () {
+      const wrapping = JobMapBounds(
+        minLatitude: 10,
+        maxLatitude: 20,
+        minLongitude: 170,
+        maxLongitude: -170,
+      );
+      expect(wrapping.containsPoint(15, 175), isTrue);
+      expect(wrapping.containsPoint(15, -175), isTrue);
+      expect(wrapping.containsPoint(15, 0), isFalse);
+    });
+  });
 }
