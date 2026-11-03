@@ -15,6 +15,7 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/widgets/notification_bell.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/router/business_routes.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:provider/provider.dart';
 
@@ -298,6 +299,13 @@ class _BHomePageState extends State<BHomePage> {
             label: 'Başvuru',
             value: '$applicantCount',
             color: AppColors.info,
+            // Sayı yalnız **kendi açtığınız aktif** ilanların başvurularını
+            // topluyor (`BJobsProvider.totalApplicantCount`); gelen kutusu
+            // şirketin diğer yetkililerinin ilanlarını ve kapanmış ilanları da
+            // kapsıyor, yani liste sayıyla birebir örtüşmeyebilir
+            // (is-koala/koala#213).
+            onTap: () => context.push(BusinessRoutes.applications),
+            tapHint: 'Tüm başvuruları aç',
           ),
         ),
         const SizedBox(width: AppSizes.space),
@@ -320,16 +328,13 @@ class _BHomePageState extends State<BHomePage> {
     required String label,
     required String value,
     required Color color,
+    VoidCallback? onTap,
+    String? tapHint,
   }) {
-    return Container(
+    final content = Padding(
       padding: const EdgeInsets.symmetric(
         vertical: AppSizes.spaceMedium,
         horizontal: AppSizes.space,
-      ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: _panelAlpha),
-        borderRadius: AppRadius.secondaryCircular,
-        border: Border.all(color: color.withValues(alpha: 0.15)),
       ),
       child: Column(
         children: [
@@ -362,6 +367,28 @@ class _BHomePageState extends State<BHomePage> {
         ],
       ),
     );
+
+    // Zemin ve çerçeve `Material`'ın şeklinde: süslü bir `Container`'ın altında
+    // `InkWell` mürekkebi görünmezdi. Dokunulabilir kart ayrıca bir düğme
+    // olarak okunuyor (ekran okuyucu).
+    final card = Material(
+      color: color.withValues(alpha: _panelAlpha),
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadius.secondaryCircular,
+        side: BorderSide(color: color.withValues(alpha: 0.15)),
+      ),
+      child: onTap == null
+          ? content
+          : InkWell(
+              key: ValueKey('home-stat-$label'),
+              onTap: onTap,
+              child: content,
+            ),
+    );
+
+    if (onTap == null) return card;
+    return Semantics(button: true, hint: tapHint, child: card);
   }
 
   // --------------------------------------------------------- Hızlı işlemler
@@ -469,10 +496,10 @@ class _BHomePageState extends State<BHomePage> {
 
   /// Ana sayfadaki "Son Başvurular" listesi.
   ///
-  /// Başvuranların kim olduğunu gösteren tek yer burası ve sunucuda "bütün
-  /// ilanlarıma gelen başvurular" diye bir uç yok. O yüzden istek yalnızca
-  /// **ilk [_previewCount] aktif ilan** için atılıyor; liste zaten o kadarını
-  /// gösteriyor.
+  /// Bu bir **pencere**, gelen kutusu değil: istek yalnızca **ilk
+  /// [_previewCount] aktif ilan** için atılıyor ve yalnız bekleyenleri
+  /// çiziyor. Tamamı için başlıktaki *Tümünü Gör* ilanlar arası gelen kutusunu
+  /// açıyor (`GET /users/me/received-applications`, is-koala/koala#213).
   Widget _recentApplicantsSection(
     BuildContext context,
     BJobsProvider provider,
@@ -505,7 +532,21 @@ class _BHomePageState extends State<BHomePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionHeader(context, 'Son Başvurular'),
+        _sectionHeader(
+          context,
+          'Son Başvurular',
+          action: GestureDetector(
+            key: const ValueKey('home-applications-see-all'),
+            onTap: () => context.push(BusinessRoutes.applications),
+            child: Text(
+              'Tümünü Gör',
+              style: context.textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: context.accentColor,
+              ),
+            ),
+          ),
+        ),
         const SizedBox(height: AppSizes.space),
         if (failedPosts.isNotEmpty) ...[
           _recentApplicantsErrorPanel(context, provider, failedPosts),

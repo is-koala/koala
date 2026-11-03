@@ -11,6 +11,10 @@ class BusinessRoutes {
   /// (`String`) — `BUserProfilePage.fromExtra` ikisini de kabul ediyor.
   static const String userProfile = '/business/user-profile';
 
+  /// İlanlar arası başvuru gelen kutusu (is-koala/koala#213). Üst düzey: navbar'ın
+  /// üstünü kaplıyor; parametre almıyor, süzgeçler ekranın kendi durumu.
+  static const String applications = '/business/applications';
+
   /// Ulaşım planı düzenleyicisi (is-koala/koala#197). `extra`:
   /// `BTransportPlanArgs`; ilan modunda `TransportPlan`, taslak modunda
   /// `TransportPlanDraft` ile kapanır.

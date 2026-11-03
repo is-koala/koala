@@ -6,6 +6,7 @@ import 'package:koala/business/features/home/presentation/pages/b_home_page.dart
 import 'package:koala/business/features/home/presentation/pages/b_posts_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_profile_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_settings_page.dart';
+import 'package:koala/business/features/home/presentation/pages/b_applications_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_company_gallery_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_company_address_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_company_info_page.dart';
@@ -521,6 +522,14 @@ class RouterManager {
       GoRoute(
         path: '/business/talent-pool',
         pageBuilder: (context, state) => _page(state, const BTalentPoolPage()),
+      ),
+
+      // İlanlar arası başvuru gelen kutusu (is-koala/koala#213). Navbar'ın
+      // üstünü kaplıyor, o yüzden shell'in dışında.
+      GoRoute(
+        path: BusinessRoutes.applications,
+        pageBuilder: (context, state) =>
+            _page(state, const BApplicationsPage()),
       ),
 
       GoRoute(

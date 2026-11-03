@@ -122,6 +122,18 @@ void main() {
     expect(routes.single.builder, isNull);
   });
 
+  test('başvuru gelen kutusu shell dışında, kendi rotasıyla açılıyor', () {
+    final inbox = allGoRoutes(
+      RouterManager.router.configuration.routes,
+    ).where((route) => route.path == BusinessRoutes.applications);
+
+    // Navbar'ın üstünü kaplamalı (is-koala/koala#213); işveren yolu olduğu için
+    // çalışan bekçisi `/business` önekiyle geri çeviriyor.
+    expect(BusinessRoutes.applications, '/business/applications');
+    expect(inbox, hasLength(1));
+    expect(inbox.single.pageBuilder, isNotNull);
+  });
+
   test('adres seçici tek rotayla iki uygulamaya da açık', () {
     final routes = allGoRoutes(RouterManager.router.configuration.routes);
 

@@ -345,6 +345,15 @@ class ApiPaths {
   /// burada: backend `creatorId`'ye bakıyor, şirkete değil.
   static const String myJobs = '/users/me/jobs';
 
+  /// İşverenin ilanlar arası başvuru gelen kutusu (koala-backend#233).
+  ///
+  /// Sahibi olunan bireysel ilanlar ile yetkilisi olunan şirketlerin ilanlarına
+  /// gelen başvurular, sayfalı. `GET /users/me/applications` **gönderilen**
+  /// başvurular; bu ad onunla karışmasın diye ayrı. Süzgeçler `status`,
+  /// `jobId`, `companyId`; kapsam dışı kimlik hata değil boş sayfa. Sıralama
+  /// gönderilmezse bekleyenler (`APPLIED`) önde gelir.
+  static const String receivedApplications = '/users/me/received-applications';
+
   /// Bireysel ilan açma. Kurumsal ilan [companyJobs] üzerinden gidiyor.
   static const String createIndividualJob = myJobs;
 

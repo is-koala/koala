@@ -93,6 +93,7 @@ void main() {
         '/business/posts',
         '/business/create',
         '/business/job-detail',
+        '/business/applications',
       ]) {
         expect(
           redirect(loggedIn: true, userType: 'employee', location: location),
@@ -138,6 +139,7 @@ void main() {
         '/business/posts',
         '/business/chat',
         '/business/profile',
+        '/business/applications',
       ]) {
         expect(
           redirect(loggedIn: true, userType: 'business', location: location),
