@@ -1,3 +1,5 @@
+import 'dart:ui' show Brightness;
+
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_marker_generator.dart';
@@ -21,6 +23,10 @@ class JobMarkerCache {
   /// `job.id` ile indekslemeye başlayabilir.
   final Map<String, Marker> _markers = {};
 
+  /// Önbellekteki pinlerin çizildiği tema. Tema değişince bütün pinler
+  /// geçersiz: kenar rengi temaya bağlı.
+  Brightness? _brightness;
+
   /// Önbellekte duran pin sayısı; testler ve teşhis için.
   int get length => _markers.length;
 
@@ -32,7 +38,13 @@ class JobMarkerCache {
   Future<Set<Marker>> markersFor({
     required List<Job> jobs,
     required void Function(Job job) onMarkerTap,
+    Brightness brightness = Brightness.light,
   }) async {
+    if (_brightness != brightness) {
+      _markers.clear();
+      _brightness = brightness;
+    }
+
     for (final job in jobs) {
       // Backend enlem/boylamı opsiyonel döndürüyor: adresi koordinata
       // çevrilmemiş ilan haritada gösterilemiyor, atlanıyor.
@@ -41,7 +53,11 @@ class JobMarkerCache {
       final key = _keyFor(job);
       if (_markers.containsKey(key)) continue;
 
-      _markers[key] = await JobMarkerGenerator.markerFor(job, onMarkerTap);
+      _markers[key] = await JobMarkerGenerator.markerFor(
+        job,
+        onMarkerTap,
+        brightness: brightness,
+      );
     }
 
     final live = {

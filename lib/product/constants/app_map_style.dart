@@ -22,6 +22,16 @@ class AppMapStyle {
   static String of(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark ? dark : light;
 
+  /// Koyu temada harita zemini; koyu pin kenarı da bu.
+  static const Color _darkLand = Color(0xFF161916);
+
+  /// İlan ve grup pinlerinin kenar rengi. Kenarın işi pini zeminden ve
+  /// üst üste binen komşusundan ayırmak: açık zeminde beyaz, koyu zeminde
+  /// zeminin kendi rengi. Koyu haritada beyaz kenar pinin kendisinden parlak
+  /// kalıyor ve gözü renge değil çerçeveye çekiyordu.
+  static Color pinRim(Brightness brightness) =>
+      brightness == Brightness.dark ? _darkLand : AppColors.onAccent;
+
   /// Açık tema: hafif yeşile çalan kırık beyaz zemin, belirgin yeşil parklar,
   /// kenar çizgili beyaz yollar ve okunaklı koyu etiketler.
   static final String light = _encode(
@@ -46,7 +56,7 @@ class AppMapStyle {
   /// tonlu; yollar ve etiketler zeminden net ayrılır ama parlamaz.
   static final String dark = _encode(
     const _Palette(
-      land: Color(0xFF161916),
+      land: _darkLand,
       builtUp: Color(0xFF1D211D),
       park: Color(0xFF223622),
       water: Color(0xFF0E2B31),

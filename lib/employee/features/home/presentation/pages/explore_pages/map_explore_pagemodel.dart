@@ -53,6 +53,9 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
   /// Pinlerin en son hangi yakınlaştırmaya göre gruplandığı.
   double? _clusteredZoom;
 
+  /// Pinlerin en son hangi temaya göre çizildiği; pin kenarı temaya bağlı.
+  Brightness? _markerBrightness;
+
   /// Bu yakınlaştırmadan sonra gruba dokunmak kamerayı yaklaştırmıyor, listeyi
   /// açıyor: sokak ölçeğinin de ötesinde hâlâ ayrılmayan ilanlar pratikte
   /// aynı binada.
@@ -99,6 +102,16 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
     );
 
     _locationService!.init();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Tema değişti: pin kenarları yeni zemine göre yeniden çizilmeli.
+    if (_markerBrightness != null &&
+        _markerBrightness != Theme.of(context).brightness) {
+      unawaited(_rebuildMarkers());
+    }
   }
 
   @override
@@ -157,6 +170,7 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
   /// birleşmesinden kazanılan sadeliği geri götürürdü.
   Future<void> _rebuildMarkers() async {
     final zoom = _zoom;
+    final brightness = Theme.of(context).brightness;
     final token = ++_markerToken;
 
     final clusters = JobClusterer.cluster(_jobs.jobs, zoom: zoom);
@@ -168,11 +182,16 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
     final markers = await _markerCache.markersFor(
       jobs: singles,
       onMarkerTap: _onJobMarkerTap,
+      brightness: brightness,
     );
     final groups = await Future.wait([
       for (final cluster in clusters)
         if (!cluster.isSingle)
-          JobMarkerGenerator.clusterMarkerFor(cluster, _onClusterTap),
+          JobMarkerGenerator.clusterMarkerFor(
+            cluster,
+            _onClusterTap,
+            brightness: brightness,
+          ),
     ]);
 
     if (!mounted || token != _markerToken) return;
@@ -180,6 +199,7 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
       _markers = {...markers, ...groups};
       _areas = JobMarkerGenerator.generateAreas(jobs: singles);
       _clusteredZoom = zoom;
+      _markerBrightness = brightness;
     });
   }
 

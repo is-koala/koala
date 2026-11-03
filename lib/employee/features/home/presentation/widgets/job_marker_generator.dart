@@ -7,6 +7,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_cluster.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_map_style.dart';
 import 'package:reicon_flutter/reicon_flutter.dart';
 
 /// İlan pinlerini ve yaklaşık konum dairelerini üretir.
@@ -18,10 +19,14 @@ import 'package:reicon_flutter/reicon_flutter.dart';
 /// harita ile liste aynı ikonu gösteriyor ve tanınmayan bir kategori de
 /// nötr ikonla düzgün bir pin alıyor.
 class JobMarkerGenerator {
-  static final Map<JobCategory, BitmapDescriptor> _iconCache = {};
+  /// Pin görselleri kategori **ve tema** çiftine göre saklanıyor: kenar rengi
+  /// temaya bağlı (`AppMapStyle.pinRim`), açık temanın görseli koyuda
+  /// kullanılamaz.
+  static final Map<(JobCategory, Brightness), BitmapDescriptor> _iconCache = {};
 
-  /// Grup pinleri etikete göre ("7", "99+") saklanıyor; aynı sayı aynı görsel.
-  static final Map<String, BitmapDescriptor> _clusterIconCache = {};
+  /// Grup pinleri etiket ("7", "99+") ve temaya göre saklanıyor.
+  static final Map<(String, Brightness), BitmapDescriptor> _clusterIconCache =
+      {};
 
   /// Grup pininin çapı (mantıksal piksel). Tek pinle aynı boyda; grup
   /// haritada daha "önemli" görünmesin, yalnız farklı görünsün.
@@ -84,14 +89,16 @@ class JobMarkerGenerator {
   /// kadar; kenar olmadan düşük alfalı dolgu açık haritada kayboluyor.
   static const double _areaStrokeAlpha = 0.5;
 
-  /// Birden fazla ilanın grup pini: Koala yeşili, beyaz kenarlı daire ve
-  /// ilan sayısı.
+  /// Birden fazla ilanın grup pini: Koala yeşili, temaya göre kenarlı daire
+  /// ve ilan sayısı.
   static Future<Marker> clusterMarkerFor(
     JobCluster cluster,
-    void Function(JobCluster cluster) onClusterTap,
-  ) async {
+    void Function(JobCluster cluster) onClusterTap, {
+    Brightness brightness = Brightness.light,
+  }) async {
     final label = clusterLabel(cluster.jobs.length);
-    final icon = _clusterIconCache[label] ??= await _createClusterIcon(label);
+    final icon = _clusterIconCache[(label, brightness)] ??=
+        await _createClusterIcon(label, brightness);
     return Marker(
       markerId: MarkerId('cluster:${cluster.id}'),
       position: LatLng(cluster.latitude, cluster.longitude),
@@ -107,7 +114,10 @@ class JobMarkerGenerator {
   static String clusterLabel(int count) =>
       count > _clusterMaxCount ? '$_clusterMaxCount+' : '$count';
 
-  static Future<BitmapDescriptor> _createClusterIcon(String label) async {
+  static Future<BitmapDescriptor> _createClusterIcon(
+    String label,
+    Brightness brightness,
+  ) async {
     final pixelRatio = _pixelRatio;
     final logical =
         _clusterDiameter * (label.length > 2 ? _clusterWideScale : 1);
@@ -118,7 +128,11 @@ class JobMarkerGenerator {
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
     canvas
-      ..drawCircle(center, size / 2, Paint()..color = AppColors.onAccent)
+      ..drawCircle(
+        center,
+        size / 2,
+        Paint()..color = AppMapStyle.pinRim(brightness),
+      )
       ..drawCircle(
         center,
         size / 2 - stroke,
@@ -164,9 +178,13 @@ class JobMarkerGenerator {
   /// Çağıran `job.hasLocation`'ı doğrulamış olmalı.
   static Future<Marker> markerFor(
     Job job,
-    void Function(Job job) onMarkerTap,
-  ) async {
-    final BitmapDescriptor icon = await _getOrCreateIcon(job.category);
+    void Function(Job job) onMarkerTap, {
+    Brightness brightness = Brightness.light,
+  }) async {
+    final BitmapDescriptor icon = await _getOrCreateIcon(
+      job.category,
+      brightness,
+    );
 
     return Marker(
       markerId: MarkerId(job.id),
@@ -206,14 +224,14 @@ class JobMarkerGenerator {
   static Offset anchorFor(AddressPrecision precision) =>
       precision.isApproximate ? const Offset(0.5, 0.5) : const Offset(0.5, 1.0);
 
-  static Future<BitmapDescriptor> _getOrCreateIcon(JobCategory category) async {
-    if (_iconCache.containsKey(category)) {
-      return _iconCache[category]!;
-    }
-
-    final icon = await _createIconFromSvg(category);
-    _iconCache[category] = icon;
-    return icon;
+  static Future<BitmapDescriptor> _getOrCreateIcon(
+    JobCategory category,
+    Brightness brightness,
+  ) async {
+    return _iconCache[(category, brightness)] ??= await _createIconFromSvg(
+      category,
+      brightness,
+    );
   }
 
   /// Bir kategorinin pin SVG'si.
@@ -221,7 +239,10 @@ class JobMarkerGenerator {
   /// Kategori ikonunun Filled karşılığı yoksa (katalogda olmayan bir ad)
   /// pin ikonsuz çiziliyor; boş bir kutu çizmektense yalnız renkli damla.
   @visibleForTesting
-  static String pinSvg(JobCategory category) {
+  static String pinSvg(
+    JobCategory category, {
+    Brightness brightness = Brightness.light,
+  }) {
     const half = _pinStroke / 2;
     const offset = 198 - _pinIconSize / 2;
     const scale = _pinIconSize / _reiconGrid;
@@ -233,7 +254,8 @@ class JobMarkerGenerator {
         'width="${396 + _pinStroke}" height="${568 + _pinStroke}" '
         'viewBox="${-half} ${-half} ${396 + _pinStroke} ${568 + _pinStroke}">'
         '<path d="$_pinPath" fill="${_hex(category.color)}" '
-        'stroke="${_hex(AppColors.onAccent)}" stroke-width="$_pinStroke" '
+        'stroke="${_hex(AppMapStyle.pinRim(brightness))}" '
+        'stroke-width="$_pinStroke" '
         'stroke-linejoin="round"/>'
         '<g transform="translate($offset $offset) scale($scale)">$iconPaths</g>'
         '</svg>';
@@ -241,9 +263,10 @@ class JobMarkerGenerator {
 
   static Future<BitmapDescriptor> _createIconFromSvg(
     JobCategory category,
+    Brightness brightness,
   ) async {
     final PictureInfo pictureInfo = await vg.loadPicture(
-      SvgStringLoader(pinSvg(category)),
+      SvgStringLoader(pinSvg(category, brightness: brightness)),
       null,
     );
 
