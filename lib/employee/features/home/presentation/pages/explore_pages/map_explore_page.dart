@@ -8,7 +8,6 @@ import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_filter_selection.dart';
 import 'package:koala/employee/features/home/models/job_map_bounds.dart';
 import 'package:koala/employee/features/home/models/job_cluster.dart';
-import 'package:koala/employee/features/home/models/job_search_query.dart';
 import 'package:koala/employee/features/home/presentation/providers/job_category_provider.dart';
 import 'package:koala/employee/features/home/presentation/providers/map_explore_controller.dart';
 import 'package:koala/employee/features/home/presentation/providers/page_provider.dart';
@@ -18,14 +17,16 @@ import 'package:koala/employee/features/home/presentation/widgets/job_filter_she
 import 'package:koala/employee/features/home/presentation/widgets/job_marker_cache.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_marker_generator.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_cluster_sheet.dart';
-import 'package:koala/employee/features/home/presentation/widgets/job_sort_sheet.dart';
 import 'package:koala/employee/features/home/presentation/widgets/map_explore_overlay.dart';
 import 'package:koala/employee/features/home/services/location_service.dart';
+import 'package:koala/product/constants/app_shadows.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_map.dart';
 import 'package:koala/product/constants/app_map_style.dart';
 import 'package:koala/product/constants/app_padding.dart';
+import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/services/maps_availability.dart';
@@ -52,8 +53,8 @@ class MapExplorePage extends StatefulWidget {
 }
 
 class _MapExplorePageState extends MapExplorePageModel {
-  /// Konum butonunun alttan yüksekliği: navbar'ın üstünde kalmalı.
-  static const double _locationButtonBottom = 110;
+  /// Mini `FloatingActionButton`'ın kenarı.
+  static const double _locationButtonSize = 40;
 
   /// Harita yokken gösterilen metin; testler ve diğer harita ekranı aynı
   /// cümleyi kullanıyor.
@@ -126,26 +127,56 @@ class _MapExplorePageState extends MapExplorePageModel {
     );
   }
 
+  /// Konum düğmesinin alttan uzaklığı, navbar'ın ölçülerinden.
+  ///
+  /// Navbar ortada ve sabit genişlikte; yanında düğmeye yer varsa düğme
+  /// navbar'ın sağında, alt kenarı navbar'ın alt kenarıyla aynı çizgide. Dar ekranda navbar'la çakışacağı
+  /// için navbar'ın üstüne çıkıyor. Eskiden sabit 110'du: her ekranda
+  /// navbar'ın üstünde ve sağdaki boş alanı kullanmadan havada duruyordu.
+  double _locationButtonBottom(BuildContext context) {
+    const navBarBottom = AppPadding.bottomNavBarPadding;
+    final sideRoom =
+        (MediaQuery.sizeOf(context).width - AppSizes.navBarWidth) / 2;
+    final fitsBeside = sideRoom >= _locationButtonSize + AppPadding.primary * 2;
+
+    return fitsBeside
+        ? navBarBottom.bottom
+        : navBarBottom.bottom + AppSizes.navBar + AppSizes.spaceMedium;
+  }
+
   Positioned currentPositionButton() {
     return Positioned(
-      bottom: _locationButtonBottom,
+      bottom: _locationButtonBottom(context),
       right: AppPadding.primary,
-      child: FloatingActionButton(
-        mini: true,
-        backgroundColor: context.accentColor,
-        foregroundColor: context.onAccentColor,
-        elevation: 4,
-        onPressed: () {
-          if (_currentLatLng != null && _mapController != null) {
-            _mapController!.animateCamera(
-              CameraUpdate.newCameraPosition(
-                CameraPosition(target: _currentLatLng!, zoom: 15.0),
-              ),
-            );
-            HapticFeedback.lightImpact();
-          }
-        },
-        child: const Icon(Icons.my_location, size: AppSizes.icon),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: AppShadows.floating,
+        ),
+        child: FloatingActionButton(
+          mini: true,
+          // Gölge dış kutudan çiziliyor; mini FAB'ın 48'lik dokunma payı
+          // kalırsa gölge 40'lık görünür dairenin 4 dışından başlıyor ve
+          // diğer yüzen öğelerden kalın görünüyordu.
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          backgroundColor: context.accentColor,
+          foregroundColor: context.onAccentColor,
+          elevation: 0,
+          focusElevation: 0,
+          hoverElevation: 0,
+          highlightElevation: 0,
+          onPressed: () {
+            if (_currentLatLng != null && _mapController != null) {
+              _mapController!.animateCamera(
+                CameraUpdate.newCameraPosition(
+                  CameraPosition(target: _currentLatLng!, zoom: 15.0),
+                ),
+              );
+              HapticFeedback.lightImpact();
+            }
+          },
+          child: const Icon(Icons.my_location, size: AppSizes.icon),
+        ),
       ),
     );
   }
@@ -285,27 +316,62 @@ class _MapExplorePageState extends MapExplorePageModel {
       systemOverlayStyle: overMapStyle,
       backgroundColor: Colors.transparent,
       elevation: 0,
-      title: const ExploreBrandTitle(),
+      title: const ExploreBrandTitle(floating: true),
       centerTitle: false,
       actions: [
-        IconButton(
-          tooltip: 'Süzgeçler',
-          icon: AppIcon(AppIcons.filter, color: context.textPrimary),
-          onPressed: _openFilterSheet,
-        ),
-        IconButton(
-          icon: AppIcon(AppIcons.sort, color: context.textPrimary),
-          onPressed: _openSortSheet,
-        ),
-        IconButton(
-          icon: AppIcon(AppIcons.search, color: context.onAccentColor),
-          style: ButtonStyle(
-            backgroundColor: WidgetStatePropertyAll(context.accentColor),
+        // Filtre ve arama tek yeşil hapın içinde: zeminsiz koyu filtre ikonu
+        // haritanın sokak adları üstünde kayboluyordu.
+        //
+        // Hapın iç boşluğu 8 (üstte, altta, kenarlarda): kare düğmenin kendi
+        // payı. İki ikonun arası iki düğmenin payları kadar: 16.
+        // 48'lik IconButton kutusu kenarlara da 12 bırakıp hapı şişiriyordu.
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: context.accentColor,
+            borderRadius: AppRadius.stadiumCircular,
+            boxShadow: AppShadows.floating,
           ),
-          onPressed: searchProvider.startSearching,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Filtre ve sıralama tek düğme: ikisi de aynı sheet'te.
+              _pillButton(
+                tooltip: 'Filtrele ve sırala',
+                // Huni yalnız "filtre" diyordu; düğme sıralamayı da açıyor.
+                icon: AppIcons.sort,
+                onPressed: _openFilterSheet,
+              ),
+              _pillButton(
+                tooltip: 'Ara',
+                icon: AppIcons.search,
+                onPressed: searchProvider.startSearching,
+              ),
+            ],
+          ),
         ),
         const SizedBox(width: AppSizes.spaceMedium),
       ],
+    );
+  }
+
+  /// Harita hapındaki tek düğme: kare, ikonun her yanında 8.
+  Widget _pillButton({
+    required String tooltip,
+    required AppIconData icon,
+    required VoidCallback onPressed,
+  }) {
+    return IconButton(
+      tooltip: tooltip,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints.tightFor(
+        width: AppSizes.mapPillHeight,
+        height: AppSizes.mapPillHeight,
+      ),
+      style: IconButton.styleFrom(
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      icon: AppIcon(icon, color: context.onAccentColor),
+      onPressed: onPressed,
     );
   }
 

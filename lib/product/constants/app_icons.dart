@@ -58,6 +58,9 @@ abstract final class AppIcons {
   /// Banka hesabı; hakediş satırındaki maskeli IBAN.
   static const String bank = 'bank';
   static const String calendar = 'calendar';
+
+  /// Bitiş tarihi; başlangıçtaki [calendar] ile aynı aileden, tikli.
+  static const String calendarTick = 'calendarTick';
   static const String clock = 'clock';
   static const String route = 'route';
 
@@ -120,6 +123,9 @@ abstract final class AppIcons {
   /// söylüyor.
   static const String userBlock = 'userBlock';
   static const String building = 'building';
+
+  /// Pozisyon / unvan.
+  static const String personalCard = 'personalcard';
   static const String paint = 'palette';
   static const String task = 'task';
   static const String dress = 'tshirt';

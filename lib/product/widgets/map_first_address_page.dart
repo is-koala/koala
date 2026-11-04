@@ -123,7 +123,7 @@ class _MapFirstAddressPageState extends MapFirstAddressPagemodel {
   Widget _mapPlaceholder() {
     return ColoredBox(
       key: const ValueKey('map-unavailable'),
-      color: context.recessedColor,
+      color: context.tileColor,
       child: const EmptyState(
         icon: AppIcons.location,
         title: 'Harita bu derlemede kullanılamıyor',

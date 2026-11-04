@@ -68,8 +68,6 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
 
-  JobSortOption _sort = JobSortOption.newest;
-
   /// Süzgeç sheet'inin uygulanmış hâli.
   ///
   /// Harita kameranın kutusunu koruduğu için sheet'ten yalnız başlangıç günü
@@ -225,28 +223,18 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
     );
   }
 
-  Future<void> _openSortSheet() async {
-    final picked = await JobSortSheet.show(
-      context,
-      selected: _sort,
-      hasLocation: _currentLatLng != null,
-    );
-    if (picked == null || !mounted) return;
-
-    setState(() => _sort = picked);
-    _jobs.setSort(picked);
-  }
-
   Future<void> _openFilterSheet() async {
     final picked = await JobFilterSheet.show(
       context,
       selection: _selection,
       categories: context.read<JobCategoryProvider>().categories,
       hasLocation: _currentLatLng != null,
+      showSort: true,
     );
     if (picked == null || !mounted) return;
 
     setState(() => _selection = picked);
+    _jobs.setSort(picked.sort);
     final window = picked.startOn?.toWindow();
     _jobs.setStartWindow(
       startFrom: window?.startFrom,

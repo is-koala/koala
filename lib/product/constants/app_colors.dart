@@ -160,15 +160,21 @@ class AppColors {
 
   static const Color lightBackground = Color(0xFFFFFFFF);
 
+  // Açık temanın yüzey grileri **nötr**: üç kanal eşit. Eskiden iOS sistem
+  // grileriydi (#F2F2F7 ...) ve mavi kanalı birkaç adım yüksekti; metinler
+  // nötr, koyu tema nötr, harita ve marka yeşili sıcak taraftayken kartlar
+  // soğuk ve maviye çalıyordu. Parlaklık korunarak mavi payı kanallara
+  // dağıtıldı.
+
   /// Kartın zemini. Sayfa zemininden ayrılsın diye beyazdan bir tık koyu.
-  static const Color lightSurfaceLow = Color(0xFFF9F9FB);
-  static const Color lightTile = Color(0xFFF2F2F7);
-  static const Color lightTileHigh = Color(0xFFE8E8ED);
-  static const Color lightSurfaceHighest = Color(0xFFDEDEE3);
+  static const Color lightSurfaceLow = Color(0xFFF9F9F9);
+  static const Color lightTile = Color(0xFFF3F3F3);
+  static const Color lightTileHigh = Color(0xFFE9E9E9);
+  static const Color lightSurfaceHighest = Color(0xFFDFDFDF);
   static const Color lightTextPrimary = Color(0xFF212121);
   static const Color lightTextSecondary = Color(0xFF6B6B6B);
   static const Color lightTextTertiary = Color(0xFF9A9A9A);
-  static const Color lightDivider = Color(0xFFE3E3E8);
+  static const Color lightDivider = Color(0xFFE4E4E4);
 
   static const Color darkBackground = Color(0xFF121212);
   static const Color darkSurfaceLow = Color(0xFF181818);

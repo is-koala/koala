@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:koala/employee/core/widgets/employer_type_badge.dart';
 import 'package:koala/employee/core/widgets/job_location_card.dart';
 import 'package:koala/employee/core/widgets/job_transport_card.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
@@ -26,7 +25,7 @@ import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/job_gallery_view.dart';
 import 'package:koala/product/widgets/report_sheet.dart';
 import 'package:provider/provider.dart';
-import 'dart:ui';
+import 'dart:ui' show lerpDouble;
 
 class JobDetailBottomSheet extends StatefulWidget {
   final Job job;
@@ -54,9 +53,14 @@ class JobDetailBottomSheet extends StatefulWidget {
     this.jobService,
   });
 
-  /// Sheet'in kapalı ve tam açık yükseklikleri. Genişleme oranı bu ikisi
-  /// arasında normalize ediliyor; içerideki animasyonların hepsi o orana bakar.
-  static const double _collapsedSize = 0.4;
+  /// Sheet'in kapalı ve tam açık yükseklikleri.
+  ///
+  /// İçerik iki hâlde de **aynı**: aynı boyutlar, aynı bölümler. Kapalı
+  /// hâlde sheet yalnız alçak, alttaki bölümler pencerenin dışında kalıyor.
+  /// Sürüklerken yalnız sheet'in yüksekliği değişiyor; eskiden dört metin
+  /// kare kare büyüyor ve bölümler bir eşikte beliriyordu, sheet her karede
+  /// baştan dizildiği için takılıyormuş gibi görünüyordu.
+  static const double _collapsedSize = 0.46;
   static const double _expandedSize = 0.95;
 
   static void show(BuildContext context, Job job) {
@@ -91,7 +95,17 @@ class JobDetailBottomSheet extends StatefulWidget {
 }
 
 class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
-  double _sheetSize = 0.5;
+  /// Sheet açık uca yakın mı. Yalnız alttaki birincil düğmenin işini
+  /// ("Detayları Gör" / "Başvur") ve kaydet düğmesini belirliyor; içerik buna
+  /// bakmıyor. Yalnız eşik geçildiğinde değişiyor, sürüklemenin her
+  /// karesinde değil.
+  bool _isExpanded = false;
+
+  /// Sheet'in kapalıdan (0) açığa (1) ne kadar açıldığı. Yalnız saydamlık,
+  /// ölçek ve renk geçişleri dinliyor ([_onProgress]); bunlar yerleşimi
+  /// değiştirmediği için hiçbir metin yeniden dizilmiyor ve sheet sürüklerken
+  /// baştan kurulmuyor.
+  final ValueNotifier<double> _progress = ValueNotifier(0);
   late final JobGalleryProvider _galleryProvider;
 
   /// `GET /jobs` yalnızca özet döndürüyor: açıklama, görevler, yaş aralığı ve
@@ -126,28 +140,43 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     }
   }
 
-  /// Genişleme oranının hangi eşikten sonra "açık" sayılacağı. Açıkken ek
-  /// bölümler ve kaydet butonu görünür.
-  static const double _expandedThreshold = 0.3;
+  /// Sheet bu boyutu geçince "açık" sayılıyor: kapalı ile açık uçların
+  /// ortası.
+  static const double _expandedThreshold =
+      (JobDetailBottomSheet._collapsedSize +
+          JobDetailBottomSheet._expandedSize) /
+      2;
 
   static const Duration _animation = Duration(milliseconds: 200);
 
-  // Sheet açılırken büyüyen metinlerin uç değerleri. Ölçek slotlarına
-  // oturmuyorlar çünkü ikisi arasında sürekli olarak interpolasyon yapılıyor.
-  static const double _companyFontMin = 13;
-  static const double _companyFontMax = 14;
-  static const double _titleFontMin = 22;
-  static const double _titleFontMax = 28;
-  static const double _priceFontMin = 26;
-  static const double _priceFontMax = 30;
-  static const double _descriptionFontMin = 14;
-  static const double _descriptionFontMax = 15;
-  static const double _descriptionHeightMin = 1.5;
-  static const double _descriptionHeightMax = 1.6;
+  /// Düğme metninin ("Detayları Gör" / "Başvur") geçişi. Kısa: iki metin
+  /// birbirinin üstünde uzun süre görünmesin.
+  static const Duration _textSwitch = Duration(milliseconds: 100);
 
-  /// Sheet başlığının kapalı ve açık yükseklikleri.
-  static const double _headerHeightMin = 8;
-  static const double _headerHeightMax = 64;
+  /// Açıklama ve görevler metni.
+  static const double _descriptionFont = 15;
+  static const double _descriptionHeight = 1.6;
+
+  /// Başlık ve fiyat. Ölçek slotlarına oturmuyorlar; ilanın iki ana bilgisi
+  /// sayfanın geri kalanından belirgin büyük.
+  static const double _companyFont = 14;
+  static const double _titleFont = 28;
+  static const double _priceFont = 30;
+
+  /// Başlık ve fiyatın satır yüksekliği. Poppins'in varsayılanı ~1.5; büyük
+  /// yazıda her satırın altında ve üstünde gereksiz boşluk bırakıyordu.
+  static const double _titleHeight = 1.2;
+  static const double _priceHeight = 1.1;
+
+  /// Üst kısmın kapalı (yalnız tutamaç) ve açık (yalnız düğmeler)
+  /// yükseklikleri.
+  static const double _handleArea = AppSizes.spaceLarge;
+  static const double _headerArea = 56;
+
+  /// Kapalı hâlde başlık ve fiyatın ölçeği. Yazı boyutu değil ölçek
+  /// değişiyor: metin bir bütün olarak küçülüyor, satırlar yeniden kırılmıyor.
+  static const double _titleScaleMin = 24 / _titleFont;
+  static const double _priceScaleMin = 26 / _priceFont;
 
   @override
   void initState() {
@@ -165,6 +194,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
       ..removeListener(_onGalleryChanged)
       ..dispose();
     widget.sheetController?.removeListener(_onSheetChanged);
+    _progress.dispose();
     super.dispose();
   }
 
@@ -173,11 +203,28 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
   }
 
   void _onSheetChanged() {
-    if (widget.sheetController != null) {
-      setState(() {
-        _sheetSize = widget.sheetController!.size;
-      });
-    }
+    final controller = widget.sheetController;
+    if (controller == null || !controller.isAttached) return;
+    _progress.value =
+        ((controller.size - JobDetailBottomSheet._collapsedSize) /
+                (JobDetailBottomSheet._expandedSize -
+                    JobDetailBottomSheet._collapsedSize))
+            .clamp(0.0, 1.0);
+    final expanded = controller.size > _expandedThreshold;
+    if (expanded != _isExpanded) setState(() => _isExpanded = expanded);
+  }
+
+  /// [child]'ı açılma oranıyla yeniden boyar; [child] her karede yeniden
+  /// kurulmuyor.
+  Widget _onProgress(
+    Widget child,
+    Widget Function(double progress, Widget child) builder,
+  ) {
+    return ValueListenableBuilder<double>(
+      valueListenable: _progress,
+      child: child,
+      builder: (context, progress, child) => builder(progress, child!),
+    );
   }
 
   void _closeSheet() {
@@ -186,14 +233,6 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    // 0.5 ile 0.95 arasında normalize et (0.0 - 1.0)
-    final expandProgress =
-        ((_sheetSize - 0.5) / (JobDetailBottomSheet._expandedSize - 0.5)).clamp(
-          0.0,
-          1.0,
-        );
-    final isExpanded = expandProgress > _expandedThreshold;
-
     return Container(
       decoration: BoxDecoration(
         color: context.backgroundColor,
@@ -201,9 +240,9 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
       ),
       child: Column(
         children: [
-          appBar(expandProgress),
-          body(expandProgress, isExpanded, context),
-          bottomButtonsBar(context, isExpanded),
+          appBar(),
+          body(context),
+          bottomButtonsBar(context, _isExpanded),
         ],
       ),
     );
@@ -233,8 +272,17 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
       ),
       child: Row(
         children: [
-          _saveButton(savedJobsProvider, isSaved: isSaved, show: isExpanded),
-          if (isExpanded) const SizedBox(width: AppSizes.space),
+          // Kaydet düğmesi sheet açılınca yandan kayarak geliyor.
+          AnimatedSize(
+            duration: _animation,
+            curve: Curves.easeOut,
+            child: isExpanded
+                ? Padding(
+                    padding: const EdgeInsets.only(right: AppSizes.space),
+                    child: _saveButton(savedJobsProvider, isSaved: isSaved),
+                  )
+                : const SizedBox(height: AppSizes.buttonHeightCompact),
+          ),
           Expanded(
             child: _primaryButton(
               isExpanded: isExpanded,
@@ -246,40 +294,32 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     );
   }
 
-  Widget _saveButton(
-    SavedJobsProvider provider, {
-    required bool isSaved,
-    required bool show,
-  }) {
-    return AnimatedContainer(
-      duration: _animation,
-      width: show ? AppSizes.buttonHeightCompact : 0,
-      height: AppSizes.buttonHeightCompact,
-      child: show
-          ? Material(
-              color: Colors.transparent,
-              child: Ink(
-                decoration: BoxDecoration(
-                  color: isSaved
-                      ? context.accentColor.withValues(alpha: 0.15)
-                      : context.tileColor,
-                  borderRadius: AppRadius.primaryCircular,
-                ),
-                child: InkWell(
-                  borderRadius: AppRadius.primaryCircular,
-                  onTap: () => _toggleSave(provider),
-                  child: Center(
-                    child: Icon(
-                      isSaved ? Icons.bookmark : Icons.bookmark_border,
-                      color: isSaved
-                          ? context.accentColor
-                          : context.textSecondary,
-                    ),
-                  ),
-                ),
+  Widget _saveButton(SavedJobsProvider provider, {required bool isSaved}) {
+    return SizedBox.square(
+      dimension: AppSizes.buttonHeightCompact,
+      child: Material(
+        color: Colors.transparent,
+        child: Ink(
+          decoration: BoxDecoration(
+            color: isSaved
+                ? context.accentColor.withValues(alpha: 0.15)
+                : context.tileColor,
+            borderRadius: AppRadius.primaryCircular,
+          ),
+          child: InkWell(
+            borderRadius: AppRadius.primaryCircular,
+            onTap: () => _toggleSave(provider),
+            child: Center(
+              // Kaydedilince dolu: dolu/çizgisel fark burada bir durum.
+              child: AppIcon(
+                AppIcons.bookmark,
+                filled: isSaved,
+                color: isSaved ? context.accentColor : context.textSecondary,
               ),
-            )
-          : const SizedBox.shrink(),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -319,10 +359,15 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
           // oluyor.
           textStyle: context.textTheme.titleSmall,
         ),
-        child: Text(
-          alreadyApplied
-              ? 'Başvuruldu ✓'
-              : (isExpanded ? 'Başvur' : 'Detayları Gör'),
+        // Metin yalnız sheet bir uca oturunca değişiyor; geçiş yumuşak.
+        child: AnimatedSwitcher(
+          duration: _textSwitch,
+          child: Text(
+            alreadyApplied
+                ? 'Başvuruldu ✓'
+                : (isExpanded ? 'Başvur' : 'Detayları Gör'),
+            key: ValueKey('$alreadyApplied-$isExpanded'),
+          ),
         ),
       ),
     );
@@ -330,90 +375,90 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
 
   // -------------------------------------------------------------------- Gövde
 
-  Expanded body(double expandProgress, bool isExpanded, BuildContext context) {
+  Expanded body(BuildContext context) {
     return Expanded(
       child: ListView(
         controller: widget.scrollController,
         padding: AppPadding.primaryHorizontal,
         children: [
-          _handleBar(expandProgress),
-          _companyRow(expandProgress),
-          _title(expandProgress),
-          const SizedBox(height: AppSizes.spaceMedium),
-          _typeAndPriceRow(expandProgress),
-          _sectionTitle('Açıklama', expandProgress),
-          _description(expandProgress, isExpanded),
-          if (isExpanded) ..._gallerySection(),
-          if (isExpanded && _detailLoading) _detailPlaceholder(),
-          if (isExpanded && _detailError != null) _detailErrorRow(),
-          if (isExpanded && _detail?.duties != null) ...[
+          // Boşluk ritmi: grup içinde sıkı (4 / 8), gruplar arasında 12–16,
+          // bölümler arasında 24, bölüm başlığından metnine 8.
+          _companyRow(),
+          const SizedBox(height: AppSizes.spaceTiny),
+          _title(),
+          const SizedBox(height: AppSizes.space),
+          _typeAndPriceRow(),
+          const SizedBox(height: AppSizes.spaceSmall),
+          _quickFacts(),
+          const SizedBox(height: AppSizes.spaceLarge),
+          _sectionTitle('Açıklama'),
+          _description(),
+          ..._gallerySection(),
+          if (_detailLoading) _detailPlaceholder(),
+          if (_detailError != null) _detailErrorRow(),
+          if (_detail?.duties != null) ...[
             const SizedBox(height: AppSizes.spaceLarge),
             Text('Görevler', style: context.textTheme.titleSmall),
             const SizedBox(height: AppSizes.spaceSmall),
             Text(
               _detail!.duties!,
               style: context.textTheme.bodyMedium?.copyWith(
+                fontSize: _descriptionFont,
                 color: context.textSecondary,
-                height: _descriptionHeightMin,
+                height: _descriptionHeight,
               ),
             ),
           ],
-          if (isExpanded) ...[
-            const SizedBox(height: AppSizes.spaceLarge),
-            _buildInfoCard('Tarih ve Saat', [
-              if (widget.job.startDateTime != null)
-                _buildInfoRow(
-                  Icons.calendar_today,
-                  'Başlangıç',
-                  _formatDateTime(widget.job.startDateTime!),
-                ),
-              if (widget.job.endDateTime != null)
-                _buildInfoRow(
-                  Icons.calendar_today,
-                  'Bitiş',
-                  _formatDateTime(widget.job.endDateTime!),
-                ),
-              // Yayın tarihi yalnızca detayda (`JobDetailDto.createdAt`);
-              // özet taşımıyor, detay gelmeden satır yok.
-              if (_detail?.createdAt != null)
-                _appIconInfoRow(
-                  AppIcons.clock,
-                  'Yayın tarihi',
-                  _detail!.createdAt!.toLocal().asShortDate,
-                ),
-            ]),
-            const SizedBox(height: AppSizes.spaceMedium),
-            _buildInfoCard('Gereksinimler', [
-              if (_detail?.minAge != null || _detail?.maxAge != null)
-                _buildInfoRow(
-                  Icons.person,
-                  'Yaş Aralığı',
-                  '${_detail?.minAge ?? ''}-${_detail?.maxAge ?? ''} yaş',
-                ),
-              _buildInfoRow(
-                Icons.work,
-                'Deneyim',
-                widget.job.experienceRequired ? 'Gerekli' : 'Gerekli Değil',
+          const SizedBox(height: AppSizes.spaceLarge),
+          _buildInfoCard('Tarih ve Saat', [
+            ..._schedule(),
+            // Yayın tarihi yalnızca detayda (`JobDetailDto.createdAt`);
+            // özet taşımıyor, detay gelmeden satır yok.
+            if (_detail?.createdAt != null)
+              _appIconInfoRow(
+                AppIcons.clock,
+                'Yayın tarihi',
+                _detail!.createdAt!.toLocal().asShortDate,
               ),
-              _buildInfoRow(
-                Icons.health_and_safety,
-                'Sigorta',
-                widget.job.insuranceRequired ? 'Gerekli' : 'Gerekli Değil',
+          ]),
+          const SizedBox(height: AppSizes.spaceMedium),
+          _buildInfoCard('Gereksinimler', [
+            if (_detail?.minAge != null || _detail?.maxAge != null)
+              _appIconInfoRow(
+                AppIcons.user,
+                'Yaş Aralığı',
+                '${_detail?.minAge ?? ''}-${_detail?.maxAge ?? ''} yaş',
               ),
-              if (_detail?.dressCode != null)
-                _buildInfoRow(Icons.checkroom, 'Kıyafet', _detail!.dressCode!),
-            ]),
-          ],
-          if (isExpanded &&
-              (widget.job.sector != null ||
-                  widget.job.position != null ||
-                  _headcount != null)) ...[
+            _appIconInfoRow(
+              AppIcons.work,
+              'Deneyim',
+              widget.job.experienceRequired ? 'Gerekli' : 'Gerekli Değil',
+            ),
+            _appIconInfoRow(
+              AppIcons.shield,
+              'Sigorta',
+              widget.job.insuranceRequired ? 'Gerekli' : 'Gerekli Değil',
+            ),
+            if (_detail?.dressCode != null)
+              _appIconInfoRow(AppIcons.dress, 'Kıyafet', _detail!.dressCode!),
+          ]),
+          if (widget.job.sector != null ||
+              widget.job.position != null ||
+              _headcount != null) ...[
             const SizedBox(height: AppSizes.spaceMedium),
             _buildInfoCard('İş Bilgileri', [
               if (widget.job.sector != null)
-                _buildInfoRow(Icons.business, 'Sektör', widget.job.sector!),
+                _appIconInfoRow(
+                  AppIcons.building,
+                  'Sektör',
+                  widget.job.sector!,
+                ),
               if (widget.job.position != null)
-                _buildInfoRow(Icons.badge, 'Pozisyon', widget.job.position!),
+                _appIconInfoRow(
+                  AppIcons.personalCard,
+                  'Pozisyon',
+                  widget.job.position!,
+                ),
               if (_headcount != null)
                 _appIconInfoRow(
                   AppIcons.userMultiple,
@@ -422,10 +467,10 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
                 ),
             ]),
           ],
-          _locationCard(expandProgress),
+          _locationCard(),
           // Ulaşım yalnız detayla geliyor (`JobDetailDto.transport`); planı
           // olmayan ilanda ve eski sunucuda alan `null`, kart yok.
-          if (isExpanded && _detail?.transport != null) ...[
+          if (_detail?.transport != null) ...[
             const SizedBox(height: AppSizes.spaceMedium),
             JobTransportCard(transport: _detail!.transport!),
           ],
@@ -541,29 +586,22 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
       '${value.day}/${value.month}/${value.year} - '
       '${value.hour}:${value.minute.toString().padLeft(2, '0')}';
 
-  /// Sheet kapalıyken görünen tutamaç; açıldıkça kaybolur.
-  Widget _handleBar(double expandProgress) {
-    return AnimatedOpacity(
-      opacity: 1 - expandProgress,
-      duration: _animation,
-      child: Center(
-        child: AnimatedContainer(
-          duration: _animation,
-          width: AppSizes.sheetHandleWidth,
-          height: AppSizes.sheetHandleHeight,
-          margin: EdgeInsets.symmetric(
-            vertical: AppSizes.spaceSmall * (1 - expandProgress),
-          ),
-          decoration: BoxDecoration(
-            color: context.dividerColor,
-            borderRadius: BorderRadius.circular(AppSizes.sheetHandleHeight / 2),
-          ),
+  /// Tutamaç: her iki hâlde de aynı, sheet'in sürüklenebildiğini söylüyor.
+  Widget _handleBar() {
+    return Center(
+      child: Container(
+        width: AppSizes.sheetHandleWidth,
+        height: AppSizes.sheetHandleHeight,
+        margin: const EdgeInsets.only(top: AppSizes.spaceSmall),
+        decoration: BoxDecoration(
+          color: context.dividerColor,
+          borderRadius: BorderRadius.circular(AppSizes.sheetHandleHeight / 2),
         ),
       ),
     );
   }
 
-  Widget _companyRow(double expandProgress) {
+  Widget _companyRow() {
     // Bireysel ilanlarda şirket yok; o zaman ilanı açan kişinin adı, o da
     // gelmediyse kategori adı yazılıyor — satır hiç boş kalmıyor.
     final label =
@@ -575,9 +613,21 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     // döndürüyor, kimliğini değil. Detay gelmediyse satır düz metin kalıyor.
     final companyId = _detail?.company?.id;
 
+    // İşveren türü rozet değil, adın önünde küçük bir ikon: kurumsalda bina,
+    // bireyselde kişi. Ad bütün satırı alıyor ve kesilmiyor.
+    final isCompany = widget.job.employerType == JobEmployerType.company;
+
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
+        Semantics(
+          label: 'İşveren türü: ${widget.job.employerType.displayName}',
+          child: AppIcon(
+            isCompany ? AppIcons.building : AppIcons.user,
+            size: AppSizes.iconSmall,
+            color: context.textSecondary,
+          ),
+        ),
+        const SizedBox(width: AppSizes.spaceTiny),
         Expanded(
           child: GestureDetector(
             onTap: companyId == null
@@ -587,115 +637,83 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
               label,
               overflow: TextOverflow.ellipsis,
               style: context.textTheme.bodySmall?.copyWith(
-                fontSize: lerpDouble(
-                  _companyFontMin,
-                  _companyFontMax,
-                  expandProgress,
-                ),
+                fontSize: _companyFont,
                 fontWeight: FontWeight.w500,
                 color: companyId == null
                     ? context.textSecondary
                     : context.accentColor,
-                decoration: companyId == null
-                    ? TextDecoration.none
-                    : TextDecoration.underline,
-                decorationColor: context.accentColor,
               ),
             ),
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(left: AppSizes.spaceSmall),
-          child: EmployerTypeBadge(type: widget.job.employerType),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(left: AppSizes.spaceSmall),
-          child: _categoryChip(expandProgress),
         ),
       ],
     );
   }
 
-  /// Kategori rozeti yalnızca sheet kapalıyken görünür; açıldığında yerini
-  /// başlıktaki kategori adına bırakır.
-  Widget _categoryChip(double expandProgress) {
-    final isHidden = expandProgress > 0.5;
-
-    return AnimatedOpacity(
-      opacity: 1 - expandProgress,
-      duration: _animation,
-      child: AnimatedContainer(
-        duration: _animation,
-        width: isHidden ? 0 : null,
-        padding: isHidden ? EdgeInsets.zero : AppPadding.chip,
-        decoration: BoxDecoration(
-          color: widget.job.category.color.withValues(alpha: 0.15),
-          borderRadius: AppRadius.secondaryCircular,
+  Widget _title() {
+    return _onProgress(
+      Text(
+        widget.job.title,
+        style: context.textTheme.headlineSmall?.copyWith(
+          fontSize: _titleFont,
+          fontWeight: FontWeight.w700,
+          height: _titleHeight,
         ),
-        child: isHidden
-            ? const SizedBox.shrink()
-            : Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  AppIcon(
-                    widget.job.category.icon,
-                    size: AppSizes.iconSmall,
-                    color: widget.job.category.color,
-                  ),
-                  const SizedBox(width: AppSizes.spaceTiny),
-                  Text(
-                    widget.job.category.displayName,
-                    style: context.textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: widget.job.category.color,
-                    ),
-                  ),
-                ],
-              ),
+      ),
+      (progress, child) => Transform.scale(
+        scale: lerpDouble(_titleScaleMin, 1, progress)!,
+        alignment: Alignment.centerLeft,
+        child: child,
       ),
     );
   }
 
-  Widget _title(double expandProgress) {
-    return Text(
-      widget.job.title,
-      style: context.textTheme.headlineSmall?.copyWith(
-        fontSize: lerpDouble(_titleFontMin, _titleFontMax, expandProgress),
-        fontWeight: FontWeight.w700,
-      ),
-    );
-  }
-
-  Widget _typeAndPriceRow(double expandProgress) {
+  Widget _typeAndPriceRow() {
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSizes.space),
+      padding: EdgeInsets.zero,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Container(
-            padding: AppPadding.chip,
-            decoration: BoxDecoration(
-              color: context.tileColor,
-              borderRadius: AppRadius.secondaryCircular,
-            ),
-            child: Text(
-              widget.job.type.displayName,
-              style: context.textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: context.textSecondary,
-              ),
+          // Kategori ve iş türü rozet değil, düz metin: kategori ikonu kendi
+          // renginde, yazı sönük. İşin ne olduğunu fiyatın yanında söylüyor.
+          Expanded(
+            child: Row(
+              children: [
+                AppIcon(
+                  widget.job.category.icon,
+                  size: AppSizes.iconSmall,
+                  color: widget.job.category.color,
+                ),
+                const SizedBox(width: AppSizes.spaceTiny),
+                Flexible(
+                  child: Text(
+                    '${widget.job.category.displayName} · '
+                    '${widget.job.type.displayName}',
+                    overflow: TextOverflow.ellipsis,
+                    style: context.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                      color: context.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          Text(
-            '${widget.job.price.asPrice}₺',
-            style: context.textTheme.displaySmall?.copyWith(
-              fontSize: lerpDouble(
-                _priceFontMin,
-                _priceFontMax,
-                expandProgress,
+          const SizedBox(width: AppSizes.space),
+          _onProgress(
+            Text(
+              '${widget.job.price.asPrice}₺',
+              style: context.textTheme.displaySmall?.copyWith(
+                fontSize: _priceFont,
+                fontWeight: FontWeight.w700,
+                height: _priceHeight,
+                color: context.accentColor,
               ),
-              fontWeight: FontWeight.w700,
-              color: context.accentColor,
+            ),
+            (progress, child) => Transform.scale(
+              scale: lerpDouble(_priceScaleMin, 1, progress)!,
+              alignment: Alignment.centerRight,
+              child: child,
             ),
           ),
         ],
@@ -703,99 +721,145 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     );
   }
 
-  /// Yalnızca sheet açıkken görünen bölüm başlığı.
-  Widget _sectionTitle(String title, double expandProgress) {
-    return AnimatedOpacity(
-      opacity: expandProgress,
-      duration: _animation,
-      child: expandProgress > _expandedThreshold
-          ? Padding(
-              padding: const EdgeInsets.symmetric(
-                vertical: AppSizes.spaceSmall,
-              ),
-              child: Text(title, style: context.textTheme.titleMedium),
-            )
-          : const SizedBox.shrink(),
+  /// Kapalı hâlde bakan kişinin işe karar vermek için ilk sorduğu iki şey:
+  /// ne zaman ve ne kadar uzakta. İkisi de özetten geliyor, detay
+  /// beklenmiyor; olmayan satıra yer ayrılmıyor.
+  Widget _quickFacts() {
+    final start = widget.job.startDateTime?.toLocal();
+    final distance = widget.job.distanceKm;
+    final place = widget.job.locationLabel;
+    final facts = [
+      if (start != null) (AppIcons.calendar, start.asShortDateTime),
+      if (distance != null || (place != null && place.isNotEmpty))
+        (
+          AppIcons.location,
+          [
+            if (distance != null) widget.job.distanceLabel(distance),
+            if (place != null && place.isNotEmpty) place,
+          ].join(' · '),
+        ),
+    ];
+    if (facts.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: EdgeInsets.zero,
+      child: Wrap(
+        spacing: AppSizes.spaceMedium,
+        runSpacing: AppSizes.spaceSmall,
+        children: [
+          for (final (icon, label) in facts)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AppIcon(
+                  icon,
+                  size: AppSizes.iconSmall,
+                  color: context.accentColor,
+                ),
+                const SizedBox(width: AppSizes.spaceTiny),
+                Text(
+                  label,
+                  style: context.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                    color: context.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
     );
   }
 
-  Widget _description(double expandProgress, bool isExpanded) {
-    return Text(
-      _detail?.description ?? widget.job.subtitle,
-      style: context.textTheme.bodyMedium?.copyWith(
-        fontSize: lerpDouble(
-          _descriptionFontMin,
-          _descriptionFontMax,
-          expandProgress,
-        ),
-        color: isExpanded ? context.textSecondary : context.textTertiary,
-        height: lerpDouble(
-          _descriptionHeightMin,
-          _descriptionHeightMax,
-          expandProgress,
+  Widget _sectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSizes.spaceSmall),
+      child: Text(title, style: context.textTheme.titleMedium),
+    );
+  }
+
+  /// Kapalı hâlde sönük, açıldıkça normal rengine geçiyor; boyutu sabit.
+  Widget _description() {
+    return ValueListenableBuilder<double>(
+      valueListenable: _progress,
+      builder: (context, progress, _) => Text(
+        _detail?.description ?? widget.job.subtitle,
+        style: context.textTheme.bodyMedium?.copyWith(
+          fontSize: _descriptionFont,
+          color: Color.lerp(
+            context.textTertiary,
+            context.textSecondary,
+            progress,
+          ),
+          height: _descriptionHeight,
         ),
       ),
-      maxLines: isExpanded ? null : 2,
-      overflow: isExpanded ? null : TextOverflow.ellipsis,
     );
   }
 
-  Widget _locationCard(double expandProgress) {
-    if (expandProgress <= _expandedThreshold) {
-      return const SizedBox.shrink();
-    }
-
-    return AnimatedOpacity(
-      opacity: expandProgress,
-      duration: _animation,
-      child: Padding(
-        padding: const EdgeInsets.only(top: AppSizes.spaceLarge),
-        child: JobLocationCard(
-          precision: _addressPrecision,
-          label: _locationLabel(),
-        ),
+  Widget _locationCard() {
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSizes.spaceLarge),
+      child: JobLocationCard(
+        precision: _addressPrecision,
+        label: _locationLabel(),
       ),
     );
   }
 
   // ------------------------------------------------------------------ Başlık
 
-  AnimatedContainer appBar(double expandProgress) {
-    return AnimatedContainer(
-      duration: _animation,
-      height: lerpDouble(_headerHeightMin, _headerHeightMax, expandProgress),
-      child: expandProgress > _expandedThreshold
-          ? Container(
-              padding: AppPadding.iconButton,
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      Icons.keyboard_arrow_down,
-                      color: context.textPrimary,
-                    ),
-                    onPressed: _closeSheet,
-                  ),
-                  Opacity(
-                    opacity: expandProgress,
-                    child: Text(
-                      widget.job.category.displayName,
-                      style: context.textTheme.titleMedium,
-                    ),
-                  ),
-                  const Spacer(),
-                  Opacity(opacity: expandProgress, child: _reportButton()),
-                ],
-              ),
-            )
-          : const SizedBox.shrink(),
+  /// Sheet'in üstü: tutamaç, kapatma ve şikayet. İki hâlde de aynı yerde.
+  Widget appBar() {
+    // Tutamaç ve düğme satırı üst üste: kapalıyken yalnız tutamaç kadar,
+    // açıkken yalnız düğmeler kadar yer kaplıyor. Eskiden tutamaç açık hâlde
+    // görünmez ama yerini tutuyordu, düğme satırı da üstüne biniyordu; en
+    // üstte büyük bir boşluk kalıyordu. Yükseklik açıldıkça büyüyor; bu yalnız
+    // alttaki içeriği kaydırıyor, metin yeniden dizilmiyor. Kapatma ve
+    // şikayet kapalı hâlde görünmüyor: bakan kişi ilk bakışta işi ve parayı
+    // görmek istiyor.
+    final buttons = Align(
+      alignment: Alignment.bottomCenter,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSizes.spaceTiny),
+        child: Row(
+          children: [
+            IconButton(
+              tooltip: 'Kapat',
+              icon: AppIcon(AppIcons.chevronDown, color: context.textPrimary),
+              onPressed: _closeSheet,
+            ),
+            const Spacer(),
+            _reportButton(),
+          ],
+        ),
+      ),
+    );
+    final handle = Align(alignment: Alignment.topCenter, child: _handleBar());
+
+    // `buttons` ve `handle` bir kez kuruluyor; sürüklerken yalnız yükseklik
+    // ve saydamlık değişiyor, ikisi yeniden kurulmuyor.
+    return ValueListenableBuilder<double>(
+      valueListenable: _progress,
+      builder: (context, progress, _) => SizedBox(
+        height: lerpDouble(_handleArea, _headerArea, progress),
+        child: IgnorePointer(
+          ignoring: progress < 0.5,
+          child: ClipRect(
+            child: Stack(
+              children: [
+                Opacity(opacity: progress, child: buttons),
+                Opacity(opacity: 1 - progress, child: handle),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
   /// İlanı şikayet eder.
   ///
-  /// Yalnızca sheet açıkken görünüyor: kapalı hâlde başlıkta yer yok ve
-  /// kullanıcı ilanı henüz okumamış oluyor.
   Widget _reportButton() {
     return IconButton(
       tooltip: 'İlanı Şikayet Et',
@@ -827,8 +891,8 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     );
   }
 
-  /// Eski satırlar Material `Icons` taşıyor; yenisi eklenmiyor
-  /// (CONTRIBUTING). Yeni satırlar [AppIcon] ile çiziliyor, gövde aynı.
+  /// Bilgi satırı. Sheet'teki bütün ikonlar Reicon'un çizgisel ailesinden;
+  /// eskiden Material'in dolu ikonlarıyla karışıktı.
   Widget _appIconInfoRow(AppIconData icon, String label, String value) {
     return _infoRowBody(
       AppIcon(icon, size: AppSizes.iconMedium, color: context.accentColor),
@@ -837,11 +901,94 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
-    return _infoRowBody(
-      Icon(icon, size: AppSizes.iconMedium, color: context.accentColor),
-      label,
-      value,
+  /// Başlangıç ve bitiş: ikisi de varsa ikonlar arasında noktalı çizgiyle
+  /// küçük bir zaman çizelgesi; biri yoksa sıradan satır.
+  List<Widget> _schedule() {
+    final start = widget.job.startDateTime;
+    final end = widget.job.endDateTime;
+    if (start == null || end == null) {
+      return [
+        if (start != null)
+          _appIconInfoRow(
+            AppIcons.calendar,
+            'Başlangıç',
+            _formatDateTime(start),
+          ),
+        if (end != null)
+          _appIconInfoRow(AppIcons.calendarTick, 'Bitiş', _formatDateTime(end)),
+      ];
+    }
+
+    return [
+      _timelineRow(AppIcons.calendar, 'Başlangıç', _formatDateTime(start)),
+      _timelineRow(
+        AppIcons.calendarTick,
+        'Bitiş',
+        _formatDateTime(end),
+        isLast: true,
+      ),
+    ];
+  }
+
+  /// Zaman çizelgesinin bir adımı: ikonun altından bir sonraki adımın
+  /// ikonuna kadar noktalı çizgi iniyor.
+  Widget _timelineRow(
+    AppIconData icon,
+    String label,
+    String value, {
+    bool isLast = false,
+  }) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: AppSizes.iconMedium,
+            child: Column(
+              children: [
+                AppIcon(
+                  icon,
+                  size: AppSizes.iconMedium,
+                  color: context.accentColor,
+                ),
+                if (!isLast)
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AppSizes.spaceTiny,
+                      ),
+                      child: CustomPaint(
+                        painter: _DottedLinePainter(color: context.accentColor),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSizes.space),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: AppSizes.space),
+              child: _infoTexts(label, value),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoTexts(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: context.textTheme.labelMedium),
+        Text(
+          value,
+          style: context.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 
@@ -852,22 +999,33 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
         children: [
           icon,
           const SizedBox(width: AppSizes.space),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: context.textTheme.labelMedium),
-                Text(
-                  value,
-                  style: context.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          Expanded(child: _infoTexts(label, value)),
         ],
       ),
     );
   }
+}
+
+/// Dikey noktalı çizgi; zaman çizelgesindeki adımları bağlıyor.
+class _DottedLinePainter extends CustomPainter {
+  const _DottedLinePainter({required this.color});
+
+  final Color color;
+
+  /// Noktanın çapı ve iki nokta arası boşluk.
+  static const double _dot = 2;
+  static const double _gap = 3;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color.withValues(alpha: 0.6);
+    final x = size.width / 2;
+    for (var y = _dot / 2; y < size.height; y += _dot + _gap) {
+      canvas.drawCircle(Offset(x, y), _dot / 2, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DottedLinePainter oldDelegate) =>
+      oldDelegate.color != color;
 }
