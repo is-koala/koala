@@ -291,9 +291,9 @@ class _MapExplorePageState extends MapExplorePageModel {
         // Filtre ve arama tek yeşil hapın içinde: zeminsiz koyu filtre ikonu
         // haritanın sokak adları üstünde kayboluyordu.
         //
-        // Boşluklar eşit: ikonun her yanında 8 (üstte, altta, kenarlarda ve
-        // iki ikonun arasında). Standart 48'lik IconButton kutusu 24'lük
-        // ikonun etrafına 12, araya 24 bırakıp hapı şişiriyordu.
+        // Hapın iç boşluğu 8 (üstte, altta, kenarlarda); iki ikonun arası
+        // standart düğmedeki gibi 24 kalıyor. 48'lik IconButton kutusu
+        // kenarlara da 12 bırakıp hapı şişiriyordu.
         Container(
           height: AppSizes.mapPillHeight,
           padding: const EdgeInsets.symmetric(horizontal: AppSizes.spaceTiny),
@@ -310,6 +310,7 @@ class _MapExplorePageState extends MapExplorePageModel {
                 icon: AppIcons.filter,
                 onPressed: _openFilterSheet,
               ),
+              const SizedBox(width: AppSizes.spaceMedium),
               _pillButton(
                 tooltip: 'Ara',
                 icon: AppIcons.search,

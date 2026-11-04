@@ -32,8 +32,8 @@ class AppSizes {
   static const double mapPillHeight = 40.0;
 
   /// Haptaki her düğmenin genişliği: ikonun iki yanında `spaceTiny` (4).
-  /// Hapın kendi yatay payı da `spaceTiny`; böylece kenarda ve iki ikonun
-  /// arasında aynı 8 boşluk kalıyor.
+  /// Hapın kendi yatay payı da `spaceTiny`, yani kenarda 8 boşluk kalıyor;
+  /// iki ikonun arasına ayrıca `spaceMedium` girip araya 24 açıyor.
   static const double mapPillButtonWidth = 32.0;
 
   /// Haritadaki sessiz yenileme çizgisinin kalınlığı: pinler ekrandayken
