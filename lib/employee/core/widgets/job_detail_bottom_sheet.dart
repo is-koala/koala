@@ -149,6 +149,10 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
 
   static const Duration _animation = Duration(milliseconds: 200);
 
+  /// Düğme metninin ("Detayları Gör" / "Başvur") geçişi. Kısa: iki metin
+  /// birbirinin üstünde uzun süre görünmesin.
+  static const Duration _textSwitch = Duration(milliseconds: 100);
+
   /// Açıklama ve görevler metni.
   static const double _descriptionFont = 15;
   static const double _descriptionHeight = 1.6;
@@ -350,7 +354,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
         ),
         // Metin yalnız sheet bir uca oturunca değişiyor; geçiş yumuşak.
         child: AnimatedSwitcher(
-          duration: _animation,
+          duration: _textSwitch,
           child: Text(
             alreadyApplied
                 ? 'Başvuruldu ✓'
