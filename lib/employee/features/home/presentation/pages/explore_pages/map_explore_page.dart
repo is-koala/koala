@@ -55,6 +55,11 @@ class _MapExplorePageState extends MapExplorePageModel {
   /// Mini `FloatingActionButton`'ın kenarı.
   static const double _locationButtonSize = 40;
 
+  /// Konum düğmesinin gölge yayılımı. Gölge kaydırılmadan, düğmenin tam
+  /// altında ve her yanına eşit çiziliyor; FAB'ın kendi yükseltisi gölgeyi
+  /// aşağı itiyordu.
+  static const double _locationButtonShadowBlur = 12;
+
   /// Harita yokken gösterilen metin; testler ve diğer harita ekranı aynı
   /// cümleyi kullanıyor.
   static const String unavailableTitle = 'Harita bu derlemede kullanılamıyor';
@@ -147,22 +152,36 @@ class _MapExplorePageState extends MapExplorePageModel {
     return Positioned(
       bottom: _locationButtonBottom(context),
       right: AppPadding.primary,
-      child: FloatingActionButton(
-        mini: true,
-        backgroundColor: context.accentColor,
-        foregroundColor: context.onAccentColor,
-        elevation: 4,
-        onPressed: () {
-          if (_currentLatLng != null && _mapController != null) {
-            _mapController!.animateCamera(
-              CameraUpdate.newCameraPosition(
-                CameraPosition(target: _currentLatLng!, zoom: 15.0),
-              ),
-            );
-            HapticFeedback.lightImpact();
-          }
-        },
-        child: const Icon(Icons.my_location, size: AppSizes.icon),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.navShadow,
+              blurRadius: _locationButtonShadowBlur,
+            ),
+          ],
+        ),
+        child: FloatingActionButton(
+          mini: true,
+          backgroundColor: context.accentColor,
+          foregroundColor: context.onAccentColor,
+          elevation: 0,
+          focusElevation: 0,
+          hoverElevation: 0,
+          highlightElevation: 0,
+          onPressed: () {
+            if (_currentLatLng != null && _mapController != null) {
+              _mapController!.animateCamera(
+                CameraUpdate.newCameraPosition(
+                  CameraPosition(target: _currentLatLng!, zoom: 15.0),
+                ),
+              );
+              HapticFeedback.lightImpact();
+            }
+          },
+          child: const Icon(Icons.my_location, size: AppSizes.icon),
+        ),
       ),
     );
   }
