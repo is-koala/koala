@@ -10,7 +10,8 @@ void main() {
       '${BackendContractRoot.packageRoot().path}/.github/workflows/ci.yml',
     ).readAsStringSync();
 
+    // GITHUB_TOKEN başka bir private depoyu okuyamaz (PR 144: Not Found);
+    // hosted runner'da sözleşme testleri skip olur, suite durmaz.
     expect(ci, isNot(contains('repository: is-koala/koala-backend')));
-    expect(ci, contains('Backend sözleşmesini bağla'));
   });
 }

@@ -42,14 +42,25 @@ void main() {
     );
   });
 
-  test('PR ve main GitHub kuyruğunu doldurmaz; kapı Mac’tedir', () {
+  test('PR kapısı GitHub-hosted Linux’ta; macOS PR’da koşmaz', () {
     final ci = File('.github/workflows/ci.yml').readAsStringSync();
     final ios = File('.github/workflows/ios.yml').readAsStringSync();
+    final release = File(
+      '.github/workflows/mobile-release.yml',
+    ).readAsStringSync();
 
-    expect(ci, isNot(contains('pull_request:')));
-    expect(ios, isNot(contains('pull_request:')));
+    expect(ci, contains('pull_request:'));
     expect(ci, contains('workflow_dispatch:'));
+    expect(ci, contains('runs-on: ubuntu-latest'));
+    // macOS dakikası 10 kat sayılır: PR zincirinde macOS işi olmamalı.
+    expect(ci, isNot(contains('macos')));
+    expect(ios, isNot(contains('pull_request:')));
+    expect(ios, isNot(contains('push:')));
     expect(ios, contains('workflow_dispatch:'));
+    // Self-hosted runner kaldırıldı; ona bağlı iş kuyrukta sonsuza dek bekler.
+    for (final workflow in [ci, ios, release]) {
+      expect(workflow, isNot(contains('self-hosted')));
+    }
     expect(
       ci,
       contains(
