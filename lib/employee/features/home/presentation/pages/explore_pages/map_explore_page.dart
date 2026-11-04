@@ -58,7 +58,11 @@ class _MapExplorePageState extends MapExplorePageModel {
   /// Konum düğmesinin gölge yayılımı. Gölge kaydırılmadan, düğmenin tam
   /// altında ve her yanına eşit çiziliyor; FAB'ın kendi yükseltisi gölgeyi
   /// aşağı itiyordu.
-  static const double _locationButtonShadowBlur = 12;
+  static const double _locationButtonShadowBlur = 6;
+
+  /// Gölgenin saydamlığı; navbar'ınkinden (0.30) hafif, küçük düğmede aynı
+  /// koyuluk fazla ağır duruyordu.
+  static const double _locationButtonShadowAlpha = 0.20;
 
   /// Harita yokken gösterilen metin; testler ve diğer harita ekranı aynı
   /// cümleyi kullanıyor.
@@ -157,7 +161,9 @@ class _MapExplorePageState extends MapExplorePageModel {
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: AppColors.navShadow,
+              color: AppColors.navShadow.withValues(
+                alpha: _locationButtonShadowAlpha,
+              ),
               blurRadius: _locationButtonShadowBlur,
             ),
           ],
