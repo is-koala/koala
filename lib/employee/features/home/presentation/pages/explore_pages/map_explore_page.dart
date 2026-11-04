@@ -155,6 +155,10 @@ class _MapExplorePageState extends MapExplorePageModel {
         ),
         child: FloatingActionButton(
           mini: true,
+          // Gölge dış kutudan çiziliyor; mini FAB'ın 48'lik dokunma payı
+          // kalırsa gölge 40'lık görünür dairenin 4 dışından başlıyor ve
+          // diğer yüzen öğelerden kalın görünüyordu.
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           backgroundColor: context.accentColor,
           foregroundColor: context.onAccentColor,
           elevation: 0,
