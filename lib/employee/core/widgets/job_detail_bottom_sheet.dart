@@ -159,6 +159,11 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
   static const double _titleFont = 28;
   static const double _priceFont = 30;
 
+  /// Üst kısmın kapalı (yalnız tutamaç) ve açık (yalnız düğmeler)
+  /// yükseklikleri.
+  static const double _handleArea = AppSizes.spaceLarge;
+  static const double _headerArea = 56;
+
   /// Kapalı hâlde başlık ve fiyatın ölçeği. Yazı boyutu değil ölçek
   /// değişiyor: metin bir bütün olarak küçülüyor, satırlar yeniden kırılmıyor.
   static const double _titleScaleMin = 24 / _titleFont;
@@ -365,11 +370,16 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
         controller: widget.scrollController,
         padding: AppPadding.primaryHorizontal,
         children: [
+          // Boşluk ritmi: grup içinde sıkı (4 / 8), gruplar arasında 16,
+          // bölümler arasında 24, bölüm başlığından metnine 8.
           _companyRow(),
+          const SizedBox(height: AppSizes.spaceTiny),
           _title(),
           const SizedBox(height: AppSizes.spaceMedium),
           _typeAndPriceRow(),
+          const SizedBox(height: AppSizes.spaceSmall),
           _quickFacts(),
+          const SizedBox(height: AppSizes.spaceLarge),
           _sectionTitle('Açıklama'),
           _description(),
           ..._gallerySection(),
@@ -574,7 +584,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
       child: Container(
         width: AppSizes.sheetHandleWidth,
         height: AppSizes.sheetHandleHeight,
-        margin: const EdgeInsets.symmetric(vertical: AppSizes.spaceSmall),
+        margin: const EdgeInsets.only(top: AppSizes.spaceSmall),
         decoration: BoxDecoration(
           color: context.dividerColor,
           borderRadius: BorderRadius.circular(AppSizes.sheetHandleHeight / 2),
@@ -655,7 +665,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
 
   Widget _typeAndPriceRow() {
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSizes.space),
+      padding: EdgeInsets.zero,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -726,7 +736,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     if (facts.isEmpty) return const SizedBox.shrink();
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSizes.space),
+      padding: EdgeInsets.zero,
       child: Wrap(
         spacing: AppSizes.spaceMedium,
         runSpacing: AppSizes.spaceSmall,
@@ -757,7 +767,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
 
   Widget _sectionTitle(String title) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSizes.spaceSmall),
+      padding: const EdgeInsets.only(bottom: AppSizes.spaceSmall),
       child: Text(title, style: context.textTheme.titleMedium),
     );
   }
@@ -795,49 +805,50 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
 
   /// Sheet'in üstü: tutamaç, kapatma ve şikayet. İki hâlde de aynı yerde.
   Widget appBar() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Kapalıyken tutamaç, açıldıkça kapatma ve şikayet düğmeleri öne
-        // çıkıyor; ikisi de yerinde duruyor, yalnız saydamlıkları değişiyor.
-        _onProgress(
-          _handleBar(),
-          (progress, child) => Opacity(opacity: 1 - progress, child: child),
+    // Tutamaç ve düğme satırı üst üste: kapalıyken yalnız tutamaç kadar,
+    // açıkken yalnız düğmeler kadar yer kaplıyor. Eskiden tutamaç açık hâlde
+    // görünmez ama yerini tutuyordu, düğme satırı da üstüne biniyordu; en
+    // üstte büyük bir boşluk kalıyordu. Yükseklik açıldıkça büyüyor; bu yalnız
+    // alttaki içeriği kaydırıyor, metin yeniden dizilmiyor. Kapatma ve
+    // şikayet kapalı hâlde görünmüyor: bakan kişi ilk bakışta işi ve parayı
+    // görmek istiyor.
+    final buttons = Align(
+      alignment: Alignment.bottomCenter,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSizes.spaceTiny),
+        child: Row(
+          children: [
+            IconButton(
+              tooltip: 'Kapat',
+              icon: Icon(Icons.keyboard_arrow_down, color: context.textPrimary),
+              onPressed: _closeSheet,
+            ),
+            const Spacer(),
+            _reportButton(),
+          ],
         ),
-        // Kapatma ve şikayet kapalı hâlde yer kaplamıyor: bakan kişi ilk
-        // bakışta işi ve parayı görmek istiyor, şikayeti değil. Satır açıldıkça
-        // yüksekliği de açılıyor; bu yalnız alttaki içeriği kaydırıyor, hiçbir
-        // metni yeniden dizmiyor.
-        _onProgress(
-          Padding(
-            padding: AppPadding.iconButton,
-            child: Row(
+      ),
+    );
+    final handle = Align(alignment: Alignment.topCenter, child: _handleBar());
+
+    // `buttons` ve `handle` bir kez kuruluyor; sürüklerken yalnız yükseklik
+    // ve saydamlık değişiyor, ikisi yeniden kurulmuyor.
+    return ValueListenableBuilder<double>(
+      valueListenable: _progress,
+      builder: (context, progress, _) => SizedBox(
+        height: lerpDouble(_handleArea, _headerArea, progress),
+        child: IgnorePointer(
+          ignoring: progress < 0.5,
+          child: ClipRect(
+            child: Stack(
               children: [
-                IconButton(
-                  tooltip: 'Kapat',
-                  icon: Icon(
-                    Icons.keyboard_arrow_down,
-                    color: context.textPrimary,
-                  ),
-                  onPressed: _closeSheet,
-                ),
-                const Spacer(),
-                _reportButton(),
+                Opacity(opacity: progress, child: buttons),
+                Opacity(opacity: 1 - progress, child: handle),
               ],
             ),
           ),
-          (progress, child) => IgnorePointer(
-            ignoring: progress < 0.5,
-            child: ClipRect(
-              child: Align(
-                alignment: Alignment.bottomCenter,
-                heightFactor: progress,
-                child: Opacity(opacity: progress, child: child),
-              ),
-            ),
-          ),
         ),
-      ],
+      ),
     );
   }
 
