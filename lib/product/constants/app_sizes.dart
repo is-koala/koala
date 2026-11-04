@@ -87,10 +87,6 @@ class AppSizes {
   /// aralığı ve görünüm sağlanır.
   static const double navBar = 64.0;
 
-  /// Sheet içindeki liste en üstteyken aşağı ne kadar çekilirse sheet
-  /// kapanır (mantıksal piksel).
-  static const double sheetPullToDismiss = 64.0;
-
   /// Navbar'ın arkasındaki zemine geçişin en alttaki opaklığı. Tam opak
   /// beyaz, sayfanın altına sert bir bant çiziyordu.
   static const double navBarFadeMaxAlpha = 0.85;
