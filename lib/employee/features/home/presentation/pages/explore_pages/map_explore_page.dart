@@ -20,6 +20,7 @@ import 'package:koala/employee/features/home/presentation/widgets/job_cluster_sh
 import 'package:koala/employee/features/home/presentation/widgets/map_explore_overlay.dart';
 import 'package:koala/employee/features/home/services/location_service.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_map.dart';
 import 'package:koala/product/constants/app_map_style.dart';
@@ -289,7 +290,13 @@ class _MapExplorePageState extends MapExplorePageModel {
       actions: [
         // Filtre ve arama tek yeşil hapın içinde: zeminsiz koyu filtre ikonu
         // haritanın sokak adları üstünde kayboluyordu.
-        DecoratedBox(
+        //
+        // Boşluklar eşit: ikonun her yanında 8 (üstte, altta, kenarlarda ve
+        // iki ikonun arasında). Standart 48'lik IconButton kutusu 24'lük
+        // ikonun etrafına 12, araya 24 bırakıp hapı şişiriyordu.
+        Container(
+          height: AppSizes.mapPillHeight,
+          padding: const EdgeInsets.symmetric(horizontal: AppSizes.spaceTiny),
           decoration: BoxDecoration(
             color: context.accentColor,
             borderRadius: AppRadius.stadiumCircular,
@@ -298,14 +305,14 @@ class _MapExplorePageState extends MapExplorePageModel {
             mainAxisSize: MainAxisSize.min,
             children: [
               // Filtre ve sıralama tek düğme: ikisi de aynı sheet'te.
-              IconButton(
+              _pillButton(
                 tooltip: 'Filtrele ve sırala',
-                icon: AppIcon(AppIcons.filter, color: context.onAccentColor),
+                icon: AppIcons.filter,
                 onPressed: _openFilterSheet,
               ),
-              IconButton(
+              _pillButton(
                 tooltip: 'Ara',
-                icon: AppIcon(AppIcons.search, color: context.onAccentColor),
+                icon: AppIcons.search,
                 onPressed: searchProvider.startSearching,
               ),
             ],
@@ -313,6 +320,27 @@ class _MapExplorePageState extends MapExplorePageModel {
         ),
         const SizedBox(width: AppSizes.spaceMedium),
       ],
+    );
+  }
+
+  /// Harita hapındaki tek düğme: ikonun iki yanında 4, üst ve altında 8.
+  Widget _pillButton({
+    required String tooltip,
+    required AppIconData icon,
+    required VoidCallback onPressed,
+  }) {
+    return IconButton(
+      tooltip: tooltip,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints.tightFor(
+        width: AppSizes.mapPillButtonWidth,
+        height: AppSizes.mapPillHeight,
+      ),
+      style: IconButton.styleFrom(
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      icon: AppIcon(icon, color: context.onAccentColor),
+      onPressed: onPressed,
     );
   }
 
