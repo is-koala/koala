@@ -57,6 +57,11 @@ abstract class BCreatePageModel extends State<BCreatePage> {
   /// duruyor ki kilit kalktığında kullanıcının kendi tercihi geri gelsin.
   bool _insurancePreference = false;
 
+  /// Şirket ilanında "Adresi gizle" anahtarı; varsayılan kapalı, yani tam
+  /// konum herkese açık (Yusuf, 04.11.2026). Bireysel ilanda anahtar yok ve
+  /// bu değer isteğe hiç girmiyor — bireysel ilan herkese her zaman yaklaşık.
+  bool _hideAddress = false;
+
   DateTime? _startDateTime;
   DateTime? _endDateTime;
 
@@ -557,6 +562,7 @@ abstract class BCreatePageModel extends State<BCreatePage> {
       maxAge: maxAge,
       experienceRequired: _experienceRequired,
       insuranceRequired: _insuranceRequired,
+      addressPublic: !_hideAddress,
       address: address.toWrite(),
     );
   }
