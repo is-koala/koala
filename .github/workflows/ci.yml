@@ -1,9 +1,15 @@
 name: CI
 
-# PR ve main GitHub kuyruğunu doldurmaz. Kapı Yusuf'un Mac'indedir.
-# Hetzner self-hosted işleri yalnız elle workflow_dispatch ile koşar.
-# Store/TestFlight hâlâ mobile-release.yml içinde mobile-v* etiketindedir.
+# PR kapısı GitHub'ın kendi ubuntu-latest runner'larında koşar. Eski
+# self-hosted Pi runner'ı kaldırıldı.
+# macOS dakikası 10 kat sayıldığı için iOS derlemesi PR'da koşmaz
+# (ios.yml yalnız elle). Store/TestFlight mobile-release.yml'de mobile-v*
+# etiketindedir.
 on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       build_android:
@@ -16,27 +22,31 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-# mobile-release.yml'de vardı, burada yoktu. Bu zincirin hiçbir işi yazma
-# yetkisi kullanmıyor; varsayılan geniş token'ı daraltıyoruz.
+# Bu zincirin hiçbir işi yazma yetkisi kullanmıyor; varsayılan geniş
+# token'ı daraltıyoruz.
 permissions:
   contents: read
 
 env:
+  # pubspec.lock: dart >=3.12.0, flutter >=3.44.0. Sürüm üç workflow'da aynı.
   FLUTTER_VERSION: 3.47.1
   JAVA_VERSION: 17
 
 jobs:
   analyze:
     name: Format & Analiz
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
-      # Resmî Linux arşivinde ARM64 SDK yok; sabit etiketi kaynaktan kuran
-      # yerel action, resmî ARM64 Dart ve test artifact'lerini indirir.
-      - uses: ./.github/actions/setup-flutter-linux-arm64
+      # Deponun konvansiyonu üçüncü taraf action'da tam SHA.
+      # cache: true hem SDK'yı hem pub önbelleğini saklar.
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
 
       - name: Bağımlılıkları indir
         run: flutter pub get
@@ -47,75 +57,58 @@ jobs:
       # Info seviyesi de kırmızı: kod tabanı bu eşiği geçecek şekilde
       # temizlendi, geriye düşmesin.
       - name: Statik analiz
-        run: flutter analyze --fatal-infos
+        run: flutter analyze --fatal-infos --no-pub
 
   test:
     name: Testler
-    needs: analyze
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
-      - uses: ./.github/actions/setup-flutter-linux-arm64
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
 
       - name: Bağımlılıkları indir
         run: flutter pub get
 
       - name: Eksik ortamın sessiz API seçmediğini doğrula
-        run: flutter test test/product/network/api_config_test.dart --reporter expanded
+        run: flutter test --no-pub test/product/network/api_config_test.dart --reporter expanded
 
-      # GITHUB_TOKEN başka bir private depoyu okuyamaz (PR 144: Not Found).
-      # Aynı Pi'deki koala-backend işinin checkout'u ya da geliştirici ağacı
-      # varsa ona bağlanır; yoksa sözleşme testleri skip olur, suite durmaz.
-      - name: Backend sözleşmesini bağla
-        run: |
-          set -euo pipefail
-          java_rel='src/main/java/com/exskylab/koala/core/utilities/results/ErrorCategory.java'
-          candidates=(
-            "${GITHUB_WORKSPACE}/../koala-backend/koala-backend"
-            "${RUNNER_TOOL_CACHE}/koala-backend"
-            "${HOME}/Projects/koala/koala-backend"
-          )
-          for c in "${candidates[@]}"; do
-            if [ -f "$c/$java_rel" ]; then
-              echo "KOALA_BACKEND_ROOT=$(cd "$c" && pwd)" >> "$GITHUB_ENV"
-              echo "backend contract root: $c"
-              exit 0
-            fi
-          done
-          echo "koala-backend not beside this runner; category/code contract tests skip"
-
-      # Staging testleri de gerçek runtime ortam seçimini kullanır.
+      # Backend sözleşme testleri (test/support/backend_error_*_test.dart)
+      # KOALA_BACKEND_ROOT ister. GITHUB_TOKEN başka bir private depoyu
+      # okuyamaz (PR 144: Not Found); bu yüzden hosted runner'da bu testler
+      # skip olur, suite durmaz.
       - name: Testleri çalıştır
-        # Tek Pi runner'ında Flutter'ın kendi test paralelliğini ve microSD
-        # yazma yükünü sınırlı tut; coverage bu iş akışının kalite kapısı değil.
-        run: flutter test --flavor staging --dart-define-from-file=config/staging.json --reporter expanded --concurrency=1
+        run: flutter test --no-pub --flavor staging --dart-define-from-file=config/staging.json --reporter expanded
 
   build-android:
     name: Android derleme
-    needs: test
-    # Google'ın Linux Android host araçları x64. Pi'de otomatik çalıştırmak
-    # yerine, QEMU/konteyner aracı hazır olduğunda elle ve bilinçli olarak dene.
+    needs: [analyze, test]
+    # PR'da koşmaz; yalnız elle ve build_android seçilirse.
     if: github.event_name == 'workflow_dispatch' && inputs.build_android
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
       # Flutter önce kurulur: setup-android-x64-tools'un gen_snapshot yoklaması
-      # FLUTTER_ROOT istiyor. Burada debug APK derlendiği için o yoklama zaten
-      # kapalı, ama iki workflow'un adım sırası aynı kalsın.
-      - uses: ./.github/actions/setup-flutter-linux-arm64
+      # FLUTTER_ROOT istiyor (flutter-action GITHUB_ENV'e yazar). Debug APK'da
+      # o yoklama zaten kapalı.
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
 
-      # JDK + Android SDK + x64 emülasyon nöbetçisi tek yerde. Aynı 19 satır
-      # eskiden mobile-release.yml'e birebir kopyalanmıştı.
+      # JDK + Android SDK + x64 araç yoklaması tek yerde. Hosted runner zaten
+      # x86-64; yoklamalar burada emülasyonsuz, doğrudan geçer.
       - uses: ./.github/actions/setup-android-x64-tools
         with:
           java-version: ${{ env.JAVA_VERSION }}
-          # Debug APK JIT'tir; Android AOT gen_snapshot'ını çalıştırmaz.
           probe-gen-snapshot: "false"
 
       - name: Bağımlılıkları indir
@@ -125,13 +118,10 @@ jobs:
       - name: APK derle (debug)
         run: flutter build apk --debug --flavor staging --dart-define-from-file=config/staging.json
 
-      # Test edecek arkadaşlar APK'yı doğrudan PR sayfasından indirebilsin.
       - uses: actions/upload-artifact@v4
         with:
           name: koala-staging-debug-apk
           path: build/app/outputs/flutter-apk/app-staging-debug.apk
           retention-days: 7
 
-  # iOS derlemesi buradan .github/workflows/ios.yml dosyasına taşındı.
-  # Gerekçe: `paths:` filtresi yalnız workflow seviyesinde çalışıyor, iş
-  # seviyesinde yok. Ayrıntı için o dosyanın başındaki nota bak.
+  # iOS derlemesi .github/workflows/ios.yml'dedir (yalnız workflow_dispatch).

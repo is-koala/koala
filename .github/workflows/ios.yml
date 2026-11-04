@@ -1,7 +1,7 @@
 name: iOS derleme
 
-# PR ve main macos-latest dakikası yakmaz. Kapı Yusuf'un Mac'indedir
-# (`flutter build ios --no-codesign`). Bu iş yalnız elle workflow_dispatch.
+# PR ve main macos-latest dakikası yakmaz (macOS dakikası 10 kat sayılır).
+# PR kapısı ci.yml'de ubuntu-latest'tedir; bu iş yalnız elle workflow_dispatch.
 # Store/TestFlight imzalı IPA hâlâ mobile-release.yml içinde mobile-v*
 # etiketindedir; aynı etikete ikinci, imzasız bir derleme eklenmez.
 on:
@@ -21,6 +21,7 @@ jobs:
   build-ios:
     name: iOS derleme
     runs-on: macos-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
