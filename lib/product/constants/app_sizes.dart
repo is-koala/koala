@@ -86,6 +86,10 @@ class AppSizes {
   /// Sabit genişlik verilerek ekran boyutundan bağımsız tutarlı bir ikon
   /// aralığı ve görünüm sağlanır.
   static const double navBar = 64.0;
+
+  /// Navbar'ın arkasındaki zemine geçişin en alttaki opaklığı. Tam opak
+  /// beyaz, sayfanın altına sert bir bant çiziyordu.
+  static const double navBarFadeMaxAlpha = 0.85;
   static const double navBarWidth = 250.0;
 
   /// Business navbar'ının yüksekliği; employee'ninkinden yüksek çünkü

@@ -121,6 +121,11 @@ class _ShellPageState extends State<ShellPage> {
     }
   }
 
+  /// Keşfet sekmesi harita görünümünde mi.
+  bool _showsMap(BuildContext context) =>
+      _selectedIndex == 0 &&
+      context.watch<PageProvider>().exploreViewType == ExploreViewType.map;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -135,30 +140,35 @@ class _ShellPageState extends State<ShellPage> {
                 const NeverScrollableScrollPhysics(), // Sadece programmatik geçiş
             children: _pages,
           ),
-          // Sayfanın altında beyaz fade efekti
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: IgnorePointer(
-              // Listenin son satırı navbar'ın altına girerken sertçe
-              // kesilmesin diye sayfanın altına zemine giden bir geçiş.
-              child: Container(
-                height: AppSizes.navBar,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      context.backgroundColor.withValues(alpha: 0.0),
-                      context.backgroundColor.withValues(alpha: 0.4),
-                      context.backgroundColor,
-                    ],
+          // Sayfanın altında zemine giden geçiş. Haritada çizilmiyor: harita
+          // ekranın tamamı, kesilecek bir liste yok; geçiş haritanın altını
+          // ve Google logosunu beyazla örtüyordu.
+          if (!_showsMap(context))
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: IgnorePointer(
+                // Listenin son satırı navbar'ın altına girerken sertçe
+                // kesilmesin diye. En altta bile tam opak değil: tam beyaz
+                // sayfanın altına sert bir bant çiziyordu.
+                child: Container(
+                  height: AppSizes.navBar,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        context.backgroundColor.withValues(alpha: 0.0),
+                        context.backgroundColor.withValues(
+                          alpha: AppSizes.navBarFadeMaxAlpha,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
         ],
       ),
       bottomNavigationBar: Padding(
