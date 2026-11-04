@@ -83,7 +83,7 @@ jobs:
       # okuyamaz (PR 144: Not Found); bu yüzden hosted runner'da bu testler
       # skip olur, suite durmaz.
       - name: Testleri çalıştır
-        run: flutter test --no-pub --flavor staging --dart-define-from-file=config/staging.json --reporter expanded
+        run: flutter test --flavor staging --dart-define-from-file=config/staging.json --no-pub --reporter expanded
 
   build-android:
     name: Android derleme
