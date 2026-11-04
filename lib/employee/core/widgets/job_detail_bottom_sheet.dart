@@ -310,8 +310,10 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
             borderRadius: AppRadius.primaryCircular,
             onTap: () => _toggleSave(provider),
             child: Center(
-              child: Icon(
-                isSaved ? Icons.bookmark : Icons.bookmark_border,
+              // Kaydedilince dolu: dolu/çizgisel fark burada bir durum.
+              child: AppIcon(
+                AppIcons.bookmark,
+                filled: isSaved,
                 color: isSaved ? context.accentColor : context.textSecondary,
               ),
             ),
@@ -409,18 +411,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
           ],
           const SizedBox(height: AppSizes.spaceLarge),
           _buildInfoCard('Tarih ve Saat', [
-            if (widget.job.startDateTime != null)
-              _buildInfoRow(
-                Icons.calendar_today,
-                'Başlangıç',
-                _formatDateTime(widget.job.startDateTime!),
-              ),
-            if (widget.job.endDateTime != null)
-              _buildInfoRow(
-                Icons.calendar_today,
-                'Bitiş',
-                _formatDateTime(widget.job.endDateTime!),
-              ),
+            ..._schedule(),
             // Yayın tarihi yalnızca detayda (`JobDetailDto.createdAt`);
             // özet taşımıyor, detay gelmeden satır yok.
             if (_detail?.createdAt != null)
@@ -433,23 +424,23 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
           const SizedBox(height: AppSizes.spaceMedium),
           _buildInfoCard('Gereksinimler', [
             if (_detail?.minAge != null || _detail?.maxAge != null)
-              _buildInfoRow(
-                Icons.person,
+              _appIconInfoRow(
+                AppIcons.user,
                 'Yaş Aralığı',
                 '${_detail?.minAge ?? ''}-${_detail?.maxAge ?? ''} yaş',
               ),
-            _buildInfoRow(
-              Icons.work,
+            _appIconInfoRow(
+              AppIcons.work,
               'Deneyim',
               widget.job.experienceRequired ? 'Gerekli' : 'Gerekli Değil',
             ),
-            _buildInfoRow(
-              Icons.health_and_safety,
+            _appIconInfoRow(
+              AppIcons.shield,
               'Sigorta',
               widget.job.insuranceRequired ? 'Gerekli' : 'Gerekli Değil',
             ),
             if (_detail?.dressCode != null)
-              _buildInfoRow(Icons.checkroom, 'Kıyafet', _detail!.dressCode!),
+              _appIconInfoRow(AppIcons.dress, 'Kıyafet', _detail!.dressCode!),
           ]),
           if (widget.job.sector != null ||
               widget.job.position != null ||
@@ -457,9 +448,17 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
             const SizedBox(height: AppSizes.spaceMedium),
             _buildInfoCard('İş Bilgileri', [
               if (widget.job.sector != null)
-                _buildInfoRow(Icons.business, 'Sektör', widget.job.sector!),
+                _appIconInfoRow(
+                  AppIcons.building,
+                  'Sektör',
+                  widget.job.sector!,
+                ),
               if (widget.job.position != null)
-                _buildInfoRow(Icons.badge, 'Pozisyon', widget.job.position!),
+                _appIconInfoRow(
+                  AppIcons.personalCard,
+                  'Pozisyon',
+                  widget.job.position!,
+                ),
               if (_headcount != null)
                 _appIconInfoRow(
                   AppIcons.userMultiple,
@@ -827,7 +826,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
           children: [
             IconButton(
               tooltip: 'Kapat',
-              icon: Icon(Icons.keyboard_arrow_down, color: context.textPrimary),
+              icon: AppIcon(AppIcons.chevronDown, color: context.textPrimary),
               onPressed: _closeSheet,
             ),
             const Spacer(),
@@ -892,8 +891,8 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     );
   }
 
-  /// Eski satırlar Material `Icons` taşıyor; yenisi eklenmiyor
-  /// (CONTRIBUTING). Yeni satırlar [AppIcon] ile çiziliyor, gövde aynı.
+  /// Bilgi satırı. Sheet'teki bütün ikonlar Reicon'un çizgisel ailesinden;
+  /// eskiden Material'in dolu ikonlarıyla karışıktı.
   Widget _appIconInfoRow(AppIconData icon, String label, String value) {
     return _infoRowBody(
       AppIcon(icon, size: AppSizes.iconMedium, color: context.accentColor),
@@ -902,11 +901,94 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
-    return _infoRowBody(
-      Icon(icon, size: AppSizes.iconMedium, color: context.accentColor),
-      label,
-      value,
+  /// Başlangıç ve bitiş: ikisi de varsa ikonlar arasında noktalı çizgiyle
+  /// küçük bir zaman çizelgesi; biri yoksa sıradan satır.
+  List<Widget> _schedule() {
+    final start = widget.job.startDateTime;
+    final end = widget.job.endDateTime;
+    if (start == null || end == null) {
+      return [
+        if (start != null)
+          _appIconInfoRow(
+            AppIcons.calendar,
+            'Başlangıç',
+            _formatDateTime(start),
+          ),
+        if (end != null)
+          _appIconInfoRow(AppIcons.calendarTick, 'Bitiş', _formatDateTime(end)),
+      ];
+    }
+
+    return [
+      _timelineRow(AppIcons.calendar, 'Başlangıç', _formatDateTime(start)),
+      _timelineRow(
+        AppIcons.calendarTick,
+        'Bitiş',
+        _formatDateTime(end),
+        isLast: true,
+      ),
+    ];
+  }
+
+  /// Zaman çizelgesinin bir adımı: ikonun altından bir sonraki adımın
+  /// ikonuna kadar noktalı çizgi iniyor.
+  Widget _timelineRow(
+    AppIconData icon,
+    String label,
+    String value, {
+    bool isLast = false,
+  }) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: AppSizes.iconMedium,
+            child: Column(
+              children: [
+                AppIcon(
+                  icon,
+                  size: AppSizes.iconMedium,
+                  color: context.accentColor,
+                ),
+                if (!isLast)
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AppSizes.spaceTiny,
+                      ),
+                      child: CustomPaint(
+                        painter: _DottedLinePainter(color: context.accentColor),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSizes.space),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: AppSizes.space),
+              child: _infoTexts(label, value),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoTexts(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: context.textTheme.labelMedium),
+        Text(
+          value,
+          style: context.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 
@@ -917,22 +999,33 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
         children: [
           icon,
           const SizedBox(width: AppSizes.space),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: context.textTheme.labelMedium),
-                Text(
-                  value,
-                  style: context.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          Expanded(child: _infoTexts(label, value)),
         ],
       ),
     );
   }
+}
+
+/// Dikey noktalı çizgi; zaman çizelgesindeki adımları bağlıyor.
+class _DottedLinePainter extends CustomPainter {
+  const _DottedLinePainter({required this.color});
+
+  final Color color;
+
+  /// Noktanın çapı ve iki nokta arası boşluk.
+  static const double _dot = 2;
+  static const double _gap = 3;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color.withValues(alpha: 0.6);
+    final x = size.width / 2;
+    for (var y = _dot / 2; y < size.height; y += _dot + _gap) {
+      canvas.drawCircle(Offset(x, y), _dot / 2, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DottedLinePainter oldDelegate) =>
+      oldDelegate.color != color;
 }
