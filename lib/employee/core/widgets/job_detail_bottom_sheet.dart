@@ -61,7 +61,7 @@ class JobDetailBottomSheet extends StatefulWidget {
   /// Sürüklerken yalnız sheet'in yüksekliği değişiyor; eskiden dört metin
   /// kare kare büyüyor ve bölümler bir eşikte beliriyordu, sheet her karede
   /// baştan dizildiği için takılıyormuş gibi görünüyordu.
-  static const double _collapsedSize = 0.4;
+  static const double _collapsedSize = 0.46;
   static const double _expandedSize = 0.95;
 
   static void show(BuildContext context, Job job) {
@@ -370,6 +370,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
           _title(),
           const SizedBox(height: AppSizes.spaceMedium),
           _typeAndPriceRow(),
+          _quickFacts(),
           _sectionTitle('Açıklama'),
           _description(),
           ..._gallerySection(),
@@ -574,7 +575,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
       child: Container(
         width: AppSizes.sheetHandleWidth,
         height: AppSizes.sheetHandleHeight,
-        margin: const EdgeInsets.only(top: AppSizes.spaceSmall),
+        margin: const EdgeInsets.symmetric(vertical: AppSizes.spaceSmall),
         decoration: BoxDecoration(
           color: context.dividerColor,
           borderRadius: BorderRadius.circular(AppSizes.sheetHandleHeight / 2),
@@ -718,6 +719,56 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     );
   }
 
+  /// Kapalı hâlde bakan kişinin işe karar vermek için ilk sorduğu iki şey:
+  /// ne zaman ve ne kadar uzakta. İkisi de özetten geliyor, detay
+  /// beklenmiyor; olmayan satıra yer ayrılmıyor.
+  Widget _quickFacts() {
+    final start = widget.job.startDateTime?.toLocal();
+    final distance = widget.job.distanceKm;
+    final place = widget.job.locationLabel;
+    final facts = [
+      if (start != null) (AppIcons.calendar, start.asShortDateTime),
+      if (distance != null || (place != null && place.isNotEmpty))
+        (
+          AppIcons.location,
+          [
+            if (distance != null) widget.job.distanceLabel(distance),
+            if (place != null && place.isNotEmpty) place,
+          ].join(' · '),
+        ),
+    ];
+    if (facts.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSizes.space),
+      child: Wrap(
+        spacing: AppSizes.spaceMedium,
+        runSpacing: AppSizes.spaceSmall,
+        children: [
+          for (final (icon, label) in facts)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AppIcon(
+                  icon,
+                  size: AppSizes.iconSmall,
+                  color: context.accentColor,
+                ),
+                const SizedBox(width: AppSizes.spaceTiny),
+                Text(
+                  label,
+                  style: context.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                    color: context.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _sectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSizes.spaceSmall),
@@ -767,6 +818,10 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
           _handleBar(),
           (progress, child) => Opacity(opacity: 1 - progress, child: child),
         ),
+        // Kapatma ve şikayet kapalı hâlde yer kaplamıyor: bakan kişi ilk
+        // bakışta işi ve parayı görmek istiyor, şikayeti değil. Satır açıldıkça
+        // yüksekliği de açılıyor; bu yalnız alttaki içeriği kaydırıyor, hiçbir
+        // metni yeniden dizmiyor.
         _onProgress(
           Padding(
             padding: AppPadding.iconButton,
@@ -787,7 +842,13 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
           ),
           (progress, child) => IgnorePointer(
             ignoring: progress < 0.5,
-            child: Opacity(opacity: progress, child: child),
+            child: ClipRect(
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                heightFactor: progress,
+                child: Opacity(opacity: progress, child: child),
+              ),
+            ),
           ),
         ),
       ],
