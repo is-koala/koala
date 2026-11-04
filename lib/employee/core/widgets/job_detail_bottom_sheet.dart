@@ -26,6 +26,7 @@ import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/job_gallery_view.dart';
 import 'package:koala/product/widgets/report_sheet.dart';
 import 'package:provider/provider.dart';
+import 'dart:ui' show lerpDouble;
 
 class JobDetailBottomSheet extends StatefulWidget {
   final Job job;
@@ -100,6 +101,12 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
   /// bakmıyor. Yalnız eşik geçildiğinde değişiyor, sürüklemenin her
   /// karesinde değil.
   bool _isExpanded = false;
+
+  /// Sheet'in kapalıdan (0) açığa (1) ne kadar açıldığı. Yalnız saydamlık,
+  /// ölçek ve renk geçişleri dinliyor ([_onProgress]); bunlar yerleşimi
+  /// değiştirmediği için hiçbir metin yeniden dizilmiyor ve sheet sürüklerken
+  /// baştan kurulmuyor.
+  final ValueNotifier<double> _progress = ValueNotifier(0);
   late final JobGalleryProvider _galleryProvider;
 
   /// `GET /jobs` yalnızca özet döndürüyor: açıklama, görevler, yaş aralığı ve
@@ -153,6 +160,11 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
   static const double _titleFont = 28;
   static const double _priceFont = 30;
 
+  /// Kapalı hâlde başlık ve fiyatın ölçeği. Yazı boyutu değil ölçek
+  /// değişiyor: metin bir bütün olarak küçülüyor, satırlar yeniden kırılmıyor.
+  static const double _titleScaleMin = 24 / _titleFont;
+  static const double _priceScaleMin = 26 / _priceFont;
+
   @override
   void initState() {
     super.initState();
@@ -169,6 +181,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
       ..removeListener(_onGalleryChanged)
       ..dispose();
     widget.sheetController?.removeListener(_onSheetChanged);
+    _progress.dispose();
     super.dispose();
   }
 
@@ -179,8 +192,26 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
   void _onSheetChanged() {
     final controller = widget.sheetController;
     if (controller == null || !controller.isAttached) return;
+    _progress.value =
+        ((controller.size - JobDetailBottomSheet._collapsedSize) /
+                (JobDetailBottomSheet._expandedSize -
+                    JobDetailBottomSheet._collapsedSize))
+            .clamp(0.0, 1.0);
     final expanded = controller.size > _expandedThreshold;
     if (expanded != _isExpanded) setState(() => _isExpanded = expanded);
+  }
+
+  /// [child]'ı açılma oranıyla yeniden boyar; [child] her karede yeniden
+  /// kurulmuyor.
+  Widget _onProgress(
+    Widget child,
+    Widget Function(double progress, Widget child) builder,
+  ) {
+    return ValueListenableBuilder<double>(
+      valueListenable: _progress,
+      child: child,
+      builder: (context, progress, child) => builder(progress, child!),
+    );
   }
 
   void _closeSheet() {
@@ -228,8 +259,17 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
       ),
       child: Row(
         children: [
-          _saveButton(savedJobsProvider, isSaved: isSaved),
-          const SizedBox(width: AppSizes.space),
+          // Kaydet düğmesi sheet açılınca yandan kayarak geliyor.
+          AnimatedSize(
+            duration: _animation,
+            curve: Curves.easeOut,
+            child: isExpanded
+                ? Padding(
+                    padding: const EdgeInsets.only(right: AppSizes.space),
+                    child: _saveButton(savedJobsProvider, isSaved: isSaved),
+                  )
+                : const SizedBox(height: AppSizes.buttonHeightCompact),
+          ),
           Expanded(
             child: _primaryButton(
               isExpanded: isExpanded,
@@ -622,11 +662,18 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
   }
 
   Widget _title() {
-    return Text(
-      widget.job.title,
-      style: context.textTheme.headlineSmall?.copyWith(
-        fontSize: _titleFont,
-        fontWeight: FontWeight.w700,
+    return _onProgress(
+      Text(
+        widget.job.title,
+        style: context.textTheme.headlineSmall?.copyWith(
+          fontSize: _titleFont,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      (progress, child) => Transform.scale(
+        scale: lerpDouble(_titleScaleMin, 1, progress)!,
+        alignment: Alignment.centerLeft,
+        child: child,
       ),
     );
   }
@@ -651,12 +698,19 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
               ),
             ),
           ),
-          Text(
-            '${widget.job.price.asPrice}₺',
-            style: context.textTheme.displaySmall?.copyWith(
-              fontSize: _priceFont,
-              fontWeight: FontWeight.w700,
-              color: context.accentColor,
+          _onProgress(
+            Text(
+              '${widget.job.price.asPrice}₺',
+              style: context.textTheme.displaySmall?.copyWith(
+                fontSize: _priceFont,
+                fontWeight: FontWeight.w700,
+                color: context.accentColor,
+              ),
+            ),
+            (progress, child) => Transform.scale(
+              scale: lerpDouble(_priceScaleMin, 1, progress)!,
+              alignment: Alignment.centerRight,
+              child: child,
             ),
           ),
         ],
@@ -671,13 +725,21 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     );
   }
 
+  /// Kapalı hâlde sönük, açıldıkça normal rengine geçiyor; boyutu sabit.
   Widget _description() {
-    return Text(
-      _detail?.description ?? widget.job.subtitle,
-      style: context.textTheme.bodyMedium?.copyWith(
-        fontSize: _descriptionFont,
-        color: context.textSecondary,
-        height: _descriptionHeight,
+    return ValueListenableBuilder<double>(
+      valueListenable: _progress,
+      builder: (context, progress, _) => Text(
+        _detail?.description ?? widget.job.subtitle,
+        style: context.textTheme.bodyMedium?.copyWith(
+          fontSize: _descriptionFont,
+          color: Color.lerp(
+            context.textTertiary,
+            context.textSecondary,
+            progress,
+          ),
+          height: _descriptionHeight,
+        ),
       ),
     );
   }
@@ -699,22 +761,33 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _handleBar(),
-        Padding(
-          padding: AppPadding.iconButton,
-          child: Row(
-            children: [
-              IconButton(
-                tooltip: 'Kapat',
-                icon: Icon(
-                  Icons.keyboard_arrow_down,
-                  color: context.textPrimary,
+        // Kapalıyken tutamaç, açıldıkça kapatma ve şikayet düğmeleri öne
+        // çıkıyor; ikisi de yerinde duruyor, yalnız saydamlıkları değişiyor.
+        _onProgress(
+          _handleBar(),
+          (progress, child) => Opacity(opacity: 1 - progress, child: child),
+        ),
+        _onProgress(
+          Padding(
+            padding: AppPadding.iconButton,
+            child: Row(
+              children: [
+                IconButton(
+                  tooltip: 'Kapat',
+                  icon: Icon(
+                    Icons.keyboard_arrow_down,
+                    color: context.textPrimary,
+                  ),
+                  onPressed: _closeSheet,
                 ),
-                onPressed: _closeSheet,
-              ),
-              const Spacer(),
-              _reportButton(),
-            ],
+                const Spacer(),
+                _reportButton(),
+              ],
+            ),
+          ),
+          (progress, child) => IgnorePointer(
+            ignoring: progress < 0.5,
+            child: Opacity(opacity: progress, child: child),
           ),
         ),
       ],
