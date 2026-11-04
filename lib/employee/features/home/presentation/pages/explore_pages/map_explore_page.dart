@@ -291,12 +291,10 @@ class _MapExplorePageState extends MapExplorePageModel {
         // Filtre ve arama tek yeşil hapın içinde: zeminsiz koyu filtre ikonu
         // haritanın sokak adları üstünde kayboluyordu.
         //
-        // Hapın iç boşluğu 8 (üstte, altta, kenarlarda); iki ikonun arası
-        // standart düğmedeki gibi 24 kalıyor. 48'lik IconButton kutusu
-        // kenarlara da 12 bırakıp hapı şişiriyordu.
-        Container(
-          height: AppSizes.mapPillHeight,
-          padding: const EdgeInsets.symmetric(horizontal: AppSizes.spaceTiny),
+        // Hapın iç boşluğu 8 (üstte, altta, kenarlarda): kare düğmenin kendi
+        // payı. İki ikonun arası standart düğmedeki gibi 24 (8 + 8 + 8).
+        // 48'lik IconButton kutusu kenarlara da 12 bırakıp hapı şişiriyordu.
+        DecoratedBox(
           decoration: BoxDecoration(
             color: context.accentColor,
             borderRadius: AppRadius.stadiumCircular,
@@ -310,7 +308,7 @@ class _MapExplorePageState extends MapExplorePageModel {
                 icon: AppIcons.filter,
                 onPressed: _openFilterSheet,
               ),
-              const SizedBox(width: AppSizes.spaceMedium),
+              const SizedBox(width: AppSizes.spaceSmall),
               _pillButton(
                 tooltip: 'Ara',
                 icon: AppIcons.search,
@@ -324,7 +322,7 @@ class _MapExplorePageState extends MapExplorePageModel {
     );
   }
 
-  /// Harita hapındaki tek düğme: ikonun iki yanında 4, üst ve altında 8.
+  /// Harita hapındaki tek düğme: kare, ikonun her yanında 8.
   Widget _pillButton({
     required String tooltip,
     required AppIconData icon,
@@ -334,7 +332,7 @@ class _MapExplorePageState extends MapExplorePageModel {
       tooltip: tooltip,
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints.tightFor(
-        width: AppSizes.mapPillButtonWidth,
+        width: AppSizes.mapPillHeight,
         height: AppSizes.mapPillHeight,
       ),
       style: IconButton.styleFrom(

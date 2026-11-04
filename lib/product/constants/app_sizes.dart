@@ -27,14 +27,11 @@ class AppSizes {
   /// satırları bölmeli, kendisi bir öğe gibi durmamalı.
   static const double divider = 1.0;
 
-  /// Harita üstündeki düğme hapının yüksekliği: 24'lük ikonun üstünde ve
-  /// altında `spaceSmall` (8) pay.
+  /// Harita üstündeki düğme hapının yüksekliği ve haptaki her düğmenin
+  /// kenarı. Düğme **kare**: 24'lük ikonun her yanında `spaceSmall` (8) pay,
+  /// basınca çıkan vurgu da tam daire olup hapın içine oturuyor. Dikdörtgen
+  /// düğmede vurgu oval çiziliyordu.
   static const double mapPillHeight = 40.0;
-
-  /// Haptaki her düğmenin genişliği: ikonun iki yanında `spaceTiny` (4).
-  /// Hapın kendi yatay payı da `spaceTiny`, yani kenarda 8 boşluk kalıyor;
-  /// iki ikonun arasına ayrıca `spaceMedium` girip araya 24 açıyor.
-  static const double mapPillButtonWidth = 32.0;
 
   /// Haritadaki sessiz yenileme çizgisinin kalınlığı: pinler ekrandayken
   /// arka planda süren isteği bir kart açmadan haber veriyor.
