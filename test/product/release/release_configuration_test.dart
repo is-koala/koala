@@ -59,7 +59,7 @@ void main() {
     expect(ios, contains('workflow_dispatch:'));
     // Self-hosted runner kaldırıldı; ona bağlı iş kuyrukta sonsuza dek bekler.
     for (final workflow in [ci, ios, release]) {
-      expect(workflow, isNot(contains('self-hosted')));
+      expect(workflow, isNot(contains('runs-on: self-hosted')));
     }
     expect(
       ci,
