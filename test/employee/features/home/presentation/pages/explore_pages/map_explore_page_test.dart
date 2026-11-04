@@ -366,7 +366,7 @@ void main() {
     expect(find.text('Bugün'), findsNothing);
     expect(find.text('Yarın'), findsNothing);
     expect(find.text('Hafta sonu'), findsNothing);
-    expect(find.byTooltip('Filtreler'), findsOneWidget);
+    expect(find.byTooltip('Filtrele ve sırala'), findsOneWidget);
   });
 
   testWidgets(
@@ -388,7 +388,7 @@ void main() {
       controller.onCameraIdle(_bounds);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byTooltip('Filtreler'));
+      await tester.tap(find.byTooltip('Filtrele ve sırala'));
       await tester.pumpAndSettle();
 
       expect(find.text('Başlangıç günü'), findsOneWidget);

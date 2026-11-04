@@ -8,7 +8,6 @@ import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_filter_selection.dart';
 import 'package:koala/employee/features/home/models/job_map_bounds.dart';
 import 'package:koala/employee/features/home/models/job_cluster.dart';
-import 'package:koala/employee/features/home/models/job_search_query.dart';
 import 'package:koala/employee/features/home/presentation/providers/job_category_provider.dart';
 import 'package:koala/employee/features/home/presentation/providers/map_explore_controller.dart';
 import 'package:koala/employee/features/home/presentation/providers/page_provider.dart';
@@ -18,7 +17,6 @@ import 'package:koala/employee/features/home/presentation/widgets/job_filter_she
 import 'package:koala/employee/features/home/presentation/widgets/job_marker_cache.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_marker_generator.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_cluster_sheet.dart';
-import 'package:koala/employee/features/home/presentation/widgets/job_sort_sheet.dart';
 import 'package:koala/employee/features/home/presentation/widgets/map_explore_overlay.dart';
 import 'package:koala/employee/features/home/services/location_service.dart';
 import 'package:koala/product/constants/app_colors.dart';
@@ -288,14 +286,11 @@ class _MapExplorePageState extends MapExplorePageModel {
       title: const ExploreBrandTitle(),
       centerTitle: false,
       actions: [
+        // Filtre ve sıralama haritada tek düğme: ikisi de aynı sheet'te.
         IconButton(
-          tooltip: 'Filtreler',
+          tooltip: 'Filtrele ve sırala',
           icon: AppIcon(AppIcons.filter, color: context.textPrimary),
           onPressed: _openFilterSheet,
-        ),
-        IconButton(
-          icon: AppIcon(AppIcons.sort, color: context.textPrimary),
-          onPressed: _openSortSheet,
         ),
         IconButton(
           icon: AppIcon(AppIcons.search, color: context.onAccentColor),

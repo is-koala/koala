@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:koala/employee/features/home/models/job_search_query.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_filter_selection.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_start_on_chips.dart';
@@ -33,9 +34,15 @@ class JobFilterSheet extends StatefulWidget {
     required this.hasLocation,
     this.onRequestLocation,
     this.locationService,
+    this.showSort = false,
   });
 
   final JobFilterSelection selection;
+
+  /// Sheet'in başında sıralama bölümü de çizilsin mi. Harita filtre ve
+  /// sıralamayı tek düğmede topluyor; liste sayfasında ikisi ayrı düğme
+  /// olduğu için orada kapalı.
+  final bool showSort;
 
   /// Sunucudan gelen kategoriler; `JobCategoryProvider` bunları uygulama
   /// boyunca elde tutuyor.
@@ -60,6 +67,7 @@ class JobFilterSheet extends StatefulWidget {
     required bool hasLocation,
     Future<bool> Function()? onRequestLocation,
     ReferenceLocationService? locationService,
+    bool showSort = false,
   }) {
     return AppBottomSheet.show<JobFilterSelection>(
       context,
@@ -69,6 +77,7 @@ class JobFilterSheet extends StatefulWidget {
         hasLocation: hasLocation,
         onRequestLocation: onRequestLocation,
         locationService: locationService,
+        showSort: showSort,
       ),
     );
   }
@@ -133,6 +142,7 @@ class _JobFilterSheetState extends State<JobFilterSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (_errorMessage != null) _errorRow(_errorMessage!),
+                      if (widget.showSort) _sortSection(),
                       _startOnSection(),
                       _categorySection(),
                       _typeSection(),
@@ -156,6 +166,38 @@ class _JobFilterSheetState extends State<JobFilterSheet> {
   }
 
   // --------------------------------------------------------------- Bölümler
+
+  /// Sıralama, [JobSortSheet] ile aynı kural: seçenekler [JobSortOption]'dan
+  /// türetiliyor, "En yakın" konum olmadan kapalı ve sebebi yazıyor.
+  Widget _sortSection() {
+    return _section(
+      'Sırala',
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _pills([
+            for (final option in JobSortOption.values)
+              FilterPill(
+                label: option.label,
+                isSelected: option == _draft.sort,
+                enabled: !option.requiresOrigin || _hasLocation,
+                onTap: () =>
+                    setState(() => _draft = _draft.copyWith(sort: option)),
+              ),
+          ]),
+          if (!_hasLocation) ...[
+            const SizedBox(height: AppSizes.spaceSmall),
+            Text(
+              'Yakınlık sıralaması için konum izni gerekiyor.',
+              style: context.textTheme.labelMedium?.copyWith(
+                color: context.textSecondary,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 
   Widget _startOnSection() {
     return _section(
@@ -553,7 +595,11 @@ class _JobFilterSheetState extends State<JobFilterSheet> {
   /// şey değişmemeli kuralı temizlemede de geçerli.
   void _clear() {
     setState(() {
-      _draft = _draft.cleared();
+      // Sıralama sheet'te görünüyorsa "Temizle" onu da varsayılana döndürür;
+      // görünmüyorsa kullanıcının ayrı seçtiği sıralamaya dokunulmaz.
+      _draft = widget.showSort
+          ? _draft.cleared().copyWith(sort: JobSortOption.newest)
+          : _draft.cleared();
       _minSalaryController.clear();
       _maxSalaryController.clear();
       _errorMessage = null;
