@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:koala/employee/core/widgets/employer_type_badge.dart';
 import 'package:koala/employee/core/widgets/job_location_card.dart';
 import 'package:koala/employee/core/widgets/job_transport_card.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
@@ -596,9 +595,21 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     // döndürüyor, kimliğini değil. Detay gelmediyse satır düz metin kalıyor.
     final companyId = _detail?.company?.id;
 
+    // İşveren türü rozet değil, adın önünde küçük bir ikon: kurumsalda bina,
+    // bireyselde kişi. Ad bütün satırı alıyor ve kesilmiyor.
+    final isCompany = widget.job.employerType == JobEmployerType.company;
+
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
+        Semantics(
+          label: 'İşveren türü: ${widget.job.employerType.displayName}',
+          child: AppIcon(
+            isCompany ? AppIcons.building : AppIcons.user,
+            size: AppSizes.iconSmall,
+            color: context.textSecondary,
+          ),
+        ),
+        const SizedBox(width: AppSizes.spaceTiny),
         Expanded(
           child: GestureDetector(
             onTap: companyId == null
@@ -621,44 +632,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
             ),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.only(left: AppSizes.spaceSmall),
-          child: EmployerTypeBadge(type: widget.job.employerType),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(left: AppSizes.spaceSmall),
-          child: _categoryChip(),
-        ),
       ],
-    );
-  }
-
-  /// Kategori rozeti.
-  Widget _categoryChip() {
-    return Container(
-      padding: AppPadding.chip,
-      decoration: BoxDecoration(
-        color: widget.job.category.color.withValues(alpha: 0.15),
-        borderRadius: AppRadius.secondaryCircular,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AppIcon(
-            widget.job.category.icon,
-            size: AppSizes.iconSmall,
-            color: widget.job.category.color,
-          ),
-          const SizedBox(width: AppSizes.spaceTiny),
-          Text(
-            widget.job.category.displayName,
-            style: context.textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: widget.job.category.color,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -685,20 +659,32 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Container(
-            padding: AppPadding.chip,
-            decoration: BoxDecoration(
-              color: context.tileColor,
-              borderRadius: AppRadius.secondaryCircular,
-            ),
-            child: Text(
-              widget.job.type.displayName,
-              style: context.textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: context.textSecondary,
-              ),
+          // Kategori ve iş türü rozet değil, düz metin: kategori ikonu kendi
+          // renginde, yazı sönük. İşin ne olduğunu fiyatın yanında söylüyor.
+          Expanded(
+            child: Row(
+              children: [
+                AppIcon(
+                  widget.job.category.icon,
+                  size: AppSizes.iconSmall,
+                  color: widget.job.category.color,
+                ),
+                const SizedBox(width: AppSizes.spaceTiny),
+                Flexible(
+                  child: Text(
+                    '${widget.job.category.displayName} · '
+                    '${widget.job.type.displayName}',
+                    overflow: TextOverflow.ellipsis,
+                    style: context.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                      color: context.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
+          const SizedBox(width: AppSizes.space),
           _onProgress(
             Text(
               '${widget.job.price.asPrice}₺',

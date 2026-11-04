@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:koala/employee/core/widgets/employer_type_badge.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/employee/core/widgets/job_detail_bottom_sheet.dart';
 import 'package:koala/employee/core/widgets/job_location_card.dart';
 import 'package:koala/employee/core/widgets/job_transport_card.dart';
@@ -15,6 +15,7 @@ import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/services/job_gallery_service.dart';
 import 'package:provider/provider.dart';
 
+import '../../../support/finders.dart';
 import '../../../support/fake_api.dart';
 import '../../../support/fixtures.dart';
 import '../../../support/pump.dart';
@@ -225,7 +226,7 @@ void main() {
     final themeName = brightness == Brightness.dark ? 'koyu' : 'açık';
 
     group('İlan detayı işveren türü ve sayılar ($themeName tema)', () {
-      testWidgets('işveren türü rozeti, yayın tarihi ve aranan kişi yazılır', (
+      testWidgets('işveren türü ikonu, yayın tarihi ve aranan kişi yazılır', (
         tester,
       ) async {
         await _pumpOpenSheet(
@@ -247,18 +248,24 @@ void main() {
           brightness: brightness,
         );
 
-        // Harness sheet'i konum kartına kadar kaydırıyor; rozet en üstteki
-        // şirket satırında ve tembel listede yeniden yukarı çıkmadan yok.
+        // Harness sheet'i konum kartına kadar kaydırıyor; işveren türü en
+        // üstteki şirket satırında ve tembel listede yeniden yukarı çıkmadan
+        // yok. Rozet değil, adın önünde bir ikon; türü erişilebilirlik
+        // etiketi söylüyor.
         final scrollable = find.byType(Scrollable).first;
+        final employerType = find.byWidgetPredicate(
+          (widget) =>
+              widget is Semantics &&
+              widget.properties.label ==
+                  'İşveren türü: ${JobEmployerType.individual.displayName}',
+        );
         await tester.scrollUntilVisible(
-          find.byType(EmployerTypeBadge),
+          employerType,
           -300,
           scrollable: scrollable,
         );
-        expect(
-          tester.widget<EmployerTypeBadge>(find.byType(EmployerTypeBadge)).type,
-          JobEmployerType.individual,
-        );
+        expect(employerType, findsOneWidget);
+        expect(findAppIcon(AppIcons.user), findsWidgets);
         await tester.scrollUntilVisible(
           find.text('Yayın tarihi'),
           300,
