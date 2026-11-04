@@ -638,10 +638,6 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
                 color: companyId == null
                     ? context.textSecondary
                     : context.accentColor,
-                decoration: companyId == null
-                    ? TextDecoration.none
-                    : TextDecoration.underline,
-                decorationColor: context.accentColor,
               ),
             ),
           ),
