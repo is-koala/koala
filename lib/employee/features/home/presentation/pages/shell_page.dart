@@ -19,6 +19,10 @@ class ShellPage extends StatefulWidget {
 
   const ShellPage({super.key, required this.child});
 
+  /// Kabuk rotalarının çizdiği boş sayfa. İçerik [ShellPage]'in kendi
+  /// `PageView`'ında; rota yalnız sekme seçiyor.
+  static const Widget tabPlaceholder = SizedBox.shrink();
+
   @override
   State<ShellPage> createState() => _ShellPageState();
 }
@@ -140,6 +144,9 @@ class _ShellPageState extends State<ShellPage> {
                 const NeverScrollableScrollPhysics(), // Sadece programmatik geçiş
             children: _pages,
           ),
+          // go_router'ın kabuk navigator'ı: içeriği boş, görünmez; yalnız
+          // geri tuşunun okuyabileceği bir navigator olsun diye ağaçta.
+          Offstage(child: widget.child),
           // Sayfanın altında zemine giden geçiş. Haritada çizilmiyor: harita
           // ekranın tamamı, kesilecek bir liste yok; geçiş haritanın altını
           // ve Google logosunu beyazla örtüyordu.

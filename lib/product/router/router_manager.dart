@@ -32,8 +32,6 @@ import 'package:koala/employee/features/auth/presentation/pages/company_informat
 import 'package:koala/employee/features/auth/presentation/pages/creating_password_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/onboarding_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/register_type_page.dart';
-import 'package:koala/employee/features/home/presentation/pages/explore_pages/explore_page.dart';
-import 'package:koala/employee/features/jobs/presentation/pages/jobs_page.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/job_alerts_page.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/job_alert_form_page.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/earnings_page.dart';
@@ -42,10 +40,8 @@ import 'package:koala/employee/features/jobs/presentation/pages/review_page.dart
 import 'package:koala/employee/features/jobs/presentation/pages/work_detail_page.dart';
 import 'package:koala/employee/features/jobs/models/review.dart'
     show ReviewSubject;
-import 'package:koala/employee/features/chat/presentation/pages/chat_list_page.dart';
 import 'package:koala/employee/features/chat/presentation/pages/chat_page.dart';
 import 'package:koala/employee/features/chat/models/conversation.dart';
-import 'package:koala/employee/features/profile/presentation/pages/profile_page.dart';
 import 'package:koala/employee/features/profile/presentation/pages/public_profile_page.dart';
 import 'package:koala/employee/features/profile/presentation/pages/availability_page.dart';
 import 'package:koala/employee/features/home/presentation/pages/shell_page.dart';
@@ -628,29 +624,28 @@ class RouterManager {
       ),
 
       //Employee Main Shell
+      //
+      // Sekmelerin içeriğini `ShellPage` kendi `PageView`'ında kuruyor; rota
+      // yalnız hangi sekmenin açık olduğunu söylüyor. Bu yüzden rotalar boş
+      // bir yer tutucu çiziyor (`ShellPage.tabPlaceholder`) ve `ShellPage`
+      // `child`'ı görünmez yerleştiriyor. `child`'ı hiç yerleştirmemek kabuk
+      // navigator'ını kurmuyordu; go_router geri tuşunda o navigator'ı
+      // `currentState!` ile okuduğu için Android'de geri hareketi null
+      // hatasıyla patlıyor, açık bir sheet de kapanmıyordu.
       ShellRoute(
         builder: (context, state, child) => ShellPage(child: child),
         routes: [
-          GoRoute(
-            path: '/explore',
-            pageBuilder: (context, state) =>
-                NoTransitionPage(child: const ExplorePage()),
-          ),
-          GoRoute(
-            path: '/jobs',
-            pageBuilder: (context, state) =>
-                NoTransitionPage(child: const JobsPage()),
-          ),
-          GoRoute(
-            path: '/chat',
-            pageBuilder: (context, state) =>
-                NoTransitionPage(child: const ChatListPage()),
-          ),
-          GoRoute(
-            path: EmployeeRoutes.ownProfile,
-            pageBuilder: (context, state) =>
-                NoTransitionPage(child: const ProfilePage()),
-          ),
+          for (final path in [
+            '/explore',
+            '/jobs',
+            '/chat',
+            EmployeeRoutes.ownProfile,
+          ])
+            GoRoute(
+              path: path,
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: ShellPage.tabPlaceholder),
+            ),
         ],
       ),
     ],
