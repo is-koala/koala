@@ -8,7 +8,7 @@ description: >-
 # bloğunu tek yere alıyor. Eskiden blok iki dosyaya kopyalanmıştı; build-tools
 # sürümünü yükseltmek dört eşgüdümlü düzenleme istiyordu.
 #
-# ÖNEMLİ: setup-flutter-linux-arm64'ten SONRA çağrılmalı. gen_snapshot
+# ÖNEMLİ: Flutter kurulumundan (subosito/flutter-action) SONRA çağrılmalı. gen_snapshot
 # yoklaması FLUTTER_ROOT'a ihtiyaç duyuyor ve onu o action GITHUB_ENV'e yazıyor.
 
 inputs:
@@ -140,7 +140,7 @@ runs:
         # bir nöbetçiden sonra AAB derlemesi emüle edilmemiş binary'ye
         # çarpabiliyordu.
         if [[ "$PROBE_GEN_SNAPSHOT" == "true" ]]; then
-          : "${FLUTTER_ROOT:?FLUTTER_ROOT tanımsız; bu action setup-flutter-linux-arm64 sonrasında çağrılmalı}"
+          : "${FLUTTER_ROOT:?FLUTTER_ROOT tanımsız; bu action Flutter kurulumundan sonra çağrılmalı}"
 
           # Dar bayrak Flutter sürümleri arasında gizli/değişken olduğu için
           # tanınmazsa tüm Android artifact setine düşülüyor.

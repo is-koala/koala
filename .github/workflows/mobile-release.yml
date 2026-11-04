@@ -9,6 +9,9 @@ concurrency:
   group: mobile-release-${{ github.ref }}
   cancel-in-progress: false
 
+# Self-hosted Pi runner kaldırıldı; Linux işleri GitHub'ın ubuntu-latest
+# runner'larında, TestFlight macos-latest'te koşar. Yalnız mobile-v* etiketi
+# tetikler, PR'da koşmaz.
 permissions:
   contents: read
 
@@ -19,15 +22,18 @@ env:
 jobs:
   validate:
     name: Sözleşme ve testler
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - uses: ./.github/actions/setup-flutter-linux-arm64
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
 
       - name: Bağımlılıkları indir
         run: flutter pub get
@@ -41,21 +47,24 @@ jobs:
         run: |
           dart format --output=none --set-exit-if-changed lib test tool
           flutter analyze --fatal-infos
-          flutter test --flavor staging --dart-define-from-file=config/staging.json --concurrency=1
+          flutter test --flavor staging --dart-define-from-file=config/staging.json
 
   android-internal:
     name: Play internal
     needs: validate
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
     environment: production
     steps:
       - uses: actions/checkout@v4
 
       # Flutter önce kurulur: setup-android-x64-tools'un gen_snapshot yoklaması
-      # FLUTTER_ROOT istiyor.
-      - uses: ./.github/actions/setup-flutter-linux-arm64
+      # FLUTTER_ROOT istiyor (flutter-action GITHUB_ENV'e yazar).
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
 
       # JDK + Android SDK + x64 emülasyon nöbetçisi tek yerde; aynı 19 satır
       # eskiden ci.yml ile bayt bayt aynıydı.
@@ -117,6 +126,7 @@ jobs:
     name: TestFlight
     needs: validate
     runs-on: macos-latest
+    timeout-minutes: 60
     environment: production
     steps:
       - uses: actions/checkout@v4
