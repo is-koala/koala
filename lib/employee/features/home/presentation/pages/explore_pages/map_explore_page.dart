@@ -337,7 +337,8 @@ class _MapExplorePageState extends MapExplorePageModel {
               // Filtre ve sıralama tek düğme: ikisi de aynı sheet'te.
               _pillButton(
                 tooltip: 'Filtrele ve sırala',
-                icon: AppIcons.filter,
+                // Huni yalnız "filtre" diyordu; düğme sıralamayı da açıyor.
+                icon: AppIcons.sort,
                 onPressed: _openFilterSheet,
               ),
               _pillButton(
