@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -410,6 +412,218 @@ void main() {
       expect((last['startTo'] as String).endsWith('Z'), isTrue);
     },
   );
+
+  group('önbellek ve yetki sonu (#10, #220)', () {
+    // #220'den önce her yanıt pin listesini baştan yazıyordu: yanıtta olmayan
+    // ilan haritadan da düşüyordu. Artık ilanlar kimliğe göre önbellekte
+    // duruyor ve yalnız **eksiksiz** yanıt eksik ilanı siliyor; kırpılmış yanıt
+    // (`last: false`) yalnız ekliyor. #10'un kabul maddesi ("önbellekte kalmış
+    // tam adres yetki sona erdikten sonra gösterilmez") bu yolda da tutmalı.
+
+    /// Yetkisiz kullanıcının yoğun bir alanda gördüğü başka bir ilan; kesin
+    /// pinden grup olmayacak kadar uzakta, ama aynı görünen alanın içinde.
+    final otherJob = {
+      ..._jobBody(latitude: 40.95, longitude: 28.85, precision: 'APPROXIMATE'),
+      'id': 'job_diger',
+    };
+
+    Map<String, dynamic> pageOf(
+      List<Map<String, dynamic>> jobs, {
+      required bool last,
+    }) => {
+      'success': true,
+      'data': {
+        'content': jobs,
+        'page': 0,
+        'size': 100,
+        'totalElements': last ? jobs.length : 250,
+        'totalPages': last ? 1 : 3,
+        'first': true,
+        'last': last,
+      },
+    };
+
+    final exactJob = _jobBody(
+      latitude: exactLatitude,
+      longitude: exactLongitude,
+      precision: 'EXACT',
+    );
+
+    const exactPin = LatLng(exactLatitude, exactLongitude);
+
+    Iterable<LatLng> pinPositions(WidgetTester tester) =>
+        _map(tester).markers.map((marker) => marker.position);
+
+    /// İlan isteklerini sırayla yanıtlar; bir yanıt `Future` ise test onu
+    /// istediği an tamamlar.
+    FakeApi apiAnswering(List<FutureOr<FakeApiResponse>> responses) {
+      var call = 0;
+      return FakeApi(
+        handler: (RequestOptions options) {
+          if (_isJobCategories(options)) return _emptyCategories();
+          final response = responses[call.clamp(0, responses.length - 1)];
+          call++;
+          return response;
+        },
+      );
+    }
+
+    testWidgets('kırpılmış yanıtta artık olmayan kesin pin haritada kalmıyor', (
+      tester,
+    ) async {
+      var now = DateTime(2026, 11, 4, 12);
+      final api = apiAnswering([
+        // Yetkili görünüm: alan eksiksiz yüklendi, ilan kesin konumda.
+        FakeApiResponse(statusCode: 200, body: pageOf([exactJob], last: true)),
+        // Alan bayatladı, yetki bitti ve alan yoğunlaştı: sunucu ilk 100'ü
+        // veriyor, bu ilan onların arasında değil.
+        FakeApiResponse(statusCode: 200, body: pageOf([otherJob], last: false)),
+      ]);
+      final controller = MapExploreController(
+        service: JobService.withClient(api.client),
+        debounce: Duration.zero,
+        fetchMargin: 0,
+        clock: () => now,
+      );
+
+      await _pumpMap(tester, controller);
+
+      controller.onCameraIdle(_bounds);
+      await tester.pumpAndSettle();
+      expect(pinPositions(tester), [exactPin]);
+
+      now = now.add(controller.areaTtl);
+      controller.onCameraIdle(_bounds);
+      await tester.pumpAndSettle();
+
+      expect(_jobQueries(api), hasLength(2));
+      expect(controller.isTruncated, isTrue);
+      expect(
+        pinPositions(tester),
+        isNot(contains(exactPin)),
+        reason:
+            'yetkisi biten ilanın kesin konumu kırpılmış yanıt yüzünden '
+            'önbellekten çizilmeye devam ediyor',
+      );
+    });
+
+    testWidgets('kırpılmış yanıt ilanı yaklaşık konumla getirirse kesin pin '
+        'yerini bırakıyor', (tester) async {
+      var now = DateTime(2026, 11, 4, 12);
+      final api = apiAnswering([
+        FakeApiResponse(statusCode: 200, body: pageOf([exactJob], last: true)),
+        FakeApiResponse(
+          statusCode: 200,
+          body: pageOf([
+            _jobBody(
+              latitude: roundedLatitude,
+              longitude: roundedLongitude,
+              precision: 'APPROXIMATE',
+            ),
+            otherJob,
+          ], last: false),
+        ),
+      ]);
+      final controller = MapExploreController(
+        service: JobService.withClient(api.client),
+        debounce: Duration.zero,
+        fetchMargin: 0,
+        clock: () => now,
+      );
+
+      await _pumpMap(tester, controller);
+
+      controller.onCameraIdle(_bounds);
+      await tester.pumpAndSettle();
+      expect(pinPositions(tester), [exactPin]);
+
+      now = now.add(controller.areaTtl);
+      controller.onCameraIdle(_bounds);
+      await tester.pumpAndSettle();
+
+      expect(controller.isTruncated, isTrue);
+      expect(pinPositions(tester), isNot(contains(exactPin)));
+      expect(
+        pinPositions(tester),
+        contains(const LatLng(roundedLatitude, roundedLongitude)),
+      );
+    });
+
+    testWidgets('süresi dolmuş alana dönünce kesin pin yanıt gelmeden '
+        'önbellekten çizilmiyor', (tester) async {
+      var now = DateTime(2026, 11, 4, 12);
+      final fresh = Completer<FakeApiResponse>();
+      final api = apiAnswering([
+        FakeApiResponse(statusCode: 200, body: pageOf([exactJob], last: true)),
+        // Başka bir bölge: boş.
+        FakeApiResponse(statusCode: 200, body: pageOf(const [], last: true)),
+        // Süresi dolmuş alanın yeni yanıtı; testin kontrolünde gelecek.
+        fresh.future,
+      ]);
+      final controller = MapExploreController(
+        service: JobService.withClient(api.client),
+        debounce: Duration.zero,
+        fetchMargin: 0,
+        clock: () => now,
+      );
+
+      await _pumpMap(tester, controller);
+
+      controller.onCameraIdle(_bounds);
+      await tester.pumpAndSettle();
+      expect(pinPositions(tester), [exactPin]);
+
+      controller.onCameraIdle(
+        const JobMapBounds(
+          minLatitude: 36.0,
+          maxLatitude: 36.2,
+          minLongitude: 32.0,
+          maxLongitude: 32.2,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(_map(tester).markers, isEmpty);
+
+      // Alanın süresi doldu; bu arada yetki de bitmiş olabilir. Kamera geri
+      // döndüğünde istek uçuyor ama yanıt henüz gelmedi.
+      now = now.add(controller.areaTtl);
+      controller.onCameraIdle(_bounds);
+      // Süre verilmeden `pump` sahte saati ilerletmiyor, sıfır debounce'un
+      // zamanlayıcısı da çalışmıyor.
+      await tester.pump(Duration.zero);
+      await tester.pump();
+
+      expect(_jobQueries(api), hasLength(3));
+      expect(controller.isLoading, isTrue);
+      final drawnBeforeResponse = pinPositions(tester).toList();
+
+      // Bekleyen isteği kapat: test zamanlayıcı bırakmasın.
+      fresh.complete(
+        FakeApiResponse(
+          statusCode: 200,
+          body: pageOf([
+            _jobBody(
+              latitude: roundedLatitude,
+              longitude: roundedLongitude,
+              precision: 'APPROXIMATE',
+            ),
+          ], last: true),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(pinPositions(tester), [
+        const LatLng(roundedLatitude, roundedLongitude),
+      ]);
+
+      expect(
+        drawnBeforeResponse,
+        isNot(contains(exactPin)),
+        reason:
+            'onCameraIdle süresi dolmuş alanın önbelleğini istek dönmeden '
+            'çiziyor; yetkisi bitmiş kesin konum yeniden görünüyor',
+      );
+    });
+  });
 
   group('harita bayrağı', () {
     // is-koala/koala#172: iOS'ta anahtar boşken ilk `GoogleMap` uygulamayı
