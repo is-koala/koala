@@ -52,8 +52,8 @@ class MapExplorePage extends StatefulWidget {
 }
 
 class _MapExplorePageState extends MapExplorePageModel {
-  /// Konum butonunun alttan yüksekliği: navbar'ın üstünde kalmalı.
-  static const double _locationButtonBottom = 110;
+  /// Mini `FloatingActionButton`'ın kenarı.
+  static const double _locationButtonSize = 40;
 
   /// Harita yokken gösterilen metin; testler ve diğer harita ekranı aynı
   /// cümleyi kullanıyor.
@@ -126,9 +126,26 @@ class _MapExplorePageState extends MapExplorePageModel {
     );
   }
 
+  /// Konum düğmesinin alttan uzaklığı, navbar'ın ölçülerinden.
+  ///
+  /// Navbar ortada ve sabit genişlikte; yanında düğmeye yer varsa düğme
+  /// navbar'la aynı hizada, sağında duruyor. Dar ekranda navbar'la çakışacağı
+  /// için navbar'ın üstüne çıkıyor. Eskiden sabit 110'du: her ekranda
+  /// navbar'ın üstünde ve sağdaki boş alanı kullanmadan havada duruyordu.
+  double _locationButtonBottom(BuildContext context) {
+    const navBarBottom = AppPadding.bottomNavBarPadding;
+    final sideRoom =
+        (MediaQuery.sizeOf(context).width - AppSizes.navBarWidth) / 2;
+    final fitsBeside = sideRoom >= _locationButtonSize + AppPadding.primary * 2;
+
+    return fitsBeside
+        ? navBarBottom.bottom + (AppSizes.navBar - _locationButtonSize) / 2
+        : navBarBottom.bottom + AppSizes.navBar + AppSizes.spaceMedium;
+  }
+
   Positioned currentPositionButton() {
     return Positioned(
-      bottom: _locationButtonBottom,
+      bottom: _locationButtonBottom(context),
       right: AppPadding.primary,
       child: FloatingActionButton(
         mini: true,
