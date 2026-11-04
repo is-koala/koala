@@ -413,18 +413,47 @@ void main() {
     },
   );
 
-  group('önbellek ve yetki sonu (#10, #220)', () {
+  group('önbellek ve konum kuralı (#10, #220)', () {
     // #220'den önce her yanıt pin listesini baştan yazıyordu: yanıtta olmayan
     // ilan haritadan da düşüyordu. Artık ilanlar kimliğe göre önbellekte
     // duruyor ve yalnız **eksiksiz** yanıt eksik ilanı siliyor; kırpılmış yanıt
-    // (`last: false`) yalnız ekliyor. #10'un kabul maddesi ("önbellekte kalmış
-    // tam adres yetki sona erdikten sonra gösterilmez") bu yolda da tutmalı.
+    // (`last: false`) yalnız ekliyor.
+    //
+    // Önbelleğe giren kesinliği sunucu belirliyor (Yusuf, 04.11.2026, backend
+    // `feat/job-location-rule`): harita/arama listesinde (`GET /jobs`) etkin
+    // atama kesinliği **yükseltmiyor**; `EXACT` yalnız (şirket ilanı &&
+    // `addressPublic`) ya da görüntüleyen ilanın sahibiyse geliyor. Yani
+    // başkasına ait, sonradan geri alınabilecek bir kesin konum harita
+    // önbelleğine normalde hiç girmiyor; #10'un kabul maddesi ("önbellekte
+    // kalmış tam adres yetki sona erdikten sonra gösterilmez") haritada
+    // sunucu sözleşmesiyle tutuyor. İstemci kural kurmuyor, yalnız
+    // `addressPrecision` okuyor; bu grup o sözleşmenin haritadaki karşılığını
+    // belgeliyor.
+    //
+    // Bilinen uç durum (düzeltilmedi, Yakup'un kararına bırakıldı): şirket
+    // ilanı açıkken önbelleğe kesin pinle girer, işveren sonra ilanı
+    // düzenleyip adresi **gizlerse** ve alan kırpılmış (`last: false`) yanıtla
+    // yenilenip ilan o 100'ün içinde gelmezse, önbellekteki eski kesin pin
+    // `areaTtl`'den (3 dk) uzun kalabilir. Kırpılmış yanıt ilanı yaklaşık
+    // getirirse pin yerini bırakıyor — aşağıdaki testlerden biri o yolu
+    // sabitliyor.
 
-    /// Yetkisiz kullanıcının yoğun bir alanda gördüğü başka bir ilan; kesin
-    /// pinden grup olmayacak kadar uzakta, ama aynı görünen alanın içinde.
-    final otherJob = {
-      ..._jobBody(latitude: 40.95, longitude: 28.85, precision: 'APPROXIMATE'),
-      'id': 'job_diger',
+    /// Kendi kimliği ve işveren türüyle bir ilan; testler konumları diğer
+    /// pinlerden grup olmayacak kadar uzak seçiyor.
+    Map<String, dynamic> jobAt({
+      required String id,
+      required double latitude,
+      required double longitude,
+      required String precision,
+      required String employerType,
+    }) => {
+      ..._jobBody(
+        latitude: latitude,
+        longitude: longitude,
+        precision: precision,
+      ),
+      'id': id,
+      'employerType': employerType,
     };
 
     Map<String, dynamic> pageOf(
@@ -443,13 +472,28 @@ void main() {
       },
     };
 
-    final exactJob = _jobBody(
-      latitude: exactLatitude,
-      longitude: exactLongitude,
-      precision: 'EXACT',
+    /// Bireysel ilanın harita yanıtı: kim bakarsa baksın (atanmış işçi dahil)
+    /// yaklaşık.
+    final individualJob = {
+      ..._jobBody(
+        latitude: roundedLatitude,
+        longitude: roundedLongitude,
+        precision: 'APPROXIMATE',
+      ),
+      'employerType': 'INDIVIDUAL',
+    };
+
+    /// Başka bir ilan; kırpılmış yanıtın 100'ünü dolduranlardan biri.
+    final otherJob = jobAt(
+      id: 'job_diger',
+      latitude: 40.95,
+      longitude: 28.85,
+      precision: 'APPROXIMATE',
+      employerType: 'INDIVIDUAL',
     );
 
     const exactPin = LatLng(exactLatitude, exactLongitude);
+    const roundedPin = LatLng(roundedLatitude, roundedLongitude);
 
     Iterable<LatLng> pinPositions(WidgetTester tester) =>
         _map(tester).markers.map((marker) => marker.position);
@@ -468,15 +512,82 @@ void main() {
       );
     }
 
-    testWidgets('kırpılmış yanıtta artık olmayan kesin pin haritada kalmıyor', (
-      tester,
-    ) async {
+    testWidgets('harita yanıtındaki üç kesinlik: şirketin açık ilanı ve '
+        'sahibinin kendi ilanı kesin, bireysel ilan çemberli', (tester) async {
+      final api = apiAnswering([
+        FakeApiResponse(
+          statusCode: 200,
+          body: pageOf([
+            // Şirket ilanı, adres herkese açık (`addressPublic` varsayılanı).
+            jobAt(
+              id: 'job_sirket',
+              latitude: exactLatitude,
+              longitude: exactLongitude,
+              precision: 'EXACT',
+              employerType: 'COMPANY',
+            ),
+            // Görüntüleyenin kendi bireysel ilanı: sahibine kesin.
+            jobAt(
+              id: 'job_kendi',
+              latitude: 40.95,
+              longitude: 28.85,
+              precision: 'EXACT',
+              employerType: 'INDIVIDUAL',
+            ),
+            // Başkasının bireysel ilanı: herkese yaklaşık.
+            jobAt(
+              id: 'job_bireysel',
+              latitude: 41.08,
+              longitude: 29.08,
+              precision: 'APPROXIMATE',
+              employerType: 'INDIVIDUAL',
+            ),
+          ], last: true),
+        ),
+      ]);
+      final controller = MapExploreController(
+        service: JobService.withClient(api.client),
+        debounce: Duration.zero,
+        fetchMargin: 0,
+      );
+
+      await _pumpMap(tester, controller);
+
+      controller.onCameraIdle(_bounds);
+      await tester.pumpAndSettle();
+
+      final markers = {
+        for (final marker in _map(tester).markers) marker.position: marker,
+      };
+      expect(markers.keys, hasLength(3));
+
+      // Kesin pinler ucundan bağlanıyor ve çember almıyor.
+      expect(markers[exactPin]!.anchor, const Offset(0.5, 1.0));
+      expect(
+        markers[const LatLng(40.95, 28.85)]!.anchor,
+        const Offset(0.5, 1.0),
+      );
+
+      // Yaklaşık pin ortasından bağlanıyor ve tek çember yalnız onun.
+      const approximatePin = LatLng(41.08, 29.08);
+      expect(markers[approximatePin]!.anchor, const Offset(0.5, 0.5));
+      expect(_map(tester).circles, hasLength(1));
+      expect(_map(tester).circles.single.center, approximatePin);
+    });
+
+    testWidgets('bireysel ilan kırpılmış yanıtta düşmese de önbellekte '
+        'yaklaşık kalıyor', (tester) async {
+      // Eski kırmızı senaryo: alan eksiksiz yüklendi, `areaTtl` doldu ve alan
+      // yoğunlaştı; sunucu `last: false` ile ilk 100'ü veriyor ve ilan
+      // aralarında değil. Kırpılmış yanıt silmediği için ilan önbellekte
+      // kalıyor — ama yeni sözleşmede harita yanıtı bireysel ilanı atanmış
+      // işçiye bile kesin vermediği için kalan şey zaten yaklaşık konum.
       var now = DateTime(2026, 11, 4, 12);
       final api = apiAnswering([
-        // Yetkili görünüm: alan eksiksiz yüklendi, ilan kesin konumda.
-        FakeApiResponse(statusCode: 200, body: pageOf([exactJob], last: true)),
-        // Alan bayatladı, yetki bitti ve alan yoğunlaştı: sunucu ilk 100'ü
-        // veriyor, bu ilan onların arasında değil.
+        FakeApiResponse(
+          statusCode: 200,
+          body: pageOf([individualJob], last: true),
+        ),
         FakeApiResponse(statusCode: 200, body: pageOf([otherJob], last: false)),
       ]);
       final controller = MapExploreController(
@@ -490,7 +601,8 @@ void main() {
 
       controller.onCameraIdle(_bounds);
       await tester.pumpAndSettle();
-      expect(pinPositions(tester), [exactPin]);
+      expect(pinPositions(tester), [roundedPin]);
+      expect(_map(tester).circles, hasLength(1));
 
       now = now.add(controller.areaTtl);
       controller.onCameraIdle(_bounds);
@@ -498,63 +610,27 @@ void main() {
 
       expect(_jobQueries(api), hasLength(2));
       expect(controller.isTruncated, isTrue);
-      expect(
-        pinPositions(tester),
-        isNot(contains(exactPin)),
-        reason:
-            'yetkisi biten ilanın kesin konumu kırpılmış yanıt yüzünden '
-            'önbellekten çizilmeye devam ediyor',
-      );
-    });
-
-    testWidgets('kırpılmış yanıt ilanı yaklaşık konumla getirirse kesin pin '
-        'yerini bırakıyor', (tester) async {
-      var now = DateTime(2026, 11, 4, 12);
-      final api = apiAnswering([
-        FakeApiResponse(statusCode: 200, body: pageOf([exactJob], last: true)),
-        FakeApiResponse(
-          statusCode: 200,
-          body: pageOf([
-            _jobBody(
-              latitude: roundedLatitude,
-              longitude: roundedLongitude,
-              precision: 'APPROXIMATE',
-            ),
-            otherJob,
-          ], last: false),
-        ),
-      ]);
-      final controller = MapExploreController(
-        service: JobService.withClient(api.client),
-        debounce: Duration.zero,
-        fetchMargin: 0,
-        clock: () => now,
-      );
-
-      await _pumpMap(tester, controller);
-
-      controller.onCameraIdle(_bounds);
-      await tester.pumpAndSettle();
-      expect(pinPositions(tester), [exactPin]);
-
-      now = now.add(controller.areaTtl);
-      controller.onCameraIdle(_bounds);
-      await tester.pumpAndSettle();
-
-      expect(controller.isTruncated, isTrue);
+      expect(pinPositions(tester), contains(roundedPin));
       expect(pinPositions(tester), isNot(contains(exactPin)));
       expect(
-        pinPositions(tester),
-        contains(const LatLng(roundedLatitude, roundedLongitude)),
+        _map(tester).circles.map((circle) => circle.center),
+        contains(roundedPin),
       );
     });
 
-    testWidgets('süresi dolmuş alana dönünce kesin pin yanıt gelmeden '
-        'önbellekten çizilmiyor', (tester) async {
+    testWidgets('süresi dolmuş alana dönünce önbellekten çizilen bireysel '
+        'ilan yaklaşık', (tester) async {
+      // Eski kırmızı senaryo: kamera süresi dolmuş alana dönünce önbellek
+      // istek dönmeden çiziliyor (`onCameraIdle` → `_updateVisible`). Yeni
+      // sözleşmede önbellekte bireysel ilanın kesin konumu hiç olmadığı için
+      // yanıttan önce çizilen pin de yaklaşık.
       var now = DateTime(2026, 11, 4, 12);
       final fresh = Completer<FakeApiResponse>();
       final api = apiAnswering([
-        FakeApiResponse(statusCode: 200, body: pageOf([exactJob], last: true)),
+        FakeApiResponse(
+          statusCode: 200,
+          body: pageOf([individualJob], last: true),
+        ),
         // Başka bir bölge: boş.
         FakeApiResponse(statusCode: 200, body: pageOf(const [], last: true)),
         // Süresi dolmuş alanın yeni yanıtı; testin kontrolünde gelecek.
@@ -571,7 +647,7 @@ void main() {
 
       controller.onCameraIdle(_bounds);
       await tester.pumpAndSettle();
-      expect(pinPositions(tester), [exactPin]);
+      expect(pinPositions(tester), [roundedPin]);
 
       controller.onCameraIdle(
         const JobMapBounds(
@@ -584,8 +660,6 @@ void main() {
       await tester.pumpAndSettle();
       expect(_map(tester).markers, isEmpty);
 
-      // Alanın süresi doldu; bu arada yetki de bitmiş olabilir. Kamera geri
-      // döndüğünde istek uçuyor ama yanıt henüz gelmedi.
       now = now.add(controller.areaTtl);
       controller.onCameraIdle(_bounds);
       // Süre verilmeden `pump` sahte saati ilerletmiyor, sıfır debounce'un
@@ -595,33 +669,77 @@ void main() {
 
       expect(_jobQueries(api), hasLength(3));
       expect(controller.isLoading, isTrue);
-      final drawnBeforeResponse = pinPositions(tester).toList();
+      expect(pinPositions(tester), [roundedPin]);
+      expect(_map(tester).circles, hasLength(1));
 
       // Bekleyen isteği kapat: test zamanlayıcı bırakmasın.
       fresh.complete(
         FakeApiResponse(
           statusCode: 200,
-          body: pageOf([
-            _jobBody(
-              latitude: roundedLatitude,
-              longitude: roundedLongitude,
-              precision: 'APPROXIMATE',
-            ),
-          ], last: true),
+          body: pageOf([individualJob], last: true),
         ),
       );
       await tester.pumpAndSettle();
-      expect(pinPositions(tester), [
-        const LatLng(roundedLatitude, roundedLongitude),
-      ]);
+      expect(pinPositions(tester), [roundedPin]);
+    });
 
-      expect(
-        drawnBeforeResponse,
-        isNot(contains(exactPin)),
-        reason:
-            'onCameraIdle süresi dolmuş alanın önbelleğini istek dönmeden '
-            'çiziyor; yetkisi bitmiş kesin konum yeniden görünüyor',
+    testWidgets('adresi sonradan gizlenen şirket ilanı kırpılmış yanıtta '
+        'yaklaşık gelirse kesin pin yerini bırakıyor', (tester) async {
+      // Uç durumun kapanan yarısı: ilan kırpılmış yanıtın içindeyse aynı
+      // kimlikle yaklaşık gelir ve önbellekteki kesin girdinin üzerine
+      // yazılır. İlan yanıtta **yoksa** eski kesin pin kalabilir; o yarı
+      // bilinen uç durum olarak Yakup'un kararına bırakıldı.
+      var now = DateTime(2026, 11, 4, 12);
+      final api = apiAnswering([
+        FakeApiResponse(
+          statusCode: 200,
+          body: pageOf([
+            {
+              ..._jobBody(
+                latitude: exactLatitude,
+                longitude: exactLongitude,
+                precision: 'EXACT',
+              ),
+              'employerType': 'COMPANY',
+            },
+          ], last: true),
+        ),
+        FakeApiResponse(
+          statusCode: 200,
+          body: pageOf([
+            {
+              ..._jobBody(
+                latitude: roundedLatitude,
+                longitude: roundedLongitude,
+                precision: 'APPROXIMATE',
+              ),
+              'employerType': 'COMPANY',
+            },
+            otherJob,
+          ], last: false),
+        ),
+      ]);
+      final controller = MapExploreController(
+        service: JobService.withClient(api.client),
+        debounce: Duration.zero,
+        fetchMargin: 0,
+        clock: () => now,
       );
+
+      await _pumpMap(tester, controller);
+
+      controller.onCameraIdle(_bounds);
+      await tester.pumpAndSettle();
+      expect(pinPositions(tester), [exactPin]);
+      expect(_map(tester).circles, isEmpty);
+
+      now = now.add(controller.areaTtl);
+      controller.onCameraIdle(_bounds);
+      await tester.pumpAndSettle();
+
+      expect(controller.isTruncated, isTrue);
+      expect(pinPositions(tester), isNot(contains(exactPin)));
+      expect(pinPositions(tester), contains(roundedPin));
     });
   });
 
