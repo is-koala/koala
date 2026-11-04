@@ -24,6 +24,7 @@ import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_map.dart';
 import 'package:koala/product/constants/app_map_style.dart';
 import 'package:koala/product/constants/app_padding.dart';
+import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/services/maps_availability.dart';
@@ -286,18 +287,29 @@ class _MapExplorePageState extends MapExplorePageModel {
       title: const ExploreBrandTitle(),
       centerTitle: false,
       actions: [
-        // Filtre ve sıralama haritada tek düğme: ikisi de aynı sheet'te.
-        IconButton(
-          tooltip: 'Filtrele ve sırala',
-          icon: AppIcon(AppIcons.filter, color: context.textPrimary),
-          onPressed: _openFilterSheet,
-        ),
-        IconButton(
-          icon: AppIcon(AppIcons.search, color: context.onAccentColor),
-          style: ButtonStyle(
-            backgroundColor: WidgetStatePropertyAll(context.accentColor),
+        // Filtre ve arama tek yeşil hapın içinde: zeminsiz koyu filtre ikonu
+        // haritanın sokak adları üstünde kayboluyordu.
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: context.accentColor,
+            borderRadius: AppRadius.stadiumCircular,
           ),
-          onPressed: searchProvider.startSearching,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Filtre ve sıralama tek düğme: ikisi de aynı sheet'te.
+              IconButton(
+                tooltip: 'Filtrele ve sırala',
+                icon: AppIcon(AppIcons.filter, color: context.onAccentColor),
+                onPressed: _openFilterSheet,
+              ),
+              IconButton(
+                tooltip: 'Ara',
+                icon: AppIcon(AppIcons.search, color: context.onAccentColor),
+                onPressed: searchProvider.startSearching,
+              ),
+            ],
+          ),
         ),
         const SizedBox(width: AppSizes.spaceMedium),
       ],
