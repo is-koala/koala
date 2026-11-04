@@ -130,7 +130,7 @@ class _MapExplorePageState extends MapExplorePageModel {
   /// Konum düğmesinin alttan uzaklığı, navbar'ın ölçülerinden.
   ///
   /// Navbar ortada ve sabit genişlikte; yanında düğmeye yer varsa düğme
-  /// navbar'la aynı hizada, sağında duruyor. Dar ekranda navbar'la çakışacağı
+  /// navbar'ın sağında, alt kenarı navbar'ın alt kenarıyla aynı çizgide. Dar ekranda navbar'la çakışacağı
   /// için navbar'ın üstüne çıkıyor. Eskiden sabit 110'du: her ekranda
   /// navbar'ın üstünde ve sağdaki boş alanı kullanmadan havada duruyordu.
   double _locationButtonBottom(BuildContext context) {
@@ -140,7 +140,7 @@ class _MapExplorePageState extends MapExplorePageModel {
     final fitsBeside = sideRoom >= _locationButtonSize + AppPadding.primary * 2;
 
     return fitsBeside
-        ? navBarBottom.bottom + (AppSizes.navBar - _locationButtonSize) / 2
+        ? navBarBottom.bottom
         : navBarBottom.bottom + AppSizes.navBar + AppSizes.spaceMedium;
   }
 
