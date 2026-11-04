@@ -19,6 +19,7 @@ import 'package:koala/employee/features/home/presentation/widgets/job_marker_gen
 import 'package:koala/employee/features/home/presentation/widgets/job_cluster_sheet.dart';
 import 'package:koala/employee/features/home/presentation/widgets/map_explore_overlay.dart';
 import 'package:koala/employee/features/home/services/location_service.dart';
+import 'package:koala/product/constants/app_shadows.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -54,15 +55,6 @@ class MapExplorePage extends StatefulWidget {
 class _MapExplorePageState extends MapExplorePageModel {
   /// Mini `FloatingActionButton`'ın kenarı.
   static const double _locationButtonSize = 40;
-
-  /// Konum düğmesinin gölge yayılımı. Gölge kaydırılmadan, düğmenin tam
-  /// altında ve her yanına eşit çiziliyor; FAB'ın kendi yükseltisi gölgeyi
-  /// aşağı itiyordu.
-  static const double _locationButtonShadowBlur = 6;
-
-  /// Gölgenin saydamlığı; navbar'ınkinden (0.30) hafif, küçük düğmede aynı
-  /// koyuluk fazla ağır duruyordu.
-  static const double _locationButtonShadowAlpha = 0.20;
 
   /// Harita yokken gösterilen metin; testler ve diğer harita ekranı aynı
   /// cümleyi kullanıyor.
@@ -159,14 +151,7 @@ class _MapExplorePageState extends MapExplorePageModel {
       child: DecoratedBox(
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.navShadow.withValues(
-                alpha: _locationButtonShadowAlpha,
-              ),
-              blurRadius: _locationButtonShadowBlur,
-            ),
-          ],
+          boxShadow: AppShadows.floating,
         ),
         child: FloatingActionButton(
           mini: true,
@@ -327,7 +312,7 @@ class _MapExplorePageState extends MapExplorePageModel {
       systemOverlayStyle: overMapStyle,
       backgroundColor: Colors.transparent,
       elevation: 0,
-      title: const ExploreBrandTitle(),
+      title: const ExploreBrandTitle(floating: true),
       centerTitle: false,
       actions: [
         // Filtre ve arama tek yeşil hapın içinde: zeminsiz koyu filtre ikonu
@@ -340,6 +325,7 @@ class _MapExplorePageState extends MapExplorePageModel {
           decoration: BoxDecoration(
             color: context.accentColor,
             borderRadius: AppRadius.stadiumCircular,
+            boxShadow: AppShadows.floating,
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,

@@ -5,7 +5,7 @@ import 'package:koala/employee/features/home/presentation/pages/explore_pages/ex
 import 'package:koala/employee/features/home/presentation/providers/page_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/jobs_page.dart';
 import 'package:koala/employee/features/profile/presentation/pages/profile_page.dart';
-import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_shadows.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
@@ -171,13 +171,7 @@ class _ShellPageState extends State<ShellPage> {
               decoration: BoxDecoration(
                 borderRadius: AppRadius.stadiumCircular,
                 color: context.accentColor,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.navShadow,
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
+                boxShadow: AppShadows.floating,
               ),
               child: Padding(
                 padding: AppPadding.navBarContent,
