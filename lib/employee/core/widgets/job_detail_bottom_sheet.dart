@@ -140,10 +140,12 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
   static const double _titleFontMax = 28;
   static const double _priceFontMin = 26;
   static const double _priceFontMax = 30;
-  static const double _descriptionFontMin = 14;
-  static const double _descriptionFontMax = 15;
-  static const double _descriptionHeightMin = 1.5;
-  static const double _descriptionHeightMax = 1.6;
+
+  /// Açıklama metni sheet açılırken büyümüyor: küçük ve büyük halde aynı
+  /// boyutta. Kare kare büyüyen paragraf her karede yeniden diziliyor ve
+  /// sheet takılıyormuş gibi görünüyordu.
+  static const double _descriptionFont = 15;
+  static const double _descriptionHeight = 1.6;
 
   /// Sheet başlığının kapalı ve açık yükseklikleri.
   static const double _headerHeightMin = 8;
@@ -342,7 +344,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
           const SizedBox(height: AppSizes.spaceMedium),
           _typeAndPriceRow(expandProgress),
           _sectionTitle('Açıklama', expandProgress),
-          _description(expandProgress, isExpanded),
+          _description(isExpanded),
           if (isExpanded) ..._gallerySection(),
           if (isExpanded && _detailLoading) _detailPlaceholder(),
           if (isExpanded && _detailError != null) _detailErrorRow(),
@@ -354,7 +356,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
               _detail!.duties!,
               style: context.textTheme.bodyMedium?.copyWith(
                 color: context.textSecondary,
-                height: _descriptionHeightMin,
+                height: _descriptionHeight,
               ),
             ),
           ],
@@ -719,21 +721,13 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     );
   }
 
-  Widget _description(double expandProgress, bool isExpanded) {
+  Widget _description(bool isExpanded) {
     return Text(
       _detail?.description ?? widget.job.subtitle,
       style: context.textTheme.bodyMedium?.copyWith(
-        fontSize: lerpDouble(
-          _descriptionFontMin,
-          _descriptionFontMax,
-          expandProgress,
-        ),
+        fontSize: _descriptionFont,
         color: isExpanded ? context.textSecondary : context.textTertiary,
-        height: lerpDouble(
-          _descriptionHeightMin,
-          _descriptionHeightMax,
-          expandProgress,
-        ),
+        height: _descriptionHeight,
       ),
       maxLines: isExpanded ? null : 2,
       overflow: isExpanded ? null : TextOverflow.ellipsis,
