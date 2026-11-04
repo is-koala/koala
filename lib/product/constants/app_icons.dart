@@ -118,6 +118,9 @@ abstract final class AppIcons {
   /// anlatıyor.
   static const String flag = 'flag';
 
+  /// Paylaş: ilanı sistemin paylaşım menüsüyle gönderir.
+  static const String share = 'share';
+
   /// Kullanıcı engelleme. Sette yalın bir yasak işareti (`ban`) da var ama
   /// üstünde insan silüeti olan bu ad, engellenenin bir kişi olduğunu
   /// söylüyor.

@@ -28,6 +28,7 @@ gelmez.
 | `eposta-onayla` | `token` | `/email-verification` |
 | `payment-result` | `status`, `assignmentId` | `/payment-result` |
 | `company-invitation` | `id` | `/company-invitation` |
+| `job` | `id` | `/shared-job` (ilan yüklenip keşfette detay sheet'i açılır) |
 
 ## Doğrulanmış HTTPS bağlantıları
 
@@ -49,6 +50,7 @@ HTTPS yolları:
 | `/hesap-dogrula`, `/sifre-belirle`, `/sifre-sifirla`, `/eposta-onayla` | Aynı adlı host |
 | `/payment/result` | `payment-result` |
 | `/davet/<id>` | `company-invitation` (`id` yoldan okunur, sorgu alanı yok sayılır) |
+| `/is-ilanlari/<id>` | `job` (`id` yoldan okunur; liste sayfası `/is-ilanlari` uygulamaya verilmez) |
 
 Örneğin:
 
@@ -57,7 +59,15 @@ https://iskoala.com/hesap-dogrula?token=<registration-token>
 https://www.iskoala.com/sifre-sifirla?token=<reset-token>
 https://iskoala.com/payment/result?status=success&assignmentId=<id>
 https://iskoala.com/davet/<invitation-id>
+https://iskoala.com/is-ilanlari/<job-id>
 ```
+
+İlan bağlantısı, ilan detayı sheet'indeki **Paylaş** düğmesinin ürettiği
+adrestir (`JobShareLink`, her zaman kanonik `iskoala.com`). Web aynı adreste
+herkese açık ilan sayfasını ve bağlantı önizlemesini sunar; uygulamaya
+bağlanması için web'in `appLinkPaths` listesinde de `/is-ilanlari/*`
+olmalıdır (is-koala/koala-web#210). Uygulamada `/shared-job` çalışana
+aittir: işveren kendi ana sayfasına yönlenir.
 
 iOS Associated Domains ve Android `autoVerify` yalnız bu ortam hostlarını
 sahiplenir; Android tarafının insan adımları `docs/android-app-links.md`

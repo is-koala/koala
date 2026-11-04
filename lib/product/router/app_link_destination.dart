@@ -13,6 +13,9 @@ class AppLinkDestination {
     '/eposta-onayla',
     '/payment/result',
     '/davet',
+    // Paylaşılan ilan: `/is-ilanlari/<jobId>`. Sondaki `/` liste sayfasını
+    // (`/is-ilanlari`) dışarıda bırakıyor; liste web'de kalıyor.
+    '/is-ilanlari/',
   ];
 
   /// [uri]'yi uygulama rotasına çevirir; sözleşmeye uymayan bağlantıda `null`.
@@ -67,10 +70,18 @@ class AppLinkDestination {
       ).toString();
     }
 
+    if (destination == 'job') {
+      // HTTPS'te kimlik web'in `/is-ilanlari/<id>` yolundan, özel şemada
+      // (`koala://job?id=`) sorgu alanından okunur.
+      final id = link.pathId ?? _parameter(uri, 'id');
+      if (id == null) return null;
+      return Uri(path: '/shared-job', queryParameters: {'id': id}).toString();
+    }
+
     if (destination == 'company-invitation') {
       // HTTPS'te kimlik web'in `/davet/<id>` yolundan okunur ve sorgu alanı
       // yok sayılır; özel şemada yol boş olduğu için `id` sorgu alanındadır.
-      final id = link.invitationId ?? _parameter(uri, 'id');
+      final id = link.pathId ?? _parameter(uri, 'id');
       if (id == null) return null;
       return Uri(
         path: '/company-invitation',
@@ -111,7 +122,13 @@ class AppLinkDestination {
     if (segments.length == 2 &&
         segments[0] == 'davet' &&
         segments[1].trim().isNotEmpty) {
-      return _ResolvedLink('company-invitation', invitationId: segments[1]);
+      return _ResolvedLink('company-invitation', pathId: segments[1]);
+    }
+
+    if (segments.length == 2 &&
+        segments[0] == 'is-ilanlari' &&
+        segments[1].trim().isNotEmpty) {
+      return _ResolvedLink('job', pathId: segments[1]);
     }
 
     if (segments.length == 1 && _httpsDestinations.contains(segments.single)) {
@@ -137,10 +154,11 @@ class AppLinkDestination {
   }
 }
 
-/// Doğrulanmış bağlantının kanonik hedefi ve yoldan okunan davet kimliği.
+/// Doğrulanmış bağlantının kanonik hedefi ve yoldan okunan kimlik (davet ya
+/// da ilan).
 class _ResolvedLink {
-  const _ResolvedLink(this.destination, {this.invitationId});
+  const _ResolvedLink(this.destination, {this.pathId});
 
   final String destination;
-  final String? invitationId;
+  final String? pathId;
 }
