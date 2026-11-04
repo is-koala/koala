@@ -292,7 +292,7 @@ class _MapExplorePageState extends MapExplorePageModel {
         // haritanın sokak adları üstünde kayboluyordu.
         //
         // Hapın iç boşluğu 8 (üstte, altta, kenarlarda): kare düğmenin kendi
-        // payı. İki ikonun arası standart düğmedeki gibi 24 (8 + 8 + 8).
+        // payı. İki ikonun arası iki düğmenin payları kadar: 16.
         // 48'lik IconButton kutusu kenarlara da 12 bırakıp hapı şişiriyordu.
         DecoratedBox(
           decoration: BoxDecoration(
@@ -308,7 +308,6 @@ class _MapExplorePageState extends MapExplorePageModel {
                 icon: AppIcons.filter,
                 onPressed: _openFilterSheet,
               ),
-              const SizedBox(width: AppSizes.spaceSmall),
               _pillButton(
                 tooltip: 'Ara',
                 icon: AppIcons.search,
