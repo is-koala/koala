@@ -163,6 +163,11 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
   static const double _titleFont = 28;
   static const double _priceFont = 30;
 
+  /// Başlık ve fiyatın satır yüksekliği. Poppins'in varsayılanı ~1.5; büyük
+  /// yazıda her satırın altında ve üstünde gereksiz boşluk bırakıyordu.
+  static const double _titleHeight = 1.2;
+  static const double _priceHeight = 1.1;
+
   /// Üst kısmın kapalı (yalnız tutamaç) ve açık (yalnız düğmeler)
   /// yükseklikleri.
   static const double _handleArea = AppSizes.spaceLarge;
@@ -374,12 +379,12 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
         controller: widget.scrollController,
         padding: AppPadding.primaryHorizontal,
         children: [
-          // Boşluk ritmi: grup içinde sıkı (4 / 8), gruplar arasında 16,
+          // Boşluk ritmi: grup içinde sıkı (4 / 8), gruplar arasında 12–16,
           // bölümler arasında 24, bölüm başlığından metnine 8.
           _companyRow(),
           const SizedBox(height: AppSizes.spaceTiny),
           _title(),
-          const SizedBox(height: AppSizes.spaceMedium),
+          const SizedBox(height: AppSizes.space),
           _typeAndPriceRow(),
           const SizedBox(height: AppSizes.spaceSmall),
           _quickFacts(),
@@ -653,6 +658,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
         style: context.textTheme.headlineSmall?.copyWith(
           fontSize: _titleFont,
           fontWeight: FontWeight.w700,
+          height: _titleHeight,
         ),
       ),
       (progress, child) => Transform.scale(
@@ -701,6 +707,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
               style: context.textTheme.displaySmall?.copyWith(
                 fontSize: _priceFont,
                 fontWeight: FontWeight.w700,
+                height: _priceHeight,
                 color: context.accentColor,
               ),
             ),
