@@ -51,8 +51,10 @@ class _ListExplorePageState extends ListExplorePagemodel {
     return GestureDetector(
       onTap: () => _searchFocusNode.unfocus(),
       child: Scaffold(
-        // Kartlar zeminden yükselsin diye sayfa geri çekilmiş bir ton.
-        backgroundColor: context.recessedColor,
+        // Uygulamanın geri kalanıyla aynı kural: zemin sayfa rengi, kartlar
+        // `tileColor`. Eskiden bu ekran tersini yapıyordu (gri zemin, beyaz
+        // kart) ve ilan detayından dönünce renkler yer değiştiriyordu.
+        backgroundColor: context.backgroundColor,
         extendBody: true,
         extendBodyBehindAppBar: false,
         body: RefreshIndicator(
@@ -64,7 +66,8 @@ class _ListExplorePageState extends ListExplorePagemodel {
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               appBar(context),
-              const SliverToBoxAdapter(child: SizedBox(height: AppSizes.space)),
+              // Uygulama çubuğu ile filtreler arasında ayrı boşluk yok: çubuğun
+              // kendi alt payı ve filtre çubuğunun üst payı zaten ayırıyor.
               filters(),
               if (_searchController.text.isNotEmpty)
                 SliverToBoxAdapter(child: _searchSummary(search)),
@@ -110,10 +113,18 @@ class _ListExplorePageState extends ListExplorePagemodel {
     child: Center(child: CircularProgressIndicator(color: context.accentColor)),
   );
 
+  /// Listenin bölüm başlığı. Kart başlıklarıyla aynı boyda olunca (18)
+  /// kaybolup filtrelere ve ilk karta yapışıyordu; bölüm başlığı ölçeğinde
+  /// (`titleLarge`) ve üstte filtrelerden, altta listeden ayrılarak duruyor.
   Widget _listHeader() {
     return Padding(
-      padding: AppPadding.primaryHorizontal,
-      child: Text('Yakındaki İşler', style: context.textTheme.titleMedium),
+      padding: const EdgeInsets.fromLTRB(
+        AppPadding.primary,
+        AppSizes.spaceMedium,
+        AppPadding.primary,
+        AppSizes.space,
+      ),
+      child: Text('Yakındaki İşler', style: context.textTheme.titleLarge),
     );
   }
 
@@ -245,7 +256,7 @@ class _ListExplorePageState extends ListExplorePagemodel {
           TextButton(
             onPressed: _clearFilters,
             child: Text(
-              'Süzgeçleri Temizle',
+              'Filtreleri Temizle',
               style: context.textTheme.labelLarge?.copyWith(
                 color: context.accentColor,
               ),
@@ -273,10 +284,8 @@ class _ListExplorePageState extends ListExplorePagemodel {
           horizontal: AppPadding.primary,
           vertical: AppSizes.spaceSmall,
         ),
-        decoration: BoxDecoration(
-          color: context.raisedColor,
-          borderRadius: AppRadius.secondaryCircular,
-        ),
+        // Süzgeç çubuğu bir kart değil, sayfanın parçası: zemin sayfa rengi.
+        color: context.backgroundColor,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -284,7 +293,7 @@ class _ListExplorePageState extends ListExplorePagemodel {
               children: [
                 _buildFilterButton(
                   icon: AppIcons.filter,
-                  label: 'Süzgeçler',
+                  label: 'Filtreler',
                   isActive: activeCount > 0,
                   badge: activeCount,
                   onTap: _openFilterSheet,
@@ -304,6 +313,7 @@ class _ListExplorePageState extends ListExplorePagemodel {
             JobStartOnChips(
               selected: _selection.startOn,
               onChanged: _setStartOn,
+              scrollable: true,
             ),
             if (activeCount > 0) _activeFilterChips(),
           ],
@@ -361,7 +371,7 @@ class _ListExplorePageState extends ListExplorePagemodel {
           decoration: BoxDecoration(
             color: isActive
                 ? activeColor.withValues(alpha: _activeFilterAlpha)
-                : context.raisedColor,
+                : context.tileColor,
             borderRadius: AppRadius.secondaryCircular,
             border: Border.all(
               color: isActive ? activeColor : context.dividerColor,
@@ -426,8 +436,8 @@ class _ListExplorePageState extends ListExplorePagemodel {
       expandedHeight: _appBarHeight,
       collapsedHeight: _appBarHeight,
       elevation: 0,
-      backgroundColor: context.raisedColor,
-      surfaceTintColor: context.raisedColor,
+      backgroundColor: context.backgroundColor,
+      surfaceTintColor: context.backgroundColor,
       clipBehavior: Clip.hardEdge,
       title: const ExploreBrandTitle(),
       centerTitle: false,
@@ -438,7 +448,7 @@ class _ListExplorePageState extends ListExplorePagemodel {
         background: Container(
           decoration: BoxDecoration(
             borderRadius: AppRadius.secondaryBottom,
-            color: context.raisedColor,
+            color: context.backgroundColor,
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.end,

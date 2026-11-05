@@ -92,21 +92,7 @@ extension AppColorExtension on BuildContext {
   ///
   /// Renk seçmek için genelde gerekmez — [ColorScheme] zaten temaya göre
   /// dönüyor. Yalnızca açık ve koyu temada **yön değiştiren** durumlar için:
-  /// bkz. [recessedColor] / [raisedColor].
   bool get isDarkTheme => theme.brightness == Brightness.dark;
-
-  /// Üstünde kart taşıyan sayfaların zemini.
-  ///
-  /// Açık temada sayfa gri, kart beyaz; koyu temada sayfa en koyu, kart bir
-  /// tık açık. Yani ton yönü iki tema arasında ters dönüyor ve tek bir
-  /// [ColorScheme] rolüyle ifade edilemiyor. [raisedColor] ile birlikte
-  /// kullanılır.
-  Color get recessedColor =>
-      isDarkTheme ? colorScheme.surface : colorScheme.surfaceContainer;
-
-  /// [recessedColor] zemininin üstünde duran kartın rengi.
-  Color get raisedColor =>
-      isDarkTheme ? colorScheme.surfaceContainer : colorScheme.surface;
 
   /// "Başvurularım" bölümünün renkli zemini.
   Color get pendingSurface =>

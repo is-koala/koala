@@ -87,6 +87,7 @@ dependencies:
   # ön planda yerel bildirim çizilmez, arka planı FCM sistem tepsisi taşır.
   firebase_core: 4.14.0
   firebase_messaging: 16.6.0
+  share_plus: ^13.3.1
 
 # dmrtd `archive: ^3.6.1` istiyor, lottie 3.5.1 ise `archive: ^4.0.0`; ikisi
 # aynı anda çözülemiyor ve pub'ın önerdiği çıkış yolu lottie'yi 3.3.0'a

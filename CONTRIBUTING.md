@@ -242,10 +242,8 @@ Zemin, metin ve ayraç renkleri temaya göre farklılaşır. Bunlar `ColorScheme
 | `context.dividerColor` | Ayraç ve ince kenarlıklar |
 | `context.accentColor` | Vurgu rengi (marka yeşili) |
 | `context.onAccentColor` | Vurgu zemini üzerindeki metin ve ikon |
-| `context.recessedColor` | Üstünde kart taşıyan sayfanın zemini |
-| `context.raisedColor` | `recessedColor` üstünde duran kartın rengi |
 
-> `recessedColor` / `raisedColor` ikilisi, açık ve koyu temada **ton yönü ters dönen** tek durum için var: açık temada sayfa gri + kart beyaz, koyu temada sayfa en koyu + kart bir tık açık. İkisi birlikte kullanılır. Aynı sebeple `context.isDarkTheme` de mevcut; ama yalnızca iki temanın gerçekten ters yönde davrandığı yerlerde kullan — `ColorScheme`'in zaten çözdüğü bir renk için değil.
+> **Zemin ve kart kuralı bütün uygulamada aynı:** sayfa `context.backgroundColor`, üstündeki kart ve satır `context.tileColor`. Eskiden keşfet listesi için tersini yapan bir ikili vardı (`recessedColor` / `raisedColor`: açık temada gri sayfa + beyaz kart); ekranlar arasında renkler yer değiştirdiği için kaldırıldı, geri getirme. `context.isDarkTheme` yalnız iki temanın gerçekten ters yönde davrandığı yerlerde kullanılır — `ColorScheme`'in zaten çözdüğü bir renk için değil.
 
 ### 2. Temadan bağımsız olanlar → `AppColors`
 

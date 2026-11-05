@@ -23,9 +23,9 @@ class JobCard extends StatelessWidget {
 
     return Card(
       elevation: 0,
-      // Sayfa zemini geri çekilmiş bir ton (bkz. context.recessedColor);
-      // kart onun üstünde yükseliyor.
-      color: context.raisedColor,
+      // Uygulamanın kart rengi; liste sayfasında da, haritadaki grup
+      // listesinde (beyaz sheet) de zeminden ayrılıyor.
+      color: context.tileColor,
       margin: const EdgeInsets.only(bottom: AppSizes.space),
       shape: shape,
       child: ListTile(

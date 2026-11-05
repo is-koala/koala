@@ -460,4 +460,39 @@ void main() {
       );
     },
   );
+
+  group('paylaşılan ilan', () {
+    String? route(String link, {Set<String> hosts = productionHosts}) =>
+        AppLinkDestination.routeFor(
+          Uri.parse(link),
+          appScheme: 'koala',
+          webHosts: hosts,
+        );
+
+    test('web ilan sayfası bağlantısı paylaşılan ilan rotasına dönüşür', () {
+      expect(
+        route('https://iskoala.com/is-ilanlari/7f421e5d'),
+        '/shared-job?id=7f421e5d',
+      );
+      expect(
+        route('https://www.iskoala.com/is-ilanlari/7f421e5d'),
+        '/shared-job?id=7f421e5d',
+      );
+    });
+
+    test('özel şemada kimlik sorgu alanından okunur', () {
+      expect(route('koala://job?id=7f421e5d'), '/shared-job?id=7f421e5d');
+      expect(route('koala://job'), isNull);
+    });
+
+    test('ilan listesi ve kimliksiz yol uygulamaya verilmez', () {
+      expect(route('https://iskoala.com/is-ilanlari'), isNull);
+      expect(route('https://iskoala.com/is-ilanlari/'), isNull);
+      expect(route('https://iskoala.com/is-ilanlari/a/b'), isNull);
+    });
+
+    test('tanınmayan host kabul edilmez', () {
+      expect(route('https://baska.com/is-ilanlari/7f421e5d'), isNull);
+    });
+  });
 }

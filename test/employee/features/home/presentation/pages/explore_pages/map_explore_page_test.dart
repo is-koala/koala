@@ -368,11 +368,11 @@ void main() {
     expect(find.text('Bugün'), findsNothing);
     expect(find.text('Yarın'), findsNothing);
     expect(find.text('Hafta sonu'), findsNothing);
-    expect(find.byTooltip('Süzgeçler'), findsOneWidget);
+    expect(find.byTooltip('Filtrele ve sırala'), findsOneWidget);
   });
 
   testWidgets(
-    'Süzgeçler Bugün çipi startFrom/startTo Instant penceresini gönderiyor',
+    'Filtreler Bugün çipi startFrom/startTo Instant penceresini gönderiyor',
     (tester) async {
       final api = _apiServing([
         _jobBody(
@@ -390,7 +390,7 @@ void main() {
       controller.onCameraIdle(_bounds);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byTooltip('Süzgeçler'));
+      await tester.tap(find.byTooltip('Filtrele ve sırala'));
       await tester.pumpAndSettle();
 
       expect(find.text('Başlangıç günü'), findsOneWidget);
