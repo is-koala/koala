@@ -378,6 +378,11 @@ class BoardingToken {
   String toString() => 'BoardingToken(${kind.prefix})';
 }
 
+/// Binişe eklenen konumun en büyük yaşı. Anlık konum alınamazsa son bilinen
+/// konum yalnız bundan gençse kullanılır; daha eskisi "durağa uzak"
+/// bayrağını yanlış üretir, binişi konumsuz göndermek daha doğru.
+const Duration boardingLocationMaxAge = Duration(minutes: 2);
+
 /// Biniş POST'larının `clientEventId`'si: rastgele UUID v4. Aynı kimlikle
 /// yeniden deneme sunucuda güvenli (kayıtlı olay `replayed` döner).
 String newBoardingClientEventId() {

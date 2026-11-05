@@ -9,8 +9,9 @@ import 'package:koala/product/services/device_location_source.dart';
 ///
 /// İş detayındaki tarama ekranı da, telefon kamerasıyla açılan
 /// `{şema}://board?t=…` bağlantısı da buradan geçiyor: oturum sahibinin
-/// kuyruğu başlatılır, konum **yalnız izin zaten verilmişse** eklenir
-/// (izin diyaloğu açılmaz; ADR-0007 ile aynı ilke) ve okutma
+/// kuyruğu başlatılır, konum **yalnız izin zaten verilmişse** ve en fazla
+/// [boardingLocationMaxAge] yaşındaysa eklenir (izin diyaloğu açılmaz;
+/// ADR-0007 ile aynı ilke) ve okutma
 /// [BoardingQueueProvider.submit]'e gider.
 class WorkerBoardingSubmitter {
   WorkerBoardingSubmitter({
@@ -55,10 +56,9 @@ class WorkerBoardingSubmitter {
 
   Future<LatLng?> _currentPosition() async {
     try {
-      return await _location.currentIfGranted().timeout(
-        locationTimeout,
-        onTimeout: () => null,
-      );
+      return await _location
+          .freshIfGranted(maxAge: boardingLocationMaxAge)
+          .timeout(locationTimeout, onTimeout: () => null);
     } catch (_) {
       return null;
     }
