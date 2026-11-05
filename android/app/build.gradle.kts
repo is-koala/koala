@@ -121,6 +121,9 @@ android {
     namespace = "com.example.koala"
     // permission_handler_android 14 compileSdk 37 ile derleniyor; Flutter'ın
     // varsayılanı (flutter.compileSdkVersion) hâlâ 36 olduğu için elle sabitlendi.
+    // SDK paketi `platforms;android-37.0`; AGP 9.1.1+ `37` değerini o pakete
+    // eşliyor (gerekçe `android/settings.gradle.kts`'te). AGP 9.1.0'a geri
+    // dönülürse temiz SDK'da `android-37` hedefi bulunamaz.
     compileSdk = 37
     ndkVersion = flutter.ndkVersion
 

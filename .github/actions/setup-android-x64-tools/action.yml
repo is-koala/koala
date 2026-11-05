@@ -1,8 +1,8 @@
-name: Android x64 araç zinciri (ARM64 host)
+name: Android x64 araç zinciri
 description: >-
-  JDK ve Android SDK'yı runner'a özel önbellekte hazırlar, ardından derlemenin
-  fiilen çalıştıracağı x86-64 host araçlarının bu ARM64 host'ta QEMU/binfmt
-  altında koştuğunu doğrular.
+  JDK'yı kurar, runner imajındaki Android SDK'ya derlemenin istediği paketleri
+  tamamlar, ardından derlemenin fiilen çalıştıracağı x86-64 host araçlarının
+  koştuğunu doğrular.
 
 # Bu action ci.yml ve mobile-release.yml'deki birebir aynı 19 satırlık Android
 # bloğunu tek yere alıyor. Eskiden blok iki dosyaya kopyalanmıştı; build-tools
@@ -16,17 +16,27 @@ inputs:
     description: Kurulacak Temurin JDK sürümü
     required: true
   platform-version:
-    description: sdkmanager'dan çekilecek Android platformu
+    description: >-
+      sdkmanager'dan çekilecek Android platformu. API 36'dan beri platform
+      paketleri küçük sürümlü: depoda `platforms;android-37` yok,
+      `android-37.0` var (Pi'de SDK önbellekte hazır olduğu için görünmüyordu;
+      hosted runner'da "Failed to find package" ile düşüyordu, #217).
     required: false
-    default: android-37
+    default: android-37.0
   build-tools-version:
-    description: sdkmanager'dan çekilecek build-tools sürümü
+    description: >-
+      sdkmanager'dan çekilecek build-tools sürümü. AGP'nin varsayılan
+      build-tools'u ile aynı olmalı (AGP 9.1: 36.0.0; `buildToolsVersion`
+      verilmediği için derleme bunu kullanır). Farklı bir sürüm kurulursa
+      AGP kendi sürümünü derleme sırasında ayrıca indiriyor — 37.0.0
+      kurulduğu dönemde loglarda "Installing Android SDK Build-Tools 36"
+      görünüyordu.
     required: false
-    default: "37.0.0"
+    default: "36.0.0"
   agp-aapt2-version:
     description: Gradle önbelleğinde aranacak AGP aapt2 artifact sürümü
     required: false
-    default: "9.1.0-14792394"
+    default: "9.1.1-14792394"
   probe-gen-snapshot:
     description: >-
       Release AOT derlemesinin çalıştırdığı x86-64 gen_snapshot da yoklansın mı.
@@ -39,21 +49,40 @@ inputs:
 runs:
   using: composite
   steps:
-    # SDK'yı runner'a özel araç önbelleğinde tut: Pi'nin microSD'sinde her
-    # koşuda yeniden indirmek pahalı.
-    - name: Android SDK önbelleğini ayarla
+    # SDK konumu bilerek ayarlanmıyor: GitHub-hosted ubuntu imajı Android
+    # SDK'yı /usr/local/lib/android/sdk altında hazır getiriyor ve
+    # ANDROID_SDK_ROOT'u oraya işaret ediyor (platform android-37.0,
+    # build-tools 36.0.0 dahil; dizin a+rwx). setup-android aynı değişkeni
+    # okuyup paketleri o SDK'ya tamamlıyor; imajda zaten olan paket için
+    # sdkmanager hiçbir şey indirmiyor. Eskiden burada SDK kökü
+    # $RUNNER_TOOL_CACHE/android-sdk'ya çevriliyordu — Pi'de kalıcı bir
+    # önbellekti, hosted runner'da ise her koşuda boş bir dizin: platform,
+    # build-tools ve cmdline-tools her seferinde sıfırdan iniyordu.
+    # İmaj bir gün bu paketlerden birini bırakırsa setup-android onu kurar;
+    # derleme düşmez, yalnız yavaşlar. NDK (flutter.ndkVersion) imajda
+    # olmayabilir; onu AGP derleme sırasında kendisi kuruyor, sürümü tek
+    # kaynaktan (Flutter Gradle eklentisi) geldiği için burada tekrarlanmıyor.
+
+    # Hosted runner'ın kök diski bu derlemeye yetmiyor: ilk tam Android
+    # derlemesi (#229) "No space left on device" ile runner'ı düşürdü, adım
+    # logu bile yazılamadı. NDK, Gradle önbelleği, Flutter SDK'sı ve build/
+    # aynı diske iniyor. İmajın bu işte hiç kullanılmayan büyük araç
+    # zincirleri silinerek yer açılıyor; Android SDK'ya (kullanılıyor) ve
+    # hostedtoolcache'teki Flutter/JDK'ya dokunulmuyor.
+    - name: Runner diskinde yer aç
       shell: bash
       run: |
         set -euo pipefail
-        # Bu adım eskiden ci.yml içinde `shell:` belirtmeden koşuyordu, yani
-        # GitHub varsayılanı `bash -e {0}` ile: ne -u ne pipefail. Sonuç:
-        # RUNNER_TOOL_CACHE tanımsızken adım exit 0 veriyor ve SDK kökünü
-        # "/android-sdk" diye yazıyordu — yanlış yol sessizce kabul ediliyordu.
-        # Aynı genişletme composite action'ın set -u'su altında zaten exit 1
-        # veriyordu; iki dosya arasındaki bu asimetri burada kapandı.
-        : "${RUNNER_TOOL_CACHE:?RUNNER_TOOL_CACHE tanımsız; runner ortamı eksik kurulmuş}"
-        echo "ANDROID_HOME=$RUNNER_TOOL_CACHE/android-sdk" >> "$GITHUB_ENV"
-        echo "ANDROID_SDK_ROOT=$RUNNER_TOOL_CACHE/android-sdk" >> "$GITHUB_ENV"
+        df -h /
+        sudo rm -rf \
+          /usr/share/dotnet \
+          /opt/ghc /usr/local/.ghcup \
+          /opt/hostedtoolcache/CodeQL \
+          /usr/share/swift \
+          /usr/local/share/boost \
+          /usr/local/share/powershell \
+          /usr/local/share/chromium
+        df -h /
 
     - uses: actions/setup-java@v4
       with:
@@ -62,7 +91,7 @@ runs:
         cache: gradle
 
     # platform-tools bilerek sürümsüz: sdkmanager bu paket için sürümlü
-    # koordinat yayımlamıyor. platforms;android-37 ve build-tools;37.0.0
+    # koordinat yayımlamıyor. platforms;android-37.0 ve build-tools;36.0.0
     # "paket;sürüm" biçiminde adreslenirken platform-tools'un depo kimliği tek
     # ve daima en son revizyona işaret eden düz "platform-tools" — diğer ikisi
     # gibi sabitlenebilecek bir koordinat yok. Asimetri kasıtlı; kaydı burada.
@@ -103,8 +132,8 @@ runs:
         fi
 
         # 2) Derlemenin FİİLEN çalıştırdığı aapt2.
-        # AGP 9.1.0 aapt2'yi SDK build-tools'tan değil, Google Maven'daki
-        # aapt2-9.1.0-14792394-linux.jar içinden çözüp Gradle önbelleğine
+        # AGP 9.1.x aapt2'yi SDK build-tools'tan değil, Google Maven'daki
+        # aapt2-<agp-aapt2-version>-linux.jar içinden çözüp Gradle önbelleğine
         # çıkarıyor (docs/research/raspberry-pi-self-hosted-ci.md, "Android
         # neden native ARM64 yolun zayıf halkası?"). Nöbetçi eskiden yalnız
         # 1. adımı koşup doğrulamadığı bir şey için yeşil veriyordu.
