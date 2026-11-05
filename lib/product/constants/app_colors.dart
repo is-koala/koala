@@ -202,6 +202,16 @@ class AppColors {
   /// hissi kaybolurdu. Opaklığı karartmayı çizen widget veriyor.
   static const Color scrim = Color(0xFF000000);
 
+  /// Biniş QR'ının zemini ve modülleri (is-koala/koala#217). İki temada da
+  /// beyaz üstüne siyah: koyu temada ters renkli QR'ı birçok okuyucu
+  /// tanımıyor, karşı telefonun kamerası ekranı en yüksek kontrastla
+  /// görmeli. Zemin aynı zamanda QR'ın sessiz bölgesi.
+  static const Color qrBackground = Color(0xFFFFFFFF);
+  static const Color qrForeground = Color(0xFF000000);
+
+  /// Kamera vizöründe tarama penceresi dışındaki karartmanın opaklığı.
+  static const double scannerScrimAlpha = 0.55;
+
   /// Harita üzerindeki kart ve butonların gölgesi. Harita zemini temadan
   /// bağımsız olduğu için bu da sabit.
   static final Color mapShadow = Colors.black.withValues(alpha: 0.15);

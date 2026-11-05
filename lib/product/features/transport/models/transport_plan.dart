@@ -1,4 +1,5 @@
 import 'package:koala/product/extensions/num_extensions.dart';
+import 'package:koala/product/features/transport/models/boarding.dart';
 import 'package:koala/product/models/canonical_address.dart';
 
 /// Bir yöndeki ulaşım yöntemi. Backend `TransportMethod` karşılığı.
@@ -262,12 +263,18 @@ class SeatAssignment {
     required this.direction,
     required this.shuttleId,
     required this.stopId,
+    this.boarding,
   });
 
   final String id;
   final ShuttleDirection direction;
   final String shuttleId;
   final String stopId;
+
+  /// Bu koltuğun güncel servisi ve kalkış günü için biniş durumu
+  /// (is-koala/koala#217): BOARDED, yoksa son NO_SHOW; kayıt yoksa ya da
+  /// sunucu alanı göndermiyorsa `null`.
+  final SeatBoardingStatus? boarding;
 
   static SeatAssignment? parse(Map<String, dynamic> json) {
     final direction = ShuttleDirection.fromCode(json['direction']);
@@ -277,6 +284,7 @@ class SeatAssignment {
       direction: direction,
       shuttleId: '${json['shuttleId']}',
       stopId: '${json['stopId']}',
+      boarding: SeatBoardingStatus.parse(json['boarding']),
     );
   }
 }
