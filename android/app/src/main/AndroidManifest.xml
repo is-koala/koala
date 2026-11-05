@@ -60,11 +60,12 @@
                 <data android:scheme="${appUrlScheme}" />
             </intent-filter>
         </activity>
-        <!-- Paketlenmeyen Latin OCR modeli ilk kimlik taramasına kadar
-             hazır olsun; indirmeyi Google Play Services yönetir. -->
+        <!-- Paketlenmeyen Latin OCR ve barkod modelleri ilk kimlik ve biniş
+             QR taramasına kadar hazır olsun; indirmeyi Google Play Services
+             yönetir. -->
         <meta-data
             android:name="com.google.mlkit.vision.DEPENDENCIES"
-            android:value="ocr" />
+            android:value="ocr,barcode" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

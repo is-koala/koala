@@ -23,28 +23,46 @@ void main() {
   test('Android production grafiğini check ve paketleme öncesi doğrular', () {
     final gradle = File('android/app/build.gradle.kts').readAsStringSync();
 
-    expect(gradle, contains('verifyUnbundledMlKitTextRecognition'));
+    expect(gradle, contains('verifyUnbundledMlKitModels'));
     expect(gradle, contains('productionReleaseRuntimeClasspath'));
     expect(gradle, contains('tasks.named("check")'));
     expect(gradle, contains('it.name.startsWith("assemble")'));
     expect(gradle, contains('it.name.startsWith("bundle")'));
   });
 
-  test('Android OCR modelini kurulum sırasında hazırlamayı ister', () {
-    final manifest = File(
-      'android/app/src/main/AndroidManifest.xml',
-    ).readAsStringSync();
-    final metadata = RegExp(
-      r'<meta-data\s+'
-      r'android:name="com\.google\.mlkit\.vision\.DEPENDENCIES"\s+'
-      r'android:value="ocr"\s*/>',
-    );
-    final match = metadata.firstMatch(manifest);
-    final applicationStart = manifest.indexOf('<application');
-    final applicationEnd = manifest.indexOf('</application>');
+  test('Android barkod modelini de Play Services varyantından alır', () {
+    final gradle = File('android/app/build.gradle.kts').readAsStringSync();
+    final properties = File('android/gradle.properties').readAsStringSync();
 
-    expect(metadata.allMatches(manifest), hasLength(1));
-    expect(match!.start, greaterThan(applicationStart));
-    expect(match.end, lessThan(applicationEnd));
+    expect(
+      RegExp(
+        r'^dev\.steenbakker\.mobile_scanner\.useUnbundled=true$',
+        multiLine: true,
+      ).allMatches(properties),
+      hasLength(1),
+    );
+    expect(gradle, contains('play-services-mlkit-barcode-scanning'));
+    expect(gradle, contains('it.name == "barcode-scanning"'));
   });
+
+  test(
+    'Android OCR ve barkod modellerini kurulum sırasında hazırlamayı ister',
+    () {
+      final manifest = File(
+        'android/app/src/main/AndroidManifest.xml',
+      ).readAsStringSync();
+      final metadata = RegExp(
+        r'<meta-data\s+'
+        r'android:name="com\.google\.mlkit\.vision\.DEPENDENCIES"\s+'
+        r'android:value="ocr,barcode"\s*/>',
+      );
+      final match = metadata.firstMatch(manifest);
+      final applicationStart = manifest.indexOf('<application');
+      final applicationEnd = manifest.indexOf('</application>');
+
+      expect(metadata.allMatches(manifest), hasLength(1));
+      expect(match!.start, greaterThan(applicationStart));
+      expect(match.end, lessThan(applicationEnd));
+    },
+  );
 }

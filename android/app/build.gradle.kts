@@ -79,9 +79,9 @@ configurations.configureEach {
     }
 }
 
-val verifyUnbundledMlKitTextRecognition by tasks.registering {
+val verifyUnbundledMlKitModels by tasks.registering {
     group = "verification"
-    description = "Production runtime graph uses only the unbundled Latin ML Kit model"
+    description = "Production runtime graph uses only the unbundled ML Kit models (Latin OCR, barcode)"
 
     doLast {
         val runtime = configurations.getByName("productionReleaseRuntimeClasspath")
@@ -102,11 +102,33 @@ val verifyUnbundledMlKitTextRecognition by tasks.registering {
         check(unbundled.size == 1 && unbundled.single().version == "19.0.1") {
             "Production graph exact unbundled ML Kit 19.0.1 bekliyor: $unbundled"
         }
+
+        // Biniş QR'ı (is-koala/koala#217): mobile_scanner barkod modelini
+        // `dev.steenbakker.mobile_scanner.useUnbundled=true` ile Play
+        // Services'tan alıyor (`gradle.properties`). Bayrak düşerse eklenti
+        // sessizce gömülü `com.google.mlkit:barcode-scanning`'e döner ve APK
+        // birkaç MB büyür; burada açıkça kırılsın. Sürüm eklentinin seçimi,
+        // sabitlenmiyor — yalnız varyant sözleşme.
+        val bundledBarcode = modules.filter {
+            it.group == "com.google.mlkit" && it.name == "barcode-scanning"
+        }
+        check(bundledBarcode.isEmpty()) {
+            "Bundled ML Kit barcode-scanning production graph'a geri döndü " +
+                "(useUnbundled düştü mü?): $bundledBarcode"
+        }
+
+        val unbundledBarcode = modules.filter {
+            it.group == "com.google.android.gms" &&
+                it.name == "play-services-mlkit-barcode-scanning"
+        }
+        check(unbundledBarcode.size == 1) {
+            "Production graph tek bir play-services-mlkit-barcode-scanning bekliyor: $unbundledBarcode"
+        }
     }
 }
 
 tasks.named("check") {
-    dependsOn(verifyUnbundledMlKitTextRecognition)
+    dependsOn(verifyUnbundledMlKitModels)
 }
 
 // Flutter CI `check` çağırmadan doğrudan assemble/bundle çalıştırıyor. Model
@@ -114,7 +136,7 @@ tasks.named("check") {
 tasks.matching {
     it.name.startsWith("assemble") || it.name.startsWith("bundle")
 }.configureEach {
-    dependsOn(verifyUnbundledMlKitTextRecognition)
+    dependsOn(verifyUnbundledMlKitModels)
 }
 
 android {
