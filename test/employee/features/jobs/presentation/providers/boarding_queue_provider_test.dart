@@ -274,4 +274,99 @@ void main() {
       expect(PendingBoarding.fromJson({'clientEventId': 'x'}), isNull);
     },
   );
+
+  test(
+    'bağlantıdan okutulan kayıt atamayı bilmez; koltuğun servisiyle eşleşir',
+    () async {
+      gateway.responses.add(offlineError);
+      await queue.submit(token: token, capturedAt: now);
+
+      expect(queue.entriesFor('asg-1', ShuttleDirection.outbound), isEmpty);
+      expect(
+        queue.entriesFor(
+          'asg-1',
+          ShuttleDirection.outbound,
+          shuttleId: shuttleUuid.toUpperCase(),
+        ),
+        hasLength(1),
+      );
+      expect(
+        queue.entriesFor(
+          'asg-1',
+          ShuttleDirection.outbound,
+          shuttleId: 'aaaaaaaa-0000-4000-8000-000000000000',
+        ),
+        isEmpty,
+      );
+    },
+  );
+
+  test('eşzamanlı yazımlar birbirinin kaydını silmez', () async {
+    gateway.responses.addAll([offlineError, offlineError]);
+
+    await Future.wait([submit(), submit()]);
+
+    expect(store.entries, hasLength(2));
+    expect(store.entries.map((entry) => entry.clientEventId).toSet(), {
+      'cid-1',
+      'cid-2',
+    });
+  });
+
+  test('yeniden girişte oturum sahibi okunur ve kuyruk boşalır', () async {
+    gateway.responses.add(offlineError);
+    await submit();
+    await queue.pause();
+    queue.dispose();
+
+    queue = BoardingQueueProvider.withAdapters(
+      store: store,
+      gateway: gateway,
+      retryTrigger: trigger,
+      utcNow: () => now,
+      currentUserId: () async => 'worker-1',
+    );
+    await queue.resumeForSession();
+
+    expect(queue.activeUserId, 'worker-1');
+    expect(store.entries, isEmpty);
+    expect(gateway.sent, hasLength(2));
+  });
+
+  test('oturum sahibi okunamazsa son etkin kullanıcıya düşülür', () async {
+    gateway.responses.add(offlineError);
+    await submit();
+    queue.dispose();
+
+    queue = BoardingQueueProvider.withAdapters(
+      store: store,
+      gateway: gateway,
+      retryTrigger: trigger,
+      utcNow: () => now,
+      currentUserId: () async => null,
+    );
+    await queue.resumeForSession();
+
+    expect(queue.activeUserId, 'worker-1');
+    expect(store.entries, isEmpty);
+  });
+
+  test('hesap silme talebi kullanıcının kayıtlarını siler', () async {
+    store.entries = [
+      PendingBoarding(
+        clientEventId: 'other',
+        userId: 'worker-2',
+        shuttleId: shuttleUuid,
+        token: shuttleTokenValue,
+        capturedAt: now,
+      ),
+    ];
+    gateway.responses.add(offlineError);
+    await submit();
+
+    await queue.purgeActiveUser();
+
+    expect(queue.entries, isEmpty);
+    expect(store.entries.single.userId, 'worker-2');
+  });
 }

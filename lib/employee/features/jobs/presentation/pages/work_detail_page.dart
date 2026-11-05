@@ -564,7 +564,13 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
     final pending = <ShuttleDirection, List<PendingBoarding>>{
       if (queue != null && assignmentId != null)
         for (final direction in ShuttleDirection.values)
-          direction: queue.entriesFor(assignmentId, direction),
+          direction: queue.entriesFor(
+            assignmentId,
+            direction,
+            // Telefon kamerasıyla okutulan kayıt atamayı bilmiyor; koltuğun
+            // servisiyle eşleşiyor.
+            shuttleId: transport.seatFor(direction)?.shuttleId,
+          ),
     };
 
     return WorkTransportCard(
