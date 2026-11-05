@@ -16,9 +16,13 @@ inputs:
     description: Kurulacak Temurin JDK sürümü
     required: true
   platform-version:
-    description: sdkmanager'dan çekilecek Android platformu
+    description: >-
+      sdkmanager'dan çekilecek Android platformu. API 36'dan beri platform
+      paketleri küçük sürümlü: depoda `platforms;android-37` yok,
+      `android-37.0` var (Pi'de SDK önbellekte hazır olduğu için görünmüyordu;
+      hosted runner'da "Failed to find package" ile düşüyordu, #217).
     required: false
-    default: android-37
+    default: android-37.0
   build-tools-version:
     description: sdkmanager'dan çekilecek build-tools sürümü
     required: false
