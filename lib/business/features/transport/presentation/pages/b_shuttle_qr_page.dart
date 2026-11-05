@@ -15,6 +15,7 @@ import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/confirm_dialog.dart';
+import 'package:koala/product/widgets/filter_pill.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 
 part 'b_shuttle_qr_pagemodel.dart';
@@ -108,17 +109,25 @@ class _BShuttleQrPageState extends BShuttleQrPagemodel {
     );
   }
 
+  /// Dönen / basılı seçimi; keşfet süzgeçlerinin hapıyla aynı bileşen.
   Widget _modeSelector(BuildContext context) {
-    return SegmentedButton<bool>(
+    return Row(
       key: const ValueKey('b-shuttle-qr-mode'),
-      segments: const [
-        ButtonSegment(value: false, label: Text('Dönen QR')),
-        ButtonSegment(value: true, label: Text('Basılı QR')),
+      children: [
+        FilterPill(
+          key: const ValueKey('b-shuttle-qr-mode-rotating'),
+          label: 'Dönen QR',
+          isSelected: !isStatic,
+          onTap: () => unawaited(selectMode(isStatic: false)),
+        ),
+        const SizedBox(width: AppSizes.spaceSmall),
+        FilterPill(
+          key: const ValueKey('b-shuttle-qr-mode-static'),
+          label: 'Basılı QR',
+          isSelected: isStatic,
+          onTap: () => unawaited(selectMode(isStatic: true)),
+        ),
       ],
-      selected: {isStatic},
-      showSelectedIcon: false,
-      onSelectionChanged: (selection) =>
-          unawaited(selectMode(isStatic: selection.first)),
     );
   }
 

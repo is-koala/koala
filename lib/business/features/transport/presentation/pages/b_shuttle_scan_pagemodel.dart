@@ -45,6 +45,7 @@ abstract class BShuttleScanPagemodel extends State<BShuttleScanPage> {
         location: _location,
         token: token,
         capturedAt: capturedAt,
+        shuttleId: widget.shuttleId,
         names: _names,
       );
       if (mounted) setState(() => lastResult = result);

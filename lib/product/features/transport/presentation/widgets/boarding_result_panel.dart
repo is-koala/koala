@@ -16,6 +16,9 @@ enum BoardingResultTone {
   /// Cihazda saklandı, sonra gönderilecek.
   queued,
 
+  /// Kaydedildi ama dikkat isteyen bir durum var (başka servisin koltuğu).
+  warning,
+
   /// Kaydedilemedi.
   failure,
 }
@@ -41,46 +44,52 @@ class BoardingResultPanel extends StatelessWidget {
     final (Color color, AppIconData icon) = switch (tone) {
       BoardingResultTone.success => (AppColors.success, AppIcons.checkCircle),
       BoardingResultTone.queued => (AppColors.info, AppIcons.info),
+      BoardingResultTone.warning => (AppColors.warning, AppIcons.alert),
       BoardingResultTone.failure => (AppColors.danger, AppIcons.alert),
     };
     final detail = this.detail;
 
-    return Container(
-      key: ValueKey('boarding-result-${tone.name}'),
-      width: double.infinity,
-      padding: AppPadding.card,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: AppColors.surfaceTintAlpha),
-        borderRadius: AppRadius.innerCircular,
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AppIcon(icon, size: AppSizes.iconMedium, color: color),
-          const SizedBox(width: AppSizes.spaceSmall),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  message,
-                  style: context.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (detail != null) ...[
-                  const SizedBox(height: AppSizes.spaceTiny),
+    // Sonuç kamera açıkken, ekranın altında beliriyor; ekran okuyucu onu
+    // kendiliğinden okusun.
+    return Semantics(
+      liveRegion: true,
+      child: Container(
+        key: ValueKey('boarding-result-${tone.name}'),
+        width: double.infinity,
+        padding: AppPadding.card,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: AppColors.surfaceTintAlpha),
+          borderRadius: AppRadius.innerCircular,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AppIcon(icon, size: AppSizes.iconMedium, color: color),
+            const SizedBox(width: AppSizes.spaceSmall),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    detail,
-                    style: context.textTheme.bodySmall?.copyWith(
-                      color: context.textSecondary,
+                    message,
+                    style: context.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
+                  if (detail != null) ...[
+                    const SizedBox(height: AppSizes.spaceTiny),
+                    Text(
+                      detail,
+                      style: context.textTheme.bodySmall?.copyWith(
+                        color: context.textSecondary,
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

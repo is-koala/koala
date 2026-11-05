@@ -52,11 +52,16 @@ class BShuttleScanPage extends StatefulWidget {
 
   /// Çalışan QR'ını kaydeder ve sonucun ekrandaki hâlini döndürür. Konum
   /// yalnız izin zaten verilmişse eklenir; diyalog açılmaz.
+  ///
+  /// [shuttleId] ve [names] (bu servisin koltuk → ad listesi) verilirse
+  /// okutulan koltuk bu serviste değilse kayıt yine yapılır ama sonuç
+  /// uyarı olarak yazılır: işçi yanlış servise binmiş olabilir.
   static Future<BoardingResultPanel> record({
     required TransportService service,
     required DeviceLocationSource location,
     required BoardingToken token,
     required DateTime capturedAt,
+    String? shuttleId,
     Map<String, String> names = const {},
   }) async {
     try {
@@ -69,7 +74,25 @@ class BShuttleScanPage extends StatefulWidget {
         latitude: position?.latitude,
         longitude: position?.longitude,
       );
-      final name = names[event.seatAssignmentId ?? token.subjectId];
+      final seatId = event.seatAssignmentId ?? token.subjectId;
+      final name = names[seatId];
+      final eventShuttle = event.shuttleId?.toLowerCase();
+      final otherShuttle =
+          shuttleId != null &&
+          ((names.isNotEmpty && name == null) ||
+              (eventShuttle != null &&
+                  eventShuttle != shuttleId.toLowerCase()));
+      if (otherShuttle) {
+        return BoardingResultPanel(
+          tone: BoardingResultTone.warning,
+          message: name == null
+              ? 'Biniş kaydedildi, ama bu çalışan bu servisin listesinde yok.'
+              : '$name bindi, ama koltuğu başka bir serviste.',
+          detail:
+              'Çalışanın doğru servise bindiğinden emin olun; gerekirse '
+              'koltuğunu iş detayından değiştirin.',
+        );
+      }
       return BoardingResultPanel(
         tone: BoardingResultTone.success,
         message: name == null ? 'Biniş kaydedildi.' : '$name bindi.',
@@ -105,10 +128,9 @@ class BShuttleScanPage extends StatefulWidget {
 
   static Future<LatLng?> _currentPosition(DeviceLocationSource location) async {
     try {
-      return await location.currentIfGranted().timeout(
-        locationTimeout,
-        onTimeout: () => null,
-      );
+      return await location
+          .freshIfGranted(maxAge: boardingLocationMaxAge)
+          .timeout(locationTimeout, onTimeout: () => null);
     } catch (_) {
       return null;
     }
