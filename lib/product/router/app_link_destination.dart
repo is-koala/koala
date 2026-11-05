@@ -78,6 +78,18 @@ class AppLinkDestination {
       return Uri(path: '/shared-job', queryParameters: {'id': id}).toString();
     }
 
+    if (destination == 'board') {
+      // Biniş QR'ı (is-koala/koala#217): `{şema}://board?t=<token>`. Token
+      // olduğu gibi taşınır; türünü ve kimliğini sayfa okur, imzayı sunucu
+      // doğrular. Yalnız özel şemada — HTTPS karşılığı yok.
+      final token = _parameter(uri, 't');
+      if (token == null || link.pathId != null) return null;
+      return Uri(
+        path: '/boarding-link',
+        queryParameters: {'t': token},
+      ).toString();
+    }
+
     if (destination == 'company-invitation') {
       // HTTPS'te kimlik web'in `/davet/<id>` yolundan okunur ve sorgu alanı
       // yok sayılır; özel şemada yol boş olduğu için `id` sorgu alanındadır.

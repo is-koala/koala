@@ -72,6 +72,19 @@ abstract final class AppIcons {
   /// biçim, `bus` ile karışmıyor.
   static const String seat = 'armchair';
 
+  /// Biniş teyidi (is-koala/koala#217): QR'ı göster.
+  static const String qr = 'qr';
+
+  /// Biniş teyidi: kamerayla QR okut.
+  static const String scan = 'scanBarcode';
+
+  /// Tarama ekranındaki fener; kapalı ve açık hâli.
+  static const String flashlight = 'flashlight';
+  static const String flashlightOn = 'flashlightOn';
+
+  /// QR'ı yenile / anahtarı değiştir.
+  static const String refresh = 'refresh';
+
   /// Haritayı cihazın bulunduğu yere götüren düğme. Nişangâh biçimi
   /// [location] pininden ayrışsın diye: pin "seçilen yer", bu "sizin
   /// olduğunuz yer".

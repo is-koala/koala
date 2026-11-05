@@ -73,6 +73,16 @@ dependencies:
   # kontrol hanesi doğrulaması `settings/models/mrz_key.dart` içinde bizim.
   google_mlkit_text_recognition: ^0.17.1
 
+  # Serviste biniş teyidi QR'ı (is-koala/koala#217). Yusuf 2026-11-05
+  # onayladı; `google_mlkit_barcode_scanning` yerine seçildi.
+  # mobile_scanner: QR okuma. Android'de ML Kit barkod modeli, iOS'ta Apple
+  # Vision. Android modeli APK'ya gömülmüyor, Play Services'tan geliyor
+  # (`android/gradle.properties` → `useUnbundled`), OCR ile aynı karar.
+  # qr_flutter: işçinin ve servisin QR'ını çizer; saf Dart, native parçası
+  # yok.
+  mobile_scanner: ^7.5.0
+  qr_flutter: ^4.1.0
+
   # State Management
   provider: ^6.1.5
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:koala/employee/core/directions_links.dart';
+import 'package:koala/employee/features/jobs/models/pending_boarding.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -8,6 +9,8 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
+import 'package:koala/product/features/transport/models/boarding.dart';
+import 'package:koala/product/features/transport/models/boarding_failure.dart';
 import 'package:koala/product/features/transport/models/transport_plan.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
@@ -32,6 +35,11 @@ import 'package:koala/product/widgets/app_icon.dart';
 /// push'u ise hangi yön olduğunu söylemiyor, o yüzden [seatDropped] kartın
 /// üstünde yön bağımsız tek bir bilgi satırı. Hiç koltuk seçmemiş bir yön
 /// hiçbir koşulda "kaldırıldı" demiyor.
+///
+/// Biniş teyidi (is-koala/koala#217): seçilen servisin altında koltuğun o
+/// kalkıştaki durumu (`seats[].boarding`), cihazda bekleyen ya da sunucunun
+/// reddettiği okutma ve [canBoard] iken iki yol — servisteki QR'ı okut, kendi
+/// QR'ını göster. Binilmiş koltukta düğme yok.
 class WorkTransportCard extends StatelessWidget {
   const WorkTransportCard({
     super.key,
@@ -43,6 +51,11 @@ class WorkTransportCard extends StatelessWidget {
     this.onSelectSeat,
     this.onCall,
     this.onDirections,
+    this.canBoard = false,
+    this.onScanShuttleQr,
+    this.onShowMyQr,
+    this.pendingBoardings = const {},
+    this.onDismissBoarding,
   });
 
   final AssignmentTransport transport;
@@ -70,6 +83,34 @@ class WorkTransportCard extends StatelessWidget {
 
   /// Durağa yol tarifi; verilmezse düğme yok.
   final void Function(DirectionsTarget target)? onDirections;
+
+  /// Biniş teyit edilebilir mi: atama `CONFIRMED` / `IN_PROGRESS`.
+  final bool canBoard;
+
+  /// "QR okut": servisteki QR'ı kamerayla okutma ekranı.
+  final void Function(ShuttleDirection direction)? onScanShuttleQr;
+
+  /// "QR'ımı göster": işverenin okutacağı kişisel QR.
+  final void Function(ShuttleDirection direction)? onShowMyQr;
+
+  /// Cihazda bekleyen ya da reddedilmiş okutmalar, yön başına.
+  final Map<ShuttleDirection, List<PendingBoarding>> pendingBoardings;
+
+  /// Reddedilmiş okutmanın uyarısını kapatır.
+  final void Function(String clientEventId)? onDismissBoarding;
+
+  /// Çevrimdışı okutma bekliyor.
+  static const String boardingQueuedText =
+      'Biniş okutmanız cihazda saklandı; bağlantı gelince gönderilecek.';
+
+  /// İşveren "binmedi" işaretledi.
+  static const String noShowText =
+      'İşvereniniz bu kalkış için "binmedi" işaretledi. Bindiyseniz QR\'ı '
+      'yeniden okutun ya da işverene gösterin.';
+
+  /// Binildi satırı: `Bindiniz · 07:42`.
+  static String boardedLine(DateTime occurredAt) =>
+      'Bindiniz · ${occurredAt.toLocal().asShortTime}';
 
   /// Bekleme halkasının kalınlığı.
   static const double _spinnerStroke = 2;
@@ -413,7 +454,173 @@ class WorkTransportCard extends StatelessWidget {
             ],
           ],
         ),
+        ..._boardingSection(context, direction),
       ],
+    );
+  }
+
+  /// Seçilen servisin biniş durumu ve iki biniş yolu.
+  List<Widget> _boardingSection(
+    BuildContext context,
+    ShuttleDirection direction,
+  ) {
+    final status = transport.seatFor(direction)?.boarding;
+    final entries = pendingBoardings[direction] ?? const <PendingBoarding>[];
+    final waiting = entries.any((entry) => !entry.isFailed);
+    final boarded = status?.boarded ?? false;
+    final showActions =
+        canBoard &&
+        !boarded &&
+        !waiting &&
+        (onScanShuttleQr != null || onShowMyQr != null);
+
+    return [
+      if (status != null) ...[
+        const SizedBox(height: AppSizes.spaceSmall),
+        status.boarded
+            ? _boardedRow(context, status, direction)
+            : _warning(
+                context,
+                noShowText,
+                key: ValueKey('work-transport-no-show-${direction.code}'),
+              ),
+      ],
+      for (final entry in entries) ...[
+        const SizedBox(height: AppSizes.spaceSmall),
+        entry.isFailed
+            ? _failedBoarding(context, entry)
+            : _infoNote(
+                context,
+                boardingQueuedText,
+                key: ValueKey(
+                  'work-transport-boarding-queued-${direction.code}',
+                ),
+              ),
+      ],
+      if (showActions) ...[
+        const SizedBox(height: AppSizes.spaceSmall),
+        Row(
+          children: [
+            if (onScanShuttleQr != null)
+              Expanded(
+                child: _boardingButton(
+                  context,
+                  key: ValueKey('work-transport-scan-${direction.code}'),
+                  icon: AppIcons.scan,
+                  label: 'QR okut',
+                  onPressed: () => onScanShuttleQr!(direction),
+                ),
+              ),
+            if (onScanShuttleQr != null && onShowMyQr != null)
+              const SizedBox(width: AppSizes.spaceSmall),
+            if (onShowMyQr != null)
+              Expanded(
+                child: _boardingButton(
+                  context,
+                  key: ValueKey('work-transport-my-qr-${direction.code}'),
+                  icon: AppIcons.qr,
+                  label: 'QR\'ımı göster',
+                  onPressed: () => onShowMyQr!(direction),
+                ),
+              ),
+          ],
+        ),
+      ],
+    ];
+  }
+
+  Widget _boardingButton(
+    BuildContext context, {
+    required Key key,
+    required AppIconData icon,
+    required String label,
+    required VoidCallback onPressed,
+  }) {
+    return SizedBox(
+      height: AppSizes.actionButtonHeight,
+      child: OutlinedButton.icon(
+        key: key,
+        onPressed: onPressed,
+        icon: AppIcon(
+          icon,
+          size: AppSizes.iconSmall,
+          color: context.accentColor,
+        ),
+        label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+        style: context.accentOutlinedButtonStyle,
+      ),
+    );
+  }
+
+  Widget _boardedRow(
+    BuildContext context,
+    SeatBoardingStatus status,
+    ShuttleDirection direction,
+  ) {
+    return Row(
+      key: ValueKey('work-transport-boarded-${direction.code}'),
+      children: [
+        const AppIcon(
+          AppIcons.checkCircle,
+          size: AppSizes.iconSmall,
+          color: AppColors.success,
+        ),
+        const SizedBox(width: AppSizes.spaceSmall),
+        Expanded(
+          child: Text(
+            boardedLine(status.occurredAt),
+            style: context.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _failedBoarding(BuildContext context, PendingBoarding entry) {
+    final failure = entry.failure ?? BoardingFailure.unknown;
+    final dismiss = onDismissBoarding;
+    return Column(
+      key: ValueKey('work-transport-boarding-failed-${entry.clientEventId}'),
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        _warning(
+          context,
+          failure.message(BoardingActor.worker, queued: true),
+          key: ValueKey(
+            'work-transport-boarding-failed-text-${entry.clientEventId}',
+          ),
+        ),
+        if (dismiss != null)
+          TextButton(
+            onPressed: () => dismiss(entry.clientEventId),
+            child: const Text('Tamam'),
+          ),
+      ],
+    );
+  }
+
+  Widget _infoNote(BuildContext context, String text, {required Key key}) {
+    return Container(
+      key: key,
+      padding: AppPadding.card,
+      decoration: BoxDecoration(
+        color: AppColors.info.withValues(alpha: AppColors.surfaceTintAlpha),
+        borderRadius: AppRadius.innerCircular,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const AppIcon(
+            AppIcons.info,
+            size: AppSizes.iconSmall,
+            color: AppColors.info,
+          ),
+          const SizedBox(width: AppSizes.spaceSmall),
+          Expanded(child: Text(text, style: context.textTheme.bodySmall)),
+        ],
+      ),
     );
   }
 

@@ -302,6 +302,17 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     setState(() => _transportPlan = saved);
   }
 
+  /// Servisin biniş listesi (is-koala/koala#217); QR ve okutma oradan.
+  void _openShuttleBoardings(ShuttleDraft shuttle) {
+    final shuttleId = shuttle.id;
+    if (shuttleId == null) return;
+    unawaited(
+      context.push(
+        BusinessRoutes.shuttleBoardingsLocation(shuttleId, name: shuttle.name),
+      ),
+    );
+  }
+
   Future<void> _loadDetail() async {
     setState(() {
       _isLoading = true;

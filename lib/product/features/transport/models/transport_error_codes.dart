@@ -31,6 +31,35 @@ abstract final class TransportErrorCodes {
   /// `404` — ilanın ulaşım planı yok; işveren ekranında "plan ekle" hâli.
   static const String planNotFound = 'TRANSPORT_PLAN_NOT_FOUND';
 
+  // ── Biniş teyidi (is-koala/koala#217, koala-backend#298) ──────────────
+
+  /// `404` — işçinin koltuk QR'ı okutuldu ama koltuk yok, yetki yok, token
+  /// başka koltuğun ya da anahtar yenilenmiş. Hepsi aynı zarf.
+  static const String seatAssignmentNotFound =
+      'TRANSPORT_SEAT_ASSIGNMENT_NOT_FOUND';
+
+  /// `404` — işçi kendi QR'ını isterken atama yok ya da işçisi değil.
+  static const String jobAssignmentNotFound = 'JOB_ASSIGNMENT_NOT_FOUND';
+
+  /// `400` — token'ın penceresi geçmiş ve geç senkron koşulu tutmuyor.
+  static const String tokenExpired = 'TRANSPORT_TOKEN_EXPIRED';
+
+  /// `409` — işçi aynı ilanın başka servisinin QR'ını okuttu.
+  static const String wrongShuttle = 'TRANSPORT_WRONG_SHUTTLE';
+
+  /// `409` — o yönde koltuk seçilmemiş.
+  static const String seatNotSelected = 'TRANSPORT_SEAT_NOT_SELECTED';
+
+  /// `409` — binmiş koltuğa NO_SHOW işareti.
+  static const String alreadyBoarded = 'TRANSPORT_ALREADY_BOARDED';
+
+  /// `409` — biniş aynı anda başka bir istekle yazıldı; liste yenilenir.
+  static const String boardingConcurrent = 'TRANSPORT_BOARDING_CONCURRENT';
+
+  /// `409` — aynı `clientEventId` farklı gövdeyle gönderildi.
+  static const String boardingIdempotencyConflict =
+      'TRANSPORT_BOARDING_IDEMPOTENCY_CONFLICT';
+
   /// Koltuk seçimini geçersiz kılan çakışmalar: sunucu mesajı gösterilip
   /// görünüm yeniden yüklenir.
   static const Set<String> seatConflicts = {

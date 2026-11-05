@@ -67,7 +67,7 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Şirket logonuzu, profil fotoğrafınızı, kimlik doğrulama fotoğraflarınızı ve uyuşmazlık kanıtı fotoğraflarınızı seçebilmeniz için fotoğraflarınıza erişim gerekiyor.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Kimlik kartınızın arka yüzündeki bilgileri okuyabilmemiz, kimlik doğrulama ve uyuşmazlık kanıtı fotoğraflarınızı çekebilmeniz için kameraya erişim gerekiyor.</string>
+	<string>Kimlik kartınızın arka yüzündeki bilgileri okuyabilmemiz, kimlik doğrulama ve uyuşmazlık kanıtı fotoğraflarınızı çekebilmeniz ve servise binişte QR kodu okutabilmeniz için kameraya erişim gerekiyor.</string>
 	<!-- NFCReaderUsageDescription boş bırakılamaz: Apple boş metinle NFC
 	     oturumunu hiç açmıyor. -->
 	<key>NFCReaderUsageDescription</key>

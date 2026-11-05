@@ -495,4 +495,35 @@ void main() {
       expect(route('https://baska.com/is-ilanlari/7f421e5d'), isNull);
     });
   });
+
+  test('biniş QR bağlantısı token\'ı olduğu gibi /boarding-link\'e taşır', () {
+    const token = 's1.1b4e28ba-2fa1-11d2-883f-0016d3cca427.2934001.abcDEF_12-3';
+
+    expect(
+      AppLinkDestination.routeFor(
+        Uri.parse('koala-staging://board?t=$token'),
+        appScheme: 'koala-staging',
+        webHosts: stagingHosts,
+      ),
+      '/boarding-link?t=$token',
+    );
+    // Başka flavor'ın şeması, yol taşıyan biçim, eksik ya da çift `t`.
+    for (final link in [
+      'koala://board?t=$token',
+      'koala-staging://board/shuttle?t=$token',
+      'koala-staging://board',
+      'koala-staging://board?t=a&t=b',
+      'https://iskoala.com/board?t=$token',
+    ]) {
+      expect(
+        AppLinkDestination.routeFor(
+          Uri.parse(link),
+          appScheme: 'koala-staging',
+          webHosts: stagingHosts,
+        ),
+        isNull,
+        reason: link,
+      );
+    }
+  });
 }

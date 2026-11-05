@@ -332,6 +332,33 @@ class ApiPaths {
   static String assignmentTransportSeat(String assignmentId) =>
       '${assignmentTransport(assignmentId)}/seat';
 
+  /// İşçinin biniş QR'ı (is-koala/koala#217, koala-backend#298):
+  /// `GET ?direction=OUTBOUND|RETURN`. Yalnız atamanın işçisi; koltuk yoksa
+  /// ya da atama binişe kapalıysa `409`.
+  static String assignmentTransportQr(String assignmentId) =>
+      '${assignmentTransport(assignmentId)}/qr';
+
+  /// Servisin kökü.
+  static String shuttle(String shuttleId) => '/shuttles/$shuttleId';
+
+  /// Servisin biniş QR'ı: `GET ?static=false|true`. İlan sahibi ya da şirket
+  /// yetkilisi; başkası `404`.
+  static String shuttleQr(String shuttleId) => '${shuttle(shuttleId)}/qr';
+
+  /// Servis QR anahtarını yeniler (`POST`): basılı QR dahil eski bütün servis
+  /// ve işçi QR'ları geçersizleşir.
+  static String shuttleQrRotate(String shuttleId) =>
+      '${shuttleQr(shuttleId)}/rotate';
+
+  /// `POST`: işçi servis QR'ıyla biner. `GET`: işverenin biniş listesi.
+  static String shuttleBoardings(String shuttleId) =>
+      '${shuttle(shuttleId)}/boardings';
+
+  /// İşverenin koltuk binişi: işçi QR'ı okutma ya da listeden
+  /// BOARDED/NO_SHOW işareti (`POST`).
+  static String seatBoardings(String seatAssignmentId) =>
+      '/seat-assignments/$seatAssignmentId/boardings';
+
   /// Tamamlanmış bir işin değerlendirmesi.
   ///
   /// Değerlendirme atamaya bırakılıyor ama karşı tarafa yazılıyor; okuması

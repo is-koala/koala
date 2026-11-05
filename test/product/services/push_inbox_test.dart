@@ -12,6 +12,8 @@ void main() {
   late List<String> routes;
   late List<String> conversations;
   late List<({String assignmentId, bool seatDropped})> transports;
+  late List<({String assignmentId, String direction})> reminders;
+  late List<String> notBoarded;
   late bool sessionReady;
   late PushInbox inbox;
 
@@ -26,6 +28,8 @@ void main() {
     routes = [];
     conversations = [];
     transports = [];
+    reminders = [];
+    notBoarded = [];
     sessionReady = true;
     inbox = PushInbox(
       dedupe: dedupe,
@@ -38,6 +42,10 @@ void main() {
       onTransportOpened:
           ({required assignmentId, required seatDropped}) async => transports
               .add((assignmentId: assignmentId, seatDropped: seatDropped)),
+      onBoardingReminderOpened:
+          ({required assignmentId, required direction}) async =>
+              reminders.add((assignmentId: assignmentId, direction: direction)),
+      onNotBoardedOpened: (shuttleId) async => notBoarded.add(shuttleId),
     );
   });
 
@@ -257,6 +265,50 @@ void main() {
 
       expect(routes, ['/business/notifications']);
       expect(opened, ['ntf-t1']);
+    });
+  });
+
+  group('biniş push\'ları (#217)', () {
+    test(
+      'SHUTTLE_REMINDER_BOARDING işçinin QR\'ını açar ve okundu işaretler',
+      () async {
+        await inbox.handleOpened({
+          ...transportPush(event: 'SHUTTLE_REMINDER_BOARDING'),
+          'direction': 'OUTBOUND',
+          'seatAssignmentId': 'seat-1',
+        });
+
+        expect(reminders, [(assignmentId: 'asg-1', direction: 'OUTBOUND')]);
+        expect(transports, isEmpty);
+        expect(opened, ['ntf-t1']);
+      },
+    );
+
+    test(
+      'SHUTTLE_NOTICE_NOT_BOARDED atama taşımaz, biniş listesini açar',
+      () async {
+        await inbox.handleOpened({
+          'type': 'TRANSPORT',
+          'event': 'SHUTTLE_NOTICE_NOT_BOARDED',
+          'jobId': 'job-1',
+          'shuttleId': 'shuttle-1',
+          'notBoardedCount': '2',
+          'notificationId': 'ntf-nb',
+        });
+
+        expect(notBoarded, ['shuttle-1']);
+        expect(routes, isEmpty);
+        expect(opened, ['ntf-nb']);
+      },
+    );
+
+    test('diğer ulaşım olayları eskisi gibi iş detayını açar', () async {
+      await inbox.handleOpened(
+        transportPush(event: 'SHUTTLE_REMINDER_DEPARTURE'),
+      );
+
+      expect(reminders, isEmpty);
+      expect(transports, [(assignmentId: 'asg-1', seatDropped: false)]);
     });
   });
 }

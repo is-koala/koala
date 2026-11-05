@@ -26,6 +26,14 @@ import 'package:koala/business/features/chat/presentation/pages/b_chat_page.dart
 import 'package:koala/business/features/transport/presentation/pages/b_shuttle_editor_page.dart';
 import 'package:koala/business/features/transport/presentation/pages/b_stop_editor_page.dart';
 import 'package:koala/business/features/transport/presentation/pages/b_transport_plan_page.dart';
+import 'package:koala/business/features/transport/presentation/pages/b_shuttle_boardings_page.dart';
+import 'package:koala/business/features/transport/presentation/pages/b_shuttle_qr_page.dart';
+import 'package:koala/business/features/transport/presentation/pages/b_shuttle_scan_page.dart';
+import 'package:koala/employee/features/jobs/presentation/pages/worker_boarding_qr_page.dart';
+import 'package:koala/employee/features/jobs/presentation/pages/worker_boarding_scan_page.dart';
+import 'package:koala/product/features/transport/models/boarding.dart';
+import 'package:koala/product/features/transport/models/transport_plan.dart';
+import 'package:koala/product/features/transport/presentation/pages/boarding_link_page.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/presentation/pages/splash_page.dart';
 import 'package:koala/employee/features/auth/presentation/pages/auth_page.dart';
@@ -134,6 +142,10 @@ class RouterManager {
       // Paylaşılan ilan çalışanın keşfinde açılıyor; işveren kendi ana
       // sayfasına yönleniyor.
       '/shared-job',
+      // İşçinin biniş QR'ı ve servis QR'ı okutma ekranı (#217). İşverenin
+      // karşılıkları `/business/shuttle-*`; ortak bağlantı sayfası
+      // `/boarding-link` iki listede de yok.
+      EmployeeRoutes.boardingPrefix,
     ];
     final isEmployeeRoute = employeeRoutes.any(
       (route) => location.startsWith(route),
@@ -166,6 +178,11 @@ class RouterManager {
   /// Navbar sekmeleri bunu kullanmıyor; onların kendi `pageBuilder`'ları var.
   static Page<void> _page(GoRouterState state, Widget child) =>
       MaterialPage<void>(key: state.pageKey, child: child);
+
+  /// Telefon kamerasıyla okutulan biniş QR'ının indiği ortak sayfa
+  /// (is-koala/koala#217); `AppLinkDestination` `board` host'unu buraya
+  /// çeviriyor.
+  static const String boardingLinkPath = '/boarding-link';
 
   /// Açılış ekranının yolu. Uygulama buradan başlıyor ve oturum durumu
   /// okunana kadar burada kalıyor.
@@ -617,6 +634,100 @@ class RouterManager {
           state,
           SharedJobPage(jobId: state.uri.queryParameters['id'] ?? ''),
         ),
+      ),
+
+      // Telefon kamerasıyla okutulan biniş QR'ı (`{şema}://board?t=…`,
+      // #217). İki tarafa da açık: işçi servis QR'ını, işveren çalışan
+      // QR'ını gönderir; yanlış taraf ne yapacağını okur.
+      GoRoute(
+        path: boardingLinkPath,
+        pageBuilder: (context, state) {
+          final token = state.uri.queryParameters['t'] ?? '';
+          final business =
+              SessionManager().userType == SessionManager.businessType;
+          return _page(
+            state,
+            BoardingLinkPage(
+              token: token,
+              acceptedKind: business
+                  ? BoardingTokenKind.worker
+                  : BoardingTokenKind.shuttle,
+              homeRoute: business ? '/business/home' : '/jobs',
+              submit: business
+                  ? BShuttleScanPage.submitFromLink
+                  : WorkerBoardingScanPage.submitFromLink,
+            ),
+          );
+        },
+      ),
+
+      GoRoute(
+        path: EmployeeRoutes.boardingQr,
+        pageBuilder: (context, state) {
+          final query = state.uri.queryParameters;
+          return _page(
+            state,
+            WorkerBoardingQrPage(
+              assignmentId: query['assignmentId'] ?? '',
+              direction:
+                  ShuttleDirection.fromCode(query['direction']) ??
+                  ShuttleDirection.outbound,
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: EmployeeRoutes.boardingScan,
+        pageBuilder: (context, state) {
+          final query = state.uri.queryParameters;
+          return _page(
+            state,
+            WorkerBoardingScanPage(
+              assignmentId: query['assignmentId'],
+              direction: ShuttleDirection.fromCode(query['direction']),
+              expectedShuttleId: query['shuttleId'],
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: BusinessRoutes.shuttleBoardings,
+        pageBuilder: (context, state) {
+          final query = state.uri.queryParameters;
+          return _page(
+            state,
+            BShuttleBoardingsPage(
+              shuttleId: query['shuttleId'] ?? '',
+              shuttleName: query['name'],
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: BusinessRoutes.shuttleQr,
+        pageBuilder: (context, state) {
+          final query = state.uri.queryParameters;
+          return _page(
+            state,
+            BShuttleQrPage(
+              shuttleId: query['shuttleId'] ?? '',
+              shuttleName: query['name'],
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: BusinessRoutes.shuttleScan,
+        pageBuilder: (context, state) {
+          final query = state.uri.queryParameters;
+          return _page(
+            state,
+            BShuttleScanPage(
+              shuttleId: query['shuttleId'] ?? '',
+              shuttleName: query['name'],
+            ),
+          );
+        },
       ),
 
       GoRoute(

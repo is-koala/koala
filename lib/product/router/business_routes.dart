@@ -27,4 +27,35 @@ class BusinessRoutes {
   /// Tek durağın düzenleyicisi; `extra`: `BStopEditorArgs`, `StopDraft` ile
   /// kapanır.
   static const String transportStop = '/business/transport-stop';
+
+  /// Servisin biniş listesi (is-koala/koala#217). Sorgu: `shuttleId`,
+  /// isteğe bağlı `name` (başlık). `SHUTTLE_NOTICE_NOT_BOARDED` push'u da
+  /// buraya iniyor; kimlik sorguda olduğu için `extra`'sız açılabiliyor.
+  static const String shuttleBoardings = '/business/shuttle-boardings';
+
+  /// Servisin biniş QR'ı (dönen / basılı, anahtar yenileme).
+  static const String shuttleQr = '/business/shuttle-qr';
+
+  /// Çalışanın kişisel QR'ını okutma ekranı.
+  static const String shuttleScan = '/business/shuttle-scan';
+
+  static String shuttleBoardingsLocation(String shuttleId, {String? name}) =>
+      _withShuttle(shuttleBoardings, shuttleId, name);
+
+  static String shuttleQrLocation(String shuttleId, {String? name}) =>
+      _withShuttle(shuttleQr, shuttleId, name);
+
+  static String shuttleScanLocation(String shuttleId, {String? name}) =>
+      _withShuttle(shuttleScan, shuttleId, name);
+
+  static String _withShuttle(String path, String shuttleId, String? name) {
+    final trimmed = name?.trim();
+    return Uri(
+      path: path,
+      queryParameters: {
+        'shuttleId': shuttleId,
+        if (trimmed != null && trimmed.isNotEmpty) 'name': trimmed,
+      },
+    ).toString();
+  }
 }

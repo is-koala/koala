@@ -99,6 +99,18 @@ abstract class WorkDetailPagemodel
         MyJobStatus.unknown => false,
       };
 
+  /// Biniş teyit edilebilir mi (is-koala/koala#217): sunucu
+  /// `CONFIRMED` / `IN_PROGRESS` / `COMPLETED` atamada kabul ediyor; iş
+  /// bittikten sonra okutacak bir servis kalmadığı için kart düğmeyi yalnız
+  /// onaylı ve süren işte gösteriyor.
+  bool get canBoard =>
+      job.assignmentId != null &&
+      (job.status == MyJobStatus.approved ||
+          job.status == MyJobStatus.inProgress);
+
+  BoardingQueueProvider? _boardingQueue;
+  int _boardingRevision = 0;
+
   /// Açık mesai süresini işleten sayaç; İşlerim'dekiyle aynı gerekçe.
   Timer? _elapsedTicker;
 
@@ -110,11 +122,13 @@ abstract class WorkDetailPagemodel
     unawaited(_loadTransport());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaited(initializeTimesheetQueue());
+      if (mounted) unawaited(_initializeBoardingQueue());
     });
   }
 
   @override
   void dispose() {
+    _boardingQueue?.removeListener(_onBoardingQueueChanged);
     disposeTimesheetQueue();
     _elapsedTicker?.cancel();
     super.dispose();
@@ -275,6 +289,62 @@ abstract class WorkDetailPagemodel
         setState(() => _applyTransport(null));
       }
     }
+  }
+
+  /// Biniş kuyruğuna bağlanır: oturum sahibi için başlatır (önceki
+  /// oturumda saklanmış okutmalar gönderilsin) ve arka planda bir okutma
+  /// teslim edilince biniş durumunu yeniden okur.
+  Future<void> _initializeBoardingQueue() async {
+    final queue = Provider.of<BoardingQueueProvider?>(context, listen: false);
+    if (queue == null) return;
+    _boardingQueue = queue;
+    _boardingRevision = queue.deliveryRevision;
+    queue.addListener(_onBoardingQueueChanged);
+    if (!canBoard || queue.activeUserId != null) return;
+
+    final users = Provider.of<UserProvider?>(context, listen: false);
+    if (users == null) return;
+    if (users.user == null) await users.load(silent: true);
+    final userId = users.user?.id;
+    if (!mounted || userId == null) return;
+    await queue.tryStartForUser(userId);
+  }
+
+  void _onBoardingQueueChanged() {
+    final queue = _boardingQueue;
+    if (!mounted || queue == null) return;
+    if (queue.deliveryRevision == _boardingRevision) return;
+    _boardingRevision = queue.deliveryRevision;
+    unawaited(_loadTransport());
+  }
+
+  /// Servisteki QR'ı okutma ekranı; dönünce biniş durumu yeniden okunur.
+  Future<void> openBoardingScan(ShuttleDirection direction) async {
+    final assignmentId = job.assignmentId;
+    if (assignmentId == null) return;
+    await context.push<bool>(
+      EmployeeRoutes.boardingScanLocation(
+        assignmentId: assignmentId,
+        direction: direction.code,
+        shuttleId: transport?.seatFor(direction)?.shuttleId,
+      ),
+    );
+    if (mounted) await _loadTransport();
+  }
+
+  /// İşverenin okutacağı kişisel QR; dönünce biniş durumu yeniden okunur.
+  Future<void> openMyBoardingQr(ShuttleDirection direction) async {
+    final assignmentId = job.assignmentId;
+    if (assignmentId == null) return;
+    await context.push<void>(
+      EmployeeRoutes.boardingQrLocation(assignmentId, direction.code),
+    );
+    if (mounted) await _loadTransport();
+  }
+
+  /// Reddedilmiş okutmanın uyarısını kapatır.
+  void dismissBoarding(String clientEventId) {
+    unawaited(_boardingQueue?.dismiss(clientEventId));
   }
 
   /// Yön için servis+durak seçtirir ve sunucuya yazar.

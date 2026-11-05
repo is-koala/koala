@@ -33,4 +33,39 @@ class EmployeeRoutes {
   /// Yönlendirme bekçisi, shell rotası ve yönlendirenler aynı sabiti
   /// okuyor; yol değişirse hiçbiri sessizce ayrışmıyor.
   static const String ownProfile = '/profile';
+
+  /// Servis binişi rotalarının öneki (is-koala/koala#217); yönlendirme
+  /// bekçisinin çalışan listesi bununla eşleşiyor.
+  static const String boardingPrefix = '/shuttle-boarding';
+
+  /// İşçinin kişisel biniş QR'ı. Sorgu: `assignmentId`, `direction`
+  /// (`OUTBOUND` | `RETURN`). `SHUTTLE_REMINDER_BOARDING` push'u da buraya
+  /// iniyor.
+  static const String boardingQr = '$boardingPrefix/qr';
+
+  /// Servisteki QR'ı okutma ekranı. Sorgu isteğe bağlı: `assignmentId`,
+  /// `direction`, `shuttleId` (beklenen servis).
+  static const String boardingScan = '$boardingPrefix/scan';
+
+  static String boardingQrLocation(String assignmentId, String direction) =>
+      Uri(
+        path: boardingQr,
+        queryParameters: {'assignmentId': assignmentId, 'direction': direction},
+      ).toString();
+
+  static String boardingScanLocation({
+    String? assignmentId,
+    String? direction,
+    String? shuttleId,
+  }) {
+    final query = {
+      'assignmentId': ?assignmentId,
+      'direction': ?direction,
+      'shuttleId': ?shuttleId,
+    };
+    return Uri(
+      path: boardingScan,
+      queryParameters: query.isEmpty ? null : query,
+    ).toString();
+  }
 }

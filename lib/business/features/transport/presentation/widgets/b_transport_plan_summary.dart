@@ -20,6 +20,7 @@ class BTransportPlanSummary extends StatelessWidget {
     required this.plan,
     this.onEdit,
     this.onRemove,
+    this.onOpenBoardings,
   });
 
   final TransportPlanDraft plan;
@@ -29,6 +30,11 @@ class BTransportPlanSummary extends StatelessWidget {
 
   /// "Kaldır" düğmesi (yalnız ilan oluşturma taslağında).
   final VoidCallback? onRemove;
+
+  /// Servisin biniş ekranı (is-koala/koala#217): liste, QR, okutma.
+  /// Yalnız sunucuda kaydı olan (kimlikli) serviste ve ilan detayında
+  /// verilir; taslakta servis henüz yok.
+  final void Function(ShuttleDraft shuttle)? onOpenBoardings;
 
   @override
   Widget build(BuildContext context) {
@@ -127,15 +133,35 @@ class BTransportPlanSummary extends StatelessWidget {
       if (shuttle.driverName.trim().isNotEmpty) shuttle.driverName.trim(),
     ].join(' · ');
 
+    final openBoardings = onOpenBoardings;
+    final shuttleId = shuttle.id;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '${shuttle.name.trim().isEmpty ? 'Servis' : shuttle.name.trim()} · '
-          '${shuttle.direction.displayName}',
-          style: context.textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.w500,
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                '${shuttle.name.trim().isEmpty ? 'Servis' : shuttle.name.trim()} · '
+                '${shuttle.direction.displayName}',
+                style: context.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            if (openBoardings != null && shuttleId != null)
+              TextButton.icon(
+                key: ValueKey('b-transport-boardings-$shuttleId'),
+                onPressed: () => openBoardings(shuttle),
+                icon: AppIcon(
+                  AppIcons.qr,
+                  size: AppSizes.iconSmall,
+                  color: context.accentColor,
+                ),
+                label: const Text('Biniş'),
+              ),
+          ],
         ),
         if (details.isNotEmpty)
           Text(

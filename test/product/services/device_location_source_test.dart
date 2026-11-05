@@ -22,7 +22,7 @@ class _Device {
   bool serviceEnabled;
   int permission;
   int permissionAfterRequest;
-  Map<String, double>? lastKnown;
+  Map<String, num>? lastKnown;
   bool currentPositionFails;
 
   final List<String> calls = [];
@@ -93,6 +93,65 @@ void main() {
 
       expect(await source.currentIfGranted(), isNull);
       expect(device.calls, ['isLocationServiceEnabled']);
+    });
+  });
+
+  group('freshIfGranted (servis binişi, #217)', () {
+    int millisAgo(Duration age) =>
+        DateTime.now().toUtc().subtract(age).millisecondsSinceEpoch;
+
+    test('anlık konum varsa onu döner, izin istemez', () async {
+      final device = _Device(permission: _whileInUse)..install();
+
+      expect(
+        await source.freshIfGranted(maxAge: const Duration(minutes: 2)),
+        const LatLng(41.04, 29.0),
+      );
+      expect(device.calls, isNot(contains('requestPermission')));
+    });
+
+    test('eski son bilinen konuma düşmez', () async {
+      _Device(
+        permission: _whileInUse,
+        currentPositionFails: true,
+        lastKnown: {
+          'latitude': 41.01,
+          'longitude': 28.98,
+          'timestamp': millisAgo(const Duration(minutes: 10)),
+        },
+      ).install();
+
+      expect(
+        await source.freshIfGranted(maxAge: const Duration(minutes: 2)),
+        isNull,
+      );
+    });
+
+    test('genç son bilinen konumu kullanır', () async {
+      _Device(
+        permission: _whileInUse,
+        currentPositionFails: true,
+        lastKnown: {
+          'latitude': 41.01,
+          'longitude': 28.98,
+          'timestamp': millisAgo(const Duration(seconds: 30)),
+        },
+      ).install();
+
+      expect(
+        await source.freshIfGranted(maxAge: const Duration(minutes: 2)),
+        const LatLng(41.01, 28.98),
+      );
+    });
+
+    test('izin yoksa null, izin istemez', () async {
+      final device = _Device()..install();
+
+      expect(
+        await source.freshIfGranted(maxAge: const Duration(minutes: 2)),
+        isNull,
+      );
+      expect(device.calls, isNot(contains('requestPermission')));
     });
   });
 

@@ -39,6 +39,13 @@ abstract interface class DeviceLocationSource {
   /// servis kapalıysa ya da konum alınamazsa `null`.
   Future<LatLng?> currentIfGranted();
 
+  /// [currentIfGranted] gibi izin istemez; ama anlık konum alınamazsa son
+  /// bilinen konuma **yalnız [maxAge]'den gençse** düşer. Servis binişi
+  /// (is-koala/koala#217) bunu kullanıyor: saatler önceki bir okuma
+  /// "durağa uzak" bayrağını yanlış üretir, konumsuz biniş ise yalnız
+  /// bayraksız kalır.
+  Future<LatLng?> freshIfGranted({required Duration maxAge});
+
   /// Gerekiyorsa izni ister ve konumu döner.
   Future<DeviceLocationResult> requestCurrent();
 }
@@ -60,6 +67,45 @@ class GeolocatorLocationSource implements DeviceLocationSource {
     } catch (_) {
       return null;
     }
+  }
+
+  @override
+  Future<LatLng?> freshIfGranted({required Duration maxAge}) async {
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) return null;
+      if (!_isGranted(await Geolocator.checkPermission())) return null;
+      try {
+        final position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.medium,
+            timeLimit: _fixTimeout,
+          ),
+        );
+        return LatLng(position.latitude, position.longitude);
+      } catch (_) {
+        return freshFallback(
+          await Geolocator.getLastKnownPosition(),
+          now: DateTime.now(),
+          maxAge: maxAge,
+        );
+      }
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Son bilinen konum [maxAge]'den gençse onu, değilse `null` döner.
+  /// Gelecekteki bir zaman damgası (saat kayması) da taze sayılmaz.
+  @visibleForTesting
+  static LatLng? freshFallback(
+    Position? last, {
+    required DateTime now,
+    required Duration maxAge,
+  }) {
+    if (last == null) return null;
+    final age = now.toUtc().difference(last.timestamp.toUtc());
+    if (age.isNegative || age > maxAge) return null;
+    return LatLng(last.latitude, last.longitude);
   }
 
   @override
@@ -122,6 +168,12 @@ class FakeDeviceLocationSource implements DeviceLocationSource {
   /// [currentIfGranted]'ın döndürdüğü konum; `null` "izin yok" demek.
   LatLng? granted;
 
+  /// [freshIfGranted]'ın döndürdüğü konum; verilmezse [granted].
+  LatLng? fresh;
+
+  /// [freshIfGranted]'a verilen son yaş sınırı.
+  Duration? lastMaxAge;
+
   DeviceLocationResult requestResult;
 
   int currentIfGrantedCalls = 0;
@@ -131,6 +183,12 @@ class FakeDeviceLocationSource implements DeviceLocationSource {
   Future<LatLng?> currentIfGranted() async {
     currentIfGrantedCalls++;
     return granted;
+  }
+
+  @override
+  Future<LatLng?> freshIfGranted({required Duration maxAge}) async {
+    lastMaxAge = maxAge;
+    return fresh ?? granted;
   }
 
   @override

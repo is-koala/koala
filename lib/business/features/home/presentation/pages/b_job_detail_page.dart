@@ -230,6 +230,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
       body = BTransportPlanSummary(
         plan: TransportPlanDraft.fromPlan(plan),
         onEdit: _editTransportPlan,
+        onOpenBoardings: _openShuttleBoardings,
       );
     }
 
