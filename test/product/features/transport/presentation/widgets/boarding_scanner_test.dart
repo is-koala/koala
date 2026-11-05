@@ -113,6 +113,18 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('boarding-camera-settings')));
     await tester.pumpAndSettle();
     expect(probe.settingsOpened, 1);
+
+    // Ayarlar açıkken kamera yeniden denenmez; izin henüz verilmedi.
+    final buildsBefore = camera.builds;
+    expect(find.text('Kamera izni kapalı'), findsOne);
+
+    // Kullanıcı Ayarlar'dan döndü: kamera yeniden kurulur.
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+
+    expect(camera.builds, greaterThan(buildsBefore));
+    expect(find.byKey(const ValueKey('fake-boarding-camera')), findsOne);
   });
 
   testWidgets('QR okuyucu yoksa Play Services gerektiği söylenir', (
@@ -148,5 +160,38 @@ void main() {
 
     expect(tokens, isEmpty);
     expect(find.byKey(const ValueKey('boarding-scanner-busy')), findsOne);
+  });
+
+  testWidgets('sonuçlanmış kod 30 sn ya da farklı bir kod görülene kadar '
+      'yeniden gönderilmez', (tester) async {
+    var now = DateTime.utc(2026, 9, 20, 3, 41);
+    await pumpInApp(
+      tester,
+      BoardingScannerView(
+        actor: BoardingActor.worker,
+        acceptedKind: BoardingTokenKind.shuttle,
+        instruction: 'x',
+        onToken: (token, _) => tokens.add(token),
+        cameraBuilder: camera.build,
+        permissionProbe: probe,
+        appScheme: 'koala-staging',
+        now: () => now,
+      ),
+    );
+    const other = 's1.aaaaaaaa-0000-4000-8000-000000000000.2934001.otherMac';
+
+    camera.scan(shuttleTokenValue);
+    now = now.add(const Duration(seconds: 20));
+    camera.scan(shuttleTokenValue);
+    expect(tokens, hasLength(1), reason: '30 sn dolmadı');
+
+    now = now.add(const Duration(seconds: 11));
+    camera.scan(shuttleTokenValue);
+    expect(tokens, hasLength(2), reason: '30 sn doldu');
+
+    camera.scan(other);
+    camera.scan(shuttleTokenValue);
+    expect(tokens, hasLength(4), reason: 'araya farklı kod girdi');
+    await tester.pump();
   });
 }
