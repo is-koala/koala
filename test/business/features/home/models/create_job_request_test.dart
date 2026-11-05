@@ -86,6 +86,44 @@ void main() {
     expect(build().toJson(forCompany: true)['insuranceRequired'], isTrue);
   });
 
+  group('adres görünürlüğü (addressPublic)', () {
+    test('şirket isteğinde varsayılan olarak açık ve açıkça yazılıyor', () {
+      // Sunucu alan gelmezse `true` sayıyor; yine de gövdeye yazılıyor ki
+      // varsayılan sunucuda değişirse form sessizce başka şey yapmasın.
+      expect(build().toJson(forCompany: true)['addressPublic'], isTrue);
+    });
+
+    test('"Adresi gizle" seçilince şirket isteğinde false gidiyor', () {
+      final request = CreateJobRequest(
+        categoryId: 'cat_1',
+        title: 'Garson',
+        description: 'Açıklama',
+        position: 'Garson',
+        type: JobType.oneTime,
+        salaryType: SalaryType.daily,
+        salary: '1500',
+        startDateTime: DateTime(2026, 9, 1, 9),
+        endDateTime: DateTime(2026, 9, 1, 18),
+        minAge: 18,
+        maxAge: 40,
+        experienceRequired: false,
+        addressPublic: false,
+        address: build().address,
+      );
+
+      expect(request.toJson(forCompany: true)['addressPublic'], isFalse);
+    });
+
+    test('bireysel istekte alan hiç gönderilmiyor', () {
+      // Bireysel ilan herkese her zaman yaklaşık; bunu işveren seçmiyor ve
+      // bireysel uç alanı tanımıyor.
+      expect(
+        build().toJson(forCompany: false).containsKey('addressPublic'),
+        isFalse,
+      );
+    });
+  });
+
   test('doldurulmamış isteğe bağlı alanlar gövdeye girmiyor', () {
     final json = build().toJson(forCompany: true);
 

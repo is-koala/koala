@@ -70,6 +70,18 @@ class BCreatePage extends StatefulWidget {
   static const String transportFailedText =
       'Ulaşım planı kaydedilemedi — ilan detayından ekleyin.';
 
+  /// Şirket ilanında adres açıkken altında yazan açıklama.
+  static const String addressPublicNotice =
+      'Tam konum (harita pini, sokak ve bina) ilanda herkese görünür. Kat, '
+      'daire ve adres tarifini yalnızca siz ve işe atadığınız çalışan '
+      'görürsünüz.';
+
+  /// Şirket ilanında "Adresi gizle" açıkken altında yazan açıklama.
+  static const String addressHiddenNotice =
+      'Adres gizli: ilan haritada ve aramada yalnızca yaklaşık konumla '
+      'görünür. Tam adresi yalnızca siz ve işe atadığınız çalışan '
+      'görürsünüz.';
+
   @override
   State<BCreatePage> createState() => _BCreatePageState();
 }
@@ -162,7 +174,7 @@ class _BCreatePageState extends BCreatePageModel {
               // Konum
               _sectionLabel("Konum"),
               const SizedBox(height: AppSizes.spaceMedium),
-              _locationSection(),
+              _locationSection(isCompanyJob: company != null),
 
               const SizedBox(height: AppSizes.spaceLarge),
 
@@ -398,13 +410,36 @@ class _BCreatePageState extends BCreatePageModel {
 
   // ----------------------------------------------------------------- Konum
 
-  /// İlanın adresi haritada seçiliyor; burada yalnız özeti ve giriş kapısı
-  /// var.
-  Widget _locationSection() {
-    return ConfirmedAddressField(
+  /// İlanın adresi haritada seçiliyor; burada özeti ve giriş kapısı var.
+  ///
+  /// Şirket ilanında altına "Adresi gizle" anahtarı ve kimin neyi
+  /// göreceğini söyleyen satır geliyor. Kural sunucuda: istemci yalnız
+  /// `addressPublic`'i gönderiyor, kesinliği sunucu belirliyor. Bireysel
+  /// ilanda anahtar yok — bireysel ilan herkese her zaman yaklaşık.
+  Widget _locationSection({required bool isCompanyJob}) {
+    final field = ConfirmedAddressField(
       value: _address,
       label: 'İlan adresi *',
       onTap: _pickAddress,
+    );
+    if (!isCompanyJob) return field;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        field,
+        const SizedBox(height: AppSizes.space),
+        _switchTile(
+          title: 'Adresi gizle',
+          value: _hideAddress,
+          onChanged: (value) => setState(() => _hideAddress = value),
+        ),
+        BInfoNotice(
+          message: _hideAddress
+              ? BCreatePage.addressHiddenNotice
+              : BCreatePage.addressPublicNotice,
+        ),
+      ],
     );
   }
 

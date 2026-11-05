@@ -4,9 +4,9 @@ import 'package:koala/product/models/canonical_address.dart';
 /// Yeni ilan isteğinin gövdesi.
 ///
 /// İki uca da aynı model gidiyor: `POST /users/me/jobs` (bireysel) ve
-/// `POST /companies/{id}/jobs` (kurumsal). Tek fark [insuranceRequired] —
-/// `CreateIndividualJobDto` o alanı hiç taşımıyor, o yüzden bireysel istekte
-/// gönderilmiyor (bkz. [toJson]).
+/// `POST /companies/{id}/jobs` (kurumsal). Fark iki alan:
+/// [insuranceRequired] ve [addressPublic] — `CreateIndividualJobDto` ikisini
+/// de taşımıyor, o yüzden bireysel istekte gönderilmiyorlar (bkz. [toJson]).
 class CreateJobRequest {
   const CreateJobRequest({
     required this.categoryId,
@@ -23,6 +23,7 @@ class CreateJobRequest {
     required this.maxAge,
     required this.experienceRequired,
     this.insuranceRequired = false,
+    this.addressPublic = true,
     this.sector,
     this.duties,
     this.dressCode,
@@ -45,12 +46,25 @@ class CreateJobRequest {
   final int maxAge;
   final bool experienceRequired;
   final bool insuranceRequired;
+
+  /// Şirket ilanının tam konumu (kesin pin, sokak ve bina) herkese açık mı.
+  ///
+  /// Kural sunucuda (Yusuf, 04.11.2026): şirket ilanında tam konum varsayılan
+  /// olarak açık, işveren "Adresi gizle" ile kapatabiliyor; kapalıyken ilan
+  /// herkese yaklaşık konumla görünüyor. Kat, daire ve tarif bu alandan
+  /// bağımsız olarak yalnız ilan sahibine ve atanan çalışana gidiyor.
+  /// Sunucu alan gelmezse `true` sayıyor; yine de şirket isteğinde her zaman
+  /// açıkça yazılıyor ki varsayılanın sunucuda değişmesi formu sessizce
+  /// başka bir şey yapar hâle getirmesin.
+  final bool addressPublic;
   final String? sector;
   final String? duties;
   final String? dressCode;
 
-  /// [forCompany] `false` iken `insuranceRequired` düşüyor: bireysel uç o
-  /// alanı tanımıyor ve fazladan alan gönderince istek reddedilebiliyor.
+  /// [forCompany] `false` iken `insuranceRequired` ve `addressPublic`
+  /// düşüyor: bireysel uç bu alanları tanımıyor ve fazladan alan gönderince
+  /// istek reddedilebiliyor. Bireysel ilanın konumu her zaman herkese
+  /// yaklaşık; bunu işveren seçmiyor.
   Map<String, dynamic> toJson({required bool forCompany}) => {
     'categoryId': categoryId,
     'title': title,
@@ -69,6 +83,7 @@ class CreateJobRequest {
     'maxAge': maxAge,
     'experienceRequired': experienceRequired,
     if (forCompany) 'insuranceRequired': insuranceRequired,
+    if (forCompany) 'addressPublic': addressPublic,
     'dressCode': ?dressCode,
   };
 
