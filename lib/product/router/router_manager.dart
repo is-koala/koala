@@ -17,6 +17,7 @@ import 'package:koala/business/features/home/presentation/pages/b_talent_pool_pa
 import 'package:koala/business/features/home/presentation/pages/b_user_profile_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_notifications_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_payment_result_page.dart';
+import 'package:koala/employee/features/home/presentation/pages/shared_job_page.dart';
 import 'package:koala/employee/features/notifications/presentation/pages/notifications_page.dart';
 import 'package:koala/employee/features/notifications/presentation/pages/company_invitation_page.dart';
 import 'package:koala/employee/features/profile/presentation/pages/followed_companies_page.dart';
@@ -130,6 +131,9 @@ class RouterManager {
       // Başkasının profilini çalışan açıyor; işverenin karşılığı
       // `BusinessRoutes.userProfile`.
       EmployeeRoutes.publicProfilePrefix,
+      // Paylaşılan ilan çalışanın keşfinde açılıyor; işveren kendi ana
+      // sayfasına yönleniyor.
+      '/shared-job',
     ];
     final isEmployeeRoute = employeeRoutes.any(
       (route) => location.startsWith(route),
@@ -603,6 +607,16 @@ class RouterManager {
         path: '/business/notifications',
         pageBuilder: (context, state) =>
             _page(state, const BNotificationsPage()),
+      ),
+
+      // Paylaşılan ilan bağlantısı (`/is-ilanlari/<id>`); sayfa ilanı yükleyip
+      // keşfette detay sheet'ini açıyor.
+      GoRoute(
+        path: '/shared-job',
+        pageBuilder: (context, state) => _page(
+          state,
+          SharedJobPage(jobId: state.uri.queryParameters['id'] ?? ''),
+        ),
       ),
 
       GoRoute(

@@ -21,6 +21,7 @@
                 <data android:pathPrefix="/eposta-onayla" />
                 <data android:pathPrefix="/payment/result" />
                 <data android:pathPrefix="/davet" />
+                <data android:pathPrefix="/is-ilanlari/" />
             </intent-filter>
         </activity>
     </application>

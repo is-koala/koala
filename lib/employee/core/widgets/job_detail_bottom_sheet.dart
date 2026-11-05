@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:koala/employee/core/widgets/job_location_card.dart';
 import 'package:koala/employee/core/widgets/job_transport_card.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
+import 'package:koala/employee/features/home/models/job_share_link.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
@@ -24,6 +25,7 @@ import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/job_gallery_view.dart';
 import 'package:koala/product/widgets/report_sheet.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:provider/provider.dart';
 import 'dart:ui' show lerpDouble;
 
@@ -831,6 +833,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
             ),
             const Spacer(),
             _reportButton(),
+            _shareButton(),
           ],
         ),
       ),
@@ -858,12 +861,40 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     );
   }
 
+  /// İlanı sistemin paylaşım menüsüyle gönderir: başlık ve web'deki ilan
+  /// sayfasının bağlantısı. Bağlantıyı uygulaması olan açarsa ilan uygulamada,
+  /// olmayan açarsa web'de açılıyor.
+  Widget _shareButton() {
+    return Builder(
+      builder: (buttonContext) => IconButton(
+        tooltip: 'Paylaş',
+        icon: AppIcon(AppIcons.share, color: context.textPrimary),
+        onPressed: () => _share(buttonContext),
+      ),
+    );
+  }
+
+  Future<void> _share(BuildContext buttonContext) async {
+    final link = JobShareLink.forJob(widget.job.id);
+    // iPad'de paylaşım menüsü bir noktaya bağlanmak zorunda: düğmenin kendisi.
+    final box = buttonContext.findRenderObject() as RenderBox?;
+    await SharePlus.instance.share(
+      ShareParams(
+        text: JobShareLink.message(title: widget.job.title, link: link),
+        subject: widget.job.title,
+        sharePositionOrigin: box == null
+            ? null
+            : box.localToGlobal(Offset.zero) & box.size,
+      ),
+    );
+  }
+
   /// İlanı şikayet eder.
   ///
   Widget _reportButton() {
     return IconButton(
       tooltip: 'İlanı Şikayet Et',
-      icon: AppIcon(AppIcons.flag, color: context.textSecondary),
+      icon: AppIcon(AppIcons.flag, color: context.textPrimary),
       onPressed: () => ReportSheet.show(
         context,
         ReportTarget.job(jobId: widget.job.id, title: widget.job.title),
