@@ -12,10 +12,16 @@ class JobStartOnChips extends StatelessWidget {
     super.key,
     required this.selected,
     required this.onChanged,
+    this.scrollable = false,
   });
 
   final JobStartOn? selected;
   final ValueChanged<JobStartOn?> onChanged;
+
+  /// `true` ise çipler tek satırda yatay kayar, alt satıra geçmez. Liste
+  /// sayfası dikey alanı ilanlara bırakmak için bunu kullanıyor; süzgeç
+  /// sheet'inde yer sorunu olmadığı için çipler alta sarılmaya devam ediyor.
+  final bool scrollable;
 
   static const _presets = [
     JobStartOn.today,
@@ -29,22 +35,38 @@ class JobStartOnChips extends StatelessWidget {
     final customDay = selected?.day;
     final customSelected = customDay != null;
 
-    return Wrap(
-      spacing: AppSizes.spaceSmall,
-      runSpacing: AppSizes.spaceSmall,
-      children: [
-        for (final preset in _presets)
-          FilterPill(
-            label: preset.label,
-            isSelected: selected == preset,
-            onTap: () => onChanged(selected == preset ? null : preset),
-          ),
+    final chips = [
+      for (final preset in _presets)
         FilterPill(
-          label: customSelected ? selected!.label : 'Tarih seç',
-          isSelected: customSelected,
-          onTap: () => _pickDay(context),
+          label: preset.label,
+          isSelected: selected == preset,
+          onTap: () => onChanged(selected == preset ? null : preset),
         ),
-      ],
+      FilterPill(
+        label: customSelected ? selected!.label : 'Tarih seç',
+        isSelected: customSelected,
+        onTap: () => _pickDay(context),
+      ),
+    ];
+
+    if (!scrollable) {
+      return Wrap(
+        spacing: AppSizes.spaceSmall,
+        runSpacing: AppSizes.spaceSmall,
+        children: chips,
+      );
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final (index, chip) in chips.indexed) ...[
+            if (index > 0) const SizedBox(width: AppSizes.spaceSmall),
+            chip,
+          ],
+        ],
+      ),
     );
   }
 

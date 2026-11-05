@@ -361,7 +361,7 @@ void main() {
 
         await _tapKey(tester, 'inbox-status-REJECTED');
 
-        expect(find.text('Bu süzgeçte başvuru yok'), findsOneWidget);
+        expect(find.text('Bu filtrede başvuru yok'), findsOneWidget);
         expect(find.text('Henüz başvuru yok'), findsNothing);
         // Üç süzgecin üçü de söyleniyor: ilan süzgeci de açıklamada geçiyor.
         expect(find.textContaining('durum, şirket ya da ilan'), findsOneWidget);

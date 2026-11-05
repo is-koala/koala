@@ -5,7 +5,7 @@ import 'package:koala/employee/features/home/presentation/pages/explore_pages/ex
 import 'package:koala/employee/features/home/presentation/providers/page_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/jobs_page.dart';
 import 'package:koala/employee/features/profile/presentation/pages/profile_page.dart';
-import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_shadows.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
@@ -18,6 +18,10 @@ class ShellPage extends StatefulWidget {
   final Widget child;
 
   const ShellPage({super.key, required this.child});
+
+  /// Kabuk rotalarının çizdiği boş sayfa. İçerik [ShellPage]'in kendi
+  /// `PageView`'ında; rota yalnız sekme seçiyor.
+  static const Widget tabPlaceholder = SizedBox.shrink();
 
   @override
   State<ShellPage> createState() => _ShellPageState();
@@ -121,6 +125,11 @@ class _ShellPageState extends State<ShellPage> {
     }
   }
 
+  /// Keşfet sekmesi harita görünümünde mi.
+  bool _showsMap(BuildContext context) =>
+      _selectedIndex == 0 &&
+      context.watch<PageProvider>().exploreViewType == ExploreViewType.map;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -135,30 +144,38 @@ class _ShellPageState extends State<ShellPage> {
                 const NeverScrollableScrollPhysics(), // Sadece programmatik geçiş
             children: _pages,
           ),
-          // Sayfanın altında beyaz fade efekti
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: IgnorePointer(
-              // Listenin son satırı navbar'ın altına girerken sertçe
-              // kesilmesin diye sayfanın altına zemine giden bir geçiş.
-              child: Container(
-                height: AppSizes.navBar,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      context.backgroundColor.withValues(alpha: 0.0),
-                      context.backgroundColor.withValues(alpha: 0.4),
-                      context.backgroundColor,
-                    ],
+          // go_router'ın kabuk navigator'ı: içeriği boş, görünmez; yalnız
+          // geri tuşunun okuyabileceği bir navigator olsun diye ağaçta.
+          Offstage(child: widget.child),
+          // Sayfanın altında zemine giden geçiş. Haritada çizilmiyor: harita
+          // ekranın tamamı, kesilecek bir liste yok; geçiş haritanın altını
+          // ve Google logosunu beyazla örtüyordu.
+          if (!_showsMap(context))
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: IgnorePointer(
+                // Listenin son satırı navbar'ın altına girerken sertçe
+                // kesilmesin diye. En altta bile tam opak değil: tam beyaz
+                // sayfanın altına sert bir bant çiziyordu.
+                child: Container(
+                  height: AppSizes.navBar,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        context.backgroundColor.withValues(alpha: 0.0),
+                        context.backgroundColor.withValues(
+                          alpha: AppSizes.navBarFadeMaxAlpha,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
         ],
       ),
       bottomNavigationBar: Padding(
@@ -171,13 +188,7 @@ class _ShellPageState extends State<ShellPage> {
               decoration: BoxDecoration(
                 borderRadius: AppRadius.stadiumCircular,
                 color: context.accentColor,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.navShadow,
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
+                boxShadow: AppShadows.floating,
               ),
               child: Padding(
                 padding: AppPadding.navBarContent,

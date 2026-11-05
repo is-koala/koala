@@ -27,6 +27,12 @@ class AppSizes {
   /// satırları bölmeli, kendisi bir öğe gibi durmamalı.
   static const double divider = 1.0;
 
+  /// Harita üstündeki düğme hapının yüksekliği ve haptaki her düğmenin
+  /// kenarı. Düğme **kare**: 24'lük ikonun her yanında `spaceSmall` (8) pay,
+  /// basınca çıkan vurgu da tam daire olup hapın içine oturuyor. Dikdörtgen
+  /// düğmede vurgu oval çiziliyordu.
+  static const double mapPillHeight = 40.0;
+
   /// Haritadaki sessiz yenileme çizgisinin kalınlığı: pinler ekrandayken
   /// arka planda süren isteği bir kart açmadan haber veriyor.
   static const double refreshBar = 3.0;
@@ -80,6 +86,10 @@ class AppSizes {
   /// Sabit genişlik verilerek ekran boyutundan bağımsız tutarlı bir ikon
   /// aralığı ve görünüm sağlanır.
   static const double navBar = 64.0;
+
+  /// Navbar'ın arkasındaki zemine geçişin en alttaki opaklığı. Tam opak
+  /// beyaz, sayfanın altına sert bir bant çiziyordu.
+  static const double navBarFadeMaxAlpha = 0.85;
   static const double navBarWidth = 250.0;
 
   /// Business navbar'ının yüksekliği; employee'ninkinden yüksek çünkü

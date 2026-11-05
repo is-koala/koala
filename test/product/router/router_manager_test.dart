@@ -418,4 +418,27 @@ void main() {
       expect(SessionManager().isLoggedIn, isFalse);
     });
   });
+
+  test('paylaşılan ilan çalışana açık, işveren ana sayfasına yönlenir', () {
+    expect(
+      RouterManager.resolveRedirect(
+        initialized: true,
+        loggedIn: true,
+        userType: 'employee',
+        seenOnboarding: true,
+        location: '/shared-job?id=x',
+      ),
+      isNull,
+    );
+    expect(
+      RouterManager.resolveRedirect(
+        initialized: true,
+        loggedIn: true,
+        userType: 'business',
+        seenOnboarding: true,
+        location: '/shared-job?id=x',
+      ),
+      '/business/home',
+    );
+  });
 }
