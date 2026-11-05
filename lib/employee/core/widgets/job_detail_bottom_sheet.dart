@@ -868,7 +868,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     return Builder(
       builder: (buttonContext) => IconButton(
         tooltip: 'Paylaş',
-        icon: AppIcon(AppIcons.share, color: context.textSecondary),
+        icon: AppIcon(AppIcons.share, color: context.textPrimary),
         onPressed: () => _share(buttonContext),
       ),
     );
@@ -894,7 +894,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
   Widget _reportButton() {
     return IconButton(
       tooltip: 'İlanı Şikayet Et',
-      icon: AppIcon(AppIcons.flag, color: context.textSecondary),
+      icon: AppIcon(AppIcons.flag, color: context.textPrimary),
       onPressed: () => ReportSheet.show(
         context,
         ReportTarget.job(jobId: widget.job.id, title: widget.job.title),
