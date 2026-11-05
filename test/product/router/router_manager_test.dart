@@ -441,4 +441,41 @@ void main() {
       '/business/home',
     );
   });
+
+  test(
+    'biniş rotaları tarafına göre korunur, bağlantı sayfası ikisine açık',
+    () {
+      String? redirectFor(String userType, String location) =>
+          RouterManager.resolveRedirect(
+            initialized: true,
+            loggedIn: true,
+            userType: userType,
+            seenOnboarding: true,
+            location: location,
+          );
+
+      final workerQr = EmployeeRoutes.boardingQrLocation('asg-1', 'OUTBOUND');
+      final workerScan = EmployeeRoutes.boardingScanLocation();
+      expect(redirectFor('employee', workerQr), isNull);
+      expect(redirectFor('employee', workerScan), isNull);
+      expect(redirectFor('business', workerQr), '/business/home');
+      expect(redirectFor('business', workerScan), '/business/home');
+
+      expect(
+        redirectFor('employee', '/business/shuttle-boardings?shuttleId=s'),
+        '/explore',
+      );
+      expect(
+        redirectFor('business', '/business/shuttle-boardings?shuttleId=s'),
+        isNull,
+      );
+
+      for (final userType in ['employee', 'business']) {
+        expect(
+          redirectFor(userType, '${RouterManager.boardingLinkPath}?t=x'),
+          isNull,
+        );
+      }
+    },
+  );
 }

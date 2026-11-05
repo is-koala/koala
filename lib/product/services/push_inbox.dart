@@ -23,6 +23,13 @@ import 'package:koala/product/services/push_notification_dedupe.dart';
 ///   ([onTransportOpened]) ve kayıt okundu işaretlenir; `SEAT_DROPPED`
 ///   olayı sayfaya "yeniden seçin" bağlamıyla gider.
 ///
+/// - **Biniş** (`type=TRANSPORT`, is-koala/koala#217): `SHUTTLE_REMINDER_BOARDING`
+///   (işçiye kalkıştan 15 dk önce; `jobAssignmentId`, `direction`) doğrudan
+///   işçinin biniş QR'ını açar ([onBoardingReminderOpened]);
+///   `SHUTTLE_NOTICE_NOT_BOARDED` (yetkililere; `shuttleId`, atama yok)
+///   servisin biniş listesini açar ([onNotBoardedOpened]). Verilmezlerse
+///   eski yol: iş detayı ya da bildirim ekranı.
+///
 /// Dokunma dedupe anahtarı mesaj için `messageId`, yoksa `notificationId`:
 /// soğuk açılışta `getInitialMessage` ile `onMessageOpenedApp` aynı yükü
 /// iki kez verebiliyor.
@@ -36,6 +43,8 @@ class PushInbox {
     required this.onOpened,
     required this.onConversationOpened,
     this.onTransportOpened,
+    this.onBoardingReminderOpened,
+    this.onNotBoardedOpened,
   });
 
   /// Sohbet mesajı push'ının `data.type` değeri
@@ -48,6 +57,12 @@ class PushInbox {
   /// Ulaşım push'unun koltuk düştü olayı; diğerleri (`PLAN_UPDATED`,
   /// `SHUTTLE_REMINDER_*`) aynı sayfayı bağlamsız açıyor.
   static const String seatDroppedEvent = 'SEAT_DROPPED';
+
+  /// İşçiye biniş hatırlatması: kişisel QR açılır.
+  static const String boardingReminderEvent = 'SHUTTLE_REMINDER_BOARDING';
+
+  /// Yetkililere "henüz binmedi" bildirimi: biniş listesi açılır.
+  static const String notBoardedEvent = 'SHUTTLE_NOTICE_NOT_BOARDED';
 
   final PushNotificationDedupe dedupe;
   final bool Function() sessionInitialized;
@@ -67,6 +82,17 @@ class PushInbox {
     required bool seatDropped,
   })?
   onTransportOpened;
+
+  /// `SHUTTLE_REMINDER_BOARDING` dokunması; [direction] sunucunun yön kodu
+  /// (`OUTBOUND` | `RETURN`).
+  final Future<void> Function({
+    required String assignmentId,
+    required String direction,
+  })?
+  onBoardingReminderOpened;
+
+  /// `SHUTTLE_NOTICE_NOT_BOARDED` dokunması.
+  final Future<void> Function(String shuttleId)? onNotBoardedOpened;
 
   Map<String, String>? _pendingOpen;
 
@@ -106,6 +132,30 @@ class PushInbox {
 
     if (_isMessage(data)) {
       await onConversationOpened(data['conversationId']!);
+      return;
+    }
+
+    final openReminder = onBoardingReminderOpened;
+    if (openReminder != null &&
+        _isTransport(data) &&
+        data['event'] == boardingReminderEvent) {
+      await openReminder(
+        assignmentId: data['jobAssignmentId']!,
+        direction: _present(data['direction'])
+            ? data['direction']!
+            : 'OUTBOUND',
+      );
+      await onOpened(key);
+      return;
+    }
+
+    final openNotBoarded = onNotBoardedOpened;
+    if (openNotBoarded != null &&
+        data['type'] == transportType &&
+        data['event'] == notBoardedEvent &&
+        _present(data['shuttleId'])) {
+      await openNotBoarded(data['shuttleId']!);
+      await onOpened(key);
       return;
     }
 

@@ -29,6 +29,7 @@ gelmez.
 | `payment-result` | `status`, `assignmentId` | `/payment-result` |
 | `company-invitation` | `id` | `/company-invitation` |
 | `job` | `id` | `/shared-job` (ilan yüklenip keşfette detay sheet'i açılır) |
+| `board` | `t` | `/boarding-link` (servis binişi QR'ı, is-koala/koala#217; yalnız özel şema, HTTPS karşılığı yok) |
 
 ## Doğrulanmış HTTPS bağlantıları
 

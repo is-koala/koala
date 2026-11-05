@@ -11,6 +11,7 @@ import 'package:koala/employee/features/jobs/presentation/providers/apply_provid
 import 'package:koala/employee/features/jobs/presentation/providers/saved_jobs_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/job_alerts_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/timesheet_queue_provider.dart';
+import 'package:koala/employee/features/jobs/presentation/providers/boarding_queue_provider.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/employee/features/settings/presentation/providers/identity_review_provider.dart';
 import 'package:koala/employee/features/profile/presentation/providers/availability_provider.dart';
@@ -47,6 +48,12 @@ void main() {
         ChangeNotifierProvider(create: (_) => JobAlertsProvider()),
         ChangeNotifierProvider(
           create: (_) => TimesheetQueueProvider(),
+          lazy: false,
+        ),
+        // Çevrimdışı servis biniş okutmaları (is-koala/koala#217): mesai
+        // kuyruğuyla aynı gerekçe, açılışta boşalması gerekiyor.
+        ChangeNotifierProvider(
+          create: (_) => BoardingQueueProvider(),
           lazy: false,
         ),
         // "Değerlendirdim mi" artık sunucudan (`myReview`); provider yalnız

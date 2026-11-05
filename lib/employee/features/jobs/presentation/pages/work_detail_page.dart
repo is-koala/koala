@@ -23,7 +23,9 @@ import 'package:koala/employee/features/jobs/models/timesheet_event.dart';
 import 'package:koala/employee/features/jobs/models/work_session.dart';
 import 'package:koala/employee/features/jobs/models/work_timeline.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/work_actions_pagemodel.dart';
+import 'package:koala/employee/features/jobs/models/pending_boarding.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
+import 'package:koala/employee/features/jobs/presentation/providers/boarding_queue_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/review_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/timesheet_queue_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/widgets/cancellation_card.dart';
@@ -35,6 +37,7 @@ import 'package:koala/employee/features/jobs/presentation/widgets/work_transport
 import 'package:koala/employee/features/jobs/presentation/widgets/work_timeline_view.dart';
 import 'package:koala/employee/features/jobs/services/assignment_service.dart';
 import 'package:koala/employee/features/profile/models/public_profile_args.dart';
+import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -554,6 +557,16 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
   /// plakası/şoförü, durağın adresi ve yol tarifi. Plan yoksa (eski sunucu
   /// dahil) [transport] `null` ve kart çizilmiyor.
   Widget _transportCard(AssignmentTransport transport) {
+    // Biniş kuyruğu `main.dart`'ta kayıtlı; testlerin çoğu onu kurmuyor,
+    // o yüzden yoksa bekleyen okutma da yok sayılıyor.
+    final queue = context.watch<BoardingQueueProvider?>();
+    final assignmentId = job.assignmentId;
+    final pending = <ShuttleDirection, List<PendingBoarding>>{
+      if (queue != null && assignmentId != null)
+        for (final direction in ShuttleDirection.values)
+          direction: queue.entriesFor(assignmentId, direction),
+    };
+
     return WorkTransportCard(
       transport: transport,
       canSelectSeat: canSelectSeat,
@@ -563,6 +576,11 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
       onSelectSeat: selectSeat,
       onCall: callDriver,
       onDirections: openDirections,
+      canBoard: canBoard,
+      onScanShuttleQr: openBoardingScan,
+      onShowMyQr: openMyBoardingQr,
+      pendingBoardings: pending,
+      onDismissBoarding: queue == null ? null : dismissBoarding,
     );
   }
 

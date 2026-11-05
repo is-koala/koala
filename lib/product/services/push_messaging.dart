@@ -9,6 +9,8 @@ import 'package:koala/employee/features/profile/presentation/providers/user_prov
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/network/session_manager.dart';
 import 'package:koala/product/providers/notification_provider.dart';
+import 'package:koala/product/router/business_routes.dart';
+import 'package:koala/product/router/employee_routes.dart';
 import 'package:koala/product/router/router_manager.dart';
 import 'package:koala/product/services/notification_service.dart';
 import 'package:koala/product/services/push_conversation_opener.dart';
@@ -91,6 +93,31 @@ class PushMessaging {
               seatDropped: seatDropped,
             );
           },
+          // Biniş hatırlatması yalnız işçiye gidiyor; QR'ı doğrudan açar.
+          onBoardingReminderOpened:
+              ({required assignmentId, required direction}) {
+                if (isBusiness()) {
+                  _navigate('/business/notifications');
+                } else {
+                  _navigateOver(
+                    PushWorkDetailOpener.jobsRoute,
+                    EmployeeRoutes.boardingQrLocation(assignmentId, direction),
+                  );
+                }
+                return Future.value();
+              },
+          // "Henüz binmedi" yalnız yetkililere gidiyor; biniş listesini açar.
+          onNotBoardedOpened: (shuttleId) {
+            if (isBusiness()) {
+              _navigateOver(
+                '/business/home',
+                BusinessRoutes.shuttleBoardingsLocation(shuttleId),
+              );
+            } else {
+              _navigate('/notifications');
+            }
+            return Future.value();
+          },
           onForeground: () async {
             debugPrint('Ön plan push alındı, bildirim listesi tazeleniyor');
             await feed?.load(silent: true);
@@ -145,6 +172,17 @@ class PushMessaging {
   static void _navigate(String route) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       RouterManager.router.go(route);
+    });
+  }
+
+  /// Önce [base]'e gider, bir sonraki karede [location]'ı üstüne iter;
+  /// geri çıkınca kullanıcı listeye düşer (`openWorkDetailOn` gerekçesi).
+  static void _navigateOver(String base, String location) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      RouterManager.router.go(base);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(RouterManager.router.push(location));
+      });
     });
   }
 
