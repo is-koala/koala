@@ -1,24 +1,17 @@
 part of 'b_company_gallery_page.dart';
 
 abstract class BCompanyGalleryPagemodel extends State<BCompanyGalleryPage> {
-  /// Şirketteki `ADMIN` rolünün sunucudaki adı (`CompanyContactRole`).
-  /// Diğer değer `STAFF` ve o galeriyi yalnız görüyor.
   static const String _adminRole = 'ADMIN';
 
-  /// Sürükleme sonrası sunucudan yanıt gelene kadar gösterilen sıra.
-  ///
-  /// Olmasaydı liste bırakıldığı anda eski sırasına dönüp istek bitince
-  /// yeniden yerine oturur, sürükleme geri alınmış gibi görünürdü.
+  /// Sunucu yanıtına kadar gösterilen sıra; yoksa liste eski sıraya dönüp sonra
+  /// yerine oturur.
   List<GalleryImage>? _pendingOrder;
 
-  /// Ekranda çizilecek galeri.
   List<GalleryImage> get images =>
       _pendingOrder ?? context.read<BCompanyProvider>().galleryImages;
 
-  /// Kullanıcı bu şirketin yöneticisi mi.
-  ///
-  /// Rol `/users/me` yanıtındaki üyelik kaydında duruyor. Yetkisiz kullanıcı
-  /// sunucudan `403` değil `404` alıyor, o yüzden denetimler hiç çizilmiyor.
+  /// Rol `/users/me`'deki üyelikte. Yetkisiz `404` aldığı için denetimler
+  /// çizilmiyor.
   bool get canManage =>
       context.watch<UserProvider>().user?.primaryCompany?.role == _adminRole;
 
@@ -28,7 +21,6 @@ abstract class BCompanyGalleryPagemodel extends State<BCompanyGalleryPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) => reload());
   }
 
-  /// Şirketi (ve gövdesindeki galeriyi) çeker.
   void reload({bool force = false}) {
     if (!mounted) return;
 
@@ -40,11 +32,7 @@ abstract class BCompanyGalleryPagemodel extends State<BCompanyGalleryPage> {
 
   // ---------------------------------------------------------------- Ekleme
 
-  /// Galeriden bir görsel seçip yükler.
-  ///
-  /// Uzantı ve boyut istemcide de kontrol ediliyor: sunucu aynı kuralları
-  /// uyguluyor ama kullanıcıyı yüklemeyi bekleyip hata almaya bırakmanın
-  /// anlamı yok. Dosya ham gönderiliyor, logo akışındaki gibi.
+  /// Uzantı ve boyut istemcide de kontrol ediliyor; dosya ham gönderiliyor.
   Future<void> pickImage() async {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (picked == null || !mounted) return;
@@ -64,27 +52,21 @@ abstract class BCompanyGalleryPagemodel extends State<BCompanyGalleryPage> {
 
   // -------------------------------------------------------- Sıra ve kapak
 
-  /// Sürükleme bittiğinde çalışır; istek yalnızca burada atılıyor.
-  ///
-  /// `onReorderItem` hedefi kaldırılmış öğeye göre düzelterek veriyor, o
-  /// yüzden eski `onReorder`'ın `newIndex - 1` düzeltmesi burada yok.
+  /// İstek yalnız sürükleme bitince atılıyor. `onReorderItem` hedefi zaten
+  /// düzeltilmiş veriyor.
   Future<void> onReorder(int oldIndex, int newIndex) async {
     final reordered = [...images];
     reordered.insert(newIndex, reordered.removeAt(oldIndex));
 
     setState(() => _pendingOrder = reordered);
 
-    // Galerinin tamamı gidiyor: listede olmayan görsel sunucuda siliniyor.
     await _run(
       () => context.read<BCompanyProvider>().replaceGallery(reordered),
       successMessage: 'Sıralama kaydedildi',
     );
   }
 
-  /// Seçilen görseli kapak yapar.
-  ///
-  /// Eski kapağın bayrağı da düşürülüyor: sunucu birden fazla kapak taşıyan
-  /// gövdeyi `400` ile geri çeviriyor.
+  /// Eski kapağın bayrağı da düşer: birden çok kapak `400`.
   Future<void> setCover(GalleryImage image) async {
     final updated = [
       for (final current in images) current.copyWith(isCover: current == image),
@@ -116,7 +98,6 @@ abstract class BCompanyGalleryPagemodel extends State<BCompanyGalleryPage> {
     );
   }
 
-  /// Üç galeri eyleminin ortak sonu: bekleyen sırayı düşürür ve sonucu yazar.
   Future<void> _run(
     Future<bool> Function() action, {
     required String successMessage,
@@ -125,7 +106,7 @@ abstract class BCompanyGalleryPagemodel extends State<BCompanyGalleryPage> {
     final succeeded = await action();
 
     if (!mounted) return;
-    // Sunucudan dönen liste tek doğru kaynak; yerel sıra artık gereksiz.
+    // Sunucunun listesi tek kaynak.
     setState(() => _pendingOrder = null);
 
     if (succeeded) {

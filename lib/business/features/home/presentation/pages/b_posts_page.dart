@@ -28,17 +28,12 @@ class _BPostsPageState extends State<BPostsPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  /// Rozet ve durum kutularının zemin opaklığı.
   static const double _tintAlpha = 0.12;
 
-  /// Başvuran satırının zemin opaklığı; rozetlerden hafif, satır bütünü
-  /// kaplıyor.
   static const double _rowTintAlpha = 0.08;
 
-  /// Geçmiş ilanlardaki çalışan avatarının ölçüsü.
   static const double _workerAvatarSize = 24;
 
-  /// Dar alt satırdaki yükleme halkasını okunur tutan ince çizgi.
   static const double _spinnerStroke = 2;
 
   @override
@@ -56,9 +51,8 @@ class _BPostsPageState extends State<BPostsPage>
     super.dispose();
   }
 
-  /// Kullanıcının birden çok şirketi var mı. Tek şirketli ya da bireysel
-  /// işverende kartta şirket adı yazmak bilgi taşımaz; birden çok şirket adına
-  /// ilan açabilen kullanıcıda hangi ilanın kimin adına olduğu görünmeli.
+  /// Birden çok şirket adına ilan açan kullanıcıda ilanın kimin adına olduğu
+  /// görünmeli; diğerlerinde bilgi taşımaz.
   bool get _showsCompanyName =>
       (context.watch<UserProvider>().user?.companies.length ?? 0) > 1;
 
@@ -85,9 +79,8 @@ class _BPostsPageState extends State<BPostsPage>
     );
   }
 
-  /// Üç durum ayrı çiziliyor: yükleniyor, hata (mesaj + Tekrar Dene) ve
-  /// gerçekten boş. İkincisiyle üçüncüsünü aynı göstermek, sunucuya
-  /// ulaşılamadığında kullanıcıya "hiç ilanın yok" demek olurdu.
+  /// Yükleniyor, hata ve gerçekten boş ayrı: ulaşılamayan sunucuda "hiç ilanın
+  /// yok" denmesin.
   Widget _content(
     BJobsProvider provider,
     List<BJobPost> activePosts,
@@ -184,10 +177,8 @@ class _BPostsPageState extends State<BPostsPage>
                   const SizedBox(height: AppSizes.space),
               itemBuilder: (context, index) {
                 final post = posts[index];
-                // Geçmiş ilanın alt satırı işi alan kişiyi gösteriyor ve o
-                // bilgi ancak başvurularda var. İstek yalnızca ekrana giren
-                // satırlar için atılıyor; aktif ilanlarda hiç gerekmiyor,
-                // sayı zaten ilanla geliyor.
+                // Geçmiş ilanın satırı işi alan kişiyi gösteriyor; başvurular
+                // yalnız ekrana giren satırlar için çekiliyor.
                 if (!isActive) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     if (mounted &&
@@ -206,8 +197,7 @@ class _BPostsPageState extends State<BPostsPage>
     );
   }
 
-  /// Boş liste de aşağı çekilip yenilenebilsin diye kaydırılabilir bir
-  /// gövdenin içinde duruyor.
+  /// Boş liste de aşağı çekilip yenilenebilsin.
   Widget _emptyState({required bool isActive}) {
     return ListView(
       padding: AppPadding.primaryAll,
@@ -331,11 +321,8 @@ class _BPostsPageState extends State<BPostsPage>
     );
   }
 
-  /// İş tarihi ve kontenjan: "10.09.2026 09:00 - 17:00 · 2/3 dolu".
-  ///
-  /// Bitiş aynı güne düşüyorsa yalnızca saati yazılıyor; başka güne taşan
-  /// işte iki tarih de tam. Kontenjan (`headcount`) sunucudan gelmediyse o
-  /// parça yok — "2/— dolu" bir bilgi değil; dolunca yeşil.
+  /// "10.09.2026 09:00 - 17:00 · 2/3 dolu". Aynı gün bitişte yalnız saat;
+  /// kontenjan gelmediyse o parça yok, dolunca yeşil.
   Widget _scheduleAndStaffingRow(Job job) {
     final headcount = job.headcount;
     final schedule = _scheduleLabel(job);
@@ -384,7 +371,6 @@ class _BPostsPageState extends State<BPostsPage>
     );
   }
 
-  /// İlanın tarih etiketi; başlangıç yoksa `null`.
   static String? _scheduleLabel(Job job) {
     final start = job.startDateTime;
     final end = job.endDateTime;
@@ -428,9 +414,7 @@ class _BPostsPageState extends State<BPostsPage>
     );
   }
 
-  /// İlanın sunucudaki durumu. Açık ilan "Aktif" (sekmenin adı); kapalı ve
-  /// iptal edilen ayrı yazılıyor — ikisi de "Geçmiş" sekmesinde ama aynı şey
-  /// değil: kapalı ilan geçerliliğini koruyor, iptal edilen geçersiz.
+  /// Kapalı ilan geçerli kalıyor, iptal edilen geçersiz; ikisi ayrı yazılıyor.
   Widget _statusBadge(JobStatus status) {
     final (label, tint, textColor) = switch (status) {
       JobStatus.open => ('Aktif', AppColors.success, AppColors.successStrong),
@@ -494,7 +478,6 @@ class _BPostsPageState extends State<BPostsPage>
     );
   }
 
-  /// İlanı kapatır ve sonucu bildirir.
   Future<void> _closePost(String jobId) async {
     final provider = context.read<BJobsProvider>();
     final closed = await provider.closePost(jobId);
@@ -507,10 +490,7 @@ class _BPostsPageState extends State<BPostsPage>
     }
   }
 
-  /// İlanı iptal eder.
-  ///
-  /// Kapatmadan farklı olduğu için önce onay soruluyor: iptal ilanı geçersiz
-  /// kılıyor ve başvuranlara bildirim gidiyor.
+  /// İptal ilanı geçersiz kılıp bildirim gönderdiği için onay ister.
   Future<void> _cancelPost(Job job) async {
     final confirmed = await _confirmCancel(job);
     if (confirmed != true || !mounted) return;
@@ -522,8 +502,6 @@ class _BPostsPageState extends State<BPostsPage>
     if (cancelled) {
       AppToast.success(context, 'İlan iptal edildi');
     } else {
-      // Devam eden bir atama varsa sunucu 409 döndürüyor; mesajı zaten
-      // Türkçe geliyor ve olduğu gibi gösteriliyor.
       AppToast.error(context, provider.errorMessage ?? 'İlan iptal edilemedi');
     }
   }
@@ -601,7 +579,6 @@ class _BPostsPageState extends State<BPostsPage>
     );
   }
 
-  /// Alt satırların ortak sarmalayıcısı: dolu ise vurgulu, boş ise nötr zemin.
   Widget _footerRow({required bool isFilled, required List<Widget> children}) {
     return Container(
       padding: AppPadding.chip,
@@ -615,8 +592,7 @@ class _BPostsPageState extends State<BPostsPage>
     );
   }
 
-  /// Başvuru sayısı ilan listesiyle birlikte geliyor (`applicationCount`),
-  /// bu satır için ayrı bir istek atılmıyor.
+  /// Sayı ilan listesiyle geliyor; ayrı istek yok.
   Widget _applicantsRow(BJobPost post) {
     final count = post.job.applicationCount;
     final hasApplicants = count > 0;

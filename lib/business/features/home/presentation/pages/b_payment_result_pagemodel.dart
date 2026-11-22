@@ -9,8 +9,7 @@ typedef _PaymentResultPresentation = ({
 
 abstract class BPaymentResultPagemodel extends State<BPaymentResultPage>
     with WidgetsBindingObserver {
-  /// Web istemcisindeki mutabakat penceresiyle aynı, sert üst sınırlı sıra.
-  /// Saat geri alınsa ya da gecikme bağımlılığı erken dönse bile liste sonlu.
+  /// Web'deki mutabakat penceresiyle aynı, sonlu sıra.
   static const _pollDelays = [
     Duration(seconds: 1),
     Duration(seconds: 2),
@@ -159,9 +158,8 @@ abstract class BPaymentResultPagemodel extends State<BPaymentResultPage>
     _startPolling();
   }
 
-  /// Aynı anda yalnız tek backend sorgusu yürür. Manuel kontrol, yaşam döngüsü
-  /// dönüşü ve otomatik deneme aynı olay turunda buluşursa aynı Future'ı
-  /// paylaşır; geç kalan eski yanıt yeni durumu geri ezemez.
+  /// Aynı anda tek sorgu; aynı turda buluşan tetikler aynı Future'ı paylaşır,
+  /// eski yanıt yeni durumu ezemez.
   Future<bool> _refresh({bool initial = false}) {
     final current = _requestInFlight;
     if (current != null) return current;
@@ -242,8 +240,7 @@ abstract class BPaymentResultPagemodel extends State<BPaymentResultPage>
         return;
       }
 
-      // Enjekte edilen bekleme erken dönerse sıkı döngüye girmek yerine bu
-      // pencereyi kapat. Deneme sayısı ayrıca her koşulda sert üst sınırdır.
+      // Bekleme erken dönerse sıkı döngüye girmek yerine pencere kapanır.
       if (_now.isBefore(dueAt)) {
         _finishPolling(exhausted: true, generation: generation);
         return;

@@ -18,11 +18,7 @@ import 'package:provider/provider.dart';
 
 part 'b_job_templates_pagemodel.dart';
 
-/// İşverenin kaydettiği ilan şablonları.
-///
-/// Şablon buradan oluşturulmuyor: sunucu şablonu **var olan bir ilandan**
-/// çıkarıyor, o yüzden giriş noktası ilan detayındaki "Şablon olarak kaydet".
-/// Bu ekran listeleme ve silme için.
+/// İlan şablonları; oluşturma ilan detayındaki "Şablon olarak kaydet"ten.
 class BJobTemplatesPage extends StatefulWidget {
   const BJobTemplatesPage({super.key});
 
@@ -42,9 +38,7 @@ class _BJobTemplatesPageState extends BJobTemplatesPagemodel {
     );
   }
 
-  /// Üç durum ayrı çiziliyor: yükleniyor, hata (mesaj + Tekrar Dene) ve
-  /// gerçekten boş. Sunucuya ulaşılamadığında "hiç şablonun yok" demek yanlış
-  /// olurdu.
+  /// Yükleniyor, hata ve gerçekten boş ayrı.
   Widget _body(BuildContext context, BJobTemplatesProvider provider) {
     if (provider.isLoading && provider.templates.isEmpty) {
       return const Center(child: CircularProgressIndicator());

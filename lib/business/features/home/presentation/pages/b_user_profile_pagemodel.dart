@@ -1,15 +1,11 @@
 part of 'b_user_profile_page.dart';
 
 abstract class BUserProfilePageModel extends State<BUserProfilePage> {
-  /// Bilgi satırındaki etiket sütununun genişliği; değerler hizalı dursun
-  /// diye sabit.
   static const double _infoLabelWidth = 100;
 
-  /// Karşılığı henüz gelmemiş alanların yerine yazılan işaret.
   static const String _missing = '—';
 
-  /// Son yorum sayısı. Profil bir değerlendirme sayfası değil; tamamı için
-  /// ayrı bir ekran gerekir.
+  /// Profil değerlendirme sayfası değil.
   static const int _visibleReviewCount = 3;
 
   BCandidateProfileService get _profileService =>
@@ -20,22 +16,16 @@ abstract class BUserProfilePageModel extends State<BUserProfilePage> {
 
   ReviewService get _reviewService => widget.reviewService ?? ReviewService();
 
-  /// Adayın herkese açık profili. Başvuru kaydında olmayan alanlar —
-  /// meslek, hakkında, konum, özgeçmiş — buradan geliyor.
   PublicProfile? _profile;
 
-  /// Profil yanıtındaki özet alanlar (tamamlanan iş, puan, rozet). Sunucu
-  /// göndermiyorsa boş kalıyor; puan ve rozet için asıl kaynak ayrı uçlar.
+  /// Sunucu göndermiyorsa boş; asıl kaynak ayrı uçlar.
   BCandidateProfile? _candidate;
   bool _isLoading = true;
   String? _errorMessage;
 
-  /// İtibar bölümünün ham sonuçları: puan özeti, son yorumlar ve rozetler.
-  /// Üç uç birbirinden bağımsız; biri düşünce diğerleri yine çiziliyor.
-  /// Ekranda görünen değerler ham sonuçlardan **türetiliyor**
-  /// ([_effectiveRatingSummary], [_effectiveBadges], [_reputationErrorMessage])
-  /// ki profil yanıtındaki yedek kopya, profil sonradan gelse de devreye
-  /// girsin.
+  /// İtibar uçlarının ham sonuçları; biri düşünce diğerleri çizilir. Görünen
+  /// değerler bunlardan **türetiliyor** ki profil sonradan gelse de yedek kopya
+  /// devreye girsin.
   LoadResult<RatingSummary?>? _ratingSummaryResult;
   LoadResult<ReviewPage>? _reviewsResult;
   LoadResult<List<UserBadge>>? _badgesResult;
@@ -45,7 +35,6 @@ abstract class BUserProfilePageModel extends State<BUserProfilePage> {
   bool _isAvailabilityLoading = true;
   String? _availabilityErrorMessage;
 
-  /// Özgeçmiş açılırken beklenen kısa an; buton iki kez tetiklenmesin diye.
   bool _isOpeningCv = false;
 
   @override
@@ -56,11 +45,8 @@ abstract class BUserProfilePageModel extends State<BUserProfilePage> {
     _loadReputation();
   }
 
-  /// Puan özeti, son yorumlar ve rozetler; üçü paralel.
-  ///
-  /// Uçların biri düşerse eldekiler çiziliyor, düşen için profil yanıtındaki
-  /// kopya (`PublicProfileDto.averageRating/reviewCount/badges`) yedek; o da
-  /// yoksa şerit ve tekrar deneme. Yorumların profil yanıtında karşılığı yok.
+  /// Puan, yorum ve rozet paralel. Düşen için profil yanıtındaki kopya yedek; o
+  /// da yoksa şerit. Yorumların yedeği yok.
   Future<void> _loadReputation() async {
     setState(() => _isReputationLoading = true);
 
@@ -82,31 +68,26 @@ abstract class BUserProfilePageModel extends State<BUserProfilePage> {
     });
   }
 
-  /// Puan özeti: uç başarılıysa onun değeri (boş da olabilir), düştüyse
-  /// profil yanıtındaki kopya.
+  /// Uç başarılıysa onun değeri (boş olabilir), düştüyse profildeki kopya.
   RatingSummary? get _effectiveRatingSummary {
     final result = _ratingSummaryResult;
     if (result == null || result.failed) return _candidate?.ratingSummary;
     return result.value;
   }
 
-  /// Rozetler: uç başarılıysa onun listesi, düştüyse ya da henüz gelmediyse
-  /// profil yanıtındaki kopya; ikisi de yoksa `null` (bilinmiyor).
+  /// İkisi de yoksa `null` (bilinmiyor).
   List<UserBadge>? get _effectiveBadges =>
       _badgesResult?.value ?? _candidate?.badges;
 
   List<Review> get _reviews => _reviewsResult?.value?.reviews ?? const [];
 
-  /// Puan özeti ucu düştü ve yedek de yoksa.
   bool get _ratingSummaryFailed =>
       _ratingSummaryResult?.failed == true && _candidate?.ratingSummary == null;
 
-  /// Rozet ucu düştü ve yedek de yoksa.
   bool get _badgesFailed =>
       _badgesResult?.failed == true && _effectiveBadges == null;
 
-  /// Şeritte gösterilen hata: yorumlar alınamadıysa o, değilse yedeği de
-  /// olmayan puan ya da rozet hatası. Yedeği olan hata şerit üretmiyor.
+  /// Yedeği olan hata şerit üretmez.
   String? get _reputationErrorMessage {
     final reviewsError = _reviewsResult?.error?.message;
     if (reviewsError != null) return reviewsError;
@@ -162,11 +143,8 @@ abstract class BUserProfilePageModel extends State<BUserProfilePage> {
     }
   }
 
-  /// Özgeçmişi tarayıcıda açar.
-  ///
-  /// Bağlantı doğrudan dosya değil: sunucu kimliği ve sahipliği doğrulayıp
-  /// kısa ömürlü imzalı bir adrese yönlendiriyor. Uygulama içinde göstermek
-  /// bir PDF görüntüleyici gerektirirdi; harici tarayıcı yeterli.
+  /// Sunucu sahipliği doğrulayıp kısa ömürlü adrese yönlendiriyor; harici
+  /// tarayıcı yeterli.
   Future<void> _openCv() async {
     final url = _cvUrl;
     if (url == null || _isOpeningCv) return;
@@ -186,12 +164,7 @@ abstract class BUserProfilePageModel extends State<BUserProfilePage> {
     }
   }
 
-  /// Özgeçmişin adresi.
-  ///
-  /// İki kaynaktan da gelebiliyor: başvuru listesi (`JobApplicantDto.cvUrl`)
-  /// ve profil ucu. İlki elde zaten var, o yüzden profil gelmeden de açılabilir.
-  /// Havuzdan açılışta başvuru `cvUrl`'i yoktur; yalnız profildeki adres
-  /// kullanılır, boş yer tutucu çizilmez.
+  /// Başvurudaki adres hemen elde; havuzdan açılışta yalnız profildeki.
   String? get _cvUrl {
     final fromApplication = widget.applicant?.cvUrl;
     if (fromApplication != null && fromApplication.isNotEmpty) {
@@ -200,7 +173,6 @@ abstract class BUserProfilePageModel extends State<BUserProfilePage> {
     return _profile?.cvUrl;
   }
 
-  /// Meslek: profil geldiyse oradan, gelmediyse başvurudakinden.
   String? get _jobTitle => _profile?.jobTitle ?? widget.applicant?.jobTitle;
 
   bool get _isFromApplication => widget.applicant != null;
@@ -213,7 +185,6 @@ abstract class BUserProfilePageModel extends State<BUserProfilePage> {
   String? get _photoUrl =>
       _profile?.profilePictureUrl ?? widget.applicant?.profilePictureUrl;
 
-  /// Havuzdan açılışta boş özgeçmiş kartı çizilmez.
   bool get _showsCvSection =>
       _isFromApplication || (_cvUrl?.isNotEmpty ?? false);
 
@@ -235,11 +206,7 @@ abstract class BUserProfilePageModel extends State<BUserProfilePage> {
     );
   }
 
-  /// Başlık çubuğundaki şikayet düğmesi.
-  ///
-  /// Kullanıcı kimliği gelmemiş bir başvuruda çizilmiyor: hedefsiz şikayet
-  /// sunucudan `400` alırdı, basıldığında hata veren bir düğme göstermek
-  /// yerine düğme hiç olmuyor.
+  /// Kimliksiz başvuruda çizilmez: hedefsiz şikayet `400` alırdı.
   Widget? _reportAction() {
     final userId = _profileUserId;
     if (userId.isEmpty) return null;
@@ -254,14 +221,8 @@ abstract class BUserProfilePageModel extends State<BUserProfilePage> {
     );
   }
 
-  /// Başlık çubuğundaki engelleme düğmesi.
-  ///
-  /// Şikayet düğmesiyle aynı sebeple kimliksiz başvuruda çizilmiyor. İşveren
-  /// burada hep bir **adayı** görüyor, kendini değil: kendini engelleme yolu
-  /// açılmıyor.
-  ///
-  /// Şikayetten farklı olarak ekran kapanmıyor — sohbet değil profil, iş
-  /// başvurusu duruyor ve işveren başvuruyu görmeye devam edebilmeli.
+  /// Engelleme; kimliksiz başvuruda çizilmez. Ekran kapanmaz: işveren başvuruyu
+  /// görmeye devam etmeli.
   Widget? _blockAction() {
     final userId = _profileUserId;
     if (userId.isEmpty) return null;

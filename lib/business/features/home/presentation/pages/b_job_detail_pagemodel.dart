@@ -2,26 +2,17 @@ part of 'b_job_detail_page.dart';
 
 abstract class BJobDetailPageModel extends State<BJobDetailPage>
     with WidgetsBindingObserver {
-  /// Rozet zeminlerinin opaklığı.
   static const double _tintAlpha = 0.12;
 
-  /// Detay satırındaki etiket sütununun genişliği; değerler hizalı dursun
-  /// diye sabit.
   static const double _detailLabelWidth = 80;
 
-  /// Başvuran satırındaki avatar.
   static const double _applicantAvatar = 48;
 
-  /// Geçmiş işi yapan kişinin avatarı; başvuranınkinden büyük çünkü tek
-  /// başına duruyor.
   static const double _workerAvatar = 56;
 
-  /// Buton içindeki bekleme halkasının kalınlığı; varsayılan 4 bu boyutta
-  /// dolu bir daire gibi görünüyor.
+  /// Varsayılan 4 bu boyutta dolu daire gibi görünüyor.
   static const double _spinnerStroke = 2;
 
-  /// Birden çok satıra sarabilen gövde metinlerinin satır aralığı: onay
-  /// kutusunun açıklaması ve atama panelindeki zaman çizelgesi satırı.
   static const double _multilineHeight = 1.4;
 
   JobService get _jobService => widget.jobService ?? JobService();
@@ -37,46 +28,36 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
 
   ChatService get _chatService => widget.chatService ?? ChatService();
 
-  /// Mesai oturumlarını iki taraf da okuyabiliyor; sohbette olduğu gibi tek
-  /// servis iki uygulamaya hizmet ediyor.
+  /// Mesai oturumlarını iki taraf da okuyor; tek servis iki uygulamaya.
   AssignmentService get _assignmentService =>
       widget.assignmentService ?? AssignmentService();
 
   TransportService get _transportService =>
       widget.transportService ?? TransportService();
 
-  /// İlanın ulaşım planı, işveren görünümü (is-koala/koala#197). Planı
-  /// olmayan ilanda `404 TRANSPORT_PLAN_NOT_FOUND` → `null` ve "plan ekle"
-  /// düğmesi; ucu tanımayan eski sunucuda (`404 ENDPOINT_NOT_FOUND` ya da
-  /// kodsuz `404`) bölüm hiç çizilmiyor ([_transportUnavailable]); başka
-  /// hata [_transportError]'a düşüyor.
+  /// İlanın ulaşım planı (#197). Plan yoksa `null` ve "plan ekle"; ucu
+  /// tanımayan eski sunucuda bölüm hiç çizilmez ([_transportUnavailable]).
   TransportPlan? _transportPlan;
   bool _isTransportLoading = true;
   bool _transportUnavailable = false;
   String? _transportError;
 
-  /// İlanın tam hâli. Liste ucu açıklama/görev/adres döndürmediği için ekran
-  /// açılırken `GET /jobs/{id}` ayrıca çağrılıyor.
+  /// Liste ucu açıklama/görev/adres döndürmediği için ayrıca çekiliyor.
   JobDetail? _detail;
   bool _isLoading = true;
   String? _errorMessage;
 
-  /// Kabul/ret sırasında beklenen başvurunun kimliği; o kartın butonları
-  /// kilitleniyor, diğerleri çalışmaya devam ediyor.
+  /// O kartın butonları kilitli, diğerleri çalışır.
   String? _respondingApplicationId;
 
-  /// Sohbet açılırken seçilen aday; aynı anda iki konuşma açılmasını önler.
+  /// Aynı anda iki konuşma açılmasın.
   String? _openingChatUserId;
 
-  /// Bu ilanın atamaları ve ekranda açıkça seçilmiş olanı.
   List<Assignment> _assignments = const [];
   Assignment? _assignment;
 
-  /// Atama listesiyle ona bağlı iş takibi verisinin son yenileme durumu.
-  ///
-  /// Başarılı boş yanıt gerçek "atama yok" hâlidir. Hata ise mevcut güvenilir
-  /// snapshot'ı korur ama bu doğruluk kapısını kapatır; para ve durum değiştiren
-  /// eylemler eski veriyle çalışamaz.
+  /// Atama listesinin son yenileme durumu. Boş yanıt gerçek "atama yok"; hata
+  /// eski snapshot'ı korur ama para ve durum değiştiren eylemleri kapatır.
   bool _hasLoadedAssignments = false;
   bool _isAssignmentLoading = false;
   String? _assignmentLoadError;
@@ -95,16 +76,13 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
   bool get _isAssignmentStateVerified =>
       _isAssignmentListVerified && _workSessionsError == null;
 
-  /// Atamanın mesai oturumları, girişten çıkışa.
   List<WorkSession> _workSessions = const [];
 
-  /// "İşi Tamamla" isteği sunucuya gitti mi.
   bool _isCompleting = false;
 
   bool _isStartingPayment = false;
 
-  /// Bu atamanın ödeme girişimleri. Deneme listesi, atamanın kendisini veya
-  /// mesai bölümünü kapatmadan ayrı hata durumuna düşer.
+  /// Ayrı hata durumuna düşer; atamayı ve mesaiyi kapatmaz.
   List<BPaymentAttempt> _paymentAttempts = const [];
   bool _arePaymentAttemptsLoading = false;
   String? _paymentAttemptsError;
@@ -117,7 +95,6 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
   bool get _canStartPayment =>
       _isAssignmentSnapshotVerified && !_hasActivePaymentAttempt;
 
-  /// Atamanın uyuşmazlıkları; kart üzerinde açık olan gösteriliyor.
   List<Dispute> _disputes = const [];
   bool _areDisputesLoading = true;
   String? _disputesError;
@@ -139,9 +116,7 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
       (assignment.status == AssignmentStatus.confirmed ||
           assignment.status == AssignmentStatus.inProgress);
 
-  /// Değerlendirme yalnızca `COMPLETED` atamada: sunucu da aynı kapıyı
-  /// `409 REVIEW_WORK_NOT_COMPLETED` ile tutuyor. İptal/ret edilen atamada
-  /// değerlendirilecek bir iş yok.
+  /// Yalnız `COMPLETED` atamada; sunucu da `409 REVIEW_WORK_NOT_COMPLETED`.
   bool _canReviewWorker(Assignment assignment) =>
       assignment.status == AssignmentStatus.completed;
 
@@ -150,37 +125,27 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
       assignment.paymentStatus == PaymentStatus.heldInEscrow &&
       !_hasOpenDispute;
 
-  /// İptal ya da uyuşmazlık isteği sunucuya gitti mi.
   bool _isRunningAssignmentAction = false;
 
-  /// Şablon çıkarma isteği sunucuya gitti mi; düğme kilitleniyor.
   bool _isSavingTemplate = false;
 
-  /// Sigorta bildirimi için açılan kimlik bilgileri; yalnız bellekte.
-  ///
-  /// Sunucu her okumayı kayda geçirip çalışana bildirdiği için değer
-  /// [_identityRevealWindow] boyunca tutuluyor, sonra ya da sayfa
-  /// kapanınca siliniyor. Provider'a, diske ve günlüğe yazılmıyor.
+  /// Sigorta için açılan kimlik; yalnız bellekte. Her okuma kayda geçip
+  /// çalışana bildirildiği için [_identityRevealWindow] boyunca tutulur, sonra
+  /// silinir.
   WorkerIdentity? _workerIdentity;
 
-  /// [_workerIdentity]'nin ait olduğu atama; başka atama seçilince kart
-  /// yanlış çalışanın altında kalmasın.
+  /// Başka atama seçilince kart yanlış çalışanın altında kalmasın.
   String? _workerIdentityAssignmentId;
   Timer? _workerIdentityTimer;
   bool _isRevealingIdentity = false;
 
-  /// Sunucunun `404` dediği atamalar: yetki ya da durum uymuyor. Düğme bir
-  /// daha çizilmiyor — karar sunucunun, tekrar sormanın anlamı yok.
+  /// Sunucunun `404` dediği atamalar; düğme bir daha çizilmez.
   final Set<String> _identityUnavailableAssignmentIds = {};
 
-  /// Kimlik bilgilerinin ekranda kaldığı süre. İşveren sigorta ekranına
-  /// yazacak kadar uzun, unutulup açık kalmayacak kadar kısa; issue #195'in
-  /// sözleşmesi.
+  /// Sigorta ekranına yazacak kadar uzun, açık unutulmayacak kadar kısa (#195).
   static const Duration _identityRevealWindow = Duration(seconds: 60);
 
-  /// Düğme yalnız işe alınmış atamada: sunucu da `CONFIRMED`, `IN_PROGRESS`
-  /// ve `COMPLETED` dışını `404` ile kapatıyor. Onay bekleyen atamada
-  /// henüz sigorta bildirilecek bir iş yok.
+  /// Yalnız işe alınmış atamada; sunucu da diğerlerini `404` ile kapatıyor.
   bool _canRevealWorkerIdentity(Assignment assignment) =>
       !_identityUnavailableAssignmentIds.contains(assignment.id) &&
       switch (assignment.status) {
@@ -192,17 +157,14 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
         AssignmentStatus.cancelled => false,
       };
 
-  /// Testler için: bellekte kimlik bilgisi ya da bekleyen silme
-  /// zamanlayıcısı var mı. Temizleme yolları (dispose, `paused`, atama
-  /// değişimi) ekrandan değil buradan doğrulanıyor — kart kaybolmuş ama
-  /// değer duruyor olabilirdi.
+  /// Testler için: temizleme yolları ekrandan değil buradan doğrulanıyor; kart
+  /// kaybolup değer kalmış olabilirdi.
   @visibleForTesting
   bool get holdsWorkerIdentity =>
       _workerIdentity != null ||
       _workerIdentityAssignmentId != null ||
       _workerIdentityTimer != null;
 
-  /// Seçili atamanın açık kimlik bilgileri; başka atamaya geçildiyse yok.
   WorkerIdentity? _revealedIdentityFor(Assignment assignment) =>
       _workerIdentityAssignmentId == assignment.id ? _workerIdentity : null;
 
@@ -214,8 +176,7 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     unawaited(_loadTransportPlan());
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      // İlan listesi bu ekrana doğrudan bağlantıyla gelinmişse henüz
-      // çekilmemiş olabilir; başvuranlar da yalnızca istendiğinde geliyor.
+      // Doğrudan bağlantıyla gelinmişse liste çekilmemiş olabilir.
       final provider = context.read<BJobsProvider>();
       final companyProvider = context.read<BCompanyProvider>();
       final user = context.read<UserProvider>().user;
@@ -237,28 +198,21 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     super.dispose();
   }
 
-  /// Hosted checkout'tan uygulamaya dönüldüğünde backend mutabakatının son
-  /// atama ve deneme durumunu görünür kılar.
+  /// Ödeme sayfasından dönünce mutabakatın son durumunu gösterir.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       unawaited(_loadAssignment());
     }
-    // Uygulama arkaya alınınca kimlik bilgileri açık kalmasın: geri
-    // dönüldüğünde sayfa TCKN'yle açılmamalı.
+    // Arka plana alınınca kimlik silinir: dönüşte sayfa TCKN'yle açılmamalı.
     if (state == AppLifecycleState.paused && _workerIdentity != null) {
       setState(_clearWorkerIdentity);
     }
   }
 
-  /// `GET /jobs/{id}/transport-plan`.
-  ///
-  /// `404` iki şey olabiliyor ve yalnız `errorCode` ayırıyor:
-  /// `TRANSPORT_PLAN_NOT_FOUND` "henüz plan yok" (ya da görüntüleyen sahibi
-  /// değil — sunucu ikisini ayırt ettirmiyor) → "plan ekle"; diğer her
-  /// `404` (`ENDPOINT_NOT_FOUND`, kodsuz) ucu tanımayan eski sunucu → bölüm
-  /// gizli, işçi kabuğuyla aynı. Aksi hâlde eski sunucuda "plan ekle"
-  /// çıkar ve `PUT` de `404` alırdı.
+  /// `404` iki anlamlı, yalnız `errorCode` ayırıyor: `TRANSPORT_PLAN_NOT_FOUND`
+  /// "henüz plan yok" → "plan ekle"; diğer `404` eski sunucu → bölüm gizli.
+  /// Yoksa eski sunucuda "plan ekle" çıkar ve `PUT` de `404` alırdı.
   Future<void> _loadTransportPlan() async {
     setState(() {
       _isTransportLoading = true;
@@ -285,8 +239,6 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     }
   }
 
-  /// Düzenleyiciyi ilan modunda açar; kaydedilirse sunucunun döndürdüğü
-  /// plan yerine konuyor.
   Future<void> _editTransportPlan() async {
     final current = _transportPlan;
     final saved = await context.push<TransportPlan>(
@@ -302,7 +254,6 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     setState(() => _transportPlan = saved);
   }
 
-  /// Servisin biniş listesi (is-koala/koala#217); QR ve okutma oradan.
   void _openShuttleBoardings(ShuttleDraft shuttle) {
     final shuttleId = shuttle.id;
     if (shuttleId == null) return;
@@ -336,11 +287,8 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     }
   }
 
-  /// İlan, kullanıcının ilan listesinde olmayabilir: başka bir yetkilinin
-  /// açtığı şirket ilanı ya da ilk sayfaya sığmayan eski ilan. Sunucu
-  /// başvuruları yine de bu kullanıcıya açıyor; ilan provider'a benimsetilip
-  /// başvuranları çekiliyor. Liste yenilemeleri (kabul/ret içinde de) ilanı
-  /// düşürmüyor — bkz. [BJobsProvider.adoptJob].
+  /// İlan listede olmayabilir (başka yetkilinin şirket ilanı ya da eski ilan);
+  /// sunucu başvuruları yine açıyor. [BJobsProvider.adoptJob] ile benimsenir.
   Future<void> _adoptIfOutsideList(JobDetail detail) async {
     final provider = context.read<BJobsProvider>();
     final viewerId = context.read<UserProvider>().user?.id;
@@ -349,9 +297,7 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     }
   }
 
-  /// Doğrudan bağlantıda ilan listesi de gelmemiş olabilir. Tekrar deneme
-  /// önce ilan özetini geri getirir, ancak ondan sonra bu ilana ait
-  /// başvuranları yeniler.
+  /// Önce ilan özetini, sonra başvuranları yeniler.
   Future<void> _retryApplicants() async {
     final provider = context.read<BJobsProvider>();
     if (provider.getPostByJobId(widget.jobId) == null) {
@@ -361,12 +307,8 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     await provider.ensureApplicants(widget.jobId, force: true);
   }
 
-  /// İlanın atamasını ve ona bağlı yardımcı kayıtları tek snapshot olarak
-  /// yeniler.
-  ///
-  /// Atama listesi çekilemezse son güvenilir snapshot korunur ve hata görünür
-  /// kalır. Başarılı boş yanıt ise bütün ilişkili alanları gerçekten temizler.
-  /// Aynı anda başlayan yenilemelerde yalnızca en yeni istek state yazabilir.
+  /// Atamayı ve bağlı kayıtları tek snapshot olarak yeniler. Hata eski
+  /// snapshot'ı korur, boş yanıt temizler; yalnız en yeni istek yazar.
   Future<void> _loadAssignment({String? selectedAssignmentId}) async {
     final generation = ++_assignmentLoadGeneration;
     if (mounted) {
@@ -456,11 +398,8 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     }
   }
 
-  /// Değerlendirme ekranını bu atamanın çalışanı için açar.
-  ///
-  /// Ekran başarı ve hata toast'larını kendisi gösteriyor. Dönüşte satır
-  /// [ReviewProvider]'ın oturum belleğinden düğmesiz hâline geçiyor; bir
-  /// sonraki yüklemede sunucunun `myReview` alanı esas.
+  /// Ekran toast'ları kendisi gösterir; sonraki yüklemede sunucunun
+  /// `myReview`'u esas.
   Future<void> _reviewWorker(Assignment assignment) async {
     if (!_canReviewWorker(assignment)) return;
     await context.push('/review', extra: ReviewSubject.forWorker(assignment));
@@ -476,7 +415,7 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
       return;
     }
 
-    // Başka çalışana geçerken öncekinin kimlik bilgileri bellekte kalmasın.
+    // Başka çalışana geçerken öncekinin kimliği bellekte kalmasın.
     if (_workerIdentity != null) setState(_clearWorkerIdentity);
     await _loadAssignment(selectedAssignmentId: assignmentId);
   }
@@ -553,7 +492,6 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     }
   }
 
-  /// Atamaya sabitlenmiş backend dökümünü gösterip açık onay alır.
   Future<void> _requestPayment() async {
     final assignment = _assignment;
     if (assignment == null ||
@@ -588,10 +526,8 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     } on ApiException catch (error) {
       if (!mounted) return;
       AppToast.error(context, error.message);
-      // Bireysel işverenin adresi yokken İyzico alıcı kaydı kurulamıyor ve
-      // sunucu "İşverenin adres bilgisi eksik." diyor. Mesaj ne yapılacağını
-      // söylemiyor; kullanıcı doğrudan adres ekranına götürülüyor, kayıt
-      // `UserProvider`'ı tazeliyor ve ödeme yeniden denenebiliyor.
+      // İşverenin adresi yoksa ödeme başlamıyor ve sunucunun mesajı ne
+      // yapılacağını söylemiyor; kullanıcı adres ekranına götürülür.
       if (AddressRequiredErrorCodes.matches(error)) {
         await AccountNavigation.openAddress(context);
       }
@@ -600,7 +536,6 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     }
   }
 
-  /// Açık onaydan sonra Iyzico oturumunu başlatır.
   Future<void> _startPayment(Assignment assignment) async {
     final session = await _employerJobService.createPaymentSession(
       assignment.id,
@@ -623,18 +558,11 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     );
   }
 
-  /// Fiyat dökümünü taşıyan ödeme onayı. Gövdesi arayüz dosyasında.
   Future<bool?> _confirmPayment(BPricingBreakdown breakdown);
 
-  /// Atamayı iptal eder.
-  ///
-  /// Kutu açılmadan önce kesinti önizlemesi çekiliyor. İşverenin iptalinde
-  /// kesinti kuralı çalışanınkinden farklı: cezasız pencere içinde yok,
-  /// dışında geç iptal ücreti, iş başladıysa iade yok. Rakamı önden
-  /// göstermek bu ekranın asıl işi — para kaybettiren bir karar bilmeden
-  /// verilmemeli.
-  ///
-  /// Önizleme alınamazsa akış durmuyor; kutu kuralı kelimeyle anlatıyor.
+  /// Atamayı iptal eder. Önce kesinti önizlemesi çekilir: para kaybettiren
+  /// karar bilmeden verilmemeli. Önizleme alınamazsa kutu kuralı kelimeyle
+  /// anlatır.
   Future<void> _cancelAssignment() async {
     final assignment = _assignment;
     if (assignment == null ||
@@ -705,11 +633,8 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     );
   }
 
-  /// İptal kutusunun gövdesi.
-  ///
-  /// Tutar bağlayıcı değil: kesinti işin başlamasına kalan süreye bağlı ve
-  /// kutu açıkken cezasız pencere kapanabilir. Sunucu iptalde yeniden
-  /// hesaplıyor, metin de bunu söylüyor.
+  /// Tutar bağlayıcı değil: kutu açıkken cezasız pencere kapanabilir, sunucu
+  /// yeniden hesaplar.
   String _cancellationDescription(CancellationPreview? preview) {
     const opening = 'İş iptal edilecek ve geri alınamayacak.';
 
@@ -736,9 +661,7 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
         'Tutar iptal anında yeniden hesaplanır.';
   }
 
-  /// Açık uyuşmazlığın ekranını açar (kanıt ekleme / görüntüleme,
-  /// is-koala/koala#215); dönünce durum tazeleniyor — karar bu arada
-  /// verilmiş olabilir ve uyarı bandı bayat kalmasın.
+  /// Dönünce durum tazelenir; karar bu arada verilmiş olabilir.
   Future<void> _openDisputeScreen(Dispute dispute) =>
       _openDisputeScreenFor(dispute.assignmentId);
 
@@ -748,10 +671,7 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     unawaited(_loadDisputes(assignmentId));
   }
 
-  /// Uyuşmazlık açar.
-  ///
-  /// Yalnızca para emanetteyken açılabiliyor ve emanetteki parayı donduruyor:
-  /// çalışana ödeme yapılmıyor, sunucunun kendiliğinden tamamlaması duruyor.
+  /// Uyuşmazlık açar; yalnız para emanetteyken, parayı dondurur.
   Future<void> _openDispute() async {
     final assignment = _assignment;
     if (assignment == null || !_canOpenDisputeFor(assignment)) return;
@@ -789,23 +709,15 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
       isEligible: _canOpenDisputeFor,
     );
 
-    // Açılır açılmaz kanıt ekleme ekranına: dosya çoğu zaman bildirimle aynı
-    // anda elde (ekran görüntüsü, tutanak) ve ayrı bir yol aramak gerekmiyor.
+    // Açılınca doğrudan kanıt ekleme ekranı; dosya çoğu zaman elde.
     if (opened && mounted) await _openDisputeScreenFor(assignment.id);
   }
 
   // ------------------------------------------------------ Kimlik bilgileri
 
-  /// Çalışanın kimlik bilgilerini sigorta bildirimi için açar.
-  ///
-  /// Önce onay: sunucu her okumayı kayda geçirip çalışana bildiriyor, işveren
-  /// bunu bilmeden dokunmamalı. Onaydan sonra `GET .../worker-identity`;
-  /// yanıt [_identityRevealWindow] boyunca ekranda, sonra siliniyor.
-  ///
-  /// Sunucunun kapıları koda göre ayrılıyor: `409 WORKER_IDENTITY_NOT_VERIFIED`
-  /// çalışanın doğrulamasını, `429` saatlik bütçeyi söylüyor; `404` yetki ya
-  /// da durum uymuyor demek ve düğme bu atama için kalkıyor — karar
-  /// sunucunun.
+  /// Sigorta için kimliği açar. Önce onay: sunucu her okumayı çalışana
+  /// bildiriyor. `409` doğrulama eksik, `429` bütçe dolu; `404` yetki ya da
+  /// durum uymuyor ve düğme kalkar.
   Future<void> _revealWorkerIdentity(Assignment assignment) async {
     if (_isRevealingIdentity || !_canRevealWorkerIdentity(assignment)) return;
     final generation = _assignmentLoadGeneration;
@@ -849,8 +761,6 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
         AppToast.error(context, 'Çalışanın kimliği doğrulanmamış');
       } else if (error.errorCode == WorkerIdentityErrorCodes.tooManyRequests ||
           error.type == ApiErrorType.tooManyRequests) {
-        // Kod bu uca özgü; tip ise `RATE_LIMITED` kategorisi ya da çıplak
-        // `429` — ikisi de aynı cümle.
         AppToast.error(context, 'Çok sık görüntülendi, biraz sonra deneyin');
       } else if (error.type == ApiErrorType.notFound) {
         setState(() => _identityUnavailableAssignmentIds.add(assignment.id));
@@ -866,16 +776,13 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     }
   }
 
-  /// TCKN'yi panoya kopyalar. Ekrandaki değerden başka hiçbir alan
-  /// kopyalanmıyor.
   Future<void> _copyIdentityNumber(WorkerIdentity identity) async {
     await Clipboard.setData(ClipboardData(text: identity.tcIdentityNumber));
     if (!mounted) return;
     AppToast.success(context, 'TCKN kopyalandı');
   }
 
-  /// Kimlik bilgilerini bellekten ve ekrandan siler. `setState` çağıranın;
-  /// `dispose` içinden de çağrılıyor.
+  /// `setState` çağıranın; `dispose`'tan da çağrılıyor.
   void _clearWorkerIdentity() {
     _workerIdentityTimer?.cancel();
     _workerIdentityTimer = null;
@@ -885,10 +792,7 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
 
   // ------------------------------------------------------------ Şablonlar
 
-  /// Başlık çubuğundaki "Şablon olarak kaydet" düğmesi.
-  ///
-  /// İlan gelmeden çizilmiyor: şablon var olan bir ilandan çıkarıldığı için
-  /// elde ilan yokken basılacak bir düğme göstermek anlamsız.
+  /// İlan gelmeden çizilmez: şablon var olan ilandan çıkarılıyor.
   Widget? _saveAsTemplateAction() {
     if (_detail == null) return null;
 
@@ -899,12 +803,8 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     );
   }
 
-  /// İlanı şablon olarak kaydeder.
-  ///
-  /// Sunucu şablonu ilandan kendisi çıkarıyor; istemcinin gönderdiği tek şey
-  /// ad ve ilanın kimliği. Ad zorunlu (`@NotBlank`), o yüzden alanı boşken
-  /// onayı kapalı tutan [ReasonDialog] kullanılıyor — `ConfirmDialog`'un
-  /// metin alanı yok.
+  /// İlanı şablon olarak kaydeder; yalnız ad ve kimlik gider. Ad zorunlu olduğu
+  /// için boşken onayı kapalı tutan [ReasonDialog].
   Future<void> _saveAsTemplate() async {
     if (_isSavingTemplate) return;
 
@@ -917,7 +817,6 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
           'girilir.',
       fieldLabel: 'Şablon adı',
       confirmLabel: 'Kaydet',
-      // Yıkıcı bir işlem değil: kırmızı düğme yanlış sinyal verirdi.
       isDestructive: false,
     );
 
@@ -939,8 +838,8 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
         context,
         'Şablon kaydedildi',
         actionLabel: 'Şablonlarım',
-        // Toast sayfadan uzun yaşayabiliyor; ayrılmış bir sayfanın
-        // context'iyle gezinmek hata verirdi.
+        // Toast sayfadan uzun yaşayabilir; ayrılmış sayfanın context'i hata
+        // verirdi.
         onAction: () {
           if (mounted) context.push('/business/job-templates');
         },
@@ -950,8 +849,7 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     }
   }
 
-  /// İptal ve uyuşmazlığın ortak gövdesi: kilit, hata ve tazeleme. Eylem
-  /// sunucuda başarılı olduysa `true`.
+  /// İptal ve uyuşmazlığın ortak gövdesi; başarılıysa `true`.
   Future<bool> _runAssignmentAction(
     Future<String> Function(String assignmentId) action, {
     required String expectedAssignmentId,
@@ -986,10 +884,8 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     }
   }
 
-  /// İşi tamamlanmış işaretler.
-  ///
-  /// Geri alınamıyor: emanetteki para çıkışa hazır hâle geliyor. Bu yüzden
-  /// önce onay soruluyor, hele ki çalışan hâlâ mesaideyken.
+  /// Geri alınamaz: para çıkışa hazırlanır. Önce onay, özellikle mesai
+  /// sürerken.
   Future<void> _completeAssignment() async {
     final assignment = _assignment;
     if (assignment == null ||
@@ -1016,7 +912,6 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
       await _employerJobService.completeAssignment(currentAssignment.id);
       if (!mounted) return;
       AppToast.success(context, 'İş tamamlandı olarak işaretlendi');
-      // Tamamlama ilanın durumunu da değiştiriyor.
       await _loadDetail();
       if (mounted) await _loadAssignment();
     } on ApiException catch (error) {
@@ -1028,17 +923,11 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     }
   }
 
-  /// Tamamlama onayı. Açık mesai varsa uyarı metni farklı.
   Future<bool?> _confirmCompletion(Assignment assignment);
 
-  /// Adayın bu ilandaki ataması; yoksa `null`.
-  ///
-  /// Sunucu başvuruyla birlikte atamanın kimliğini gönderiyorsa
-  /// (`JobApplicantDto.assignmentId`, koala-backend#282) doğrudan o kayıt.
-  /// Göndermiyorsa çalışan kimliğiyle eşleniyor: aynı çalışanın birden
-  /// fazla ataması olabilir (iptal sonrası yeniden kabul) ve sunucunun
-  /// `closed` hesabıyla aynı seçim yapılıyor — en yeni atama tarihi olan.
-  /// Tarihsiz kayıt en eski sayılıyor.
+  /// Adayın bu ilandaki ataması. Sunucu `assignmentId` gönderiyorsa o; yoksa
+  /// çalışan kimliğiyle eşlenir ve sunucunun seçimiyle aynı şekilde en yeni
+  /// atama alınır.
   Assignment? _assignmentOf(JobApplicant applicant) {
     final byId = applicant.assignmentId == null
         ? null
@@ -1064,12 +953,8 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     return candidateDate.isAfter(currentDate);
   }
 
-  /// Başvuran kartındaki "Ödemeye Git" kısayolu.
-  ///
-  /// Ödeme akışı ekranda seçili atama üzerinden yürüyor; kart başka bir
-  /// çalışanınsa önce o atama seçiliyor. Snapshot doğrulanmadan ödeme
-  /// başlatılmıyor ([_canStartPayment]); o durumda sessiz kalmak yerine
-  /// kullanıcıya söyleniyor.
+  /// "Ödemeye Git": kart başka çalışanınsa önce o atama seçilir. Snapshot
+  /// doğrulanmadan ödeme başlamaz; o zaman kullanıcıya söylenir.
   Future<void> _openPaymentFor(Assignment assignment) async {
     if (_assignment?.id != assignment.id) {
       await _selectAssignment(assignment.id);
@@ -1087,15 +972,9 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     await _requestPayment();
   }
 
-  /// Başvuru kartından, seçilen adayla bu ilana bağlı sohbeti açar.
-  ///
-  /// Sunucu aynı ilan/çalışan çifti için mevcut konuşmayı döndürdüğünden bu
-  /// buton güvenle tekrar kullanılabilir; kopya sohbet oluşmaz.
-  ///
-  /// Sunucu kapıyı kapattıysa (`403 MESSAGING_PAYMENT_REQUIRED`,
-  /// `409 MESSAGING_WINDOW_CLOSED`) düğmenin yerine yazılan metnin aynısı
-  /// gösteriliyor ve atama yeniden çekiliyor: düğme görünüyorsa elimizdeki
-  /// atama bayat demek.
+  /// Adayla ilana bağlı sohbeti açar; sunucu mevcut konuşmayı döndürür. Kapı
+  /// kapalıysa (`403`/`409`) aynı açıklama gösterilir ve atama yeniden çekilir:
+  /// düğme görünüyorsa eldeki atama bayattır.
   Future<void> _openChat(JobApplicant applicant) async {
     final currentUser = context.read<UserProvider>().user;
     if (currentUser == null || _openingChatUserId != null) return;
@@ -1123,10 +1002,6 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     }
   }
 
-  /// Adayın özgeçmişini harici tarayıcıda açar.
-  ///
-  /// Bağlantı `JobApplicantDto.cvUrl`'den geliyor ve sunucu onu yalnızca bu
-  /// ilanın işverenine dolduruyor; açılamazsa kullanıcıya söyleniyor.
   Future<void> _openCv(JobApplicant applicant) async {
     final url = applicant.cvUrl;
     if (url == null || url.isEmpty) return;
@@ -1139,7 +1014,6 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     AppToast.error(context, 'Özgeçmiş açılamadı');
   }
 
-  /// Başvuruyu kabul eder.
   Future<void> _approve(JobApplicant applicant) async {
     await _respond(
       applicant,
@@ -1151,7 +1025,6 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     );
   }
 
-  /// Reddetme gerekçesini sorup başvuruyu reddeder.
   Future<void> _reject(JobApplicant applicant) async {
     final reason = await _askRejectionReason(applicant);
     if (reason == null || !mounted) return;
@@ -1184,8 +1057,7 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     setState(() => _respondingApplicationId = null);
 
     if (succeeded) {
-      // İlanın durumu da değişmiş olabilir (kabul atama açıyor); detay
-      // yeniden çekiliyor.
+      // Kabul atama açtığı için detay yeniden çekiliyor.
       await _loadDetail();
       if (!mounted) return;
       isDestructive
@@ -1196,7 +1068,6 @@ abstract class BJobDetailPageModel extends State<BJobDetailPage>
     }
   }
 
-  /// Gerekçeyi soran kutu. İptal edilirse `null`, boş bırakılırsa boş metin
-  /// dönüyor — ikisi farklı: boş metin "gerekçesiz reddet" demek.
+  /// İptalde `null`, boşsa boş metin ("gerekçesiz reddet").
   Future<String?> _askRejectionReason(JobApplicant applicant);
 }

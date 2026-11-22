@@ -20,7 +20,6 @@ import 'package:provider/provider.dart';
 
 part 'b_talent_pool_pagemodel.dart';
 
-/// İşverenin işaretlediği işçiler.
 class BTalentPoolPage extends StatefulWidget {
   const BTalentPoolPage({super.key});
 
@@ -40,9 +39,7 @@ class _BTalentPoolPageState extends BTalentPoolPagemodel {
     );
   }
 
-  /// Üç durum ayrı çiziliyor: yükleniyor, hata (mesaj + Tekrar Dene) ve
-  /// gerçekten boş. Sunucuya ulaşılamadığında "havuzun boş" demek yanlış
-  /// olurdu.
+  /// Yükleniyor, hata ve gerçekten boş ayrı.
   Widget _body(BuildContext context, BTalentPoolProvider provider) {
     if (provider.isLoading && provider.entries.isEmpty) {
       return const Center(child: CircularProgressIndicator());

@@ -26,16 +26,12 @@ import 'package:provider/provider.dart';
 
 part 'b_applications_pagemodel.dart';
 
-/// İşverenin ilanlar arası başvuru gelen kutusu (is-koala/koala#213).
-///
-/// `GET /users/me/received-applications`: sahibi olunan bireysel ilanlar ve
-/// yetkilisi olunan şirketlerin ilanları, tek sayfalı liste. Kapsamı sunucu
-/// kuruyor; bu ekran yalnız süzüyor (durum, şirket, ilan) ve **karar vermiyor**
-/// — karta dokunmak ilanın kabul/ret ekranını açıyor.
+/// İlanlar arası başvuru kutusu (#213). Kapsamı sunucu kuruyor; ekran yalnız
+/// süzüyor ve **karar vermiyor**: karta dokunmak ilanın kabul/ret ekranını
+/// açar.
 class BApplicationsPage extends StatefulWidget {
   const BApplicationsPage({super.key, this.service});
 
-  /// Testler için; verilmezse üretimdeki tekil servis.
   final ReceivedApplicationService? service;
 
   @override
@@ -45,8 +41,7 @@ class BApplicationsPage extends StatefulWidget {
 class _BApplicationsPageState extends BApplicationsPagemodel {
   @override
   Widget build(BuildContext context) {
-    // Yalnız onaylı şirketler çip oluyor: onaysız bir şirketin ilan açması
-    // mümkün değil, süzecek bir şey de yok.
+    // Onaysız şirket ilan açamadığı için yalnız onaylılar çip oluyor.
     final companies = context.select<UserProvider, List<CompanyMembership>>(
       (provider) => [
         for (final company in provider.user?.companies ?? const [])
@@ -72,9 +67,8 @@ class _BApplicationsPageState extends BApplicationsPagemodel {
 
   // ---------------------------------------------------------------- Süzgeç
 
-  /// Durum çipleri her zaman; şirket çipleri kullanıcının şirket üyeliği
-  /// varsa (bireysel ilanlar "Tüm şirketler"in içinde kalır); ilan çipi
-  /// seçilecek bir ilan biliniyorsa ya da bir ilan seçiliyse.
+  /// Durum çipleri her zaman; şirket çipleri üyelik varsa; ilan çipi seçilecek
+  /// ilan biliniyorsa.
   Widget _filters(
     BuildContext context,
     List<CompanyMembership> companies,
@@ -158,9 +152,8 @@ class _BApplicationsPageState extends BApplicationsPagemodel {
 
   // ------------------------------------------------------------------ İçerik
 
-  /// Dört durum ayrı çiziliyor: yükleniyor, hata (mesaj + Tekrar Dene), süzgeçli
-  /// ya da süzgeçsiz boş, ve liste. Sunucuya ulaşılamadığında "başvuru yok"
-  /// demek yanlış olurdu.
+  /// Yükleniyor, hata, süzgeçli/süzgeçsiz boş ve liste ayrı: ulaşılamayan
+  /// sunucuda "başvuru yok" demek yanlış olur.
   Widget _content(BuildContext context) {
     if (_inbox.isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -204,7 +197,6 @@ class _BApplicationsPageState extends BApplicationsPagemodel {
     return RefreshIndicator(onRefresh: _onRefresh, child: child);
   }
 
-  /// Listenin sonu: sonraki sayfa yükleniyor ya da yüklenemedi.
   bool get _hasFooter => _inbox.isLoadingMore || _inbox.loadMoreError != null;
 
   Widget _footer(BuildContext context) {

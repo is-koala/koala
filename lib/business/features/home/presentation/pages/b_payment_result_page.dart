@@ -15,10 +15,8 @@ import 'package:koala/product/widgets/my_button.dart';
 
 part 'b_payment_result_pagemodel.dart';
 
-/// Iyzico dönüş URL'sinin açtığı ekran.
-///
-/// Gösterilen sonuç her zaman kimlik doğrulamalı tekil atama ucundan yeniden
-/// okunur; yönlendirme URL'sindeki sağlayıcı durumu finansal kanıt değildir.
+/// Iyzico dönüşünün açtığı ekran. Sonuç her zaman atama ucundan yeniden okunur;
+/// yönlendirme URL'sindeki durum finansal kanıt değil.
 class BPaymentResultPage extends StatefulWidget {
   const BPaymentResultPage({
     super.key,
@@ -30,9 +28,6 @@ class BPaymentResultPage extends StatefulWidget {
 
   final String assignmentId;
 
-  /// Tekil atama okuması çalışan tarafındaki servisten geliyor: uç iki
-  /// tarafa da açık ve mesai oturumları gibi tek servis iki kabuğa hizmet
-  /// ediyor. Testler için; verilmezse üretimdeki tekil servis.
   final AssignmentService? service;
   final DateTime Function()? now;
   final Future<void> Function(Duration)? delay;

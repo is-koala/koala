@@ -27,32 +27,25 @@ class BHomePage extends StatefulWidget {
 }
 
 class _BHomePageState extends State<BHomePage> {
-  /// Appbar'ın yüksekliği; iki satırlık marka bloğunu taşıyor.
   static const double _appBarHeight = 70;
 
-  /// Appbar'daki logo kutusu.
   static const double _appBarLogo = 42;
 
-  /// Karşılama bloğundaki maskot kutusu ve görseli.
   static const double _mascotBox = 72;
   static const double _mascotImage = 56;
 
-  /// İstatistik ve satır kartlarındaki ikon kutuları.
   static const double _statIconBox = 40;
   static const double _rowIconBox = 44;
 
-  /// Rozet ve kart zeminlerinin opaklıkları.
   static const double _tintAlpha = 0.12;
   static const double _panelAlpha = 0.08;
 
-  /// Karşılama bloğu üzerindeki içeriğin opaklıkları.
   static const double _onCoverMuted = 0.9;
   static const double _onCoverSurface = 0.2;
 
-  /// Ana sayfada listelenen en fazla kayıt sayısı; devamı ilgili sekmede.
+  /// Devamı ilgili sekmede.
   static const int _previewCount = 3;
 
-  /// Navbar'ın altında kalmasın diye sayfanın sonuna eklenen pay.
   static const double _bottomClearance = 120;
 
   @override
@@ -61,7 +54,6 @@ class _BHomePageState extends State<BHomePage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<BJobsProvider>().load();
-      // Karşılama bloğundaki ad `/users/me`'den geliyor.
       final userProvider = context.read<UserProvider>();
       if (userProvider.user == null) userProvider.load(silent: true);
     });
@@ -170,7 +162,7 @@ class _BHomePageState extends State<BHomePage> {
 
   // -------------------------------------------------------- Karşılama bloğu
 
-  /// Zemin marka yeşili bir gradyan; üstündeki her şey temadan bağımsız beyaz.
+  /// Zemin yeşil gradyan; üstündeki her şey temadan bağımsız beyaz.
   Widget _welcomeBanner(BuildContext context, String companyName) {
     return Container(
       width: double.infinity,
@@ -299,11 +291,9 @@ class _BHomePageState extends State<BHomePage> {
             label: 'Başvuru',
             value: '$applicantCount',
             color: AppColors.info,
-            // Sayı yalnız **kendi açtığınız aktif** ilanların başvurularını
-            // topluyor (`BJobsProvider.totalApplicantCount`); gelen kutusu
-            // şirketin diğer yetkililerinin ilanlarını ve kapanmış ilanları da
-            // kapsıyor, yani liste sayıyla birebir örtüşmeyebilir
-            // (is-koala/koala#213).
+            // Sayı yalnız **kendi açtığınız aktif** ilanları topluyor; gelen
+            // kutusu diğer yetkililerin ve kapanmış ilanları da kapsadığı için
+            // örtüşmeyebilir (#213).
             onTap: () => context.push(BusinessRoutes.applications),
             tapHint: 'Tüm başvuruları aç',
           ),
@@ -368,9 +358,8 @@ class _BHomePageState extends State<BHomePage> {
       ),
     );
 
-    // Zemin ve çerçeve `Material`'ın şeklinde: süslü bir `Container`'ın altında
-    // `InkWell` mürekkebi görünmezdi. Dokunulabilir kart ayrıca bir düğme
-    // olarak okunuyor (ekran okuyucu).
+    // Zemin `Material`'ın şeklinde: süslü `Container` altında mürekkep
+    // görünmez.
     final card = Material(
       color: color.withValues(alpha: _panelAlpha),
       clipBehavior: Clip.antiAlias,
@@ -391,10 +380,7 @@ class _BHomePageState extends State<BHomePage> {
     return Semantics(button: true, hint: tapHint, child: card);
   }
 
-  // --------------------------------------------------------- Hızlı işlemler
-
-  // Park edilmiş bölüm: tasarımı hazır ama henüz hiçbir yerden çağrılmıyor.
-  // Silmek yerine ignore ediliyor; bağlanacağı akış netleşince kaldırılır.
+  // Park edilmiş bölüm: tasarımı hazır ama henüz çağrılmıyor.
   // ignore: unused_element
   Widget _quickActionsSection(BuildContext context) {
     return Column(
@@ -494,12 +480,8 @@ class _BHomePageState extends State<BHomePage> {
 
   // ------------------------------------------------------- Son başvurular
 
-  /// Ana sayfadaki "Son Başvurular" listesi.
-  ///
-  /// Bu bir **pencere**, gelen kutusu değil: istek yalnızca **ilk
-  /// [_previewCount] aktif ilan** için atılıyor ve yalnız bekleyenleri
-  /// çiziyor. Tamamı için başlıktaki *Tümünü Gör* ilanlar arası gelen kutusunu
-  /// açıyor (`GET /users/me/received-applications`, is-koala/koala#213).
+  /// "Son Başvurular" bir **pencere**: yalnız ilk [_previewCount] aktif ilanın
+  /// bekleyenleri. Tamamı için *Tümünü Gör* gelen kutusunu açar (#213).
   Widget _recentApplicantsSection(
     BuildContext context,
     BJobsProvider provider,
@@ -753,7 +735,7 @@ class _BHomePageState extends State<BHomePage> {
 
   Widget _postFooterRow(BuildContext context, BJobPost post) {
     final job = post.job;
-    // Sayı ilan listesiyle geliyor; bu rozet için başvuranları çekmek gerekmiyor.
+    // Sayı ilan listesiyle geliyor; başvuranları çekmeye gerek yok.
     final hasApplicants = job.applicationCount > 0;
     final applicantColor = hasApplicants
         ? AppColors.info
@@ -944,7 +926,6 @@ class _BHomePageState extends State<BHomePage> {
   }
 }
 
-/// Başvuran + ait olduğu ilan çifti (dahili yardımcı sınıf)
 class _RecentApplicant {
   final JobApplicant applicant;
   final BJobPost post;

@@ -24,7 +24,6 @@ import 'package:provider/provider.dart';
 
 part 'b_company_contacts_pagemodel.dart';
 
-/// Şirket yetkilileri listesi ve davet yönetimi.
 class BCompanyContactsPage extends StatefulWidget {
   const BCompanyContactsPage({super.key, this.service});
 

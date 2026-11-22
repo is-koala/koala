@@ -20,17 +20,10 @@ import 'package:provider/provider.dart';
 
 part 'b_company_gallery_pagemodel.dart';
 
-/// Şirket galerisinin yönetim ekranı.
-///
-/// Dört uç da galerinin tamamını döndürüyor, o yüzden ekran hiçbir yerde
-/// listeyi kendi hesaplamıyor — kapak dahil. Sıralama uzun basıp sürükleyerek
-/// yapılıyor ve bırakıldığı anda **galerinin tamamı** tek `PUT` ile gidiyor;
-/// sunucu gövdedeki listede olmayan görseli galeriden düşürüyor.
-///
-/// Ekleme, sıralama ve kaldırma yalnız şirketin `ADMIN` yetkilisine açık.
-/// `STAFF` galeriyi görüyor ama denetimleri görmüyor: sunucu yetkisiz isteğe
-/// `403` değil `404` ("Şirket bulunamadı") döndürüyor, yani düğmeyi
-/// göstermek yanıltıcı bir hataya çıkardı.
+/// Şirket galerisi yönetimi. Uçlar galerinin tamamını döndürüyor, ekran listeyi
+/// hesaplamıyor. Sıralama bırakıldığı anda **galerinin tamamı** tek `PUT` ile
+/// gider. Denetimler yalnız `ADMIN`'de: sunucu yetkisize `404` döndürdüğü için
+/// düğme yanıltıcı hataya çıkardı.
 class BCompanyGalleryPage extends StatefulWidget {
   const BCompanyGalleryPage({super.key});
 
@@ -39,8 +32,6 @@ class BCompanyGalleryPage extends StatefulWidget {
 }
 
 class _BCompanyGalleryPageState extends BCompanyGalleryPagemodel {
-  /// Ekleme düğmesindeki göstergenin çizgi kalınlığı; düğme yüksekliğine
-  /// sığsın diye ince.
   static const double _spinnerStroke = 2;
 
   @override
@@ -85,9 +76,8 @@ class _BCompanyGalleryPageState extends BCompanyGalleryPagemodel {
     return ReorderableListView.builder(
       padding: AppPadding.primaryAll,
       header: _header(provider),
-      // Sürükleme yalnız yetkilide ve istek uçmuyorken: tutamaç yoksa satır
-      // hiç kaldırılamıyor. İkinci bir sürükleme, ilkinin yanıtı gelmeden
-      // ikinci bir `PUT` denemesi olurdu.
+      // Sürükleme yalnız yetkilide ve istek uçmuyorken; yoksa ikinci `PUT`
+      // yanıttan önce giderdi.
       buildDefaultDragHandles: canManage && !provider.isGalleryBusy,
       onReorderItem: onReorder,
       itemCount: images.length,
@@ -106,7 +96,6 @@ class _BCompanyGalleryPageState extends BCompanyGalleryPagemodel {
     );
   }
 
-  /// Kural metni, sayaç ve ekleme düğmesi.
   Widget _header(BCompanyProvider provider) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -166,7 +155,6 @@ class _BCompanyGalleryPageState extends BCompanyGalleryPagemodel {
     );
   }
 
-  /// Sayaç ve — doluysa — düğmenin neden kapalı olduğu.
   Widget _limitNotice(BCompanyProvider provider) {
     final isFull = !provider.canAddGalleryImage;
 

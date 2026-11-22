@@ -9,10 +9,8 @@ abstract class BJobTemplatesPagemodel extends State<BJobTemplatesPage> {
     });
   }
 
-  /// Kart özeti: kategori, pozisyon ve iş tipi.
-  ///
-  /// Şablonun adı kullanıcının verdiği ad, ilan başlığı ayrı; ikisi
-  /// birbirinden farklı olabildiği için başlık da özete giriyor.
+  /// Şablonun adı ile ilan başlığı farklı olabildiği için başlık da özete
+  /// giriyor.
   String _summary(JobTemplate template) {
     final values = <String>[
       if (template.category != null) template.category!.displayName,
@@ -24,10 +22,7 @@ abstract class BJobTemplatesPagemodel extends State<BJobTemplatesPage> {
     return values.join(' · ');
   }
 
-  /// Şablonu siler.
-  ///
-  /// Silme geri alınamıyor ve sunucuda düzenleme ucu yok, o yüzden önce onay
-  /// isteniyor. Kaldırma iyimser: sunucu reddederse satır geri geliyor.
+  /// Geri alınamadığı için onay ister; kaldırma iyimser.
   Future<void> _delete(
     BuildContext context,
     BJobTemplatesProvider provider,

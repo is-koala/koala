@@ -24,7 +24,7 @@ import 'package:provider/provider.dart';
 class BSettingsPage extends StatelessWidget {
   const BSettingsPage({super.key, this.onLogout});
 
-  /// Çıkış sınırını ağ çağrısı olmadan widget testinde sürmek için.
+  /// Testte çıkışı ağ olmadan sürmek için.
   final Future<void> Function()? onLogout;
 
   @override
@@ -46,10 +46,8 @@ class BSettingsPage extends StatelessWidget {
   Widget _settingsList(BuildContext context) {
     return Column(
       children: [
-        // Hesap satırları ortak modülden: çalışanın ayarları da aynı
-        // ekranlara gidiyor. Firma, şablon ve yetenek havuzu işverene özgü.
-        // "Adresim" işverenin kendi adresi — bireysel işverenin ödemesi bu
-        // adres olmadan başlamıyor; şirket adresi firma bilgilerinde.
+        // Hesap satırları ortak modülden; firma, şablon ve havuz işverene özgü.
+        // "Adresim" bireysel işverenin ödemesi için gerekli.
         MyListGroup(
           title: 'Hesap',
           children: [
@@ -107,8 +105,8 @@ class BSettingsPage extends StatelessWidget {
               icon: AppIcons.logout,
               title: "Çıkış Yap",
               onTap: () async {
-                // İlk await'ten önce: eski hesabın bildirimi, çıkan istek
-                // gecikse veya hata verse bile yeni oturuma taşınmamalı.
+                // İlk `await`'ten önce: çıkış gecikse de eski bildirimler yeni
+                // oturuma taşınmasın.
                 context.read<NotificationProvider>().clear();
 
                 final logout = onLogout;
@@ -116,20 +114,18 @@ class BSettingsPage extends StatelessWidget {
                   await logout();
                 } else {
                   await context.read<TimesheetQueueProvider>().pause();
-                  // Canlı bağlantı oturuma bağlı; token silinmeden önce
-                  // kapatılıyor ki yeniden bağlanmaya çalışmasın. İşveren tarafı da
-                  // aynı `RealtimeClient` örneğini kullanıyor.
+                  // Token silinmeden kapatılıyor ki yeniden bağlanmaya
+                  // çalışmasın.
                   await RealtimeClient().disconnect();
 
-                  // Sunucudaki oturumu da kapatıyor; çağrı başarısız olsa bile
-                  // token'lar cihazdan siliniyor.
+                  // Çağrı başarısız olsa da token'lar silinir.
                   await AuthService().logout();
                 }
 
                 if (!context.mounted) return;
 
-                // Provider'lar uygulama boyunca yaşıyor: temizlenmezse bir
-                // sonraki oturum öncekinin ilanlarını ve profilini görürdü.
+                // Provider'lar uygulama boyunca yaşıyor; temizlenmezse sonraki
+                // oturum öncekinin verisini görür.
                 context.read<UserProvider>().clear();
                 context.read<IdentityReviewProvider>().clear();
                 context.read<AvailabilityProvider>().clear();
@@ -137,8 +133,6 @@ class BSettingsPage extends StatelessWidget {
                 context.read<BCompanyProvider>().clear();
                 context.read<BJobTemplatesProvider>().clear();
                 context.read<BTalentPoolProvider>().clear();
-                // İşveren de değerlendirme bırakıyor (#185); aynı cihazda açılan
-                // sonraki hesap öncekinin işaretini ve yorumunu görmesin.
                 context.read<ReviewProvider>().clear();
 
                 context.go('/auth');

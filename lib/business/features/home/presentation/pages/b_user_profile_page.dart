@@ -34,21 +34,10 @@ import 'package:url_launcher/url_launcher.dart';
 
 part 'b_user_profile_pagemodel.dart';
 
-/// İşverenin bir adayın kartına dokununca açtığı profil.
-///
-/// Üç kaynaktan besleniyor: [applicant] başvuru listesinden geliyor ve ekran
-/// açılır açılmaz ad, fotoğraf, ön yazı ve tarihi çizebiliyor; meslek,
-/// hakkında, konum ve özgeçmiş `GET /users/{userId}`'den, müsaitlik ise
-/// `GET /users/{userId}/availability`'den arkadan doluyor. Havuz satırından
-/// açılışta [applicant] boştur; kimlik [userId]'den alınır ve başvuruya
-/// bağlı bölümler çizilmez.
-///
-/// Sunucu bu uçta tam adres döndürmüyor — yalnızca il/ilçe — ve `cvUrl`'i
-/// sadece bu ilanın işverenine veriyor.
-///
-/// Puan özeti, son yorumlar ve rozetler kendi uçlarından
-/// (`/users/{id}/rating-summary`, `/reviews`, `/badges`) geliyor; tamamlanan
-/// iş sayısı ve aynı üçlünün kopyası koala-backend#282 ile profil yanıtında.
+/// Adayın profili. [applicant] başvurudan gelir ve hemen çizilir; meslek, konum
+/// ve özgeçmiş `GET /users/{userId}`'den, müsaitlik ayrı uçtan arkadan dolar.
+/// Havuzdan açılışta [applicant] boş, başvuruya bağlı bölümler çizilmez. Puan,
+/// yorum ve rozetin kendi uçları var.
 class BUserProfilePage extends StatefulWidget {
   const BUserProfilePage({
     super.key,
@@ -62,7 +51,6 @@ class BUserProfilePage extends StatefulWidget {
          'applicant veya userId gerekli',
        );
 
-  /// Rota `extra`'sından sayfayı kurar: başvuran kaydı ya da kullanıcı kimliği.
   factory BUserProfilePage.fromExtra(Object? extra) {
     if (extra is JobApplicant) {
       return BUserProfilePage(applicant: extra);
@@ -80,7 +68,6 @@ class BUserProfilePage extends StatefulWidget {
   final JobApplicant? applicant;
   final String? userId;
 
-  /// Testler için; verilmezse üretimdeki tekil servisler.
   final BCandidateProfileService? profileService;
   final AvailabilityService? availabilityService;
   final ReviewService? reviewService;
@@ -156,10 +143,7 @@ class _BUserProfilePageState extends BUserProfilePageModel {
     );
   }
 
-  /// Profil çekilemediğinde ekranın üstüne konan şerit.
-  ///
-  /// Ekranı kaplayan bir hata göstermek yerine: başvurudan gelen ad, fotoğraf
-  /// ve ön yazı zaten elde ve işverenin işine yarıyor.
+  /// Profil çekilemedi şeridi; başvurudan gelen bilgiler zaten elde.
   Widget _errorNotice() {
     return Container(
       width: double.infinity,
@@ -208,7 +192,6 @@ class _BUserProfilePageState extends BUserProfilePageModel {
 
   // -------------------------------------------------------------------- Kapak
 
-  /// Kapak marka yeşili bir gradyan; çizimi iki ekranın ortak `ProfileCover`'ı.
   Widget _profileHeader(BuildContext context) {
     return ProfileCover(
       name: _displayName,
@@ -220,7 +203,7 @@ class _BUserProfilePageState extends BUserProfilePageModel {
 
   // ------------------------------------------------------------- Bölümler
 
-  /// Adayın bu ilana yazdığı ön yazı. Uydurulmuyor: boşsa öyle yazıyor.
+  /// Uydurulmuyor: boşsa öyle yazıyor.
   Widget _coverLetterSection(BuildContext context) {
     final notes = widget.applicant?.notes;
 
@@ -245,7 +228,6 @@ class _BUserProfilePageState extends BUserProfilePageModel {
     );
   }
 
-  /// Adayın profilindeki "Hakkında" metni.
   Widget _aboutSection(BuildContext context) {
     final about = _profile?.about;
 
@@ -305,7 +287,6 @@ class _BUserProfilePageState extends BUserProfilePageModel {
                 context,
                 AppIcons.location,
                 'Konum',
-                // Sunucu tam adres döndürmüyor; il/ilçe kadarı geliyor.
                 _profile?.locationLabel ?? BUserProfilePageModel._missing,
               ),
             ],
@@ -317,10 +298,7 @@ class _BUserProfilePageState extends BUserProfilePageModel {
 
   // ------------------------------------------------------------- Özgeçmiş
 
-  /// Özgeçmiş kartı.
-  ///
-  /// Bağlantı yoksa aday özgeçmiş yüklememiş demektir; sunucu adresi zaten
-  /// yalnızca yetkili görene döndürüyor.
+  /// Bağlantı yoksa aday yüklememiş demektir.
   Widget _cvSection(BuildContext context) {
     final hasCv = _cvUrl != null;
 
@@ -404,7 +382,6 @@ class _BUserProfilePageState extends BUserProfilePageModel {
 
   // --------------------------------------------------------- Ortak parçalar
 
-  /// Profil beklenirken metnin yerini tutan çubuk.
   Widget _loadingLine() {
     return Row(
       children: [
