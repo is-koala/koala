@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
-import 'package:koala/employee/features/auth/presentation/widgets/auth_divider.dart';
 import 'package:koala/employee/features/auth/presentation/widgets/auth_legal_footer.dart';
-import 'package:koala/employee/features/auth/presentation/widgets/google_auth_button.dart';
 import 'package:koala/employee/features/auth/services/auth_service.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -116,10 +114,8 @@ class _LoginPageState extends LoginPagemodel {
             isLoading: isSubmitting,
           ),
         ),
-        const SizedBox(height: AppSizes.space),
-        const AuthDivider(),
-        const SizedBox(height: AppSizes.space),
-        GoogleAuthButton(title: 'GOOGLE İLE GİRİŞ YAP', onPressed: () {}),
+        // Google ile giriş/kayıt şimdilik yok; GoogleAuthButton ve AuthDivider
+        // geri gelince buraya eklenir.
       ],
     );
   }
