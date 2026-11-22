@@ -110,7 +110,7 @@ Projedeki örnek: `employee/features/home/presentation/pages/explore_pages/list_
 
 **`home_page.dart`**
 ```dart
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/employee/features/home/presentation/widgets/job_card.dart';
 
@@ -172,7 +172,7 @@ Birden fazla yerde kullanılan ya da karmaşık hale gelen widget'lar `widgets/`
 ```dart
 // employee/features/home/presentation/widgets/job_thumbnail.dart
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 

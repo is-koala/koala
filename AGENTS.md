@@ -17,7 +17,9 @@ The app serves **two audiences from a single codebase**:
 
 Which side a user sees is decided by the `user_type` value in `SharedPreferences` and enforced by the `redirect` guard in the router. Files on the business side are prefixed `b_` (`b_home_page.dart`, `BJobsProvider`, `BNavItem` ...) — keep that prefix.
 
-Flutter 3.47.1 (stable), Dart SDK `^3.8.1`. The font is Poppins.
+Flutter 3.50.1 (stable), Dart SDK `^3.13.0`. The font is Poppins.
+
+**Material and Cupertino come from packages, not the SDK.** Since Flutter 3.50 `package:flutter/material.dart` and `package:flutter/cupertino.dart` are deprecated; the app imports `package:material_ui/material_ui.dart` and `package:cupertino_ui/cupertino_ui.dart` (direct dependencies in `pubspec.yaml`). The two worlds define their own `ThemeData`, `ColorScheme`, `MaterialLocalizations`… and they do not mix — never add a `flutter/material.dart` import back (CI's `--fatal-infos` fails on the deprecation anyway). Localizations come from `GlobalMaterialLocalizations.delegates` (material_ui) in `app.dart`, with the app fixed to `Locale('tr')`; `flutter_localizations`' own delegates are deprecated and not used.
 
 ---
 
@@ -506,14 +508,14 @@ These files are gitignored, as is `.env`. Never print a key value into an answer
 
 ### Platform toolchain
 
-The native side sits at Flutter 3.47.1's own baseline; **the plugins pin most of it, so do not lower any of these**.
+The native side sits at Flutter 3.50.1's own baseline; **the plugins pin most of it, so do not lower any of these**.
 
-**Android** (`android/settings.gradle.kts`, `gradle/wrapper/`, `app/build.gradle.kts`) — Gradle 9.3.1, AGP 9.1.1, Kotlin 2.4.0, Java 17. Below AGP 8.11.1 / Gradle 8.14 / KGP 2.2.20 the Flutter Gradle plugin fails the build outright, so this is a floor, not a preference.
+**Android** (`android/settings.gradle.kts`, `gradle/wrapper/`, `app/build.gradle.kts`) — Gradle 9.5.0, AGP 9.3.1, Kotlin from AGP's built-in Kotlin (KGP 2.4.20 declared in settings), Java 17. Below AGP 8.11.1 / Gradle 8.14 / KGP 2.2.20 the Flutter Gradle plugin fails the build outright, so this is a floor, not a preference.
 
 - The base **application id** is `com.iskoala.koala`; dev and staging append `.dev` and `.staging`, while production keeps the base id. The Gradle **namespace** is the distinct, still-default `com.example.koala`. Do not report the namespace as the installed app's identity, and do not change it as part of an application-id task.
 - `compileSdk = 37` is **hardcoded on purpose**: `permission_handler_android` 14 compiles against 37 while `flutter.compileSdkVersion` is still 36. Do not "restore" it to the Flutter default.
 - **API 37 needs AGP ≥ 9.1.1.** Since API 36 the SDK platforms are published with a minor level: the repository has `platforms;android-37.0` (and `37.1`, `37.2`), **no** `platforms;android-37`. AGP 9.1.0 looked for the `android-37` target and a clean SDK (GitHub-hosted runner) failed with *Failed to find target with hash string 'android-37'*; the Pi and the Mac only passed because their SDK was already populated. 9.1.1 maps `compileSdk = 37` to `android-37.0` for every module, plugins included. Install the platform as `platforms;android-37.0`.
-- Kotlin comes from the **Kotlin Gradle plugin**, not AGP's built-in Kotlin: `android.builtInKotlin=false` and `app/build.gradle.kts` applies `kotlin-android`. This reverses an earlier decision and the reason is written in `android/gradle.properties`: `flutter_nfc_kit` — the NFC transport the identity-card chip read depends on — still applies `kotlin-android` in every published version, and with built-in Kotlin on, any module that does fails the build outright. **Do not set the flag back to `true` until `flutter_nfc_kit` migrates**; the flag and the plugin line move together. The jvmTarget stays in the top-level `kotlin { compilerOptions { … } }` block, which is valid under KGP too. `settings.gradle.kts` still declares the KGP version because the plugin modules resolve it from there — leave it.
+- Kotlin comes from **AGP's built-in Kotlin**: `android.builtInKotlin=true` and `app/build.gradle.kts` does **not** apply `kotlin-android` (2026-11-22). It was off while `flutter_nfc_kit` and `firebase_core` applied KGP themselves — any module that does fails the build with the flag on; flutter_nfc_kit 3.7.0 and firebase_core 5.2.0 migrated. Before adding a plugin, check that it no longer applies `kotlin-android`. The jvmTarget stays in the top-level `kotlin { compilerOptions { … } }` block.
 - `android.newDsl=false` is still set; that migration has not happened yet.
 
 **iOS** — deployment target 15.5. Dependencies are a **hybrid**: `app_links`, `geolocator_apple`, `package_info_plus`, `permission_handler_apple` and `shared_preferences_foundation` come through **Swift Package Manager** (on by default in Flutter 3.47), and CocoaPods is still there for one reason only — `google_maps_flutter_ios` ships no `Package.swift`. `ios/Podfile` exists solely for it and can be deleted outright the day that plugin adopts SPM. The build prints a "does not support Swift Package Manager" warning about it every time; that is expected, not something to fix.
