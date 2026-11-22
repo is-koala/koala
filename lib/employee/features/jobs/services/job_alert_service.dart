@@ -3,7 +3,6 @@ import 'package:koala/employee/features/jobs/models/job_alert.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
-/// Oturum sahibinin iş alarmı kayıtlarının gerçek backend kapısı.
 class JobAlertService {
   JobAlertService._(this._apiClient);
 

@@ -1,10 +1,5 @@
-/// Bir kişinin aldığı puanların özeti.
-///
-/// Backend `RatingSummaryDto` karşılığı. Ortalama her istekte yeniden
-/// hesaplanmıyor, değerlendirme geldikçe biriktiriliyor.
-///
-/// Hiç değerlendirilmemiş kullanıcı için uç `data: null` döndürüyor; servis
-/// bunu `null` olarak geçiriyor, burada sıfır bir özet uydurulmuyor.
+/// Puan özeti. Hiç değerlendirilmemişte uç `data: null` döndürüyor; sıfır özet
+/// uydurulmuyor.
 class RatingSummary {
   const RatingSummary({
     required this.userId,
@@ -18,10 +13,7 @@ class RatingSummary {
 
   final double averageRating;
 
-  /// Puan gösterilebilir mi.
-  ///
-  /// Değerlendirmesi olmayan kişiye "0.0" yazmak onu kötü puanlı gibi
-  /// gösterirdi; `EmployerStats.hasRating` ile aynı ayrım.
+  /// Değerlendirmesize "0.0" yazmak kötü puan gibi görünür.
   bool get hasRating => reviewCount > 0;
 
   factory RatingSummary.fromJson(Map<String, dynamic> json) {

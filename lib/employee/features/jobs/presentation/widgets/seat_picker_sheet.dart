@@ -10,17 +10,10 @@ import 'package:koala/product/features/transport/models/transport_plan.dart';
 import 'package:koala/product/widgets/app_bottom_sheet.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// Sheet'in döndürdüğü seçim: servis + durak.
 typedef SeatChoice = ({String shuttleId, String stopId});
 
-/// Bir yön için servis ve durak seçtiren sheet (is-koala/koala#197).
-///
-/// Servisler başlık, durakları satır: kullanıcı doğrudan bir durağa
-/// dokunuyor, seçim servis+durak çiftidir. Dolu servisin durakları
-/// dokunulamaz — sunucu zaten `409 TRANSPORT_SHUTTLE_FULL` diyecek, satırı
-/// açık bırakmak kullanıcıyı o hataya göndermek olurdu. Kapasite
-/// `seatsTaken`/`capacity` ile yazılıyor. Satırlar `Material` + `InkWell`;
-/// `AppBottomSheet` içinde `ListTile` kullanılmıyor (AGENTS).
+/// Bir yön için servis ve durak seçtirir (#197). Dolu servisin durakları
+/// dokunulmaz; sunucu zaten `409 TRANSPORT_SHUTTLE_FULL` diyecek.
 class SeatPickerSheet extends StatelessWidget {
   const SeatPickerSheet({
     super.key,
@@ -32,14 +25,10 @@ class SeatPickerSheet extends StatelessWidget {
   final ShuttleDirection direction;
   final List<Shuttle> shuttles;
 
-  /// Şu an seçili koltuk; satırı vurgulanıyor.
   final SeatAssignment? selected;
 
-  /// Listenin kaplayabileceği en fazla yükseklik oranı; altındaki sayfa
-  /// görünmeye devam etsin.
   static const double _maxHeightRatio = 0.7;
 
-  /// Seçili satırın zemin opaklığı ve çerçevesi (`OptionSheet` ile aynı).
   static const double _selectedTintAlpha = 0.1;
   static const double _selectedBorderWidth = 2.0;
 

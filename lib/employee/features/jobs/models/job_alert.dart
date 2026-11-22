@@ -1,6 +1,5 @@
 import 'package:koala/employee/features/home/models/job.dart';
 
-/// İş arayanın yeni ilanlar için kaydettiği arama ölçütleri.
 class JobAlert {
   const JobAlert({
     required this.id,
@@ -46,7 +45,6 @@ class JobAlert {
   }
 }
 
-/// Oluşturma ve güncellemenin ortak, doğrulanabilir alarm girdisi.
 class JobAlertDraft {
   const JobAlertDraft({
     required this.name,

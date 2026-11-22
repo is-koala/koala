@@ -18,12 +18,8 @@ import 'package:koala/product/widgets/my_appbar.dart';
 
 part 'worker_boarding_qr_pagemodel.dart';
 
-/// İşçinin kişisel biniş QR'ı (is-koala/koala#217):
-/// `GET /job-assignments/{id}/transport/qr?direction=…`.
-///
-/// İşveren ya da şoför bu QR'ı okutur. QR sunucunun `refreshAt`'inde
-/// kendiliğinden yenilenir; ekran görüntüsü birkaç dakika sonra işe yaramaz.
-/// `SHUTTLE_REMINDER_BOARDING` push'u doğrudan bu ekranı açar.
+/// İşçinin kişisel biniş QR'ı (#217); işveren okutur. Kendiliğinden yenilenir,
+/// ekran görüntüsü işe yaramaz.
 class WorkerBoardingQrPage extends StatefulWidget {
   const WorkerBoardingQrPage({
     super.key,
@@ -36,12 +32,10 @@ class WorkerBoardingQrPage extends StatefulWidget {
   final ShuttleDirection direction;
   final TransportService? transportService;
 
-  /// Ekranın yönergesi.
   static const String instruction =
       'Servise binerken bu QR\'ı işverene ya da yetkiliye okutun. QR birkaç '
       'dakikada bir kendiliğinden yenilenir; ekran görüntüsü işe yaramaz.';
 
-  /// Okunabilirlik ipucu.
   static const String brightnessTip =
       'Okutmayı kolaylaştırmak için ekran parlaklığını artırın.';
 

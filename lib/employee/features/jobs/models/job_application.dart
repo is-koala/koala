@@ -1,25 +1,16 @@
 import 'package:koala/employee/features/home/models/job.dart';
 
-/// Başvurunun sunucudaki durumu. Backend `ApplicationStatus` karşılığı.
 enum ApplicationStatus {
   applied('APPLIED', 'Başvuru Bekliyor'),
   accepted('ACCEPTED', 'Kabul Edildi'),
   rejected('REJECTED', 'Reddedildi'),
 
-  /// Başvuran kendi başvurusunu geri çekti (`POST .../withdraw`).
-  ///
-  /// Kayıt silinmiyor, durumu değişiyor: iki taraf da başvurunun olduğunu
-  /// ama artık geçerli olmadığını görüyor.
+  /// Kayıt silinmiyor; iki taraf da geçersiz olduğunu görüyor.
   withdrawn('WITHDRAWN', 'Geri Çekildi'),
 
-  /// Sunucudan gelen ama bu sürümün tanımadığı durum.
-  ///
-  /// Backend enum'una yeni bir değer eklemek sürüm atlatmıyor; eski
-  /// uygulamalar o değeri görmeye devam ediyor. Bilinmeyen kodu var olan bir
-  /// duruma benzetmek çökmekten **daha** tehlikeli: `applied`'a düşen bir
-  /// kayıt "yanıt bekliyor" gibi görünür, kullanıcı ya da işveren sunucunun
-  /// reddedeceği bir işlemi dener. Bu yüzden bilinmeyen kod kendi adıyla
-  /// duruyor ve hiçbir eylemi hak etmiyor — bkz. [isPending].
+  /// Bu sürümün tanımadığı durum. Var olan bir duruma benzetmek çökmekten
+  /// tehlikeli: `applied`'a düşen kayıt reddedilecek bir işleme davet eder.
+  /// Kendi adıyla durur, eylem almaz ([isPending]).
   unknown('UNKNOWN', 'Bilinmiyor');
 
   const ApplicationStatus(this.code, this.displayName);
@@ -27,38 +18,20 @@ enum ApplicationStatus {
   final String code;
   final String displayName;
 
-  /// Başvuru hâlâ işverenin yanıtını bekliyor mu.
-  ///
-  /// **Uygulamadaki tek "bu başvuruya bir şey yapılabilir" kararı burası.**
-  /// Geri çekme düğmesi de, işverenin kabul/ret butonları da buna bakıyor;
-  /// sunucu ikisini de yalnızca `APPLIED` durumunda kabul ediyor
-  /// (`JobApplicationManager`: geri çekmede `409`, yanıtlamada `409`).
-  /// `unknown` dahil kalan her durum `false`: ne olduğunu bilmediğimiz bir
-  /// kayıt üzerinde eylem önermek, sunucunun geri çevireceği bir işi
-  /// kullanıcıya vaat etmek olurdu.
+  /// **"Bu başvuruya bir şey yapılabilir" kararının tek yeri.** Geri çekme ve
+  /// kabul/ret buna bakıyor; sunucu ikisini de yalnız `APPLIED`'da kabul
+  /// ediyor. `unknown` dahil diğerleri `false`.
   bool get isPending => this == ApplicationStatus.applied;
 
-  /// Bu kayıt aynı ilana yeniden başvurmayı engelliyor mu.
-  ///
-  /// Sunucunun kuralı: geri çekilmiş **olmayan** her kayıt engelliyor
-  /// (`existsByJobIdAndUserIdAndStatusNot(jobId, userId, WITHDRAWN)`). Geri
-  /// çeken kullanıcı, ilan hâlâ açıkken yeniden başvurabiliyor.
-  ///
-  /// `unknown` engelliyor: tanımadığımız bir durumda düğmeyi açıp sunucudan
-  /// `409` yemektense kapalı tutmak doğru taraf — [isPending] ile aynı
-  /// gerekçe, ters yönde.
+  /// Aynı ilana yeniden başvurmayı engelliyor mu: sunucuda geri çekilmemiş her
+  /// kayıt engelliyor. `unknown` da engelliyor, `409` yemektense kapalı.
   bool get blocksReapplication => this != ApplicationStatus.withdrawn;
 
-  /// Bu durumu **işveren** mi yazdı.
-  ///
-  /// Kabul ve ret işverenin kendi cevabı; geri çekme başvurana ait, `applied`
-  /// ise henüz kimsenin cevabı değil. İşverenin "Başvuranlar" listesi
-  /// yanıtlamadıklarını gösteriyor: geri çekilen kayıt orada kalıyor, çünkü
-  /// sunucu onu silmiyor ve listesinden düşürmüyor — sadece yanıtlanamıyor.
+  /// Kabul ve ret işverenin cevabı; geri çekme başvurana ait.
   bool get isAnsweredByEmployer =>
       this == ApplicationStatus.accepted || this == ApplicationStatus.rejected;
 
-  /// Sunucudan gelen kodu enum'a çevirir; tanınmayan kod [unknown] olur.
+  /// Tanınmayan kod [unknown].
   static ApplicationStatus fromCode(Object? value) {
     return ApplicationStatus.values.firstWhere(
       (status) => status.code == value,
@@ -67,12 +40,8 @@ enum ApplicationStatus {
   }
 }
 
-/// Kullanıcının bir ilana yaptığı başvuru.
-///
-/// `GET /users/me/applications` yanıtındaki `MyApplicationDto` karşılığı.
-/// Başvuru kabul edildiğinde iş bir **atamaya** dönüşüyor ve o noktadan
-/// sonrası `GET /users/me/assignments`'ta izleniyor — [assignmentId] o kaydın
-/// kimliği.
+/// Kullanıcının başvurusu (`MyApplicationDto`). Kabul edilince atamaya dönüşür;
+/// [assignmentId] o kaydın kimliği.
 class JobApplication {
   const JobApplication({
     required this.id,
@@ -87,21 +56,17 @@ class JobApplication {
 
   final String id;
 
-  /// Başvurulan ilanın özeti; liste bunu ayrıca çekmeden çizebiliyor.
   final Job job;
 
   final ApplicationStatus status;
 
-  /// Başvuru sırasında yazılan ön yazı.
   final String? notes;
 
-  /// Reddedildiyse işverenin gerekçesi.
   final String? rejectionReason;
 
   final DateTime? applicationDateTime;
   final DateTime? answeredDateTime;
 
-  /// Kabul edilmiş başvurunun atama kimliği; henüz yanıtlanmamışsa `null`.
   final String? assignmentId;
 
   factory JobApplication.fromJson(Map<String, dynamic> json) {
@@ -119,12 +84,8 @@ class JobApplication {
     );
   }
 
-  /// Yalnızca durumu değişmiş bir kopya.
-  ///
-  /// Geri çekme ucu `JobApplicationDetailDto` döndürüyor ve onun `job` alanı
-  /// `ShortJobDto` — ücret, şirket ve kategori taşımıyor. Bu yüzden listedeki
-  /// kayıt yanıtla **değiştirilmiyor**, yalnızca sunucunun söylediği durum
-  /// alınıyor; [job] ve geri kalanı yerinde kalıyor.
+  /// Yalnız durumu değişmiş kopya: geri çekme yanıtındaki `job` eksik
+  /// (`ShortJobDto`), kayıt yanıtla değiştirilmez.
   JobApplication copyWith({ApplicationStatus? status}) {
     return JobApplication(
       id: id,
@@ -142,7 +103,6 @@ class JobApplication {
       value is String ? DateTime.tryParse(value) : null;
 }
 
-/// Sayfalı başvuru yanıtı.
 class JobApplicationPage {
   const JobApplicationPage({
     this.applications = const [],

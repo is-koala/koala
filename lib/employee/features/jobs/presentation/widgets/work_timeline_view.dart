@@ -5,16 +5,13 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
 
-/// İşin zaman çizelgesi: sol kenarda noktalar ve çizgi, sağda olay ve anı.
-///
-/// Satırların hangileri olduğuna [WorkTimeline.build] karar veriyor; burası
-/// yalnızca çiziyor. Damgalar UTC geliyor, ekrana İstanbul duvar saatiyle yazılıyor.
+/// Zaman çizelgesini çizer; satırlara [WorkTimeline.build] karar veriyor.
+/// Damgalar UTC, ekranda İstanbul saati.
 class WorkTimelineView extends StatelessWidget {
   const WorkTimelineView({super.key, required this.entries});
 
   final List<WorkTimelineEntry> entries;
 
-  /// Çizelge noktasının çapı ve satırlar arasındaki çizginin kalınlığı.
   static const double _dotSize = 10;
   static const double _lineWidth = 2;
 

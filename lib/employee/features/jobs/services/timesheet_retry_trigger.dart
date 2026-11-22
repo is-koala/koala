@@ -1,6 +1,6 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 
-/// Ağ kullanılabilir göründüğünde yalnızca yeniden denemeyi haber verir.
+/// Ağ geri gelince yalnız yeniden denemeyi haber verir.
 abstract interface class TimesheetRetryTrigger {
   Stream<void> get onNetworkAvailable;
 }

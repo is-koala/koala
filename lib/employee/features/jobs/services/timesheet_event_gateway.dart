@@ -2,7 +2,6 @@ import 'package:koala/employee/features/jobs/models/timesheet_event.dart';
 import 'package:koala/employee/features/jobs/models/work_session.dart';
 import 'package:koala/employee/features/jobs/services/assignment_service.dart';
 
-/// Kalıcı olay kuyruğunun sunucu seam'i.
 abstract interface class TimesheetEventGateway {
   Future<WorkSession> send(TimesheetEvent event);
 

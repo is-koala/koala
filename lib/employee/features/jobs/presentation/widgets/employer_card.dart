@@ -10,15 +10,8 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// İş detayındaki işveren kartı.
-///
-/// Şirket ilanında şirketin adı ve logosu; dokununca şirket sayfası açılıyor
-/// ([onOpenCompany] verildiyse). Bireysel ilanda ilanı açan kişinin adı ve
-/// fotoğrafı; dokununca kişinin herkese açık profili açılıyor
-/// ([onOpenProfile] verildiyse, is-koala/koala#182). Ad henüz gelmediyse
-/// (ilan detayı yükleniyor ya da eski sunucu) satır yer tutucuyla çiziliyor,
-/// kart boş kalmıyor; kişinin kimliği de o zaman bilinmediği için dokunma
-/// bağlanmıyor.
+/// İşveren kartı: şirkette ad + logo (şirket sayfası), bireyselde ad + fotoğraf
+/// (profil, #182). Ad gelmediyse yer tutucu; kimlik bilinmiyorsa dokunma yok.
 class EmployerCard extends StatelessWidget {
   const EmployerCard({
     super.key,
@@ -31,21 +24,15 @@ class EmployerCard extends StatelessWidget {
 
   final JobEmployerType employerType;
 
-  /// Şirketin adı ya da kişinin ad soyadı.
   final String? name;
 
-  /// Şirket logosu ya da kişinin profil fotoğrafı.
   final String? imageUrl;
 
-  /// Şirket sayfasını açan dokunma; yalnızca şirket kimliği bilindiğinde.
   final VoidCallback? onOpenCompany;
 
-  /// Bireysel işverenin profilini açan dokunma; yalnızca kişinin kimliği
-  /// bilindiğinde. Şirket ilanında kullanılmıyor: orada kart şirketi
-  /// gösteriyor.
+  /// Yalnız bireysel ilanda.
   final VoidCallback? onOpenProfile;
 
-  /// Avatar karesinin kenarı ve köşe yuvarlaklığı.
   static const double _avatarSize = AppSizes.avatar;
 
   bool get _isCompany => employerType == JobEmployerType.company;

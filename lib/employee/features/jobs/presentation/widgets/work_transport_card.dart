@@ -14,32 +14,16 @@ import 'package:koala/product/features/transport/models/boarding_failure.dart';
 import 'package:koala/product/features/transport/models/transport_plan.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// İş detayındaki (atama kurulduktan sonra) "Ulaşım" kartı
-/// (is-koala/koala#197).
+/// İş detayındaki "Ulaşım" kartı (#197). Yön başına: serviste koltuk seçimi,
+/// seçilen servisin plakası/şoförü, durak ve yol tarifi; yol parasında tutar.
 ///
-/// Yön başına bir bölüm: servis yönteminde koltuk seçimi ve seçilen servisin
-/// plakası/şoförü, durağın tam adresi ve saati, durağa yol tarifi (#188
-/// kalıbı); yol parasında "İşvereniniz ₺X yol parası verecek" satırı; kendi
-/// imkânı / sağlanmıyor yöntemlerinde tek cümle.
+/// Plaka ve şoför yalnız **seçilen** serviste (sunucu da yalnız orayı
+/// gönderiyor). Seçim ve "Değiştir" yalnız [canSelectSeat] iken.
 ///
-/// Plaka ve şoför yalnız **seçilen** serviste çiziliyor — sunucu zaten
-/// yalnız orada gönderiyor; kart başka bir servisin plakasını hiçbir koşulda
-/// bilmiyor. Koltuk seçimi, "yeniden seçin" uyarısı ve "Değiştir" yalnız
-/// [canSelectSeat] iken; tamamlanmış ya da iptal edilmiş atamada kart salt
-/// okunur.
-///
-/// "Koltuğunuz düştü" iki kaynaktan biliniyor ve ikisi ayrı çiziliyor:
-/// sunucunun görünümü yön başına böyle bir bayrak taşımıyor. Sayfa, son
-/// bilinen seçimle taze görünümü karşılaştırıp düşen yönleri
-/// [droppedDirections] olarak veriyor (yön satırında uyarı); `SEAT_DROPPED`
-/// push'u ise hangi yön olduğunu söylemiyor, o yüzden [seatDropped] kartın
-/// üstünde yön bağımsız tek bir bilgi satırı. Hiç koltuk seçmemiş bir yön
-/// hiçbir koşulda "kaldırıldı" demiyor.
-///
-/// Biniş teyidi (is-koala/koala#217): seçilen servisin altında koltuğun o
-/// kalkıştaki durumu (`seats[].boarding`), cihazda bekleyen ya da sunucunun
-/// reddettiği okutma ve [canBoard] iken iki yol — servisteki QR'ı okut, kendi
-/// QR'ını göster. Binilmiş koltukta düğme yok.
+/// "Koltuğunuz düştü" iki kaynaktan: sayfanın karşılaştırdığı
+/// [droppedDirections] (yön satırında) ve yön söylemeyen `SEAT_DROPPED` push'u
+/// ([seatDropped], kartın üstünde). Biniş (#217): koltuğun o kalkıştaki durumu,
+/// bekleyen okutma ve [canBoard] iken iki yol.
 class WorkTransportCard extends StatelessWidget {
   const WorkTransportCard({
     super.key,
@@ -60,72 +44,52 @@ class WorkTransportCard extends StatelessWidget {
 
   final AssignmentTransport transport;
 
-  /// Atama koltuk seçilebilir durumda mı (`PENDING_CONFIRMATION` /
-  /// `CONFIRMED` / `IN_PROGRESS`). Sunucu aksini `409
-  /// TRANSPORT_ASSIGNMENT_NOT_ACTIVE` ile çeviriyor; düğme o zaman yok.
+  /// Sunucu aksini `409 TRANSPORT_ASSIGNMENT_NOT_ACTIVE` ile çeviriyor.
   final bool canSelectSeat;
 
-  /// `SEAT_DROPPED` push'undan gelindi: kartın üstünde "seçimlerinizi
-  /// kontrol edin" satırı.
   final bool seatDropped;
 
-  /// Daha önce koltuğu olup taze görünümde koltuğu kalmayan yönler; yön
-  /// satırı "plandan kaldırıldı, yeniden seçin" diyor.
   final Set<ShuttleDirection> droppedDirections;
 
-  /// Koltuk isteği sunucuda olan yön; düğmesi kilitli.
   final ShuttleDirection? busyDirection;
 
   final void Function(ShuttleDirection direction)? onSelectSeat;
 
-  /// Şoför telefonuna dokunma (`tel:`); verilmezse numara düz metin.
+  /// Verilmezse numara düz metin.
   final void Function(String phone)? onCall;
 
-  /// Durağa yol tarifi; verilmezse düğme yok.
   final void Function(DirectionsTarget target)? onDirections;
 
-  /// Biniş teyit edilebilir mi: atama `CONFIRMED` / `IN_PROGRESS`.
   final bool canBoard;
 
-  /// "QR okut": servisteki QR'ı kamerayla okutma ekranı.
   final void Function(ShuttleDirection direction)? onScanShuttleQr;
 
-  /// "QR'ımı göster": işverenin okutacağı kişisel QR.
   final void Function(ShuttleDirection direction)? onShowMyQr;
 
-  /// Cihazda bekleyen ya da reddedilmiş okutmalar, yön başına.
   final Map<ShuttleDirection, List<PendingBoarding>> pendingBoardings;
 
-  /// Reddedilmiş okutmanın uyarısını kapatır.
   final void Function(String clientEventId)? onDismissBoarding;
 
-  /// Çevrimdışı okutma bekliyor.
   static const String boardingQueuedText =
       'Biniş okutmanız cihazda saklandı; bağlantı gelince gönderilecek.';
 
-  /// İşveren "binmedi" işaretledi.
   static const String noShowText =
       'İşvereniniz bu kalkış için "binmedi" işaretledi. Bindiyseniz QR\'ı '
       'yeniden okutun ya da işverene gösterin.';
 
-  /// Binildi satırı: `Bindiniz · 07:42`.
   static String boardedLine(DateTime occurredAt) =>
       'Bindiniz · ${occurredAt.toLocal().asShortTime}';
 
-  /// Bekleme halkasının kalınlığı.
   static const double _spinnerStroke = 2;
 
-  /// Yol parası satırı; "siz".
   static String allowanceLine(double amount) =>
       'İşvereniniz ${formatAllowance(amount)} yol parası verecek.';
 
-  /// Koltuğu düşmüş yön için uyarı; sunucunun `SEAT_DROPPED` bildirimiyle
-  /// aynı dil.
+  /// Sunucunun `SEAT_DROPPED` bildirimiyle aynı dil.
   static const String seatDroppedText =
       'Seçtiğiniz servis ya da durak plandan kaldırıldı; lütfen yeniden '
       'koltuk seçin.';
 
-  /// Push'tan gelindiğinde kartın üstündeki yön bağımsız satır.
   static const String seatDroppedNoticeText =
       'Bir koltuğunuz plandan kaldırıldı; seçimlerinizi kontrol edin.';
 
@@ -268,10 +232,8 @@ class WorkTransportCard extends StatelessWidget {
     return _selected(context, direction, shuttle, stop);
   }
 
-  /// Koltuk yok: düşmüş koltuk uyarısı (varsa) ve seçme düğmesi.
   Widget _unselected(BuildContext context, ShuttleDirection direction) {
-    // Düşme iki yoldan belli: sayfa son bilinen seçimle karşılaştırdı, ya da
-    // sunucuda koltuk kaydı var ama servisi/durağı artık planda yok.
+    // Sayfa karşılaştırdı ya da koltuk kaydı var ama servisi/durağı planda yok.
     final dropped =
         droppedDirections.contains(direction) ||
         transport.seatFor(direction) != null;
@@ -319,11 +281,8 @@ class WorkTransportCard extends StatelessWidget {
     );
   }
 
-  /// Koltuk seçme / değiştirme düğmesi; iki hâlde tek yapı.
-  ///
-  /// [outlined] koltuk yokken tam genişlikte çerçeveli düğme, seçilmiş
-  /// serviste yol tarifinin yanında metin düğmesi. İstek sürerken kilitli
-  /// ve kendi yönü halka çiziyor.
+  /// Koltuk yokken çerçeveli tam genişlik, seçilmişte yol tarifinin yanında
+  /// metin düğmesi.
   Widget _seatButton(
     BuildContext context,
     ShuttleDirection direction, {
@@ -366,7 +325,6 @@ class WorkTransportCard extends StatelessWidget {
     );
   }
 
-  /// Seçilen servis: plaka, şoför, durak, saat, yol tarifi, değiştir.
   Widget _selected(
     BuildContext context,
     ShuttleDirection direction,
@@ -459,7 +417,6 @@ class WorkTransportCard extends StatelessWidget {
     );
   }
 
-  /// Seçilen servisin biniş durumu ve iki biniş yolu.
   List<Widget> _boardingSection(
     BuildContext context,
     ShuttleDirection direction,
@@ -651,7 +608,6 @@ class WorkTransportCard extends StatelessWidget {
     );
   }
 
-  /// Şoför telefonu; [onCall] varsa dokununca arama.
   Widget _phoneRow(
     BuildContext context,
     String phone,

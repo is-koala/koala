@@ -32,16 +32,13 @@ import 'package:provider/provider.dart';
 
 part 'my_jobs_pagemodel.dart';
 
-/// Atama satırındaki menünün seçenekleri.
 enum _AssignmentAction { cancel, dispute }
 
-/// Başvuru satırındaki menünün seçenekleri.
 enum _ApplicationAction { withdraw }
 
 class MyJobsPage extends StatefulWidget {
   const MyJobsPage({super.key, this.assignmentService, this.chatService});
 
-  /// Testler için: verilmezse üretimdeki tekil servisler kullanılıyor.
   final AssignmentService? assignmentService;
   final ChatService? chatService;
 
@@ -50,18 +47,14 @@ class MyJobsPage extends StatefulWidget {
 }
 
 class _MyJobsPageState extends MyJobsPagemodel {
-  /// "Değerlendir" butonunun yüksekliği; satır içinde durduğu için sayfa
-  /// butonlarından belirgin biçimde alçak.
   static const double _inlineButtonHeight = 36;
 
-  /// Bölüm zeminine göre soluklaştırılmış metinlerin opaklıkları.
   static const double _mutedAlpha = 0.5;
   static const double _dividerAlpha = 0.2;
   static const double _dateAlpha = 0.6;
   static const double _linkAlpha = 0.7;
 
-  /// Buton içindeki bekleme halkasının kalınlığı; varsayılan 4 bu boyutta
-  /// dolu bir daire gibi görünüyor.
+  /// Varsayılan 4 bu boyutta dolu daire gibi.
   static const double _spinnerStroke = 2;
 
   @override
@@ -80,8 +73,7 @@ class _MyJobsPageState extends MyJobsPagemodel {
       );
     }
 
-    // Elde hiç iş yokken hata varsa boş liste değil hata gösterilmeli;
-    // kullanıcı "hiç işim yok" ile "yüklenemedi"yi ayırt edebilmeli.
+    // "Hiç işim yok" ile "yüklenemedi" ayrılabilsin.
     final error = errorMessage;
     if (error != null && allJobs.isEmpty) {
       return Scaffold(
@@ -116,21 +108,13 @@ class _MyJobsPageState extends MyJobsPagemodel {
       MyJobStatus.completed,
       extraJobs: appliedJobs,
     );
-    // Geçmiş, kapanmış her işi topluyor: tamamlanan, iptal edilen, reddedilen,
-    // geri çekilen ve durumu tanınmayan. Hepsinde yapılacak bir şey kalmadı,
-    // ayrı bölümler sayfayı gereksiz uzatırdı.
-    //
-    // Hangi durumun kapalı sayıldığına tek yerde karar veriliyor:
-    // [MyJob.isClosed]. Durumları burada elle saymak, yeni bir durumu
-    // derleyici uyarmadan ekrandan düşürür. Atamalar önce: ödeme alınan işler listenin başında
-    // kalsın, kapanmış başvurular altta.
+    // Geçmiş: kapanmış her iş tek bölümde. Karar [MyJob.isClosed]'da; elle
+    // saymak yeni durumu derleyici uyarmadan düşürür. Atamalar önce.
     final closedJobs = [
       ...allJobs.where((job) => job.isClosed),
       ...appliedJobs.where((job) => job.isClosed),
     ];
 
-    // Bölümlerin hepsi boşsa sayfa yalnızca başlıktan ibaret kalırdı; kullanıcı
-    // "yüklenmedi mi" ile "hiç işim yok"u ayırt edemezdi.
     final isEmpty =
         pendingJobs.isEmpty &&
         inProgressJobs.isEmpty &&
@@ -176,18 +160,16 @@ class _MyJobsPageState extends MyJobsPagemodel {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Süren iş en üstte: kullanıcı o an oradadır, çıkış butonu
-                // en kısa yoldan elinin altında olmalı.
+                // Süren iş en üstte; çıkış butonu elinin altında olsun.
                 if (inProgressJobs.isNotEmpty) ...[
                   _inProgressSection(inProgressJobs),
                   const SizedBox(height: AppSizes.spaceLarge),
                 ],
-                // Sonra cevap bekleyen atamalar: iş onaylanmadan başlamıyor.
+                // İş onaylanmadan başlamıyor.
                 if (awaitingJobs.isNotEmpty) ...[
                   _awaitingSection(awaitingJobs),
                   const SizedBox(height: AppSizes.spaceLarge),
                 ],
-                // Onaylanmış işler - en üstte ve belirgin
                 if (approvedJobs.isNotEmpty) ...[
                   _approvedSection(approvedJobs),
                   const SizedBox(height: AppSizes.spaceLarge),
@@ -210,7 +192,6 @@ class _MyJobsPageState extends MyJobsPagemodel {
     );
   }
 
-  /// İşler çekilemediğinde: mesaj ve tekrar deneme.
   Widget _errorState(
     String message, {
     List<TimesheetEvent> queuedEvents = const [],
@@ -266,7 +247,7 @@ class _MyJobsPageState extends MyJobsPagemodel {
   // ------------------------------------------------------------- Bölümler
 
   Widget _approvedSection(List<MyJob> jobs) {
-    // Zemin marka yeşili; üstündeki her şey temadan bağımsız beyaz.
+    // Zemin yeşil; üstündeki her şey temadan bağımsız beyaz.
     return _sectionCard(
       background: context.accentColor,
       foreground: AppColors.onAccent,
@@ -429,10 +410,8 @@ class _MyJobsPageState extends MyJobsPagemodel {
 
   // --------------------------------------------------------- Ortak parçalar
 
-  /// Bölüm kartı. Zemin bir `Material`: satırlar artık dokunulabilir
-  /// `ListTile` ve mürekkep dalgasını en yakın `Material`'a boyuyorlar —
-  /// renkli bir `DecoratedBox` altında kalsaydı dalga görünmez, Flutter da
-  /// bunu çalışma zamanında bildirirdi (AGENTS.md, bottom sheet notu).
+  /// Zemin `Material`: renkli `DecoratedBox` altında `ListTile` mürekkebi
+  /// görünmez.
   Widget _sectionCard({
     required Color background,
     required Color foreground,
@@ -514,10 +493,8 @@ class _MyJobsPageState extends MyJobsPagemodel {
     );
   }
 
-  /// Şirket adı; şirket kaydı varsa detaya gider ve altı çizilir.
   Widget _tappableCompanyName(MyJob job, Color foreground) {
     final hasTapAction = job.companyId != null;
-    // Yeşil zeminde bağlantı beyaz, açık zeminde marka yeşili.
     final linkColor = foreground == AppColors.onAccent
         ? AppColors.onAccent
         : context.accentColor;
@@ -545,10 +522,8 @@ class _MyJobsPageState extends MyJobsPagemodel {
     style: context.textTheme.titleSmall?.copyWith(color: foreground),
   );
 
-  /// Satırın alt kısmı: işveren (adı + türü), özet ve varsa yanıt tarihi.
-  ///
-  /// `answeredDateTime` yalnızca başvurudan gelen satırda yazılıyor: orada
-  /// satırın tarihi başvuru günü, yanıtın ne zaman geldiği ayrı bir bilgi.
+  /// `answeredDateTime` yalnız başvuru satırında: orada satırın tarihi başvuru
+  /// günü.
   Widget _tileSubtitle(MyJob job, Color foreground, {int? maxLines}) {
     final answeredAt = job.application == null ? null : job.answeredDateTime;
 
@@ -588,12 +563,8 @@ class _MyJobsPageState extends MyJobsPagemodel {
 
   // ------------------------------------------------------------- Satırlar
 
-  /// Satır; sohbet açık değilse altına sebebini yazan bir satır ekleniyor.
-  ///
-  /// Düğme yalnızca sunucu "açık" dediğinde çiziliyor
-  /// (`messagingAvailable`). Ödeme bekleniyorsa ya da pencere kapandıysa
-  /// düğmenin yerini [MessagingGateNote] alıyor; düğmeyi bırakıp `403`
-  /// yedirmek yerine kullanıcı sebebi önden görüyor.
+  /// Sohbet açık değilse altına sebebi yazılır; düğme yalnız sunucu "açık"
+  /// deyince, `403` yedirilmez.
   Widget _jobTile(
     MyJob job,
     Color foreground, {
@@ -681,10 +652,8 @@ class _MyJobsPageState extends MyJobsPagemodel {
     );
   }
 
-  /// Atamanın ikincil eylemleri: iptal ve sorun bildirme.
-  ///
-  /// İkisi de nadir ve geri dönüşü zor; birincil butonların yanında değil
-  /// menünün içinde duruyorlar. Kapanmış işlerde menü hiç çıkmıyor.
+  /// İptal ve sorun bildirme nadir ve geri dönüşü zor; menüde. Kapalı işlerde
+  /// menü yok.
   Widget? _assignmentMenu(MyJob job, Color foreground) {
     final canCancel = job.canCancel;
     final canDispute = job.canDispute;
@@ -712,18 +681,13 @@ class _MyJobsPageState extends MyJobsPagemodel {
     );
   }
 
-  /// Bekleyen başvurunun tek ikincil eylemi: geri çekme.
-  ///
-  /// Menü yalnızca "Başvuru Bekliyor" satırında çıkıyor; sunucu da geri
-  /// çekmeyi yalnızca `APPLIED` durumdan kabul ediyor. Atamadan gelen
-  /// satırlar eleniyor: geri çekme **başvurunun** kimliğini istiyor ve o
-  /// satırlarda [MyJob.id] atamanın kimliği olur.
+  /// Yalnız bekleyen başvuruda; atama satırı elenir, geri çekme başvurunun
+  /// kimliğini istiyor.
   Widget? _applicationMenu(MyJob job, Color foreground) {
     if (!job.canWithdraw) return null;
 
     return PopupMenuButton<_ApplicationAction>(
-      // Bir başvuru geri çekilirken diğerlerinin menüsü de kapanıyor:
-      // provider tek bir isteği izliyor ve arada ikinci istek gitmiyor.
+      // Provider tek isteği izliyor; geri çekme sürerken diğer menüler kapalı.
       enabled: context.watch<ApplyProvider>().withdrawingId == null,
       icon: AppIcon(AppIcons.more, color: foreground),
       onSelected: (action) => switch (action) {
@@ -738,15 +702,12 @@ class _MyJobsPageState extends MyJobsPagemodel {
     );
   }
 
-  /// Cevap bekleyen atama: ücret, tarih ve iki karar butonu.
-  ///
-  /// Butonlar satırın altına alındı; `trailing`'e sığmıyorlar ve reddetme
-  /// geri alınamadığı için kabul butonuyla yan yana durmaları gerekiyor.
+  /// Butonlar satırın altında: `trailing`'e sığmıyorlar ve geri alınamayan ret
+  /// kabulün yanında durmalı.
   Widget _awaitingTile(MyJob job) {
     final foreground = context.textPrimary;
     final isResponding = respondingAssignmentId == job.assignmentId;
-    // Bir atama cevaplanırken diğerlerinin butonları da kapanıyor: liste
-    // cevaptan sonra baştan çekiliyor, arada ikinci bir cevap tutarsız olurdu.
+    // Liste cevaptan sonra baştan çekiliyor; arada ikinci cevap tutarsız olur.
     final isLocked = respondingAssignmentId != null;
 
     return Padding(
@@ -843,10 +804,7 @@ class _MyJobsPageState extends MyJobsPagemodel {
     );
   }
 
-  /// Onaylanmış iş: satırın altında mesai başlatma butonu.
-  ///
-  /// Buton yalnızca atamadan gelen satırlarda çıkıyor; başvurudan gelen bir
-  /// satırın atama kimliği yok ve mesaisi de olamaz.
+  /// Yalnız atama satırında; başvurunun mesaisi olamaz.
   Widget _approvedTile(MyJob job) {
     if (job.assignmentId == null) return _jobTile(job, AppColors.onAccent);
     final queuedEvents = context
@@ -874,8 +832,7 @@ class _MyJobsPageState extends MyJobsPagemodel {
             ),
           ],
           const SizedBox(height: AppSizes.spaceSmall),
-          // Sunucu, para emanete geçmeden mesai başlatmıyor. Butonu açık
-          // bırakıp 409 yedirmek yerine sebebi burada yazılıyor.
+          // Para emanete geçmeden mesai başlamıyor; `409` yerine sebep yazılır.
           if (!job.isPaymentSecured)
             Text(
               'İşveren ücreti henüz güvenceye almadı; mesaiyi o zaman '
@@ -918,7 +875,6 @@ class _MyJobsPageState extends MyJobsPagemodel {
     );
   }
 
-  /// Süren iş: mesainin ne zaman başladığı ve çıkış butonu.
   Widget _inProgressTile(MyJob job) {
     final foreground = context.textPrimary;
     final session = openSessions[job.assignmentId];
@@ -979,10 +935,7 @@ class _MyJobsPageState extends MyJobsPagemodel {
     );
   }
 
-  /// Açık oturumun başlangıcı ve o ana kadarki süresi.
-  ///
-  /// Başlangıç saati kesin; süre `DateTime.now()` ile hesaplandığı için
-  /// dakikada bir yeniden çiziliyor (`_syncElapsedTicker`).
+  /// Süre `DateTime.now()` ile; dakikada bir yeniden çiziliyor.
   Widget _sessionLine(WorkSession session) {
     final startedAt = session.checkInAt;
 
@@ -1008,7 +961,6 @@ class _MyJobsPageState extends MyJobsPagemodel {
     );
   }
 
-  /// Mesai butonunun ikonu; istek sürerken yerini bekleme halkası alıyor.
   Widget _timesheetIcon(
     MyJob job, {
     required IconData icon,
@@ -1066,10 +1018,8 @@ class _MyJobsPageState extends MyJobsPagemodel {
     );
   }
 
-  /// "Değerlendir" butonu. Bir işi değerlendirmek sunucuda atama
-  /// tamamlandıktan sonra serbest, ödemenin serbest bırakılmasını
-  /// beklemiyor — bu yüzden hem "Ödeme Bekleniyor" hem "Geçmiş" satırında
-  /// çıkıyor. Zemini bölüme göre değişiyor.
+  /// Değerlendirme tamamlanınca açık, ödemeyi beklemiyor; hem "Ödeme
+  /// Bekleniyor" hem "Geçmiş"te.
   Widget _reviewButton(MyJob job, {required Color background}) {
     return SizedBox(
       height: _inlineButtonHeight,
@@ -1126,13 +1076,8 @@ class _MyJobsPageState extends MyJobsPagemodel {
 
   Widget _pastJobTile(MyJob job) {
     final foreground = context.textPrimary;
-    // Ödeme serbest bırakıldığında iş buraya taşınıyor; değerlendirme hakkı
-    // orada bitmiyor. Buton yalnızca burada olmasaydı, hızlı ödeyen bir
-    // işvereni değerlendirmek hiç mümkün olmazdı.
-    //
-    // İptal ve red edilen işler değerlendirilemiyor: sunucu yalnızca
-    // tamamlanmış atamaya değerlendirme kabul ediyor. "Değerlendirdim mi"
-    // sunucudan (`myReview`), az önce gönderilen provider'dan.
+    // Ödenen iş buraya taşınıyor; buton yalnız orada olsaydı hızlı ödeyen
+    // işveren değerlendirilemezdi. İptal ve red değerlendirilemez.
     final canReview =
         job.status == MyJobStatus.past &&
         job.assignmentId != null &&
@@ -1155,8 +1100,7 @@ class _MyJobsPageState extends MyJobsPagemodel {
   }
 
   Widget _pastJobRow(MyJob job, Color foreground) {
-    // Tamamlanan işte para kazanıldı, iptal ve reddedilende kazanılmadı;
-    // ikisini aynı yeşil tutarla göstermek yanlış bilgi olurdu.
+    // İptal ve reddedilende para kazanılmadı; aynı yeşil tutar yanlış bilgi.
     final isDone = job.status == MyJobStatus.past;
 
     return ListTile(

@@ -32,7 +32,6 @@ class _JobsPageState extends State<JobsPage>
     super.build(context);
     return Consumer<PageProvider>(
       builder: (context, pageProvider, child) {
-        // PageProvider değiştiğinde sayfa animasyonu yap
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_pageController.hasClients) {
             _pageController.jumpToPage(

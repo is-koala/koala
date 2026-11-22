@@ -4,7 +4,6 @@ import 'package:koala/employee/features/jobs/models/payout.dart';
 import 'package:koala/employee/features/jobs/models/work_session.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
 
-/// Zaman çizelgesinin bir satırı: ne oldu, ne zaman, varsa kısa bir ayrıntı.
 class WorkTimelineEntry {
   const WorkTimelineEntry({required this.label, required this.at, this.detail});
 
@@ -13,15 +12,8 @@ class WorkTimelineEntry {
   final String? detail;
 }
 
-/// Bir işin zaman çizelgesi: başvurudan hakedişe kadar damgalanmış her an.
-///
-/// **Yalnızca damgası olan olay çiziliyor.** Sunucu bir alanı göndermiyorsa
-/// (koala-backend#282 henüz gelmediyse `application`, `createdAt`,
-/// `confirmedAt`, `paymentSecuredAt`, `payout` yok) o satır gizli; mevcut
-/// damgalar — `assignmentDateTime`, mesai oturumları,
-/// `actualCompletionDateTime`, iptal kaydı — kendi başlarına çalışıyor.
-/// Satırlar zamana göre sıralanıyor, ekranda hangi sırayla yazılacağına
-/// burası değil damgalar karar veriyor.
+/// İşin zaman çizelgesi. **Yalnız damgası olan olay çizilir**; eski sunucuda
+/// yeni alanlar yoksa o satırlar gizli. Sıra damgalardan gelir.
 abstract final class WorkTimeline {
   static List<WorkTimelineEntry> build(
     MyJob job, {
@@ -38,8 +30,7 @@ abstract final class WorkTimeline {
 
     add('Başvurdunuz', job.applicationDateTime);
 
-    // İşverenin yanıtı: atamada kabul anı; reddedilen başvuruda ret anı.
-    // Yanıt damgası yoksa atamanın açıldığı an aynı olayı temsil ediyor.
+    // Yanıt damgası yoksa atamanın açıldığı an aynı olayı temsil eder.
     if (job.status == MyJobStatus.applicationRejected) {
       add('İşveren başvurunuzu reddetti', job.answeredDateTime);
     } else if (assignment != null) {
@@ -79,8 +70,7 @@ abstract final class WorkTimeline {
       add('Hakedişiniz ödendi', payout.completedAt);
     }
 
-    // Aynı ana düşen iki olay (kabul ve atamanın açılması gibi) eklenme
-    // sırasını korusun diye kararlı sıralama.
+    // Aynı ana düşen olaylar eklenme sırasını korusun.
     final indexed = entries.indexed.toList()
       ..sort((a, b) {
         final byTime = a.$2.at.compareTo(b.$2.at);

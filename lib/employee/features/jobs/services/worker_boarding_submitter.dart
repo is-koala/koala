@@ -5,14 +5,8 @@ import 'package:koala/product/features/transport/models/boarding.dart';
 import 'package:koala/product/features/transport/models/transport_plan.dart';
 import 'package:koala/product/services/device_location_source.dart';
 
-/// İşçinin servis QR okutmasını kuyruğa veren tek yol (is-koala/koala#217).
-///
-/// İş detayındaki tarama ekranı da, telefon kamerasıyla açılan
-/// `{şema}://board?t=…` bağlantısı da buradan geçiyor: oturum sahibinin
-/// kuyruğu başlatılır, konum **yalnız izin zaten verilmişse** ve en fazla
-/// [boardingLocationMaxAge] yaşındaysa eklenir (izin diyaloğu açılmaz;
-/// ADR-0007 ile aynı ilke) ve okutma
-/// [BoardingQueueProvider.submit]'e gider.
+/// İşçinin servis QR okutmasını kuyruğa veren tek yol (#217). Konum yalnız izin
+/// zaten varsa ve [boardingLocationMaxAge]'den gençse eklenir.
 class WorkerBoardingSubmitter {
   WorkerBoardingSubmitter({
     required this.queue,
@@ -24,12 +18,10 @@ class WorkerBoardingSubmitter {
   final UserProvider users;
   final DeviceLocationSource _location;
 
-  /// Konum bu sürede gelmezse okutma konumsuz gider: biniş kapı değil,
-  /// konum yalnız `FAR_FROM_STOP` bayrağı için.
+  /// Biniş kapı değil; konum yalnız `FAR_FROM_STOP` bayrağı için.
   static const Duration locationTimeout = Duration(seconds: 3);
 
-  /// [capturedAt] okutma anı; konum beklenirken geçen süre biniş anına
-  /// eklenmesin diye çağıran verir.
+  /// Konum beklenirken geçen süre eklenmesin diye çağıran verir.
   Future<BoardingSubmission> submit({
     required BoardingToken token,
     required DateTime capturedAt,

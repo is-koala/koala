@@ -3,14 +3,7 @@ import 'package:koala/employee/features/jobs/models/job_application.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
-/// Başvuru uçları.
-///
-/// Gönderme ilan üzerinden (`POST /jobs/{jobId}/applications`), listeleme
-/// kullanıcı üzerinden (`GET /users/me/applications`) yapılıyor — backend'in
-/// böldüğü yer burası.
-///
-/// Başvuru kabul edildiğinde iş bir atamaya dönüşüyor; oradan sonrası
-/// `AssignmentService`'in işi. "İşlerim" ekranı iki servisi birden okuyor.
+/// Başvuru uçları; kabulden sonrası `AssignmentService`'in.
 class JobApplicationService {
   JobApplicationService._(this._apiClient);
 
@@ -27,11 +20,7 @@ class JobApplicationService {
 
   final ApiClient _apiClient;
 
-  /// Bir ilana başvurur.
-  ///
-  /// [notes] başvuru ekranındaki ön yazı; backend en fazla 2000 karakter
-  /// kabul ediyor. Aynı ilana ikinci kez başvurulursa uç hata döndürüyor,
-  /// çağıran tarafın onu kullanıcıya göstermesi gerekiyor.
+  /// [notes] ≤2000. Aynı ilana ikinci başvuru hata döner.
   Future<JobApplication> apply({required String jobId, String? notes}) {
     return _apiClient.post<JobApplication>(
       ApiPaths.jobApplications(jobId),
@@ -40,20 +29,11 @@ class JobApplicationService {
     );
   }
 
-  /// Başvuruyu geri çeker.
+  /// Geri çeker. Dönen kaydın **durumu** sunucunun son sözü.
   ///
-  /// Uç `JobApplicationDetailDto` döndürüyor, o yüzden `postWithoutData` değil
-  /// `post` + `parse`: dönen kaydın **durumu** sunucunun son sözü ve liste
-  /// yeniden çekilmeden kullanılabiliyor.
-  ///
-  /// ⚠️ Dönen kaydın `job` alanı `ShortJobDto` — yalnızca id ve başlık.
-  /// `MyApplicationDto`'nun taşıdığı ücret, şirket ve kategori burada **yok**,
-  /// bu yüzden çağıran taraf kaydı olduğu gibi listedekinin yerine koymamalı;
-  /// bkz. [ApplyProvider.withdraw].
-  ///
-  /// Sunucu yalnızca `APPLIED` durumundan geçiriyor: başkasının başvurusu
-  /// `404` (`JOB_APPLICATION_NOT_FOUND`), yanıtlanmış ya da zaten geri
-  /// çekilmiş başvuru `409` (`JOB_APPLICATION_NOT_WITHDRAWABLE`).
+  /// ⚠️ Dönen `job` `ShortJobDto` (yalnız id ve başlık); kayıt listedekinin
+  /// yerine konmamalı. Başkasının başvurusu `404`, yanıtlanmış ya da geri
+  /// çekilmiş `409`.
   Future<JobApplication> withdraw(String applicationId) {
     return _apiClient.post<JobApplication>(
       ApiPaths.withdrawApplication(applicationId),
@@ -61,11 +41,8 @@ class JobApplicationService {
     );
   }
 
-  /// Kullanıcının başvuruları, yeniden eskiye.
-  ///
-  /// [ApplicationStatus.unknown] bir süzgeç değeri değil, istemcinin
-  /// sentineli: sunucunun enum'unda karşılığı yok ve gönderilseydi `400`
-  /// gelirdi. O yüzden süzgeçsiz çağrı sayılıyor.
+  /// [ApplicationStatus.unknown] istemci sentineli; sunucuya gitse `400`, o
+  /// yüzden süzgeçsiz sayılır.
   Future<JobApplicationPage> fetchMyApplications({
     ApplicationStatus? status,
     int page = 0,

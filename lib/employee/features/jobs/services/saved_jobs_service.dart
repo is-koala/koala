@@ -3,9 +3,7 @@ import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
-/// Kaydedilen ilanlar.
-///
-/// Liste sayfalı değil: backend `List<JobSummaryDto>` döndürüyor.
+/// Kaydedilen ilanlar; sayfasız.
 class SavedJobsService {
   SavedJobsService._(this._apiClient);
 
@@ -29,7 +27,7 @@ class SavedJobsService {
     );
   }
 
-  /// İlanı kaydeder. Zaten kayıtlıysa backend yine başarı dönüyor.
+  /// Zaten kayıtlıysa da başarı döner.
   Future<void> save(String jobId) {
     return _apiClient.postWithoutData(ApiPaths.savedJob(jobId));
   }

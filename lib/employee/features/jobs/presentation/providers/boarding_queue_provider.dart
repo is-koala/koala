@@ -14,29 +14,25 @@ import 'package:koala/product/network/session_manager.dart';
 typedef BoardingUtcNow = DateTime Function();
 typedef BoardingEventIdFactory = String Function();
 
-/// Oturum sahibinin kimliği; bulunamazsa `null`.
 typedef BoardingUserIdResolver = Future<String?> Function();
 
-/// Okutmanın ilk gönderim sonucu.
 sealed class BoardingSubmission {
   const BoardingSubmission();
 }
 
-/// Sunucu kaydetti (ya da kayıt zaten vardı: `replayed`).
+/// Zaten kayıtlıysa da (`replayed`).
 class BoardingRecorded extends BoardingSubmission {
   const BoardingRecorded(this.event);
 
   final BoardingEvent event;
 }
 
-/// Sunucuya ulaşılamadı; okutma cihazda saklandı, bağlantı gelince
-/// gönderilecek.
+/// Cihazda saklandı, bağlantı gelince gönderilecek.
 class BoardingQueued extends BoardingSubmission {
   const BoardingQueued();
 }
 
-/// Sunucu reddetti; kuyrukta tutulmuyor, ekran nedenini söyler ve işçi
-/// yeniden okutabilir.
+/// Kuyrukta tutulmaz; işçi yeniden okutabilir.
 class BoardingRejected extends BoardingSubmission {
   const BoardingRejected(this.failure, {this.serverMessage});
 
@@ -44,17 +40,10 @@ class BoardingRejected extends BoardingSubmission {
   final String? serverMessage;
 }
 
-/// İşçinin servis QR'ı okutmalarının çevrimdışı kuyruğu (is-koala/koala#217).
-///
-/// Şantiyede çekmeyen telefon binişini kaybetmesin diye: okutma
-/// `clientEventId` + `capturedAt` ile saklanır, hemen bir kez denenir;
-/// bağlantı yoksa açılışta, uygulama öne gelince ve ağ dönünce yeniden
-/// gönderilir. Sunucu `replayed` ve `LATE_SYNC` ile döndüğünde de başarıdır.
-/// Ret bir daha denenmez: kayıt "işverenden işaretlemesini isteyin" diye
-/// kartta kalır, kullanıcı kapatınca silinir.
-///
-/// Mesai kuyruğuyla ([TimesheetQueueProvider]) aynı kalıp: `lazy: false`
-/// kayıtlı, oturum değişince son kullanıcıyı açıyor ya da duraklıyor.
+/// İşçinin biniş okutmalarının çevrimdışı kuyruğu (#217): şantiyede çekmeyen
+/// telefon binişini kaybetmesin. Okutma saklanıp hemen denenir; açılışta, öne
+/// gelince ve ağ dönünce yeniden gönderilir. `replayed`/`LATE_SYNC` başarıdır;
+/// ret yeniden denenmez, kullanıcı kapatana kadar kartta kalır.
 class BoardingQueueProvider extends ChangeNotifier with WidgetsBindingObserver {
   BoardingQueueProvider()
     : this.withAdapters(
@@ -65,8 +54,7 @@ class BoardingQueueProvider extends ChangeNotifier with WidgetsBindingObserver {
         currentUserId: _fetchCurrentUserId,
       );
 
-  /// Yeniden girişte oturum sahibini `/users/me`'den okur; çevrimdışıysa
-  /// `null` ve kuyruk son etkin kullanıcıya düşer.
+  /// Çevrimdışıysa `null`; kuyruk son etkin kullanıcıya düşer.
   static Future<String?> _fetchCurrentUserId() async {
     try {
       return (await UserService().fetchCurrentUser()).id;
@@ -93,9 +81,8 @@ class BoardingQueueProvider extends ChangeNotifier with WidgetsBindingObserver {
     _sessionManager?.addListener(_onSessionChanged);
   }
 
-  /// Bu yaştan eski kayıt açılışta atılır: sunucu geç yüklemeyi en fazla 12
-  /// saat, cihaz saatini en fazla 72 saat geriye kabul ediyor; daha eskisi
-  /// hiçbir koşulda kaydedilemez, kartta sonsuza dek durmasın.
+  /// Sunucu geç yüklemeyi 12 saat, cihaz saatini 72 saat geriye kabul ediyor;
+  /// daha eskisi kaydedilemez, kartta sonsuza dek durmasın.
   static const Duration maxAge = Duration(hours: 72);
 
   final BoardingQueueStore _store;
@@ -106,9 +93,8 @@ class BoardingQueueProvider extends ChangeNotifier with WidgetsBindingObserver {
   final BoardingUserIdResolver? _currentUserId;
   late final StreamSubscription<void> _retrySubscription;
 
-  /// Depodaki oku-değiştir-yaz işlemlerinin sırası. Okutma, teslim, ret
-  /// ve kapatma aynı listeyi yazıyor; araya giren ikinci yazım birinin
-  /// değişikliğini silmesin diye hepsi bu zincirin ucuna ekleniyor.
+  /// Depodaki oku-değiştir-yaz işlemleri tek zincirde; araya giren yazım
+  /// birinin değişikliğini silmesin.
   Future<void> _storeTail = Future.value();
 
   bool _isDisposed = false;
@@ -119,22 +105,18 @@ class BoardingQueueProvider extends ChangeNotifier with WidgetsBindingObserver {
   int _generation = 0;
   int _deliveryRevision = 0;
 
-  /// Şu an gönderilmekte olan kayıtlar; [submit]'in ilk denemesi ile arka
-  /// plan boşaltması aynı kaydı iki kez yollamasın.
+  /// İlk deneme ile arka plan boşaltması aynı kaydı iki kez yollamasın.
   final Set<String> _inFlight = {};
 
   String? get activeUserId => _activeUserId;
 
-  /// Etkin kullanıcının kayıtları.
   List<PendingBoarding> get entries => List.unmodifiable(_entries);
 
-  /// Arka planda bir kayıt teslim edildikçe artar; iş detayı biniş
-  /// durumunu yeniden okumak için buna bakar.
+  /// Arka planda teslim edildikçe artar; iş detayı biniş durumunu yeniden okur.
   int get deliveryRevision => _deliveryRevision;
 
-  /// Kartın gösterdiği kayıtlar: iş detayından o atama ve yön için
-  /// okutulanlar **ve** telefon kamerasıyla (bağlantıdan) okutulup atamayı
-  /// bilmeyen, ama koltuğun servisine ([shuttleId]) ait olanlar.
+  /// O atama ve yön için okutulanlar **ve** bağlantıdan okutulup koltuğun
+  /// servisine ait olanlar.
   List<PendingBoarding> entriesFor(
     String assignmentId,
     ShuttleDirection direction, {
@@ -160,7 +142,7 @@ class BoardingQueueProvider extends ChangeNotifier with WidgetsBindingObserver {
     await flush();
   }
 
-  /// Arka plan başlatması: hata yakalanır, PII'siz tek satır yazılır.
+  /// Hata yakalanır, PII'siz tek satır yazılır.
   Future<bool> tryStartForUser(String userId) async {
     try {
       await startForUser(userId);
@@ -171,7 +153,6 @@ class BoardingQueueProvider extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  /// Profil isteği çevrimdışıyken de önceki oturumun kuyruğunu açar.
   Future<void> resumeLastUser() async {
     if (_isDisposed || _activeUserId != null) return;
     final userId = await _store.readLastActiveUser();
@@ -182,8 +163,7 @@ class BoardingQueueProvider extends ChangeNotifier with WidgetsBindingObserver {
     await flush();
   }
 
-  /// Oturum kapandı: bellekteki görünüm boşalır. Kayıtlar diskte kalır;
-  /// aynı kullanıcı yeniden girince gönderilir.
+  /// Kayıtlar diskte kalır; aynı kullanıcı girince gönderilir.
   Future<void> pause() async {
     if (_isDisposed) return;
     _generation++;
@@ -193,11 +173,9 @@ class BoardingQueueProvider extends ChangeNotifier with WidgetsBindingObserver {
     if (!_isDisposed) notifyListeners();
   }
 
-  /// Çalışan oturumu açıldı (açılış ya da yeniden giriş): oturum sahibi
-  /// okunabiliyorsa onun kuyruğu açılır ve boşaltılır; okunamıyorsa
-  /// (çevrimdışı açılış) son etkin kullanıcıya düşülür. Çıkışta [pause]
-  /// son kullanıcıyı sildiği için başka biri girdiğinde önceki kişinin
-  /// okutmaları onun oturumuyla gönderilmez.
+  /// Çalışan oturumu açıldı: oturum sahibinin kuyruğu açılıp boşaltılır;
+  /// çevrimdışıysa son etkin kullanıcıya düşülür. [pause] son kullanıcıyı
+  /// sildiği için başkasının okutmaları yanlış oturumla gönderilmez.
   Future<void> resumeForSession() async {
     if (_isDisposed || _activeUserId != null) return;
     final resolver = _currentUserId;
@@ -210,8 +188,7 @@ class BoardingQueueProvider extends ChangeNotifier with WidgetsBindingObserver {
     await resumeLastUser();
   }
 
-  /// Hesap silme talebi: etkin kullanıcının bekleyen ve reddedilmiş
-  /// okutmaları (token ve konum dahil) cihazdan silinir.
+  /// Etkin kullanıcının okutmaları (token ve konum dahil) cihazdan silinir.
   Future<void> purgeActiveUser() async {
     final userId = _activeUserId;
     if (_isDisposed || userId == null) return;
@@ -236,10 +213,8 @@ class BoardingQueueProvider extends ChangeNotifier with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) _schedule(flush);
   }
 
-  /// İşçinin okuttuğu servis QR'ını kaydeder ve hemen bir kez gönderir.
-  ///
-  /// [capturedAt] okutma anı; verilmezse şimdi. Konumu çağıran, izin zaten
-  /// varsa veriyor.
+  /// Okutmayı kaydedip hemen bir kez gönderir. Konumu çağıran, izin zaten varsa
+  /// verir.
   Future<BoardingSubmission> submit({
     required BoardingToken token,
     DateTime? capturedAt,
@@ -268,8 +243,8 @@ class BoardingQueueProvider extends ChangeNotifier with WidgetsBindingObserver {
     );
 
     final generation = _generation;
-    // Kayıt diske yazılmadan önce "uçuşta" işaretleniyor: araya giren bir
-    // boşaltma onu görüp ikinci kez göndermesin.
+    // Diske yazılmadan "uçuşta" işaretlenir; araya giren boşaltma ikinci kez
+    // göndermesin.
     _inFlight.add(entry.clientEventId);
     try {
       await _mutate((stored) => [...stored, entry]);
@@ -288,12 +263,10 @@ class BoardingQueueProvider extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  /// Reddedilmiş kaydı kullanıcı kapattı.
   Future<void> dismiss(String clientEventId) =>
       _remove(clientEventId, _generation);
 
-  /// Açılış, resume, ağ dönüşü ve yeni okutma aynı tek-uçuş yolunu
-  /// kullanır.
+  /// Bütün tetikleyiciler aynı tek-uçuş yolunu kullanır.
   Future<void> flush() {
     if (_isDisposed || _activeUserId == null) return Future.value();
     _flushAgain = true;
@@ -320,7 +293,6 @@ class BoardingQueueProvider extends ChangeNotifier with WidgetsBindingObserver {
           continue;
         }
         final canContinue = await _deliver(entry, generation);
-        // Bağlantı yoksa sıradakileri denemenin anlamı yok.
         if (!canContinue) break;
       }
     }
@@ -346,13 +318,11 @@ class BoardingQueueProvider extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  /// Bağlantı, sunucu hatası, hız sınırı ve oturumun yenilenememesi geçici:
-  /// okutma kuyrukta kalır.
+  /// Bağlantı, sunucu hatası, hız sınırı ve oturum yenilenememesi geçici.
   static bool _keepsForRetry(ApiException error, BoardingFailure failure) =>
       failure.isRetryable || error.type == ApiErrorType.unauthenticated;
 
-  /// Depodaki listeyi sıraya girerek okur, [change] ile değiştirip yazar
-  /// ve yazılan listeyi döndürür. Bir halka hata verirse zincir kopmaz.
+  /// Bir halka hata verse de zincir kopmaz.
   Future<List<PendingBoarding>> _mutate(
     List<PendingBoarding> Function(List<PendingBoarding> stored) change,
   ) {
@@ -385,8 +355,6 @@ class BoardingQueueProvider extends ChangeNotifier with WidgetsBindingObserver {
     await _reload(generation);
   }
 
-  /// Etkin kullanıcının kayıtlarını diskten okur; [maxAge]'den eskileri
-  /// atar.
   Future<void> _reload(int generation) async {
     if (_isDisposed) return;
     final userId = _activeUserId;

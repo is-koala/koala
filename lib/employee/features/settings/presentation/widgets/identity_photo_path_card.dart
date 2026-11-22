@@ -35,8 +35,6 @@ class IdentityPhotoPathCard extends StatelessWidget {
   /// çerçeveleniyor ki gözden kaçmasın.
   final bool isWarning;
 
-  /// Uyarı zemininin saydamlığı; formun geri kalanı turuncuya boyanmasın.
-
   /// Açıklama metninin satır aralığı; kimlik ekranındakiyle aynı.
   static const double _lineHeight = 1.4;
 

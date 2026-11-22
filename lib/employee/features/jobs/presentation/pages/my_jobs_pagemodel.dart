@@ -1,7 +1,6 @@
 part of 'my_jobs_page.dart';
 
 abstract class MyJobsPagemodel extends WorkActionsPagemodel<MyJobsPage> {
-  /// Küçük buton göstergesi varsayılan kalınlıkta dolu görünmesin.
   static const double _spinnerStroke = 2;
 
   @override
@@ -11,53 +10,37 @@ abstract class MyJobsPagemodel extends WorkActionsPagemodel<MyJobsPage> {
   @override
   ChatService get chatService => widget.chatService ?? ChatService();
 
-  /// Eylemler bütün listeyi tazeliyor: bir cevap ya da iptal satırı başka
-  /// bir bölüme taşıyor, tek satırı yerinde güncellemek yetmez.
+  /// Eylem satırı başka bölüme taşıyor; tek satırı güncellemek yetmez.
   @override
   Future<void> refreshWork() => _loadJobs();
 
-  /// Geçmiş bölümü varsayılan olarak kısaltılmış; kullanıcı isterse açıyor.
   bool showAllPastJobs = false;
 
   List<MyJob> allJobs = [];
   bool loading = true;
 
-  /// Atamalar çekilemediyse gösterilecek mesaj.
   String? errorMessage;
 
-  /// Geçmiş bölümünde kısaltılmışken gösterilen iş sayısı.
   static const int collapsedPastJobCount = 2;
 
-  /// Süren işlerin açık mesai oturumları; anahtar atama kimliği.
-  ///
-  /// Yalnızca `IN_PROGRESS` atamalar için çekiliyor: bir kişinin aynı anda
-  /// süren birden fazla işi olmuyor, o yüzden bu N+1 değil. Değer `null`
-  /// ise oturumlar okundu ve açık oturum yok demek.
+  /// Süren işlerin açık oturumları; aynı anda tek süren iş olduğu için N+1
+  /// değil. `null` "okundu, açık yok".
   final Map<String, WorkSession?> openSessions = {};
 
-  /// Açık mesai süresini işleten sayaç.
-  ///
-  /// Süre `WorkSession.elapsed` içinde `DateTime.now()` ile hesaplanıyor;
-  /// yeniden çizilmezse ekranda donuk kalır ve çalışana yanlış süre gösterir.
-  /// Dakikada bir yetiyor — süre zaten dakika hassasiyetinde yazılıyor.
+  /// Süre `now()` ile hesaplanıyor; çizilmezse donuk kalır. Dakikada bir yeter.
   Timer? _elapsedTicker;
 
   @override
   void initState() {
     super.initState();
     _loadJobs();
-    // Başvurular ayrı bir uçtan geliyor; sekmeye her girişte tekrar
-    // çekilmesin diye provider ilk çağrıdan sonra ağa çıkmıyor.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) context.read<ApplyProvider>().load();
       if (mounted) unawaited(initializeTimesheetQueue());
     });
   }
 
-  /// Kabul edilmiş işleri çeker.
-  ///
-  /// Bekleyen başvurular buraya girmiyor; onlar ayrı bir uçtan gelip
-  /// [ApplyProvider] üzerinden [jobsByStatus]'a ekleniyor.
+  /// Kabul edilmiş işler; bekleyen başvurular [ApplyProvider]'dan.
   Future<void> _loadJobs() async {
     setState(() {
       loading = allJobs.isEmpty;
@@ -81,7 +64,6 @@ abstract class MyJobsPagemodel extends WorkActionsPagemodel<MyJobsPage> {
     }
   }
 
-  /// Sayfayı baştan yükler; hata ekranındaki "Tekrar Dene" buna bağlı.
   Future<void> reload() async {
     await _loadJobs();
     if (mounted) await context.read<ApplyProvider>().load(force: true);
@@ -94,7 +76,6 @@ abstract class MyJobsPagemodel extends WorkActionsPagemodel<MyJobsPage> {
     super.dispose();
   }
 
-  /// Açık oturum varken sayacı çalıştırır, kalmadığında durdurur.
   void _syncElapsedTicker() {
     final hasOpenSession = openSessions.values.any(
       (session) => session != null,
@@ -111,10 +92,8 @@ abstract class MyJobsPagemodel extends WorkActionsPagemodel<MyJobsPage> {
     });
   }
 
-  /// Süren işlerin açık mesai oturumlarını çeker.
-  ///
-  /// Oturum listesi çekilemezse ekran çökmüyor: açık oturum bilinmediğinde
-  /// satır "Giriş Yap" gösteriyor ve sunucu gerekirse `409` ile düzeltiyor.
+  /// Çekilemezse satır "Giriş Yap" gösterir, sunucu gerekirse `409` ile
+  /// düzeltir.
   Future<void> _loadOpenSessions() async {
     final ids = allJobs
         .where((job) => job.status == MyJobStatus.inProgress)
@@ -142,12 +121,7 @@ abstract class MyJobsPagemodel extends WorkActionsPagemodel<MyJobsPage> {
     setState(() {});
   }
 
-  /// Bir duruma ait işleri döndürür.
-  ///
-  /// İki kaynak birleşiyor: [extraJobs] bekleyen başvurular
-  /// (`GET /users/me/applications`), [allJobs] ise kabul edilmiş işler
-  /// (`GET /users/me/assignments`). Backend ikisini ayrı tuttuğu için
-  /// birleştirme burada yapılıyor.
+  /// İki kaynak birleşir: başvurular ve atamalar; backend ayrı tutuyor.
   List<MyJob> jobsByStatus(
     MyJobStatus status, {
     List<MyJob> extraJobs = const [],
@@ -162,17 +136,12 @@ abstract class MyJobsPagemodel extends WorkActionsPagemodel<MyJobsPage> {
     });
   }
 
-  /// Satırın iş detayını açar; dönüşte liste tazelenir.
-  ///
-  /// Detayda kabul, mesai ya da iptal yapılmış olabilir; satır o durumu
-  /// başka bir bölümde göstermeli. Detay kaydı `extra` ile taşıyor —
-  /// [MyJob.assignment] / [MyJob.application] orada okunuyor.
+  /// Detayda durum değişmiş olabilir; dönüşte liste tazelenir.
   Future<void> openDetail(MyJob job) async {
     await context.push('/work-detail', extra: job);
     if (mounted) await reload();
   }
 
-  /// Şirket detayına gider; bireysel ilanda kimlik yok, satır tıklanmaz.
   void navigateToCompany(MyJob job) {
     final companyId = job.companyId;
     if (companyId == null) return;

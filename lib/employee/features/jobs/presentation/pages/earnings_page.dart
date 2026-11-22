@@ -26,7 +26,6 @@ import 'package:koala/product/widgets/my_appbar.dart';
 
 part 'earnings_pagemodel.dart';
 
-/// İş arayanın tamamlanan ve işlemdeki ödeme çıkışları.
 class EarningsPage extends StatefulWidget {
   const EarningsPage({super.key, this.service, this.assignmentService});
 
@@ -38,8 +37,6 @@ class EarningsPage extends StatefulWidget {
 }
 
 class _EarningsPageState extends EarningsPagemodel {
-  /// Satırdaki bekleme halkasının kalınlığı; varsayılan bu boyutta dolu
-  /// görünüyor.
   static const double _spinnerStroke = 2;
 
   @override
@@ -159,13 +156,9 @@ class _EarningsPageState extends EarningsPagemodel {
     );
   }
 
-  /// Ödeme satırı; dokununca hakedişin detayı açılıyor ([PayoutDetailSheet]),
-  /// işin detayına oradan geçiliyor.
-  ///
-  /// İş adı sunucunun `jobTitle` alanından; eski sunucuda ikinci istekle
-  /// gelen atama listesinden (yalnız ilk sayfa). İkisi de yoksa satır adsız,
-  /// yine tıklanabilir — iş detayı dokunma anında kimliğiyle çekiliyor
-  /// ([_openWork]).
+  /// Ödeme satırı; dokununca hakediş detayı açılır. İş adı sunucunun
+  /// `jobTitle`'ından, eski sunucuda atama listesinden; yoksa satır adsız ama
+  /// yine tıklanabilir.
   Widget _payoutCard(Payout payout) {
     final assignment = _assignments[payout.jobAssignmentId];
     final isOpening = _openingPayoutId == payout.id;

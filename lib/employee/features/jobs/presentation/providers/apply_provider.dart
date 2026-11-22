@@ -5,12 +5,7 @@ import 'package:koala/employee/features/jobs/models/my_job.dart';
 import 'package:koala/employee/features/jobs/services/job_application_service.dart';
 import 'package:koala/product/network/api_exception.dart';
 
-/// Kullanıcının başvuruları.
-///
-/// Başvuru göndermek ilan üzerinden, listelemek kullanıcı üzerinden yapılıyor;
-/// ikisi de [JobApplicationService]'te. Gönderim başarılı olduğunda liste
-/// yeniden çekilmiyor, dönen kayıt doğrudan başa ekleniyor — kullanıcı
-/// sonucu anında görüyor.
+/// Kullanıcının başvuruları; başarılı gönderimde dönen kayıt başa eklenir.
 class ApplyProvider extends ChangeNotifier {
   ApplyProvider({JobApplicationService? service})
     : _service = service ?? JobApplicationService();
@@ -22,21 +17,13 @@ class ApplyProvider extends ChangeNotifier {
   bool _hasLoaded = false;
   String? _errorMessage;
 
-  /// Son hatanın makine okunur kodu.
-  ///
-  /// Başvuru kapısının üç şartı (`APPLICANT_IDENTITY_NOT_VERIFIED`,
-  /// `APPLICANT_ADDRESS_REQUIRED`, `APPLICANT_BANK_ACCOUNT_REQUIRED`) ayrı
-  /// kodlarla geliyor; ekran doğru düzeltme adımına yönlendirmek için
-  /// mesaja değil buna bakıyor.
+  /// Başvuru kapısının üç şartı ayrı kodlarla geliyor; ekran koda bakıyor.
   String? _errorCode;
 
-  /// Geri çekme isteği sunucuya gitmiş başvurunun kimliği.
-  ///
-  /// Tek bir alan yetiyor: kullanıcı aynı anda tek bir başvuruyu geri
-  /// çekiyor. Ekran satırın düğmesini buna bakarak kilitliyor.
+  /// Aynı anda tek geri çekme; satırın düğmesi buna göre kilitlenir.
   String? _withdrawingId;
 
-  /// Çıkıştan sonra tamamlanan isteklerin yeni oturuma yazmasını engeller.
+  /// Çıkıştan sonra dönen istekler yeni oturuma yazmasın.
   int _generation = 0;
 
   List<JobApplication> get applications => List.unmodifiable(_applications);
@@ -49,23 +36,14 @@ class ApplyProvider extends ChangeNotifier {
 
   String? get errorCode => _errorCode;
 
-  /// Geri çekme isteği süren başvurunun kimliği; yoksa `null`.
   String? get withdrawingId => _withdrawingId;
 
-  /// Başvuruların "İşlerim" ekranındaki karşılığı.
-  ///
-  /// Ekran hâlâ [MyJob] üzerinden çiziliyor. Kabul edilmiş başvuru bir
-  /// atamaya dönüştüğü için buraya girmiyor; kalan dört durumun her birinin
-  /// kendi satırı var — bkz. [MyJob.fromApplication].
+  /// Kabul edilen başvuru atama olduğu için girmiyor ([MyJob.fromApplication]).
   List<MyJob> get appliedJobs =>
       _applications.map(MyJob.fromApplication).nonNulls.toList(growable: false);
 
-  /// Bu ilana yeniden başvurmayı engelleyen bir kayıt var mı.
-  ///
-  /// Geri çekilmiş başvuru saymıyor: sunucu o ilana yeniden başvurmaya izin
-  /// veriyor ([ApplicationStatus.blocksReapplication]). Burası saysaydı
-  /// sunucunun kuralı uygulamadan hiç erişilemez kalırdı — [applyToJob]
-  /// isteği atmadan `false` dönüyor.
+  /// Geri çekilmiş başvuru saymaz; sunucu yeniden başvuruya izin veriyor
+  /// ([ApplicationStatus.blocksReapplication]).
   bool hasApplied(String jobId) {
     return _applications.any(
       (application) =>
@@ -73,7 +51,6 @@ class ApplyProvider extends ChangeNotifier {
     );
   }
 
-  /// Başvuruları sunucudan çeker.
   Future<void> load({bool force = false}) async {
     if (_isLoading) return;
     if (_hasLoaded && !force && _errorMessage == null) return;
@@ -104,10 +81,7 @@ class ApplyProvider extends ChangeNotifier {
     }
   }
 
-  /// Bir ilana başvurur.
-  ///
-  /// Başarılıysa `true` döner. Sunucu aynı ilana ikinci başvuruyu reddediyor;
-  /// o durumda mesaj [errorMessage]'a düşüyor ve `false` dönüyor.
+  /// Başarılıysa `true`; ikinci başvuruda mesaj [errorMessage]'da.
   Future<bool> applyToJob(Job job, {String? coverLetter}) async {
     if (hasApplied(job.id)) return false;
 
@@ -139,16 +113,8 @@ class ApplyProvider extends ChangeNotifier {
     }
   }
 
-  /// Başvuruyu geri çeker.
-  ///
-  /// Başarılıysa `true` döner. Sunucu yalnızca `APPLIED` durumundan geçiriyor;
-  /// yanıtlanmış ya da zaten geri çekilmiş başvuruda `409` dönüyor.
-  ///
-  /// **Yalnızca durum sunucudan alınıyor, kayıt olduğu gibi değiştirilmiyor.**
-  /// Uç `JobApplicationDetailDto` döndürüyor ve onun `job` alanı
-  /// `ShortJobDto` — yalnızca id ve başlık. Kaydı yerine koysaydık satırın
-  /// ücreti, şirketi ve özeti silinir, "Geçmiş" bölümünde ₺0'lık bir satır
-  /// kalırdı. Liste yeniden çekilmiyor: kullanıcı sonucu anında görüyor.
+  /// Geri çeker. **Yalnız durum alınıyor:** dönen `job` `ShortJobDto`; kayıt
+  /// yerine konsa satır ₺0'a düşerdi.
   Future<bool> withdraw(String applicationId) async {
     if (_withdrawingId != null) return false;
 
@@ -171,10 +137,8 @@ class ApplyProvider extends ChangeNotifier {
       }
       return true;
     } on ApiException catch (error) {
-      // 409: başvuru araya girip kabul ya da reddedilmiş demektir, ekrandaki
-      // liste bayat. Tazeleme mesajdan **önce** çalışıyor: [load] başlarken
-      // hata alanlarını temizliyor, ters sırada kullanıcıya gösterilecek
-      // mesaj kaybolurdu.
+      // Liste bayat. Tazeleme mesajdan **önce**: [load] hata alanlarını
+      // temizliyor.
       if (generation != _generation) return false;
       if (error.type.serverStateMoved) await load(force: true);
       if (generation != _generation) return false;
@@ -189,7 +153,6 @@ class ApplyProvider extends ChangeNotifier {
     }
   }
 
-  /// Çıkışta önceki kullanıcının başvuruları kalmasın.
   void clear() {
     _generation++;
     _applications.clear();

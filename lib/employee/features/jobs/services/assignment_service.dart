@@ -7,16 +7,8 @@ import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 import 'package:koala/product/utils/coordinate_precision.dart';
 
-/// Atama uçları.
-///
-/// Başvuru kabul edilene kadar iş bir `JobApplication`; kabul edildikten
-/// sonrası bir atama ve buradan yönetiliyor. Başvurunun kendisi
-/// `JobApplicationService`'te kalıyor — backend'in ikisini ayırdığı yer orası.
-///
-/// Sınıfın tamamı çalışana ait değil: mesai oturumlarını, iptali ve
-/// uyuşmazlıkları iki taraf da okuyup yazabiliyor, o yüzden işveren tarafı
-/// da bu servisi çağırıyor. Yalnızca [checkIn] ve [checkOut] işçiye, [respond]
-/// atamanın çalışanına özel — diğerlerinde sunucu tarafı zaten ayırt ediyor.
+/// Atama uçları. Mesai, iptal ve uyuşmazlığı iki taraf da kullanıyor; yalnız
+/// [checkIn], [checkOut] ve [respond] çalışana özel.
 class AssignmentService {
   AssignmentService._(this._apiClient);
 
@@ -31,7 +23,6 @@ class AssignmentService {
 
   final ApiClient _apiClient;
 
-  /// Kabul edilmiş başvuruların dönüştüğü işler.
   Future<AssignmentPage> fetchMyAssignments({int page = 0, int size = 20}) {
     return _apiClient.get<AssignmentPage>(
       ApiPaths.myAssignments,
@@ -40,13 +31,7 @@ class AssignmentService {
     );
   }
 
-  /// Tek bir atamayı kimliğiyle okur.
-  ///
-  /// Sunucu yalnızca atamanın taraflarına açıyor; taraf olmayan `404`
-  /// alıyor. Uç iki tarafa da açık, o yüzden tek servis: çalışanın iş
-  /// detayı bir eylemden sonra bu kaydı tazeliyor, Kazançlar listede
-  /// olmayan atamayı buradan getiriyor, işverenin ödeme sonucu ekranı da
-  /// aynı metodu çağırıyor — mesai oturumlarında olduğu gibi.
+  /// Yalnız taraflara açık (başkası `404`); iki taraf da kullanıyor.
   Future<Assignment> fetchAssignment(String assignmentId) {
     return _apiClient.get<Assignment>(
       ApiPaths.jobAssignment(assignmentId),
@@ -54,15 +39,8 @@ class AssignmentService {
     );
   }
 
-  /// Mesaiye başlar ve açılan oturumu döndürür.
-  ///
-  /// Konum isteğe bağlı: sunucu gövdesiz isteği de kabul ediyor, o yüzden
-  /// konum alınamadığında giriş engellenmiyor — koordinatlar hiç
-  /// gönderilmiyor.
-  ///
-  /// `409` üç sebeple gelebiliyor: atama çalışmaya açık değil, para henüz
-  /// emanete alınmamış, ya da zaten açık bir oturum var. Mesajı sunucu
-  /// Türkçe veriyor.
+  /// Mesai başlatır. Konum isteğe bağlı, alınamazsa giriş engellenmez. `409`:
+  /// atama açık değil, para emanette değil ya da açık oturum var.
   Future<WorkSession> checkIn({
     required String assignmentId,
     double? latitude,
@@ -82,11 +60,7 @@ class AssignmentService {
     );
   }
 
-  /// Açık mesai oturumunu kapatır.
-  ///
-  /// Sunucu çalışılan dakikayı burada yazıyor ve atamanın `workHours`
-  /// alanını bütün oturumların toplamından türetiyor. Açık oturum yoksa
-  /// `409`.
+  /// Açık oturumu kapatır; dakikayı sunucu yazar. Açık oturum yoksa `409`.
   Future<WorkSession> checkOut({
     required String assignmentId,
     double? latitude,
@@ -116,8 +90,8 @@ class AssignmentService {
       throw ArgumentError('clientEventId ve capturedAt birlikte verilmelidir.');
     }
 
-    // Konum varsa altı ondalıkla gider: sunucu koordinatı o kesinlikte
-    // saklayıp geri veriyor, kuyruğun eşleştirmesi de aynı kesinliğe bakıyor.
+    // Altı ondalık: sunucu o kesinlikte saklıyor, kuyruk eşleştirmesi de buna
+    // bakıyor.
     return {
       'latitude': ?_rounded(latitude),
       'longitude': ?_rounded(longitude),
@@ -129,11 +103,7 @@ class AssignmentService {
   static double? _rounded(double? coordinate) =>
       coordinate == null ? null : CoordinatePrecision.round6(coordinate);
 
-  /// Atamanın mesai oturumları, girişten çıkışa.
-  ///
-  /// İki taraf da okuyabiliyor; işveren tarafı da bu metodu çağırıyor
-  /// (`b_job_detail_page`), tıpkı sohbette olduğu gibi tek servis iki
-  /// uygulamaya hizmet ediyor.
+  /// İki taraf da okuyor.
   Future<List<WorkSession>> fetchWorkSessions(String assignmentId) {
     return _apiClient.get<List<WorkSession>>(
       ApiPaths.assignmentWorkSessions(assignmentId),
@@ -146,16 +116,9 @@ class AssignmentService {
     );
   }
 
-  /// Atamayı iptal eder ve oluşan iptal kaydını döndürür.
-  ///
-  /// İki taraf da çağırabiliyor, ama sonucu aynı değil: çalışan iptal ederse
-  /// kesinti yok, işveren iptal ederse işin başlamasına kalan süreye göre
-  /// kesinti uygulanabiliyor. Tutarı önden öğrenmek için
-  /// [fetchCancellationPreview] var; sunucu iptalde yeniden hesaplıyor.
-  ///
-  /// [reason] zorunlu; sunucu boş gerekçeyi `400` ile reddediyor.
-  /// `PENDING_CONFIRMATION`, `CONFIRMED` ve `IN_PROGRESS` dışından ya da
-  /// ikinci kez çağrılırsa `409`.
+  /// İptal eder. Çalışan iptalinde kesinti yok, işverende süreye göre olabilir;
+  /// önceden görmek için [fetchCancellationPreview]. [reason] zorunlu; uygun
+  /// olmayan durumda ya da ikinci kez `409`.
   Future<Cancellation> cancel({
     required String assignmentId,
     required String reason,
@@ -167,14 +130,8 @@ class AssignmentService {
     );
   }
 
-  /// İptal edilse ne kesileceğini, iptal etmeden döndürür.
-  ///
-  /// Hiçbir kayıt oluşturmuyor; iptal kutusu açılırken çağrılıyor. Hesap
-  /// **çağıranın kendi tarafına** göre yapılıyor: çalışanda kesinti çıkmıyor,
-  /// işverende işin başlamasına kalan süreye göre çıkabiliyor.
-  ///
-  /// Atama iptale kapalıysa hata değil `cancellableNow: false` dönüyor.
-  /// Taraf olmayan `404` alıyor.
+  /// İptal etmeden kesintiyi döndürür; çağıranın tarafına göre hesaplanır.
+  /// Kapalıysa `cancellableNow: false`.
   Future<CancellationPreview> fetchCancellationPreview(String assignmentId) {
     return _apiClient.get<CancellationPreview>(
       ApiPaths.assignmentCancellationPreview(assignmentId),
@@ -183,7 +140,7 @@ class AssignmentService {
     );
   }
 
-  /// Atamanın iptal kaydı; iptal edilmemişse `null`.
+  /// İptal edilmemişse `null`.
   Future<Cancellation?> fetchCancellation(String assignmentId) {
     return _apiClient.get<Cancellation?>(
       ApiPaths.assignmentCancellation(assignmentId),
@@ -192,13 +149,8 @@ class AssignmentService {
     );
   }
 
-  /// Uyuşmazlık açar.
-  ///
-  /// Yalnızca para emanetteyken açılabiliyor; açık uyuşmazlık emanetteki
-  /// parayı donduruyor, çalışana ödeme yapılmıyor ve sunucunun kendiliğinden
-  /// tamamlaması duruyor. [reason] zorunlu, en fazla 2000 karakter.
-  ///
-  /// Emanette para yoksa ya da zaten açık bir uyuşmazlık varsa `409`.
+  /// Uyuşmazlık açar; yalnız para emanetteyken, parayı dondurur. [reason]
+  /// zorunlu (≤2000). Emanet yoksa ya da açık uyuşmazlık varsa `409`.
   Future<Dispute> openDispute({
     required String assignmentId,
     required String reason,
@@ -210,7 +162,6 @@ class AssignmentService {
     );
   }
 
-  /// Atamanın uyuşmazlıkları, açığı da kapanmışı da.
   Future<List<Dispute>> fetchDisputes(String assignmentId) {
     return _apiClient.get<List<Dispute>>(
       ApiPaths.assignmentDisputes(assignmentId),
@@ -223,16 +174,9 @@ class AssignmentService {
     );
   }
 
-  /// Atamayı kabul eder ya da reddeder ve atamanın yeni durumunu döndürür.
-  ///
-  /// İşveren başvuruyu kabul ettiğinde atama `PENDING_CONFIRMATION`'da
-  /// açılıyor; iş, çalışan buraya cevap verene kadar başlamıyor. Cevap
-  /// bir kez veriliyor: atama bu durumdan çıkmışsa sunucu `409`, kullanıcı
-  /// atamanın tarafı değilse `404` döndürüyor.
-  ///
-  /// Yanıt `MyAssignmentDto` değil `JobAssignmentDto` — ödeme ve ücret
-  /// alanlarını taşımıyor. Bu yüzden yalnızca durum okunuyor, listedeki
-  /// kayıt cevaptan değil yeniden çekmeyle tazeleniyor.
+  /// Atamayı kabul/ret eder. Yalnız `PENDING_CONFIRMATION`'da (`409`), taraf
+  /// değilse `404`. Yanıt ödeme alanlarını taşımadığı için yalnız durum okunur,
+  /// liste yeniden çekilir.
   Future<AssignmentStatus> respond({
     required String assignmentId,
     required bool accepted,

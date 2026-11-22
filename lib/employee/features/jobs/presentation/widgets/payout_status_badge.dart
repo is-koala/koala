@@ -5,7 +5,6 @@ import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 
-/// Hakediş durumunun rozeti; liste satırı ve detay aynı rozeti çiziyor.
 class PayoutStatusBadge extends StatelessWidget {
   const PayoutStatusBadge({super.key, required this.status});
 

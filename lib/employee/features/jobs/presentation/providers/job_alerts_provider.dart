@@ -3,7 +3,6 @@ import 'package:koala/employee/features/jobs/models/job_alert.dart';
 import 'package:koala/employee/features/jobs/services/job_alert_service.dart';
 import 'package:koala/product/network/api_exception.dart';
 
-/// İş alarmları ekranının sunucu durumunu ve kullanıcı eylemlerini tutar.
 class JobAlertsProvider extends ChangeNotifier {
   JobAlertsProvider({JobAlertService? service})
     : _service = service ?? JobAlertService();
@@ -11,11 +10,7 @@ class JobAlertsProvider extends ChangeNotifier {
   final JobAlertService _service;
   static const int maximumAlertCount = 10;
 
-  /// Sunucunun makine tarafından okunabilir hata kodları.
-  ///
-  /// `KoalaException.deriveErrorCode` bunları mesaj anahtarından türetiyor:
-  /// süslü parantezler düşüyor, nokta alt çizgi oluyor, tamamı büyük harfe
-  /// çıkıyor. Yani `{job.alert.too.many}` → `JOB_ALERT_TOO_MANY`.
+  /// Mesaj anahtarından türüyor: `{job.alert.too.many}` → `JOB_ALERT_TOO_MANY`.
   static const String _quotaExceededCode = 'JOB_ALERT_TOO_MANY';
   static const String _alertNotFoundCode = 'JOB_ALERT_NOT_FOUND';
   static const String _categoryNotFoundCode = 'JOB_ALERT_CATEGORY_NOT_FOUND';
@@ -138,18 +133,9 @@ class JobAlertsProvider extends ChangeNotifier {
     }
   }
 
-  /// Sunucunun hatasını ekranda yazacak metne çevirir.
-  ///
-  /// Yönlendirme `errorCode` ile, durum kodu ya da [ApiErrorType] ile değil.
-  /// Sebebi somut: kota aşımını sunucu `ValidationException` ile döndürüyor
-  /// (`JobAlertManager:57`), yani ölçüt eksikliğiyle **aynı** HTTP 400 ve
-  /// **aynı** `VALIDATION_FAILED` kategorisini taşıyor. Tipe bakan bir dal
-  /// ikisini ayıramaz — ayıramıyordu da: kotaya takılan kullanıcıya "en az
-  /// bir geçerli ölçüt seçin" yazılıyordu, ve 409 bekleyen dal bu uçlardan
-  /// hiç çalışmıyordu çünkü iş alarmı uçlarında 409 atan hiçbir yer yok.
-  ///
-  /// AGENTS.md kuralı zaten bu: "`ApiException.errorCode` is what routing
-  /// keys off, never the message text."
+  /// Hata metnini seçer. Yönlendirme `errorCode` ile: kota aşımı da ölçüt
+  /// eksikliği de aynı `400 VALIDATION_FAILED`; tipe bakan dal ikisini
+  /// ayıramaz.
   String _messageFor(ApiException error) {
     switch (error.errorCode) {
       case _quotaExceededCode:
@@ -160,17 +146,11 @@ class JobAlertsProvider extends ChangeNotifier {
         return 'Seçtiğiniz kategori artık yok. Ölçütleri güncelleyip tekrar deneyin.';
     }
 
-    // Alan bazlı doğrulama hatalarının hepsi **tek** koda düşüyor: boş
-    // `errorCode`'u `ErrorResult:20` kategori adıyla dolduruyor, yani ad,
-    // şehir, ilçe, ücret ve ölçüt hataları ayrımsız `VALIDATION_FAILED`
-    // taşıyor (`ErrorContractIT:137` bunu sabitliyor). Onları birbirinden
-    // ayıran `details`: sunucu her alan için çözülmüş Türkçe metni orada
-    // gönderiyor (`Accept-Language: tr`), o yüzden burada kopyasını tutmak
-    // yerine olduğu gibi gösteriliyor.
+    // Alan hatalarının hepsi `VALIDATION_FAILED`; ayıran `details`, sunucu
+    // Türkçe metni orada gönderiyor.
     if (error.fieldErrors.isNotEmpty) return error.fieldErrors.first.message;
 
-    // Tanımadığımız bir hata: sunucunun kendi metni zaten Türkçe,
-    // uydurmaktan iyi.
+    // Tanınmayan hata: sunucunun Türkçe metni uydurmaktan iyi.
     return error.message;
   }
 

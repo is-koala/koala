@@ -1,11 +1,9 @@
 import 'package:koala/product/network/json_field.dart';
 
-/// İptali kimin yaptığı. Backend `CancellationParty` karşılığı.
 enum CancellationParty {
   worker('WORKER', 'Çalışan'),
   employer('EMPLOYER', 'İşveren'),
 
-  /// Koala'nın kendi iptali; destek tarafından yapılıyor.
   admin('ADMIN', 'Koala');
 
   const CancellationParty(this.code, this.displayName);
@@ -21,17 +19,9 @@ enum CancellationParty {
   }
 }
 
-/// Bir atamanın iptal kaydı.
-///
-/// Backend `CancellationDto` karşılığı. Atama başına **tek** kayıt açılıyor;
-/// ikinci iptal `409` alıyor.
-///
-/// Kesinti kuralı sunucuda: çalışan iptal ederse kesinti yok ve işveren tam
-/// iade alıyor. İşveren cezasız pencere içinde iptal ederse yine kesinti yok,
-/// pencere dışında geç iptal ücreti kesiliyor, iş başladıktan sonra iade
-/// yapılmıyor. Oranlar sunucu ayarından geliyor ve **istemciye açık bir uç
-/// yok** — bu yüzden iptal öncesi tutar gösterilemiyor, ancak kayıt döndükten
-/// sonra buradan okunuyor.
+/// İptal kaydı; atama başına **tek** (ikincisi `409`). Kesinti kuralı sunucuda:
+/// çalışan iptalinde kesinti yok; işveren cezasız pencere dışında geç iptal
+/// ücreti öder, iş başladıysa iade yok.
 class Cancellation {
   const Cancellation({
     required this.id,
@@ -51,32 +41,26 @@ class Cancellation {
 
   final CancellationParty cancelledByParty;
 
-  /// İptal gerekçesi; sunucu zorunlu tutuyor, en fazla 1000 karakter.
+  /// Zorunlu, en fazla 1000 karakter.
   final String? reason;
 
-  /// İşin başlamasına kalan süre, dakika. Kesinti oranı buna göre belirlendi.
+  /// Kesinti oranı buna göre belirlendi.
   final int noticeMinutes;
 
-  /// Uygulanan kesinti oranı, 0 ile 1 arasında.
+  /// 0-1 arası.
   final String feeRate;
 
-  /// Kesilen tutar.
   final String feeAmount;
 
-  /// İşverene iade edilen tutar.
   final String refundAmount;
 
   final DateTime? cancelledAt;
 
-  /// Kesinti uygulandı mı.
   bool get hasFee => _isPositiveDecimal(feeAmount);
 
-  /// Kesinti oranının yüzde karşılığı; "%50" diye yazmak için.
   int get feePercent => _roundedPercent(feeRate);
 
-  /// `GET .../cancellation` tam kaydı, `MyAssignmentDto.cancellation`
-  /// (koala-backend#282) ise kimliksiz bir özeti gönderiyor; kimlikler bu
-  /// yüzden eksik olabiliyor ve boş dizeye düşüyor.
+  /// Liste özeti kimliksiz geliyor; kimlikler boş dizeye düşebilir.
   factory Cancellation.fromJson(Map<String, dynamic> json) {
     return Cancellation(
       id: '${json['id'] ?? ''}',
@@ -98,15 +82,8 @@ class Cancellation {
   }
 }
 
-/// İptal edilmeden önce hesaplanan kesinti.
-///
-/// `GET /job-assignments/{id}/cancellation-preview` yanıtı. Hiçbir kayıt
-/// oluşturmuyor; iptal kutusu açılırken çağrılıyor ki kullanıcı ne
-/// kaybedeceğini bilerek karar versin.
-///
-/// **Bağlayıcı değil.** Kesinti işin başlamasına kalan süreye bağlı; kutu
-/// açık dururken cezasız pencere kapanırsa gerçek kesinti bundan yüksek
-/// çıkabilir. Sunucu iptalde yeniden hesaplıyor.
+/// İptal öncesi hesaplanan kesinti; kayıt oluşturmaz. **Bağlayıcı değil:** kutu
+/// açıkken cezasız pencere kapanabilir, sunucu yeniden hesaplar.
 class CancellationPreview {
   const CancellationPreview({
     this.feeRate = '0',
@@ -116,32 +93,24 @@ class CancellationPreview {
     this.cancellableNow = false,
   });
 
-  /// Uygulanacak kesinti oranı, 0 ile 1 arasında.
+  /// 0-1 arası.
   final String feeRate;
 
-  /// Kesilecek tutar.
   final String feeAmount;
 
-  /// İşverene iade edilecek tutar.
   final String refundAmount;
 
-  /// İşin başlamasına kalan süre, dakika. Negatif olabiliyor: iş başlamış.
+  /// Negatifse iş başlamış.
   final int noticeMinutes;
 
-  /// Şu an iptal edilebilir mi.
-  ///
-  /// Atama iptale kapalı bir durumdaysa ya da zaten iptal edilmişse `false`.
-  /// Sunucu burada `409` atmak yerine bunu döndürüyor; buton hata beklemeden
-  /// kapatılabiliyor.
+  /// İptale kapalıysa `409` yerine `false`; buton hata beklemeden kapanır.
   final bool cancellableNow;
 
-  /// Kesinti uygulanacak mı.
   bool get hasFee => _isPositiveDecimal(feeAmount);
 
-  /// Kesinti oranının yüzde karşılığı.
   int get feePercent => _roundedPercent(feeRate);
 
-  /// İş başladı mı. Başlamışsa iade yapılmıyor.
+  /// Başladıysa iade yok.
   bool get hasStarted => noticeMinutes <= 0;
 
   factory CancellationPreview.fromJson(Map<String, dynamic> json) {

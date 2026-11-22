@@ -8,21 +8,14 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// Tamamlanmış bir atamanın değerlendirme satırı.
-///
-/// İki kabuk aynı satırı çiziyor — çalışanın iş detayı ve işverenin atama
-/// paneli — bu yüzden metinler dışarıdan geliyor, karar tek yerde:
+/// Tamamlanmış atamanın değerlendirme satırı; iki kabuk ortak.
 ///
 /// - [ownReview] doluysa "Değerlendirdiniz: ★N · "yorum"", düğme yok.
-/// - [hasReviewed] ama içerik yoksa (eski sunucunun `409`u) "Değerlendirdiniz."
-/// - Değilse [pendingText] ve [buttonLabel] ile düğme.
+/// - [hasReviewed] ama içerik yoksa "Değerlendirdiniz."
+/// - Değilse [pendingText] ve düğme.
 ///
-/// [counterpartyReviewed] doğruysa altta küçük bir rozet: karşı tarafın
-/// değerlendirmesinin **varlığı** yazılıyor, içeriği değil — sunucu da
-/// yalnız varlığı gönderiyor.
-///
-/// Sohbet parçaları gibi işveren kabuğu bu widget'ı çalışan tarafından alıyor;
-/// [Review] modeli burada yaşadığı için `product/`'a taşınmadı.
+/// [counterpartyReviewed] ise karşı tarafın değerlendirmesinin yalnız
+/// **varlığı** rozetle yazılır.
 class ReviewStateRow extends StatelessWidget {
   const ReviewStateRow({
     super.key,
@@ -35,25 +28,22 @@ class ReviewStateRow extends StatelessWidget {
     this.buttonKey,
   });
 
-  /// İçeriği bilinen değerlendirme; `null` "değerlendirilmedi" demek değil.
+  /// `null` "değerlendirilmedi" demek değil.
   final Review? ownReview;
 
-  /// Değerlendirilmiş mi; [ownReview] `null` iken de doğru olabilir.
   final bool hasReviewed;
 
   final bool counterpartyReviewed;
 
-  /// Henüz değerlendirilmemişken yazılan cümle.
   final String pendingText;
 
   final String buttonLabel;
 
-  /// Düğmenin eylemi; `null` ise düğme devre dışı (bir eylem sürüyor).
+  /// `null` ise düğme devre dışı.
   final VoidCallback? onReview;
 
   final Key? buttonKey;
 
-  /// Karşı taraf rozetinin metni; iki kabukta da aynı.
   static const String counterpartyBadgeText = 'Karşı taraf sizi değerlendirdi';
 
   @override

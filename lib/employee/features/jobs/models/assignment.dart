@@ -7,7 +7,6 @@ import 'package:koala/employee/features/jobs/models/review.dart';
 import 'package:koala/product/features/transport/models/transport_plan.dart';
 import 'package:koala/product/models/pricing_breakdown.dart';
 
-/// Atamanın durumu. Backend `AssignmentStatus` karşılığı.
 enum AssignmentStatus {
   pendingConfirmation('PENDING_CONFIRMATION', 'Onay Bekleniyor'),
   confirmed('CONFIRMED', 'Onaylandı'),
@@ -29,7 +28,6 @@ enum AssignmentStatus {
   }
 }
 
-/// Ödemenin durumu. Backend `PaymentStatus` karşılığı.
 enum PaymentStatus {
   pendingCollection('PENDING_COLLECTION', 'Tahsilat Bekleniyor'),
   heldInEscrow('HELD_IN_ESCROW', 'Emanette'),
@@ -42,12 +40,10 @@ enum PaymentStatus {
   final String code;
   final String displayName;
 
-  /// Para çalışana geçti mi.
   bool get isPaid => this == PaymentStatus.releasedToWorker;
 
-  /// İş detayında çalışana yazılan başlık: "Ödeme bekleniyor / Emanette /
-  /// Ödendi / İade edildi". [displayName] işveren tarafının dili
-  /// ("Tahsilat Bekleniyor"); çalışan tahsilat yapmıyor, ödeme bekliyor.
+  /// Çalışanın dili ("Ödeme bekleniyor"); [displayName] işverenin ("Tahsilat
+  /// Bekleniyor").
   String get workerLabel => switch (this) {
     PaymentStatus.pendingCollection => 'Ödeme bekleniyor',
     PaymentStatus.heldInEscrow => 'Emanette',
@@ -56,7 +52,6 @@ enum PaymentStatus {
     PaymentStatus.refunded => 'İade edildi',
   };
 
-  /// Başlığın altındaki tek cümlelik açıklama.
   String get workerNote => switch (this) {
     PaymentStatus.pendingCollection =>
       'İşveren ücreti henüz güvenceye almadı; mesai o zaman başlayabilir.',
@@ -68,7 +63,6 @@ enum PaymentStatus {
     PaymentStatus.refunded => 'Ücret işverene iade edildi.',
   };
 
-  /// Tahsilat emanet hesaba geçti mi veya çalışana ödendi mi.
   bool get isSecured =>
       this == PaymentStatus.heldInEscrow ||
       this == PaymentStatus.releasedToWorker;
@@ -81,11 +75,7 @@ enum PaymentStatus {
   }
 }
 
-/// Kabul edilmiş bir başvurunun dönüştüğü iş.
-///
-/// `GET /users/me/assignments` yanıtındaki `MyAssignmentDto` karşılığı.
-/// Başvuru kabul edilene kadar iş bir [JobApplication]; kabul edildikten
-/// sonrası burada izleniyor.
+/// Kabul edilmiş başvurunun dönüştüğü iş (`MyAssignmentDto`).
 class Assignment {
   const Assignment({
     required this.id,
@@ -116,7 +106,6 @@ class Assignment {
 
   final String id;
 
-  /// Atamanın bağlı olduğu ilanın özeti.
   final Job job;
 
   final AssignmentStatus status;
@@ -126,89 +115,57 @@ class Assignment {
   final DateTime? assignmentDateTime;
   final DateTime? actualCompletionDateTime;
 
-  /// Çalışılan saat. İş bitmeden 0.
+  /// İş bitmeden 0.
   final int workHours;
 
-  /// Çalışanın eline geçecek tutar (komisyon düşülmüş). İki tarafa da
-  /// geliyor; çalışan görünümünde tek fiyat alanı bu.
+  /// Komisyon düşülmüş tutar; çalışan görünümünde tek fiyat alanı.
   final double? workerPayout;
 
-  /// İşverenden tahsil edilen toplam. Sunucu yalnız işverene gönderiyor;
-  /// görüntüleyen çalışansa `null` (koala-backend#294).
+  /// Yalnız işverene gönderiliyor; çalışanda `null`.
   final double? totalCharged;
 
-  /// İlan yayımlanırken backend'in atamaya sabitlediği fiyat snapshot'ı.
-  /// Ödeme onayı bu değeri gösterir; güncel komisyon tarifesiyle yenilenmez.
-  ///
-  /// Yalnız işveren görünümünde dolu: hizmet bedeli ve işveren toplamı
-  /// çalışanın işi değil, sunucu ona `null` gönderiyor. Çalışan kabuğu bu
-  /// alandan satır çizmez — gelse bile (eski sunucu) çizmez.
+  /// Yayımlamada sabitlenen fiyat snapshot'ı; ödeme onayı bunu gösterir. Yalnız
+  /// işveren görünümünde dolu; çalışan kabuğu bu alandan satır çizmez.
   final PricingBreakdown? pricing;
 
-  /// Bu atama üzerinden sohbet açılabilir mi ve açılamıyorsa neden.
-  ///
-  /// `messagingAvailable` + `messagingAvailableReason` alanlarından geliyor.
   /// Alanlar yoksa kapı kapalı sayılıyor: eski sunucu da ödeme öncesi sohbeti
-  /// reddediyor, düğme onu önceden gizliyor.
+  /// reddediyor.
   final MessagingAvailability messaging;
 
-  /// Zaman çizelgesinin sunucudan gelen damgaları (koala-backend#282).
-  ///
-  /// Hepsi **opsiyonel**: bu alanları göndermeyen sunucuda `null` kalıyor ve
-  /// çizelge o satırı hiç çizmiyor. Eski damgalar ([assignmentDateTime],
-  /// [actualCompletionDateTime]) değişmedi; yenileri onların arasını
-  /// dolduruyor — atamanın açıldığı an, çalışanın onayı, ödemenin emanete
-  /// alındığı an ve planlanan bitiş.
+  /// Zaman çizelgesi damgaları; hepsi opsiyonel, gelmezse satır çizilmez.
   final DateTime? createdAt;
   final DateTime? confirmedAt;
   final DateTime? expectedCompletionDateTime;
   final DateTime? paymentSecuredAt;
 
-  /// Atamanın türediği başvuru: ne zaman başvurulduğu ve ne zaman kabul
-  /// edildiği. Sunucu göndermiyorsa `null`.
+  /// Sunucu göndermiyorsa `null`.
   final AssignmentApplication? application;
 
-  /// İlanı açan kişi (`SafeUserDto`). Bireysel ilanda işveren kartında adı
-  /// ve fotoğrafı bu alandan geliyor; sunucu göndermiyorsa ilan detayının
-  /// `creator` alanı yedek.
+  /// Bireysel ilanda işveren kartı buradan; yoksa ilan detayının `creator`'ı.
   final JobCreator? employer;
 
-  /// İlanı açan şirket: kimlik, ad ve logo. Şirket ilanında dolu; bireysel
-  /// ilanda ve eski sunucuda `null` — o zaman [Job.companyId] ve
-  /// [Job.company] kullanılıyor.
+  /// Bireysel ilanda ve eski sunucuda `null`; o zaman [Job.companyId].
   final JobCompany? company;
 
-  /// Atama iptal edildiyse kaydın özeti. `GET .../cancellation` tam kaydı
-  /// döndürüyor; buradaki, sunucu listeyle birlikte gönderdiğinde ek istek
-  /// atmadan kartı çizmeye yarıyor.
+  /// Liste özeti; ek istek atmadan kartı çizmek için.
   final Cancellation? cancellation;
 
-  /// Hakediş özeti: sunucu ödeme çıkışı açtıysa durumu ve tamamlanma anı.
   final PayoutSummary? payout;
 
-  /// Görüntüleyenin bu atamaya yazdığı değerlendirme; yazmadıysa `null`
-  /// (koala-backend#293). "Değerlendir" düğmesinin kapısı **bu alan**:
-  /// doluysa düğme yok, içerik doğrudan buradan yazılıyor. Alanı hiç
-  /// göndermeyen eski sunucuda da `null` — düğme görünür, ikinci denemeyi
-  /// sunucunun `409`u karşılar.
+  /// Görüntüleyenin değerlendirmesi; "Değerlendir" düğmesinin kapısı **bu
+  /// alan**. Eski sunucuda da `null`: düğme görünür, ikinciyi `409` karşılar.
   final Review? myReview;
 
-  /// Karşı taraf bu atamayı değerlendirdi mi. Yalnız varlık bilgisi; içerik
-  /// ve yazar taşınmıyor, ekranda küçük bir rozetten fazlası çizilmiyor.
-  /// Alan yoksa `false`.
+  /// Yalnız varlık bilgisi; küçük bir rozetten fazlası çizilmez.
   final bool counterpartyReviewed;
 
-  /// İlanın ulaşım planı ve bu atamanın koltukları (koala-backend#297).
-  /// İşçi görünümünde plaka/şoför yalnız koltuk seçilen serviste. Planı
-  /// olmayan ilanda ve eski sunucuda `null`.
+  /// Plan yoksa ya da eski sunucuda `null`.
   final AssignmentTransport? transport;
 
-  /// İş bitti ve para çalışana geçti mi.
   bool get isPaidOut =>
       status == AssignmentStatus.completed && paymentStatus.isPaid;
 
-  /// Çalışan atamayı kabul etti ama ücret henüz emanete alınmadıysa işveren
-  /// checkout'u başlatabilir. Bekleyen çalışan cevabında ödeme alınmaz.
+  /// Çalışan kabul etti ama ücret emanete alınmadı: işveren ödeme başlatabilir.
   bool get needsEmployerPayment =>
       status == AssignmentStatus.confirmed &&
       (paymentStatus == PaymentStatus.pendingCollection ||
@@ -277,11 +234,7 @@ class Assignment {
       value is String ? DateTime.tryParse(value) : null;
 }
 
-/// Atamanın türediği başvurunun damgaları.
-///
-/// `MyAssignmentDto.application` (koala-backend#282): başvurunun kimliği,
-/// başvuru anı ve işverenin yanıt anı — atama açısından yanıt anı kabul
-/// anıdır. Zaman çizelgesinin ilk iki satırı buradan geliyor.
+/// Başvurunun damgaları; atama için yanıt anı kabul anıdır.
 class AssignmentApplication {
   const AssignmentApplication({
     required this.id,
@@ -302,7 +255,6 @@ class AssignmentApplication {
   }
 }
 
-/// Sayfalı atama yanıtı.
 class AssignmentPage {
   const AssignmentPage({
     this.assignments = const [],

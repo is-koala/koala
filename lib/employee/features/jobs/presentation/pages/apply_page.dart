@@ -35,12 +35,6 @@ class _ApplyPageState extends State<ApplyPage> {
   final TextEditingController _coverLetterController = TextEditingController();
   bool _agreedToTerms = false;
 
-  /// İş bilgileri kartının zemin ve kenarlık opaklıkları; kart sayfadan
-  /// ayrışsın ama başvuru formunun önüne geçmesin.
-
-  /// Kategori rozetinin zemin opaklığı.
-
-  /// Ön yazı alanının satır ve karakter sınırı.
   static const int _coverLetterMaxLength = 500;
 
   /// Ön yazı alanının yüksekliği; diğer formlardaki açıklama alanıyla aynı.
@@ -56,11 +50,9 @@ class _ApplyPageState extends State<ApplyPage> {
   @override
   void initState() {
     super.initState();
-    // Eksikler `/users/me`'den hesaplanıyor. Kullanıcı henüz hiç
-    // yüklenmemişse (uygulama açılır açılmaz keşfetten başvuruya gelindi,
-    // profil sekmesi hiç açılmadı) ya da başka cihazda bilgisini
-    // değiştirdiyse ekran yanlış "hazır" görünürdü; o yüzden her açılışta
-    // tazeleniyor. Elde kullanıcı varsa gösterge yanıp sönmüyor.
+    // Eksikler `/users/me`'den hesaplanıyor; kullanıcı hiç yüklenmemiş ya da
+    // başka cihazda değişmiş olabilir, o yüzden her açılışta sessizce
+    // tazelenir.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) context.read<UserProvider>().load(silent: true);
     });
@@ -72,10 +64,8 @@ class _ApplyPageState extends State<ApplyPage> {
     super.dispose();
   }
 
-  /// Başvuruyu gönderir.
-  ///
-  /// Başarı diyaloğu yalnızca sunucu kaydı oluşturduğunda açılıyor; hata
-  /// durumunda kullanıcı formda kalıyor ki yazdığı ön yazı kaybolmasın.
+  /// Başarı diyaloğu yalnız sunucu kaydı oluşturunca; hatada form kalır, ön
+  /// yazı kaybolmasın.
   Future<void> _submit() async {
     final provider = context.read<ApplyProvider>();
     final coverLetter = _coverLetterController.text.trim();
@@ -92,9 +82,8 @@ class _ApplyPageState extends State<ApplyPage> {
       return;
     }
 
-    // Sunucu başvuru anında kimlik, adres ve IBAN'ı sırayla kontrol ediyor.
-    // Ekran bunları önden de gösteriyor ama kullanıcı arada başka bir
-    // cihazdan bilgisini silmiş olabilir; hata kodu son sözü söylüyor.
+    // Ekran şartları önden gösteriyor ama başka cihazdan silinmiş olabilir;
+    // hata kodu son söz.
     final requirement = ApplicationRequirement.fromErrorCode(
       provider.errorCode,
     );
@@ -106,7 +95,6 @@ class _ApplyPageState extends State<ApplyPage> {
     AppToast.error(context, provider.errorMessage ?? 'Başvuru gönderilemedi.');
   }
 
-  /// Eksik şartı anlatıp ilgili ekrana götürür.
   Future<void> _showRequirementDialog(
     ApplicationRequirement requirement,
   ) async {
@@ -144,24 +132,21 @@ class _ApplyPageState extends State<ApplyPage> {
 
     if (goToScreen != true || !mounted || user == null) return;
 
-    // Ekranlar `/users/me`'yi tazeliyor; dönüşte kullanıcı güncel oluyor ve
-    // uyarı şeridi kendiliğinden kayboluyor.
+    // Hedef ekranlar `/users/me`'yi tazeliyor; dönüşte uyarı kendiliğinden
+    // kalkar.
     await context.push(requirement.route, extra: user);
   }
 
-  /// Uyarı metinlerinin satır aralığı.
   static const double _dialogLineHeight = 1.4;
 
   @override
   Widget build(BuildContext context) {
     final applyProvider = context.watch<ApplyProvider>();
     final alreadyApplied = applyProvider.hasApplied(widget.job.id);
-    // Üç şart da `/users/me`'de duruyor, o yüzden eksik olan başvuru
-    // gönderilmeden söylenebiliyor: kullanıcı ön yazıyı boşuna yazmıyor.
+    // Eksik şart gönderimden önce söylenebiliyor; ön yazı boşuna yazılmasın.
     final userProvider = context.watch<UserProvider>();
-    // Kullanıcı bilinmeden eksikler bilinmiyor: bu durumda gönder kapalı.
-    // "Eksiği yok" saymak, temiz görünen ekranı sunucunun
-    // `APPLICANT_IDENTITY_NOT_VERIFIED` ile reddetmesine yol açar.
+    // Kullanıcı bilinmeden eksikler bilinmiyor: gönder kapalı. "Eksiği yok"
+    // saymak sunucunun `APPLICANT_IDENTITY_NOT_VERIFIED` reddine yol açar.
     final user = userProvider.user;
     final readiness = ApplicationReadiness.of(user);
     final readinessKnown = user != null;
@@ -176,24 +161,19 @@ class _ApplyPageState extends State<ApplyPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: AppSizes.spaceSmall),
-              // Ritim: bölümler arası 24, bölüm başlığından içeriğe 12.
-              // [MyListGroup] kendi alt boşluğunu (24) taşıyor.
+              // Ritim: bölümler arası 24, başlıktan içeriğe 12.
               if (!readinessKnown)
                 _readinessUnknown(userProvider)
               else if (!readiness.isReady)
                 _readinessGroup(readiness),
               _sectionTitle('İlan'),
               const SizedBox(height: AppSizes.space),
-              // Keşfetteki kartın aynısı; burada yalnız özet, dokunulmuyor.
               JobCard(job: widget.job, openDetailOnTap: false),
-              // Kartın kendi alt boşluğu (12) ile birlikte 24.
               const SizedBox(height: AppSizes.space),
               _coverLetterSection(),
               const SizedBox(height: AppSizes.spaceLarge),
               _requirementsGroup(),
               _termsRow(alreadyApplied: alreadyApplied),
-              // Buton çubuğu `bottomNavigationBar`'da, içeriğin üstüne
-              // binmiyor; navbar payı gerekmiyor.
               const SizedBox(height: AppSizes.spaceLarge),
             ],
           ),
@@ -229,16 +209,11 @@ class _ApplyPageState extends State<ApplyPage> {
     return 'Başvuruyu Gönder';
   }
 
-  /// Eksik şartlar, ayarlardaki satırlarla aynı kartta: her satır ilgili
-  /// ekranı açıyor.
-  ///
-  /// Sunucu şartları sırayla kontrol edip ilk eksikte duruyor; burada hepsi
-  /// birden gösteriliyor ki kullanıcı kaç adım olduğunu baştan görsün.
+  /// Eksik şartlar; sunucu ilk eksikte durur ama hepsi gösterilir ki kaç adım
+  /// olduğu baştan görülsün.
   Widget _readinessGroup(ApplicationReadiness readiness) {
     final user = context.read<UserProvider>().user;
 
-    // Başlık, sayfanın diğer bölüm başlıklarıyla (İlan, Ön yazı) aynı;
-    // grubun küçük gri başlığı ayarlar menüsüne ait.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -260,8 +235,7 @@ class _ApplyPageState extends State<ApplyPage> {
     );
   }
 
-  /// Kullanıcı henüz yüklenmediyse yükleniyor göstergesi, yüklenemediyse
-  /// sebebi ve tekrar deneme. İkisinde de gönder kapalı.
+  /// Kullanıcı yükleniyorsa gösterge, yüklenemediyse sebep ve tekrar dene.
   Widget _readinessUnknown(UserProvider provider) {
     final Widget content = provider.hasError
         ? Row(
@@ -309,8 +283,8 @@ class _ApplyPageState extends State<ApplyPage> {
 
   // --------------------------------------------------------------- Ön yazı
 
-  /// Diğer formlardaki çok satırlı alanın aynısı: çerçeveli, dolgusuz; gri
-  /// dolgu devre dışı bir alan gibi durur.
+  /// Diğer formlardaki çok satırlı alanın aynısı; gri dolgu devre dışı gibi
+  /// durur.
   Widget _coverLetterSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -337,8 +311,7 @@ class _ApplyPageState extends State<ApplyPage> {
 
   // ---------------------------------------------------------- Gereksinimler
 
-  /// İlanın gereksinimleri; dokunulmayan satırlar, okları yok. İkisi de özet
-  /// yanıtta zorunlu alan, her zaman çizilebiliyor.
+  /// Dokunulmayan satırlar; ikisi de özette zorunlu alan.
   Widget _requirementsGroup() {
     final job = widget.job;
     String label(bool required) => required ? 'Gerekli' : 'Gerekli değil';

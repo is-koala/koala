@@ -1,6 +1,5 @@
 import 'package:koala/employee/features/home/models/job_detail.dart';
 
-/// Uyuşmazlığın durumu. Backend `DisputeStatus` karşılığı.
 enum DisputeStatus {
   open('OPEN', 'Açık'),
   underReview('UNDER_REVIEW', 'İnceleniyor'),
@@ -19,7 +18,6 @@ enum DisputeStatus {
   }
 }
 
-/// Uyuşmazlığın sonucu. Backend `DisputeResolution` karşılığı.
 enum DisputeResolution {
   releaseToWorker('RELEASE_TO_WORKER', 'Ücret çalışana ödendi'),
   refundEmployer('REFUND_EMPLOYER', 'Ücret işverene iade edildi'),
@@ -40,12 +38,8 @@ enum DisputeResolution {
   }
 }
 
-/// Bir atama üzerindeki uyuşmazlık.
-///
-/// Backend `DisputeDto` karşılığı. Yalnızca para emanetteyken açılabiliyor
-/// ve atama başına aynı anda tek açık uyuşmazlık oluyor. Açık uyuşmazlık
-/// emanetteki parayı donduruyor: çalışana ödeme yapılmıyor ve sunucunun
-/// kendiliğinden tamamlaması duruyor.
+/// Atamadaki uyuşmazlık. Yalnız para emanetteyken ve aynı anda tek açık; parayı
+/// dondurur, otomatik tamamlamayı durdurur.
 class Dispute {
   const Dispute({
     required this.id,
@@ -65,27 +59,23 @@ class Dispute {
 
   final DisputeStatus status;
 
-  /// Uyuşmazlığı açan taraf. Backend `SafeUserDto` döndürüyor.
   final JobCreator? openedBy;
 
-  /// Açılış gerekçesi; sunucu zorunlu tutuyor, en fazla 2000 karakter.
+  /// Zorunlu, en fazla 2000 karakter.
   final String? reason;
 
-  /// Sonuç ve destek ekibinin notu; sonuçlanmamış uyuşmazlıkta `null`.
+  /// Sonuçlanmamışta `null`.
   final DisputeResolution? resolution;
   final String? resolutionNote;
 
   final DateTime? resolvedAt;
   final DateTime? createdAt;
 
-  /// Hâlâ sürüyor mu. Süren uyuşmazlık ikinci bir uyuşmazlığı engelliyor.
+  /// Süren uyuşmazlık ikincisini engeller.
   bool get isOpen => status != DisputeStatus.resolved;
 
-  /// En yeni önde; tarihi olmayan en sona, eşitlikte sunucunun sırası.
-  ///
-  /// Uyuşmazlık özetini (iş detayı) ve ekranı (kanıtlar) sıralayan tek yer:
-  /// ikisi kendi karşılaştırıcısını yazdığında eşitlikte ayrı sırayla
-  /// diziliyordu. `List.sort` kararlı olmadığı için sunucu sırası dizinle
+  /// En yeni önde; tarihsiz sonda, eşitlikte sunucu sırası. Özet ve ekran aynı
+  /// sırayı kullansın diye tek yer; `List.sort` kararlı olmadığı için dizin
   /// korunuyor.
   static List<Dispute> newestFirst(Iterable<Dispute> disputes) {
     final ordered = [

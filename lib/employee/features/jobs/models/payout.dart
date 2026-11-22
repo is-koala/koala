@@ -1,13 +1,7 @@
 import 'package:koala/product/network/json_field.dart';
 
-/// Çalışana yapılan ödeme çıkışının backend durumu.
-///
-/// Sözlük sunucunun `PayoutDto` açıklamasından (koala-backend#294):
-/// `PENDING` çıkışa alındı ve sağlayıcı onayı bekleniyor, `PROCESSING`
-/// sağlayıcı onayladı ve banka transferi yolda, `COMPLETED` banka
-/// ekstresiyle doğrulandı, `FAILED` çıkış başarısız. "Hesabınıza geçti"
-/// gibi kesin bir ifade **yalnız** `COMPLETED`'da yazılıyor; öncesinde para
-/// yolda, henüz hesapta değil.
+/// Ödeme çıkışının durumu. "Hesabınıza geçti" **yalnız** `COMPLETED`'da (banka
+/// ekstresiyle doğrulanmış); öncesinde para yolda.
 enum PayoutStatus {
   pending(
     'PENDING',
@@ -30,13 +24,11 @@ enum PayoutStatus {
 
   final String code;
 
-  /// Rozet metni; kısa.
   final String displayName;
 
-  /// Satırın ve detayın tek cümlelik açıklaması.
   final String description;
 
-  /// Para çalışanın hesabına geçti mi — ekstreyle doğrulanmış tek durum.
+  /// Ekstreyle doğrulanmış tek durum.
   bool get isSettled => this == PayoutStatus.completed;
 
   static PayoutStatus fromCode(Object? value) {
@@ -47,13 +39,8 @@ enum PayoutStatus {
   }
 }
 
-/// İş arayanın hak ettiği tutarın sağlayıcıya çıkış kaydı.
-///
-/// `GET /users/me/payouts` yanıtındaki `PayoutDto`. Hesap ve zaman alanları
-/// (koala-backend#294) hepsi opsiyonel: eski sunucu göndermiyor, yeni sunucu
-/// da hesap silinmişse ya da sağlayıcı referans dönmediyse `null` bırakıyor.
-/// `bankAccountId` bilerek okunmuyor: ekranda bir karşılığı yok, hesap
-/// [maskedIban] ile gösteriliyor.
+/// Hakedişin çıkış kaydı (`PayoutDto`). Hesap ve zaman alanları opsiyonel: eski
+/// sunucu göndermiyor, hesap silinmişse de `null`.
 class Payout {
   const Payout({
     required this.id,
@@ -75,51 +62,41 @@ class Payout {
   final String id;
   final String jobAssignmentId;
 
-  /// Backend'in ondalık değeri. İkili kayan noktaya çevrilmeden taşınır.
+  /// İkili kayan noktaya çevrilmeden taşınır.
   final String amount;
 
   final String currency;
   final PayoutStatus status;
 
-  /// Hakedişin ait olduğu ilanın başlığı; eski sunucuda `null`.
   final String? jobTitle;
 
-  /// İlanı açan şirketin adı; bireysel ilanda ve eski sunucuda `null`.
   final String? companyName;
 
-  /// Hakedişin gittiği hesabın maskeli IBAN'ı (`TR18***2315`): çıkış
-  /// anındaki birincil hesap, sonradan değişmiyor. Tam IBAN hiçbir yanıtta
-  /// gelmiyor. Hesap kaydı yoksa ya da sonradan silindiyse `null`.
+  /// Çıkış anındaki birincil hesap; tam IBAN hiçbir yanıtta gelmez.
   final String? maskedIban;
 
-  /// Sağlayıcının (Iyzico) çıkış talimatını onaylarken verdiği işlem
-  /// referansı; `PENDING`'de ya da referans dönmediyse `null`.
+  /// `PENDING`'de ya da referans dönmediyse `null`.
   final String? providerReference;
 
-  /// Emanetten çıkışa alındığı an (`createdAt` ile aynı değer).
   final DateTime? releasedAt;
 
-  /// Banka ekstresiyle doğrulanan gerçekleşme anı; yalnız `COMPLETED`'da
-  /// dolu (`completedAt` ile aynı değer).
+  /// Yalnız `COMPLETED`'da dolu.
   final DateTime? settledAt;
 
   final String? failureReason;
   final DateTime? completedAt;
   final DateTime createdAt;
 
-  /// Satırdaki kısa hesap etiketi: IBAN'ın son dört hanesi. Maske sunucudan
-  /// geliyor; burada yalnız kuyruğu alınıyor.
+  /// Son dört hane; maske sunucudan.
   String? get ibanTail {
     final iban = maskedIban;
     if (iban == null || iban.isEmpty) return null;
     return iban.length <= 4 ? iban : iban.substring(iban.length - 4);
   }
 
-  /// Çıkışa alınma anı: yeni alan, yoksa kayıt zamanı (aynı değer).
   DateTime get releasedAtOrCreated => releasedAt ?? createdAt;
 
-  /// Mutabakat anı: yeni alan, yoksa `COMPLETED` kaydın `completedAt`'i.
-  /// Tamamlanmamış çıkışta `null` — henüz doğrulanmış bir an yok.
+  /// Tamamlanmamışta `null`.
   DateTime? get settledAtOrCompleted =>
       settledAt ?? (status.isSettled ? completedAt : null);
 
@@ -145,17 +122,12 @@ class Payout {
     );
   }
 
-  /// Boş dize de "yok" sayılıyor; ekranda `—` onun yerine geçiyor.
+  /// Boş dize "yok"; ekranda `—`.
   static String? _optionalString(Object? value) =>
       value is String && value.isNotEmpty ? value : null;
 }
 
-/// Atamanın içinde gelen hakediş özeti.
-///
-/// `MyAssignmentDto.payout` (koala-backend#282) yalnızca kimlik, durum ve
-/// tamamlanma anını taşıyor; tutar ve para birimi [Payout]'ta,
-/// `/users/me/payouts` ucunda. Zaman çizelgesinin "hakediş" satırı ve
-/// ödeme durumu metni buna bakıyor.
+/// Atamadaki hakediş özeti: kimlik, durum, tamamlanma. Tutar [Payout]'ta.
 class PayoutSummary {
   const PayoutSummary({
     required this.id,
