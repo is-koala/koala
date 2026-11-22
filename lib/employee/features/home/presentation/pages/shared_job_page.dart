@@ -11,19 +11,13 @@ import 'package:koala/product/widgets/empty_state.dart';
 
 part 'shared_job_pagemodel.dart';
 
-/// Paylaşılan bir ilan bağlantısıyla (`/is-ilanlari/<id>`) gelen kullanıcının
-/// ilk ekranı.
-///
-/// İlanı kimlikle yüklüyor, sonra keşfet sekmesine geçip ilanın detay
-/// sheet'ini açıyor: kullanıcı ilanı uygulamadaki her ilan gibi görüyor ve
-/// sheet kapanınca keşfette kalıyor. İlan yoksa ya da kapanmışsa bunu söyleyip
-/// keşfete dönüş sunuyor.
+/// Paylaşılan ilan bağlantısının ilk ekranı: ilanı yükler, keşfete geçip detay
+/// sheet'ini açar. İlan yoksa ya da kapandıysa söyler.
 class SharedJobPage extends StatefulWidget {
   const SharedJobPage({super.key, required this.jobId, this.jobService});
 
   final String jobId;
 
-  /// Testte sahte sunucuya bağlı servis; üretimde `null`.
   final JobService? jobService;
 
   @override

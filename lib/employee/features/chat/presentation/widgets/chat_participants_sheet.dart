@@ -13,13 +13,8 @@ import 'package:koala/product/widgets/app_bottom_sheet.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/messaging_gate_note.dart';
 
-/// Grup sohbetinin katılımcıları; başlığa dokununca açılıyor.
-///
-/// İlan başlığı, katılımcı sayısı ve kişi başına ad, rol, katılma tarihi.
-/// Ayrılanlar listenin sonunda ve gri; oturum sahibi "Siz" etiketiyle.
-/// Sohbet kapandıysa üstte not var. İki kabuk aynı sheet'i çiziyor; profil
-/// bağlantısı [onOpenProfile] ile dışarıdan geliyor, çünkü her kabuk kendi
-/// sayfasını açıyor (`/business/user-profile` ve `/public-profile`).
+/// Grup katılımcıları: ad, rol, katılma tarihi; ayrılanlar sonda ve gri. Profil
+/// bağlantısı dışarıdan, her kabuk kendi sayfasını açıyor.
 class ChatParticipantsSheet extends StatelessWidget {
   const ChatParticipantsSheet({
     super.key,
@@ -32,20 +27,15 @@ class ChatParticipantsSheet extends StatelessWidget {
 
   final Conversation chat;
 
-  /// Denetleyicideki güncel liste; `chat.participants` liste ekranından
-  /// kalan anlık görüntü olabilir.
+  /// `chat.participants` bayat anlık görüntü olabilir.
   final List<ChatParticipant> participants;
 
-  /// Oturum sahibi; satırı "Siz" etiketi alıyor ve kendi satırı
-  /// [onOpenProfile]'a değil [onOpenOwnProfile]'a bağlı.
+  /// "Siz" etiketi; satırı [onOpenOwnProfile]'a bağlı.
   final String? currentUserId;
 
-  /// Bir katılımcının profilini açar; `null` ise satırlar dokunulmuyor.
   final ValueChanged<ChatParticipant>? onOpenProfile;
 
-  /// Oturum sahibinin kendi satırına dokunma (çalışan kabuğunda profil
-  /// sekmesine gider). `null` ise kendi satırı dokunulmuyor — işveren
-  /// kabuğunda öyle.
+  /// İşveren kabuğunda `null`.
   final VoidCallback? onOpenOwnProfile;
 
   static const String title = 'Katılımcılar';
@@ -55,10 +45,8 @@ class ChatParticipantsSheet extends StatelessWidget {
   static const String youTag = 'Siz';
   static const String leftTag = ChatParticipant.leftLabel;
 
-  /// Ayrılan katılımcının avatarı soluk.
   static const double _leftOpacity = 0.5;
 
-  /// Listenin kaplayabileceği en fazla yükseklik oranı.
   static const double _maxHeightRatio = 0.6;
 
   static Future<void> show(
@@ -84,7 +72,6 @@ class ChatParticipantsSheet extends StatelessWidget {
   int get _activeCount =>
       participants.where((participant) => !participant.left).length;
 
-  /// Aktifler önce, ayrılanlar sonda; kendi içlerinde sunucu sırası.
   List<ChatParticipant> get _ordered => [
     ...participants.where((participant) => !participant.left),
     ...participants.where((participant) => participant.left),
@@ -106,8 +93,7 @@ class ChatParticipantsSheet extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: AppSizes.smallGap),
-          // Ayrılanlar listede duruyor ama sayıya girmiyor; sohbet listesinin
-          // satırıyla aynı kural (`Conversation.participantCount`).
+          // Ayrılanlar sayıya girmiyor (`Conversation.participantCount`).
           Text(
             '$_activeCount katılımcı',
             style: context.textTheme.labelMedium?.copyWith(
@@ -157,8 +143,7 @@ class ChatParticipantsSheet extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSizes.spaceSmall),
-      // Sheet'in zemini `DecoratedBox`; `ListTile` mürekkebini onun altına
-      // basıyor. Dokunulabilir satır bu yüzden Material + InkWell + Padding.
+      // `ListTile` mürekkebi `DecoratedBox` zeminin altında kalıyor.
       child: Material(
         color: context.tileColor,
         borderRadius: AppRadius.innerCircular,
@@ -166,7 +151,6 @@ class ChatParticipantsSheet extends StatelessWidget {
           borderRadius: AppRadius.innerCircular,
           onTap: canOpen
               ? () {
-                  // Sheet kapanıp profil açılıyor; dönüşte sohbet görünsün.
                   Navigator.pop(context);
                   open();
                 }
@@ -232,7 +216,6 @@ class ChatParticipantsSheet extends StatelessWidget {
     );
   }
 
-  /// Rol etiketi ve katılma tarihi; eski sunucuda ikisi de boş.
   Widget _details(BuildContext context, ChatParticipant participant) {
     final joinedAt = participant.joinedAt;
     final parts = <String>[

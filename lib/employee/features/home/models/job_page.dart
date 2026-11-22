@@ -1,9 +1,6 @@
 import 'package:koala/employee/features/home/models/job.dart';
 
-/// Sayfalı ilan yanıtı. Backend `PageDto<JobSummaryDto>` karşılığı.
-///
-/// Keşfet bugün yalnızca ilk sayfayı çiziyor; [last] ve [page] sonsuz kaydırma
-/// eklendiğinde kullanılacak, o yüzden şimdiden taşınıyor.
+/// Sayfalı ilan yanıtı.
 class JobPage {
   const JobPage({
     this.jobs = const [],

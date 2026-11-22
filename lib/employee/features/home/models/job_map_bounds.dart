@@ -1,8 +1,5 @@
-/// Haritanın görünen alanı.
-///
-/// `google_maps_flutter`'ın `LatLngBounds`'undan ayrı bir tip: sunucunun
-/// beklediği dört alan burada zaten ayrı ayrı duruyor ve harita eklentisine
-/// bağlı olmadığı için görünen alan mantığı eklenti olmadan sınanabiliyor.
+/// Haritanın görünen alanı; eklentiden bağımsız tip ki mantık eklentisiz
+/// sınansın.
 class JobMapBounds {
   const JobMapBounds({
     required this.minLatitude,
@@ -16,16 +13,11 @@ class JobMapBounds {
   final double minLongitude;
   final double maxLongitude;
 
-  /// 180. meridyeni aşan kutu. Google Maps böyle bir kutuda `minLongitude`'u
-  /// `maxLongitude`'dan büyük döndürüyor.
+  /// Google Maps böyle kutuda `minLongitude`'u büyük döndürüyor.
   bool get wrapsAntimeridian => minLongitude > maxLongitude;
 
-  /// [other] tümüyle bu kutunun içinde mi.
-  ///
-  /// Sarmalayan kutularda **her zaman `false`**: düz karşılaştırma orada
-  /// yanlış sonuç verir ve "istek atmaya gerek yok" kararı yanlış tarafa
-  /// düşerse kullanıcı boş harita görür. Gereksiz bir istek, eksik pinden
-  /// ucuz.
+  /// Sarmalayan kutuda **her zaman `false`**: yanlış "istek gerekmez" boş
+  /// harita gösterir; gereksiz istek eksik pinden ucuz.
   bool contains(JobMapBounds other) {
     if (wrapsAntimeridian || other.wrapsAntimeridian) return false;
 
@@ -35,8 +27,7 @@ class JobMapBounds {
         maxLongitude >= other.maxLongitude;
   }
 
-  /// Nokta kutunun içinde mi (kenarlar dahil). 180. meridyeni aşan kutuda
-  /// boylam iki parçadan birine düşmesi yetiyor.
+  /// Kenarlar dahil; meridyeni aşan kutuda iki parçadan biri yeter.
   bool containsPoint(double latitude, double longitude) {
     if (latitude < minLatitude || latitude > maxLatitude) return false;
     if (wrapsAntimeridian) {

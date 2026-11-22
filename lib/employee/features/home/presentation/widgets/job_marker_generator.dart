@@ -10,87 +10,59 @@ import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_map_style.dart';
 import 'package:reicon_flutter/reicon_flutter.dart';
 
-/// İlan pinlerini ve yaklaşık konum dairelerini üretir.
-///
-/// Pin bir dosyadan okunmuyor, burada kuruluyor: tek bir damla şekli,
-/// kategorinin rengiyle dolu, ince beyaz kenarlı; ortasında kategorinin liste
-/// kartında da görünen Reicon ikonu (`JobCategoryStyle.icon`), Filled
-/// ağırlığında ve beyaz. Böylece bütün pinler aynı çizgi ailesinden geliyor,
-/// harita ile liste aynı ikonu gösteriyor ve tanınmayan bir kategori de
-/// nötr ikonla düzgün bir pin alıyor.
+/// İlan pinlerini ve yaklaşık konum dairelerini üretir. Pin burada çiziliyor:
+/// kategori renginde damla, ince kenar, ortada kartla aynı Reicon ikonu
+/// (Filled, beyaz).
 class JobMarkerGenerator {
-  /// Pin görselleri kategori **ve tema** çiftine göre saklanıyor: kenar rengi
-  /// temaya bağlı (`AppMapStyle.pinRim`), açık temanın görseli koyuda
-  /// kullanılamaz.
+  /// Kenar rengi temaya bağlı olduğu için kategori **ve tema** ile saklanıyor.
   static final Map<(JobCategory, Brightness), BitmapDescriptor> _iconCache = {};
 
-  /// Grup pinleri etiket ("7", "99+") ve temaya göre saklanıyor.
   static final Map<(String, Brightness), BitmapDescriptor> _clusterIconCache =
       {};
 
-  /// Grup pininin çapı (mantıksal piksel). Tek pinle aynı boyda; grup
-  /// haritada daha "önemli" görünmesin, yalnız farklı görünsün.
+  /// Tek pinle aynı boy: grup daha önemli değil, yalnız farklı görünsün.
   static const double _clusterDiameter = 50;
 
-  /// Üç karakterlik etikette ("99+") dairenin büyüdüğü oran.
   static const double _clusterWideScale = 1.15;
 
-  /// Grup pininin beyaz kenarı (mantıksal piksel); tek pinin kenarıyla aynı
-  /// görsel kalınlıkta.
   static const double _clusterStroke = 3;
 
-  /// Sayının yazı boyutu (mantıksal piksel). Tuval temayı okuyamadığı için
-  /// font burada adıyla veriliyor.
+  /// Tuval temayı okuyamadığı için font adıyla veriliyor.
   static const double _clusterFontSize = 18;
 
-  /// Rozetin gösterdiği en büyük sayı; üstü "99+".
   static const int _clusterMaxCount = 99;
 
-  /// Grup pini tek pinlerin üstünde çiziliyor: iki gruptan biri tek bir pinin
-  /// altında kalırsa sayısı okunmaz.
+  /// Grup tek pinin altında kalırsa sayısı okunmaz.
   static const int _clusterZIndex = 1;
 
-  /// Damla şekli, 396 × 568 birimlik bir çerçevede; daire kısmının merkezi
-  /// (198, 198), yarıçapı 198.
+  /// 396 × 568 çerçeve; daire merkezi (198, 198), yarıçap 198.
   static const String _pinPath =
       'M395.89 197.95C395.89 320.68 197.95 567.78 197.95 567.78'
       'C197.95 567.78 0 333.38 0 197.95C0 88.6201 88.6201 0 197.95 0'
       'C307.28 0 395.89 88.6201 395.89 197.95Z';
 
-  /// Beyaz kenar kalınlığı (şekil birimi). Pini her iki tema zemininden de
-  /// ayırıyor; görünür çerçeve kenarın yarısı kadar dışarı genişletiliyor.
+  /// Görünür çerçeve kenarın yarısı kadar dışarı genişletiliyor.
   static const double _pinStroke = 20;
 
-  /// İkonun dairedeki kenar uzunluğu (şekil birimi); daire çapının ~%53'ü.
   static const double _pinIconSize = 210;
 
-  /// Reicon ikonları 24 × 24 birimlik bir çerçevede çiziliyor.
   static const double _reiconGrid = 24;
 
-  /// Pinin ekrandaki yüksekliği (mantıksal piksel).
   static const double _pinHeight = 70;
 
-  /// Ekran yoğunluğu okunamazsa (test, görünüm henüz yok) kullanılan oran;
-  /// bugünkü telefonların çoğu 3x.
   static const double _fallbackPixelRatio = 3;
 
-  /// Pinin çizildiği yoğunluk. Görüntü bu oranda üretilip haritaya aynı oranla
-  /// veriliyor: oran verilmezse eklenti görüntüyü 1x sayıyor ve 70 piksellik
-  /// pini 3x ekranda üç kat büyütüp pikselli gösteriyor.
+  /// Oran verilmezse eklenti görüntüyü 1x sayar ve 3x ekranda pikselli büyütür.
   static double get _pixelRatio =>
       ui.PlatformDispatcher.instance.implicitView?.devicePixelRatio ??
       _fallbackPixelRatio;
 
-  /// Belirsizlik dairesinin dolgu saydamlığı. Altındaki harita okunur kalmalı;
-  /// daire bir alanı işaret ediyor, bir yüzeyi kaplamıyor.
+  /// Altındaki harita okunur kalmalı.
   static const double _areaFillAlpha = 0.14;
 
-  /// Dairenin kenar saydamlığı. Dolgudan belirgin, ama pinin önüne geçmeyecek
-  /// kadar; kenar olmadan düşük alfalı dolgu açık haritada kayboluyor.
+  /// Kenarsız düşük alfalı dolgu açık haritada kaybolur.
   static const double _areaStrokeAlpha = 0.5;
 
-  /// Birden fazla ilanın grup pini: Koala yeşili, temaya göre kenarlı daire
-  /// ve ilan sayısı.
   static Future<Marker> clusterMarkerFor(
     JobCluster cluster,
     void Function(JobCluster cluster) onClusterTap, {
@@ -109,7 +81,6 @@ class JobMarkerGenerator {
     );
   }
 
-  /// Rozette yazan metin.
   @visibleForTesting
   static String clusterLabel(int count) =>
       count > _clusterMaxCount ? '$_clusterMaxCount+' : '$count';
@@ -166,16 +137,10 @@ class JobMarkerGenerator {
     );
   }
 
-  /// Belirsizlik dairesinin kenar kalınlığı (piksel).
   static const int _areaStrokeWidth = 2;
 
-  /// Tek bir ilanın pini.
-  ///
-  /// Önbellekleme burada **yok**: hangi pinin saklanacağına ve ne zaman
-  /// düşürüleceğine `JobMarkerCache` karar veriyor. Bu sınıf pini nasıl
-  /// çizeceğini biliyor, ne kadar yaşayacağını değil.
-  ///
-  /// Çağıran `job.hasLocation`'ı doğrulamış olmalı.
+  /// Tek ilanın pini; saklama kararı `JobMarkerCache`'te. Çağıran
+  /// `job.hasLocation`'ı doğrulamış olmalı.
   static Future<Marker> markerFor(
     Job job,
     void Function(Job job) onMarkerTap, {
@@ -195,10 +160,8 @@ class JobMarkerGenerator {
     );
   }
 
-  /// Yaklaşık konumlu ilanların belirsizlik daireleri.
-  ///
-  /// Yalnız `APPROXIMATE` ilanlar için çiziliyor: kesin konumda daire, olmayan
-  /// bir belirsizliği varmış gibi gösterirdi.
+  /// Yalnız `APPROXIMATE` ilanlar için; kesinde daire olmayan bir belirsizlik
+  /// gösterir.
   static Set<Circle> generateAreas({required List<Job> jobs}) {
     return {
       for (final job in jobs)
@@ -214,13 +177,8 @@ class JobMarkerGenerator {
     };
   }
 
-  /// Pin'in konuma bağlandığı nokta.
-  ///
-  /// Kesin konumda pin **ucundan** bağlanıyor: uç "iş tam burada" demek.
-  /// Yaklaşık konumda **ortasından** bağlanıyor, yani pin artık tek bir noktayı
-  /// işaret etmiyor, dairenin ortasında duruyor. is-koala/koala#93'ün şikâyeti
-  /// tam olarak buydu: yuvarlanmış bir koordinatın ucu gösterilen noktaya
-  /// basıyordu.
+  /// Kesinde pin **ucundan** bağlanır ("tam burada"); yaklaşıkta
+  /// **ortasından**, dairenin ortasında durur (#93).
   static Offset anchorFor(AddressPrecision precision) =>
       precision.isApproximate ? const Offset(0.5, 0.5) : const Offset(0.5, 1.0);
 
@@ -234,10 +192,7 @@ class JobMarkerGenerator {
     );
   }
 
-  /// Bir kategorinin pin SVG'si.
-  ///
-  /// Kategori ikonunun Filled karşılığı yoksa (katalogda olmayan bir ad)
-  /// pin ikonsuz çiziliyor; boş bir kutu çizmektense yalnız renkli damla.
+  /// Filled karşılığı yoksa pin ikonsuz çizilir.
   @visibleForTesting
   static String pinSvg(
     JobCategory category, {
@@ -295,7 +250,6 @@ class JobMarkerGenerator {
     );
   }
 
-  /// SVG `#RRGGBB` bekler; saydamlık taşınmaz.
   static String _hex(Color color) =>
       '#${(color.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
 

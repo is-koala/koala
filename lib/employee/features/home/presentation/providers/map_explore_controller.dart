@@ -8,32 +8,19 @@ import 'package:koala/employee/features/home/models/job_search_query.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:koala/product/network/api_exception.dart';
 
-/// Harita sekmesinin ilan durumu: görünen alan, arama ve pinler.
+/// Harita sekmesinin ilan durumu. Liste ile ortak olan **sorgu modeli**: kamera
+/// kutusu [JobSearchQuery]'ye yazılıyor.
 ///
-/// Harita listeden ayrı bir durum tutuyor — ikisini tek sağlayıcıya bağlamak
-/// doğru yön ama ayrı bir iş. Ortak olan **sorgu modeli**: kamera kutusu
-/// [JobSearchQuery]'nin sınırlayıcı kutu alanlarına yazılıyor, liste sekmesinin
-/// kullandığı alanların aynısı.
+/// Kamera her durduğunda istek atılmıyor:
+/// 1. **Debounce:** hızlı kaydırmada tek istek.
+/// 2. **Pay:** istenen alan [fetchMargin] kadar geniş.
+/// 3. **Önbellek:** görünen alan eksiksiz ve taze ([areaTtl]) yüklenmiş bir
+///    alandaysa istek yok. Sorgu değişince sıfırlanır.
+/// 4. **Jeton:** geç dönen yanıt yeni pinlerin üzerine yazamaz.
 ///
-/// Kamera her durduğunda istek atmıyor; dört koruma var:
-/// 1. **Debounce** — hızlı kaydırmada tek istek çıkıyor.
-/// 2. **Pay** — istenen alan görünen alandan [fetchMargin] kadar geniş; küçük
-///    bir kaydırma yüklenmiş alanın içinde kalıyor.
-/// 3. **Önbellek** — yüklenen ilanlar ve alanlar oturum boyunca saklanıyor.
-///    Görünen alan, eksiksiz yüklenmiş ve bayatlamamış ([areaTtl]) bir alanın
-///    içindeyse istek atılmıyor; geri dönülen bölgenin pinleri önbellekten
-///    çiziliyor. Arama, süzgeç, sıralama ya da konum değişince önbellek
-///    sıfırlanıyor: başka bir sorgunun sonucu bu sorgunun cevabı değil.
-/// 4. **Jeton** — geç dönen eski yanıt yeni pinlerin üzerine yazamıyor.
-///
-/// [jobs] önbelleğin tamamı değil, görünen alanın (paylı) içindeki ilanlar:
-/// ekrandan çıkan pin haritada tutulmuyor, pin sayısı da görünen alanla
-/// sınırlı kalıyor.
-///
-/// Yükleme iki ayrı durum olarak dışarı veriliyor: [isInitialLoading] haritada
-/// henüz hiç sonuç yokken, [isRefreshing] eldeki pinler dururken. İkincisi
-/// yalnız istek [refreshIndicatorDelay]'den uzun sürerse açılıyor; hızlı bir
-/// yenileme ekranda hiçbir şey yakıp söndürmüyor.
+/// [jobs] yalnız görünen (paylı) alandakiler. [isRefreshing] yalnız istek
+/// [refreshIndicatorDelay]'den uzunsa açılır; hızlı yenileme bir şey yakıp
+/// söndürmesin.
 class MapExploreController extends ChangeNotifier {
   MapExploreController({
     JobService? service,
@@ -46,31 +33,22 @@ class MapExploreController extends ChangeNotifier {
        _service = service ?? JobService(),
        _clock = clock ?? DateTime.now;
 
-  /// Görünen alanın her yöne ne kadar genişletileceği, alanın kendi
-  /// boyutuna oranla. `0.5` her kenara yarım ekran ekliyor: kutu iki kat
-  /// geniş, iki kat yüksek, yani yarım ekranlık bir kaydırma yeni istek
-  /// doğurmuyor.
+  /// `0.5` her kenara yarım ekran: yarım ekranlık kaydırma istek doğurmaz.
   static const double defaultFetchMargin = 0.5;
 
   final double fetchMargin;
 
-  /// Pinler ekrandayken yenileme göstergesinin açılmadan önce beklediği süre.
   final Duration refreshIndicatorDelay;
 
-  /// Yüklenmiş bir alanın "bu bölgeyi biliyorum" sayıldığı süre. Dolunca
-  /// alan yeniden soruluyor; kapanan ya da dolan ilan haritada sonsuza kadar
-  /// kalmıyor, yetkisi biten kesin konum da en geç bu sürede yuvarlanıyor.
+  /// Dolunca alan yeniden sorulur: kapanan ilan sonsuza kadar kalmaz, yetkisi
+  /// biten kesin konum en geç bu sürede yuvarlanır.
   final Duration areaTtl;
 
-  /// Önbellekteki ilan tavanı. Aşılırsa önbellek son yanıtla yeniden
-  /// başlıyor; uzun bir oturumda bellek ve pin üretimi sınırsız büyümüyor.
+  /// Aşılırsa önbellek son yanıtla yeniden başlar; bellek sınırsız büyümesin.
   static const int maxCachedJobs = 500;
 
-  /// Harita için istenen sayfa boyutu.
-  ///
-  /// Sunucunun tavanı 100 (`PageableSanitizer`); pin sayfalanamadığı için
-  /// tavana kadar çıkılıyor. Yanıt `last: false` gelirse alanda daha fazla ilan
-  /// var demektir — pinler sessizce düşürülmüyor, [isTruncated] açılıyor.
+  /// Sunucu tavanı 100; pin sayfalanmadığı için tavana çıkılıyor. `last: false`
+  /// gelirse [isTruncated] açılır, pinler sessizce düşmez.
   static const int mapPageSize = 100;
 
   final JobService _service;
@@ -80,26 +58,21 @@ class MapExploreController extends ChangeNotifier {
   Timer? _timer;
   Timer? _refreshIndicatorTimer;
 
-  /// En son kamera olayının kutusu.
   JobMapBounds? _pendingBounds;
 
-  /// Yüklenen ilanlar, kimliğe göre. Aynı ilan yeniden geldiğinde yenisi
-  /// yazılıyor; kesinliği değişen ilanın eski koordinatı böyle düşüyor.
+  /// Aynı ilan yeniden gelince yenisi yazılır; kesinliği değişenin eski
+  /// koordinatı düşer.
   final Map<String, Job> _cache = {};
 
-  /// Başarıyla yüklenen alanlar. Kapsama kararı bunlara bakıyor.
   final List<_LoadedArea> _areas = [];
 
-  /// Sorgu değişti: bir sonraki yanıt önbelleğe eklenmiyor, yerine geçiyor.
-  /// Önbellek hemen boşaltılmıyor ki yanıt gelene kadar harita boş kalmasın.
+  /// Sonraki yanıt önbelleğin yerine geçer; önbellek hemen boşalmaz, harita boş
+  /// kalmasın.
   bool _replaceOnNext = false;
 
-  /// Son yanıtın sırası; görünen liste önce bunu, sonra önbelleğin kalanını
-  /// veriyor (arama sonucu kartı sunucunun sırasını korusun).
+  /// Arama kartı sunucunun sırasını korusun.
   List<String> _lastOrder = const [];
 
-  /// Uçan isteğin sıra numarası; yanıt döndüğünde hâlâ güncel mi diye
-  /// karşılaştırılıyor.
   int _requestToken = 0;
 
   List<Job> _visible = const [];
@@ -117,7 +90,6 @@ class MapExploreController extends ChangeNotifier {
   DateTime? _startTo;
   JobSortOption _sort = JobSortOption.newest;
 
-  /// Görünen alandaki ilanlar (önbellekten).
   List<Job> get jobs => List.unmodifiable(_visible);
 
   String get searchText => _searchText;
@@ -125,22 +97,18 @@ class MapExploreController extends ChangeNotifier {
   /// Bir istek uçuşta mı (ilk yükleme ya da yenileme).
   bool get isLoading => _isLoading;
 
-  /// Henüz hiç başarılı sonuç yokken süren yükleme. Arayüz bunu belirgin
-  /// gösteriyor: harita boş ve kullanıcı neden boş olduğunu bilmeli.
+  /// Hiç sonuç yokken süren yükleme; belirgin gösterilir.
   bool get isInitialLoading => _isLoading && !_hasLoaded;
 
-  /// Eldeki pinler dururken [refreshIndicatorDelay]'den uzun süren yenileme.
-  /// Arayüz bunu sessiz gösteriyor; pinler zaten ekranda.
+  /// Pinler dururken uzun süren yenileme; sessiz gösterilir.
   bool get isRefreshing => _isRefreshing;
 
-  /// Görünen alanda [mapPageSize] taneden fazla ilan var mı. Arayüz bunu
-  /// "yaklaş" uyarısı olarak gösteriyor.
+  /// Arayüzde "yaklaş" uyarısı.
   bool get isTruncated => _isTruncated;
 
   String? get errorMessage => _errorMessage;
 
-  /// Kullanıcı konumu. Kartın `distanceKm`'si ve yakınlık sıralaması buna
-  /// bağlı; yokken `lat`/`lng` gönderilmez.
+  /// Yokken `lat`/`lng` gönderilmez.
   void setOrigin({double? latitude, double? longitude}) {
     if (_latitude == latitude && _longitude == longitude) return;
     _latitude = latitude;
@@ -148,14 +116,13 @@ class MapExploreController extends ChangeNotifier {
     _invalidateAndRefetch();
   }
 
-  /// Sıralama. Mesafe sıralaması konum olmadan parametreye düşmez.
   void setSort(JobSortOption sort) {
     if (_sort == sort) return;
     _sort = sort;
     _invalidateAndRefetch();
   }
 
-  /// Başlangıç günü penceresi. İkisi birden `null` süzgeci kaldırır.
+  /// İkisi birden `null` süzgeci kaldırır.
   void setStartWindow({DateTime? startFrom, DateTime? startTo}) {
     if (_startFrom == startFrom && _startTo == startTo) return;
     _startFrom = startFrom;
@@ -163,8 +130,8 @@ class MapExploreController extends ChangeNotifier {
     _invalidateAndRefetch();
   }
 
-  /// Sorgu değişti: yüklenen alanlar artık bu sorgunun cevabı değil. Uçan
-  /// istek de eski sorguya ait; jeton ilerletilerek yanıtı düşürülüyor.
+  /// Yüklenen alanlar artık bu sorgunun cevabı değil; uçan istek de jetonla
+  /// düşürülür.
   void _invalidateAndRefetch() {
     _areas.clear();
     _replaceOnNext = true;
@@ -172,14 +139,12 @@ class MapExploreController extends ChangeNotifier {
     _schedule();
   }
 
-  /// Kamera durduğunda çağrılıyor.
   void onCameraIdle(JobMapBounds bounds) {
     _pendingBounds = bounds;
     if (_updateVisible()) _notify();
 
-    // Eksiksiz yüklenmiş taze bir alan bu kutuyu kapsıyorsa yeni istek hiçbir
-    // şey eklemez. Kırpılmış bir sonuçta ise yaklaşmak **yeni** pin
-    // getirebilir; kırpılmış alan kapsama sayılmıyor.
+    // Taze ve eksiksiz yüklenmiş alan kutuyu kapsıyorsa istek bir şey eklemez.
+    // Kırpılmış alan kapsama sayılmaz: yaklaşmak yeni pin getirebilir.
     if (_isCovered(bounds)) return;
 
     _schedule();
@@ -195,18 +160,15 @@ class MapExploreController extends ChangeNotifier {
     );
   }
 
-  /// Harita arama kutusu. Metin mevcut kutuyla birlikte sunucuya gidiyor,
-  /// eldeki satırlar bellekte süzülmüyor.
+  /// Metin mevcut kutuyla sunucuya gider.
   void setSearchText(String text) {
     if (text == _searchText) return;
 
     _searchText = text;
-    // Arama değişti: önbellek bu metnin cevabı değil, aynı kutu için de
-    // yeniden sorulmalı.
     _invalidateAndRefetch();
   }
 
-  /// Hata sonrası kullanıcının "Tekrar Dene"si: önbelleğe güvenmeden baştan.
+  /// Önbelleğe güvenmeden baştan.
   void retry() => _invalidateAndRefetch();
 
   void _schedule() {
@@ -240,10 +202,8 @@ class MapExploreController extends ChangeNotifier {
       var page = await _search(padded);
       if (token != _requestToken) return;
 
-      // Geniş kutu kırpıldıysa sunucunun döndürdüğü 100 ilanın çoğu ekran
-      // dışında olabilir ve ekrandakiler düşebilir. O durumda yalnız görünen
-      // alan yeniden soruluyor; yoğun olmayan bölgede bu ikinci istek hiç
-      // atılmıyor.
+      // Geniş kutu kırpıldıysa ekrandakiler düşmüş olabilir; yalnız görünen
+      // alan yeniden sorulur.
       if (!page.last && padded != viewport) {
         bounds = viewport;
         page = await _search(viewport);
@@ -257,8 +217,7 @@ class MapExploreController extends ChangeNotifier {
     } on ApiException catch (error) {
       if (token != _requestToken) return;
 
-      // Eldeki pinler silinmiyor: hata yüzünden haritayı boşaltmak
-      // kullanıcının baktığı bilgiyi de götürürdü.
+      // Eldeki pinler silinmez.
       _errorMessage = error.message;
     } finally {
       if (token == _requestToken) {
@@ -270,7 +229,6 @@ class MapExploreController extends ChangeNotifier {
     }
   }
 
-  /// Yanıtı önbelleğe işler.
   void _merge(JobPage page, JobMapBounds bounds) {
     if (_replaceOnNext || _cache.length + page.jobs.length > maxCachedJobs) {
       _cache.clear();
@@ -278,9 +236,8 @@ class MapExploreController extends ChangeNotifier {
       _replaceOnNext = false;
     }
 
-    // Eksiksiz bir yanıt bu alanın tamamını söylüyor: önbellekte olup
-    // yanıtta olmayan ilan kapanmış, dolmuş ya da taşınmış. Kırpılmış
-    // yanıtta eksiklik bunu söylemiyor, orada hiçbir şey silinmiyor.
+    // Eksiksiz yanıt alanın tamamını söyler: yanıtta olmayan ilan kapanmış ya
+    // da taşınmış. Kırpılmış yanıtta silinmez.
     if (page.last) {
       _cache.removeWhere(
         (_, job) =>
@@ -303,7 +260,7 @@ class MapExploreController extends ChangeNotifier {
       ..add(_LoadedArea(bounds, complete: page.last, loadedAt: now));
   }
 
-  /// Görünen listeyi önbellekten yeniden kurar; değiştiyse `true`.
+  /// Değiştiyse `true`.
   bool _updateVisible() {
     final viewport = _pendingBounds;
     final List<Job> next;
@@ -343,9 +300,8 @@ class MapExploreController extends ChangeNotifier {
     size: mapPageSize,
   );
 
-  /// Görünen alanı [fetchMargin] oranında genişletir; enlemde kutuplara,
-  /// boylamda ±180'e kırpılır. 180. meridyeni aşan kutu genişletilmez:
-  /// orada düz aritmetik kutuyu ters çevirir.
+  /// Görünen alanı genişletir, kenarlarda kırpar. Meridyeni aşan kutu
+  /// genişletilmez; düz aritmetik kutuyu ters çevirir.
   JobMapBounds _padded(JobMapBounds viewport) {
     if (fetchMargin == 0 || viewport.wrapsAntimeridian) return viewport;
 
@@ -373,7 +329,6 @@ class MapExploreController extends ChangeNotifier {
   }
 }
 
-/// Başarıyla yüklenmiş bir alan.
 class _LoadedArea {
   const _LoadedArea(
     this.bounds, {
@@ -383,7 +338,6 @@ class _LoadedArea {
 
   final JobMapBounds bounds;
 
-  /// Yanıt kırpılmamış mı; kırpılmış alan kapsama sayılmıyor.
   final bool complete;
 
   final DateTime loadedAt;

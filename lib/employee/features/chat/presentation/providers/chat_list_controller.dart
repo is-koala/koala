@@ -8,11 +8,8 @@ import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/network/realtime_client.dart';
 import 'package:koala/product/network/realtime_event.dart';
 
-/// Sohbet listesinin durumu: konuşmalar, çevrimiçi bilgisi ve canlı akış.
-///
-/// Çalışan ve işveren listeleri aynı davranışa sahip — `GET /conversations`
-/// oturum sahibinin bütün sohbetlerini rolüne bakmadan döndürüyor — o yüzden
-/// mantık burada tek yerde duruyor.
+/// Sohbet listesinin durumu; `GET /conversations` rolden bağımsız olduğu için
+/// iki taraf ortak.
 class ChatListController extends ChangeNotifier {
   ChatListController({ChatService? chatService, RealtimeClient? realtimeClient})
     : _chatService = chatService ?? ChatService(),
@@ -29,30 +26,24 @@ class ChatListController extends ChangeNotifier {
   StreamSubscription<RealtimeEvent>? _messages;
   StreamSubscription<RealtimeConnectionEvent>? _connection;
 
-  /// Uçuştaki sessiz tazeleme; art arda gelen tetikleyiciler (ön plana dönüş
-  /// + yeniden bağlanma) aynı isteği paylaşıyor, liste iki kez kurulmuyor.
+  /// Art arda tetikleyiciler aynı isteği paylaşır.
   Future<void>? _refreshing;
 
-  /// Canlı akışta bir boşluk oluştu mu: bağlantı koptu ya da abonelik
-  /// bağlantı yokken açıldı. `connected` gelince liste bir kez tazeleniyor.
+  /// Canlı akışta boşluk oluştu mu; `connected` gelince liste bir kez
+  /// tazelenir.
   bool _needsCatchUp = false;
 
-  /// İlk liste çekimi sürüyor; bu sırada gelen kuyruk olayları
-  /// [_pendingEvents]'te bekliyor, liste gelince işleniyor.
+  /// İlk çekim sürerken gelen olaylar [_pendingEvents]'te bekler.
   bool _buffering = false;
   final List<RealtimeEvent> _pendingEvents = [];
 
-  /// Canlı kanaldan işlenen son mesaj kimlikleri. Aynı mesaj ikinci kez
-  /// gelirse (yeniden abonelik, iki kanal) okunmamış sayacı bir daha
-  /// artmamalı. Sınırlı tutuluyor; liste için yakın geçmiş yetiyor.
+  /// Aynı mesaj ikinci kez gelirse sayaç bir daha artmasın; sınırlı tutuluyor.
   final Set<String> _seenMessageIds = {};
   static const int _seenMessageLimit = 200;
 
   bool _disposed = false;
 
-  /// Karşı taraf kimliği → presence aboneliği. Liste değiştikçe eklenip
-  /// çıkarılıyor; her abonelik sunucuda bir yetki sorgusu demek, boşuna
-  /// açık tutulmamalı.
+  /// Her abonelik sunucuda bir yetki sorgusu; boşuna açık tutulmuyor.
   final Map<String, StreamSubscription<RealtimeEvent>> _presence = {};
 
   List<Conversation> get conversations => List.unmodifiable(_conversations);
@@ -61,24 +52,17 @@ class ChatListController extends ChangeNotifier {
 
   String? get errorMessage => _errorMessage;
 
-  /// Sayfa atıldıktan sonra gelen geç yanıtlar dinleyicileri uyandırmamalı.
-  ///
-  /// Navbar'da sekmeler arasında hızlıca gezinirken `PageView` ekranı
-  /// `load()` daha bitmeden atabiliyor; süslenmemiş `notifyListeners()`
-  /// o noktada "used after being disposed" ile uygulamayı düşürüyor.
+  /// Hızlı sekme geçişinde `PageView` ekranı `load()` bitmeden atabiliyor; düz
+  /// `notifyListeners()` "used after being disposed" ile düşürürdü.
   void _safeNotify() {
     if (_disposed) return;
     notifyListeners();
   }
 
-  /// Canlı akışa bağlanır, sohbetleri çeker ve çevrimiçi bilgisini işler.
-  ///
-  /// Sıra bilerek böyle: **önce abone ol, sonra listeyi çek.** Tersi
-  /// yapılınca liste yanıtı ile `SUBSCRIBE` arasına düşen mesaj kayboluyordu.
-  /// Çekim sürerken kuyruktan gelenler [_pendingEvents]'te bekliyor; liste
-  /// gelince sırayla işleniyor. Sunucu anlık görüntüsünün zaten saydığı bir
-  /// mesajı ikinci kez saymamak için [_onMessageEvent] `sentAt`'i satırın
-  /// `lastMessageAt`'iyle karşılaştırıyor.
+  /// Canlı akışa bağlanır, sohbetleri çeker. **Önce abone ol, sonra çek:**
+  /// tersinde aradaki mesaj kayboluyor. Çekim sırasında gelenler bekletilir;
+  /// anlık görüntünün saydığı mesaj `lastMessageAt` karşılaştırmasıyla ikinci
+  /// kez sayılmaz.
   Future<void> load({required String currentUserId}) async {
     _currentUserId = currentUserId;
     _isLoading = _conversations.isEmpty;
@@ -104,7 +88,6 @@ class ChatListController extends ChangeNotifier {
     }
   }
 
-  /// Çekim sürerken biriken kuyruk olaylarını sırayla işler.
   void _flushPendingEvents() {
     if (_disposed || _pendingEvents.isEmpty) return;
     final pending = List<RealtimeEvent>.of(_pendingEvents);
@@ -112,10 +95,7 @@ class ChatListController extends ChangeNotifier {
     pending.forEach(_onUserEvent);
   }
 
-  /// Çevrimiçi bilgisini tek istekte alıp sohbetlere işler.
-  ///
-  /// Bu çağrı başarısız olursa sohbetler yine gösteriliyor: yeşil noktanın
-  /// yokluğu listeyi engellememeli.
+  /// Çevrimiçi bilgisi düşerse sohbetler yine gösterilir.
   Future<List<Conversation>> _withPresence(
     List<Conversation> conversations,
   ) async {
@@ -142,23 +122,20 @@ class ChatListController extends ChangeNotifier {
     }
   }
 
-  /// Kullanıcıya özel kuyruk: hangi sohbete gelirse gelsin yeni mesaj buradan
-  /// düşüyor. Sunucu kopyayı iki tarafa da gönderiyor, yani kendi ikinci
-  /// cihazından yazdığında bu liste de güncelleniyor.
+  /// Kullanıcıya özel kuyruk; kendi ikinci cihazından yazılan da buradan gelir.
   void _listenToMessages() {
     if (_disposed || _messages != null) return;
 
     unawaited(_realtimeClient.connect());
     _connection = _realtimeClient.connectionEvents.listen(_onConnectionEvent);
     _messages = _realtimeClient.userMessageEvents().listen(_onUserEvent);
-    // Abonelik CONNECT'ten önce açıldıysa REST yanıtıyla SUBSCRIBE arasına
-    // düşen mesaj kaçmış olabilir; ilk `connected` bunu kapatıyor.
+    // Abonelik CONNECT'ten önce açıldıysa aradaki mesaj kaçmış olabilir; ilk
+    // `connected` bunu kapatır.
     _needsCatchUp = !_realtimeClient.isConnected;
   }
 
-  /// Bağlantı geçişleri. Kopukken gelen mesajlar canlı kanaldan asla
-  /// gelmeyecek; liste sunucudan yeniden çekilerek tamamlanıyor (sunucunun
-  /// son mesaj ve okunmamış sayısı doğru kaynak, çift sayım olmuyor).
+  /// Kopukken gelenler canlı kanaldan gelmeyecek; liste sunucudan yeniden
+  /// çekilir.
   void _onConnectionEvent(RealtimeConnectionEvent event) {
     switch (event) {
       case RealtimeConnectionEvent.disconnected:
@@ -172,8 +149,7 @@ class ChatListController extends ChangeNotifier {
     }
   }
 
-  /// Kişisel kuyruktan gelen olaylar. Kuyruk yalnızca mesaj taşımıyor:
-  /// okundu bilgisi de buradan geliyor.
+  /// Kuyrukta okundu bilgisi de geliyor.
   void _onUserEvent(RealtimeEvent event) {
     if (_buffering) {
       _pendingEvents.add(event);
@@ -187,18 +163,13 @@ class ChatListController extends ChangeNotifier {
       case RealtimeEventType.typing:
       case RealtimeEventType.presence:
       case RealtimeEventType.unknown:
-        // Yazıyor bilgisi ve varlık listede gösterilmiyor; varlık ayrıca
-        // kendi kanalından geliyor.
         break;
     }
   }
 
-  /// Bir sohbetin okunduğu bilgisi.
-  ///
-  /// **Yalnızca okuyan kişi bizsek** rozet sıfırlanıyor: telefonda okunan
-  /// sohbetin tablette de okunmuş sayılması için. Karşı taraf okuduğunda
-  /// bizim okunmamışımız değişmiyor — o, bizim gönderdiğimiz mesajların
-  /// okundu bilgisi ve listede gösterilmiyor.
+  /// Rozet **yalnız okuyan bizsek** sıfırlanır: başka cihazda okunan sohbet
+  /// burada da okunmuş sayılsın. Karşı tarafın okuması bizim sayacı
+  /// değiştirmez.
   void _onReadEvent(RealtimeEvent event) {
     final conversationId = event.conversationId;
     if (conversationId == null || event.userId != _currentUserId) return;
@@ -236,17 +207,14 @@ class ChatListController extends ChangeNotifier {
     final index = _conversations.indexWhere(
       (conversation) => conversation.id == conversationId,
     );
-    // Yeni bir sohbetin ilk mesajı: liste onu henüz tanımıyor, tazelenmesi
-    // gerekiyor.
+    // Yeni sohbetin ilk mesajı; liste tazelenmeli.
     if (index == -1) {
       unawaited(refresh());
       return;
     }
 
     final existing = _conversations[index];
-    // Sunucudan gelen satır bu mesajı zaten içeriyorsa (çekim sırasında
-    // ya da yeniden bağlanma tamamlamasından sonra geç gelen kopya) sayaç
-    // bir daha artmamalı.
+    // Satır bu mesajı zaten içeriyorsa (geç gelen kopya) sayaç artmaz.
     final lastMessageAt = existing.lastMessageAt;
     if (lastMessageAt != null && !message.sentAt.isAfter(lastMessageAt)) {
       return;
@@ -254,13 +222,11 @@ class ChatListController extends ChangeNotifier {
     final updated = existing.copyWith(
       lastMessage: message.body,
       lastMessageAt: message.sentAt,
-      // Kendi gönderdiğimiz mesaj okunmamış sayılmaz.
       unreadCount: message.isMe
           ? existing.unreadCount
           : existing.unreadCount + 1,
     );
 
-    // En son konuşulan başa geliyor; sunucu da listeyi bu sıraya göre veriyor.
     _conversations = [
       updated,
       ..._conversations.where((c) => c.id != conversationId),
@@ -268,7 +234,6 @@ class ChatListController extends ChangeNotifier {
     _safeNotify();
   }
 
-  /// Mesaj kimliğini kaydeder; daha önce görüldüyse `false`.
   bool _remember(String messageId) {
     if (!_seenMessageIds.add(messageId)) return false;
     if (_seenMessageIds.length > _seenMessageLimit) {
@@ -277,16 +242,9 @@ class ChatListController extends ChangeNotifier {
     return true;
   }
 
-  /// Listeyi yükleme göstergesi açmadan yeniden çeker.
-  ///
-  /// Çağıranları: kişisel kuyruktan tanınmayan bir sohbete mesaj düşmesi,
-  /// sohbet sekmesinin yeniden görünür olması ve canlı bağlantının
-  /// kopup gelmesi ya da uygulamanın ön plana dönmesi. Sekme dönüşü
-  /// ödemeyle kurulan ilan grubu için: sunucu grup kurulunca canlı olay
-  /// göndermiyor, grup ilk mesaja kadar ancak yeniden çekilince listeye
-  /// düşüyor. İlk yükleme henüz olmadıysa (oturum sahibi bilinmiyor) hiçbir
-  /// şey yapmıyor; onu [load] yapacak. Uçuşta bir tazeleme varsa yenisi
-  /// açılmıyor, aynı sonuç bekleniyor.
+  /// Göstergesiz yeniden çeker: tanınmayan sohbete mesaj, sekmeye dönüş (grup
+  /// için canlı olay yok), yeniden bağlanma ya da ön plana dönüş. İlk yükleme
+  /// olmadıysa bir şey yapmaz; uçan tazeleme paylaşılır.
   Future<void> refresh() {
     final userId = _currentUserId;
     if (userId == null) return Future.value();
@@ -302,15 +260,12 @@ class ChatListController extends ChangeNotifier {
       _syncPresenceSubscriptions();
       _safeNotify();
     } on ApiException {
-      // Yut: eldeki liste duruyor, kullanıcı elle tazeleyebilir.
+      // Eldeki liste kalır; kullanıcı elle tazeleyebilir.
     }
   }
 
-  /// Presence abonelikleri listedeki karşı taraflarla eşitleniyor.
-  ///
-  /// Yalnızca paylaşılan konuşması olan kişilere abone olunabiliyor; listedeki
-  /// herkes bu şartı zaten sağlıyor. Listeden düşen kişinin aboneliği
-  /// bırakılıyor.
+  /// Presence abonelikleri listedeki karşı taraflarla eşitlenir; listeden düşen
+  /// bırakılır.
   void _syncPresenceSubscriptions() {
     if (_disposed) return;
 

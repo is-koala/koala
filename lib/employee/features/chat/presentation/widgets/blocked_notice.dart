@@ -7,19 +7,9 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// Yazılamayan sohbette mesaj kutusunun yerine geçen şerit.
-///
-/// Kutuyu kilitli göstermek yerine tamamen kaldırıyor: yazılamayan bir metin
-/// alanı kullanıcıya "bir şey bozuldu" dedirtiyor, sebebini söyleyen bir
-/// satır ise ne olduğunu anlatıyor.
-///
-/// Engelde [message] sunucunun kendi metni ("Bu kullanıcıyla
-/// mesajlaşamazsınız.") — `403` genel bir "yetkin yok" metnine çevrilmiyor.
-/// Engelin kimden geldiğini sunucu da söylemiyor: engel iki yönlü ve karşı
-/// taraf da engellemiş olabilir.
-///
-/// Mesajlaşma kapısında (ödeme bekleniyor, pencere kapandı) aynı şerit
-/// [icon] ve [iconColor] ile bilgi tonunda çiziliyor: kapı bir hata değil.
+/// Yazılamayan sohbette kutunun yerine geçen şerit; kilitli alan "bir şey
+/// bozuldu" dedirtir. Engelde metin sunucunun; kimden geldiği söylenmez. Kapıda
+/// aynı şerit bilgi tonunda ([icon], [iconColor]).
 class BlockedNotice extends StatelessWidget {
   const BlockedNotice({
     super.key,
@@ -30,10 +20,8 @@ class BlockedNotice extends StatelessWidget {
 
   final String message;
 
-  /// Şeridin başındaki ikon; varsayılan engel ikonu.
   final AppIconData icon;
 
-  /// İkonun rengi; varsayılan engel kırmızısı.
   final Color iconColor;
 
   @override

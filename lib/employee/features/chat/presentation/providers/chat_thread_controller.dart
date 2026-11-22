@@ -13,10 +13,7 @@ import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/network/realtime_client.dart';
 import 'package:koala/product/network/realtime_event.dart';
 
-/// Tek bir sohbetin durumu: mesajlar, gönderim ve canlı olaylar.
-///
-/// Çalışan ve işveren sohbet ekranları aynı davranışa sahip; mantık burada
-/// tek yerde duruyor. Sayfa yalnızca çiziyor.
+/// Tek sohbetin durumu: mesajlar, gönderim, canlı olaylar; iki taraf ortak.
 class ChatThreadController extends ChangeNotifier {
   ChatThreadController({
     required this.conversationId,
@@ -31,17 +28,14 @@ class ChatThreadController extends ChangeNotifier {
   final ChatService _chatService;
   final RealtimeClient _realtimeClient;
 
-  /// Sohbetin katılımcıları, listeden gelen anlık görüntüyle başlıyor;
-  /// `READ` olayları `lastReadAt`'i canlı tutuyor. Sunucu grup için ayrı bir
-  /// katılımcı ucu vermiyor, liste `ConversationDto` üzerinde geliyor.
+  /// Listeden gelen anlık görüntüyle başlar, `READ` olayları `lastReadAt`'i
+  /// canlı tutar; grup için ayrı katılımcı ucu yok.
   List<ChatParticipant> _participants;
 
-  /// Backend'in `realtime.typingTimeout` varsayılanıyla aynı: bu süre içinde
-  /// yeni bir olay gelmezse gösterge sönüyor.
+  /// Backend'in `realtime.typingTimeout`'uyla aynı.
   static const Duration _typingTimeout = Duration(seconds: 5);
 
-  /// Kullanıcı yazarken sunucuya en fazla bu sıklıkla haber veriliyor; her
-  /// tuşta kare göndermenin anlamı yok.
+  /// Her tuşta kare göndermenin anlamı yok.
   static const Duration _typingThrottle = Duration(seconds: 2);
 
   List<Message> _messages = [];
@@ -61,79 +55,50 @@ class ChatThreadController extends ChangeNotifier {
   bool _disposed = false;
   int _loadGeneration = 0;
 
-  /// Canlı akışta boşluk oluştu mu: bağlantı koptu ya da abonelik bağlantı
-  /// yokken açıldı. `connected` gelince kaçanlar REST'ten tamamlanıyor.
+  /// Canlı akışta boşluk oluştu mu; `connected` gelince REST'ten tamamlanır.
   bool _needsCatchUp = false;
 
-  /// Uçuştaki tamamlama; art arda tetikleyiciler aynı isteği paylaşıyor.
   Future<void>? _catchingUp;
 
-  /// Tamamlamada en fazla kaç sayfa çekileceği: `after=` kipinde ileriye,
-  /// yedek yolda geriye. Sunucu sayfa başına 30 mesaj veriyor; kopukluk
-  /// süresince bundan fazlası geldiyse en yeni sayfalar esas alınır, en
-  /// eskiler sayfalama açıldığında zaten gelecek.
+  /// Sayfa başına 30 mesaj; daha uzun kopuklukta en yeni sayfalar esas.
   static const int _catchUpPageLimit = 3;
 
   List<Message> get messages => List.unmodifiable(_messages);
 
-  /// Katılımcılar; ayrılanlar da içinde. İkili sohbette ve eski sunucuda
-  /// boş olabilir.
+  /// İkili sohbette ve eski sunucuda boş olabilir.
   List<ChatParticipant> get participants => _participants;
 
   bool get isLoading => _isLoading;
 
   bool get isSending => _isSending;
 
-  /// Karşı taraf şu an yazıyor mu.
   bool get isCounterpartTyping => _isCounterpartTyping;
 
   String? get errorMessage => _errorMessage;
 
-  /// Sohbet engelli olduğu için kapandıysa sunucunun kendi açıklaması,
-  /// değilse `null`.
-  ///
-  /// Engel iki yönlü: iki taraftan biri diğerini engellediyse ikisi de
-  /// yazamıyor. Sunucu kuralı iki yerde uyguluyor — sohbeti açarken ve mesaj
-  /// gönderirken — ve ikisinde de `403` döndürüyor.
-  ///
-  /// Ekranlar bunu görünce mesaj kutusunu kilitliyor. Metni yeniden
-  /// yazmıyoruz: sunucu `Accept-Language: tr` ile zaten "Bu kullanıcıyla
-  /// mesajlaşamazsınız." diyor ve sebebini bilen taraf o.
+  /// Engel yüzünden kapandıysa sunucunun açıklaması. Engel iki yönlü; sunucu
+  /// sohbeti açarken de gönderirken de `403` döndürüyor. Metin sunucudan olduğu
+  /// gibi.
   String? get blockedMessage => _blockedMessage;
 
-  /// Sunucunun mesajlaşma kapısı sohbeti kapattıysa sebebi, değilse `null`.
-  ///
-  /// `403 MESSAGING_PAYMENT_REQUIRED` (işveren ödemeyi tamamlamadı) ve
-  /// `409 MESSAGING_WINDOW_CLOSED` (iptal/ret/iade ya da 7 günlük pencere
-  /// doldu). Engelden ayrı tutuluyor: engelin metni sunucudan geliyor ve
-  /// kırmızı; kapının metni tarafa göre değişiyor ve bir hata değil, akışın
-  /// beklenen bir durağı. Metni sayfa seçiyor
-  /// (`MessagingAvailability.noteFor`), çünkü işveren mi çalışan mı
-  /// olduğunu bilen o.
-  ///
-  /// Başarılı bir yükleme kapıyı temizliyor: ödeme geldiyse ekran yeniden
-  /// açılınca kutu geri gelmeli.
+  /// Mesajlaşma kapısı kapattıysa sebebi (`403 MESSAGING_PAYMENT_REQUIRED`,
+  /// `409 MESSAGING_WINDOW_CLOSED`). Engelden ayrı: kapı hata değil, metni
+  /// tarafa göre sayfa seçiyor. Başarılı yükleme kapıyı temizler.
   MessagingAvailability? get gate => _gate;
 
-  /// Sayfa atıldıktan sonra gelen geç yanıtlar dinleyicileri uyandırmamalı.
-  ///
-  /// Navbar'da sekmeler arasında hızlıca gezinirken `PageView` ekranı
-  /// `load()` daha bitmeden atabiliyor; süslenmemiş `notifyListeners()`
-  /// o noktada "used after being disposed" ile uygulamayı düşürüyor.
+  /// Hızlı sekme geçişinde ekran `load()` bitmeden atılabiliyor; düz
+  /// `notifyListeners()` "used after being disposed" ile düşürürdü.
   void _safeNotify() {
     if (_disposed) return;
     notifyListeners();
   }
 
-  /// Grup balonunda yazılacak gönderen: sunucunun `senderName`'i, yoksa
-  /// katılımcı eşlemesi, o da yoksa anonim ([MessageSender.resolve]).
   MessageSender senderOf(Message message) =>
       MessageSender.resolve(message, _participants);
 
-  /// [message]'ı görmüş katılımcılar: oturum sahibi dışında `lastReadAt`'i
-  /// gönderim anından geri olmayanlar. Ayrılanlar da sayılıyor — okuma
-  /// ayrılmadan önce olduysa gördü. Eski sunucuda `lastReadAt` hiç
-  /// gelmediği için liste boş kalıyor ve ekran görüldü bilgisini gizliyor.
+  /// [message]'ı görenler: oturum sahibi dışında `lastReadAt`'i gönderimden
+  /// geri olmayanlar (ayrılanlar dâhil). Eski sunucuda liste boş, görüldü
+  /// gizli.
   List<ChatParticipant> readersOf(Message message) {
     return List.unmodifiable(
       _participants.where(
@@ -144,13 +109,9 @@ class ChatThreadController extends ChangeNotifier {
     );
   }
 
-  /// Canlı akışa bağlanır, mesajları çeker ve sohbeti okundu işaretler.
-  ///
-  /// Sıra bilerek böyle: **önce abone ol, sonra sayfayı çek.** Tersi
-  /// yapılınca sayfa yanıtı ile `SUBSCRIBE` arasına düşen mesaj ne sayfada
-  /// ne kanalda oluyordu. Çekim sürerken kanaldan gelenler [_appendMessage]
-  /// ile listeye düşüyor; sayfa gelince [_mergeIntoPage] ikisini kimlikle
-  /// birleştiriyor, aynı mesaj iki kez durmuyor.
+  /// Canlı akışa bağlanır, mesajları çeker, okundu işaretler. **Önce abone ol,
+  /// sonra çek**; çekim sırasında gelenler [_mergeIntoPage] ile kimlikten
+  /// birleşir.
   Future<void> load({required String currentUserId}) async {
     final generation = ++_loadGeneration;
     _currentUserId = currentUserId;
@@ -169,12 +130,11 @@ class ChatThreadController extends ChangeNotifier {
       _blockedMessage = null;
       _gate = null;
 
-      // Okundu işaretlemek listedeki sayacı sıfırlıyor; başarısız olması
-      // mesajları göstermeyi engellememeli.
+      // Okundu işareti düşse de mesajlar gösterilir.
       try {
         await _chatService.markRead(conversationId);
       } on ApiException {
-        // Yut: bir sonraki açılışta tekrar denenecek.
+        // Bir sonraki açılışta tekrar denenir.
       }
     } on ApiException catch (error) {
       if (_disposed || generation != _loadGeneration) return;
@@ -188,8 +148,6 @@ class ChatThreadController extends ChangeNotifier {
     }
   }
 
-  /// Sunucu sayfasını eldeki mesajlarla birleştirir: sayfa esas, sayfada
-  /// olmayanlar (çekim sırasında kanaldan gelenler) kimlikle eklenir.
   List<Message> _mergeIntoPage(List<Message> page) {
     if (_messages.isEmpty) return page;
 
@@ -200,20 +158,10 @@ class ChatThreadController extends ChangeNotifier {
     return [...page, ...extra]..sort((a, b) => a.sentAt.compareTo(b.sentAt));
   }
 
-  /// Mesaj kutusunu kilitleyen hataları yakalar: önce kapı, sonra engel.
-  ///
-  /// **Kapı `errorCode` ile tanınıyor**, kategoriyle değil: ödeme kapısı da
-  /// engel de `403` + `ACCESS_DENIED` olarak geliyor ve ikisini ayıran tek
-  /// alan kod. Kapı kodu geldiyse [gate] doluyor, [blockedMessage] boş
-  /// kalıyor; ekran ödeme/pencere metnini yazıyor ve kırmızı engel şeridini
-  /// çizmiyor.
-  ///
-  /// Kapı değilse engel ayrımı önemli: [ApiErrorType.unauthenticated]
-  /// oturumun bitmesi demek, `AuthInterceptor` onu yenilemeye çalışıyor ve
-  /// başaramazsa oturumu kapatıyor; [ApiErrorType.forbidden] ise engel —
-  /// kullanıcı oturumdan atılmamalı, mesaj kutusu kilitlenmeli. Tipe
-  /// bakılıyor, `statusCode`'a değil: ayrımın kaynağı sunucunun
-  /// `errorCategory` alanı, durum kodu yalnızca yedek.
+  /// Kutuyu kilitleyen hataları yakalar: önce kapı, sonra engel. **Kapı
+  /// `errorCode` ile tanınıyor**: kapı da engel de `403 ACCESS_DENIED`.
+  /// [ApiErrorType.unauthenticated] oturum sonu, [ApiErrorType.forbidden]
+  /// engel; kullanıcı atılmaz, kutu kilitlenir.
   void _captureLock(ApiException error) {
     final gate = MessagingAvailability.fromErrorCode(error.errorCode);
     if (gate != null) {
@@ -228,10 +176,7 @@ class ChatThreadController extends ChangeNotifier {
     _blockedMessage = error.message;
   }
 
-  /// Mesaj gönderir. Başarılıysa `true` döner.
-  ///
-  /// Hata durumunda mesaj listeye eklenmiyor ve çağıran taraf metin alanını
-  /// temizlemiyor: kullanıcı yazdığını kaybetmemeli.
+  /// Başarılıysa `true`. Hatada mesaj eklenmez, metin temizlenmez.
   Future<bool> send(String body) async {
     final trimmed = body.trim();
     final userId = _currentUserId;
@@ -252,8 +197,8 @@ class ChatThreadController extends ChangeNotifier {
     } on ApiException catch (error) {
       final gate = MessagingAvailability.fromErrorCode(error.errorCode);
       if (gate != null) {
-        // Kapı bir hata değil, kutunun kapanma sebebi: mesaj listesi hata
-        // durumuna düşmemeli, kutunun yerine açıklama gelmeli.
+        // Kapı hata değil: liste hata durumuna düşmez, kutunun yerine açıklama
+        // gelir.
         _gate = gate;
       } else {
         _errorMessage = error.message;
@@ -266,9 +211,7 @@ class ChatThreadController extends ChangeNotifier {
     }
   }
 
-  /// Karşı tarafa "yazıyor" bilgisi gönderir.
-  ///
-  /// Kısıtlanıyor: her tuş vuruşunda değil, en fazla [_typingThrottle]'da bir.
+  /// En fazla [_typingThrottle]'da bir.
   void notifyTyping() {
     final now = DateTime.now();
     final last = _lastTypingSentAt;
@@ -281,21 +224,18 @@ class ChatThreadController extends ChangeNotifier {
   void _listenToRealtime() {
     if (_disposed || _events != null) return;
 
-    // Bağlantı kurulamazsa akış hiç olay üretmiyor; ekran REST'ten gelen
-    // mesajlarla çalışmaya devam ediyor.
+    // Bağlantı kurulamazsa ekran REST ile çalışır.
     unawaited(_realtimeClient.connect());
 
     _connection = _realtimeClient.connectionEvents.listen(_onConnectionEvent);
     _events = _realtimeClient
         .conversationEvents(conversationId)
         .listen(_onEvent);
-    // Abonelik CONNECT'ten önce açıldıysa REST yanıtıyla SUBSCRIBE arasına
-    // düşen mesaj kaçmış olabilir; ilk `connected` bunu kapatıyor.
+    // Abonelik CONNECT'ten önce açıldıysa aradaki mesaj kaçmış olabilir; ilk
+    // `connected` bunu kapatır.
     _needsCatchUp = !_realtimeClient.isConnected;
   }
 
-  /// Bağlantı geçişleri. Kopukken gönderilen mesaj canlı kanaldan bir daha
-  /// gelmeyecek; boşluk [catchUp] ile kapanıyor.
   void _onConnectionEvent(RealtimeConnectionEvent event) {
     switch (event) {
       case RealtimeConnectionEvent.disconnected:
@@ -309,25 +249,13 @@ class ChatThreadController extends ChangeNotifier {
     }
   }
 
-  /// Kopukken gelenleri sunucudan tamamlar.
+  /// Kopukken gelenleri tamamlar.
   ///
-  /// Grupta katılımcı damgaları da tazelenir: kopukken kaçan `READ` olayı
-  /// bir daha gelmeyeceği için `GET /conversations/{id}` okunur ve
-  /// `lastReadAt`'ler ileri alınır ([_refreshParticipants]).
-  ///
-  /// Elde mesaj varsa en yenisinin kimliği çapa olur ve sunucudan yalnız
-  /// ondan sonrakiler istenir (`after=<id>`, artan sırada). Çapa sunucuda
-  /// bilinmiyorsa — başka sohbetin mesajı ya da silinmiş, `400
-  /// MESSAGING_AFTER_UNKNOWN` — ya da kopukluk [_catchUpPageLimit] sayfadan
-  /// uzun sürdüyse eski yol devreye girer: en yeni sayfa(lar) çekilir ve
-  /// bilinen bir mesaja rastlanana kadar geriye gidilir. Artımlı yol
-  /// okunmamış kendi mesajımız varken en yeni sayfayı da bir kez okur ki
-  /// kopukken okunanların `readAt`'i gelsin. İki yolda da
-  /// gelenler eldekiyle **kimlik** üzerinden birleşir: bilinmeyenler
-  /// eklenir, bilinenler sunucudaki hâliyle değiştirilir, aynı kimlik
-  /// ikinci kez eklenmez. Yeni gelen karşı taraf mesajı varsa sohbet açık
-  /// olduğu için okundu işaretlenir. Hata olursa eldeki liste durur; bir
-  /// sonraki tetikleyici yine dener.
+  /// En yeni mesaj çapa olur ve yalnız sonrakiler istenir (`after=<id>`). Çapa
+  /// bilinmiyorsa (`MESSAGING_AFTER_UNKNOWN`) ya da kopukluk
+  /// [_catchUpPageLimit]'ten uzunsa en yeni sayfalardan geriye gidilir.
+  /// Gelenler **kimlikle** birleşir. Grupta katılımcı damgaları da tazelenir
+  /// (kaçan `READ` bir daha gelmez). Hata olursa eldeki liste kalır.
   Future<void> catchUp() {
     final userId = _currentUserId;
     if (userId == null || _isLoading) return Future.value();
@@ -360,12 +288,8 @@ class ChatThreadController extends ChangeNotifier {
     await _refreshParticipants(userId, generation);
   }
 
-  /// Katılımcı listesini sunucudan yeniler; yalnız grupta (liste doluyken).
-  ///
-  /// Sunucudaki liste üyelik için esas (yeni katılan eklenir, ayrılan
-  /// `left` olur); okundu damgası ise **monoton**: canlı olayla ilerlemiş
-  /// bir damga, sunucu anlık görüntüsü daha eski olsa bile geri alınmaz.
-  /// Hata yutulur — mesajlar geldi, damga bir sonraki tetikleyicide.
+  /// Katılımcıları yeniler (yalnız grupta). Üyelikte sunucu esas; okundu
+  /// damgası **monoton**, geri alınmaz. Hata yutulur.
   Future<void> _refreshParticipants(String userId, int generation) async {
     if (_participants.isEmpty) return;
 
@@ -409,7 +333,6 @@ class ChatThreadController extends ChangeNotifier {
       a.fullName == b.fullName &&
       a.role == b.role;
 
-  /// Eldeki en yeni mesajın kimliği; liste boşsa `null`.
   String? _newestKnownId() {
     Message? newest;
     for (final message in _messages) {
@@ -420,8 +343,7 @@ class ChatThreadController extends ChangeNotifier {
     return newest?.id;
   }
 
-  /// `after=` ile artımlı çekim. Tamamlanamazsa `null`: çapa bilinmiyor ya
-  /// da sayfa sınırı doldu; çağıran eski yola düşer.
+  /// Tamamlanamazsa `null`; çağıran eski yola düşer.
   Future<List<Message>?> _fetchAfter(
     String userId,
     int generation,
@@ -450,11 +372,8 @@ class ChatThreadController extends ChangeNotifier {
     return null;
   }
 
-  /// `after=` yalnız yeni mesajları taşıyor; kopukken karşı tarafın okuduğu
-  /// **kendi** mesajlarımızın `readAt`'i ondan gelmez (READ olayı da kopukken
-  /// kaçtı). Okunmamış kendi mesajımız varsa en yeni sayfa bir kez daha
-  /// okunur ve [_mergeFetched] bilinenleri sunucudaki hâliyle değiştirir.
-  /// Hepsi okunmuşsa ya da hiç yoksa ağa çıkılmaz.
+  /// `after=` kendi mesajlarımızın `readAt`'ini getirmez; okunmamış kendi
+  /// mesajımız varsa en yeni sayfa bir kez daha okunur.
   Future<List<Message>> _fetchReadReceiptsIfNeeded(
     String userId,
     int generation,
@@ -472,8 +391,6 @@ class ChatThreadController extends ChangeNotifier {
     return result.messages;
   }
 
-  /// En yeni sayfadan geriye, bilinen bir mesaja rastlayana ya da
-  /// [_catchUpPageLimit] dolana kadar.
   Future<List<Message>> _fetchNewestPages(String userId, int generation) async {
     final known = {for (final message in _messages) message.id};
     final fetched = <Message>[];
@@ -547,11 +464,9 @@ class ChatThreadController extends ChangeNotifier {
           ),
         );
 
-        // Ekran açıkken gelen mesaj anında okunmuş sayılıyor.
         unawaited(_markReadQuietly());
 
       case RealtimeEventType.typing:
-        // Kendi yazdığımızın yankısı gösterilmemeli.
         if (event.userId == userId) return;
         _setTyping();
 
@@ -567,8 +482,7 @@ class ChatThreadController extends ChangeNotifier {
     }
   }
 
-  /// Aynı mesajı iki kez eklemeyi önler: gönderdiğimiz mesaj hem `POST`
-  /// yanıtından hem canlı kanaldan geliyor.
+  /// Gönderilen mesaj hem `POST` yanıtından hem canlı kanaldan geliyor.
   void _appendMessage(Message message) {
     if (_messages.any((existing) => existing.id == message.id)) return;
 
@@ -587,8 +501,7 @@ class ChatThreadController extends ChangeNotifier {
     });
   }
 
-  /// Okuyanın katılımcı satırındaki damgayı ileri alır; geriye almaz ve
-  /// listede olmayan bir okuyan için (eski anlık görüntü) hiçbir şey yapmaz.
+  /// Damgayı ileri alır, geri almaz; listede olmayan okuyanı yok sayar.
   void _markParticipantRead(String? readerId, DateTime readAt) {
     if (readerId == null) return;
 
@@ -622,7 +535,7 @@ class ChatThreadController extends ChangeNotifier {
     try {
       await _chatService.markRead(conversationId);
     } on ApiException {
-      // Yut: okundu bilgisi kritik değil.
+      // Okundu bilgisi kritik değil.
     }
   }
 

@@ -41,36 +41,29 @@ abstract class ChatThreadPagemodel<T extends StatefulWidget> extends State<T> {
     return thread.blockedMessage;
   }
 
-  /// Kutunun kilitli olma sebebi kapı mı (ödeme/pencere), engel mi.
-  ///
-  /// Kapı bir hata değil, akışın beklenen durağı; şerit kırmızı engel
-  /// ikonuyla değil bilgi ikonuyla çiziliyor.
+  /// Kilit sebebi kapı mı, engel mi. Kapı hata değil, akışın beklenen durağı;
+  /// şerit bilgi ikonuyla çizilir.
   bool get isComposerGated =>
       thread.gate != null || (chat.closed && thread.blockedMessage == null);
 
-  /// Başlığa dokununca katılımcılar; ikili sohbette başlık dokunulmuyor.
   VoidCallback? get onTitleTap => chat.isGroup ? openParticipants : null;
 
-  /// Grupta karşı tarafın balonuna yazılacak gönderen; kendi mesajında ve
-  /// ikili sohbette `null`, orada kimin yazdığı hizadan belli.
+  /// Kendi mesajında ve ikili sohbette `null`; kimin yazdığı hizadan belli.
   MessageSender? senderFor(Message message) =>
       chat.isGroup && !message.isMe ? thread.senderOf(message) : null;
 
-  /// Grupta kendi mesajını görenler; ikili sohbette boş, orada okundu
-  /// bilgisi `readAt` üzerinden yürüyor.
+  /// İkili sohbette boş; orada okundu `readAt` üzerinden.
   List<ChatParticipant> readersFor(Message message) =>
       chat.isGroup && message.isMe ? thread.readersOf(message) : const [];
 
-  /// Sıradaki mesaj aynı kişiden mi: peş peşe balonlar yakın duruyor.
-  /// Gönderen kimliğine bakılıyor; ikili sohbette bu [Message.isMe]
-  /// karşılaştırmasıyla aynı, grupta ise iki farklı karşı tarafı ayırıyor.
+  /// Peş peşe balonlar yakın dursun; grupta iki farklı karşı tarafı ayırmak
+  /// için gönderen kimliğine bakılıyor.
   bool isNextSameSender(List<Message> messages, int index) =>
       index < messages.length - 1 &&
       messages[index + 1].senderId == messages[index].senderId;
 
-  /// Katılımcılar sheet'i; satırlar iki kabukta da profile gidiyor
-  /// (is-koala/koala#182), yalnız açılan sayfa farklı. Kendi satırın yalnız
-  /// çalışan kabuğunda dokunulabilir.
+  /// Katılımcılar sheet'i (#182); kendi satırın yalnız çalışan kabuğunda
+  /// dokunulabilir.
   void openParticipants() {
     ChatParticipantsSheet.show(
       context,
@@ -78,15 +71,12 @@ abstract class ChatThreadPagemodel<T extends StatefulWidget> extends State<T> {
       participants: thread.participants,
       currentUserId: context.read<UserProvider>().user?.id,
       onOpenProfile: openProfile,
-      // Kendi satırın: çalışanda profil sekmesi, işverende dokunulmaz.
       onOpenOwnProfile: asEmployer ? null : openOwnProfile,
     );
   }
 
-  /// Katılımcının profilini kabuğun kendi sayfasında açar. Rota seçimi
-  /// yönlendirme bekçisinin bölünmesinden geliyor: işverenin aday sayfası
-  /// ([BusinessRoutes.userProfile]) çalışanı, çalışanın herkese açık profili
-  /// ([EmployeeRoutes.publicProfile]) işvereni geri çevirir.
+  /// Profili kabuğun kendi sayfasında açar: işverenin aday sayfası çalışanı,
+  /// çalışanın herkese açık profili işvereni geri çevirir.
   void openProfile(ChatParticipant participant) {
     if (asEmployer) {
       context.push(BusinessRoutes.userProfile, extra: participant.id);
@@ -98,8 +88,7 @@ abstract class ChatThreadPagemodel<T extends StatefulWidget> extends State<T> {
     );
   }
 
-  /// Çalışanın sohbetteki kendi satırı: kendi profil sekmesine gider
-  /// (`go`; sekme yığının tabanı, sohbete geri dönüş yok).
+  /// `go`: sekme yığının tabanı.
   void openOwnProfile() => context.go(EmployeeRoutes.ownProfile);
 
   @override
@@ -160,7 +149,6 @@ abstract class ChatThreadPagemodel<T extends StatefulWidget> extends State<T> {
     super.dispose();
   }
 
-  /// Mesaj eklendiğinde en alta kaydır; liste eskiden yeniye çiziliyor.
   void _onThreadChanged() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !scrollController.hasClients) return;
@@ -180,8 +168,7 @@ abstract class ChatThreadPagemodel<T extends StatefulWidget> extends State<T> {
     final generation = _bindingGeneration;
     final selectedThread = thread;
 
-    // Bir mesajı "ben mi gönderdim" ayrımı oturum sahibine göre yapılıyor,
-    // o yüzden mesajlardan önce kullanıcı gerekiyor.
+    // "Ben mi gönderdim" oturum sahibine göre; önce kullanıcı gerekiyor.
     final userProvider = context.read<UserProvider>();
     if (userProvider.user == null) await userProvider.load();
     if (!_isCurrent(generation, selectedThread)) return;
@@ -210,14 +197,13 @@ abstract class ChatThreadPagemodel<T extends StatefulWidget> extends State<T> {
       return;
     }
 
-    // Kapı hatası sunucunun metniyle değil tarafa göre seçilen metinle
-    // gösteriliyor; şeritteki açıklamayla aynı cümle olsun.
+    // Kapı hatası şeritteki cümleyle aynı olsun diye tarafa göre seçiliyor.
     final error =
         selectedThread.gate?.noteFor(asEmployer: asEmployer) ??
         selectedThread.errorMessage;
     if (error == null) return;
 
-    // Metin alanı temizlenmiyor: kullanıcı yazdığını kaybetmesin.
+    // Metin temizlenmiyor; kullanıcı yazdığını kaybetmesin.
     AppToast.error(context, error);
   }
 

@@ -5,11 +5,8 @@ import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
 
-/// Bir iş kategorisi.
-///
-/// Kaynağı `GET /reference/job-categories`; uygulama sabit bir liste
-/// tutmuyor, backend hangi kategorileri döndürüyorsa onlar geçerli. İkon, renk
-/// ve harita pini [code] üzerinden eşleşiyor — bkz. [JobCategoryStyle].
+/// İş kategorisi; kaynak `GET /reference/job-categories`. İkon, renk ve pin
+/// [code] üzerinden ([JobCategoryStyle]).
 class JobCategory {
   const JobCategory({
     required this.id,
@@ -18,20 +15,16 @@ class JobCategory {
     this.requiresInsurance = false,
   });
 
-  /// Backend'deki UUID. Filtreler (`categoryId`) bununla gönderiliyor.
+  /// Süzgeçler (`categoryId`) bununla gönderiliyor.
   final String id;
 
-  /// Görünen Türkçe ad: `Fotoğrafçılık`.
   final String name;
 
-  /// Ada göre türetilen sabit anahtar: `FOTOGRAFCILIK`. Görsel eşleşme buna
-  /// bakıyor, çünkü ad değişse bile kod sabit kalıyor.
+  /// Addan türetilen sabit anahtar (`FOTOGRAFCILIK`); ad değişse de kod kalır.
   final String code;
 
-  /// Bu kategorideki işler sigorta zorunlu mu.
   final bool requiresInsurance;
 
-  /// Arayüzde gösterilen ad. [name] ile aynı; çağrı yerleri okunur kalsın diye.
   String get displayName => name;
 
   factory JobCategory.fromJson(Map<String, dynamic> json) {
@@ -53,7 +46,7 @@ class JobCategory {
   }
 
   /// Eşitlik [code] üzerinden: aynı kategori farklı isteklerden farklı nesne
-  /// olarak geliyor, filtre karşılaştırması yine de tutmalı.
+  /// geliyor.
   @override
   bool operator ==(Object other) => other is JobCategory && other.code == code;
 
@@ -61,13 +54,8 @@ class JobCategory {
   int get hashCode => code.hashCode;
 }
 
-/// Kategorinin görsel karşılığı.
-///
-/// Uygulama beş kategori için çizim varlığı taşıyor. Backend bunların dışında
-/// bir kategori döndürebildiği için her eşleşmenin bir yedeği var: tanınmayan
-/// kod marka yeşiliyle ve genel bir ikonla çiziliyor, ekran boş kalmıyor.
+/// Kategorinin görseli; tanınmayan kod marka yeşili ve genel ikonla çizilir.
 extension JobCategoryStyle on JobCategory {
-  /// Kategorinin ikonu.
   AppIconData get icon {
     switch (code) {
       case JobCategoryCodes.photography:
@@ -85,7 +73,6 @@ extension JobCategoryStyle on JobCategory {
     }
   }
 
-  /// Kategorinin rengi.
   Color get color {
     switch (code) {
       case JobCategoryCodes.photography:
@@ -104,12 +91,9 @@ extension JobCategoryStyle on JobCategory {
   }
 }
 
-/// Uygulamanın çizim varlığı taşıdığı kategori kodları.
-///
-/// Değerler backend'deki `job_categories.code` ile birebir aynı olmalı; ikon,
-/// renk ve pin eşleşmesi buna bakıyor. Uyuşmazsa hata alınmıyor — kategori
-/// sessizce varsayılan görünüme düşüyor, o yüzden değiştirirken seed
-/// changeset'iyle karşılaştır (`27-10-job-category-seed.xml`).
+/// Çizim varlığı olan kodlar; backend `job_categories.code` ile aynı olmalı.
+/// Uyuşmazsa hata yok, sessizce varsayılana düşer: değiştirirken seed
+/// changeset'iyle karşılaştır.
 class JobCategoryCodes {
   const JobCategoryCodes._();
 
@@ -120,13 +104,8 @@ class JobCategoryCodes {
   static const String barista = 'BARISTA';
 }
 
-/// Testlerin kullandığı örnek kategoriler.
-///
-/// **Gerçek kayıt değil.** Backend `GET /reference/job-categories`'ten gelen
-/// kategorilerin `id`'si UUID; buradakiler bilerek `seed-` önekli, ki bir
-/// filtre yanlışlıkla gerçek bir kayda eşleşmesin. `lib/` altında okuyan
-/// kalmadı — yalnızca `test/support/fixtures.dart` ve kategori testleri
-/// kullanıyor, öyle kalmalı.
+/// Testlerin örnek kategorileri; **gerçek kayıt değil** (`seed-` önekli).
+/// `lib/` altında okuyan yok, öyle kalmalı.
 class JobCategorySeeds {
   const JobCategorySeeds._();
 
@@ -160,7 +139,6 @@ class JobCategorySeeds {
     code: JobCategoryCodes.barista,
   );
 
-  /// Sahte veri üretenlerin döndüğü liste.
   static const List<JobCategory> all = [
     photography,
     waiter,
@@ -170,10 +148,7 @@ class JobCategorySeeds {
   ];
 }
 
-/// İş tipi. Backend `JobType` karşılığı.
-///
-/// Sunucudaki değerler `ONE_TIME` / `RECURRING`; Dart tarafındaki adlarla
-/// aynı olmadığı için eşleşme [code] üzerinden yapılıyor.
+/// Sunucuda `ONE_TIME` / `RECURRING`; eşleşme [code] ile.
 enum JobType {
   oneTime('ONE_TIME', 'Günlük'),
   recurring('RECURRING', 'Tekrarlı');
@@ -191,7 +166,6 @@ enum JobType {
   }
 }
 
-/// Ücretin hangi birim üzerinden verildiği. Backend `SalaryType` karşılığı.
 enum SalaryType {
   hourly('HOURLY', 'Saatlik'),
   daily('DAILY', 'Günlük');
@@ -209,7 +183,6 @@ enum SalaryType {
   }
 }
 
-/// İlanı kimin açtığı. Backend `JobEmployerType` karşılığı.
 enum JobEmployerType {
   company('COMPANY', 'Kurumsal'),
   individual('INDIVIDUAL', 'Bireysel');
@@ -227,8 +200,7 @@ enum JobEmployerType {
   }
 }
 
-/// İlanın durumu. Backend `JobStatus` karşılığı. Üç değer (#115);
-/// atama yaşam döngüsü [MyJobStatus] / `AssignmentStatus`.
+/// İlan durumu; atama yaşam döngüsü [MyJobStatus] / `AssignmentStatus`.
 enum JobStatus {
   open('OPEN', 'Açık'),
   closed('CLOSED', 'Kapalı'),
@@ -239,7 +211,7 @@ enum JobStatus {
   final String code;
   final String displayName;
 
-  /// Başvuruya açık mı. Keşfette yalnızca bunlar gösteriliyor.
+  /// Keşfette yalnız bunlar.
   bool get isOpen => this == JobStatus.open;
 
   static JobStatus fromCode(Object? value) {
@@ -250,14 +222,9 @@ enum JobStatus {
   }
 }
 
-/// Sunucunun ilan konumunu hangi kesinlikte gönderdiği. Backend
-/// `AddressPrecision` karşılığı.
-///
-/// Diğer enum'lardan bir farkı var: tanınmayan değer **yaklaşık**'a düşüyor,
-/// "normal" olana değil. Bilinmeyen bir bayrağı kesin saymak, yuvarlanmış bir
-/// koordinatı tam iş adresi gibi çizmek olurdu; eksik alan da aynı yere
-/// düşüyor, çünkü bu alanı hiç göndermeyen bir sunucu sürümü de yetkiyi
-/// kanıtlamıyor (ADR-0003).
+/// Konumun kesinliği. Tanınmayan ya da eksik değer **yaklaşık**'a düşer:
+/// bilinmeyeni kesin saymak yuvarlanmış koordinatı iş adresi gibi çizer
+/// (ADR-0003).
 enum AddressPrecision {
   approximate('APPROXIMATE'),
   exact('EXACT');
@@ -266,13 +233,8 @@ enum AddressPrecision {
 
   final String code;
 
-  /// "Bu konum yaklaşık mı?" — arayüzün bu soruyu soracağı **tek** yer.
-  ///
-  /// Kutbu bilerek böyle: `!= exact`, `== approximate` değil. Sunucuya bir
-  /// üçüncü kesinlik eklenirse (`CITY_LEVEL` gibi) `== approximate` yazan her
-  /// çağıran onu sessizce **kesin** sayardı — daire çizilmez, başlık "Konum"
-  /// olur, pin ucundan bağlanır. Bilinmeyen kesinliğin güvenli tarafı
-  /// yaklaşıktır; [fromCode] de tanımadığı kodu oraya düşürüyor.
+  /// "Bu konum yaklaşık mı?" sorusunun **tek** yeri. `!= exact` bilerek: yeni
+  /// bir kesinlik eklenirse `== approximate` onu sessizce kesin sayardı.
   bool get isApproximate => this != AddressPrecision.exact;
 
   static AddressPrecision fromCode(Object? value) {
@@ -283,11 +245,8 @@ enum AddressPrecision {
   }
 }
 
-/// Bir iş ilanının liste/harita görünümü.
-///
-/// `GET /jobs` yanıtındaki `JobSummaryDto`'nun karşılığı. Açıklama, görevler,
-/// yaş aralığı ve tam adres burada **yok** — onlar `GET /jobs/{id}` ile gelen
-/// [JobDetail]'de. Kart ya da pin çizmek için gereken her şey burada.
+/// İlanın liste/harita görünümü (`JobSummaryDto`). Açıklama, görevler ve tam
+/// adres [JobDetail]'de.
 class Job {
   const Job({
     required this.id,
@@ -327,7 +286,6 @@ class Job {
   final JobEmployerType employerType;
   final SalaryType salaryType;
 
-  /// Ücret. Backend'de `salary`.
   final double price;
 
   final JobStatus status;
@@ -341,80 +299,47 @@ class Job {
   final String? cityName;
   final String? districtName;
 
-  /// İlanı açan şirketin adı. Bireysel ilanlarda `null`.
+  /// Bireysel ilanda `null`.
   final String? company;
 
-  /// İlanı açan şirketin kimliği. Bireysel ilanlarda `null`.
-  ///
-  /// Ad (`company`) tıklanabilir satır üretmez; şirket detayı bu kimliği
-  /// ister. `JobSummaryDto.companyId` (koala-backend#187).
+  /// Bireysel ilanda `null`; şirket detayı bu kimliği ister.
   final String? companyId;
 
-  /// İlanı açan şirketin logosu. `JobSummaryDto.companyLogoUrl`
-  /// (koala-backend#282); eski sunucuda ve bireysel ilanda `null`.
+  /// Eski sunucuda ve bireysel ilanda `null`.
   final String? companyLogoUrl;
 
-  /// Arama/listeme kartında gösterilen ilan galerisi kapağı.
-  ///
-  /// Tam galeri ayrı uçtan yüklenir; özet yanıtı kart için yalnızca bu
-  /// URL'yi taşır.
+  /// Kart için galeri kapağı; tam galeri ayrı uçtan.
   final String? coverImageUrl;
 
-  /// İlana gelen toplam başvuru sayısı — yanıtlanmışlar dâhil.
-  ///
-  /// Yalnızca işverenin listesi kullanıyor; keşfette anlamı yok. Sunucu bu
-  /// sayıyı ilan listesiyle aynı geçişte doldurduğu için başvuru sayısını
-  /// göstermek ayrı bir istek gerektirmiyor.
+  /// Yanıtlanmışlar dâhil; yalnız işverenin listesi kullanıyor.
   final int applicationCount;
 
-  /// Aranan kişi sayısı; sunucu göndermediyse `null`.
   final int? headcount;
 
-  /// Şimdiye kadar işe alınan kişi sayısı.
   final int hiredCount;
 
-  /// Konum. Backend bu iki alanı **opsiyonel** döndürüyor; adresi
-  /// koordinata çevrilmemiş ilanlar haritada gösterilemiyor — bkz. [hasLocation].
+  /// Opsiyonel; koordinatsız ilan haritada gösterilemez ([hasLocation]).
   final double? latitude;
   final double? longitude;
 
-  /// `GET /jobs` `distanceKm`: yalnız istekte `lat`/`lng` varken dolar.
-  /// Kart bunu okur; istemci Haversine'i yeniden hesaplamaz. `null` satırı
-  /// gizler.
+  /// Yalnız istekte `lat`/`lng` varken dolar; istemci yeniden hesaplamaz.
+  /// `null` satırı gizler.
   final double? distanceKm;
 
-  /// [latitude]/[longitude] değerlerinin hangi kesinlikte geldiği.
-  ///
-  /// Koordinat yükte **her zaman** var: sunucu yetkisiz görüntüleyende onu
-  /// yuvarlıyor ama alanı boş bırakmıyor (`JobMapper` koordinatı daima
-  /// yazıyor, `JobAddressVisibility.protect` yalnız `EXACT`'te kesin değeri
-  /// üzerine koyuyor). Bu yüzden bayrağı okumamak, yuvarlanmış bir noktayı
-  /// kesin adres gibi çizmek demek — is-koala/koala#93 tam olarak buydu.
+  /// Koordinatın kesinliği. Koordinat **her zaman** var, yetkisizde
+  /// yuvarlanıyor; bayrağı okumamak yuvarlanmış noktayı kesin adres gibi çizer
+  /// (#93).
   final AddressPrecision addressPrecision;
 
-  /// İlanın en az bir servisi var mı (`JobSummaryDto.hasShuttle`,
-  /// koala-backend#297). Eski sunucuda alan yok, `false`.
+  /// Eski sunucuda `false`.
   final bool hasShuttle;
 
-  /// Haritada pin çizilebilir mi.
   bool get hasLocation => latitude != null && longitude != null;
 
-  /// Yaklaşık koordinatın gerçek noktadan en fazla kaç metre uzakta
-  /// olabileceği.
-  ///
-  /// Sunucu koordinatı iki ondalığa yuvarlıyor (`HALF_UP`), yani gerçek nokta
-  /// her eksende gösterilen değerin ±0.005° içinde. Metreye çevrilip köşegeni
-  /// alınıyor: daire bu yarıçapta çizildiğinde gerçek konumu **kapsadığı**
-  /// garanti, kesin bir nokta iddiası taşımıyor.
-  ///
-  /// Bu bir istemci yuvarlaması **değil** — sunucudan gelen belirsizliğin
-  /// görselleştirilmesi. İstemcide yuvarlama `docs/research/location-and-map.md`
-  /// tarafından açıkça reddedilmiş bir yaklaşım.
-  ///
-  /// Kesin konumda **sıfır**: yuvarlama yok, belirsizlik de yok. Bayrağı
-  /// sormadan hesaplasaydı, çağıranın süzmeyi unuttuğu her yerde kesin bir
-  /// adresin çevresine 557 m'lik bir daire çizilirdi — olmayan bir
-  /// belirsizliği varmış gibi göstermek de bir okuma hatası.
+  /// Yaklaşık koordinatın gerçek noktaya en büyük uzaklığı. Sunucu iki ondalığa
+  /// yuvarlıyor (±0.005°); köşegen alındığı için daire gerçek konumu
+  /// **kapsıyor**. İstemci yuvarlaması değil, sunucunun belirsizliğinin çizimi.
+  /// Kesin konumda **sıfır**.
   double get approximateRadiusInMeters {
     if (!addressPrecision.isApproximate) return 0;
 
@@ -425,17 +350,9 @@ class Job {
     );
   }
 
-  /// [kilometersAway] uzaklığının ekrana yazılacağı metin.
-  ///
-  /// Yaklaşık konumlu bir ilanda koordinat **±557 m** taşıyor. "2,3 km" yazmak
-  /// 100 m'lik bir çözünürlük iddia eder; veri onu taşımıyor, üstelik harita
-  /// aynı ilanı "yaklaşık" diye gösterirken liste ondalıklı bir sayı söylerdi.
-  /// is-koala/koala#93'ün şikâyeti tam olarak bu okuma hatasıydı — orada
-  /// pinin ucu, burada ondalık hane.
-  ///
-  /// Bu yüzden yaklaşık konumda tam kilometreye yuvarlanıyor ve önüne `~`
-  /// konuyor; hata payından küçük kalan uzaklık ise sayı olarak hiç
-  /// yazılmıyor, çünkü yuvarlaması "0 km" olurdu.
+  /// Uzaklık metni. Yaklaşık konum ±557 m taşıdığı için "2,3 km" yanlış
+  /// çözünürlük iddia eder (#93): tam kilometreye yuvarlanır ve `~` eklenir;
+  /// hata payından küçükse sayı yazılmaz.
   String distanceLabel(double kilometersAway) {
     if (!addressPrecision.isApproximate) {
       return '${kilometersAway.toStringAsFixed(1)} km';
@@ -445,12 +362,8 @@ class Job {
     return rounded < 1 ? "1 km'den yakın" : '~$rounded km';
   }
 
-  /// Ham koordinatın ekrana yazılacağı hâli.
-  ///
-  /// Ondalık hane sayısı kesinliğe bağlı: sunucu `APPROXIMATE` yanıtta iki
-  /// ondalığa yuvarlıyor, dördüncü haneye kadar yazmak olmayan iki hane
-  /// uydurup ±700 m'lik bir değeri ~11 m kesinlikte göstermek olurdu —
-  /// haritadaki dairenin anlattığının tam tersi.
+  /// Ham koordinat metni; yaklaşıkta iki ondalık, kesinde dört. Daha fazla hane
+  /// olmayan bir kesinlik uydururdu.
   String get coordinateLabel {
     final fractionDigits = addressPrecision.isApproximate
         ? _approximateFractionDigits
@@ -460,32 +373,21 @@ class Job {
         '${longitude!.toStringAsFixed(fractionDigits)}';
   }
 
-  /// Sunucunun `setScale(2, HALF_UP)` adımı; yaklaşık koordinatta anlamlı olan
-  /// hane sayısı bu.
   static const int _approximateFractionDigits = 2;
 
-  /// Kesin koordinatta yazılan hane sayısı (≈11 m).
   static const int _exactFractionDigits = 4;
 
-  /// Sunucunun yuvarlama adımının yarısı: `setScale(2, HALF_UP)` sonrası
-  /// gerçek değer gösterilen değerin bu kadar yakınında.
   static const double _roundingHalfStep = 0.005;
 
-  /// Bir enlem derecesinin metre karşılığı. Boylamda bu değer enlemin
-  /// kosinüsüyle daralıyor, o yüzden ayrı bir sabit yok.
   static const double _metersPerLatitudeDegree = 111320;
 
-  /// Kartın ikinci satırı.
-  ///
-  /// Backend'de bunun doğrudan karşılığı yok; en açıklayıcıdan en genele
-  /// doğru düşülüyor: pozisyon → sektör → kategori adı.
+  /// Pozisyon → sektör → kategori adı.
   String get subtitle {
     if (position != null && position!.isNotEmpty) return position!;
     if (sector != null && sector!.isNotEmpty) return sector!;
     return category.displayName;
   }
 
-  /// `Küçükçekmece/İstanbul`. İkisi de boşsa `null`.
   String? get locationLabel {
     final parts = [
       if (districtName != null && districtName!.isNotEmpty) districtName!,

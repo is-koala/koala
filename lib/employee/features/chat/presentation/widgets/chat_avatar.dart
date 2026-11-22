@@ -10,16 +10,12 @@ class ChatAvatar extends StatelessWidget {
   final bool isOnline;
   final double onlineDotSize;
 
-  /// Sohbet listesindeki avatar ölçüleri. Appbar'da daha küçük değerler
-  /// geçiliyor.
   static const double _defaultSize = 60;
   static const double _defaultRadius = 20;
   static const double _defaultDotSize = 16;
 
-  /// Baş harflerin avatar boyutuna oranı.
   static const double _initialsScale = 0.3;
 
-  /// Çevrimiçi noktasının çevresindeki halka kalınlığı.
   static const double _dotBorder = 2;
 
   const ChatAvatar({
@@ -32,8 +28,7 @@ class ChatAvatar extends StatelessWidget {
     this.onlineDotSize = _defaultDotSize,
   });
 
-  /// Avatar zemini marka yeşili; üstündeki baş harfler temadan bağımsız
-  /// beyaz kalır.
+  /// Zemin yeşil; baş harfler temadan bağımsız beyaz.
   TextStyle get _initialsStyle => TextStyle(
     color: AppColors.onAccent,
     fontWeight: FontWeight.bold,

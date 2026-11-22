@@ -4,19 +4,13 @@ import 'package:koala/employee/features/home/presentation/widgets/job_card.dart'
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/widgets/app_bottom_sheet.dart';
 
-/// Haritada aynı noktada duran ilanların listesi.
-///
-/// Gruba dokununca kamera ilanları ayıracak kadar yaklaşıyor; ilanlar aynı
-/// noktadaysa (yuvarlanmış yaklaşık konum, aynı bina) yakınlaşmak onları
-/// ayırmıyor ve bu liste açılıyor. Satır liste sekmesindeki kartın aynısı;
-/// dokununca ilanın ayrıntısı açılıyor.
+/// Aynı noktadaki ilanların listesi; yakınlaşmak ayırmadığında açılır.
 class JobClusterSheet extends StatelessWidget {
   const JobClusterSheet({super.key, required this.jobs});
 
   final List<Job> jobs;
 
-  /// Listenin ekranın en fazla ne kadarını kaplayacağı; arkadaki harita
-  /// görünür kalsın ki kullanıcı hangi noktaya baktığını bilsin.
+  /// Harita görünür kalsın, kullanıcı nereye baktığını bilsin.
   static const double _maxHeightRatio = 0.6;
 
   static Future<void> show(BuildContext context, List<Job> jobs) {

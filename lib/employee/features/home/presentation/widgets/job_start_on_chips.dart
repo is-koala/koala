@@ -3,10 +3,7 @@ import 'package:koala/employee/features/home/models/job_start_on.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/widgets/filter_pill.dart';
 
-/// Keşif başlangıç günü çipleri: Bugün / Yarın / Hafta sonu / Bu hafta /
-/// Tarih seç.
-///
-/// Seçim [onChanged]'e düşer; seçili çipe tekrar basmak süzgeci temizler.
+/// Başlangıç günü çipleri; seçili çipe tekrar basmak süzgeci temizler.
 class JobStartOnChips extends StatelessWidget {
   const JobStartOnChips({
     super.key,
@@ -18,9 +15,8 @@ class JobStartOnChips extends StatelessWidget {
   final JobStartOn? selected;
   final ValueChanged<JobStartOn?> onChanged;
 
-  /// `true` ise çipler tek satırda yatay kayar, alt satıra geçmez. Liste
-  /// sayfası dikey alanı ilanlara bırakmak için bunu kullanıyor; süzgeç
-  /// sheet'inde yer sorunu olmadığı için çipler alta sarılmaya devam ediyor.
+  /// Liste sayfası dikey alanı ilanlara bırakmak için tek satır yatay kaydırma
+  /// kullanıyor.
   final bool scrollable;
 
   static const _presets = [

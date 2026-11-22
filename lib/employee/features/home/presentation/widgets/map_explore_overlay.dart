@@ -9,18 +9,12 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// Haritanın üstünde duran kartlar: durum kartı ve arama sonucu listesi.
+/// Harita üstündeki durum kartı ve arama sonuçları. Ayrı widget ki karar tek
+/// yerde dursun ve `GoogleMap` olmadan sınansın.
 ///
-/// Neden ayrı bir widget: bu kararın tamamı — hangi durumda hangi kartın
-/// çizileceği — bir yerde dursun ve harita sayfası çizilmeden sınanabilsin.
-/// `GoogleMap` testte platform görünümü istediği için sayfanın kendisi widget
-/// testine girmiyordu, kusur da bu yüzden yakalanmamıştı.
-///
-/// **Durum kartı arama açıkken de çiziliyor.** Aksi hâlde arama açıkken
-/// dönen bir `500` kullanıcıya *"Sonuç bulunamadı"* diye görünür, ne hata
-/// mesajı ne "Tekrar Dene" olur; başarısız yükleme ile boş sonuç aynı şeye
-/// benzer (AGENTS.md, *"An empty list and a failed
-/// load must not look the same"*; is-koala/koala#33).
+/// **Durum kartı arama açıkken de çiziliyor:** yoksa arama sırasında dönen
+/// `500` "Sonuç bulunamadı" gibi görünür; başarısız yükleme boş sonuçla aynı
+/// görünmemeli (#33).
 class MapExploreOverlay extends StatelessWidget {
   const MapExploreOverlay({
     super.key,
@@ -34,21 +28,16 @@ class MapExploreOverlay extends StatelessWidget {
     required this.onJobTap,
   });
 
-  /// Arama kutusu açık ve içinde metin var mı.
   final bool isSearching;
 
-  /// Henüz hiç sonuç yokken süren yükleme: belirgin kart çiziliyor.
   final bool isLoading;
 
-  /// Pinler ekrandayken süren yenileme: kart yerine yalnız ince bir çizgi.
-  /// Pinler zaten görünürken her kaydırmada "aranıyor" kartını açıp kapatmak
-  /// yalnızca dikkat dağıtır.
+  /// Pinler ekrandayken kart yerine ince çizgi; her kaydırmada kart açıp
+  /// kapatmak dikkat dağıtır.
   final bool isRefreshing;
 
-  /// Doluysa son istek başarısız: mesaj ve "Tekrar Dene" çiziliyor.
   final String? errorMessage;
 
-  /// Görünen alanda sayfa boyutundan fazla ilan var mı.
   final bool isTruncated;
 
   final List<Job> jobs;
@@ -57,11 +46,8 @@ class MapExploreOverlay extends StatelessWidget {
 
   final ValueChanged<Job> onJobTap;
 
-  /// Arama sonucu listesinin ekranın en fazla ne kadarını kaplayacağı.
-  /// Altındaki harita görünür kalmalı ki kullanıcı nereye baktığını bilsin.
   static const double _maxHeightRatio = 0.4;
 
-  /// Harita üstündeki kartların gölge yüksekliği.
   static const double _elevation = 8;
 
   @override
@@ -91,12 +77,8 @@ class MapExploreOverlay extends StatelessWidget {
     );
   }
 
-  /// Üstteki durum kartı; hiçbir durum geçerli değilse `null`.
-  ///
-  /// Sıra önemli: yükleniyor ve hata her şeyin önünde geliyor, çünkü ikisi de
-  /// "elindeki liste henüz cevap değil" diyor. Kırpılma uyarısı sonuç
-  /// listesinin **üstünde** duruyor, yerine değil — kullanıcı hem aradığını
-  /// görsün hem de daha fazlasının olduğunu bilsin.
+  /// Yükleniyor ve hata her şeyin önünde. Kırpılma uyarısı sonuç listesinin
+  /// **üstünde**, yerine değil.
   Widget? _statusCard(BuildContext context) {
     if (isLoading) {
       return _card(
@@ -140,7 +122,6 @@ class MapExploreOverlay extends StatelessWidget {
     return null;
   }
 
-  /// Sessiz yenileme çizgisi.
   Widget _refreshBar(BuildContext context) {
     return ClipRRect(
       key: const ValueKey('map-refresh-bar'),
@@ -154,7 +135,6 @@ class MapExploreOverlay extends StatelessWidget {
     );
   }
 
-  /// Harita üstünde duran kartların ortak sarmalayıcısı.
   Widget _shell(BuildContext context, {required Widget child}) {
     return Material(
       elevation: _elevation,

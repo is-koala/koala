@@ -8,12 +8,9 @@ class MessageTextField extends StatelessWidget {
   final TextEditingController controller;
   final VoidCallback onSendMessage;
 
-  /// Mesaj sunucuya giderken buton kilitleniyor; aynı mesajın iki kez
-  /// gönderilmesini engelliyor.
+  /// Aynı mesaj iki kez gönderilmesin.
   final bool isSending;
 
-  /// Kullanıcı yazdıkça çağrılıyor; karşı tarafa "yazıyor" bilgisi
-  /// göndermek için.
   final ValueChanged<String>? onChanged;
   final VoidCallback? onAddPressed;
 
@@ -26,8 +23,6 @@ class MessageTextField extends StatelessWidget {
     this.onAddPressed,
   });
 
-  /// Mesaj kutusunun yüksekliği; içindeki gönder dairesi kutuya sığacak
-  /// kadar büyük.
   static const double _fieldHeight = 52;
 
   @override

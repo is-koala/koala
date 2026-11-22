@@ -11,7 +11,6 @@ class PageProvider with ChangeNotifier {
   ExploreViewType get exploreViewType => _exploreViewType;
   JobsViewType get jobsViewType => _jobsViewType;
 
-  // Explore view type değiştirme
   void setExploreViewType(ExploreViewType viewType) {
     if (_exploreViewType != viewType) {
       _exploreViewType = viewType;
@@ -27,7 +26,6 @@ class PageProvider with ChangeNotifier {
     );
   }
 
-  // PageProvider'a eklenecek metodlar
   void setExploreViewToMap() {
     _exploreViewType = ExploreViewType.map;
     notifyListeners();
@@ -38,7 +36,6 @@ class PageProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Jobs view type değiştirme
   void setJobsViewType(JobsViewType viewType) {
     if (_jobsViewType != viewType) {
       _jobsViewType = viewType;

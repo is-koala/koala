@@ -7,12 +7,8 @@ import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/widgets/app_bottom_sheet.dart';
 
-/// Grupta kendi mesajını görenlerin listesi: "3 kişi gördü" etiketine
-/// dokununca açılıyor.
-///
-/// Satırlar dokunulmuyor; kişi başına ad ve okuma anı yazıyor. Liste
-/// `participants[].lastReadAt >= sentAt` ile istemcide hesaplanıyor
-/// (is-koala/koala-backend#281 `readBy` göndermiyor).
+/// Grupta kendi mesajını görenler; liste `lastReadAt >= sentAt` ile istemcide
+/// hesaplanıyor (sunucu `readBy` göndermiyor).
 class MessageSeenSheet extends StatelessWidget {
   const MessageSeenSheet({super.key, required this.readers});
 
@@ -20,7 +16,6 @@ class MessageSeenSheet extends StatelessWidget {
 
   static const String title = 'Görenler';
 
-  /// Listenin kaplayabileceği en fazla yükseklik oranı.
   static const double _maxHeightRatio = 0.6;
 
   static Future<void> show(

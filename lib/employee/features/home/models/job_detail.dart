@@ -2,7 +2,6 @@ import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/product/features/transport/models/transport_plan.dart';
 import 'package:koala/product/models/canonical_address.dart';
 
-/// İlanı açan kişi. Backend `SafeUserDto` karşılığı.
 class JobCreator {
   const JobCreator({
     required this.id,
@@ -39,11 +38,7 @@ class JobCreator {
   };
 }
 
-/// İlana bağlı şirket. Backend `OnlyCompanyDto` karşılığı.
-///
-/// `company_detail/models/company.dart` ile karıştırılmamalı: o sahte şirket
-/// servisinin modeli ve alan adları farklı (`logo` ↔ `logoUrl`). Şirket detay
-/// sayfası gerçek uca bağlandığında ikisi birleşecek.
+/// İlana bağlı şirket (`OnlyCompanyDto`).
 class JobCompany {
   const JobCompany({
     required this.id,
@@ -94,11 +89,7 @@ class JobCompany {
   };
 }
 
-/// Bir iş ilanının tam hâli.
-///
-/// `GET /jobs/{jobId}` yanıtındaki `JobDetailDto`'nun karşılığı. Liste yanıtı
-/// ([Job]) bu alanları taşımadığı için detay ekranı ilana dokunulduğunda ayrı
-/// bir istek atıyor.
+/// İlanın tam hâli (`JobDetailDto`); liste yanıtı bu alanları taşımıyor.
 class JobDetail {
   const JobDetail({
     required this.id,
@@ -145,8 +136,7 @@ class JobDetail {
   final String? position;
   final String? dressCode;
 
-  /// Yaş aralığı. Backend `int` döndürüyor ve `0` "sınır yok" demek; burada
-  /// `null`'a çevriliyor ki arayüz satırı hiç çizmesin.
+  /// Backend'de `0` "sınır yok"; `null`'a çevriliyor ki satır çizilmesin.
   final int? minAge;
   final int? maxAge;
 
@@ -156,43 +146,30 @@ class JobDetail {
   final DateTime? endDateTime;
   final CanonicalAddress? address;
 
-  /// [address] alanlarının hangi kesinlikte geldiği.
-  ///
-  /// `APPROXIMATE` yanıtta sunucu sokak, bina, kat, daire ve posta kodunu
-  /// zaten siliyor, koordinatı da yuvarlıyor; yani bayrak bir sızıntıyı tek
-  /// başına engellemiyor. Ekranda ne yaptığı ayrı ve önemli: kalan metni
-  /// "Konum" diye sunmak, adresin bundan ibaret olduğunu ima ederdi.
+  /// Yaklaşıkta sunucu sokak/bina/daireyi zaten siliyor; bayrak ekranın kalan
+  /// metni "Konum" diye sunmamasını sağlıyor.
   final AddressPrecision addressPrecision;
 
   final JobCreator? creator;
   final JobCompany? company;
   final DateTime? createdAt;
 
-  /// Aranan kişi sayısı; sunucu göndermediyse `null` ve satır çizilmiyor.
   final int? headcount;
 
-  /// Şimdiye kadar işe alınan kişi sayısı.
   final int hiredCount;
 
-  /// Ulaşım özeti, herkese açık görünüm (koala-backend#297): yöntemler, yol
-  /// parası, servis sayısı ve durakların ilçe/semt + saati. Plaka, şoför ve
-  /// tam adres yok. Planı olmayan ilanda ve eski sunucuda `null` — kart o
-  /// zaman çizilmiyor.
+  /// Herkese açık ulaşım özeti; plaka, şoför ve tam adres yok. Planı yoksa ya
+  /// da eski sunucuda `null`.
   final JobTransport? transport;
 
-  /// Kartın ikinci satırı; [Job.subtitle] ile aynı kural.
   String get subtitle {
     if (position != null && position!.isNotEmpty) return position!;
     if (sector != null && sector!.isNotEmpty) return sector!;
     return category.displayName;
   }
 
-  /// Liste/özet karşılığı. İlan listesinde olmayan ama detayı elde olan ilanı
-  /// (`BJobsProvider.adoptJob`) liste satırı gibi tutmak için.
-  ///
-  /// Detayda olmayan ya da yalnız kartın çizdiği alanlar özetteki varsayılanında
-  /// kalıyor: başvuru sayısı, kapak görseli, uzaklık, servis bayrağı, konum ve
-  /// ilçe/il adı. Benimsenen ilan hiçbir kartta çizilmiyor.
+  /// Özet karşılığı; listede olmayan ama detayı elde olan ilan için
+  /// (`BJobsProvider.adoptJob`). Detayda olmayan alanlar varsayılanda kalır.
   Job toSummary() => Job(
     id: id,
     title: title,
@@ -216,10 +193,8 @@ class JobDetail {
     addressPrecision: addressPrecision,
   );
 
-  /// İlanı açan tarafın görünen adı: şirket varsa şirket, yoksa kişi.
   String? get employerName => company?.name ?? creator?.fullName;
 
-  /// Adresin tek satırlık hâli: açık adres varsa o, yoksa ilçe/il.
   String? get addressLabel {
     final line = address?.displayAddress;
     if (line != null && line.isNotEmpty) return line;

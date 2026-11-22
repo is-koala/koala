@@ -15,14 +15,12 @@ import 'package:koala/product/widgets/app_icon.dart';
 class JobCard extends StatelessWidget {
   final Job job;
 
-  /// Dokununca ilan detayı açılsın mı. Başvuru ekranı gibi detaydan gelinen
-  /// yerlerde kart yalnız özet; aynı detayı tekrar açmak geri tuşuyla
-  /// karışıyordu.
+  /// Detaydan gelinen yerlerde (başvuru) kart yalnız özet; aynı detayı yeniden
+  /// açmak geri tuşuyla karışıyordu.
   final bool openDetailOnTap;
 
   const JobCard({super.key, required this.job, this.openDetailOnTap = true});
 
-  /// Kapak / kategori görseliyle metin arası.
   static const double _leadingGap = AppSizes.space;
 
   @override
@@ -34,8 +32,6 @@ class JobCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSizes.space),
       child: Material(
-        // Uygulamanın kart rengi; liste sayfasında da, haritadaki grup
-        // listesinde (beyaz sheet) de zeminden ayrılıyor.
         color: context.tileColor,
         borderRadius: AppRadius.secondaryCircular,
         clipBehavior: Clip.antiAlias,
@@ -59,8 +55,7 @@ class JobCard extends StatelessWidget {
     );
   }
 
-  /// Başlık, işveren ve bir satırlık özet: ne zaman, nerede, servis var mı.
-  /// Kategori soldaki görselde; ayrı bir etiket (rozet) yok.
+  /// Başlık, işveren ve tek satır özet; kategori soldaki görselde, rozet yok.
   Widget _body(BuildContext context) {
     final start = job.startDateTime?.toLocal();
     final distanceKm = job.distanceKm;
@@ -92,16 +87,12 @@ class JobCard extends StatelessWidget {
           children: [
             if (start != null)
               _meta(context, AppIcons.calendar, start.asShortDateTime),
-            // Uzaklık biliniyorsa o, yoksa ilçe/il. Çözünürlüğü ilanın
-            // kesinliği belirliyor (`distanceLabel`): yuvarlanmış bir
-            // koordinattan çıkan uzaklığı ondalıklı yazmak, veride olmayan
-            // bir hassasiyeti iddia etmek olurdu.
+            // Uzaklık, yoksa ilçe/il. Çözünürlüğü kesinlik belirliyor
+            // (`distanceLabel`).
             if (distanceKm != null)
               _meta(context, AppIcons.location, job.distanceLabel(distanceKm))
             else if (place != null)
               _meta(context, AppIcons.location, place),
-            // `JobSummaryDto.hasShuttle` (is-koala/koala#197): ilanın
-            // servisi var; ayrıntı ilan detayındaki ulaşım kartında.
             if (job.hasShuttle)
               _meta(
                 context,
@@ -137,7 +128,6 @@ class JobCard extends StatelessWidget {
     );
   }
 
-  /// Ücret ve birimi; sağ üstte, başlıkla aynı hizada.
   Widget _price(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -180,7 +170,6 @@ class JobCard extends StatelessWidget {
   Widget _categoryAvatar() {
     return CircleAvatar(
       backgroundColor: job.category.color,
-      // Kategori rengi doygun ve temadan bağımsız; üstündeki ikon da öyle.
       child: AppIcon(
         job.category.icon,
         color: AppColors.onAccent,
