@@ -18,9 +18,8 @@ listelemesinde kimin kurabileceğini belirliyor:
   `android/app/build.gradle.kts` içinde artık elle sabit; Flutter'ın
   varsayılanına bırakılırsa SDK yükseldikçe sessizce değişirdi.
 - **iOS `IPHONEOS_DEPLOYMENT_TARGET = 15.5`** (önceki 15.0) —
-  `google_mlkit_text_recognition` ve `google_mlkit_commons` podspec'lerinin
-  tabanı. `ios/Podfile` ile Xcode ayarı aynı değerde tutulmalı; ayrışırlarsa
-  build yalnız bir tarafta kırılıyor.
+  SPM paketlerinin en yükseği `.iOS(.v15)` istiyor; `google_maps_flutter_ios_sdk10`
+  iOS 16 istediği için Maps `sdk9` paketinde.
 
 NFC'si olmayan cihazlar **kapsam dışı değil**: `android.hardware.nfc`
 `required="false"` ile bildiriliyor, yani Play Store uygulamayı o cihazlarda

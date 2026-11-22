@@ -86,7 +86,7 @@ The quality gate is `flutter test --flavor staging --dart-define-from-file=confi
 >
 > What you still **cannot** do is judge how it looks: that is the user's job (see *Visual verification* above). Running the app on a device or simulator is also theirs.
 
-> ⚠️ **`pod install` / `pod update` are denied in `.claude/settings.json`.** `flutter build ios` triggers pod resolution itself and rewrites the tracked `ios/Podfile.lock`, so ask the user before the first iOS build of a session that changes dependencies.
+> ⚠️ **The first iOS build after a dependency change resolves Swift packages,** and ML Kit's package alone downloads ~0.8 GB. Ask the user before it; the disk on the Mac is small.
 
 > Each flavor xcconfig optionally includes its gitignored `Secrets.<flavor>.xcconfig`, so a fresh checkout and the no-codesign CI build do not need a placeholder. A real map acceptance still needs `MAPS_API_KEY`; production release writes `Secrets.production.xcconfig` from GitHub secrets.
 
@@ -520,7 +520,7 @@ The native side sits at Flutter 3.50.1's own baseline; **the plugins pin most of
 - Kotlin comes from **AGP's built-in Kotlin**: `android.builtInKotlin=true` and `app/build.gradle.kts` does **not** apply `kotlin-android` (2026-11-22). It was off while `flutter_nfc_kit` and `firebase_core` applied KGP themselves — any module that does fails the build with the flag on; flutter_nfc_kit 3.7.0 and firebase_core 5.2.0 migrated. Before adding a plugin, check that it no longer applies `kotlin-android`. The jvmTarget stays in the top-level `kotlin { compilerOptions { … } }` block.
 - `android.newDsl=false` is still set; that migration has not happened yet.
 
-**iOS** — deployment target 15.5. Every plugin comes through **Swift Package Manager** (on by default in Flutter 3.47). Maps uses `google_maps_flutter_ios_sdk9` (a direct dependency that replaces the endorsed `google_maps_flutter_ios`, which has no `Package.swift` and gets no updates; `sdk10` needs iOS 16) and pulls the same Maps SDK 9.x CocoaPods used to. `ios/Podfile` still exists but installs no plugin pods; `pod deintegrate` plus deleting the Podfile removes CocoaPods entirely, and until then Flutter prints a warning suggesting exactly that.
+**iOS** — deployment target 15.5. Every plugin comes through **Swift Package Manager** (on by default in Flutter 3.47) and the project has **no CocoaPods integration** — no `Podfile`, no `Pods` project in the workspace, no `Pods` includes in the xcconfigs. Maps uses `google_maps_flutter_ios_sdk9` (a direct dependency that replaces the endorsed `google_maps_flutter_ios`, which has no `Package.swift` and gets no updates; `sdk10` needs iOS 16). A plugin that ships only a podspec cannot be added without bringing CocoaPods back; check for `Package.swift` first.
 
 - `google_mlkit_text_recognition` (1.x) comes through SPM too (`d-date/google-mlkit-swiftpm`, arm64 simulator supported), and its `Package.swift` declares no resources. So the Runner target carries `-ObjC -all_load` in `OTHER_LDFLAGS`, and the *Copy ML Kit Resources* phase (`ios/scripts/copy_mlkit_resources.sh`) copies `LatinOCRResources.bundle` out of the plugin's own pub-cache copy into the app; without the bundle ML Kit finds no model and MRZ reading fails on iOS. The package pulls every ML Kit binary target (~0.8 GB) on the first resolve, whatever we link.
 
