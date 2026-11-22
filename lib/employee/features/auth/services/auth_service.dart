@@ -157,6 +157,7 @@ class AuthService {
       await _pushTokens.clearQuietly();
       await _apiClient.postWithoutData(ApiPaths.logout);
     } on ApiException {
+      // Yerel temizlik aşağıda yapılıyor.
     } finally {
       await _sessionManager.end();
     }
