@@ -25,6 +25,12 @@ Future<void> _tapTrigger(WidgetTester tester) async {
 SnackBar _snackBar(WidgetTester tester) =>
     tester.widget<SnackBar>(find.byType(SnackBar));
 
+BoxDecoration _card(WidgetTester tester) =>
+    tester
+            .widget<Container>(find.byKey(const ValueKey('app-toast')))
+            .decoration!
+        as BoxDecoration;
+
 void main() {
   testWidgets('mesajı gösterir', (tester) async {
     await pumpInApp(
@@ -37,8 +43,11 @@ void main() {
     expect(find.text('Kaydedildi'), findsOneWidget);
   });
 
-  // Kullanıcının açıkça istediği ölçü: kapsülün yarıçapı butonlarınkiyle aynı.
-  testWidgets('köşe yarıçapı buton yarıçapıyla aynı', (tester) async {
+  // Kart, uygulamanın kartlarıyla aynı yarıçapta; snackbar'ın kendi zemini
+  // ve gölgesi kapalı (eski gri hap görünümü geri gelmesin).
+  testWidgets('kart yarıçapında çizilir, snackbar zemini saydam', (
+    tester,
+  ) async {
     await pumpInApp(
       tester,
       _trigger((context) => AppToast.info(context, 'Bilgi')),
@@ -46,8 +55,9 @@ void main() {
 
     await _tapTrigger(tester);
 
-    final shape = _snackBar(tester).shape! as RoundedRectangleBorder;
-    expect(shape.borderRadius, AppRadius.primaryCircular);
+    expect(_card(tester).borderRadius, AppRadius.secondaryCircular);
+    expect(_snackBar(tester).backgroundColor, Colors.transparent);
+    expect(_snackBar(tester).elevation, 0);
   });
 
   // Zemin temadan okunuyor; iki temada da sabit bir renge düşmemeli.
@@ -65,8 +75,8 @@ void main() {
 
       final expected = brightness == Brightness.dark
           ? AppColors.darkTileHigh
-          : AppColors.lightTileHigh;
-      expect(_snackBar(tester).backgroundColor, expected);
+          : AppColors.lightBackground;
+      expect(_card(tester).color, expected);
       expect(find.text('Hata'), findsOneWidget);
     });
   }
@@ -102,7 +112,7 @@ void main() {
 
       await _tapTrigger(tester);
 
-      expect(_snackBar(tester).action, isNull);
+      expect(find.byType(TextButton), findsNothing);
     });
   });
 
