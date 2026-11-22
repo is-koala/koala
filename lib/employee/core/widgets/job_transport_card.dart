@@ -15,33 +15,46 @@ import 'package:koala/product/widgets/app_icon.dart';
 /// görünümde **yok** — sunucu göndermiyor, kart da bilmiyor; koltuk seçimi
 /// atama kurulduktan sonra iş detayında.
 class JobTransportCard extends StatelessWidget {
-  const JobTransportCard({super.key, required this.transport});
+  const JobTransportCard({
+    super.key,
+    required this.transport,
+    this.plain = false,
+  });
 
   final JobTransport transport;
+
+  /// `true` ise kart zemini ve iç boşluğu olmadan, sayfanın bölüm başlığıyla
+  /// çiziliyor (ilan detayı sheet'i kartsız düzende).
+  final bool plain;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       key: const ValueKey('job-transport-card'),
-      padding: AppPadding.primaryAll,
-      decoration: BoxDecoration(
-        color: context.tileColor,
-        borderRadius: AppRadius.innerCircular,
-      ),
+      padding: plain ? EdgeInsets.zero : AppPadding.primaryAll,
+      decoration: plain
+          ? null
+          : BoxDecoration(
+              color: context.tileColor,
+              borderRadius: AppRadius.innerCircular,
+            ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              AppIcon(
-                AppIcons.bus,
-                size: AppSizes.iconMedium,
-                color: context.accentColor,
-              ),
-              const SizedBox(width: AppSizes.spaceSmall),
-              Text('Ulaşım', style: context.textTheme.titleSmall),
-            ],
-          ),
+          if (plain)
+            Text('Ulaşım', style: context.textTheme.titleMedium)
+          else
+            Row(
+              children: [
+                AppIcon(
+                  AppIcons.bus,
+                  size: AppSizes.iconMedium,
+                  color: context.accentColor,
+                ),
+                const SizedBox(width: AppSizes.spaceSmall),
+                Text('Ulaşım', style: context.textTheme.titleSmall),
+              ],
+            ),
           const SizedBox(height: AppSizes.spaceSmall),
           Text(
             transport.methodsLine,

@@ -49,7 +49,7 @@ class AccountSettingsTiles {
   );
 
   static Widget reports(BuildContext context) => MyListTile(
-    icon: AppIcons.shield,
+    icon: AppIcons.flag,
     title: 'Şikayetlerim',
     onTap: () => context.push(AccountRoutes.reports),
   );

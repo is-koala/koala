@@ -4,9 +4,9 @@ import 'package:koala/employee/features/company_detail/models/company.dart';
 import 'package:koala/product/widgets/gallery_strip.dart';
 import 'package:koala/employee/features/company_detail/services/company_service.dart';
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/home/presentation/widgets/job_card.dart';
 import 'package:koala/employee/features/home/services/job_service.dart';
 import 'package:koala/product/constants/app_colors.dart';
-import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
@@ -16,6 +16,8 @@ import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
+import 'package:koala/product/widgets/my_list_tile.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 part 'company_detail_pagemodel.dart';
 
@@ -34,9 +36,9 @@ class CompanyDetailPage extends StatefulWidget {
     this.jobService,
   });
 
-  /// Kapak alanının açık yüksekliği. Logo, şirket adı ve tür rozetini
-  /// birlikte taşıyacak kadar.
-  static const double appBarExpandedHeight = 180;
+  /// Kapak alanının açık yüksekliği. Logo, şirket adı ve altındaki onay /
+  /// konum satırını birlikte taşıyacak kadar.
+  static const double appBarExpandedHeight = 230;
 
   @override
   State<CompanyDetailPage> createState() => _CompanyDetailPageState();
@@ -46,15 +48,12 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
   /// Kapaktaki şirket logosunun kenar uzunluğu.
   static const double _logoSize = 80;
 
-  /// Takip düğmesinin yüksekliği; kapak altındaki tek eylem olduğu için
-  /// tam genişlikte durur.
-  static const double _actionButtonHeight = 48;
+  /// Tümü açılmadan gösterilen ilan sayısı. Çalışan önce işverene bakıyor;
+  /// ilan listesi sayfanın geri kalanını aşağı itmesin.
+  static const int _previewJobCount = 3;
 
-  /// Kapak üstündeki tür rozetinin zemin opaklığı.
-  static const double _badgeAlpha = 0.25;
-
-  /// Kategori rozetinin zemin opaklığı.
-  static const double _categoryTintAlpha = 0.15;
+  /// Kapak üstündeki ikincil satırın opaklığı.
+  static const double _onCoverMuted = 0.9;
 
   @override
   Widget build(BuildContext context) {
@@ -77,8 +76,7 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
         child: CustomScrollView(
           controller: scrollController,
           slivers: [
-            appBar(context, titleOpacity, loaded),
-            actionButtons(context, loaded),
+            appBar(context, loaded),
             SliverToBoxAdapter(child: _content(loaded)),
           ],
         ),
@@ -111,14 +109,20 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
 
   // ------------------------------------------------------------------ İçerik
 
+  /// Sıra çalışanın sorusunu izliyor: şirket sayfasına "bu işveren
+  /// güvenilir mi" diye geliniyor; önce özet, kim olduğu ve nasıl
+  /// ulaşılacağı, en sonda başka ilanları.
   Widget _content(Company company) {
     return Padding(
       padding: AppPadding.primaryAll,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (!company.isApproved) _approvalWarning(),
+          _summaryRow(company),
+          const SizedBox(height: AppSizes.spaceMedium),
+          _followButton(company),
           if (company.description != null) ...[
+            const SizedBox(height: AppSizes.spaceLarge),
             _buildSectionTitle('Hakkında'),
             const SizedBox(height: AppSizes.spaceSmall),
             Text(
@@ -128,45 +132,20 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
                 height: 1.5,
               ),
             ),
-            const SizedBox(height: AppSizes.spaceLarge),
           ],
           if (company.images.isNotEmpty) ...[
+            const SizedBox(height: AppSizes.spaceLarge),
             _buildSectionTitle('Galeri'),
             const SizedBox(height: AppSizes.space),
             // Galerisi olmayan şirkette bölüm hiç çizilmiyor: boş bir başlık
             // eksik bir sayfa gibi okunurdu.
             GalleryStrip(images: company.images),
-            const SizedBox(height: AppSizes.spaceLarge),
           ],
-          _buildSectionTitle('İletişim Bilgileri'),
-          const SizedBox(height: AppSizes.space),
-          _buildInfoCard([
-            if (company.email != null)
-              _buildInfoRow(AppIcons.mail, 'E-posta', company.email!),
-            if (company.phoneNumber != null)
-              _buildInfoRow(AppIcons.call, 'Telefon', company.phoneNumber!),
-            if (company.website != null)
-              _buildInfoRow(AppIcons.antenna, 'Website', company.website!),
-          ]),
-          if (company.address != null) ...[
+          ..._contactSection(company),
+          // İletişim grubu kendi alt boşluğunu taşıyor; grup yoksa ilanlar
+          // Hakkında'nın hemen altına yapışmasın.
+          if (_contactSection(company).isEmpty)
             const SizedBox(height: AppSizes.spaceLarge),
-            _buildSectionTitle('Adres'),
-            const SizedBox(height: AppSizes.space),
-            _buildInfoCard([
-              // Sunucu şirketin tam adresini döndürüyor; adres satırı
-              // yoksa il/ilçe yazılıyor.
-              _buildInfoRow(
-                AppIcons.location,
-                'Adres',
-                company.address!.displayAddress ??
-                    company.address!.shortLabel ??
-                    '—',
-              ),
-            ]),
-          ],
-          const SizedBox(height: AppSizes.spaceLarge),
-          _buildSectionTitle('İlanlar'),
-          const SizedBox(height: AppSizes.space),
           _buildJobsSection(),
           const SizedBox(height: AppSizes.sectionSpace),
         ],
@@ -174,74 +153,76 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
     );
   }
 
-  Widget _approvalWarning() {
-    return Container(
-      padding: AppPadding.card,
-      margin: const EdgeInsets.only(bottom: AppSizes.spaceMedium),
-      decoration: BoxDecoration(
-        color: AppColors.warning.withValues(alpha: 0.1),
-        borderRadius: AppRadius.innerCircular,
-        border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        children: [
-          AppIcon(
-            AppIcons.alert,
-            color: AppColors.warning,
-            size: AppSizes.iconMedium,
-          ),
-          const SizedBox(width: AppSizes.space),
-          Expanded(
-            child: Text(
-              'Bu şirket henüz onaylanmamıştır',
-              style: context.textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w500,
-                color: AppColors.warning,
-              ),
+  /// Kapağın altındaki iki sayı: açık ilan ve takipçi. İlan sayısı
+  /// ilan isteği dönünce dolar; o zamana kadar tire.
+  Widget _summaryRow(Company company) {
+    return FutureBuilder<List<Job>>(
+      future: companyJobsFuture,
+      builder: (context, snapshot) {
+        final jobCount = snapshot.hasData ? '${snapshot.data!.length}' : '–';
+        return Row(
+          children: [
+            Expanded(child: _summaryItem(jobCount, 'Açık ilan')),
+            _summaryDivider(),
+            Expanded(
+              child: _summaryItem('${company.followerCount}', 'Takipçi'),
             ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _summaryItem(String value, String label) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: context.textTheme.titleMedium,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: AppSizes.smallGap),
+        Text(
+          label,
+          style: context.textTheme.labelMedium?.copyWith(
+            color: context.textSecondary,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  // ---------------------------------------------------------- Eylem butonları
+  Widget _summaryDivider() => SizedBox(
+    height: AppSizes.spaceXLarge,
+    child: VerticalDivider(
+      width: AppSizes.divider,
+      color: context.dividerColor,
+    ),
+  );
 
-  SliverToBoxAdapter actionButtons(BuildContext context, Company company) {
-    return SliverToBoxAdapter(
-      child: Container(
-        padding: AppPadding.primaryAll,
-        color: context.backgroundColor,
-        child: _followButton(company),
-      ),
-    );
-  }
-
+  /// Takip, sayfanın tek eylemi ama asıl karar (ilana başvurmak) başka
+  /// sayfada; o yüzden dolgulu değil çerçeveli duruyor.
   Widget _followButton(Company company) {
+    final following = company.isFollowing;
     return SizedBox(
-      height: _actionButtonHeight,
-      child: ElevatedButton.icon(
+      width: double.infinity,
+      height: AppSizes.actionButtonHeight,
+      child: OutlinedButton.icon(
         onPressed: isTogglingFollow ? null : toggleFollow,
         icon: AppIcon(
-          company.isFollowing ? AppIcons.userCheck : AppIcons.userAdd,
+          following ? AppIcons.userCheck : AppIcons.userAdd,
           size: AppSizes.iconSmall,
+          color: context.textPrimary,
         ),
-        label: Text(company.isFollowing ? 'Takip Ediliyor' : 'Takip Et'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: company.isFollowing
-              ? context.tileColor
-              : context.accentColor,
-          foregroundColor: company.isFollowing
-              ? context.textSecondary
-              : context.onAccentColor,
-          elevation: 0,
+        label: Text(following ? 'Takip Ediliyor' : 'Takip Et'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: context.textPrimary,
+          backgroundColor: following ? context.tileColor : null,
           textStyle: context.textTheme.labelLarge,
-          shape: RoundedRectangleBorder(
-            borderRadius: AppRadius.innerCircular,
-            side: company.isFollowing
-                ? BorderSide(color: context.dividerColor)
-                : BorderSide.none,
-          ),
+          side: BorderSide(color: context.dividerColor),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.innerCircular),
         ),
       ),
     );
@@ -249,11 +230,7 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
 
   // ------------------------------------------------------------------ Kapak
 
-  SliverAppBar appBar(
-    BuildContext context,
-    double clampedOpacity,
-    Company company,
-  ) {
+  SliverAppBar appBar(BuildContext context, Company company) {
     return SliverAppBar(
       pinned: true,
       expandedHeight: CompanyDetailPage.appBarExpandedHeight,
@@ -264,8 +241,10 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
         onPressed: () => context.pop(),
       ),
       centerTitle: false,
-      title: Opacity(
-        opacity: clampedOpacity,
+      title: ValueListenableBuilder<double>(
+        valueListenable: titleOpacity,
+        builder: (context, opacity, child) =>
+            Opacity(opacity: opacity, child: child),
         child: Text(
           company.name,
           style: context.textTheme.titleMedium?.copyWith(
@@ -278,7 +257,12 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
       flexibleSpace: FlexibleSpaceBar(
         background: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.only(bottom: AppSizes.spaceMedium),
+            padding: const EdgeInsets.fromLTRB(
+              AppSizes.spaceMedium,
+              0,
+              AppSizes.spaceMedium,
+              AppSizes.spaceMedium,
+            ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.end,
               mainAxisSize: MainAxisSize.min,
@@ -295,10 +279,22 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                if (company.type != null) ...[
-                  const SizedBox(height: AppSizes.spaceTiny),
-                  _typeBadge(company),
+                if (_coverSubtitle(company) case final subtitle?) ...[
+                  const SizedBox(height: AppSizes.smallGap),
+                  Text(
+                    subtitle,
+                    style: context.textTheme.labelMedium?.copyWith(
+                      color: AppColors.onAccent.withValues(
+                        alpha: _onCoverMuted,
+                      ),
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
+                const SizedBox(height: AppSizes.spaceSmall),
+                _trustLine(company),
               ],
             ),
           ),
@@ -307,9 +303,41 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
     );
   }
 
+  /// Adın altındaki ikincil satır: şirket türü ve şehir. İkisi de yoksa
+  /// satır çizilmiyor.
+  String? _coverSubtitle(Company company) {
+    final parts = [?company.type?.displayName, ?company.address?.shortLabel];
+    return parts.isEmpty ? null : parts.join(' · ');
+  }
+
+  /// Onay durumu. Çalışanın "bu işveren gerçek mi" sorusunun cevabı; rozet
+  /// yerine ikon ve düz metinle söyleniyor.
+  Widget _trustLine(Company company) {
+    final approved = company.isApproved;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AppIcon(
+          approved ? AppIcons.verified : AppIcons.alert,
+          filled: approved,
+          size: AppSizes.iconSmall,
+          color: AppColors.onAccent,
+        ),
+        const SizedBox(width: AppSizes.spaceTiny),
+        Text(
+          approved ? 'Onaylı işveren' : 'Henüz onaylanmadı',
+          style: context.textTheme.labelMedium?.copyWith(
+            color: AppColors.onAccent,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _logo(Company company) {
-    final placeholder = Icon(
-      Icons.business,
+    final placeholder = AppIcon(
+      AppIcons.building,
       size: AppSizes.iconLarge,
       color: context.textTertiary,
     );
@@ -328,11 +356,14 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
           ),
         ],
       ),
+      alignment: Alignment.center,
       child: company.logoUrl != null
           ? ClipRRect(
               borderRadius: AppRadius.secondaryCircular,
               child: Image.network(
                 company.logoUrl!,
+                width: _logoSize,
+                height: _logoSize,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) => placeholder,
               ),
@@ -341,75 +372,73 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
     );
   }
 
-  Widget _typeBadge(Company company) {
-    return Container(
-      padding: AppPadding.badge,
-      decoration: BoxDecoration(
-        color: AppColors.onAccent.withValues(alpha: _badgeAlpha),
-        borderRadius: AppRadius.smallCircular,
-      ),
-      child: Text(
-        company.type!.displayName,
-        style: context.textTheme.labelMedium?.copyWith(
-          fontWeight: FontWeight.w600,
-          color: AppColors.onAccent,
-        ),
-      ),
-    );
-  }
-
   // ------------------------------------------------------------------ İlanlar
 
+  /// Açık ilanlar, haritadaki ve listedeki kartın aynısıyla: dokununca ilan
+  /// detayı açılıyor. İlk [_previewJobCount] ilan gösteriliyor, fazlası tek
+  /// dokunuşla açılıyor.
   Widget _buildJobsSection() {
     return FutureBuilder<List<Job>>(
       future: companyJobsFuture,
       builder: (context, snapshot) {
+        final title = _buildSectionTitle('Açık ilanlar');
+
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return _centered(
-            CircularProgressIndicator(color: context.accentColor),
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              title,
+              _centered(CircularProgressIndicator(color: context.accentColor)),
+            ],
           );
         }
 
         if (snapshot.hasError) {
-          return _centered(
-            Text(
-              'İlanlar yüklenirken bir hata oluştu',
-              style: context.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-                color: context.textSecondary,
-              ),
-            ),
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              title,
+              const SizedBox(height: AppSizes.space),
+              _mutedText('İlanlar yüklenemedi. Aşağı çekip yenile.'),
+            ],
           );
         }
 
-        final companyJobs = snapshot.data ?? [];
-        if (companyJobs.isEmpty) {
-          return _centered(
-            Column(
-              children: [
-                AppIcon(
-                  AppIcons.search,
-                  size: AppSizes.iconHuge,
-                  color: context.dividerColor,
-                ),
-                const SizedBox(height: AppSizes.spaceMedium),
-                Text(
-                  'Henüz ilan yok',
-                  style: context.textTheme.titleSmall?.copyWith(
-                    color: context.textTertiary,
+        final jobs = snapshot.data ?? const <Job>[];
+        if (jobs.isEmpty) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              title,
+              const SizedBox(height: AppSizes.space),
+              _mutedText('Şu an açık ilanı yok.'),
+            ],
+          );
+        }
+
+        final visible = showAllJobs ? jobs : jobs.take(_previewJobCount);
+        final hidden = jobs.length - _previewJobCount;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            title,
+            const SizedBox(height: AppSizes.space),
+            for (final job in visible) JobCard(job: job),
+            if (hidden > 0)
+              Center(
+                child: TextButton(
+                  key: const ValueKey('company-jobs-toggle'),
+                  onPressed: toggleShowAllJobs,
+                  style: TextButton.styleFrom(
+                    foregroundColor: context.textPrimary,
+                    textStyle: context.textTheme.labelLarge,
+                  ),
+                  child: Text(
+                    showAllJobs
+                        ? 'Daha az göster'
+                        : 'Tüm ilanları göster (${jobs.length})',
                   ),
                 ),
-              ],
-            ),
-          );
-        }
-
-        return Column(
-          children: [
-            for (final job in companyJobs)
-              Padding(
-                padding: const EdgeInsets.only(bottom: AppSizes.space),
-                child: _buildJobCard(job),
               ),
           ],
         );
@@ -424,174 +453,100 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
     ),
   );
 
-  Widget _buildJobCard(Job job) {
-    return Container(
-      padding: AppPadding.primaryAll,
-      decoration: BoxDecoration(
-        color: context.backgroundColor,
-        borderRadius: AppRadius.secondaryCircular,
-        border: Border.all(color: context.dividerColor),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.barShadow,
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              _categoryBadge(job),
-              const SizedBox(width: AppSizes.spaceSmall),
-              _typeChip(job),
-            ],
-          ),
-          const SizedBox(height: AppSizes.space),
-          Text(
-            job.title,
-            style: context.textTheme.titleSmall,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: AppSizes.spaceTiny),
-          Text(
-            job.subtitle,
-            style: context.textTheme.bodySmall,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: AppSizes.space),
-          _priceAndLocationRow(job),
-        ],
-      ),
-    );
+  Widget _mutedText(String text) => Text(
+    text,
+    style: context.textTheme.bodyMedium?.copyWith(color: context.textSecondary),
+  );
+
+  // --------------------------------------------------------------- İletişim
+
+  /// E-posta, telefon, web sitesi ve adres tek kartta ([MyListGroup]);
+  /// ayarlardaki satırın aynısı. Her satır dokununca ilgili uygulamayı
+  /// açıyor, o yüzden sağdaki ok dışarı bakıyor. Hiçbiri yoksa bölüm
+  /// çizilmiyor.
+  List<Widget> _contactSection(Company company) {
+    final email = company.email;
+    final phone = company.phoneNumber;
+    final website = company.website;
+    final address = company.address;
+    final position = address?.position;
+    final addressText = address?.displayAddress ?? address?.shortLabel;
+
+    final rows = <Widget>[
+      if (email != null)
+        MyListTile(
+          icon: AppIcons.mail,
+          title: email,
+          opensExternally: true,
+          onTap: () => openExternal(Uri(scheme: 'mailto', path: email)),
+        ),
+      if (phone != null)
+        MyListTile(
+          icon: AppIcons.call,
+          title: _displayPhone(phone),
+          opensExternally: true,
+          onTap: () => openExternal(Uri(scheme: 'tel', path: phone)),
+        ),
+      if (website != null)
+        MyListTile(
+          icon: AppIcons.globe,
+          title: _displayWebsite(website),
+          opensExternally: true,
+          onTap: () => openExternal(Uri.parse(_websiteUrl(website))),
+        ),
+      if (addressText != null)
+        MyListTile(
+          icon: AppIcons.location,
+          title: addressText,
+          opensExternally: true,
+          onTap: position == null
+              ? null
+              : () => openExternal(
+                  Uri.https('www.google.com', '/maps/search/', {
+                    'api': '1',
+                    'query': '${position.latitude},${position.longitude}',
+                  }),
+                ),
+        ),
+    ];
+    if (rows.isEmpty) return const [];
+
+    return [
+      const SizedBox(height: AppSizes.spaceLarge),
+      _buildSectionTitle('İletişim'),
+      const SizedBox(height: AppSizes.space),
+      MyListGroup(children: rows),
+    ];
   }
 
-  Widget _categoryBadge(Job job) {
-    return Container(
-      padding: AppPadding.badge,
-      decoration: BoxDecoration(
-        color: job.category.color.withValues(alpha: _categoryTintAlpha),
-        borderRadius: AppRadius.smallCircular,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AppIcon(
-            job.category.icon,
-            size: AppSizes.iconSmall,
-            color: job.category.color,
-          ),
-          const SizedBox(width: AppSizes.spaceTiny),
-          Text(
-            job.category.displayName,
-            style: context.textTheme.labelSmall?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: job.category.color,
-            ),
-          ),
-        ],
-      ),
-    );
+  /// `+905551234567` → `0555 123 45 67`. Türk cep/sabit numarası değilse
+  /// geldiği gibi.
+  static String _displayPhone(String phone) {
+    final digits = phone.replaceAll(RegExp(r'\D'), '');
+    final national = digits.startsWith('90') && digits.length == 12
+        ? digits.substring(2)
+        : digits.startsWith('0') && digits.length == 11
+        ? digits.substring(1)
+        : null;
+    if (national == null) return phone;
+    return '0${national.substring(0, 3)} ${national.substring(3, 6)} '
+        '${national.substring(6, 8)} ${national.substring(8)}';
   }
 
-  Widget _typeChip(Job job) {
-    return Container(
-      padding: AppPadding.badge,
-      decoration: BoxDecoration(
-        color: context.tileColor,
-        borderRadius: AppRadius.smallCircular,
-      ),
-      child: Text(
-        job.type.displayName,
-        style: context.textTheme.labelSmall?.copyWith(
-          color: context.textSecondary,
-        ),
-      ),
-    );
-  }
+  /// `https://iskoala.com/` → `iskoala.com`.
+  static String _displayWebsite(String website) => website
+      .replaceFirst(RegExp(r'^https?://', caseSensitive: false), '')
+      .replaceFirst(RegExp(r'^www\.', caseSensitive: false), '')
+      .replaceFirst(RegExp(r'/$'), '');
 
-  Widget _priceAndLocationRow(Job job) {
-    return Row(
-      children: [
-        AppIcon(
-          AppIcons.moneyBag,
-          size: AppSizes.iconSmall,
-          color: context.accentColor,
-        ),
-        const SizedBox(width: AppSizes.spaceTiny),
-        Text(
-          '₺${job.price.toStringAsFixed(0)}',
-          style: context.textTheme.bodyLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: context.accentColor,
-          ),
-        ),
-        const SizedBox(width: AppSizes.spaceMedium),
-        AppIcon(
-          AppIcons.location,
-          size: AppSizes.iconSmall,
-          color: context.textSecondary,
-        ),
-        const SizedBox(width: AppSizes.spaceTiny),
-        Expanded(
-          child: Text(
-            job.locationLabel ?? '-',
-            style: context.textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.w500,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-  }
+  /// Şemasız girilmiş adres tarayıcıda açılsın diye `https://` eklenir.
+  static String _websiteUrl(String website) =>
+      RegExp(r'^https?://', caseSensitive: false).hasMatch(website)
+      ? website
+      : 'https://$website';
 
   // ------------------------------------------------------------ Ortak parçalar
 
   Widget _buildSectionTitle(String title) =>
       Text(title, style: context.textTheme.titleMedium);
-
-  Widget _buildInfoCard(List<Widget> children) {
-    return Container(
-      padding: AppPadding.primaryAll,
-      decoration: BoxDecoration(
-        color: context.tileColor,
-        borderRadius: AppRadius.innerCircular,
-      ),
-      child: Column(children: children),
-    );
-  }
-
-  Widget _buildInfoRow(AppIconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSizes.spaceMedium),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AppIcon(icon, size: AppSizes.iconMedium, color: context.accentColor),
-          const SizedBox(width: AppSizes.space),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: context.textTheme.labelMedium),
-                const SizedBox(height: AppSizes.smallGap),
-                Text(
-                  value,
-                  style: context.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

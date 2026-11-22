@@ -2,73 +2,159 @@ import 'package:flutter/material.dart';
 import 'package:koala/employee/core/widgets/job_detail_bottom_sheet.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
+import 'package:koala/product/extensions/date_extensions.dart';
+import 'package:koala/product/extensions/num_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
 class JobCard extends StatelessWidget {
   final Job job;
 
-  const JobCard({super.key, required this.job});
+  /// Dokununca ilan detayı açılsın mı. Başvuru ekranı gibi detaydan gelinen
+  /// yerlerde kart yalnız özet; aynı detayı tekrar açmak geri tuşuyla
+  /// karışıyordu.
+  final bool openDetailOnTap;
+
+  const JobCard({super.key, required this.job, this.openDetailOnTap = true});
+
+  /// Kapak / kategori görseliyle metin arası.
+  static const double _leadingGap = AppSizes.space;
 
   @override
   Widget build(BuildContext context) {
-    final shape = RoundedRectangleBorder(
-      borderRadius: AppRadius.secondaryCircular,
-    );
-    final distanceKm = job.distanceKm;
+    final onTap = openDetailOnTap
+        ? () => JobDetailBottomSheet.show(context, job)
+        : null;
 
-    return Card(
-      elevation: 0,
-      // Uygulamanın kart rengi; liste sayfasında da, haritadaki grup
-      // listesinde (beyaz sheet) de zeminden ayrılıyor.
-      color: context.tileColor,
-      margin: const EdgeInsets.only(bottom: AppSizes.space),
-      shape: shape,
-      child: ListTile(
-        shape: shape,
-        contentPadding: AppPadding.primaryAll,
-        leading: _leading(),
-        title: Text(job.title, style: context.textTheme.titleSmall),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: AppSizes.spaceTiny),
-            Text(
-              job.subtitle,
-              style: context.textTheme.bodySmall,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSizes.space),
+      child: Material(
+        // Uygulamanın kart rengi; liste sayfasında da, haritadaki grup
+        // listesinde (beyaz sheet) de zeminden ayrılıyor.
+        color: context.tileColor,
+        borderRadius: AppRadius.secondaryCircular,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: AppPadding.primaryAll,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _leading(),
+                const SizedBox(width: _leadingGap),
+                Expanded(child: _body(context)),
+                const SizedBox(width: AppSizes.spaceSmall),
+                _price(context),
+              ],
             ),
-            if (distanceKm != null) ...[
-              const SizedBox(height: AppSizes.spaceTiny),
-              _distanceRow(context, distanceKm),
-            ],
-            // `JobSummaryDto.hasShuttle` (is-koala/koala#197): ilanın servisi
-            // var; ayrıntı ilan detayındaki ulaşım kartında.
-            if (job.hasShuttle) ...[
-              const SizedBox(height: AppSizes.spaceTiny),
-              _shuttleChip(context),
-            ],
-          ],
+          ),
         ),
-        // Column, fiyatı satırın ortasına değil üstüne hizalıyor; kaldırılırsa
-        // fiyat dikeyde kayar.
-        trailing: Column(
-          children: [
-            Text(
-              '₺${job.price.toStringAsFixed(0)}',
-              style: context.textTheme.titleSmall?.copyWith(
-                color: context.accentColor,
-              ),
-            ),
-          ],
-        ),
-        onTap: () => JobDetailBottomSheet.show(context, job),
       ),
+    );
+  }
+
+  /// Başlık, işveren ve bir satırlık özet: ne zaman, nerede, servis var mı.
+  /// Kategori soldaki görselde; ayrı bir etiket (rozet) yok.
+  Widget _body(BuildContext context) {
+    final start = job.startDateTime?.toLocal();
+    final distanceKm = job.distanceKm;
+    final place = job.locationLabel;
+    final employer = job.company ?? job.subtitle;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          job.title,
+          style: context.textTheme.titleSmall,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: AppSizes.smallGap),
+        Text(
+          employer,
+          style: context.textTheme.bodySmall?.copyWith(
+            color: context.textSecondary,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: AppSizes.spaceSmall),
+        Wrap(
+          spacing: AppSizes.space,
+          runSpacing: AppSizes.spaceTiny,
+          children: [
+            if (start != null)
+              _meta(context, AppIcons.calendar, start.asShortDateTime),
+            // Uzaklık biliniyorsa o, yoksa ilçe/il. Çözünürlüğü ilanın
+            // kesinliği belirliyor (`distanceLabel`): yuvarlanmış bir
+            // koordinattan çıkan uzaklığı ondalıklı yazmak, veride olmayan
+            // bir hassasiyeti iddia etmek olurdu.
+            if (distanceKm != null)
+              _meta(context, AppIcons.location, job.distanceLabel(distanceKm))
+            else if (place != null)
+              _meta(context, AppIcons.location, place),
+            // `JobSummaryDto.hasShuttle` (is-koala/koala#197): ilanın
+            // servisi var; ayrıntı ilan detayındaki ulaşım kartında.
+            if (job.hasShuttle)
+              _meta(
+                context,
+                AppIcons.bus,
+                'Servis var',
+                key: const ValueKey('job-card-shuttle'),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _meta(
+    BuildContext context,
+    AppIconData icon,
+    String label, {
+    Key? key,
+  }) {
+    return Row(
+      key: key,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AppIcon(icon, size: AppSizes.iconSmall, color: context.textSecondary),
+        const SizedBox(width: AppSizes.spaceTiny),
+        Text(
+          label,
+          style: context.textTheme.labelMedium?.copyWith(
+            color: context.textSecondary,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Ücret ve birimi; sağ üstte, başlıkla aynı hizada.
+  Widget _price(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(
+          '₺${job.price.asPrice}',
+          style: context.textTheme.titleSmall?.copyWith(
+            color: context.accentColor,
+          ),
+        ),
+        Text(
+          job.salaryType.displayName.toLowerCase(),
+          style: context.textTheme.labelSmall?.copyWith(
+            color: context.textSecondary,
+          ),
+        ),
+      ],
     );
   }
 
@@ -100,59 +186,6 @@ class JobCard extends StatelessWidget {
         color: AppColors.onAccent,
         size: AppSizes.icon,
       ),
-    );
-  }
-
-  Widget _shuttleChip(BuildContext context) {
-    return Container(
-      key: const ValueKey('job-card-shuttle'),
-      padding: AppPadding.badge,
-      decoration: BoxDecoration(
-        color: context.accentColor.withValues(
-          alpha: AppColors.surfaceTintAlpha,
-        ),
-        borderRadius: AppRadius.stadiumCircular,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AppIcon(
-            AppIcons.bus,
-            size: AppSizes.iconSmall,
-            color: context.accentColor,
-          ),
-          const SizedBox(width: AppSizes.spaceTiny),
-          Text(
-            'Servis var',
-            style: context.textTheme.labelSmall?.copyWith(
-              color: context.accentColor,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _distanceRow(BuildContext context, double kilometersAway) {
-    return Row(
-      children: [
-        Icon(
-          Icons.location_on,
-          size: AppSizes.iconSmall,
-          color: context.accentColor,
-        ),
-        const SizedBox(width: AppSizes.spaceTiny),
-        Text(
-          // Çözünürlüğü ilanın kesinliği belirliyor: yuvarlanmış bir
-          // koordinattan çıkan uzaklığı ondalıklı yazmak, veride olmayan bir
-          // hassasiyeti iddia etmek olurdu.
-          job.distanceLabel(kilometersAway),
-          style: context.textTheme.labelMedium?.copyWith(
-            color: context.accentColor,
-          ),
-        ),
-      ],
     );
   }
 }

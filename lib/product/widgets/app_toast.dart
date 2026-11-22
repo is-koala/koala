@@ -4,6 +4,7 @@ import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
+import 'package:koala/product/constants/app_shadows.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
@@ -22,11 +23,13 @@ enum AppToastType {
 
 /// Uygulamanın tek bildirim kutusu.
 ///
-/// Materyal'in varsayılan snackbar'ı temanın dışında kalıyordu: köşeleri kare,
-/// zemini gri, ekranın dibine yapışık. Burada kapsül biçimi butonlarla aynı
-/// yarıçapı ([AppRadius.primary]) kullanıyor, zemin ve metin temadan okunuyor,
-/// anlamı ise yalnızca soldaki ikonun rengi taşıyor — zeminin tamamını
-/// boyamak metni iki temadan birinde okunmaz hâle getiriyordu.
+/// Materyal'in snackbar'ı yalnız konum ve süre için kullanılıyor; görünüşü
+/// kendi kartımız ([_ToastCard]) çiziyor. Snackbar'ın kendi zemini, kenarlığı
+/// ve sert gölgesi gri bir hap gibi duruyordu (2026-11-22): kart artık
+/// uygulamanın kartlarıyla aynı yarıçapta, sayfanın zemin renginde ve
+/// yumuşak bir gölgeyle ayrılıyor. Anlamı yalnızca soldaki ikonun rengi
+/// taşıyor — zeminin tamamını boyamak metni iki temadan birinde okunmaz
+/// hâle getiriyordu.
 ///
 /// ```dart
 /// AppToast.success(context, 'Başvurun gönderildi');
@@ -46,10 +49,6 @@ abstract final class AppToast {
   /// Eylemli toast daha uzun durur; kullanıcının "Geri Al"a basacak zamanı
   /// olmalı.
   static const Duration _actionDuration = Duration(seconds: 5);
-
-  /// Kapsülün kenarlığı; açık temada zemin sayfadan yalnızca bir ton koyu
-  /// olduğu için toast'ı ayıran şey bu ince çizgi.
-  static const double _borderWidth = 1.0;
 
   /// Tamamlanan bir işlemi bildirir.
   static void success(
@@ -112,49 +111,105 @@ abstract final class AppToast {
   }) {
     final hasAction = actionLabel != null && onAction != null;
 
-    ScaffoldMessenger.of(context)
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          content: Row(
-            children: [
-              AppIcon(
-                type.icon,
-                size: AppSizes.iconMedium,
-                color: type.colorOf(context),
-                filled: true,
-              ),
-              const SizedBox(width: AppSizes.spaceSmall),
-              Expanded(
-                child: Text(
-                  message,
-                  style: context.textTheme.bodyMedium?.copyWith(
-                    color: context.textPrimary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: context.elevatedColor,
+          // Zemin, kenar ve gölge kartın; snackbar yalnız yeri ve süreyi
+          // veriyor.
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          padding: EdgeInsets.zero,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            // Butonlarla aynı yarıçap; yükseklik yarıçapın iki katını
-            // aşmadığı için çizimde tam kapsüle iniyor.
-            borderRadius: AppRadius.primaryCircular,
-            side: BorderSide(color: context.dividerColor, width: _borderWidth),
-          ),
-          padding: AppPadding.toast,
           margin: AppPadding.toastMargin,
           duration: hasAction ? _actionDuration : _duration,
-          action: hasAction
-              ? SnackBarAction(
-                  label: actionLabel,
-                  textColor: context.accentColor,
-                  onPressed: onAction,
-                )
-              : null,
+          content: _ToastCard(
+            message: message,
+            type: type,
+            actionLabel: hasAction ? actionLabel : null,
+            onAction: hasAction
+                ? () {
+                    messenger.hideCurrentSnackBar();
+                    onAction();
+                  }
+                : null,
+          ),
         ),
       );
+  }
+}
+
+/// Toast'un görünen kartı.
+class _ToastCard extends StatelessWidget {
+  const _ToastCard({
+    required this.message,
+    required this.type,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  final String message;
+  final AppToastType type;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    final actionLabel = this.actionLabel;
+    // Koyu temada yükselti daha açık bir yüzeyle anlatılıyor; açık temada
+    // kart sayfanın beyazında kalıyor ve gölgeyle ayrılıyor.
+    final surface = context.isDarkTheme
+        ? context.elevatedColor
+        : context.backgroundColor;
+
+    return Container(
+      key: const ValueKey('app-toast'),
+      padding: AppPadding.toast,
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: AppRadius.secondaryCircular,
+        border: Border.all(color: context.dividerColor),
+        boxShadow: AppShadows.overlay,
+      ),
+      child: Row(
+        children: [
+          AppIcon(
+            type.icon,
+            size: AppSizes.iconMedium,
+            color: type.colorOf(context),
+            filled: true,
+          ),
+          const SizedBox(width: AppSizes.space),
+          Expanded(
+            child: Text(
+              message,
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: context.textPrimary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          if (actionLabel != null) ...[
+            const SizedBox(width: AppSizes.spaceSmall),
+            TextButton(
+              onPressed: onAction,
+              style: TextButton.styleFrom(
+                foregroundColor: context.accentColor,
+                textStyle: context.textTheme.labelLarge,
+                minimumSize: Size.zero,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSizes.spaceSmall,
+                  vertical: AppSizes.spaceTiny,
+                ),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(actionLabel),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }
 

@@ -15,7 +15,13 @@ abstract class CompanyDetailPagemodel extends State<CompanyDetailPage> {
   /// Takip isteği sunucuya gitti mi; buton kilitleniyor.
   bool isTogglingFollow = false;
 
-  double _scrollOffset = 0.0;
+  /// Açık ilanların tamamı mı gösteriliyor; kapalıyken ilk birkaçı.
+  bool showAllJobs = false;
+
+  /// Toplanmış appbar'daki başlığın opaklığı. Kaydırma her karede değişiyor;
+  /// bütün sayfa yerine yalnız başlık yeniden çizilsin diye `setState`
+  /// değil dinlenebilir değer.
+  final ValueNotifier<double> titleOpacity = ValueNotifier(0);
   Future<List<Job>>? companyJobsFuture;
 
   @override
@@ -29,13 +35,12 @@ abstract class CompanyDetailPagemodel extends State<CompanyDetailPage> {
   void dispose() {
     scrollController.removeListener(_onScroll);
     scrollController.dispose();
+    titleOpacity.dispose();
     super.dispose();
   }
 
   void _onScroll() {
-    setState(() {
-      _scrollOffset = scrollController.offset;
-    });
+    titleOpacity.value = _opacityAt(scrollController.offset);
   }
 
   /// Şirketi çeker. Galeri, takipçi sayısı ve takip durumu aynı yanıtta
@@ -69,10 +74,10 @@ abstract class CompanyDetailPagemodel extends State<CompanyDetailPage> {
   ///
   /// Kapak alanı `kToolbarHeight`e inince başlık görünmeye başlar ve
   /// [_titleFadeDistance] piksel içinde tamamen belirir.
-  double get titleOpacity {
+  double _opacityAt(double scrollOffset) {
     final collapseStart =
         CompanyDetailPage.appBarExpandedHeight - kToolbarHeight;
-    return ((_scrollOffset - collapseStart) / _titleFadeDistance).clamp(
+    return ((scrollOffset - collapseStart) / _titleFadeDistance).clamp(
       0.0,
       1.0,
     );
@@ -102,13 +107,8 @@ abstract class CompanyDetailPagemodel extends State<CompanyDetailPage> {
       willFollow
           ? await _companyService.follow(current.id)
           : await _companyService.unfollow(current.id);
-      if (!mounted) return;
-      AppToast.success(
-        context,
-        willFollow
-            ? '${current.name} takip ediliyor'
-            : '${current.name} takipten çıkarıldı',
-      );
+      // Başarıda toast yok: butonun kendisi "Takip Ediliyor"a dönüyor ve
+      // takipçi sayısı artıyor; aynı şeyi bir de mesajla söylemek gürültü.
     } on ApiException catch (error) {
       if (!mounted) return;
       // İstek düştü: iyimser güncelleme geri alınıyor, yoksa buton
@@ -117,6 +117,18 @@ abstract class CompanyDetailPagemodel extends State<CompanyDetailPage> {
       AppToast.error(context, error.message);
     } finally {
       if (mounted) setState(() => isTogglingFollow = false);
+    }
+  }
+
+  /// Bütün açık ilanları gösterir ya da ilk birkaçına döner.
+  void toggleShowAllJobs() => setState(() => showAllJobs = !showAllJobs);
+
+  /// E-posta, telefon, web sitesi ya da harita bağlantısını cihazın ilgili
+  /// uygulamasında açar; açılamazsa kullanıcıya söyler.
+  Future<void> openExternal(Uri uri) async {
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) {
+      AppToast.error(context, 'Bağlantı açılamadı');
     }
   }
 }

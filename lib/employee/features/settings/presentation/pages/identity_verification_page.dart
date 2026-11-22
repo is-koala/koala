@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
+import 'package:koala/employee/features/auth/presentation/widgets/auth_divider.dart';
 import 'package:koala/employee/features/settings/models/identity_chip_result.dart';
 import 'package:koala/employee/features/settings/models/identity_declaration.dart';
 import 'package:koala/employee/features/settings/models/identity_error.dart';
@@ -17,7 +18,6 @@ import 'package:koala/employee/features/settings/services/chip_reader.dart';
 import 'package:koala/product/widgets/locked_field.dart';
 import 'package:koala/product/widgets/settings_hint.dart';
 import 'package:koala/product/constants/app_padding.dart';
-import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
@@ -111,10 +111,17 @@ class _IdentityVerificationPageState extends IdentityVerificationPagemodel {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // İki yol, aralarında "YA DA": üstte fotoğraf (ana yol, kendi
+            // düğmesiyle), altta bilgiler (çip ya da elle, alttaki
+            // "Doğrula" düğmesi bu yolun). Bölümler arası 24.
             _intro(),
-            const SizedBox(height: AppSizes.spaceMedium),
+            const SizedBox(height: AppSizes.spaceLarge),
             _photoPath(),
             const SizedBox(height: AppSizes.spaceLarge),
+            const AuthDivider(),
+            const SizedBox(height: AppSizes.spaceLarge),
+            Text('Bilgilerinle doğrula', style: context.textTheme.titleMedium),
+            const SizedBox(height: AppSizes.space),
             IdentityChipCard(
               result: chip,
               onRead: readChip,
@@ -127,7 +134,8 @@ class _IdentityVerificationPageState extends IdentityVerificationPagemodel {
               ManualDeclaration() => _manualFields(),
               ChipDeclaration(:final chip) => _lockedFields(chip),
             },
-            const SizedBox(height: AppSizes.navBarClearance),
+            // "Doğrula" `bottomNavigationBar`'da; navbar payı gerekmiyor.
+            const SizedBox(height: AppSizes.spaceLarge),
           ],
         ),
       ),
@@ -203,23 +211,16 @@ class _IdentityVerificationPageState extends IdentityVerificationPagemodel {
     ];
   }
 
+  /// Sayfanın üstündeki açıklama; kutusuz, sönük metin.
   Widget _intro() {
-    return Container(
-      width: double.infinity,
-      padding: AppPadding.primaryAll,
-      decoration: BoxDecoration(
-        color: context.tileColor,
-        borderRadius: AppRadius.secondaryCircular,
-      ),
-      child: Text(
-        'İşe başvurabilmen ve ücretini alabilmen için kimliğini bir kez '
-        'doğrulaman gerekiyor. Bilgiler kimlik kartındakiyle birebir aynı '
-        'olmalı; doğrulandıktan sonra adın, soyadın ve doğum tarihin '
-        'değiştirilemez.',
-        style: context.textTheme.bodyMedium?.copyWith(
-          color: context.textSecondary,
-          height: _lineHeight,
-        ),
+    return Text(
+      'İşe başvurabilmen ve ücretini alabilmen için kimliğini bir kez '
+      'doğrulaman gerekiyor. Bilgiler kimlik kartındakiyle birebir aynı '
+      'olmalı; doğrulandıktan sonra adın, soyadın ve doğum tarihin '
+      'değiştirilemez.',
+      style: context.textTheme.bodyMedium?.copyWith(
+        color: context.textSecondary,
+        height: _lineHeight,
       ),
     );
   }

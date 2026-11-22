@@ -1,19 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/home/models/job.dart';
+import 'package:koala/employee/features/home/presentation/widgets/job_card.dart';
 import 'package:koala/employee/features/jobs/models/application_readiness.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/apply_provider.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
+import 'package:koala/product/constants/app_icon_data.dart';
+import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
-import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/button_navbar.dart';
 import 'package:koala/product/widgets/form_page_body.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
+import 'package:koala/product/widgets/my_list_tile.dart';
+import 'package:koala/product/widgets/my_textfield.dart';
+import 'package:koala/product/widgets/settings_hint.dart';
 import 'package:provider/provider.dart';
 
 class ApplyPage extends StatefulWidget {
@@ -31,15 +37,14 @@ class _ApplyPageState extends State<ApplyPage> {
 
   /// İş bilgileri kartının zemin ve kenarlık opaklıkları; kart sayfadan
   /// ayrışsın ama başvuru formunun önüne geçmesin.
-  static const double _jobCardFill = 0.08;
-  static const double _jobCardBorder = 0.2;
 
   /// Kategori rozetinin zemin opaklığı.
-  static const double _categoryTintAlpha = 0.15;
 
   /// Ön yazı alanının satır ve karakter sınırı.
-  static const int _coverLetterLines = 5;
   static const int _coverLetterMaxLength = 500;
+
+  /// Ön yazı alanının yüksekliği; diğer formlardaki açıklama alanıyla aynı.
+  static const double _coverLetterHeight = 120;
 
   /// Onay kutusunun dokunma alanı.
   static const double _checkboxSize = 24;
@@ -47,6 +52,19 @@ class _ApplyPageState extends State<ApplyPage> {
   /// Başarı diyaloğundaki tik dairesi.
   static const double _successCircleSize = 72;
   static const double _successIconSize = 48;
+
+  @override
+  void initState() {
+    super.initState();
+    // Eksikler `/users/me`'den hesaplanıyor. Kullanıcı henüz hiç
+    // yüklenmemişse (uygulama açılır açılmaz keşfetten başvuruya gelindi,
+    // profil sekmesi hiç açılmadı) ya da başka cihazda bilgisini
+    // değiştirdiyse ekran yanlış "hazır" görünürdü; o yüzden her açılışta
+    // tazeleniyor. Elde kullanıcı varsa gösterge yanıp sönmüyor.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<UserProvider>().load(silent: true);
+    });
+  }
 
   @override
   void dispose() {
@@ -140,9 +158,13 @@ class _ApplyPageState extends State<ApplyPage> {
     final alreadyApplied = applyProvider.hasApplied(widget.job.id);
     // Üç şart da `/users/me`'de duruyor, o yüzden eksik olan başvuru
     // gönderilmeden söylenebiliyor: kullanıcı ön yazıyı boşuna yazmıyor.
-    final readiness = ApplicationReadiness.of(
-      context.watch<UserProvider>().user,
-    );
+    final userProvider = context.watch<UserProvider>();
+    // Kullanıcı bilinmeden eksikler bilinmiyor: bu durumda gönder kapalı.
+    // Eskiden bilinmeyen kullanıcı "eksiği yok" sayılıyordu; ekran temiz
+    // görünüp sunucu `APPLICANT_IDENTITY_NOT_VERIFIED` ile reddediyordu.
+    final user = userProvider.user;
+    final readiness = ApplicationReadiness.of(user);
+    final readinessKnown = user != null;
 
     return Scaffold(
       backgroundColor: context.backgroundColor,
@@ -154,22 +176,25 @@ class _ApplyPageState extends State<ApplyPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: AppSizes.spaceSmall),
-              if (!readiness.isReady) ...[
-                _readinessCard(readiness),
-                const SizedBox(height: AppSizes.spaceMedium),
-              ],
-              _jobCard(),
-              const SizedBox(height: AppSizes.spaceLarge),
+              // Ritim: bölümler arası 24, bölüm başlığından içeriğe 12.
+              // [MyListGroup] kendi alt boşluğunu (24) taşıyor.
+              if (!readinessKnown)
+                _readinessUnknown(userProvider)
+              else if (!readiness.isReady)
+                _readinessGroup(readiness),
+              _sectionTitle('İlan'),
+              const SizedBox(height: AppSizes.space),
+              // Keşfetteki kartın aynısı; burada yalnız özet, dokunulmuyor.
+              JobCard(job: widget.job, openDetailOnTap: false),
+              // Kartın kendi alt boşluğu (12) ile birlikte 24.
+              const SizedBox(height: AppSizes.space),
               _coverLetterSection(),
-              const SizedBox(height: AppSizes.spaceMedium),
-              if (_hasRequirements) ...[
-                _sectionTitle('Gereksinimler'),
-                const SizedBox(height: AppSizes.space),
-                _requirementsCard(),
-                const SizedBox(height: AppSizes.spaceMedium),
-              ],
+              const SizedBox(height: AppSizes.spaceLarge),
+              _requirementsGroup(),
               _termsRow(alreadyApplied: alreadyApplied),
-              const SizedBox(height: AppSizes.navBarClearance),
+              // Buton çubuğu `bottomNavigationBar`'da, içeriğin üstüne
+              // binmiyor; navbar payı gerekmiyor.
+              const SizedBox(height: AppSizes.spaceLarge),
             ],
           ),
         ),
@@ -178,6 +203,7 @@ class _ApplyPageState extends State<ApplyPage> {
         onPressed:
             (alreadyApplied ||
                 !_agreedToTerms ||
+                !readinessKnown ||
                 !readiness.isReady ||
                 applyProvider.isLoading)
             ? null
@@ -185,6 +211,7 @@ class _ApplyPageState extends State<ApplyPage> {
         isLoading: applyProvider.isLoading,
         title: _submitLabel(
           alreadyApplied: alreadyApplied,
+          readinessKnown: readinessKnown,
           readiness: readiness,
         ),
       ),
@@ -193,304 +220,149 @@ class _ApplyPageState extends State<ApplyPage> {
 
   String _submitLabel({
     required bool alreadyApplied,
+    required bool readinessKnown,
     required ApplicationReadiness readiness,
   }) {
     if (alreadyApplied) return 'Zaten Başvurdunuz';
+    if (!readinessKnown) return 'Başvuruyu Gönder';
     if (!readiness.isReady) return 'Önce Eksikleri Tamamla';
     return 'Başvuruyu Gönder';
   }
 
-  /// Eksik şartların listesi.
+  /// Eksik şartlar, ayarlardaki satırlarla aynı kartta: her satır ilgili
+  /// ekranı açıyor.
   ///
   /// Sunucu şartları sırayla kontrol edip ilk eksikte duruyor; burada hepsi
   /// birden gösteriliyor ki kullanıcı kaç adım olduğunu baştan görsün.
-  Widget _readinessCard(ApplicationReadiness readiness) {
-    return Container(
-      width: double.infinity,
-      padding: AppPadding.primaryAll,
-      decoration: BoxDecoration(
-        color: AppColors.warning.withValues(alpha: _jobCardFill),
-        borderRadius: AppRadius.secondaryCircular,
-        border: Border.all(
-          color: AppColors.warning.withValues(alpha: _jobCardBorder),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Başvurabilmen için eksiklerin var',
-            style: context.textTheme.titleSmall,
-          ),
-          const SizedBox(height: AppSizes.spaceSmall),
-          for (final requirement in readiness.missing)
-            _readinessRow(requirement),
-        ],
-      ),
-    );
-  }
-
-  Widget _readinessRow(ApplicationRequirement requirement) {
+  Widget _readinessGroup(ApplicationReadiness readiness) {
     final user = context.read<UserProvider>().user;
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSizes.spaceSmall),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.error_outline,
-            color: AppColors.warning,
-            size: AppSizes.iconSmall,
-          ),
-          const SizedBox(width: AppSizes.spaceSmall),
-          Expanded(
-            child: Text(requirement.title, style: context.textTheme.bodyMedium),
-          ),
-          TextButton(
-            onPressed: user == null
-                ? null
-                : () => context.push(requirement.route, extra: user),
-            child: Text(requirement.actionLabel),
-          ),
-        ],
-      ),
+    // Başlık, sayfanın diğer bölüm başlıklarıyla (İlan, Ön yazı) aynı;
+    // grubun küçük gri başlığı ayarlar menüsüne ait.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle('Başvurmadan önce tamamla'),
+        const SizedBox(height: AppSizes.space),
+        MyListGroup(
+          children: [
+            for (final requirement in readiness.missing)
+              MyListTile(
+                icon: _requirementIcon(requirement),
+                title: requirement.title,
+                onTap: user == null
+                    ? null
+                    : () => context.push(requirement.route, extra: user),
+              ),
+          ],
+        ),
+      ],
     );
   }
 
-  /// Başvuru ekranı yalnızca özet yanıttaki gereksinimleri gösteriyor.
-  /// Yaş aralığı, kıyafet ve açık adres `GET /jobs/{id}`'de; kullanıcı onları
-  /// başvurmadan önce detay ekranında görüyor, form için ikinci istek atmaya
-  /// değmiyor.
-  bool get _hasRequirements => true;
+  /// Kullanıcı henüz yüklenmediyse yükleniyor göstergesi, yüklenemediyse
+  /// sebebi ve tekrar deneme. İkisinde de gönder kapalı.
+  Widget _readinessUnknown(UserProvider provider) {
+    final Widget content = provider.hasError
+        ? Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Başvuru şartlarını kontrol edemedik. '
+                  '${provider.errorMessage ?? ''}',
+                  style: context.textTheme.bodySmall?.copyWith(
+                    color: context.textSecondary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSizes.spaceSmall),
+              TextButton(
+                onPressed: () => provider.load(),
+                child: const Text('Tekrar dene'),
+              ),
+            ],
+          )
+        : const Center(
+            child: SizedBox(
+              width: AppSizes.icon,
+              height: AppSizes.icon,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          );
+
+    return Padding(
+      key: const ValueKey('apply-readiness-unknown'),
+      padding: const EdgeInsets.only(bottom: AppSizes.spaceLarge),
+      child: content,
+    );
+  }
+
+  static AppIconData _requirementIcon(ApplicationRequirement requirement) =>
+      switch (requirement) {
+        ApplicationRequirement.identity => AppIcons.personalCard,
+        ApplicationRequirement.address => AppIcons.location,
+        ApplicationRequirement.bankAccount => AppIcons.bank,
+      };
 
   Widget _sectionTitle(String title) =>
-      Text(title, style: context.textTheme.titleSmall);
-
-  // ----------------------------------------------------------- İş bilgileri
-
-  Widget _jobCard() {
-    return Container(
-      width: double.infinity,
-      padding: AppPadding.primaryAll,
-      decoration: BoxDecoration(
-        color: context.accentColor.withValues(alpha: _jobCardFill),
-        borderRadius: AppRadius.secondaryCircular,
-        border: Border.all(
-          color: context.accentColor.withValues(alpha: _jobCardBorder),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _categoryBadge(),
-          const SizedBox(height: AppSizes.space),
-          Text(
-            widget.job.title,
-            style: context.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: AppSizes.spaceTiny),
-          Text(
-            widget.job.company ?? '',
-            style: context.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w500,
-              color: context.textSecondary,
-            ),
-          ),
-          const SizedBox(height: AppSizes.space),
-          _priceAndLocationRow(),
-          if (widget.job.startDateTime != null) ...[
-            const SizedBox(height: AppSizes.spaceSmall),
-            _dateRow(),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _categoryBadge() {
-    return Container(
-      padding: AppPadding.badge,
-      decoration: BoxDecoration(
-        color: widget.job.category.color.withValues(alpha: _categoryTintAlpha),
-        borderRadius: AppRadius.smallCircular,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AppIcon(
-            widget.job.category.icon,
-            size: AppSizes.iconSmall,
-            color: widget.job.category.color,
-          ),
-          const SizedBox(width: AppSizes.spaceTiny),
-          Text(
-            widget.job.category.displayName,
-            style: context.textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: widget.job.category.color,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _priceAndLocationRow() {
-    return Row(
-      children: [
-        Icon(
-          Icons.monetization_on_outlined,
-          size: AppSizes.iconSmall,
-          color: context.accentColor,
-        ),
-        const SizedBox(width: AppSizes.spaceTiny),
-        Text(
-          '₺${widget.job.price.toStringAsFixed(0)}',
-          style: context.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: context.accentColor,
-          ),
-        ),
-        const SizedBox(width: AppSizes.spaceMedium),
-        Icon(
-          Icons.location_on_outlined,
-          size: AppSizes.iconSmall,
-          color: context.textSecondary,
-        ),
-        const SizedBox(width: AppSizes.spaceTiny),
-        Expanded(
-          child: Text(
-            widget.job.locationLabel ?? '-',
-            style: context.textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.w500,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _dateRow() {
-    final start = widget.job.startDateTime!;
-    final end = widget.job.endDateTime;
-    final style = context.textTheme.bodySmall?.copyWith(
-      fontWeight: FontWeight.w500,
-    );
-
-    return Row(
-      children: [
-        Icon(
-          Icons.calendar_today_outlined,
-          size: AppSizes.iconSmall,
-          color: context.textSecondary,
-        ),
-        const SizedBox(width: AppSizes.spaceTiny),
-        Text(_formatDate(start), style: style),
-        if (end != null) Text(' - ${_formatDate(end)}', style: style),
-      ],
-    );
-  }
-
-  String _formatDate(DateTime value) =>
-      '${value.day}/${value.month}/${value.year}';
+      Text(title, style: context.textTheme.titleMedium);
 
   // --------------------------------------------------------------- Ön yazı
 
+  /// Diğer formlardaki çok satırlı alanın aynısı: çerçeveli, dolgusuz.
+  /// Eskiden gri dolguluydu ve devre dışı bir alan gibi duruyordu.
   Widget _coverLetterSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionTitle('Ön Yazı (Opsiyonel)'),
-        const SizedBox(height: AppSizes.spaceTiny),
-        Text(
-          'İşveren size neden uygun olduğunuzu kısaca anlatın',
-          style: context.textTheme.bodySmall,
-        ),
+        _sectionTitle('Ön yazı'),
         const SizedBox(height: AppSizes.space),
-        TextField(
+        MyTextfield(
+          labelText: 'Ön yazı (isteğe bağlı)',
           controller: _coverLetterController,
-          maxLines: _coverLetterLines,
-          maxLength: _coverLetterMaxLength,
-          decoration: InputDecoration(
-            hintText: 'Kendinizi tanıtın, deneyimlerinizden bahsedin...',
-            hintStyle: context.textTheme.bodyMedium?.copyWith(
-              color: context.textTertiary,
-            ),
-            filled: true,
-            fillColor: context.tileColor,
-            border: _coverLetterBorder(context.dividerColor),
-            enabledBorder: _coverLetterBorder(context.dividerColor),
-            focusedBorder: _coverLetterBorder(context.accentColor, width: 1.5),
-            contentPadding: AppPadding.primaryAll,
-          ),
-          style: context.textTheme.bodyMedium,
+          expands: true,
+          height: _coverLetterHeight,
+          borderRadius: AppRadius.innerCircular,
+          inputFormatters: [
+            LengthLimitingTextInputFormatter(_coverLetterMaxLength),
+          ],
+        ),
+        const SettingsHint(
+          'İşverene neden uygun olduğunu kısaca anlat. En fazla '
+          '$_coverLetterMaxLength karakter.',
         ),
       ],
     );
   }
 
-  OutlineInputBorder _coverLetterBorder(Color color, {double width = 1}) =>
-      OutlineInputBorder(
-        borderRadius: AppRadius.innerCircular,
-        borderSide: BorderSide(color: color, width: width),
-      );
-
   // ---------------------------------------------------------- Gereksinimler
 
-  Widget _requirementsCard() {
+  /// İlanın gereksinimleri; dokunulmayan satırlar, okları yok. İkisi de özet
+  /// yanıtta zorunlu alan, her zaman çizilebiliyor.
+  Widget _requirementsGroup() {
     final job = widget.job;
+    String label(bool required) => required ? 'Gerekli' : 'Gerekli değil';
 
-    return Container(
-      width: double.infinity,
-      padding: AppPadding.primaryAll,
-      decoration: BoxDecoration(
-        color: context.tileColor,
-        borderRadius: AppRadius.innerCircular,
-      ),
-      child: Column(
-        children: [
-          // İkisi de özet yanıtta zorunlu alan: her zaman çizilebiliyorlar.
-          _requirementRow(
-            Icons.work_outline,
-            'Deneyim',
-            job.experienceRequired ? 'Gerekli' : 'Gerekli Değil',
-          ),
-          _requirementRow(
-            Icons.health_and_safety_outlined,
-            'Sigorta',
-            job.insuranceRequired ? 'Gerekli' : 'Gerekli Değil',
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _requirementRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSizes.spaceSmall),
-      child: Row(
-        children: [
-          Icon(icon, size: AppSizes.iconMedium, color: context.textSecondary),
-          const SizedBox(width: AppSizes.space),
-          Text(
-            '$label: ',
-            style: context.textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.w500,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle('Gereksinimler'),
+        const SizedBox(height: AppSizes.space),
+        MyListGroup(
+          children: [
+            MyListTile(
+              icon: AppIcons.work,
+              title: 'Deneyim',
+              value: label(job.experienceRequired),
             ),
-          ),
-          Text(
-            value,
-            style: context.textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: context.textPrimary,
+            MyListTile(
+              icon: AppIcons.shield,
+              title: 'Sigorta',
+              value: label(job.insuranceRequired),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
+      ],
     );
   }
 

@@ -25,6 +25,9 @@ abstract final class AppIcons {
   // ────────────────────────────────────── Genel Eylemler & Yönler
   static const String arrowLeft = 'arrowLeft';
   static const String arrowRight = 'arrowRight';
+
+  /// Uygulama dışına çıkan bağlantı (tarayıcı, harita, arama).
+  static const String arrowUpRight = 'arrowRightUp';
   static const String check = 'check';
   static const String checkCircle = 'checkCircle';
   static const String cancelCircle = 'closeCircle';
@@ -125,6 +128,10 @@ abstract final class AppIcons {
   static const String alert = 'alertCircle';
   static const String info = 'infoCircle';
   static const String shield = 'shield';
+
+  /// Doğrulanmış/onaylı işaret (dişli kenarlı rozet içinde tik); filled
+  /// kullanılıyor.
+  static const String verified = 'verified';
 
   /// Şikayet eylemi. "İhbar et / işaretle" anlamı ikon setinde bu adla;
   /// [shield] güvenlik bölümünün kendisini, bu ise tek bir şikayeti

@@ -54,17 +54,17 @@ class IdentityChipCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: AppPadding.primaryAll,
+      // Çerçevesiz kart: sayfadaki diğer kartlar gibi yalnız zemin tonu.
       decoration: BoxDecoration(
         color: context.tileColor,
         borderRadius: AppRadius.secondaryCircular,
-        border: Border.all(color: context.dividerColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              AppIcon(AppIcons.antenna, color: context.accentColor),
+              AppIcon(AppIcons.personalCard, color: context.textPrimary),
               const SizedBox(width: AppSizes.spaceSmall),
               Expanded(
                 child: Text(
@@ -85,17 +85,12 @@ class IdentityChipCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSizes.space),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton(
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
               onPressed: onRead,
-              child: Text(
-                'Kartı Okut',
-                style: context.textTheme.bodyMedium?.copyWith(
-                  color: context.accentColor,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              style: context.accentOutlinedButtonStyle,
+              child: const Text('Kartı Okut'),
             ),
           ),
         ],
@@ -115,7 +110,6 @@ class IdentityChipCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.tileColor,
         borderRadius: AppRadius.secondaryCircular,
-        border: Border.all(color: AppColors.success),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -21,9 +21,14 @@ class JobLocationCard extends StatelessWidget {
     this.directions,
     this.onDirections,
     this.arrival,
+    this.plain = false,
   });
 
   /// Sunucunun konumu bu görüntüleyene hangi kesinlikte verdiği.
+  /// `true` ise kart zemini ve iç boşluğu olmadan çiziliyor (ilan detayı
+  /// sheet'i kartsız düzende).
+  final bool plain;
+
   final AddressPrecision precision;
 
   /// Konumun tek satırlık metni.
@@ -63,18 +68,21 @@ class JobLocationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: AppPadding.primaryAll,
-      decoration: BoxDecoration(
-        color: context.tileColor,
-        borderRadius: AppRadius.innerCircular,
-      ),
+      padding: plain ? EdgeInsets.zero : AppPadding.primaryAll,
+      decoration: plain
+          ? null
+          : BoxDecoration(
+              color: context.tileColor,
+              borderRadius: AppRadius.innerCircular,
+            ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           AppIcon(
             AppIcons.location,
             color: context.accentColor,
-            size: AppSizes.icon,
+            // Kartsız düzende diğer bilgi satırlarının ikonuyla aynı boyda.
+            size: plain ? AppSizes.iconMedium : AppSizes.icon,
           ),
           const SizedBox(width: AppSizes.space),
           Expanded(

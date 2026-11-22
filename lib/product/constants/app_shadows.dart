@@ -28,4 +28,19 @@ class AppShadows {
   static final List<Shadow> floatingText = [
     Shadow(color: _color, blurRadius: _blur),
   ];
+
+  /// Ekranın üstünde kısa süre duran yüzey (toast) için: [floating]'den
+  /// daha geniş ve yumuşak, aşağı kaymış bir gölge. Kart zemini sayfayla
+  /// aynı beyaz olduğunda onu sayfadan ayıran şey bu.
+  static final List<BoxShadow> overlay = [
+    BoxShadow(
+      color: AppColors.navShadow.withValues(alpha: _overlayAlpha),
+      blurRadius: _overlayBlur,
+      offset: const Offset(0, _overlayOffsetY),
+    ),
+  ];
+
+  static const double _overlayAlpha = 0.18;
+  static const double _overlayBlur = 24;
+  static const double _overlayOffsetY = 8;
 }
