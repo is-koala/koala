@@ -6,7 +6,7 @@ import 'package:koala/product/network/api_exception.dart';
 
 /// Keşfet'in sunucu taraflı arama durumu: sorgu, sayfalar ve sonsuz kaydırma.
 ///
-/// Süzgeçler artık elde tutulan listenin üzerinde çalışmıyor — [query] sunucuya
+/// Süzgeçler elde tutulan listenin üzerinde çalışmıyor — [query] sunucuya
 /// gidiyor, liste kaydırıldıkça uzuyor. Sayfalama deseni `NotificationProvider`
 /// ile aynı: `page`/`last` zarftan okunuyor, `totalPages` kullanılmıyor.
 class JobSearchProvider extends ChangeNotifier {
@@ -144,9 +144,8 @@ class JobSearchProvider extends ChangeNotifier {
   /// PUBLIC kovasında dakikada 120 istekle sınırlı.
   ///
   /// Uçan bir istek varsa **beklenmiyor, geçiliyor**: yeni ölçüt her zaman
-  /// kazanıyor ve eski yanıt jetonuyla eleniyor. Eskiden `load` uçan istek
-  /// varken çıkışa dönüyordu, yani `_query` yeni süzgeci taşırken ekran eski
-  /// sonuçta kalıyordu.
+  /// kazanıyor ve eski yanıt jetonuyla eleniyor. Beklenseydi `_query` yeni
+  /// süzgeci taşırken ekran eski sonuçta kalırdı.
   Future<void> applyQuery(JobSearchQuery query) async {
     if (_isSameQuery(query)) return;
 

@@ -121,9 +121,8 @@ class _MyJobsPageState extends MyJobsPagemodel {
     // ayrı bölümler sayfayı gereksiz uzatırdı.
     //
     // Hangi durumun kapalı sayıldığına tek yerde karar veriliyor:
-    // [MyJob.isClosed]. Burası eskiden durumları elle sayıyordu ve derleyici
-    // uyarmadığı için yeni bir durum hiçbir bölüme girmeden ekrandan
-    // düşebiliyordu. Atamalar önce: ödeme alınan işler listenin başında
+    // [MyJob.isClosed]. Durumları burada elle saymak, yeni bir durumu
+    // derleyici uyarmadan ekrandan düşürür. Atamalar önce: ödeme alınan işler listenin başında
     // kalsın, kapanmış başvurular altta.
     final closedJobs = [
       ...allJobs.where((job) => job.isClosed),

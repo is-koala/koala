@@ -24,10 +24,9 @@ enum AppToastType {
 /// Uygulamanın tek bildirim kutusu.
 ///
 /// Materyal'in snackbar'ı yalnız konum ve süre için kullanılıyor; görünüşü
-/// kendi kartımız ([_ToastCard]) çiziyor. Snackbar'ın kendi zemini, kenarlığı
-/// ve sert gölgesi gri bir hap gibi duruyordu (2026-11-22): kart artık
-/// uygulamanın kartlarıyla aynı yarıçapta, sayfanın zemin renginde ve
-/// yumuşak bir gölgeyle ayrılıyor. Anlamı yalnızca soldaki ikonun rengi
+/// kendi kartımız ([_ToastCard]) çiziyor; snackbar'ın kendi zemini ve sert
+/// gölgesi gri bir hap gibi duruyor. Kart uygulamanın kartlarıyla aynı
+/// yarıçapta, sayfanın zemin renginde ve yumuşak bir gölgeyle ayrılıyor. Anlamı yalnızca soldaki ikonun rengi
 /// taşıyor — zeminin tamamını boyamak metni iki temadan birinde okunmaz
 /// hâle getiriyordu.
 ///

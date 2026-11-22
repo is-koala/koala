@@ -60,9 +60,8 @@ class JobDetailBottomSheet extends StatefulWidget {
   ///
   /// İçerik iki hâlde de **aynı**: aynı boyutlar, aynı bölümler. Kapalı
   /// hâlde sheet yalnız alçak, alttaki bölümler pencerenin dışında kalıyor.
-  /// Sürüklerken yalnız sheet'in yüksekliği değişiyor; eskiden dört metin
-  /// kare kare büyüyor ve bölümler bir eşikte beliriyordu, sheet her karede
-  /// baştan dizildiği için takılıyormuş gibi görünüyordu.
+  /// Sürüklerken yalnız sheet'in yüksekliği değişiyor: içerik her karede
+  /// baştan dizilseydi sheet takılıyormuş gibi görünürdü.
   static const double _collapsedSize = 0.46;
   static const double _expandedSize = 0.95;
 
@@ -478,9 +477,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
             JobTransportCard(transport: _detail!.transport!, plain: true),
           ],
           // Liste, alttaki buton çubuğunun üstünde bitiyor (aynı Column'da,
-          // üst üste değil); navbar payı gerekmiyor. Eskiden burada
-          // `navBarClearance` + güvenli alan vardı ve sonda boş bir ekran
-          // kalıyordu.
+          // üst üste değil); navbar payı gerekmiyor.
           const SizedBox(height: AppSizes.spaceLarge),
         ],
       ),
@@ -821,9 +818,8 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
   /// Sheet'in üstü: tutamaç, kapatma ve şikayet. İki hâlde de aynı yerde.
   Widget appBar() {
     // Tutamaç ve düğme satırı üst üste: kapalıyken yalnız tutamaç kadar,
-    // açıkken yalnız düğmeler kadar yer kaplıyor. Eskiden tutamaç açık hâlde
-    // görünmez ama yerini tutuyordu, düğme satırı da üstüne biniyordu; en
-    // üstte büyük bir boşluk kalıyordu. Yükseklik açıldıkça büyüyor; bu yalnız
+    // açıkken yalnız düğmeler kadar yer kaplıyor; ikisi alt alta dursa en
+    // üstte büyük bir boşluk kalır. Yükseklik açıldıkça büyüyor; bu yalnız
     // alttaki içeriği kaydırıyor, metin yeniden dizilmiyor. Kapatma ve
     // şikayet kapalı hâlde görünmüyor: bakan kişi ilk bakışta işi ve parayı
     // görmek istiyor.
@@ -929,8 +925,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
   /// birlikte [AppSizes.spaceLarge] eder.
   static const double _sectionGap = AppSizes.spaceLarge - AppSizes.space;
 
-  /// Bilgi satırı. Sheet'teki bütün ikonlar Reicon'un çizgisel ailesinden;
-  /// eskiden Material'in dolu ikonlarıyla karışıktı.
+  /// Bilgi satırı. Sheet'teki bütün ikonlar Reicon'un çizgisel ailesinden.
   Widget _appIconInfoRow(AppIconData icon, String label, String value) {
     return _infoRowBody(
       AppIcon(icon, size: AppSizes.iconMedium, color: context.accentColor),

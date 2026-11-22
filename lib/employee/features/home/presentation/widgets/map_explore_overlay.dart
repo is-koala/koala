@@ -16,11 +16,10 @@ import 'package:koala/product/widgets/app_icon.dart';
 /// `GoogleMap` testte platform görünümü istediği için sayfanın kendisi widget
 /// testine girmiyordu, kusur da bu yüzden yakalanmamıştı.
 ///
-/// **Durum kartı arama açıkken de çiziliyor.** Eskiden bütün durum kartı
-/// sayfadaki `if (!isSearching)` koşuluna bağlıydı: arama açıkken dönen bir
-/// `500` kullanıcıya *"Sonuç bulunamadı / Farklı bir arama terimi deneyin"*
-/// diye görünüyordu, ne hata mesajı ne "Tekrar Dene" vardı. Başarısız yükleme
-/// ile boş sonuç aynı şeye benziyordu (AGENTS.md, *"An empty list and a failed
+/// **Durum kartı arama açıkken de çiziliyor.** Aksi hâlde arama açıkken
+/// dönen bir `500` kullanıcıya *"Sonuç bulunamadı"* diye görünür, ne hata
+/// mesajı ne "Tekrar Dene" olur; başarısız yükleme ile boş sonuç aynı şeye
+/// benzer (AGENTS.md, *"An empty list and a failed
 /// load must not look the same"*; is-koala/koala#33).
 class MapExploreOverlay extends StatelessWidget {
   const MapExploreOverlay({
@@ -42,8 +41,8 @@ class MapExploreOverlay extends StatelessWidget {
   final bool isLoading;
 
   /// Pinler ekrandayken süren yenileme: kart yerine yalnız ince bir çizgi.
-  /// Eskiden her kaydırma "aranıyor" kartını açıp kapatıyordu; pinler zaten
-  /// görünürken bu yalnızca dikkat dağıtıyordu.
+  /// Pinler zaten görünürken her kaydırmada "aranıyor" kartını açıp kapatmak
+  /// yalnızca dikkat dağıtır.
   final bool isRefreshing;
 
   /// Doluysa son istek başarısız: mesaj ve "Tekrar Dene" çiziliyor.

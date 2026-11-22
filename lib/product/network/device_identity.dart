@@ -9,7 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 ///
 /// Backend oturumu cihaza bağlıyor: `SessionAuthFilter` her istekte cihazı
 /// bulup oturumun cihazıyla karşılaştırıyor, tutmazsa oturumu kapatıyor.
-/// Cihaz artık **`X-Device-Id` başlığından** çözülüyor — `(kullanıcı,
+/// Cihaz **`X-Device-Id` başlığından** çözülüyor — `(kullanıcı,
 /// clientDeviceId)` çiftiyle aranıyor — bu yüzden kimliğin kurulum boyunca
 /// aynı kalması şart. `User-Agent` yalnızca cihazın adını ve tipini
 /// yazdırmaya yarıyor, kimlik değil.

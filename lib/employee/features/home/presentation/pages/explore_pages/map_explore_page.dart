@@ -131,8 +131,7 @@ class _MapExplorePageState extends MapExplorePageModel {
   ///
   /// Navbar ortada ve sabit genişlikte; yanında düğmeye yer varsa düğme
   /// navbar'ın sağında, alt kenarı navbar'ın alt kenarıyla aynı çizgide. Dar ekranda navbar'la çakışacağı
-  /// için navbar'ın üstüne çıkıyor. Eskiden sabit 110'du: her ekranda
-  /// navbar'ın üstünde ve sağdaki boş alanı kullanmadan havada duruyordu.
+  /// için navbar'ın üstüne çıkıyor.
   double _locationButtonBottom(BuildContext context) {
     const navBarBottom = AppPadding.bottomNavBarPadding;
     final sideRoom =

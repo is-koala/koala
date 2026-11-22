@@ -195,8 +195,8 @@ class MapExploreController extends ChangeNotifier {
     );
   }
 
-  /// Harita arama kutusu. Metin mevcut kutuyla birlikte sunucuya gidiyor;
-  /// eskiden eldeki ≤20 satır bellekte süzülüyordu.
+  /// Harita arama kutusu. Metin mevcut kutuyla birlikte sunucuya gidiyor,
+  /// eldeki satırlar bellekte süzülmüyor.
   void setSearchText(String text) {
     if (text == _searchText) return;
 

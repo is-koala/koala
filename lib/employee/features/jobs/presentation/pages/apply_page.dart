@@ -160,8 +160,8 @@ class _ApplyPageState extends State<ApplyPage> {
     // gönderilmeden söylenebiliyor: kullanıcı ön yazıyı boşuna yazmıyor.
     final userProvider = context.watch<UserProvider>();
     // Kullanıcı bilinmeden eksikler bilinmiyor: bu durumda gönder kapalı.
-    // Eskiden bilinmeyen kullanıcı "eksiği yok" sayılıyordu; ekran temiz
-    // görünüp sunucu `APPLICANT_IDENTITY_NOT_VERIFIED` ile reddediyordu.
+    // "Eksiği yok" saymak, temiz görünen ekranı sunucunun
+    // `APPLICANT_IDENTITY_NOT_VERIFIED` ile reddetmesine yol açar.
     final user = userProvider.user;
     final readiness = ApplicationReadiness.of(user);
     final readinessKnown = user != null;
@@ -309,8 +309,8 @@ class _ApplyPageState extends State<ApplyPage> {
 
   // --------------------------------------------------------------- Ön yazı
 
-  /// Diğer formlardaki çok satırlı alanın aynısı: çerçeveli, dolgusuz.
-  /// Eskiden gri dolguluydu ve devre dışı bir alan gibi duruyordu.
+  /// Diğer formlardaki çok satırlı alanın aynısı: çerçeveli, dolgusuz; gri
+  /// dolgu devre dışı bir alan gibi durur.
   Widget _coverLetterSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

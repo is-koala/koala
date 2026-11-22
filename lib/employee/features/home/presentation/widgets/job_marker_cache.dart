@@ -10,11 +10,9 @@ import 'package:koala/employee/features/home/presentation/widgets/job_marker_gen
 /// onu doğuran ilanın kimliği, kesinliği ve koordinatı ile birlikte durur.**
 /// Bu üçlüden biri değiştiğinde eski pin kullanılamaz.
 ///
-/// Neden ayrı bir nesne: değişmez eskiden ikiye bölünmüştü — `Map<String,
-/// Marker>` sayfada, anahtar üreteci ve tahliye politikası üreticide statik
-/// duruyordu. Tahliye çağıranın map'ini dışarıdan mutasyona uğratıyordu ve
-/// "yazarken kullanılan anahtar ile tahliye ederken kullanılan anahtar aynı"
-/// olduğunu tip değil teamül tutuyordu. Sayfanın id'ye bakan bir map tutmasına
+/// Neden ayrı bir nesne: map, anahtar üreteci ve tahliye politikası ayrı
+/// yerlerde dursa "yazarken ve tahliye ederken kullanılan anahtar aynı"
+/// olduğunu tip değil teamül tutar. Sayfanın id'ye bakan bir map tutmasına
 /// engel yoktu; is-koala/koala#10'un "önbellekte kalmış tam adres yetki sona
 /// erdikten sonra gösterilmez" maddesini sessizce düşüren kusur tam buydu.
 /// Artık map dışarı hiç çıkmıyor, anahtarı da yalnız bu sınıf üretiyor.

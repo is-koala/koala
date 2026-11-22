@@ -131,10 +131,8 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
 
   /// Kamera durduğunda görünen alanı sunucuya bildirir.
   ///
-  /// Eskiden harita `GET /jobs`'u argümansız çağırıyordu: haritada en fazla 20
-  /// pin oluyordu ve o 20 ilan sunucunun `createdAt,desc` sırasından geliyordu,
-  /// yani kullanıcının baktığı bölgeyle ilgisi yoktu. Kaydırmak da hiçbir şey
-  /// getirmiyordu.
+  /// Kutusuz bir `GET /jobs` sunucunun `createdAt,desc` sırasındaki ilk 20
+  /// ilanı döndürür; kullanıcının baktığı bölgeyle ilgisi olmaz.
   Future<void> _onCameraIdle() async {
     final controller = _mapController;
     if (controller == null) return;
@@ -245,7 +243,7 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
   /// Haritada arama yap.
   ///
   /// Metin **sunucuya** gidiyor ve mevcut sınırlayıcı kutuyla birlikte
-  /// süzülüyor; eskiden eldeki en fazla 20 satır bellekte eleniyordu.
+  /// süzülüyor, eldeki satırlar bellekte elenmiyor.
   void _onMapSearch(String query) {
     _jobs.setSearchText(query.trim());
   }

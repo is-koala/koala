@@ -160,11 +160,10 @@ class AppColors {
 
   static const Color lightBackground = Color(0xFFFFFFFF);
 
-  // Açık temanın yüzey grileri **nötr**: üç kanal eşit. Eskiden iOS sistem
-  // grileriydi (#F2F2F7 ...) ve mavi kanalı birkaç adım yüksekti; metinler
-  // nötr, koyu tema nötr, harita ve marka yeşili sıcak taraftayken kartlar
-  // soğuk ve maviye çalıyordu. Parlaklık korunarak mavi payı kanallara
-  // dağıtıldı.
+  // Açık temanın yüzey grileri **nötr**: üç kanal eşit. iOS sistem grileri
+  // (#F2F2F7 ...) mavi kanalı birkaç adım yüksek tutuyor; metinler, koyu
+  // tema, harita ve marka yeşili nötr ya da sıcakken kartlar soğuk ve maviye
+  // çalıyor.
 
   /// Kartın zemini. Sayfa zemininden ayrılsın diye beyazdan bir tık koyu.
   static const Color lightSurfaceLow = Color(0xFFF9F9F9);

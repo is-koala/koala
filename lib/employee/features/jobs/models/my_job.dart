@@ -251,8 +251,7 @@ class MyJob {
 
   /// Bir atamayı ekranın bildiği [MyJob] durumlarına çevirir.
   ///
-  /// Her atama durumunun artık bir karşılığı var; eskiden iptal ve red
-  /// listeden düşüyordu, o yüzden dönüş nullable'dı.
+  /// Her atama durumunun bir karşılığı var; iptal ve red de listede kalıyor.
   static MyJob fromAssignment(Assignment assignment) {
     final status = switch (assignment.status) {
       // İşveren kabul etti ama iş henüz başlamadı: sıra çalışanda.

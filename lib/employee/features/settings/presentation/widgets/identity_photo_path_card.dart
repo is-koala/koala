@@ -43,9 +43,8 @@ class IdentityPhotoPathCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Kutusuz bir bölüm: sayfanın ana yolu, başlığı ve düğmesiyle kendini
-    // anlatıyor. Eskiden yeşil çerçeveli bir kartın içindeydi; altındaki
-    // çip kartı ve form da kutuluydu, iç içe kutular ekranı karmaşık
-    // gösteriyordu. Uyarı hâlinde yalnız ikon uyarı renginde.
+    // anlatıyor; iç içe kutular ekranı karmaşık gösteriyor. Uyarı hâlinde
+    // yalnız ikon uyarı renginde.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

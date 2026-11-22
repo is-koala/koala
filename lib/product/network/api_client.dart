@@ -55,10 +55,10 @@ class ApiClient {
 
   /// Testlerde sahte bir `HttpClientAdapter` takılı dio geçilebilsin diye.
   ///
-  /// Zinciri **üretimdekiyle aynı** kuruyor. Eskiden hiçbir interceptor
-  /// takmıyordu; 630 testin hiçbiri `Authorization` başlığını, `X-Device-Id`'yi
-  /// ya da `401` sonrası yenilemeyi çalıştırmıyordu, yani bir interceptor
-  /// bozulsa hiçbir test kırmızıya dönmüyordu (is-koala/koala#21).
+  /// Zinciri **üretimdekiyle aynı** kuruyor: interceptor'sız bir test
+  /// istemcisi `Authorization` başlığını, `X-Device-Id`'yi ve `401` sonrası
+  /// yenilemeyi hiç çalıştırmaz, bozulan bir interceptor hiçbir testi
+  /// kırmızıya döndürmez (is-koala/koala#21).
   ///
   /// Keychain ve `SharedPreferences` testte yok, o yüzden [tokenStorage] ile
   /// [deviceIdentity] dışarıdan veriliyor — üretim tekilleri varsayılan

@@ -166,8 +166,8 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
 
   /// Konum iznini ister ve alınırsa konumu tazeler.
   ///
-  /// Mesafe süzgeci izin olmadan çalışamıyor; eskiden bu durumda süzgeç
-  /// sessizce yok sayılıyordu.
+  /// Mesafe süzgeci izin olmadan çalışamıyor; izin yoksa süzgeç sessizce
+  /// yok sayılmamalı.
   Future<bool> _requestLocation() async {
     try {
       var permission = await Geolocator.checkPermission();

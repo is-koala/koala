@@ -7,7 +7,7 @@ import 'package:koala/product/constants/app_icons.dart';
 
 /// Bir iş kategorisi.
 ///
-/// Kaynağı `GET /reference/job-categories`; uygulama artık sabit bir liste
+/// Kaynağı `GET /reference/job-categories`; uygulama sabit bir liste
 /// tutmuyor, backend hangi kategorileri döndürüyorsa onlar geçerli. İkon, renk
 /// ve harita pini [code] üzerinden eşleşiyor — bkz. [JobCategoryStyle].
 class JobCategory {

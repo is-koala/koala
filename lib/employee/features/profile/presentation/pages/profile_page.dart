@@ -254,8 +254,8 @@ class _ProfilePageState extends ProfilePageModel {
 
   /// Deneyim listesi.
   ///
-  /// Boşken de çiziliyor: eskiden bölüm hiç görünmüyordu ve kullanıcı
-  /// deneyim ekleyebileceğini fark edemiyordu.
+  /// Boşken de çiziliyor: yoksa kullanıcı deneyim ekleyebileceğini fark
+  /// etmez.
   Widget experienceSection(CurrentUser user) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

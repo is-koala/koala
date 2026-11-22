@@ -14,10 +14,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// sunucu yanıtı bellekte tutuluyor ki düğme o anda kaybolsun. Sonraki
 /// fetch geldiğinde sunucunun alanı esas ([ownReviewFor] önce ona bakıyor).
 ///
-/// Disk önbelleği yok. Önceki sürüm kimlikleri `SharedPreferences`'a
-/// yazıyordu (`reviewed_assignments*`, kullanıcı anahtarlı) ve içeriği
-/// `GET /users/{id}/reviews` içinden **tahmin ediyordu**; ikisi de kaldırıldı,
-/// eski anahtarlar [purgeLegacyCache] ile siliniyor. Bellek oturumluk:
+/// Disk önbelleği yok. Eski sürümlerin `SharedPreferences`'a yazdığı
+/// `reviewed_assignments*` anahtarları [purgeLegacyCache] ile siliniyor. Bellek oturumluk:
 /// [clear] çıkışta sıfırlıyor, uygulama kapanınca zaten gidiyor.
 class ReviewProvider extends ChangeNotifier {
   ReviewProvider({ReviewService? service})

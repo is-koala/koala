@@ -27,6 +27,8 @@ Flutter 3.50.1 (stable), Dart SDK `^3.13.0`. The font is Poppins.
 
 **Write in Turkish.** The user writes in Turkish and expects Turkish answers. In-code comments, `///` doc comments and all user-facing strings are Turkish. Variable and class names stay English — that is the pattern of the existing codebase.
 
+**Comments explain why, not what.** Don't restate the code, narrate steps or keep commented-out code. Don't write history either ("Eskiden …", "X kaldırıldı", dates): git keeps that. State the reason in the present tense — what goes wrong otherwise. If a comment only describes what a block does, a better name or an extracted method usually replaces it.
+
 **Work through feature branches and pull requests.** Create focused commits, push the feature branch and open a pull request. Never push directly to `main`; keep unrelated changes out of each commit and report every commit hash. Merging remains a separate release decision.
 
 **Verify locally, and let the PR CI confirm.** After a change, run `flutter analyze --no-pub` and the flavored `flutter test` here. `ci.yml` runs format, `flutter analyze --fatal-infos` and the flavored `flutter test` on GitHub-hosted `ubuntu-latest` for every PR to `main` and every `main` push. The iOS build (`ios.yml`, `macos-latest`) is `workflow_dispatch` only — macOS minutes are billed at ten times the Linux rate; store builds stay on `mobile-v*` via `mobile-release.yml`. There is no self-hosted runner any more.

@@ -242,9 +242,8 @@ class _JobFilterSheetState extends State<JobFilterSheet> {
 
   /// Kategori ve tür **ayrı** bölümler.
   ///
-  /// Eskiden tek listedeydiler ve "Günlük" seçen kullanıcı kategorisini
-  /// kaybediyordu: ikisi tek `String` alanda tutuluyordu. Sunucuda da ayrı iki
-  /// alan — `categoryId` ve `type`.
+  /// Tek listede olsalar "Günlük" seçen kullanıcı kategorisini kaybederdi.
+  /// Sunucuda da ayrı iki alan: `categoryId` ve `type`.
   Widget _categorySection() {
     return _section(
       'Kategori',
@@ -413,9 +412,9 @@ class _JobFilterSheetState extends State<JobFilterSheet> {
 
   /// Ücret aralığı iki sayısal alan.
   ///
-  /// Kova çipleri (`0-500`, `2000+`) kaldırıldı: sunucuda karşılıkları
+  /// Kova çipi (`0-500`, `2000+`) yok: sunucuda karşılığı
   /// `minSalary`/`maxSalary` `BigDecimal` çifti ve kovalar aradaki değerleri
-  /// seçilemez yapıyordu. `lib/` altında hiç `RangeSlider` yok, bu yüzden
+  /// seçilemez yapar. `lib/` altında hiç `RangeSlider` yok, bu yüzden
   /// mevcut desen olan iki `MyTextfield` kullanılıyor.
   Widget _salaryRangeSection() {
     return _section(
@@ -455,8 +454,7 @@ class _JobFilterSheetState extends State<JobFilterSheet> {
   /// Mesafe süzgeci.
   ///
   /// Konum izni yokken seçenekler **kapalı** çiziliyor ve altında sebebi
-  /// yazıyor; eskiden izin yoksa süzgeç sessizce yok sayılıyordu ve kullanıcı
-  /// seçtiği süzgecin çalışmadığını hiç öğrenmiyordu.
+  /// yazıyor: kullanıcı seçtiği süzgecin çalışmadığını öğrenmeli.
   Widget _distanceSection() {
     return _section(
       'Mesafe',

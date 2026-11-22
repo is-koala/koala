@@ -52,8 +52,8 @@ class _ListExplorePageState extends ListExplorePagemodel {
       onTap: () => _searchFocusNode.unfocus(),
       child: Scaffold(
         // Uygulamanın geri kalanıyla aynı kural: zemin sayfa rengi, kartlar
-        // `tileColor`. Eskiden bu ekran tersini yapıyordu (gri zemin, beyaz
-        // kart) ve ilan detayından dönünce renkler yer değiştiriyordu.
+        // `tileColor`. Tersi, ilan detayından dönünce renklerin yer
+        // değiştirdiğini gösterir.
         backgroundColor: context.backgroundColor,
         extendBody: true,
         extendBodyBehindAppBar: false,
@@ -272,8 +272,8 @@ class _ListExplorePageState extends ListExplorePagemodel {
   /// Süzgeç çubuğu: tek "Süzgeçler" düğmesi + etkin süzgeç rozeti, yanında
   /// "Sırala".
   ///
-  /// Eskiden dört ayrı düğmeydi; sunucunun kabul ettiği alan sayısı üçten on
-  /// bire çıktığı için hepsi yatay çubuğa sığmıyor, tek sheet'e taşındı.
+  /// Sunucunun kabul ettiği on bir süzgeç alanı yatay çubuğa sığmıyor, o
+  /// yüzden hepsi tek sheet'te.
   SliverToBoxAdapter filters() {
     final activeCount = _selection.activeCount;
 

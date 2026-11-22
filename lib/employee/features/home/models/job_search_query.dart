@@ -148,10 +148,6 @@ class JobSearchQuery {
       hasStartWindow;
 
   /// Sınırlayıcı kutu seçili mi.
-  ///
-  /// Eskiden dört alanın **herhangi biri** doluysa `true` veriyordu ama doc'u
-  /// "dördü de dolu mu" diyordu; tek alanla `true` dönen bir "dördü de" ifadesi
-  /// okuyanı yanıltıyordu. Kutu tek bir alan olunca soru da tekilleşti.
   bool get hasBounds => bounds != null;
 
   /// Başlangıç günü penceresi seçili mi. Ters aralık üretilmiyor: yalnız

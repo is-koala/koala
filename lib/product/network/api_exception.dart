@@ -168,9 +168,7 @@ enum ApiErrorType {
 
   /// Kategori gelmediğinde çalışan yedek.
   ///
-  /// **Dışarıdan çağrılamaz, [classify] üzerinden geçilir.** Eskiden bu tablo
-  /// `ApiClient._typeForStatus` olarak sınıfa private'dı ve dışarıdan
-  /// erişilemiyordu; yukarı taşınırken o kapalılık korunuyor.
+  /// **Dışarıdan çağrılamaz, [classify] üzerinden geçilir.**
   ///
   /// Eski sunucu, zarfı elle yazan filtreler ve gövdesi JSON olmayan yanıtlar
   /// için tek bilgi kaynağı bu.

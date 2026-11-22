@@ -19,10 +19,8 @@ import 'package:koala/product/features/account/presentation/pages/verification_c
 /// Hesap kullanıcıya ait, tarafına değil: çalışan da işveren de aynı
 /// ekranları açıyor. Yollar bu yüzden `/business/` öneki taşımıyor — önek
 /// yönlendirme kapısında çalışanı geri çevirir, öneksiz yol iki tarafa da
-/// açık (`RouterManager.resolveRedirect`). Eski `/business/sessions`,
-/// `/business/blocked-users`, `/business/account-deletion` ve
-/// `/business/reports` kopyaları kaldırıldı; iki ayarlar menüsü de buradaki
-/// sabitlere gidiyor.
+/// açık (`RouterManager.resolveRedirect`). İki ayarlar menüsü de buradaki
+/// sabitlere gidiyor; `/business/...` kopyası tutulmuyor.
 class AccountRoutes {
   const AccountRoutes._();
 
