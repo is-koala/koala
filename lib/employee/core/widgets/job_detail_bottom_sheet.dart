@@ -400,8 +400,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
           if (_detailError != null) _detailErrorRow(),
           if (_detail?.duties != null) ...[
             const SizedBox(height: AppSizes.spaceLarge),
-            Text('Görevler', style: context.textTheme.titleSmall),
-            const SizedBox(height: AppSizes.spaceSmall),
+            _sectionTitle('Görevler'),
             Text(
               _detail!.duties!,
               style: context.textTheme.bodyMedium?.copyWith(
@@ -423,7 +422,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
                 _detail!.createdAt!.toLocal().asShortDate,
               ),
           ]),
-          const SizedBox(height: AppSizes.spaceMedium),
+          const SizedBox(height: _sectionGap),
           _buildInfoCard('Gereksinimler', [
             if (_detail?.minAge != null || _detail?.maxAge != null)
               _appIconInfoRow(
@@ -447,7 +446,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
           if (widget.job.sector != null ||
               widget.job.position != null ||
               _headcount != null) ...[
-            const SizedBox(height: AppSizes.spaceMedium),
+            const SizedBox(height: _sectionGap),
             _buildInfoCard('İş Bilgileri', [
               if (widget.job.sector != null)
                 _appIconInfoRow(
@@ -473,10 +472,15 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
           // Ulaşım yalnız detayla geliyor (`JobDetailDto.transport`); planı
           // olmayan ilanda ve eski sunucuda alan `null`, kart yok.
           if (_detail?.transport != null) ...[
-            const SizedBox(height: AppSizes.spaceMedium),
-            JobTransportCard(transport: _detail!.transport!),
+            // Konum satırı alt boşluk taşımıyor; tam bölüm aralığı.
+            const SizedBox(height: AppSizes.spaceLarge),
+            JobTransportCard(transport: _detail!.transport!, plain: true),
           ],
-          SizedBox(height: context.padding.bottom + AppSizes.navBarClearance),
+          // Liste, alttaki buton çubuğunun üstünde bitiyor (aynı Column'da,
+          // üst üste değil); navbar payı gerekmiyor. Eskiden burada
+          // `navBarClearance` + güvenli alan vardı ve sonda boş bir ekran
+          // kalıyordu.
+          const SizedBox(height: AppSizes.spaceLarge),
         ],
       ),
     );
@@ -743,33 +747,34 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     ];
     if (facts.isEmpty) return const SizedBox.shrink();
 
-    return Padding(
-      padding: EdgeInsets.zero,
-      child: Wrap(
-        spacing: AppSizes.spaceMedium,
-        runSpacing: AppSizes.spaceSmall,
-        children: [
-          for (final (icon, label) in facts)
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AppIcon(
-                  icon,
-                  size: AppSizes.iconSmall,
-                  color: context.accentColor,
-                ),
-                const SizedBox(width: AppSizes.spaceTiny),
-                Text(
-                  label,
+    // Her bilgi kendi satırında: yan yana dizildiğinde sığıp sığmamasına
+    // göre bazı ilanlarda yan yana, bazılarında alt alta düşüyordu.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < facts.length; i++) ...[
+          if (i > 0) const SizedBox(height: AppSizes.spaceTiny),
+          Row(
+            children: [
+              AppIcon(
+                facts[i].$1,
+                size: AppSizes.iconSmall,
+                color: context.accentColor,
+              ),
+              const SizedBox(width: AppSizes.spaceTiny),
+              Expanded(
+                child: Text(
+                  facts[i].$2,
                   style: context.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w500,
                     color: context.textSecondary,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
+          ),
         ],
-      ),
+      ],
     );
   }
 
@@ -801,10 +806,11 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
 
   Widget _locationCard() {
     return Padding(
-      padding: const EdgeInsets.only(top: AppSizes.spaceLarge),
+      padding: const EdgeInsets.only(top: _sectionGap),
       child: JobLocationCard(
         precision: _addressPrecision,
         label: _locationLabel(),
+        plain: true,
       ),
     );
   }
@@ -904,23 +910,23 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
 
   // -------------------------------------------------------------- Bilgi kartı
 
+  /// Bilgi bölümü: kart zemini yok, Açıklama gibi bölüm başlığı ve altında
+  /// satırlar. Her satır altında [AppSizes.space] boşluk taşıyor; bölümler
+  /// arası [_sectionGap] bundan o kadar kısa, görünen aralık yine 24.
   Widget _buildInfoCard(String title, List<Widget> children) {
-    return Container(
-      padding: AppPadding.primaryAll,
-      decoration: BoxDecoration(
-        color: context.tileColor,
-        borderRadius: AppRadius.innerCircular,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: context.textTheme.titleSmall),
-          const SizedBox(height: AppSizes.space),
-          ...children,
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle(title),
+        const SizedBox(height: AppSizes.spaceTiny),
+        ...children,
+      ],
     );
   }
+
+  /// Bilgi bölümleri arası boşluk: satırların kendi alt boşluğu (12) ile
+  /// birlikte [AppSizes.spaceLarge] eder.
+  static const double _sectionGap = AppSizes.spaceLarge - AppSizes.space;
 
   /// Bilgi satırı. Sheet'teki bütün ikonlar Reicon'un çizgisel ailesinden;
   /// eskiden Material'in dolu ikonlarıyla karışıktı.
