@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
-import 'package:koala/product/constants/app_padding.dart';
-import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
@@ -38,50 +36,40 @@ class IdentityPhotoPathCard extends StatelessWidget {
   final bool isWarning;
 
   /// Uyarı zemininin saydamlığı; formun geri kalanı turuncuya boyanmasın.
-  static const double _warningSurfaceAlpha = 0.1;
 
   /// Açıklama metninin satır aralığı; kimlik ekranındakiyle aynı.
   static const double _lineHeight = 1.4;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: AppPadding.primaryAll,
-      decoration: BoxDecoration(
-        color: isWarning
-            ? AppColors.warning.withValues(alpha: _warningSurfaceAlpha)
-            : context.tileColor,
-        borderRadius: AppRadius.secondaryCircular,
-        border: Border.all(
-          color: isWarning ? AppColors.warning : context.accentColor,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              AppIcon(
-                isWarning ? AppIcons.alert : AppIcons.camera,
-                color: isWarning ? AppColors.warning : context.accentColor,
-              ),
-              const SizedBox(width: AppSizes.spaceSmall),
-              Expanded(child: Text(title, style: context.textTheme.titleSmall)),
-            ],
-          ),
-          const SizedBox(height: AppSizes.spaceSmall),
-          Text(
-            message,
-            style: context.textTheme.bodyMedium?.copyWith(
-              color: context.textSecondary,
-              height: _lineHeight,
+    // Kutusuz bir bölüm: sayfanın ana yolu, başlığı ve düğmesiyle kendini
+    // anlatıyor. Eskiden yeşil çerçeveli bir kartın içindeydi; altındaki
+    // çip kartı ve form da kutuluydu, iç içe kutular ekranı karmaşık
+    // gösteriyordu. Uyarı hâlinde yalnız ikon uyarı renginde.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            AppIcon(
+              isWarning ? AppIcons.alert : AppIcons.camera,
+              color: isWarning ? AppColors.warning : context.textPrimary,
             ),
+            const SizedBox(width: AppSizes.spaceSmall),
+            Expanded(child: Text(title, style: context.textTheme.titleMedium)),
+          ],
+        ),
+        const SizedBox(height: AppSizes.spaceSmall),
+        Text(
+          message,
+          style: context.textTheme.bodyMedium?.copyWith(
+            color: context.textSecondary,
+            height: _lineHeight,
           ),
-          const SizedBox(height: AppSizes.spaceMedium),
-          MyButton(onPressed: onContinue, title: buttonLabel),
-        ],
-      ),
+        ),
+        const SizedBox(height: AppSizes.spaceMedium),
+        MyButton(onPressed: onContinue, title: buttonLabel),
+      ],
     );
   }
 }
