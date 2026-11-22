@@ -36,7 +36,7 @@ inputs:
   agp-aapt2-version:
     description: Gradle önbelleğinde aranacak AGP aapt2 artifact sürümü
     required: false
-    default: "9.1.1-14792394"
+    default: "9.3.1-15703166"
   probe-gen-snapshot:
     description: >-
       Release AOT derlemesinin çalıştırdığı x86-64 gen_snapshot da yoklansın mı.
