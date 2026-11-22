@@ -120,14 +120,13 @@ const String _modaCoordinate = '40.987654,29.026123';
 /// "Yol tarifi al" düğmesi.
 final _directionsButton = find.byKey(const ValueKey('job-location-directions'));
 
-/// Onaylı, ödemesi henüz alınmamış atama: alt çubuk yok, kart tıklanabilir
-/// (600 px'lik test penceresinde alt çubuk kartın üstüne biniyordu).
+/// Onaylı, ödemesi alınmamış atama: alt çubuk yok, kart tıklanabilir (600
+/// px'lik pencerede çubuk kartın üstüne biniyordu).
 final MyJob _confirmedRow = assignmentRow(
   assignmentJson(paymentStatus: 'PENDING_COLLECTION'),
 );
 
-/// Özetinde koordinat taşıyan atama; `JobSummaryDto.latitude/longitude`
-/// detaydan farklı ki bağlantının hangisini taşıdığı ayırt edilsin.
+/// Özet koordinatı detaydan farklı ki bağlantının hangisini taşıdığı ayrılsın.
 MyJob _rowWithSummaryCoordinate(String precision) => assignmentRow(
   assignmentJson(
     paymentStatus: 'PENDING_COLLECTION',
@@ -138,11 +137,8 @@ MyJob _rowWithSummaryCoordinate(String precision) => assignmentRow(
   ),
 );
 
-/// Sayfayı gerçek temada, sahte sunucuya bağlı çizer.
-///
-/// Tek bir sahte sunucu bütün uçları karşılıyor: ilan detayı, mesai
-/// oturumları, iptal kaydı ve tekil atama. Şirket ve değerlendirme
-/// rotaları sahte; yalnızca açılıp açılmadıkları ve `extra`'ları ölçülüyor.
+/// Sayfayı gerçek temada sahte sunucuyla çizer; şirket ve değerlendirme
+/// rotalarının yalnız açılıp açılmadığı ve `extra`'ları ölçülüyor.
 Future<Harness> pumpDetail(
   WidgetTester tester, {
   required MyJob job,
@@ -635,7 +631,7 @@ void main() {
         expect(find.text('7s 45dk'), findsOneWidget);
       });
 
-      // Backend #282 gelmeden: yalnız mevcut damgalar, eksik satır gizli.
+      // Eski sunucu: yalnız mevcut damgalar, eksik satır gizli.
       testWidgets('çizelge: eski sunucuda yalnız mevcut damgalar', (
         tester,
       ) async {
@@ -1577,9 +1573,8 @@ void main() {
     });
   });
 
-  // Değerlendirme durumu sunucudan (`myReview`, `counterpartyReviewed`;
-  // is-koala/koala#189). Cihazda kayıt yok, `GET /users/{id}/reviews`e
-  // gidilmiyor.
+  // Değerlendirme durumu sunucudan (`myReview`, `counterpartyReviewed`; #189);
+  // `GET /users/{id}/reviews`'e gidilmiyor.
   for (final brightness in Brightness.values) {
     group('değerlendirme durumu / ${brightness.name}', () {
       final button = find.byKey(const ValueKey('work-detail-review'));
@@ -1690,10 +1685,9 @@ void main() {
         expect(button, findsNothing);
         expect(badge, findsNothing);
 
-        // Aşağı çekince atama yeniden okunuyor (`GET /job-assignments/{id}`);
-        // sunucunun kaydı oturumdakinin önüne geçiyor, rozet de geliyor.
-        // Liste aşağı kaydırılmış durumda; jest yerine göstergenin kendisi
-        // tetikleniyor, aynı `onRefresh` çalışıyor.
+        // Aşağı çekince atama yeniden okunur ve sunucunun kaydı oturumdakinin
+        // önüne geçer. Liste kaydırılmış olduğu için jest yerine gösterge
+        // tetikleniyor.
         unawaited(
           tester
               .state<RefreshIndicatorState>(find.byType(RefreshIndicator))
@@ -1732,9 +1726,8 @@ void main() {
       });
     });
 
-    // Çalışan yalnız kendi kazancını görür (is-koala/koala#189 B). Sunucu
-    // `pricing`i artık göndermiyor; gönderse de (eski sunucu) hizmet bedeli
-    // ve işveren toplamı çizilmiyor.
+    // Çalışan yalnız kendi kazancını görür (#189); eski sunucu `pricing`
+    // gönderse de hizmet bedeli ve işveren toplamı çizilmez.
     group('kazanç kartı / ${brightness.name}', () {
       testWidgets('pricing null: yalnız "Kazancınız" ve workerPayout', (
         tester,

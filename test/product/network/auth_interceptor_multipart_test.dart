@@ -75,10 +75,8 @@ void main() {
             startsWith(Headers.multipartFormDataContentType),
           );
 
-          // Asıl mesele: `MultipartFile` akışı bir kez okunabiliyor, bu yüzden
-          // aynı `FormData` tekrar gönderildiğinde gövde ya patlıyor ya da boş
-          // gidiyordu. Tekrar denenen isteğin dosyayı gerçekten taşıdığını
-          // yalnız akıtılan baytlara bakarak doğrulayabiliriz.
+          // `MultipartFile` akışı bir kez okunabiliyor; dosyanın gerçekten
+          // taşındığını yalnız akıtılan baytlar gösterir.
           expect(retry.body, contains('name="${call.fieldName}"'));
           expect(retry.body, contains(_fileContent));
           // `clone()` parçanın içerik tipini de taşımalı; kaybolsaydı sunucu
@@ -289,11 +287,7 @@ class _FakeResponse {
   final Map<String, String> headers;
 }
 
-/// Sunucuya giden baytları da saklayan sahte HTTP katmanı.
-///
-/// `test/support/fake_api.dart` istek akışını hiç okumuyor; multipart bir
-/// gövdenin gerçekten dolu gittiğini ancak akıtılan baytlar okunarak
-/// doğrulanabilir.
+/// Giden baytları da saklayan sahte katman; `FakeApi` gövde akışını okumuyor.
 class _RecordingAdapter implements HttpClientAdapter {
   _RecordingAdapter(this._respond);
 

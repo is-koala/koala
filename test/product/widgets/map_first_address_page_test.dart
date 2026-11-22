@@ -762,10 +762,8 @@ void main() {
   });
 
   group('harita anahtarı yokken', () {
-    // is-koala/koala#172: iOS'ta anahtar boşken `GoogleMap` kurulduğu an
-    // uygulama çöküyordu. Bayrak kapalıysa harita hiç kurulmaz; ekran
-    // arama + il/ilçe ile çalışır, pin şehir merkezi ya da son bilinen
-    // konumdur, ters geokod istenmez.
+    // #172: bayrak kapalıysa harita kurulmaz; arama + il/ilçe ile çalışır, ters
+    // geokod istenmez.
     for (final brightness in Brightness.values) {
       testWidgets(
         '${brightness.name} temada harita yerine yer tutucu çizer, pin '

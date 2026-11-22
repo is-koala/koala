@@ -2,11 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 
-/// `/users/me` yanıtı: kimlik bayrağı ve şirket üyelikleri testin verdiği
-/// hâlde, geri kalanı sabit bir işveren.
-///
-/// Şirket kapısı testleri aynı gövdeyi üç ayrı ekrandan sürüyor; her testte
-/// yeniden yazmak bayrağın hangi testte neden değiştiğini gölgeliyor.
+/// Kimlik bayrağı ve üyelikler testten, kalanı sabit işveren.
 Map<String, dynamic> employerMeResponse({
   required bool identityVerified,
   List<Map<String, dynamic>> companies = const [],
@@ -25,13 +21,8 @@ Map<String, dynamic> employerMeResponse({
   };
 }
 
-/// Kimlik doğrulama ekranının yerine geçen sahte rota.
-///
-/// Gerçek `IdentityVerificationPage` `UserService()`'i kendisi kuruyor ve
-/// ağa çıkıyor; kapıyı sürmek için ekranın yalnızca **sözleşmesi** gerekiyor:
-/// `extra` olarak `CurrentUser` alır, başarıda `true` ile kapanır. Testler
-/// [identityVerifiedKey] düğmesine basarak başarıyı, geri okuyla vazgeçmeyi
-/// canlandırıyor. Açılırken aldığı kullanıcı [onOpened] ile dışarı veriliyor.
+/// Kimlik ekranının sahtesi: sözleşmesi `extra` `CurrentUser`, başarıda `true`.
+/// [identityVerifiedKey] başarıyı, geri ok vazgeçmeyi canlandırır.
 GoRoute stubIdentityVerificationRoute({
   void Function(CurrentUser user)? onOpened,
 }) {

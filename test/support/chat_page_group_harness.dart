@@ -125,17 +125,9 @@ List<Map<String, dynamic>> _messages(String currentUserId) => [
   },
 ];
 
-/// Grup sohbeti ekranının iki kabukta aynı davranışını doğrular
-/// (is-koala/koala#179): gönderen adı, görüldü sayısı ve canlı
-/// güncellenmesi, başlığa dokununca katılımcılar sheet'i ve oradan
-/// başkasının profiline gidiş (is-koala/koala#182).
-///
-/// Profil iki kabukta farklı sayfa: [profileRoute] kabuğun açtığı rotanın
-/// kalıbı, [profileLocation] başkasının satırına dokununca açılan adres,
-/// [profileExtra] o rotaya verilen `extra`'nın beklentisi. Bağlantının
-/// **var** olması iki kabukta aynı; **kendi satırı** ise yalnız çalışan
-/// kabuğunda profil sekmesine gidiyor (`EmployeeRoutes.ownProfile`),
-/// işverende dokunulmuyor.
+/// Grup sohbetinin iki kabukta aynı davranışı (#179, #182): gönderen adı,
+/// görüldü, katılımcılar ve profile gidiş. Kendi satırı yalnız çalışan
+/// kabuğunda profil sekmesine gider.
 void registerChatPageGroupTests({
   required String role,
   required String currentUserId,
@@ -211,10 +203,8 @@ void registerChatPageGroupTests({
     await tester.pumpAndSettle();
   }
 
-  /// Sayfayı bir [GoRouter] içinde çizer: katılımcı satırı `context.push`
-  /// ile profile gidiyor, düz `MaterialApp` bunu karşılayamaz. Profil rotası
-  /// ve kendi profil sekmesi sahte; açılan adresler, `extra`'lar ve sekme
-  /// ziyaretleri dönen kayıtta birikiyor.
+  /// `context.push` için [GoRouter] gerekiyor; profil rotaları sahte, açılan
+  /// adresler kayıtta birikiyor.
   Future<
     ({List<String> locations, List<Object?> extras, List<String> ownVisits})
   >

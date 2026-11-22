@@ -99,10 +99,7 @@ void main() {
 
   setUp(() => server = _Server());
 
-  /// Firma bilgilerini temsil eden kökten şirket adresi ekranını açar.
-  ///
-  /// [withCompany] `false` ise sağlayıcı boş: ekran harita yerine "firmanız
-  /// yok" durumunu çizmeli, çökmemeli.
+  /// [withCompany] `false` ise ekran "firmanız yok" çizmeli, çökmemeli.
   Future<void> pumpAddress(
     WidgetTester tester, {
     bool withCompany = true,

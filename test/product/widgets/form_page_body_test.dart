@@ -12,10 +12,8 @@ import 'package:koala/product/widgets/my_textfield.dart';
 import '../../support/keyboard.dart';
 
 void main() {
-  /// Alanlar + CTA taşıyan bir sayfa. [resizes] `Scaffold`'un klavyeye göre
-  /// küçülüp küçülmediğini, [numeric] ikinci alanın iOS'ta "Bitti" şeridi
-  /// alan bir tuş takımı açıp açmadığını, [bottomBar] CTA'nın gövdede mi
-  /// `bottomNavigationBar`'da mı durduğunu seçiyor.
+  /// [resizes], [numeric] ve [bottomBar] klavye davranışının üç değişkenini
+  /// seçiyor.
   Future<void> pumpForm(
     WidgetTester tester, {
     required bool resizes,

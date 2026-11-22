@@ -118,11 +118,9 @@ void main() {
     });
 
     test('daire yarıçapı iki eksenin hatasını birden kapsıyor', () {
-      // Sunucu her eksende ±0.005° yuvarlıyor; en kötü sapma enlem ve boylam
-      // hatalarının köşegeni. Yalnız enlem bacağını ölçmek yetmez: boylam
-      // terimini sıfırlayan bir hata tam olarak o bacağı üretir ve iddianın
-      // altından geçerdi. Köşegen bacaktan **büyük**, iki bacak da eşit
-      // olsaydı ulaşacağı tavandan (bacak × √2, ekvatorda) küçük olmalı.
+      // En kötü sapma enlem ve boylam hatalarının köşegeni; yalnız enlemi
+      // ölçmek boylamı sıfırlayan hatayı kaçırırdı. Köşegen bacaktan büyük,
+      // bacak × √2'den küçük olmalı.
       final areas = JobMarkerGenerator.generateAreas(jobs: [maskedView()]);
 
       const latitudeLegInMeters = 0.005 * 111320;

@@ -254,10 +254,7 @@ void main() {
     });
   });
 
-  // Dio çok parçalı gövdeyi kendisi kodluyor; `filename` UTF-8 baytları olarak
-  // gitmeli (Spring isteği UTF-8 çözüyor). Gövde sonuna kadar akıtılıp başlık
-  // satırındaki baytlar okunuyor — adı yalnız `part.filename` ile karşılaştırmak
-  // kodlamayı hiç sınamazdı.
+  // `filename` UTF-8 baytlarıyla gitmeli; kodlamayı ancak akıtılan gövde sınar.
   test('UTF-8 dosya adı gövdede UTF-8 baytlarıyla gider', () async {
     final api = FakeApi(
       handler: (_) => dataResponse(evidenceJson('e'), statusCode: 201),

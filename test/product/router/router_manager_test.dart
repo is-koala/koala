@@ -211,10 +211,8 @@ void main() {
       );
     });
 
-    // Hesap modülünün ekranları iki uygulamanın da ayarlarından açılıyor ve
-    // her birinin tek rotası var. `/business` önekini taşımadıkları için
-    // işverenin, employee rota listesinde olmadıkları için çalışanın önü
-    // kesilmemeli.
+    // Hesap ekranları iki tarafa da açık: `/business` öneki yok, çalışan
+    // listesinde de değiller.
     test('hesap modülü rotaları her iki tarafa da açık', () {
       for (final userType in ['employee', 'business']) {
         for (final location in [

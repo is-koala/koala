@@ -79,10 +79,8 @@ void main() {
       );
     });
 
-    // Varış saati = iş başlangıcı kabul kriteri; ama üç şemanın hiçbiri
-    // (`api=1`, `comgooglemaps://`, `maps://`) varış saati parametresi
-    // belgelemiyor — yazılırsa sessizce düşer. Bağlantıya yazılmıyor ki
-    // kullanıcı saati ayarlanmış sanmasın; ekran bunu metinle söylüyor.
+    // Üç şemanın hiçbiri varış saati belgelemiyor; saat bağlantıya yazılmıyor
+    // ki kullanıcı ayarlanmış sanmasın.
     for (final entry in _builders.entries) {
       test('${entry.key}: varış saati bağlantıya yazılmıyor', () {
         final uri = entry.value(_withArrival);

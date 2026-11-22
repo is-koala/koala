@@ -53,10 +53,8 @@ const _emptyPage = FakeApiResponse(
   },
 );
 
-/// Mesajlaşma kapısının iki sohbet ekranındaki davranışını doğrular.
-///
-/// Kapı metni tarafa göre değişiyor: [expectedPaymentNote] o kabuğun ödeme
-/// bekleniyor cümlesi. Kapalı sohbet cümlesi iki tarafta aynı.
+/// İki sohbet ekranında mesajlaşma kapısı; [expectedPaymentNote] kabuğun
+/// cümlesi.
 void registerChatPageGateTests({
   required String role,
   required String currentUserId,

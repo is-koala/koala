@@ -1,13 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/settings/models/identity_error.dart';
 
-/// Sunucunun `IdentityMessages` sabitlerinden türeyen kodların tamamı.
-///
-/// Sunucuda mesaj anahtarı koda dönüşüyor (`{identity.sod.unreadable}` →
-/// `IDENTITY_SOD_UNREADABLE`, `KoalaException.deriveErrorCode`). Liste
-/// burada elle duruyor çünkü asıl amacı **ayrışmayı yakalamak**: sunucuya
-/// yeni bir kod eklendiğinde bu test kırılıp istemcinin de karşılık yazması
-/// gerektiğini söylüyor.
+/// `IdentityMessages` kodları. Liste elle, ayrışmayı yakalamak için.
 const List<String> _serverCodes = [
   'IDENTITY_EVIDENCE_REQUIRED',
   'IDENTITY_NO_TRUST_ANCHORS',

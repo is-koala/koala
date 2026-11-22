@@ -80,13 +80,8 @@ class _LiveCameraSession implements MrzCameraSession {
   }
 }
 
-/// Testte NFC eklentisinin yerli tarafı yok, yani `nfcAvailability` çağrısı
-/// `MissingPluginException` ile düşüyor. [ChipReader] bunu bilerek "donanım
-/// yok" sayıyor: sorulamayan bir NFC'yi varmış gibi kabul edip kullanıcıyı
-/// hiç açılmayacak bir okumaya sokmak, elle girişe yollamaktan kötü.
-///
-/// Bu yüzden bu dosya kabul maddesinin tam karşılığını ölçüyor: **NFC'si
-/// olmayan bir cihazda akış anlaşılır bir mesajla kapanıyor.**
+/// Testte NFC eklentisi yok ve [ChipReader] bunu "donanım yok" sayıyor; dosya
+/// NFC'siz cihazda akışın anlaşılır mesajla kapandığını ölçüyor.
 void main() {
   Future<GoRouter> pumpPage(
     WidgetTester tester, {

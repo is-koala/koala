@@ -42,11 +42,8 @@ const _success = FakeApiResponse(
   },
 );
 
-/// Çalışan ve işveren sohbet sayfalarının ortak kullanıcı davranışlarını
-/// gerçek widget'lar üzerinden doğrular.
-///
-/// Sayfa kurucu dışında rol ayrıntısı almıyor: retry ve controller yaşam
-/// döngüsü iki ekranda aynı interface üzerinden çalışmalı.
+/// İki sohbet sayfasının ortak davranışı; retry ve yaşam döngüsü aynı arayüzden
+/// çalışmalı.
 void registerChatPageRetryTests({
   required String role,
   required String currentUserId,

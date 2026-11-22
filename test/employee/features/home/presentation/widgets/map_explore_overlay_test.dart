@@ -51,10 +51,8 @@ Future<void> pumpOverlay(
 }
 
 void main() {
-  // Kusur tam olarak buradaydı: durum kartının tamamı `!isSearching`'e bağlıydı
-  // ve arama açıkken hata da kırpılma da ekrana hiç çıkmıyordu. Üç durum da
-  // aramanın iki hâlinde birden sınanıyor; koşul geri gelirse `isSearching:
-  // true` satırları kırmızıya döner.
+  // Durum kartı `!isSearching`'e bağlıydı ve arama açıkken hata görünmüyordu;
+  // koşul geri gelirse `isSearching: true` satırları kırmızıya döner.
   for (final isSearching in [true, false]) {
     final searchName = isSearching ? 'arama açıkken' : 'arama kapalıyken';
 

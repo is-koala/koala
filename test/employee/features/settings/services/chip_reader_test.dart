@@ -6,12 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/settings/models/chip_read_failure.dart';
 import 'package:koala/employee/features/settings/services/chip_reader.dart';
 
-/// Cihaz gerektirmeyen tek ama en kıymetli parça: `dmrtd`'nin hatasının
-/// kullanıcıya ne söyleyeceğe çevrildiği yer.
-///
-/// Hepsini "bir hata oluştu" göstermek bu akışta kullanıcıyı döngüye
-/// sokuyor: "kart hareket etti" tekrar denemekle çözülüyor, "bu telefonda
-/// NFC yok" asla çözülmüyor.
+/// `dmrtd` hatasının kullanıcı sebebine çevrildiği yer: "kart hareket etti"
+/// tekrarla çözülür, "NFC yok" asla.
 void main() {
   group('ChipReader.failureFor', () {
     test('yanlış anahtar güvenlik durumu hatasından ayrışıyor', () {

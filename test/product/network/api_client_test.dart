@@ -412,12 +412,8 @@ void main() {
     });
   });
 
-  // Zarfın metin alanları `as String?` ile okunursa, beklenmedik türde gelen
-  // bir alan `_TypeError` atar. Hata yanıtında bu cast `_toApiException`'ın
-  // *içinden* çalışıyor, yani `ApiClient`'ın `TypeError` ağına hiç uğramadan
-  // çağırana ham hâliyle ulaşır: sayfa `on ApiException` yakalar, uygulama
-  // düşer. Koruma alan alan değil zarfın geneline konuldu; bu grup da tek
-  // tek her alanı ölçüyor.
+  // `as String?` ile okunan beklenmedik tür `_toApiException` içinden ham
+  // `_TypeError` olarak çağırana ulaşırdı; bu grup her alanı tek tek ölçüyor.
   group('ApiClient zarfın tür koruması', () {
     for (final field in ['message', 'errorCode', 'errorCategory', 'success']) {
       test('$field beklenmedik türde gelirse ApiException kalır', () async {

@@ -23,9 +23,8 @@ import '../../../../../../support/fake_maps_availability.dart';
 import '../../../../../../support/fixtures.dart';
 import '../../../../../../support/pump.dart';
 
-/// Sunucunun bir ilanı hangi kesinlikte verdiği; yükün tamamı bu iki alanla
-/// değişiyor. `JobMapper` koordinatı **daima** yazıyor, yalnız değeri yuvarlıyor
-/// — yani bayrağı okumayan bir istemci farkı hiç göremez.
+/// Sunucunun ilanı verdiği kesinlik; `JobMapper` koordinatı daima yazıyor,
+/// bayrağı okumayan istemci farkı göremez.
 Map<String, dynamic> _jobBody({
   required double latitude,
   required double longitude,
@@ -58,9 +57,8 @@ Map<String, dynamic> _page(Map<String, dynamic> job) => {
   },
 };
 
-/// Aynı ilanı sırayla veren sahte sunucu: ilk çağrıda yetkili görünüm, sonraki
-/// çağrılarda yetkisiz görünüm. Gerçek hayatta aradan geçen olay atamanın
-/// bitmesi ya da iptal edilmesi.
+/// İlk çağrıda yetkili, sonrakilerde yetkisiz görünüm (atama bitti ya da iptal
+/// edildi).
 bool _isJobCategories(RequestOptions options) =>
     options.path.contains('job-categories');
 
@@ -93,14 +91,9 @@ const _bounds = JobMapBounds(
   maxLongitude: 29.1,
 );
 
-/// `LocationService` cihazın izin akışını açıyor ve testte o kanalların
-/// arkasında kimse yok.
-///
-/// İki sebeple yanıtlanıyorlar. Cevapsız bırakmak `MissingPluginException`'ı
-/// yakalanmamış bir asenkron hataya çeviriyor; ve izin gelmezse sayfa
-/// "Harita Yükleniyor..." dönenini sonsuza kadar çeviriyor, `pumpAndSettle` de
-/// hiç durmuyor. Konumun kendisi bu testlerin konusu değil — pinlerin
-/// kesinliği kullanıcının nerede durduğuna bağlı değil.
+/// `LocationService`'in izin kanallarını yanıtlar: cevapsız kanal yakalanmamış
+/// `MissingPluginException` verir ve sayfa "Harita Yükleniyor..."da kalıp
+/// `pumpAndSettle`'ı hiç bitirmez.
 void _grantLocationPermission() {
   final messenger =
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
@@ -108,7 +101,6 @@ void _grantLocationPermission() {
   messenger.setMockMethodCallHandler(
     const MethodChannel('flutter.baseflow.com/permissions/methods'),
     (call) async => switch (call.method) {
-      // PermissionStatus.granted
       'checkPermissionStatus' => 1,
       'requestPermissions' => {
         for (final value in call.arguments as List) value: 1,
@@ -120,8 +112,7 @@ void _grantLocationPermission() {
   messenger.setMockMethodCallHandler(
     const MethodChannel('flutter.baseflow.com/geolocator'),
     (call) async => switch (call.method) {
-      // LocationAccuracyStatus.precise — "reduced" olsaydı sayfa izin
-      // uyarısını açar, testin konusu olmayan bir dialog çizerdi.
+      // "reduced" olsaydı sayfa testin konusu olmayan izin uyarısını açardı.
       'getLocationAccuracy' => 1,
       'getCurrentPosition' => {'latitude': 41.0, 'longitude': 29.0},
       _ => null,
@@ -129,14 +120,9 @@ void _grantLocationPermission() {
   );
 }
 
-/// Pin görselini bir kez gerçek olay döngüsünde üretir.
-///
-/// `JobMarkerGenerator` pini SVG'den çiziyor: varlık okuma ve PNG kodlama,
-/// ikisi de testin sahte saatiyle değil gerçek olay döngüsüyle ilerliyor, yani
-/// `pumpAndSettle` onları beklemiyor. Bir kez `runAsync` içinde ısıtılınca
-/// görsel üreticinin statik önbelleğine giriyor ve sayfanın kendi üretimi
-/// mikrogörevde bitiyor — testin beklemesi gereken duvar saati kalmıyor, yani
-/// makine yükü altında da aynı sonucu veriyor.
+/// Pin görselini bir kez gerçek olay döngüsünde üretir: SVG okuma ve PNG
+/// kodlama sahte saati izlemiyor. Isıtılınca statik önbelleğe giriyor ve
+/// sayfanın üretimi mikrogörevde bitiyor; makine yükünden bağımsız.
 Future<void> _warmMarkerArtwork(WidgetTester tester) async {
   await tester.runAsync(
     () => JobMarkerGenerator.markerFor(maskedView(), (_) {}),
@@ -183,11 +169,8 @@ void main() {
   testWidgets('yetki sona erince haritadaki kesin pin yerini bırakıyor', (
     tester,
   ) async {
-    // Kabul maddesi: "önbellekte kalmış tam adres yetki sona erdikten sonra
-    // gösterilmez" (is-koala/koala#10). Sayfanın önbelleği ilan kimliğine
-    // bakarsa aynı id ikinci kez geldiğinde eski **kesin** pin ekranda kalır
-    // ve iş hâlâ tam adresinde duruyormuş gibi görünür — testin tuttuğu şey
-    // bu, `cacheKeyFor`'un metni değil.
+    // Kabul maddesi (#10): yetki bitince önbellekteki tam adres gösterilmez.
+    // Önbellek ilan kimliğine bakarsa eski **kesin** pin ekranda kalır.
     final api = _apiServing([
       _jobBody(
         latitude: exactLatitude,
@@ -217,7 +200,6 @@ void main() {
     );
     expect(_map(tester).circles, isEmpty);
 
-    // Aynı kamera, aynı ilan — yalnız yetki bitti.
     controller.retry();
     await tester.pumpAndSettle();
 
@@ -258,8 +240,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(_map(tester).markers.single.anchor, const Offset(0.5, 1.0));
 
-    // Koordinat bilerek aynı bırakıldı: sunucu yuvarlamayı yapmasa bile
-    // bayrak tek başına pini yeniden ürettirmeli.
+    // Koordinat bilerek aynı: bayrak tek başına pini yeniden ürettirmeli.
     controller.retry();
     await tester.pumpAndSettle();
 
@@ -414,32 +395,19 @@ void main() {
   );
 
   group('önbellek ve konum kuralı (#10, #220)', () {
-    // #220'den önce her yanıt pin listesini baştan yazıyordu: yanıtta olmayan
-    // ilan haritadan da düşüyordu. Artık ilanlar kimliğe göre önbellekte
-    // duruyor ve yalnız **eksiksiz** yanıt eksik ilanı siliyor; kırpılmış yanıt
-    // (`last: false`) yalnız ekliyor.
+    // İlanlar kimliğe göre önbellekte; yalnız **eksiksiz** yanıt eksik ilanı
+    // siler, kırpılmış (`last: false`) yanıt yalnız ekler.
     //
-    // Önbelleğe giren kesinliği sunucu belirliyor (Yusuf, 04.11.2026, backend
-    // `feat/job-location-rule`): harita/arama listesinde (`GET /jobs`) etkin
-    // atama kesinliği **yükseltmiyor**; `EXACT` yalnız (şirket ilanı &&
-    // `addressPublic`) ya da görüntüleyen ilanın sahibiyse geliyor. Yani
-    // başkasına ait, sonradan geri alınabilecek bir kesin konum harita
-    // önbelleğine normalde hiç girmiyor; #10'un kabul maddesi ("önbellekte
-    // kalmış tam adres yetki sona erdikten sonra gösterilmez") haritada
-    // sunucu sözleşmesiyle tutuyor. İstemci kural kurmuyor, yalnız
-    // `addressPrecision` okuyor; bu grup o sözleşmenin haritadaki karşılığını
+    // `GET /jobs`'ta `EXACT` yalnız (şirket ilanı && `addressPublic`) ya da
+    // sahibine geliyor; geri alınabilecek kesin konum harita önbelleğine
+    // normalde girmiyor. Bu grup o sözleşmenin haritadaki karşılığını
     // belgeliyor.
     //
-    // Bilinen uç durum (düzeltilmedi, Yakup'un kararına bırakıldı): şirket
-    // ilanı açıkken önbelleğe kesin pinle girer, işveren sonra ilanı
-    // düzenleyip adresi **gizlerse** ve alan kırpılmış (`last: false`) yanıtla
-    // yenilenip ilan o 100'ün içinde gelmezse, önbellekteki eski kesin pin
-    // `areaTtl`'den (3 dk) uzun kalabilir. Kırpılmış yanıt ilanı yaklaşık
-    // getirirse pin yerini bırakıyor — aşağıdaki testlerden biri o yolu
-    // sabitliyor.
+    // Bilinen uç durum (açık karar): şirket ilanı kesin pinle girip sonra adres
+    // gizlenirse ve ilan kırpılmış yanıtta gelmezse eski pin `areaTtl`'den uzun
+    // kalabilir.
 
-    /// Kendi kimliği ve işveren türüyle bir ilan; testler konumları diğer
-    /// pinlerden grup olmayacak kadar uzak seçiyor.
+    /// Konumlar birbiriyle gruplanmayacak kadar uzak.
     Map<String, dynamic> jobAt({
       required String id,
       required double latitude,
@@ -472,8 +440,7 @@ void main() {
       },
     };
 
-    /// Bireysel ilanın harita yanıtı: kim bakarsa baksın (atanmış işçi dahil)
-    /// yaklaşık.
+    /// Bireysel ilan: atanmış işçi dahil herkese yaklaşık.
     final individualJob = {
       ..._jobBody(
         latitude: roundedLatitude,
@@ -498,8 +465,6 @@ void main() {
     Iterable<LatLng> pinPositions(WidgetTester tester) =>
         _map(tester).markers.map((marker) => marker.position);
 
-    /// İlan isteklerini sırayla yanıtlar; bir yanıt `Future` ise test onu
-    /// istediği an tamamlar.
     FakeApi apiAnswering(List<FutureOr<FakeApiResponse>> responses) {
       var call = 0;
       return FakeApi(
@@ -577,11 +542,8 @@ void main() {
 
     testWidgets('bireysel ilan kırpılmış yanıtta düşmese de önbellekte '
         'yaklaşık kalıyor', (tester) async {
-      // Eski kırmızı senaryo: alan eksiksiz yüklendi, `areaTtl` doldu ve alan
-      // yoğunlaştı; sunucu `last: false` ile ilk 100'ü veriyor ve ilan
-      // aralarında değil. Kırpılmış yanıt silmediği için ilan önbellekte
-      // kalıyor — ama yeni sözleşmede harita yanıtı bireysel ilanı atanmış
-      // işçiye bile kesin vermediği için kalan şey zaten yaklaşık konum.
+      // Alan yoğunlaştı, kırpılmış yanıt ilanı içermiyor ve silmiyor; ama
+      // bireysel ilan önbelleğe zaten yaklaşık girdiği için kalan da yaklaşık.
       var now = DateTime(2026, 11, 4, 12);
       final api = apiAnswering([
         FakeApiResponse(
@@ -620,10 +582,8 @@ void main() {
 
     testWidgets('süresi dolmuş alana dönünce önbellekten çizilen bireysel '
         'ilan yaklaşık', (tester) async {
-      // Eski kırmızı senaryo: kamera süresi dolmuş alana dönünce önbellek
-      // istek dönmeden çiziliyor (`onCameraIdle` → `_updateVisible`). Yeni
-      // sözleşmede önbellekte bireysel ilanın kesin konumu hiç olmadığı için
-      // yanıttan önce çizilen pin de yaklaşık.
+      // Süresi dolmuş alana dönünce önbellek istekten önce çiziliyor; bireysel
+      // ilanın kesin konumu önbellekte olmadığı için o pin de yaklaşık.
       var now = DateTime(2026, 11, 4, 12);
       final fresh = Completer<FakeApiResponse>();
       final api = apiAnswering([
@@ -662,8 +622,7 @@ void main() {
 
       now = now.add(controller.areaTtl);
       controller.onCameraIdle(_bounds);
-      // Süre verilmeden `pump` sahte saati ilerletmiyor, sıfır debounce'un
-      // zamanlayıcısı da çalışmıyor.
+      // Süresiz `pump` sahte saati ilerletmiyor; sıfır debounce çalışmaz.
       await tester.pump(Duration.zero);
       await tester.pump();
 
@@ -672,7 +631,6 @@ void main() {
       expect(pinPositions(tester), [roundedPin]);
       expect(_map(tester).circles, hasLength(1));
 
-      // Bekleyen isteği kapat: test zamanlayıcı bırakmasın.
       fresh.complete(
         FakeApiResponse(
           statusCode: 200,
@@ -685,10 +643,9 @@ void main() {
 
     testWidgets('adresi sonradan gizlenen şirket ilanı kırpılmış yanıtta '
         'yaklaşık gelirse kesin pin yerini bırakıyor', (tester) async {
-      // Uç durumun kapanan yarısı: ilan kırpılmış yanıtın içindeyse aynı
-      // kimlikle yaklaşık gelir ve önbellekteki kesin girdinin üzerine
-      // yazılır. İlan yanıtta **yoksa** eski kesin pin kalabilir; o yarı
-      // bilinen uç durum olarak Yakup'un kararına bırakıldı.
+      // Uç durumun kapanan yarısı: ilan kırpılmış yanıttaysa yaklaşık gelip
+      // kesin girdinin üzerine yazar. Yanıtta yoksa eski pin kalabilir (açık
+      // karar).
       var now = DateTime(2026, 11, 4, 12);
       final api = apiAnswering([
         FakeApiResponse(
@@ -744,9 +701,8 @@ void main() {
   });
 
   group('harita bayrağı', () {
-    // is-koala/koala#172: iOS'ta anahtar boşken ilk `GoogleMap` uygulamayı
-    // çökertiyordu. Bayrak kapalıysa harita hiç kurulmaz; kullanıcı yer
-    // tutucuyu görür ve listeye geçebilir.
+    // #172: anahtar boşken iOS'ta ilk `GoogleMap` çöküyordu; bayrak kapalıysa
+    // harita kurulmaz.
     for (final brightness in Brightness.values) {
       testWidgets('kapalıyken ${brightness.name} temada yer tutucu çizer', (
         tester,
@@ -892,8 +848,7 @@ void main() {
         debounce: Duration.zero,
       );
 
-      // Grup pininin görseli de gerçek olay döngüsünde üretiliyor; tek pin
-      // gibi harita kurulmadan önce ısıtılıyor.
+      // Grup pininin görseli de gerçek olay döngüsünde üretiliyor.
       await tester.runAsync(
         () => JobMarkerGenerator.clusterMarkerFor(
           JobClusterer.cluster([

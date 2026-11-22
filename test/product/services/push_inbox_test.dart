@@ -122,10 +122,8 @@ void main() {
     expect(opened, isEmpty);
   });
 
-  // Backend mesaj push'ını `type=MESSAGE, conversationId, messageId` ile
-  // gönderiyor (`ActivityNotificationManager.messageSent`); `notificationId`
-  // teslimatta ekleniyor. Bu yük sohbet ekranına gider, bildirim ekranına
-  // değil; `IN_APP` satırı olmadığı için okundu işaretlenecek bir şey yok.
+  // Mesaj push'ı sohbete gider, bildirim ekranına değil; `IN_APP` satırı yok,
+  // okundu işaretlenecek bir şey yok.
   group('sohbet mesajı push\'ı', () {
     test('ön planda hiçbir şey yapmaz: STOMP zaten çizdi', () async {
       await inbox.handleForeground(messagePush());
@@ -197,10 +195,8 @@ void main() {
     );
   });
 
-  // Backend ulaşım push'unu `type=TRANSPORT, event, jobId, jobAssignmentId`
-  // ile gönderiyor (`TransportManager.notifyWorker`); `IN_APP` satırı da var,
-  // o yüzden ön planda liste tazelenir ve dokunma okundu işaretlenir. Hedef
-  // bildirim ekranı değil iş detayı (is-koala/koala#197).
+  // Ulaşım push'unun `IN_APP` satırı var: ön planda liste tazelenir, dokunma
+  // okundu işaretler; hedef iş detayı (#197).
   group('ulaşım push\'ı', () {
     test('ön planda sıradan bildirim gibi listeyi tazeler', () async {
       await inbox.handleForeground(transportPush());

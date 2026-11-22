@@ -117,10 +117,7 @@ void main() {
     gateway = FakeAddressSearchGateway();
   });
 
-  /// Hesap ekranını temsil eden kökten `/address`'i açar ve dönüşü izler.
-  ///
-  /// [withExtra] `false` ise rota kullanıcısız açılıyor: ödeme kapısından
-  /// gelen yönlendirme gibi, ekran kullanıcıyı sağlayıcıdan okumalı.
+  /// [withExtra] `false` ise ekran kullanıcıyı sağlayıcıdan okumalı.
   Future<void> pumpAddress(
     WidgetTester tester, {
     bool withExtra = true,

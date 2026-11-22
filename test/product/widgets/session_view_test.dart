@@ -28,10 +28,7 @@ const _sessionsJson = <Map<String, dynamic>>[
   },
 ];
 
-/// Oturum listesi ve ayrıntı uçlarını karşılayan sahte sunucu.
-///
-/// [detailStatus] `404` iken eski sunucu taklit ediliyor: ayrıntı ucu yok,
-/// liste olduğu gibi duruyor.
+/// [detailStatus] `404` iken eski sunucu taklit ediliyor.
 class _Server {
   int detailStatus = 200;
   List<Map<String, dynamic>> sessions = List.of(_sessionsJson);

@@ -1,12 +1,7 @@
 import 'fake_api.dart';
 
-/// `ReferenceLocationService`'in üç ucuna tek ülke / il / ilçe döndürür;
-/// eşleşmeyen yolda `null`, testin kendi sunucusu devam etsin diye.
-///
-/// Harita-öncelikli adres ekranı bu listeleri yalnız elle giriş yolunda,
-/// il/ilçe seçicisi açılınca çekiyor; ters geokod ya da arama adayı gelmişse
-/// kimliği adaydan alıyor ve bu uçlara hiç gitmiyor. Elle giriş yolunu süren
-/// testler bu üç yanıtı verir.
+/// Tek ülke / il / ilçe; eşleşmeyen yolda `null`. Yalnız elle giriş yolu bu
+/// uçlara gidiyor.
 FakeApiResponse? istanbulReferenceResponse(String path) {
   return switch (path) {
     '/reference/countries' => const FakeApiResponse(

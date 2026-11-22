@@ -49,10 +49,8 @@ void main() {
       await tester.tap(find.text('aç'));
       await tester.pumpAndSettle();
 
-      // `ListTile` kullanılırsa Flutter "background color or ink splashes may
-      // be invisible" hatasını bildiriyor ve test bu yüzden düşüyor:
-      // `AppBottomSheet`'in renkli kabuğu araya giriyor. Bu test o gerilemeyi
-      // tutuyor.
+      // `ListTile` renkli kabukta "ink splashes may be invisible" verir; bu
+      // test o gerilemeyi tutuyor.
       expect(tester.takeException(), isNull);
       expect(find.text('Ankara'), findsOneWidget);
       expect(find.text('İstanbul'), findsOneWidget);

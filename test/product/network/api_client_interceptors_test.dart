@@ -9,13 +9,8 @@ import 'package:koala/product/network/device_identity.dart';
 
 import '../../support/fake_api.dart';
 
-/// `ApiClient.withDio` üretimdeki interceptor zincirini kuruyor mu.
-///
-/// Bu dosyanın varlık sebebi is-koala/koala#21: testlerdeki istemci hiçbir
-/// interceptor taşımadığı için `Authorization` başlığı, `X-Device-Id`,
-/// `401` sonrası yenileme ve sıraya alma davranışının **hiçbir** otomatik
-/// kanıtı yoktu. Bir interceptor zincirden düşerse buradaki testler kırmızıya
-/// dönmeli.
+/// `ApiClient.withDio` üretimdeki interceptor zincirini kuruyor mu (#21): bir
+/// interceptor zincirden düşerse bu testler kırmızıya dönmeli.
 void main() {
   group('DeviceInterceptor', () {
     test('her isteğe X-Device-Id başlığını koyuyor', () async {
@@ -57,8 +52,7 @@ void main() {
       );
     });
 
-    // Cihaz ipuçları (is-koala/koala#198): sunucu giriş ve yenileme
-    // isteklerinde okuyup cihaza gerçek adını yazıyor.
+    // Cihaz ipuçları (#198): sunucu giriş ve yenilemede cihaz adını yazıyor.
     test('cihaz ipucu başlıklarını her isteğe koyuyor', () async {
       final api = FakeApi(
         handler: (_) => const FakeApiResponse(
@@ -245,20 +239,14 @@ void main() {
       );
     });
 
-    // Issue'nun asıl bulgusu: yenileme kararı yalnızca `401` durum koduna
-    // bağlıyken `unauthenticated` tipinin **hiçbir okuyucusu yoktu**. Ayrım
-    // `ApiErrorType`'ta vardı ama oturumu yenileyen yol onu hiç okumuyordu;
-    // bağ yalnızca "sunucu bu kategorileri `401` ile gönderiyor" varsayımıyla
-    // ayakta duruyordu (is-koala/koala#86).
-    //
-    // Aşağıdaki iki durum kodu bilerek `401` **değil**: karar kategoriden
-    // gelmiyorsa hiçbiri yenilemez.
+    // Yenileme kararı kategoriden çıkmalı (#86). Aşağıdaki durum kodları
+    // bilerek `401` **değil**: karar kategoriden gelmiyorsa hiçbiri yenilemez.
     for (final (statusCode, category) in const [
-      // Durum kodu kategoriyle **çelişiyor**: `403`'ün yedeği `forbidden`,
-      // yani karar durum kodundan çıksa yenileme hiç denenmezdi.
+      // `403`'ün yedeği `forbidden`; karar durum kodundan çıksa yenileme
+      // denenmezdi.
       (403, 'TOKEN_EXPIRED'),
-      // Tablonun hiç tanımadığı bir kod: yedek `unknown`'a düşüyor, yani bu
-      // satırın yeşil kalmasının tek yolu kategoriyi okumak.
+      // Tanınmayan kod `unknown`'a düşer; yeşil kalmanın tek yolu kategoriyi
+      // okumak.
       (440, 'AUTHENTICATION_REQUIRED'),
     ]) {
       test('$statusCode + $category yenilemeyi tetikliyor', () async {
@@ -313,10 +301,9 @@ void main() {
       });
     }
 
-    // Ayrımın ters yönü. Yukarıdaki iki test tek başına "kategori **ya da**
-    // `401`" kuralıyla da yeşil kalırdı; bu test kategorinin gerçekten
-    // birincil kapı olduğunu ölçüyor: `401` geliyor ama kategori oturumun
-    // bittiğini söylemiyor, yani yenilemenin çözeceği bir şey yok.
+    // Ters yön: `401` var ama kategori oturum bitti demiyor. Yukarıdakiler
+    // "kategori **ya da** `401`" kuralıyla da geçerdi; bu, kategorinin birincil
+    // kapı olduğunu ölçüyor.
     test('401 + ACCESS_DENIED yenileme denemiyor', () async {
       final api = FakeApi(
         handler: (_) => const FakeApiResponse(
@@ -353,9 +340,7 @@ void main() {
       ]);
     });
 
-    // `401` **yedek** olarak duruyor: zarf kategori taşımıyorsa bugünkü
-    // davranış korunmalı. Gövdesi JSON olmayan bir hata sayfasında
-    // ayrıştırılacak kategori yok, karar durum koduna düşüyor.
+    // Kategorisiz `401` yedek olarak yenilemeyi sürdürür.
     test('kategorisiz 401 hata sayfasında yenileme sürüyor', () async {
       var businessCalls = 0;
 
@@ -444,13 +429,9 @@ void main() {
       ]);
     });
 
-    // Yukarıdaki testin kategori yolundaki karşılığı, ve eksik olan buydu.
-    // O test kategorisiz bir `401` kullanıyor, yani yalnız durum kodu
-    // yedeğini ölçüyor: `_shouldRefresh` eski hâline (`statusCode == 401`)
-    // döndürülse bile yeşil kalır. Yenilemenin **kategoriden** başladığı
-    // yolda başarısızlığın kullanıcıyı gerçekten çıkışa düşürdüğünü ölçen
-    // tek yer burası — yenilemeyi denemek ile onu tamamlamak ayrı şeyler ve
-    // ikincisi ölçülmemişse `sessionExpired` sessizce ölü kalabilirdi.
+    // Kategori yolunda başarısız yenilemenin gerçekten çıkışa düşürdüğünü ölçen
+    // tek test; kategorisiz `401` testi eski `statusCode == 401` koduyla da
+    // geçerdi.
     test('403 + TOKEN_EXPIRED yenilenemezse oturum sonlandırılıyor', () async {
       final api = FakeApi(
         handler: (options) {

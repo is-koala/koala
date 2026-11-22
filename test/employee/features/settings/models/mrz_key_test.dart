@@ -1,11 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/settings/models/mrz_key.dart';
 
-/// Gerçek bir TCKK düzeninde, kontrol haneleri hesaplanmış TD1 MRZ'si.
-///
-/// Birinci satır: `I<TUR` + belge no + kontrol hanesi + isteğe bağlı veri
-/// (TCKN). İkinci satır: doğum tarihi + kontrol, cinsiyet, son geçerlilik +
-/// kontrol, uyruk, isteğe bağlı veri 2 ve bileşik kontrol hanesi.
+/// Kontrol haneleri hesaplanmış gerçek düzende TD1 MRZ'si.
 const String _line1 = 'I<TURA01B23456612345678950<<<<';
 const String _line2 = '9804072F3001019TUR<<<<<<<<<<<8';
 const String _line3 = 'KAYA<<ADA<<<<<<<<<<<<<<<<<<<<<';

@@ -268,10 +268,7 @@ void main() {
     });
 
     test('kanıt gönderilmediğinde gövde eskisiyle birebir aynı', () async {
-      // Kabul maddesi: bayrak kapalıyken akış eskisi gibi çalışmalı. Çip
-      // yolundan geçmeyen bir doğrulama isteği fazladan **tek bir alan**
-      // bile taşımamalı — sunucudaki `verifyChipEvidence` bayrak kapalıyken
-      // hemen dönüyor ama sözleşmenin değişmediği burada kilitleniyor.
+      // Çip yolundan geçmeyen istek fazladan **tek bir alan** taşımamalı.
       final api = FakeApi(
         handler: (_) =>
             const FakeApiResponse(statusCode: 200, body: {'success': true}),

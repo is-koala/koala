@@ -19,10 +19,8 @@ const _employer = {
 };
 
 void main() {
-  // `JobAssignmentManager.initiatePaymentSession` bireysel işverenin adresi
-  // yokken İyzico alıcı kaydını kuramıyor ve `400` + bu kodla dönüyor.
-  // Mesaj ("İşverenin adres bilgisi eksik.") ne yapılacağını söylemiyor;
-  // uygulama kullanıcıyı doğrudan adres ekranına götürmeli.
+  // Bireysel işverenin adresi yoksa ödeme `400` ile dönüyor ve mesaj ne
+  // yapılacağını söylemiyor; kullanıcı adres ekranına götürülmeli.
   testWidgets('adres eksik hatası işvereni adres ekranına götürür', (
     tester,
   ) async {

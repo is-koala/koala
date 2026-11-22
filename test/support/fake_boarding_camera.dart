@@ -1,11 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:koala/product/features/transport/presentation/widgets/boarding_scanner.dart';
 
-/// Kamerası olmayan tarama yüzeyi (is-koala/koala#217).
-///
-/// `mobile_scanner` testte platform görünümü açamıyor; ekranlar yüzeyi
-/// [BoardingCameraBuilder] ile aldığı için test bunu veriyor ve okunan kodu
-/// ya da kamera hatasını elle gönderiyor.
+/// Kamerasız tarama yüzeyi (#217); test okunan kodu ya da hatayı elle gönderir.
 class FakeBoardingCamera {
   BoardingCameraCallbacks? _callbacks;
   int builds = 0;

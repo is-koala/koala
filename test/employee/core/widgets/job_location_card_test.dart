@@ -47,11 +47,8 @@ void main() {
   for (final brightness in Brightness.values) {
     final themeName = brightness == Brightness.dark ? 'koyu' : 'açık';
 
-    // İsimler iki durum sayıyor, dört aktör değil. Aktör → kesinlik eşlemesini
-    // sunucu kuruyor (`JobAddressVisibility`) ve mobilde onu bağlayan hiçbir
-    // şey yok; kartın gördüğü tek şey bayrak. "İşveren", "atanmış çalışan",
-    // "diğer kullanıcı", "anonim ziyaretçi" diye dört test yazmak, ölçülmeyen
-    // bir eşlemeyi ölçüyormuş gibi gösterirdi.
+    // İki durum sayılıyor, dört aktör değil: aktör → kesinlik eşlemesi
+    // sunucuda, kartın gördüğü tek şey bayrak.
     group('Konum kartı ($themeName tema)', () {
       testWidgets('kesin konumda başlık "Konum" ve açık adres yazıyor', (
         tester,

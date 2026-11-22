@@ -3,11 +3,8 @@ import 'dart:io';
 
 import 'backend_contract_root.dart';
 
-/// Backend'in yayımladığı `ErrorCategory` kümesini okur.
-///
-/// Önce `KOALA_OPENAPI_PATH` (OpenAPI belgesi), yoksa
-/// [BackendContractRoot] üzerinden `ErrorCategory.java`. İkinci bir Dart
-/// listesi değil; Java/şema eklenince eşleme testi kırmızıya döner.
+/// Backend'in `ErrorCategory` kümesi; OpenAPI ya da `ErrorCategory.java`'dan.
+/// İkinci bir Dart listesi değil.
 class BackendErrorCategories {
   static const javaRelativePath = BackendContractRoot.identityRelativePath;
 

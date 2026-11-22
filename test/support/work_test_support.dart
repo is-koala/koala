@@ -15,11 +15,8 @@ import 'package:koala/employee/features/profile/presentation/providers/user_prov
 
 import 'fake_api.dart';
 
-/// İşlerim ve iş detayı testlerinin ortak parçaları.
-///
-/// İki sayfa aynı kaydı — bir atama ya da başvuru — farklı yerlerden
-/// çiziyor; gövdeler, çalışan oturumu ve çevrimdışı mesai kuyruğu bir yerde
-/// dursun ki bir alan adı değiştiğinde iki test aynı anda kırılsın.
+/// İşlerim ve iş detayı testlerinin ortak parçaları; alan adı değişince iki
+/// test birlikte kırılsın.
 
 /// Testlerdeki çalışanın kimliği.
 const String workerId = 'worker-1';
@@ -164,11 +161,7 @@ Future<UserProvider> loadedWorkerProvider() async {
   return provider;
 }
 
-/// Ağa çıkmayan, bellekte tutulan mesai kuyruğu.
-///
-/// Sayfalar kuyruğu `initState`'te başlatıyor; gerçek `sqflite` deposu ve
-/// bağlantı tetikleyicisi testte yok. Dönen kuyruk testin sonunda kendini
-/// kapatıyor.
+/// Bellekteki mesai kuyruğu; testin sonunda kendini kapatır.
 TimesheetQueueProvider idleTimesheetQueue() {
   final retryTrigger = _ManualRetryTrigger();
   final queue = TimesheetQueueProvider.withAdapters(
@@ -180,12 +173,8 @@ TimesheetQueueProvider idleTimesheetQueue() {
   return queue;
 }
 
-/// `/work-detail` rotasının yerine geçen sahte sayfa.
-///
-/// Gerçek `WorkDetailPage` kendi servislerini kuruyor ve ağa çıkıyor;
-/// satırın detayı **açıp açmadığını** ve hangi kaydı geçirdiğini ölçmek
-/// için sözleşmesi yetiyor: `extra` olarak bir [MyJob] alır. Açılan kayıt
-/// [onOpened] ile dışarı veriliyor.
+/// `/work-detail` sahtesi; detayın açılıp açılmadığını ve geçen [MyJob]'ı
+/// ölçer.
 GoRoute stubWorkDetailRoute({void Function(MyJob job)? onOpened}) {
   return GoRoute(
     path: '/work-detail',

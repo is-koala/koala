@@ -6,34 +6,18 @@ import 'package:koala/employee/features/auth/models/chip_evidence.dart';
 import 'package:koala/employee/features/settings/models/identity_chip_result.dart';
 import 'package:koala/employee/features/settings/models/mrz_key.dart';
 
-/// Gerçek bir TCKK düzeninde, kontrol haneleri hesaplanmış TD1 MRZ satırları.
-///
-/// `mrz_key_test.dart` ile aynı kart: belge no `A01B23456`, TCKN
-/// `12345678950`, doğum 07.04.1998, son geçerlilik 01.01.2030, ad-soyad
-/// `ADA KAYA`. Üçüncü satır bileşik kontrol hanesine girmiyor; ad
-/// değiştirilirken ilk iki satıra dokunmak gerekmiyor.
+/// Kontrol haneleri hesaplanmış gerçek düzende TD1 satırları (`mrz_key_test`
+/// ile aynı kart).
 const String tckkMrzLine1 = 'I<TURA01B23456612345678950<<<<';
 const String tckkMrzLine2 = '9804072F3001019TUR<<<<<<<<<<<8';
 const String tckkMrzLine3 = 'KAYA<<ADA<<<<<<<<<<<<<<<<<<<<<';
 
-/// Aynı kartın birinci satırı, isteğe bağlı veri alanı ayırıcı `<` ile
-/// **başlayan** düzende: `<12345678950<<<`.
-///
-/// TCKK sahada iki düzenle geliyor ve sunucu ikisini de kabul ediyor
-/// (`MachineReadableZone.nationalIdentityNumber` bütün `<`'leri atıp on bir
-/// hane arıyor). `dmrtd` yalnız **sondaki** dolguyu temizlediği için bu
-/// düzende `optionalData` `<12345678950` olarak kalıyor; ayırıcıyı atmayan
-/// bir ayrıştırıcı kartı okunamaz sayardı. İkinci satırı [tckkMrzLine2For]
-/// veriyor — bileşik kontrol hanesi birinci satıra bağlı.
+/// Ayırıcıyla **başlayan** düzen: `<12345678950<<<`. `dmrtd` baştaki ayırıcıyı
+/// bırakıyor; ayıklamayan ayrıştırıcı kartı okunamaz sayardı.
 const String tckkMrzLine1SeparatorFirst = 'I<TURA01B234566<12345678950<<<';
 
-/// [line1] ile tutarlı ikinci satır: bileşik kontrol hanesi **hesaplanmış**.
-///
-/// Bileşik hane birinci satırın 6-30. konumlarını da kapsıyor, yani birinci
-/// satırı değiştiren her test ikinci satırın son hanesini de değiştirmek
-/// zorunda. Elle yazmak yerine `MrzKey.checkDigit` ile hesaplanıyor; `dmrtd`
-/// aynı haneyi doğruluyor ve tutmayan bir MRZ DG1 olarak hiç çözülmüyor,
-/// yani yanlış hane "TCKN okunamadı" ile karışırdı.
+/// Bileşik hane birinci satıra bağlı olduğu için hesaplanıyor; tutmayan MRZ DG1
+/// olarak çözülmez ve "TCKN okunamadı" ile karışırdı.
 String tckkMrzLine2For(String line1) {
   const stem = '9804072F3001019TUR<<<<<<<<<<<';
   final composite =
@@ -44,11 +28,7 @@ String tckkMrzLine2For(String line1) {
   return '$stem${MrzKey.checkDigit(composite)}';
 }
 
-/// `EF.DG1` dosyasının base64 hâli: `61 { 5F1F { 90 baytlık MRZ } }`.
-///
-/// Çipin yazdığı şeyin birebir aynı yapısı. Testler böylece sahte bir
-/// "dg1" dizgisi değil, `dmrtd`'nin gerçekten çözdüğü bir veri grubu
-/// gönderiyor — ayrıştırıcının ne yaptığı ancak bununla ölçülüyor.
+/// Gerçek `EF.DG1` yapısı; ayrıştırıcı ancak bununla ölçülür.
 String encodeDg1({
   String line1 = tckkMrzLine1,
   String line2 = tckkMrzLine2,
@@ -58,11 +38,7 @@ String encodeDg1({
   return base64Encode(TLV.encode(EfDG1.TAG.value, TLV.encode(0x5F1F, mrz)));
 }
 
-/// `EF.DG11` dosyasının base64 hâli: `6B { 5C etiket listesi, 5F0E ad, ... }`.
-///
-/// [nameOfHolder] ICAO biçiminde: soyad, `<<`, ad; ad bileşenleri `<` ile.
-/// UTF-8 yazılıyor, yani ulusal karakterler olduğu gibi kalıyor — DG11'in
-/// var olma sebebi bu.
+/// `EF.DG11`; ad ICAO biçiminde ve UTF-8, ulusal karakterler kalıyor.
 String encodeDg11({required String nameOfHolder, String? personalNumber}) {
   final tags = <int>[
     0x5F,
@@ -86,11 +62,8 @@ String encodeDg11({required String nameOfHolder, String? personalNumber}) {
   );
 }
 
-/// Gerçek DG1 (ve isteğe bağlı DG11) taşıyan kanıt.
-///
-/// SOD sahte: imza zinciri cihaz ve sunucu işi, burada yalnız veri
-/// gruplarının ayrıştırılması ölçülüyor. [withChipProof] DG15 + challenge +
-/// imza üçlüsünü ekleyip "çip canlı doğrulandı" hâlini üretiyor.
+/// Gerçek DG1 (ve DG11) taşıyan kanıt; SOD sahte. [withChipProof] canlı
+/// doğrulama üçlüsünü ekler.
 ChipEvidence buildChipEvidence({
   String? dg1,
   String? dg11,

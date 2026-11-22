@@ -9,10 +9,8 @@ import 'package:koala/product/router/business_routes.dart';
 import 'package:koala/product/router/employee_routes.dart';
 import 'package:koala/product/router/router_manager.dart';
 
-/// Bir rotanın sayfasını go_router'a seçtirmek (`builder:`) bu sürümde
-/// sessizce `NoTransitionPage` üretiyordu: shell dışındaki bütün sayfalar
-/// animasyonsuz açılıyordu ve hiçbir yerde hata görünmüyordu. Her rota
-/// sayfasını açıkça vermek zorunda.
+/// `builder:` bu sürümde sessizce `NoTransitionPage` üretiyor; her rota
+/// sayfasını açıkça vermeli.
 void main() {
   Iterable<GoRoute> allGoRoutes(List<RouteBase> routes) sync* {
     for (final route in routes) {
@@ -129,10 +127,7 @@ void main() {
   test('adres seçici tek rotayla iki uygulamaya da açık', () {
     final routes = allGoRoutes(RouterManager.router.configuration.routes);
 
-    // Harita-öncelikli adres ekranı: işveren ilan ve şirket adresini,
-    // çalışan `/address` üzerinden kendi adresini aynı bileşenle seçiyor.
-    // `/business/` öneki taşımıyor ki yönlendirme kapısı çalışanı geri
-    // çevirmesin; eski `pick-location` rotaları kalktı.
+    // Adres seçici iki tarafa da açık olsun diye `/business/` önekisiz.
     final picker = routes.where((route) => route.path == '/pick-address');
     expect(picker, hasLength(1));
     expect(picker.single.pageBuilder, isNotNull);

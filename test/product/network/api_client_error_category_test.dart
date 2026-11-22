@@ -267,10 +267,7 @@ void main() {
   });
 
   group('oturumu bitiren yol ile yetki reddi ayrı', () {
-    // `AuthInterceptor` yalnızca `401`'de token yenilemeye çalışıyor ve
-    // başaramazsa oturumu kapatıyor. `403` — kategori `ACCESS_DENIED` —
-    // oturumu **kapatmamalı**: kullanıcının yetkisi yok, oturumu geçersiz
-    // değil.
+    // `ACCESS_DENIED` oturumu kapatmamalı: yetki yok, oturum geçerli.
     test('ACCESS_DENIED oturumu kapatmıyor ve yenileme denemiyor', () async {
       final api = FakeApi(
         handler: (_) => const FakeApiResponse(
@@ -352,10 +349,8 @@ void main() {
   });
 }
 
-/// Verilen zarfı istemciden geçirip ürettiği [ApiErrorType]'ı döndürür.
-///
-/// Yol olarak [ApiPaths.login] seçildi: `publicPaths` içinde olduğu için
-/// `AuthInterceptor` araya girmiyor, ölçülen şey yalnızca sınıflandırma.
+/// [ApiPaths.login] public olduğu için `AuthInterceptor` araya girmiyor; yalnız
+/// sınıflandırma ölçülüyor.
 Future<ApiErrorType> _typeFor({required int statusCode, String? category}) {
   final api = FakeApi(
     handler: (_) => FakeApiResponse(

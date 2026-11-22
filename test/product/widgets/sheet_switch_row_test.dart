@@ -26,10 +26,8 @@ Future<void> pumpInSheet(
 }
 
 void main() {
-  // `SwitchListTile` içeride bir `ListTile` kuruyor ve `AppBottomSheet`'in
-  // renkli kabuğu araya girdiği için Flutter "background color or ink
-  // splashes may be invisible" assert'ini düşürüyor — form hiç açılmıyor.
-  // Bu test o gerilemeyi tutuyor.
+  // `SwitchListTile` renkli kabukta assert veriyor ve form açılmıyor; bu test o
+  // gerilemeyi tutuyor.
   testWidgets('sheet içinde ListTile kurmuyor', (tester) async {
     await pumpInSheet(tester, value: false, onChanged: (_) {});
 

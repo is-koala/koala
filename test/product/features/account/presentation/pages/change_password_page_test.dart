@@ -175,13 +175,8 @@ void main() {
     expect(find.text('Mevcut parola hatalı'), findsOneWidget);
   });
 
-  // Sunucu `401` belgeliyor ama `400` fırlatıyor; istemci ikisini de aynı
-  // şekilde karşılamalı ve `401`'i oturum sonu sanmamalı.
-  //
-  // Not: `FakeApi` interceptor'sız bir `ApiClient` kuruyor, yani burada
-  // `AuthInterceptor`'ın tazeleme adımı yok. Üretimde `401` bir kez tazeleyip
-  // tekrar deniyor ve ikinci `401` yine buradaki gibi sayfaya ulaşıyor;
-  // sınanan şey sayfanın hatayı nasıl karşıladığı.
+  // Belge `401` diyor, sunucu `400` fırlatıyor; ikisi aynı karşılanmalı. Burada
+  // `AuthInterceptor` tazelemesi yok; sınanan sayfanın tepkisi.
   testWidgets('401 gelirse de kullanıcı ekranda kalıyor', (tester) async {
     final api = FakeApi(
       handler: (_) => const FakeApiResponse(

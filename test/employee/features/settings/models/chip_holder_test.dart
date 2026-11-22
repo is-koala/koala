@@ -3,12 +3,8 @@ import 'package:koala/employee/features/settings/models/chip_holder.dart';
 
 import '../../../../support/chip_fixtures.dart';
 
-/// Kart sahibinin beş alanı **yalnızca** çipin veri gruplarından türüyor.
-///
-/// Sunucu aynı kuralla okuyor: TCKN, doğum tarihi ve belge numarası DG1'in
-/// MRZ'sinden; ad ve soyad varsa DG11'den, yoksa DG1'in ASCII'ye katlanmış
-/// hâlinden. Buradaki ayrıştırıcı sunucununkinden sapsa ekrandaki beyan
-/// sunucunun kabul ettiğinden ayrışırdı.
+/// Beş alan **yalnız** çipin veri gruplarından; ayrıştırıcı sunucununkinden
+/// sapsa beyan sunucunun kabul ettiğinden ayrışırdı.
 void main() {
   group('ChipHolder.fromEvidence', () {
     test('DG1 tek başına beş alanı ASCII adla veriyor', () {
@@ -113,10 +109,8 @@ void main() {
     });
 
     test('TCKN ayırıcı `<` ile başlayan düzende de okunuyor', () {
-      // `<12345678950<<<`: TCKK'nın sahadaki ikinci düzeni. `dmrtd` yalnız
-      // sondaki dolguyu atıyor, baştaki ayırıcı `optionalData`'da kalıyor.
-      // Sunucu iki düzeni de kabul ediyor; burada okunamaz saymak, geçerli
-      // kartı "MRZ okunamadı" ile geri çevirmek olurdu.
+      // `<12345678950<<<` düzeni: `dmrtd` baştaki ayırıcıyı bırakıyor; okunamaz
+      // saymak geçerli kartı geri çevirirdi.
       final evidence = buildChipEvidence(
         dg1: encodeDg1(
           line1: tckkMrzLine1SeparatorFirst,

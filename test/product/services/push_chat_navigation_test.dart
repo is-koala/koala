@@ -5,10 +5,8 @@ import 'package:koala/employee/features/chat/models/conversation.dart';
 import 'package:koala/product/router/router_manager.dart';
 import 'package:koala/product/services/push_conversation_opener.dart';
 
-/// `openChatOn` gerçek uygulama router'ıyla çağrılıyor; burada aynı biçimde
-/// kurulmuş küçük bir router var: kabuk içinde liste (`ShellRoute`), üst
-/// düzeyde `extra` olarak [Conversation] bekleyen sohbet ekranı. Uygulamanın
-/// sayfaları sağlayıcı ormanı istiyor, biçim ise burada sınanabiliyor.
+/// Uygulama router'ıyla aynı biçimde kurulmuş küçük router: kabukta liste, üst
+/// düzeyde `extra` [Conversation] bekleyen sohbet.
 void main() {
   const conversation = Conversation(
     id: 'conv_1',

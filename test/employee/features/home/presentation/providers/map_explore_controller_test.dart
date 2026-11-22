@@ -106,14 +106,8 @@ Map<String, double> _sentBox(RequestOptions request) => {
     key: (request.queryParameters[key] as num).toDouble(),
 };
 
-/// Debounce zamanlayıcısını **sahte saatte** ilerletir ve yanıtın controller'a
-/// dönmesi için mikro-görev turlarını boşaltır.
-///
-/// Eskiden burada gerçek `Future.delayed` vardı: 60 ms'lik debounce'a 120 ms
-/// pay biçiliyordu. Pay bir eşitleme noktası değil, tahmin — yüklü bir makinede
-/// sessizce yetmiyor ve üretim kodu doğruyken test kırmızıya dönüyor
-/// (is-koala/koala#88). `tester.pump(Duration)` zamanlayıcıyı duvar saatinden
-/// bağımsız ilerletiyor; liste tarafındaki testler baştan bunu yapıyordu.
+/// Debounce'u **sahte saatte** ilerletir; gerçek `Future.delayed` yüklü
+/// makinede yetmiyordu (#88).
 Future<void> settle(
   WidgetTester tester, [
   Duration wait = Duration.zero,

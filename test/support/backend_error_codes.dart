@@ -2,11 +2,8 @@ import 'dart:io';
 
 import 'backend_contract_root.dart';
 
-/// Backend `errorCode` kümesi: `messages_tr.properties` anahtarlarından
-/// `KoalaException.deriveErrorCode` ile aynı dönüşüm.
-///
-/// Mobil yönlendirme bu dizgelere bakıyor. Fixture'ı koda bakarak yazmak
-/// ikisini birlikte yanlış bırakır (is-koala/koala#89); kaynak properties.
+/// Backend `errorCode` kümesi, `messages_tr.properties`'ten türetilmiş; kaynak
+/// properties ki fixture ile kod birlikte yanlış kalmasın (#89).
 class BackendErrorCodes {
   static const propertiesRelativePath =
       'src/main/resources/messages_tr.properties';

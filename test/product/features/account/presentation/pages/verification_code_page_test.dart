@@ -239,15 +239,8 @@ void main() {
     });
   }
 
-  // Yukarıdaki döngü ayrımın **kaynağını** ölçmüyor, yalnız yedeğini:
-  // gövdelerinde `errorCategory` yok, yani sayfa `error.type` yerine
-  // `error.statusCode == 403 || error.statusCode == 404`'e geri döndürülse
-  // de ikisi yeşil kalır. Kararın gerçekten kategoriden çıktığını ancak
-  // ikisinin **çeliştiği** bir yanıt ölçebilir.
-  //
-  // Aşağıdaki iki durum kodu bilerek `403`/`404` **değil**: yedek tablo
-  // ikisine de başka bir tip verirdi, yani bu satırların yeşil kalmasının tek
-  // yolu kategoriyi okumak (is-koala/koala#86).
+  // Yukarıdaki döngü yalnız yedeği ölçüyor. Durum kodları bilerek `403`/`404`
+  // değil: yeşil kalmanın tek yolu kategoriyi okumak (#86).
   for (final (statusCode, category, fallbackType) in const [
     // Yedek `dataConflict` derdi; kategori `forbidden` diyor.
     (409, 'ACCESS_DENIED', 'dataConflict'),
@@ -334,10 +327,8 @@ void main() {
     expect(api.requests, hasLength(1));
   });
 
-  // Soğuma başarısız denemede de kurulmalı: istemcide zaman aşımına uğrayan
-  // ya da `500` dönen bir `PATCH` sunucuda işlenmiş ve kod gönderilmiş
-  // olabilir. Düğme aynı karede yeniden açılırsa kullanıcı arka arkaya basıp
-  // pes peşe SMS ürettirebilir — soğumanın var olma sebebi tam olarak bu.
+  // Zaman aşımına uğrayan `PATCH` sunucuda işlenmiş olabilir; soğuma olmazsa
+  // art arda SMS gider.
   testWidgets('tekrar gönderme başarısız olsa da düğme soğumaya giriyor', (
     tester,
   ) async {
@@ -397,12 +388,8 @@ void main() {
     expect(api.requests, hasLength(1));
   });
 
-  // Boş `pendingVerifications` yalnızca tek bir anlama geliyor: gönderilen
-  // değer kullanıcının mevcut değerine eşit, yani doğrulama bu arada
-  // tamamlanmış ve değer uygulanmış (`UserManager.patchCurrentUser` eşit
-  // değere doğrulama açmıyor). "Yeni kod gönderildi" demek kullanıcıyı hiç
-  // gelmeyecek bir kod için bekletirdi; doğrusu durumu söyleyip zinciri
-  // kesmeden çıkmak — tek kaydetmede ikinci doğrulama sırada olabilir.
+  // Boş `pendingVerifications`: değer bu arada uygulanmış. "Yeni kod" demek
+  // boşuna bekletirdi; zincir kesilmeden çıkılmalı.
   testWidgets('yeni doğrulama dönmezse zaten doğrulanmış deyip kapanıyor', (
     tester,
   ) async {

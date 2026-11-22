@@ -76,11 +76,8 @@ final List<int> heicSignatureBytes = [
   ...List<int>.filled(32, 0),
 ];
 
-/// Dört kare için diskte gerçek dosyalar; `MultipartFile.fromFileSync` yolu
-/// açıyor, o yüzden yalnız ad yetmiyor. Test bitince siliniyor. İçerik
-/// varsayılan olarak [onePixelPng]; [content] ile değiştirilebilir ve
-/// [extension] içerikten bağımsız — biçim uzantıdan değil baş baytlardan
-/// tanınıyor, ikisi bilerek ayrı.
+/// Diskte gerçek dosyalar (`fromFileSync` açıyor). [extension] içerikten
+/// bilerek ayrı: biçim baş baytlardan tanınıyor.
 Map<IdentityPhotoSlot, String> writeIdentityPhotoFiles({
   String extension = 'jpg',
   List<int>? content,

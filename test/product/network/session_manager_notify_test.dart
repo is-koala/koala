@@ -26,10 +26,8 @@ void main() {
   tearDown(() => session.dispose());
 
   group('Oturum bildirimleri', () {
-    // Oturum açan yollar bilerek sessiz: router muhafızını akışın ortasında
-    // tetiklemek kullanıcıyı adımın sonunu görmeden ana sayfaya atıyor ve
-    // kayıt sonrası şirket bilgileri adımı bu yüzden atlanıyordu. Giriş ve
-    // kayıt akışları yönlendirmeyi kendi `context.go` çağrılarıyla yapıyor.
+    // Oturum açan yollar bilerek sessiz: muhafız akışın ortasında tetiklenirse
+    // kullanıcı adımın sonunu görmeden ana sayfaya atılır.
     test('start dinleyicileri uyarmaz', () async {
       await session.start(
         accessToken: 'a',

@@ -14,11 +14,8 @@ const _me = 'user_me';
 const _other = 'user_other';
 const _conversationId = 'conv_1';
 
-/// Gerçek soket açmadan olay besleyen sahte canlı istemci.
-///
-/// Presence kanalları kullanıcı başına ayrıldığı için hangi kimliklere abone
-/// olunduğu da kaydediliyor — yabancıya abone olmak sunucuda 403 ve
-/// bağlantıyı düşürüyor, bu yüzden testin izlemesi gereken bir şey.
+/// Sahte canlı istemci. Yabancıya presence aboneliği bağlantıyı düşürdüğü için
+/// abone olunan kimlikler de kaydediliyor.
 class FakeRealtimeClient extends FakeSilentRealtimeClient {
   final _messages = StreamController<RealtimeEvent>.broadcast();
   final Map<String, StreamController<RealtimeEvent>> presenceStreams = {};

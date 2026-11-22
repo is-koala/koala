@@ -29,10 +29,7 @@ Map<String, dynamic> statsJson({int jobsPosted = 12}) => {
   'reviewCount': 8,
 };
 
-/// Şirket ve istatistik uçlarını birlikte karşılayan sahte sunucu.
-///
-/// [companyStatus] ve [statsStatus] ayrı ayrı bozulabiliyor; iki isteğin
-/// birbirini düşürmediğini doğrulamak için.
+/// İki uç ayrı bozulabiliyor; biri ötekini düşürmemeli.
 FakeApi buildApi({
   int companyStatus = 200,
   int statsStatus = 200,

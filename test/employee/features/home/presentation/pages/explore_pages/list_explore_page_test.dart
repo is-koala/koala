@@ -101,11 +101,8 @@ List<String> _ids(int from, int count) => [
   for (var i = from; i < from + count; i++) '$i-ilan',
 ];
 
-/// Süzgeç sheet'i uzun; alt bölümler ekrana ancak kaydırılınca giriyor.
-///
-/// `job_filter_sheet_test.dart` baştan böyle dokunuyordu, bu dosya çıplak
-/// `tap` atıyordu: sheet'e araya bir bölüm eklendiği anda buradaki dokunuşlar
-/// ekran dışında kalıp sessizce ıskalardı.
+/// Alt bölümler ancak kaydırılınca görünür; çıplak `tap` sheet'e bölüm
+/// eklenince ekran dışında sessizce ıskalardı.
 Future<void> tapScrolled(WidgetTester tester, Finder finder) async {
   await tester.ensureVisible(finder);
   await tester.pumpAndSettle();
