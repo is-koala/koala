@@ -522,6 +522,8 @@ The native side sits at Flutter 3.50.1's own baseline; **the plugins pin most of
 
 **iOS** — deployment target 15.5. Dependencies are a **hybrid**: `app_links`, `geolocator_apple`, `package_info_plus`, `permission_handler_apple` and `shared_preferences_foundation` come through **Swift Package Manager** (on by default in Flutter 3.47), and CocoaPods is still there for one reason only — `google_maps_flutter_ios` ships no `Package.swift`. `ios/Podfile` exists solely for it and can be deleted outright the day that plugin adopts SPM. The build prints a "does not support Swift Package Manager" warning about it every time; that is expected, not something to fix.
 
+- `google_mlkit_text_recognition` (1.x) comes through SPM too (`d-date/google-mlkit-swiftpm`, arm64 simulator supported), and its `Package.swift` declares no resources. So the Runner target carries `-ObjC -all_load` in `OTHER_LDFLAGS`, and the *Copy ML Kit Resources* phase (`ios/scripts/copy_mlkit_resources.sh`) copies `LatinOCRResources.bundle` out of the plugin's own pub-cache copy into the app; without the bundle ML Kit finds no model and MRZ reading fails on iOS. The package pulls every ML Kit binary target (~0.8 GB) on the first resolve, whatever we link.
+
 - The app uses the **UIScene lifecycle**. Plugins are registered in `didInitializeImplicitFlutterEngine`, *not* in `didFinishLaunchingWithOptions` — putting them back would break plugin registration. `Info.plist` carries the matching `UIApplicationSceneManifest`, pointing at Flutter's own `FlutterSceneDelegate` (there is no `SceneDelegate.swift`, and adding one means editing `project.pbxproj`).
 - `GMSServices.provideAPIKey` stays in `didFinishLaunchingWithOptions`: it is an app-level service, unrelated to the engine. The `maps_availability` method channel is registered in `didInitializeImplicitFlutterEngine` through `engineBridge.applicationRegistrar.messenger()` — that is the only messenger the implicit engine exposes.
 
@@ -675,7 +677,7 @@ Data groups: `SOD` and `DG1` are required; `DG15` (chip public key), `DG14` (`Se
 
 #### Android Latin OCR modeli Play Services üzerinden gelir
 
-`google_mlkit_text_recognition 0.17.1` Latin modelini
+`google_mlkit_text_recognition` Latin modelini
 `com.google.mlkit:text-recognition:16.0.1` ile APK'ya gömüyor. Koala Android'de
 yalnız bu modülü Gradle dependency substitution ile
 `com.google.android.gms:play-services-mlkit-text-recognition:19.0.1` sürümüne
