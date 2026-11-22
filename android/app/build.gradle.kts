@@ -30,14 +30,9 @@ val hasReleaseSigning = listOf(
 
 plugins {
     id("com.android.application")
-    // ⚠️ Bu satır bilerek geri geldi. `flutter_nfc_kit` hâlâ
-    // `org.jetbrains.kotlin.android` uyguluyor ve AGP 9'un built-in
-    // Kotlin'iyle bir arada çalışmıyor; bu yüzden `gradle.properties`'te
-    // `android.builtInKotlin=false` var ve app modülünün Kotlin'i yeniden
-    // eklentiden geliyor. Gerekçenin tamamı ve geri açma koşulu
-    // `android/gradle.properties` içinde.
-    id("org.jetbrains.kotlin.android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    // Kotlin, AGP 9'un built-in Kotlin'inden geliyor (`android.builtInKotlin=true`);
+    // `kotlin-android` eklentisi uygulanmıyor. jvmTarget alttaki `kotlin { }` bloğunda.
+    // The Flutter Gradle Plugin must be applied after the Android Gradle plugin.
     id("dev.flutter.flutter-gradle-plugin")
     id("com.google.gms.google-services")
 }
