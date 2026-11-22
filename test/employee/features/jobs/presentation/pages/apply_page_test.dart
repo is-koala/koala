@@ -58,4 +58,59 @@ void main() {
       },
     );
   }
+
+  // Regresyon: uygulama açılır açılmaz (profil sekmesi hiç açılmadan)
+  // başvuruya gelinince kullanıcı yüklenmemişti; ekran eksik yokmuş gibi
+  // görünüyor, sunucu başvuruyu kimlik eksiğiyle reddediyordu.
+  testWidgets('kullanıcı yüklenmemişse ekran onu çeker ve eksikleri gösterir', (
+    tester,
+  ) async {
+    final api = FakeApi(
+      handler: (request) => switch (request.path) {
+        '/users/me' => const FakeApiResponse(
+          statusCode: 200,
+          body: {
+            'success': true,
+            'data': {
+              'id': 'worker-1',
+              'firstName': 'Ali',
+              'lastName': 'Çalışan',
+              'email': 'ali@example.com',
+              'isEmployer': false,
+              'identityVerified': false,
+            },
+          },
+        ),
+        _ => const FakeApiResponse(
+          statusCode: 200,
+          body: {'success': true, 'data': []},
+        ),
+      },
+    );
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(
+            create: (_) => ApplyProvider(
+              service: JobApplicationService.withClient(api.client),
+            ),
+          ),
+          ChangeNotifierProvider(
+            create: (_) =>
+                UserProvider(userService: UserService.withClient(api.client)),
+          ),
+        ],
+        child: MaterialApp(
+          theme: lightTheme,
+          home: ApplyPage(job: buildJob()),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(api.requests.any((r) => r.path == '/users/me'), isTrue);
+    expect(find.text('Kimliğini doğrula'), findsOneWidget);
+    expect(find.text('Önce Eksikleri Tamamla'), findsOneWidget);
+  });
 }
