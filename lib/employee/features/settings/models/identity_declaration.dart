@@ -2,20 +2,10 @@ import 'package:koala/employee/features/auth/models/chip_evidence.dart';
 import 'package:koala/employee/features/settings/models/identity_chip_result.dart';
 import 'package:koala/employee/features/settings/models/national_identity_number.dart';
 
-/// Kimlik doğrulama isteğinin beş beyan alanı ve varsa yanına eklenen kanıt.
-///
-/// İki hâli var ve ikisi de tiptir, bayrak değil:
-///
-/// - [ManualDeclaration] — kullanıcının yazdığı beş alan, kanıtsız. NFC'si
-///   olmayan telefonun ve çipi okutmayan kullanıcının yolu.
-/// - [ChipDeclaration] — beş alanın da [IdentityChipResult]'tan türediği
-///   beyan. Alan yazacak bir kurucu parametresi **yok**; kanıt varken ondan
-///   ayrışan bir beyan bu tiple derlenemiyor. Kabul maddesinin
-///   ("kanıt varken uyuşmaz beyan üretilemez") karşılığı burada.
-///
-/// `IDENTITY_PASSIVE_AUTH_ENABLED` sunucuda kapalıyken ikisi de kabul
-/// ediliyor; bayrak açıldığında sunucu beyanı DG1/DG11 ile karşılaştıracak
-/// ve [ChipDeclaration] o karşılaştırmadan tanımı gereği geçiyor.
+/// Kimlik beyanı ve varsa kanıtı; iki hâl tip olarak:
+/// - [ManualDeclaration]: kullanıcının yazdığı beş alan, kanıtsız.
+/// - [ChipDeclaration]: beş alan [IdentityChipResult]'tan; alan yazacak
+///   parametre **yok**, kanıttan ayrışan beyan derlenemez.
 sealed class IdentityDeclaration {
   const IdentityDeclaration();
 
@@ -29,15 +19,12 @@ sealed class IdentityDeclaration {
 
   DateTime? get birthDate;
 
-  /// İstek gövdesine eklenecek çip kanıtı; elle beyanda `null`.
   ChipEvidence? get evidence;
 
-  /// Gönderilebilir mi. Sunucu deseni ayrıca doğruluyor; buradaki kontrol
-  /// kullanıcıyı boşuna bir gidiş dönüşten kurtarıyor.
+  /// Sunucu ayrıca doğruluyor; bu boşuna bir gidiş dönüşü önler.
   bool get isComplete;
 }
 
-/// Kullanıcının kendi yazdığı beyan.
 final class ManualDeclaration extends IdentityDeclaration {
   const ManualDeclaration({
     required this.firstName,
@@ -74,7 +61,6 @@ final class ManualDeclaration extends IdentityDeclaration {
       birthDate != null;
 }
 
-/// Çipten türeyen beyan: beş alan da kanıtın kendisinden okunuyor.
 final class ChipDeclaration extends IdentityDeclaration {
   const ChipDeclaration(this.chip);
 
@@ -98,8 +84,7 @@ final class ChipDeclaration extends IdentityDeclaration {
   @override
   ChipEvidence get evidence => chip.evidence;
 
-  /// Çipten gelen alanlar boş olamaz: kart bunları taşımasaydı
-  /// [IdentityChipResult.parse] hiç sonuç üretmezdi.
+  /// Kart bunları taşımasaydı [IdentityChipResult.parse] sonuç üretmezdi.
   @override
   bool get isComplete => true;
 }

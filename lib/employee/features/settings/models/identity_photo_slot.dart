@@ -1,15 +1,7 @@
-/// Fotoğraflı kimlik doğrulamanın dört karesi.
-///
-/// Sıra ekrandaki sıra: kullanıcı önce kartı çekiyor, sonra kendini, en son
-/// ikisini birlikte. Sunucunun beklediği parça adı ([fieldName]) sıradan
-/// bağımsız; `POST /users/me/identity-documents` dördünü de zorunlu tutuyor
-/// ve eksik parçayı `IDENTITY_DOCUMENTS_REQUIRED` ile reddediyor.
-///
-/// Kadraj metni ([guide]) personelin karede **ne görmesi gerektiğini**
-/// anlatıyor; bulanık ya da yarım kare reddedilip yeniden yükletileceği için
-/// ilk seferde doğru çekilmesi kullanıcının da yararına.
+/// Fotoğraflı doğrulamanın dört karesi, ekrandaki sırayla. Dördü de zorunlu.
+/// [guide] personelin karede ne görmesi gerektiğini anlatıyor; yarım kare
+/// reddedilip yeniden yükletilir.
 enum IdentityPhotoSlot {
-  /// TCKK ön yüzü: fotoğraf, ad soyad, TCKN ve seri no görünmeli.
   front(
     fieldName: 'front',
     title: 'Kimlik ön yüzü',
@@ -19,7 +11,6 @@ enum IdentityPhotoSlot {
     usesFrontCamera: false,
   ),
 
-  /// TCKK arka yüzü: MRZ satırları görünmeli.
   back(
     fieldName: 'back',
     title: 'Kimlik arka yüzü',
@@ -29,7 +20,7 @@ enum IdentityPhotoSlot {
     usesFrontCamera: false,
   ),
 
-  /// Yüz fotoğrafı: personel kimlikteki fotoğrafla karşılaştırıyor.
+  /// Personel kimlikteki fotoğrafla karşılaştırıyor.
   selfie(
     fieldName: 'selfie',
     title: 'Yüz fotoğrafın',
@@ -39,8 +30,7 @@ enum IdentityPhotoSlot {
     usesFrontCamera: true,
   ),
 
-  /// Yüz ve kart aynı karede: kartın sahibinin gönderen kişi olduğunu
-  /// gösteriyor.
+  /// Kartın sahibinin gönderen kişi olduğunu gösteriyor.
   together(
     fieldName: 'together',
     title: 'Kimlikle birlikte yüzün',
@@ -57,16 +47,13 @@ enum IdentityPhotoSlot {
     required this.usesFrontCamera,
   });
 
-  /// Multipart isteğindeki parça adı; sunucunun `@RequestPart` adıyla aynı.
+  /// Sunucunun `@RequestPart` adı.
   final String fieldName;
 
-  /// Karenin kullanıcıya gösterilen adı.
   final String title;
 
-  /// Kadraj rehberi: bu karede ne görünmeli.
   final String guide;
 
-  /// Kamera açılırken ön kamera mı tercih edilsin. Yüz kareleri ön kamerayla
-  /// çekiliyor; kart kareleri arka kamerayla daha net çıkıyor.
+  /// Yüz kareleri ön, kart kareleri arka kamerayla daha net.
   final bool usesFrontCamera;
 }

@@ -23,7 +23,7 @@ import 'package:provider/provider.dart';
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key, this.onLogout});
 
-  /// Çıkış sınırını ağ çağrısı olmadan widget testinde sürmek için.
+  /// Testte çıkışı ağ olmadan sürmek için.
   final Future<void> Function()? onLogout;
 
   @override
@@ -45,9 +45,8 @@ class SettingsPage extends StatelessWidget {
   Column settingsList(BuildContext context) {
     return Column(
       children: [
-        // Hesap satırları ortak modülden: işverenin ayarları da aynı
-        // ekranlara gidiyor. Kazançlar ve iş alarmları çalışana özgü.
-        // Gruplar konuya göre; sıra, en sık açılandan en seyreğe.
+        // Hesap satırları ortak modülden; kazançlar ve iş alarmları çalışana
+        // özgü. Sıra en sık açılandan en seyreğe.
         MyListGroup(
           title: 'Hesap',
           children: [
@@ -98,35 +97,30 @@ class SettingsPage extends StatelessWidget {
               icon: AppIcons.logout,
               title: "Çıkış Yap",
               onTap: () async {
-                // İlk await'ten önce: eski hesabın bildirimi, çıkan istek
-                // gecikse veya hata verse bile yeni oturuma taşınmamalı.
+                // İlk `await`'ten önce: çıkış gecikse de eski bildirimler yeni
+                // oturuma taşınmasın.
                 context.read<NotificationProvider>().clear();
 
                 final logout = onLogout;
                 if (logout != null) {
                   await logout();
                 } else {
-                  // Bekleyen kayıtlar kullanıcı bölümünde kalır; yalnız bu
-                  // oturuma ait aktif bölüm işaretçisi temizlenir.
+                  // Bekleyen kayıtlar diskte kalır; yalnız aktif bölüm
+                  // işaretçisi temizlenir.
                   await context.read<TimesheetQueueProvider>().pause();
-                  // Sunucudaki oturumu da kapatıyor; çağrı başarısız olsa bile
-                  // token'lar cihazdan siliniyor.
-                  // Canlı bağlantı oturuma bağlı; token silinmeden önce
-                  // kapatılıyor ki yeniden bağlanmaya çalışmasın.
+                  // Token silinmeden kapatılıyor ki yeniden bağlanmaya
+                  // çalışmasın; sunucu çağrısı düşse de token'lar silinir.
                   await RealtimeClient().disconnect();
                   await AuthService().logout();
                 }
 
                 if (context.mounted) {
-                  // Bir sonraki oturum, çıkan kullanıcının verisini görmesin.
                   context.read<UserProvider>().clear();
                   context.read<IdentityReviewProvider>().clear();
                   context.read<AvailabilityProvider>().clear();
                   context.read<ApplyProvider>().clear();
                   context.read<SavedJobsProvider>().clear();
                   context.read<JobAlertsProvider>().clear();
-                  // Değerlendirme kaydı cihazda duruyor; yeni kullanıcı önceki
-                  // kullanıcının işaretlerini görmemeli.
                   context.read<ReviewProvider>().clear();
                   context.go('/auth');
                 }

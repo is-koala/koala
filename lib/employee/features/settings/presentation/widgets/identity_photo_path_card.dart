@@ -6,11 +6,8 @@ import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/my_button.dart';
 
-/// Fotoğraflı doğrulama yoluna açılan kart.
-///
-/// Kimlik ekranının tepesinde ana yol olarak, çip yolu bir hata verdiğinde
-/// de çıkış yolu olarak duruyor. İkisi aynı kart: metin değişiyor, düğme
-/// değişmiyor — kullanıcı hata ekranında gördüğü düğmeyi tepede de tanısın.
+/// Fotoğraflı yola açılan kart: tepede ana yol, çip hatasında çıkış. Metin
+/// değişir, düğme aynı kalır ki kullanıcı tanısın.
 class IdentityPhotoPathCard extends StatelessWidget {
   const IdentityPhotoPathCard({
     super.key,
@@ -31,18 +28,13 @@ class IdentityPhotoPathCard extends StatelessWidget {
 
   final String buttonLabel;
 
-  /// Çip yolu az önce başarısız olduysa `true`: kart uyarı rengiyle
-  /// çerçeveleniyor ki gözden kaçmasın.
   final bool isWarning;
 
-  /// Açıklama metninin satır aralığı; kimlik ekranındakiyle aynı.
   static const double _lineHeight = 1.4;
 
   @override
   Widget build(BuildContext context) {
-    // Kutusuz bir bölüm: sayfanın ana yolu, başlığı ve düğmesiyle kendini
-    // anlatıyor; iç içe kutular ekranı karmaşık gösteriyor. Uyarı hâlinde
-    // yalnız ikon uyarı renginde.
+    // Kutusuz bölüm; iç içe kutular ekranı karmaşıklaştırıyor.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

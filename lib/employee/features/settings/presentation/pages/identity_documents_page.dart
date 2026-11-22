@@ -33,24 +33,14 @@ import 'package:provider/provider.dart';
 
 part 'identity_documents_pagemodel.dart';
 
-/// Fotoğraflı kimlik doğrulama: beş alanlık beyan, dört kare, tek istek.
+/// Fotoğraflı kimlik doğrulama (ana yol): beyan, dört kare, tek istek; personel
+/// onayından sonra kimlik damgalanır. Son incelemeye göre çizilir:
 ///
-/// Ürünün ana yolu (devir belgesi §4): kimlik kartının ön ve arka yüzü,
-/// yüz ve kimlikle yüz aynı karede; personel inceleyip onaylıyor, kimlik
-/// **onaydan sonra** damgalanıyor. Çip yolu bunun yanında duruyor, yerine
-/// geçmiyor.
+/// - yok → form; `REJECTED` → gerekçe + form
+/// - `PENDING` → bekleme; `APPROVED` → onay, `/users/me` tazelenip `true`
 ///
-/// Ekran açılırken son incelemeyi okuyor ve ona göre çiziliyor:
-///
-/// - inceleme yok → form,
-/// - `REJECTED` → gerekçe + aynı form (yeniden yükleme),
-/// - `PENDING` → bekleme görünümü; sunucu ikinci yüklemeyi zaten reddediyor,
-/// - `APPROVED` → onay görünümü, `/users/me` tazelenip `true` ile kapanıyor.
-///
-/// Gönderim `true` ile **kapanmıyor**: inceleme açıldı ama kimlik henüz
-/// doğrulanmadı. Çağıran kapılar (`CompanyIdentityGate`, başvuru hazırlığı)
-/// `true`'yu "doğrulandı" sayıyor; bekleyen bir incelemeyi öyle göstermek
-/// onları sunucunun az sonra reddedeceği bir yola sokardı.
+/// Gönderim `true` ile **kapanmaz**: çağıran kapılar `true`'yu "doğrulandı"
+/// sayıyor, bekleyen inceleme öyle gösterilmemeli.
 class IdentityDocumentsPage extends StatefulWidget {
   const IdentityDocumentsPage({
     super.key,
@@ -61,10 +51,8 @@ class IdentityDocumentsPage extends StatefulWidget {
 
   final CurrentUser user;
 
-  /// Testlerde sahte sunucuya bağlı servis.
   final IdentityDocumentService? service;
 
-  /// Testlerde kamera ve galeri olmadan dosya veren seçici.
   final IdentityPhotoPicker? picker;
 
   @override
@@ -197,10 +185,8 @@ class _IdentityDocumentsPageState extends IdentityDocumentsPagemodel {
     );
   }
 
-  /// Bilgilendirme metinlerinin satır aralığı; kimlik ekranlarındakiyle aynı.
   static const double _lineHeight = 1.4;
 
-  /// Uyarı zemininin saydamlığı; form kırmızıya boyanmasın.
   static const double _failureSurfaceAlpha = 0.1;
 
   Widget _sectionTitle(String title) => Text(
@@ -208,9 +194,7 @@ class _IdentityDocumentsPageState extends IdentityDocumentsPagemodel {
     style: context.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
   );
 
-  /// Son gönderimin neden reddedildiği; bir sonraki denemeye kadar duruyor.
-  /// Toast yerine sabit bir kutu: dört dosyalık bir yüklemenin sonucu birkaç
-  /// saniyede kaybolmamalı.
+  /// Sabit kutu, toast değil: dört dosyalık yüklemenin sonucu kaybolmamalı.
   Widget _failureNotice(IdentityDocumentsFailure failure) {
     return Container(
       width: double.infinity,

@@ -1,14 +1,8 @@
-/// Cihaz tarafında çip okumanın **neden** yürümediği.
-///
-/// Tek bir "bir hata oluştu" metni bu akışta kullanıcıyı döngüye sokuyor:
-/// "kart hareket etti" ile "bu telefonda NFC yok" bambaşka iki durum ve
-/// birincisinde tekrar denemek işe yarıyor, ikincisinde asla yaramıyor.
-/// Ayrımı [canRetry] taşıyor.
-///
-/// Sunucunun döndürdüğü hatalar burada değil — onlar [IdentityError]'da.
+/// Çip okumanın cihazda **neden** yürümediği. "Kart hareket etti" ile "NFC yok"
+/// ayrı: birinde tekrar denemek işe yarar, ötekinde yaramaz ([canRetry]).
+/// Sunucu hataları [IdentityError]'da.
 enum ChipReadFailure {
-  /// Telefonda NFC donanımı yok. Tekrar denemenin faydası yok; kullanıcının
-  /// çıkış yolu dört fotoğraflı inceleme.
+  /// Çıkış yolu fotoğraflı inceleme.
   nfcUnsupported(
     title: 'Bu telefon kimlik kartı okuyamıyor',
     message:
@@ -18,8 +12,7 @@ enum ChipReadFailure {
     canRetry: false,
   ),
 
-  /// NFC var ama kapalı. Android'de kullanıcı ayarlardan açabiliyor;
-  /// iOS'ta böyle bir durum yok, NFC kapatılamıyor.
+  /// Android'de ayarlardan açılabilir; iOS'ta NFC kapatılamaz.
   nfcDisabled(
     title: 'NFC kapalı',
     message:
@@ -28,7 +21,7 @@ enum ChipReadFailure {
     canRetry: true,
   ),
 
-  /// Kamera izni verilmedi; MRZ taranamıyor. Elle giriş yolu açık kalıyor.
+  /// Elle giriş yolu açık kalır.
   cameraDenied(
     title: 'Kamera izni gerekiyor',
     message:
@@ -37,7 +30,6 @@ enum ChipReadFailure {
     canRetry: true,
   ),
 
-  /// Paketlenmeyen OCR modeli indirilemedi ya da platform çağrısı tamamlanmadı.
   ocrModelUnavailable(
     title: 'Metin tanıma modeli hazırlanamadı',
     message:
@@ -47,7 +39,6 @@ enum ChipReadFailure {
     canRetry: true,
   ),
 
-  /// OCR çağrısı platformdan bağımsız zaman sınırını aştı.
   ocrTimedOut(
     title: 'Metin tanıma tamamlanamadı',
     message:
@@ -56,9 +47,8 @@ enum ChipReadFailure {
     canRetry: true,
   ),
 
-  /// Boş OCR sonucu ilk kullanımda henüz hazır olmayan indirilebilir modelden
-  /// de tamamen okunamayan görüntüden de gelebilir. Eklenti bu iki durumu
-  /// ayıran bir sinyal vermediği için kullanıcıya iki olasılık da anlatılır.
+  /// Boş OCR sonucu henüz inmemiş modelden de okunamayan görüntüden de
+  /// gelebilir; eklenti ayırt etmediği için ikisi de anlatılır.
   ocrUnavailableOrUnreadable(
     title: 'Kartın arka yüzü henüz okunamadı',
     message:
@@ -69,7 +59,6 @@ enum ChipReadFailure {
     canRetry: true,
   ),
 
-  /// OCR MRZ'yi bulamadı ya da kontrol hanesi tutmadı.
   mrzUnreadable(
     title: 'Kartın arka yüzü okunamadı',
     message:
@@ -79,7 +68,6 @@ enum ChipReadFailure {
     canRetry: true,
   ),
 
-  /// Karta hiç bağlanılamadı ya da okuma ortasında kart uzaklaştı.
   cardMoved(
     title: 'Kart okunamadı',
     message:
@@ -88,8 +76,7 @@ enum ChipReadFailure {
     canRetry: true,
   ),
 
-  /// BAC/PACE oturumu açılamadı: anahtar yanlış, yani MRZ'den okunan üç
-  /// alandan biri kartın üzerindekiyle tutmuyor.
+  /// MRZ'den okunan üç alandan biri karttakiyle tutmuyor.
   wrongKey(
     title: 'Kart bilgileri eşleşmedi',
     message:
@@ -98,8 +85,7 @@ enum ChipReadFailure {
     canRetry: true,
   ),
 
-  /// Okunan etiket eMRTD uygulamasını taşımıyor: eski model kimlik, çipsiz
-  /// kart ya da bambaşka bir NFC etiketi.
+  /// Eski model kimlik, çipsiz kart ya da başka bir etiket.
   chipUnsupported(
     title: 'Bu kartın çipi okunamıyor',
     message:
@@ -108,10 +94,7 @@ enum ChipReadFailure {
     canRetry: true,
   ),
 
-  /// Çip açıldı ve okundu ama DG1'deki MRZ kimlik bilgilerini (TCKN, ad,
-  /// doğum tarihi, belge no) beklenen TD1 biçiminde taşımıyor. Sunucu aynı
-  /// alanları okuyup `MRZ_UNREADABLE` ile reddedecekti; kullanıcıyı boş bir
-  /// gidiş dönüşe sokmak yerine okuma burada duruyor.
+  /// DG1 beklenen TD1 biçiminde değil; sunucu `MRZ_UNREADABLE` diyecekti.
   holderUnreadable(
     title: 'Kart bilgileri çözümlenemedi',
     message:
@@ -121,7 +104,6 @@ enum ChipReadFailure {
     canRetry: true,
   ),
 
-  /// Sunucudan tek kullanımlık sayı alınamadı; ağ ya da oturum sorunu.
   challengeUnavailable(
     title: 'Doğrulama başlatılamadı',
     message:
@@ -130,7 +112,6 @@ enum ChipReadFailure {
     canRetry: true,
   ),
 
-  /// Sınıflandıramadığımız her şey. Metni yine de ne yapacağını söylüyor.
   unknown(
     title: 'Kart okunamadı',
     message:
@@ -145,27 +126,21 @@ enum ChipReadFailure {
     required this.canRetry,
   });
 
-  /// Kullanıcıya gösterilen başlık: ne olduğu.
   final String title;
 
-  /// Kullanıcıya gösterilen açıklama: **ne yapacağı**.
+  /// **Ne yapılacağı.**
   final String message;
 
-  /// Aynı yolu tekrar denemenin bir anlamı var mı.
   final bool canRetry;
 }
 
-/// Çip okuma yolunun ürettiği hata.
-///
-/// Sayfalar `catch (e)` içinde tip ayrımı yapmasın diye tek tip; hangi
-/// durumun yaşandığı [reason]'da.
+/// Çip okumanın tek hata tipi; durum [reason]'da.
 class ChipReadException implements Exception {
   const ChipReadException(this.reason, {this.cause});
 
   final ChipReadFailure reason;
 
-  /// Bu hatayı doğuran özgün hata. Kullanıcıya gösterilmiyor; cihazda çıkan
-  /// sorunu teşhis edebilmenin tek yolu bu.
+  /// Gösterilmiyor; teşhis için taşınıyor.
   final Object? cause;
 
   @override

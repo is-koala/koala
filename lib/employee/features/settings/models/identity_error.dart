@@ -1,16 +1,8 @@
-/// Sunucunun kimlik doğrulamada döndürdüğü `IDENTITY_*` hataları.
-///
-/// Sunucunun kendi mesajı Türkçe geliyor ama **ne olduğunu** anlatıyor,
-/// **ne yapılacağını** değil: "Kimlik kartının imzası doğrulanamadı" okuyan
-/// kullanıcı aynı kartı aynı şekilde tekrar okutuyor. Buradaki karşılıklar
-/// bir sonraki adımı söylüyor.
-///
-/// Kodlar sunucuda mesaj anahtarından türüyor (`{identity.sod.unreadable}`
-/// → `IDENTITY_SOD_UNREADABLE`, `KoalaException.deriveErrorCode`), o yüzden
-/// mesaj metnine değil **koda** bakılıyor.
+/// Kimlik doğrulama `IDENTITY_*` hataları. Sunucunun mesajı ne olduğunu
+/// anlatıyor, ne yapılacağını değil; buradaki karşılıklar sonraki adımı
+/// söylüyor. Koda bakılıyor.
 enum IdentityError {
-  /// Bayrak açık ve `sod` + `dg1` gelmemiş. Bugün olmaması gerekiyor;
-  /// olursa kullanıcının çıkış yolu çip okumayı tamamlamak.
+  /// Bugün olmaması gerekiyor; çıkış yolu çip okumayı tamamlamak.
   evidenceRequired(
     code: 'IDENTITY_EVIDENCE_REQUIRED',
     message:
@@ -19,8 +11,7 @@ enum IdentityError {
     retryFromChip: true,
   ),
 
-  /// Sunucudaki CSCA kök sertifika deposu hazır değil. Kullanıcının
-  /// yapabileceği bir şey yok; sonra denemesi gerekiyor.
+  /// CSCA deposu hazır değil; kullanıcı ancak sonra deneyebilir.
   noTrustAnchors(
     code: 'IDENTITY_NO_TRUST_ANCHORS',
     message:
@@ -29,7 +20,6 @@ enum IdentityError {
     retryFromChip: false,
   ),
 
-  /// SOD çözümlenemedi: okuma yarım kalmış ya da bozulmuş olabilir.
   sodUnreadable(
     code: 'IDENTITY_SOD_UNREADABLE',
     message:
@@ -38,7 +28,6 @@ enum IdentityError {
     retryFromChip: true,
   ),
 
-  /// İmza doğrulanamadı.
   signatureInvalid(
     code: 'IDENTITY_SIGNATURE_INVALID',
     message:
@@ -47,7 +36,7 @@ enum IdentityError {
     retryFromChip: true,
   ),
 
-  /// Kartı imzalayan makam tanınmıyor. Tekrar okumak durumu değiştirmez.
+  /// Tekrar okumak durumu değiştirmez.
   untrustedDocumentSigner(
     code: 'IDENTITY_UNTRUSTED_DOCUMENT_SIGNER',
     message:
@@ -57,7 +46,6 @@ enum IdentityError {
     retryFromChip: false,
   ),
 
-  /// Veri grubu özetleri imzayla tutmuyor.
   dataGroupTampered(
     code: 'IDENTITY_DATA_GROUP_TAMPERED',
     message:
@@ -66,7 +54,6 @@ enum IdentityError {
     retryFromChip: true,
   ),
 
-  /// Çipteki MRZ çözümlenemedi.
   mrzUnreadable(
     code: 'IDENTITY_MRZ_UNREADABLE',
     message:
@@ -74,7 +61,6 @@ enum IdentityError {
     retryFromChip: true,
   ),
 
-  /// Beyan edilen TCKN çipteki numarayla tutmuyor.
   numberMismatch(
     code: 'IDENTITY_NUMBER_MISMATCH',
     message:
@@ -83,7 +69,6 @@ enum IdentityError {
     retryFromChip: false,
   ),
 
-  /// Beyan edilen doğum tarihi çiptekiyle tutmuyor.
   birthDateMismatch(
     code: 'IDENTITY_BIRTH_DATE_MISMATCH',
     message:
@@ -92,7 +77,6 @@ enum IdentityError {
     retryFromChip: false,
   ),
 
-  /// Beyan edilen ad soyad çiptekiyle tutmuyor.
   nameMismatch(
     code: 'IDENTITY_NAME_MISMATCH',
     message:
@@ -101,7 +85,6 @@ enum IdentityError {
     retryFromChip: false,
   ),
 
-  /// Çip varlığı kanıtlanamadı.
   chipNotPresent(
     code: 'IDENTITY_CHIP_NOT_PRESENT',
     message:
@@ -110,7 +93,6 @@ enum IdentityError {
     retryFromChip: true,
   ),
 
-  /// Çipin açık anahtarı (DG15) okunamadı.
   chipKeyUnreadable(
     code: 'IDENTITY_CHIP_KEY_UNREADABLE',
     message:
@@ -119,8 +101,7 @@ enum IdentityError {
     retryFromChip: true,
   ),
 
-  /// Gönderilen DG15 anahtarı kartın SOD güvenlik imzasında yer almıyor.
-  /// Doğrulanmamış anahtarı kabul etmek yerine okuma baştan yapılmalı.
+  /// DG15 SOD imzasında yok; doğrulanmamış anahtar kabul edilmez.
   chipKeyUnsigned(
     code: 'IDENTITY_CHIP_KEY_UNSIGNED',
     message:
@@ -130,9 +111,8 @@ enum IdentityError {
     retryFromChip: true,
   ),
 
-  /// Tek kullanımlık sayı tükenmiş ya da süresi dolmuş. **Yeni bir
-  /// challenge alıp okumayı baştan yapmak gerekiyor**; eski okumayı tekrar
-  /// göndermek aynı hatayı verir.
+  /// Sayı tükenmiş ya da süresi dolmuş: **yeni challenge alıp baştan okumak**
+  /// gerekir.
   challengeInvalid(
     code: 'IDENTITY_CHALLENGE_INVALID',
     message:
@@ -142,7 +122,6 @@ enum IdentityError {
     needsFreshChallenge: true,
   ),
 
-  /// Sunucu canlı çip doğrulaması istiyor ama kanıt gelmemiş.
   activeAuthenticationRequired(
     code: 'IDENTITY_ACTIVE_AUTHENTICATION_REQUIRED',
     message:
@@ -151,8 +130,7 @@ enum IdentityError {
     retryFromChip: true,
   ),
 
-  /// Bu kimlik numarası başka bir hesapta. Tek `409` bu; ayrı tutulması
-  /// gerekiyor çünkü çözümü doğrulamayı tekrarlamak değil.
+  /// Tek `409`; çözümü doğrulamayı tekrarlamak değil.
   numberAlreadyInUse(
     code: 'TC_IDENTITY_NUMBER_ALREADY_IN_USE',
     message:
@@ -168,21 +146,16 @@ enum IdentityError {
     this.needsFreshChallenge = false,
   });
 
-  /// Sunucunun `errorCode` alanındaki makine okunur kod.
   final String code;
 
-  /// Kullanıcıya gösterilen, **ne yapacağını** söyleyen metin.
   final String message;
 
-  /// Çipi yeniden okutmak durumu düzeltebilir mi. `false` ise kullanıcıyı
-  /// tekrar okutmaya yönlendirmek onu boşuna döngüye sokar.
+  /// `false` ise yeniden okutmak boşuna döngüdür.
   final bool retryFromChip;
 
-  /// Yeni bir tek kullanımlık sayı alınmadan tekrar denemek anlamsız mı.
   final bool needsFreshChallenge;
 
-  /// Sunucunun kodundan hatayı bulur; tanımadığı kodda `null` — o zaman
-  /// sunucunun kendi mesajı gösteriliyor.
+  /// Tanımadığı kodda `null`; o zaman sunucunun mesajı gösterilir.
   static IdentityError? fromErrorCode(String? errorCode) {
     if (errorCode == null) return null;
 

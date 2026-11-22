@@ -6,16 +6,9 @@ import 'package:koala/employee/features/settings/models/chip_read_failure.dart';
 import 'package:koala/employee/features/settings/models/mrz_key.dart';
 import 'package:koala/employee/features/settings/models/mrz_scan_session.dart';
 
-/// Kimlik kartının **arka yüzündeki** MRZ'yi kamerayla okur.
-///
-/// İki parça var ve ikisi de burada değil:
-/// - **OCR** `google_mlkit_text_recognition` — bu paket **genel metin
-///   tanıma**, MRZ ayrıştırıcı değil. Ne yaptığını sanıp TD1 beklemek en
-///   sık yapılan hata.
-/// - **Ayrıştırma ve kontrol hanesi doğrulaması** [MrzKey]'de, saf Dart.
-///
-/// Kamera kareleri yalnız bellekte işlenir. Bu servis dosya, ham kare veya
-/// kişisel veri logu üretmez; bu sınıfa yalnız önceden kırpılmış kadraj girer.
+/// Kart arka yüzündeki MRZ'yi okur. OCR `google_mlkit_text_recognition`
+/// (**genel** metin tanıma, MRZ ayrıştırıcı değil); ayrıştırma [MrzKey]'de.
+/// Kareler yalnız bellekte, yalnız kırpılmış kadraj girer.
 class MrzScanner {
   MrzScanner({
     TextRecognizer? recognizer,
@@ -25,17 +18,12 @@ class MrzScanner {
 
   final TextRecognizer _recognizer;
 
-  /// Bu seviyenin altındaki görüntüde küçük MRZ karakterleri güvenilir
-  /// ayrışmadığı için kullanıcıdan ışığı artırmasını istiyoruz.
+  /// Bunun altında küçük karakterler güvenilir ayrışmıyor; ışık istenir.
   static const double minimumMeanLuminance = 48;
 
-  /// Play Services modelinin ilk kullanımda hazırlanmasını bekleme sınırı.
-  ///
-  /// Model indirilemezse platform çağrısı yanıtsız kalabilir. Otuz saniye ilk
-  /// indirmeye alan tanırken kullanıcıyı sonsuz yüklemede bırakmaz.
+  /// Model indirilemezse çağrı yanıtsız kalabilir; 30 sn ilk indirmeye yeter.
   final Duration recognitionTimeout;
 
-  /// OCR'ın yalnız kadraj içinden ürettiği metni eyleme dönük sonuca çevirir.
   MrzFrameObservation interpretFrame({
     required String roiText,
     required double meanLuminance,
@@ -47,9 +35,8 @@ class MrzScanner {
     final key = MrzKey.parseTd1(roiText);
     if (key != null) return MrzFrameObservation.valid(key);
 
-    // En az bir MRZ satırına benzeyen uzunluk ve dolgu işareti varsa kart
-    // kadrajda ama kare henüz kararlı değildir. Hiç iz yoksa daha çok alan
-    // kaplaması için yaklaştırmak, aynı yerde beklemekten daha yararlıdır.
+    // MRZ izi varsa kart kadrajda ama kare kararsız; hiç iz yoksa yaklaştırmak
+    // beklemekten yararlı.
     final compact = roiText.toUpperCase().replaceAll(
       RegExp(r'[^A-Z0-9<«‹〈]'),
       '',
@@ -61,10 +48,7 @@ class MrzScanner {
     );
   }
 
-  /// Canlı karenin OCR öncesi kırpılmış MRZ kadrajını işler.
-  ///
-  /// ML Kit kamera baytını bellekte okur; bu yol dosya üretmez. Kadrajın
-  /// dışındaki ad, başlık ve belge metinleri TD1 adayına karışmaz.
+  /// Kırpılmış kadrajı işler; dosya üretilmez, kadraj dışı metin karışmaz.
   Future<MrzFrameObservation> analyzeLiveFrame(
     InputImage image, {
     required double meanLuminance,
@@ -83,8 +67,7 @@ class MrzScanner {
       throw ChipReadException(ChipReadFailure.ocrTimedOut, cause: error);
     } on PlatformException catch (error) {
       if (_isModelDeliveryFailure(error)) {
-        // Paketlenmeyen model ağ ya da Play Services yüzünden hazırlanamadı.
-        // Görüntünün okunup MRZ üretmemesinden farklı bir çözümü var.
+        // Model hazırlanamadı; okunamayan görüntüden farklı çözümü var.
         throw ChipReadException(
           ChipReadFailure.ocrModelUnavailable,
           cause: error,
@@ -96,10 +79,8 @@ class MrzScanner {
     }
   }
 
-  /// Eklenti bütün ML Kit hatalarını aynı `TextRecognizerError` koduyla
-  /// döndürüyor. Bu yüzden yalnız model/modül teslimini açıkça söyleyen
-  /// mesajlar indirme hatasıdır; bozuk görüntü gibi diğer yerel hatalar
-  /// mevcut MRZ-okunamadı davranışında kalır.
+  /// Eklenti bütün hataları aynı kodla döndürüyor; yalnız model teslimini
+  /// açıkça söyleyen mesajlar indirme hatası.
   static bool _isModelDeliveryFailure(PlatformException error) {
     if (error.code != 'TextRecognizerError') return false;
 
@@ -116,7 +97,6 @@ class MrzScanner {
     return namesModel && describesDelivery;
   }
 
-  /// Yerel tanıyıcıyı kapatır. Ekran kapanırken çağrılmalı; açık kalan
-  /// tanıyıcı yerli tarafta bellek tutuyor.
+  /// Açık kalan tanıyıcı yerli tarafta bellek tutar.
   Future<void> dispose() => _recognizer.close();
 }

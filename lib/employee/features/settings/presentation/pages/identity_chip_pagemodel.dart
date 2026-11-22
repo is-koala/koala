@@ -1,22 +1,6 @@
 part of 'identity_chip_page.dart';
 
-/// Ekranın hangi adımda olduğu.
-enum IdentityChipStage {
-  /// Ne yapılacağını anlatan giriş; taramayı ya da elle girişi başlatıyor.
-  intro,
-
-  /// MRZ okunamadığında (ya da kullanıcı istediğinde) üç kısa alan.
-  manual,
-
-  /// Arka kameradaki MRZ canlı ve kararlı biçimde aranıyor.
-  scanning,
-
-  /// Kart okunuyor.
-  reading,
-
-  /// Ayrışmış bir hata; ne olduğu ve ne yapılacağı ekranda.
-  failure,
-}
+enum IdentityChipStage { intro, manual, scanning, reading, failure }
 
 abstract class IdentityChipPagemodel extends State<IdentityChipPage> {
   late final UserService _userService;
@@ -25,21 +9,16 @@ abstract class IdentityChipPagemodel extends State<IdentityChipPage> {
 
   final TextEditingController documentNumber = TextEditingController();
 
-  /// Doğum tarihi seçicinin gidebileceği en eski yıl; kimlik ekranındaki
-  /// sınırın aynısı.
   static const int earliestYear = 1920;
 
-  /// Kimlik kartının azami geçerlilik ufku. Kart en fazla on yıllık
-  /// veriliyor; seçiciyi bundan ileri açmak yalnız yanlış seçime davet.
+  /// Kart en çok on yıllık; seçiciyi daha ileri açmak yanlış seçime davet.
   static const int expiryHorizonYears = 15;
 
   IdentityChipStage stage = IdentityChipStage.intro;
 
-  /// Sunucudan alınan tek kullanımlık sayı. Kart okunmadan **önce**
-  /// alınıyor: çipe imzalatılacak şey bu.
+  /// Kart okunmadan **önce** alınır; çipe imzalatılacak şey bu.
   String? challenge;
 
-  /// Hazırlık (NFC durumu + challenge) sürüyor mu.
   bool isPreparing = true;
 
   DateTime? birthDate;
@@ -51,7 +30,6 @@ abstract class IdentityChipPagemodel extends State<IdentityChipPage> {
   MrzCameraSession get liveCamera =>
       _liveCamera ??= widget.mrzCamera ?? DeviceMrzCameraSession();
 
-  /// Hatadan sonra "Tekrar Dene" kullanıcıyı geldiği adıma döndürsün diye.
   IdentityChipStage _retryStage = IdentityChipStage.intro;
 
   @override
@@ -73,10 +51,7 @@ abstract class IdentityChipPagemodel extends State<IdentityChipPage> {
       birthDate != null &&
       expiryDate != null;
 
-  /// NFC durumunu okur ve challenge'ı alır.
-  ///
-  /// Sıra önemli: NFC yoksa sunucudan boşuna sayı istemiyoruz, çünkü sayı
-  /// tek kullanımlık ve on dakika sonra çöp oluyor.
+  /// NFC yoksa sunucudan boşuna sayı istenmez: tek kullanımlık ve on dakikalık.
   Future<void> _prepare() async {
     final availability = await _reader.availability();
 
@@ -105,15 +80,13 @@ abstract class IdentityChipPagemodel extends State<IdentityChipPage> {
     }
   }
 
-  /// Kartın arka yüzünü tarar, sonra çipe gider.
   Future<void> scanAndRead() async {
     _retryStage = IdentityChipStage.intro;
     setState(() => stage = IdentityChipStage.scanning);
   }
 
   void onLiveMrzCaptured(MrzKey key) {
-    // Widget sahneden çıkarken kendi oturumunu kapatır; sonraki denemede
-    // kapatılmış kamerayı yeniden kullanmamak için referansı bırakıyoruz.
+    // Kapatılmış kamera sonraki denemede kullanılmasın.
     _liveCamera = null;
     unawaited(_read(key));
   }
@@ -123,7 +96,6 @@ abstract class IdentityChipPagemodel extends State<IdentityChipPage> {
     _fail(reason);
   }
 
-  /// Elle girilen üç alanla çipe gider.
   Future<void> readManually() async {
     _retryStage = IdentityChipStage.manual;
 
@@ -159,9 +131,7 @@ abstract class IdentityChipPagemodel extends State<IdentityChipPage> {
 
       if (!mounted) return;
 
-      // Formun beş alanı bu sonuçtan okunacak. Kanıt var ama DG1 kimlik
-      // bilgisi vermiyorsa sonuç yok: sunucu da reddedecekti ve formu boş
-      // bir kanıtla kilitlemek kullanıcıya çıkış bırakmazdı.
+      // DG1 kimlik bilgisi vermiyorsa sonuç yok: sunucu da reddederdi.
       final result = IdentityChipResult.parse(evidence);
       if (result == null) {
         _fail(ChipReadFailure.holderUnreadable);
@@ -183,15 +153,13 @@ abstract class IdentityChipPagemodel extends State<IdentityChipPage> {
     });
   }
 
-  /// Hata ekranından geldiği adıma döner.
   void retry() {
     setState(() {
       failure = null;
       stage = _retryStage;
     });
 
-    // NFC kapalıyken kullanıcı ayarlardan açıp döndüyse challenge hiç
-    // alınmamış olabilir; hazırlık baştan yürütülüyor.
+    // NFC açılıp dönüldüyse challenge alınmamış olabilir; hazırlık baştan.
     if (challenge == null) {
       setState(() => isPreparing = true);
       unawaited(_prepare());
@@ -206,12 +174,10 @@ abstract class IdentityChipPagemodel extends State<IdentityChipPage> {
     });
   }
 
-  /// Çip yolunu tümüyle bırakır. Kimlik ekranı beyan formuyla devam ediyor:
-  /// NFC'nin başarısızlığı kullanıcıyı akışın dışına atmamalı.
+  /// Kimlik ekranı beyan formuyla devam eder; NFC'nin başarısızlığı akış dışına
+  /// atmamalı.
   void abandon() => context.pop();
 
-  /// Çip yolunu bırakıp fotoğraflı incelemeye geçer; ekranı açan kimlik
-  /// ekranı sonucu görünce fotoğraf akışını açıyor.
   void continueWithPhotos() => context.pop(IdentityChipHandoff.photos);
 
   Future<void> pickBirthDate() async {
@@ -232,7 +198,7 @@ abstract class IdentityChipPagemodel extends State<IdentityChipPage> {
     final picked = await showDatePicker(
       context: context,
       initialDate: expiryDate ?? now,
-      // Süresi dolmuş kart da okunabiliyor; alt sınır bu yüzden geçmişte.
+      // Süresi dolmuş kart da okunabiliyor.
       firstDate: DateTime(earliestYear),
       lastDate: DateTime(now.year + expiryHorizonYears),
     );

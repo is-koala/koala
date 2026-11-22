@@ -30,40 +30,16 @@ import 'package:provider/provider.dart';
 
 part 'identity_verification_pagemodel.dart';
 
-/// Kimlik doğrulamanın giriş ekranı.
+/// Kimlik doğrulamanın giriş ekranı; başvurunun ilk şartı.
 ///
-/// İlana başvurabilmenin ilk şartı: sunucu doğrulanmamış kullanıcının
-/// başvurusunu `APPLICANT_IDENTITY_NOT_VERIFIED` ile reddediyor.
+/// Açılışta yol seçilir ([IdentityVerificationPagemodel.enter]): bekleyen ya da
+/// onaylı inceleme varsa, iOS'ta (çip okuma bu sürümde yok) ya da NFC yoksa
+/// **doğrudan fotoğraf akışı**. Aksi hâlde tepede fotoğraf yolu, altında çip
+/// kartı ve beyan formu.
 ///
-/// Ekran açılırken önce **hangi yolun** açılacağına karar veriyor
-/// ([IdentityVerificationPagemodel.enter]):
-///
-/// - Bekleyen ya da onaylanmış bir inceleme varsa, telefon iOS'sa (çip
-///   okuma Apple üyeliği istiyor ve bu sürümde yok) ya da NFC donanımı
-///   yoksa **doğrudan fotoğraf akışı** (`/identity-documents`) açılıyor; o
-///   kapanınca bu ekran da aynı sonuçla kapanıyor. Reddedilmiş inceleme çip
-///   yolunu kapatmıyor; fotoğraf kartı gerekçeyi yazıyor.
-/// - Aksi hâlde bu ekran çiziliyor: tepede fotoğraflı yol (ürünün ana
-///   yolu), altında çip kartı ve beyan formu.
-///
-/// Çip yolunun **iki hâli** var ve ikincisi zorunlu değil:
-///
-/// 1. **Beyan** — beş alan doldurulup gönderiliyor. Sunucudaki
-///    `IDENTITY_PASSIVE_AUTH_ENABLED` bugün `false` olduğu için bu yol tek
-///    başına çalışıyor.
-/// 2. **Çip** — kimlik kartının çipi okunup kanıt (`sod`, `dg1`, varsa
-///    `dg11`/`dg15` ve imza) aynı isteğe ekleniyor.
-///
-/// Çip okunduğunda beş alan da **kanıttan türüyor ve salt okunur**; elle
-/// düzenlemeye dönüşün tek yolu okumayı bırakmak — kullanıcı "Okumayı
-/// Kaldır" der ya da sunucu kanıtı `IDENTITY_CHALLENGE_INVALID` ile reddeder
-/// (is-koala/koala#136). Çip yolu bir hata verdiğinde — cihazda
-/// (`ChipReadFailure`) ya da sunucuda (`IdentityError`) — kullanıcı
-/// "Fotoğrafla Devam Et" ile fotoğraf akışına geçebiliyor; çip bir kapı
-/// değil.
-///
-/// Doğrulama başarılı olduğunda ad ve soyad **kilitleniyor** — hesap
-/// bilgileri ekranı da o noktadan sonra ikisini düzenletmiyor.
+/// Çip okunduğunda beş alan kanıttan türer ve salt okunur; elle düzenlemeye
+/// dönüş yalnız "Okumayı Kaldır" ya da `IDENTITY_CHALLENGE_INVALID` ile (#136).
+/// Doğrulamadan sonra ad ve soyad kilitlenir.
 class IdentityVerificationPage extends StatefulWidget {
   const IdentityVerificationPage({
     super.key,
@@ -74,11 +50,8 @@ class IdentityVerificationPage extends StatefulWidget {
 
   final CurrentUser user;
 
-  /// Testlerde gerçek API yerine sahte sunucuya bağlı servis kullanılabilir.
   final UserService? userService;
 
-  /// NFC donanımının varlığını soran sınır; testlerde yerli eklenti olmadan
-  /// "var" ya da "yok" denebilsin diye dışarıdan veriliyor.
   final ChipReader? chipReader;
 
   @override
@@ -90,9 +63,8 @@ class _IdentityVerificationPageState extends IdentityVerificationPagemodel {
   @override
   Widget build(BuildContext context) {
     if (!isReady) {
-      // Karar verilene ve fotoğraf akışı kapanana kadar boş bir sayfa:
-      // çip formunu bir an gösterip kaldırmak kullanıcıya iki ekran
-      // arasında sekiyormuş gibi görünürdü.
+      // Karar verilene kadar boş sayfa; formu bir an gösterip kaldırmak sekme
+      // gibi görünür.
       return Scaffold(
         appBar: MyAppbar(title: 'Kimlik Doğrulama'),
         body: const Center(child: CircularProgressIndicator()),
@@ -111,9 +83,8 @@ class _IdentityVerificationPageState extends IdentityVerificationPagemodel {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // İki yol, aralarında "YA DA": üstte fotoğraf (ana yol, kendi
-            // düğmesiyle), altta bilgiler (çip ya da elle, alttaki
-            // "Doğrula" düğmesi bu yolun). Bölümler arası 24.
+            // İki yol arasında "YA DA": üstte fotoğraf, altta bilgiler ve
+            // "Doğrula".
             _intro(),
             const SizedBox(height: AppSizes.spaceLarge),
             _photoPath(),
@@ -128,13 +99,12 @@ class _IdentityVerificationPageState extends IdentityVerificationPagemodel {
               onRemove: removeChip,
             ),
             const SizedBox(height: AppSizes.spaceLarge),
-            // Hangi form çizileceğine beyanın tipi karar veriyor; ayrı bir
-            // "kilitli mi" bayrağı yok, olsaydı beyanla ayrışabilirdi.
+            // Formu beyanın tipi seçiyor; ayrı "kilitli mi" bayrağı
+            // ayrışabilirdi.
             ...switch (declaration) {
               ManualDeclaration() => _manualFields(),
               ChipDeclaration(:final chip) => _lockedFields(chip),
             },
-            // "Doğrula" `bottomNavigationBar`'da; navbar payı gerekmiyor.
             const SizedBox(height: AppSizes.spaceLarge),
           ],
         ),
@@ -142,10 +112,8 @@ class _IdentityVerificationPageState extends IdentityVerificationPagemodel {
     );
   }
 
-  /// Fotoğraflı yol: ürünün ana yolu olarak tepede. Son inceleme
-  /// reddedildiyse kart gerekçeyi yazıyor; çip yolu az önce başarısız
-  /// olduysa aynı kart uyarı olarak çiziliyor — kullanıcı tıkandığı yerde
-  /// çıkışı görsün.
+  /// Ana yol tepede. Ret gerekçesi ya da az önceki çip hatası kartta yazılır;
+  /// kullanıcı tıkandığı yerde çıkışı görsün.
   Widget _photoPath() {
     final rejected = rejectedReview;
     if (rejected != null && !chipFailed) {
@@ -176,7 +144,6 @@ class _IdentityVerificationPageState extends IdentityVerificationPagemodel {
     );
   }
 
-  /// Elle beyan: dört metin alanı ve doğum tarihi seçici.
   List<Widget> _manualFields() {
     return [
       IdentityDeclarationFields(
@@ -191,8 +158,7 @@ class _IdentityVerificationPageState extends IdentityVerificationPagemodel {
     ];
   }
 
-  /// Çipten türeyen beyan: beş satır, hepsi salt okunur ve değerleri
-  /// doğrudan kanıttan. Denetleyicilere hiç bakılmıyor.
+  /// Değerler doğrudan kanıttan; denetleyicilere bakılmıyor.
   List<Widget> _lockedFields(IdentityChipResult read) {
     final holder = read.holder;
     return [
@@ -211,7 +177,6 @@ class _IdentityVerificationPageState extends IdentityVerificationPagemodel {
     ];
   }
 
-  /// Sayfanın üstündeki açıklama; kutusuz, sönük metin.
   Widget _intro() {
     return Text(
       'İşe başvurabilmen ve ücretini alabilmen için kimliğini bir kez '
@@ -225,6 +190,5 @@ class _IdentityVerificationPageState extends IdentityVerificationPagemodel {
     );
   }
 
-  /// Bilgilendirme metinlerinin satır aralığı.
   static const double _lineHeight = 1.4;
 }

@@ -30,33 +30,17 @@ import 'package:koala/product/widgets/my_textfield.dart';
 
 part 'identity_chip_pagemodel.dart';
 
-/// Çip ekranının kanıt yerine bir **yön** ile kapandığını söyleyen sonuç.
-///
-/// Ekran normalde [IdentityChipResult] ya da `null` ile kapanıyor. Hata
-/// ekranındaki "Fotoğrafla Devam Et" üçüncü bir sonuç: kimlik ekranı bunu
-/// görünce fotoğraf akışını açıyor. Ayrı bir tip olmasının sebebi, `null`'ın
-/// zaten "vazgeçti, hiçbir şey değişmesin" anlamını taşıması.
-enum IdentityChipHandoff {
-  /// Kullanıcı çip yolunu bırakıp dört fotoğrafla devam etmek istiyor.
-  photos,
-}
+/// Çip ekranının kanıt yerine bir **yön** ile kapanması: `null` zaten
+/// "vazgeçti" demek, "Fotoğrafla Devam Et" üçüncü sonuç.
+enum IdentityChipHandoff { photos }
 
-/// Kimlik kartının çipini okuyan ekran.
+/// Kimlik çipini okuyan ekran. Sıra kasıtlı: **önce tek kullanımlık sayı**,
+/// sonra MRZ, sonra çip; imzalanacak şey sayı.
 ///
-/// Sırası kasıtlı: **önce sunucudan tek kullanımlık sayı**, sonra kartın
-/// arka yüzündeki MRZ, sonra çip. Sayı en sona bırakılamaz — imzalanacak
-/// şey odur.
-///
-/// Başarılı okumada [IdentityChipResult] ile kapanıyor; kullanıcı vazgeçer
-/// ya da NFC hiç yoksa `null` ile kapanıyor ve kimlik ekranı **beyan
-/// formuyla eskisi gibi** devam ediyor. Her hata ekranında bir de
-/// "Fotoğrafla Devam Et" var: [IdentityChipHandoff.photos] ile kapanıyor ve
-/// kimlik ekranı dört fotoğraflı incelemeyi açıyor. Çip bu akışta bir kanıt,
-/// bir kapı değil.
-///
-/// > iOS okuma sırasında kendi sistem NFC sayfasını açıyor ve bu ekran
-/// > onun altında kalıyor — bu yüzden ilerleme metni hem burada hem
-/// > [ChipReader] üzerinden sistem sayfasında yazılıyor.
+/// Başarıda [IdentityChipResult], vazgeçilirse ya da NFC yoksa `null`; her hata
+/// ekranında "Fotoğrafla Devam Et" ([IdentityChipHandoff.photos]). Çip bir
+/// kanıt, kapı değil. iOS kendi NFC sayfasını açtığı için ilerleme orada da
+/// yazılıyor.
 class IdentityChipPage extends StatefulWidget {
   const IdentityChipPage({
     super.key,
@@ -65,13 +49,10 @@ class IdentityChipPage extends StatefulWidget {
     this.mrzCamera,
   });
 
-  /// Testlerde gerçek API yerine sahte sunucuya bağlı servis kullanılabilir.
   final UserService? userService;
 
-  /// Testlerde NFC platform sınırı cihaz olmadan çalıştırılabilir.
   final ChipReader? chipReader;
 
-  /// Canlı kamera sınırı testte yerli eklenti olmadan değiştirilebilir.
   final MrzCameraSession? mrzCamera;
 
   @override
@@ -324,9 +305,7 @@ class _IdentityChipPageState extends IdentityChipPagemodel {
             ),
           ),
           const SizedBox(height: AppSizes.spaceLarge),
-          // Çip okunamasa da kullanıcı boşlukta kalmıyor: ürünün ana yolu
-          // olan fotoğraflı inceleme her hatada ilk seçenek. Kartı yeniden
-          // okutmak ve beyan formu onun altında duruyor.
+          // Çip okunamasa da fotoğraflı inceleme her hatada ilk seçenek.
           MyButton(onPressed: continueWithPhotos, title: 'Fotoğrafla Devam Et'),
           const SizedBox(height: AppSizes.space),
           if (reason.canRetry) ...[
@@ -354,7 +333,6 @@ class _IdentityChipPageState extends IdentityChipPagemodel {
 
   // ---------------------------------------------------------------- Ortak
 
-  /// Bilgilendirme metinlerinin satır aralığı; kimlik ekranındakiyle aynı.
   static const double _lineHeight = 1.4;
 
   Widget _infoCard(String text) {

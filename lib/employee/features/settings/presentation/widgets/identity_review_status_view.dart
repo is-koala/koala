@@ -10,13 +10,9 @@ import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/my_button.dart';
 
-/// Personel incelemesinin **karar bekleyen** ve **onaylanmış** hâlleri.
-///
-/// Red ayrı bir görünüm değil: reddedilen kullanıcı aynı formu yeniden
-/// dolduracağı için gerekçe formun üstünde [IdentityRejectionNotice] olarak
-/// duruyor.
+/// İncelemenin bekleyen ve onaylı hâlleri; red gerekçesi formun üstünde
+/// ([IdentityRejectionNotice]).
 class IdentityReviewStatusView extends StatelessWidget {
-  /// Bekleyen inceleme: ne olduğu, tahmini süre ve gönderim anı.
   const IdentityReviewStatusView.pending({
     super.key,
     required this.review,
@@ -25,7 +21,6 @@ class IdentityReviewStatusView extends StatelessWidget {
     this.isRefreshing = false,
   }) : _approved = false;
 
-  /// Onaylanmış inceleme: kullanıcıyı profil rozetine geri yolluyor.
   const IdentityReviewStatusView.approved({super.key, required this.onLeave})
     : review = null,
       onRefresh = null,
@@ -34,23 +29,19 @@ class IdentityReviewStatusView extends StatelessWidget {
 
   final IdentityReview? review;
 
-  /// Durumu sunucudan yeniden okur; yalnız bekleyen görünümde.
   final VoidCallback? onRefresh;
 
-  /// Ekrandan ayrılma: bekleyende "Tamam", onaylıda "Profile Dön".
   final VoidCallback onLeave;
 
   final bool isRefreshing;
 
   final bool _approved;
 
-  /// Personelin inceleme süresi için kullanıcıya verilen tahmin. Ölçülmüş
-  /// bir değer değil, ürünün taahhüdü; değişirse metin buradan değişir.
+  /// Ölçülmüş değil, ürünün taahhüdü.
   static const String estimatedDuration =
       'İnceleme genellikle 1 iş günü içinde tamamlanır; yoğun günlerde biraz '
       'daha uzun sürebilir.';
 
-  /// Bilgilendirme metinlerinin satır aralığı; kimlik ekranlarındakiyle aynı.
   static const double _lineHeight = 1.4;
 
   @override
@@ -137,13 +128,11 @@ class IdentityReviewStatusView extends StatelessWidget {
   }
 }
 
-/// Reddedilen incelemenin gerekçesi; formun üstünde duruyor.
 class IdentityRejectionNotice extends StatelessWidget {
   const IdentityRejectionNotice({super.key, required this.review});
 
   final IdentityReview review;
 
-  /// Kırmızı zeminin saydamlığı: uyarı okunsun ama form kırmızıya boyanmasın.
   static const double _surfaceAlpha = 0.1;
 
   @override

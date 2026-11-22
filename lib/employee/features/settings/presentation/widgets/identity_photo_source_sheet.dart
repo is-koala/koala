@@ -9,16 +9,13 @@ import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_bottom_sheet.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// Kare için kaynak seçimi: kamera ya da galeri.
-///
-/// Kadraj rehberi burada bir kez daha yazıyor: kullanıcı kamerayı açmadan
-/// hemen önce ne çekeceğini görsün, çekip döndükten sonra değil.
+/// Kamera ya da galeri; kadraj rehberi kamerayı açmadan hemen önce bir kez daha
+/// görünsün.
 class IdentityPhotoSourceSheet extends StatelessWidget {
   const IdentityPhotoSourceSheet({super.key, required this.slot});
 
   final IdentityPhotoSlot slot;
 
-  /// Sheet'i açar; seçilen kaynakla, vazgeçildiyse `null` ile kapanır.
   static Future<IdentityPhotoSource?> show(
     BuildContext context, {
     required IdentityPhotoSlot slot,
