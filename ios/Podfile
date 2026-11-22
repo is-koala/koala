@@ -1,5 +1,5 @@
-# Eklentilerin çoğu SPM'den geliyor; CocoaPods yalnız google_maps_flutter_ios
-# için. O eklenti Package.swift yayınlayınca bu dosya silinebilir.
+# Bütün eklentiler SPM'den geliyor; kurulacak pod kalmadı. `pod deintegrate`
+# ile bu dosya silinince CocoaPods entegrasyonu tamamen kalkar.
 
 # Xcode'daki IPHONEOS_DEPLOYMENT_TARGET ile aynı değerde kalmalı.
 platform :ios, '15.5'

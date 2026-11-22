@@ -29,6 +29,9 @@ dependencies:
   flutter_svg: ^2.5.0
 
   google_maps_flutter: ^2.19.0
+  # Varsayılan iOS paketi SPM desteklemiyor ve güncelleme almıyor; sdk10 iOS 16
+  # istiyor, hedefimiz 15.5.
+  google_maps_flutter_ios_sdk9: ^2.19.0
 
   go_router: ^18.1.4
   app_links: ^7.2.2
