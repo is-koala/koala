@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/profile/models/public_profile_args.dart';
@@ -40,9 +40,8 @@ void main() {
   });
 
   test('şirket galerisi shell dışında, kendi rotasıyla açılıyor', () {
-    final gallery = allGoRoutes(
-      RouterManager.router.configuration.routes,
-    ).where((route) => route.path == '/business/company-gallery');
+    final gallery = allGoRoutes(RouterManager.router.configuration.routes)
+        .where((route) => route.path == '/business/company-gallery');
 
     // Galeri navbar'ın üstünü kaplamalı, o yüzden shell'in içine değil üst
     // düzeye konuyor — `/business/company-info` ile aynı yerde.
@@ -51,9 +50,8 @@ void main() {
   });
 
   test('şirket adresi shell dışında, kendi rotasıyla açılıyor', () {
-    final address = allGoRoutes(
-      RouterManager.router.configuration.routes,
-    ).where((route) => route.path == '/business/company-address');
+    final address = allGoRoutes(RouterManager.router.configuration.routes)
+        .where((route) => route.path == '/business/company-address');
 
     // Harita ekranı navbar'ın üstünü kaplamalı (is-koala/koala#184).
     expect(address, hasLength(1));
@@ -61,18 +59,16 @@ void main() {
   });
 
   test('şirket yetkilileri shell dışında, kendi rotasıyla açılıyor', () {
-    final contacts = allGoRoutes(
-      RouterManager.router.configuration.routes,
-    ).where((route) => route.path == '/business/company-contacts');
+    final contacts = allGoRoutes(RouterManager.router.configuration.routes)
+        .where((route) => route.path == '/business/company-contacts');
 
     expect(contacts, hasLength(1));
     expect(contacts.single.pageBuilder, isNotNull);
   });
 
   test('şirket daveti shell dışında, kendi rotasıyla açılıyor', () {
-    final invitation = allGoRoutes(
-      RouterManager.router.configuration.routes,
-    ).where((route) => route.path == '/company-invitation');
+    final invitation = allGoRoutes(RouterManager.router.configuration.routes)
+        .where((route) => route.path == '/company-invitation');
 
     expect(invitation, hasLength(1));
     expect(invitation.single.pageBuilder, isNotNull);
@@ -86,9 +82,8 @@ void main() {
       '/business/transport-shuttle',
       '/business/transport-stop',
     ]) {
-      final route = allGoRoutes(
-        RouterManager.router.configuration.routes,
-      ).where((route) => route.path == path);
+      final route = allGoRoutes(RouterManager.router.configuration.routes)
+          .where((route) => route.path == path);
 
       expect(route, hasLength(1), reason: path);
       expect(route.single.pageBuilder, isNotNull, reason: path);
@@ -96,18 +91,16 @@ void main() {
   });
 
   test('yetenek havuzu shell dışında, kendi rotasıyla açılıyor', () {
-    final pool = allGoRoutes(
-      RouterManager.router.configuration.routes,
-    ).where((route) => route.path == '/business/talent-pool');
+    final pool = allGoRoutes(RouterManager.router.configuration.routes)
+        .where((route) => route.path == '/business/talent-pool');
 
     expect(pool, hasLength(1));
     expect(pool.single.pageBuilder, isNotNull);
   });
 
   test('uyuşmazlık ekranı shell dışında, atama kimliği yol parametresi', () {
-    final routes = allGoRoutes(
-      RouterManager.router.configuration.routes,
-    ).where((route) => route.path == DisputeRoutes.pattern);
+    final routes = allGoRoutes(RouterManager.router.configuration.routes)
+        .where((route) => route.path == DisputeRoutes.pattern);
 
     // Navbar'ın üstünü kaplıyor ve iki kabuk da açıyor (is-koala/koala#215).
     expect(DisputeRoutes.pattern, '/assignment-dispute/:assignmentId');
@@ -123,9 +116,8 @@ void main() {
   });
 
   test('başvuru gelen kutusu shell dışında, kendi rotasıyla açılıyor', () {
-    final inbox = allGoRoutes(
-      RouterManager.router.configuration.routes,
-    ).where((route) => route.path == BusinessRoutes.applications);
+    final inbox = allGoRoutes(RouterManager.router.configuration.routes)
+        .where((route) => route.path == BusinessRoutes.applications);
 
     // Navbar'ın üstünü kaplamalı (is-koala/koala#213); işveren yolu olduğu için
     // çalışan bekçisi `/business` önekiyle geri çeviriyor.
@@ -153,9 +145,8 @@ void main() {
   test(
     'fotoğraflı kimlik incelemesi shell dışında, kendi rotasıyla açılıyor',
     () {
-      final documents = allGoRoutes(
-        RouterManager.router.configuration.routes,
-      ).where((route) => route.path == '/identity-documents');
+      final documents = allGoRoutes(RouterManager.router.configuration.routes)
+          .where((route) => route.path == '/identity-documents');
 
       // Çip ekranı gibi kimlik ekranının üstüne tam sayfa açılıyor.
       expect(documents, hasLength(1));
@@ -164,18 +155,16 @@ void main() {
   );
 
   test('kazançlar ekranı shell dışında, kendi rotasıyla açılıyor', () {
-    final earnings = allGoRoutes(
-      RouterManager.router.configuration.routes,
-    ).where((route) => route.path == '/earnings');
+    final earnings = allGoRoutes(RouterManager.router.configuration.routes)
+        .where((route) => route.path == '/earnings');
 
     expect(earnings, hasLength(1));
     expect(earnings.single.pageBuilder, isNotNull);
   });
 
   test('iş detayı shell dışında, kendi rotasıyla açılıyor', () {
-    final detail = allGoRoutes(
-      RouterManager.router.configuration.routes,
-    ).where((route) => route.path == '/work-detail');
+    final detail = allGoRoutes(RouterManager.router.configuration.routes)
+        .where((route) => route.path == '/work-detail');
 
     // İşlerim satırı ve Kazançlar satırı navbar'ın üstünü kaplayan tam
     // sayfaya açılıyor (is-koala/koala#177).
@@ -216,9 +205,8 @@ void main() {
   // sabitini okuyor; shell rotası da aynı sabitte durmalı, yoksa biri
   // değiştiğinde yönlendirme sessizce hiçbir yere gitmez.
   test('kendi profil sekmesi, sabitle aynı yolda tek shell rotası', () {
-    final own = allGoRoutes(
-      RouterManager.router.configuration.routes,
-    ).where((route) => route.path == EmployeeRoutes.ownProfile);
+    final own = allGoRoutes(RouterManager.router.configuration.routes)
+        .where((route) => route.path == EmployeeRoutes.ownProfile);
 
     expect(EmployeeRoutes.ownProfile, '/profile');
     expect(own, hasLength(1));

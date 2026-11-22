@@ -55,15 +55,15 @@ void main() {
 
     test('yalnız enlem veya yalnız boylam lat/lng üretmiyor', () {
       expect(
-        const JobSearchQuery(
-          latitude: 41.0,
-        ).toQueryParameters().containsKey('lat'),
+        const JobSearchQuery(latitude: 41.0)
+            .toQueryParameters()
+            .containsKey('lat'),
         isFalse,
       );
       expect(
-        const JobSearchQuery(
-          longitude: 29.0,
-        ).toQueryParameters().containsKey('lng'),
+        const JobSearchQuery(longitude: 29.0)
+            .toQueryParameters()
+            .containsKey('lng'),
         isFalse,
       );
     });

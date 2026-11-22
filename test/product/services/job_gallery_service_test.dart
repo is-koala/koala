@@ -35,9 +35,8 @@ void main() {
           const FakeApiResponse(statusCode: 200, body: _galleryBody),
     );
 
-    final images = await JobGalleryService.withClient(
-      api.client,
-    ).fetchGallery('job_1');
+    final images = await JobGalleryService.withClient(api.client)
+        .fetchGallery('job_1');
 
     expect(api.requests.single.method, 'GET');
     expect(api.requests.single.path, '/jobs/job_1/images');
@@ -68,12 +67,11 @@ void main() {
           const FakeApiResponse(statusCode: 200, body: _galleryBody),
     );
 
-    await JobGalleryService.withClient(
-      api.client,
-    ).replaceGallery('job_1', const [
-      GalleryImage(id: 'img_2', url: '', sortOrder: 8, caption: 'Mutfak'),
-      GalleryImage(id: 'img_1', url: '', isCover: true),
-    ]);
+    await JobGalleryService.withClient(api.client)
+        .replaceGallery('job_1', const [
+          GalleryImage(id: 'img_2', url: '', sortOrder: 8, caption: 'Mutfak'),
+          GalleryImage(id: 'img_1', url: '', isCover: true),
+        ]);
 
     final request = api.requests.single;
     expect(request.method, 'PUT');
@@ -90,9 +88,8 @@ void main() {
           const FakeApiResponse(statusCode: 200, body: _galleryBody),
     );
 
-    final images = await JobGalleryService.withClient(
-      api.client,
-    ).removeImage('job_1', 'img_3');
+    final images = await JobGalleryService.withClient(api.client)
+        .removeImage('job_1', 'img_3');
 
     expect(api.requests.single.method, 'DELETE');
     expect(api.requests.single.path, '/jobs/job_1/images/img_3');

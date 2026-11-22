@@ -14,8 +14,7 @@ abstract final class FinancialFailureMessage {
         'Ödeme sağlayıcısına şu anda ulaşılamıyor. Lütfen tekrar dene.',
     '{payment.provider.rejected}':
         'Ödeme sağlayıcısı işlemi reddetti. Başka bir yöntem deneyebilirsin.',
-    '{payment.fraud.review}':
-        'Ödeme güvenlik kontrolünde reddedildi. Destekle iletişime geçebilirsin.',
+    '{payment.fraud.review}': 'Ödeme güvenlik kontrolünde reddedildi. Destekle iletişime geçebilirsin.',
     'paymentStatus=FAILURE':
         'Ödeme sağlayıcı tarafından tamamlanmadı. Lütfen tekrar dene.',
   };

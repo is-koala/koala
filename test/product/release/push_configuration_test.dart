@@ -11,8 +11,7 @@ void main() {
     expect(
       settings,
       contains('id("com.google.gms.google-services")'),
-      reason:
-          'google-services settings.gradle.kts eklenti bloğunda apply false olmalı',
+      reason: 'google-services settings.gradle.kts eklenti bloğunda apply false olmalı',
     );
     expect(
       settings,
@@ -28,9 +27,8 @@ void main() {
   });
 
   test('ana manifest POST_NOTIFICATIONS ister', () {
-    final manifest = File(
-      'android/app/src/main/AndroidManifest.xml',
-    ).readAsStringSync();
+    final manifest = File('android/app/src/main/AndroidManifest.xml')
+        .readAsStringSync();
 
     expect(manifest, contains('android.permission.POST_NOTIFICATIONS'));
   });

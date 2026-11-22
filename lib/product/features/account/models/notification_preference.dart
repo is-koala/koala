@@ -168,9 +168,9 @@ class NotificationPreferenceGroup {
           kind: kinds[entry.key] ?? '',
           channels: [...entry.value]
             ..sort(
-              (a, b) => NotificationChannelLabels.rank(
-                a.channel,
-              ).compareTo(NotificationChannelLabels.rank(b.channel)),
+              (a, b) =>
+                  NotificationChannelLabels.rank(a.channel)
+                      .compareTo(NotificationChannelLabels.rank(b.channel)),
             ),
         ),
     ];

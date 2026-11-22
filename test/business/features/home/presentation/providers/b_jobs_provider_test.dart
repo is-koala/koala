@@ -57,9 +57,8 @@ FakeApi buildApi({
         );
       }
 
-      final match = RegExp(
-        r'^/jobs/([^/]+)/applications$',
-      ).firstMatch(options.path);
+      final match = RegExp(r'^/jobs/([^/]+)/applications$')
+          .firstMatch(options.path);
       if (match != null) {
         final jobId = match.group(1)!;
         if (applicantsByJob.containsKey(jobId) &&

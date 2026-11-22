@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:koala/employee/features/home/models/job.dart';
@@ -48,9 +48,10 @@ void main() {
     test('bütün pinler aynı şekil ve kenarla çizilir', () {
       final shapes = {
         for (final category in categories)
-          JobMarkerGenerator.pinSvg(
-            category,
-          ).split('<g ').first.replaceAll(_hex(category.color), ''),
+          JobMarkerGenerator.pinSvg(category)
+              .split('<g ')
+              .first
+              .replaceAll(_hex(category.color), ''),
       };
       expect(shapes, hasLength(1));
     });

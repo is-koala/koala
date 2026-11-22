@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/product/constants/app_assets.dart';
 import 'package:koala/product/constants/app_colors.dart';
@@ -63,14 +63,12 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   OnboardingContent(
                     imagePath: AppAssets.onboarding1,
                     title: "Günlük İş Bul",
-                    description:
-                        "Sana yakın günlük iş ilanlarını keşfet ve hemen başvur",
+                    description: "Sana yakın günlük iş ilanlarını keşfet ve hemen başvur",
                   ),
                   OnboardingContent(
                     imagePath: AppAssets.onboarding2,
                     title: "Hızlı Başvuru",
-                    description:
-                        "Tek tıkla başvuru yap, işverenler seninle direkt iletişime geçsin",
+                    description: "Tek tıkla başvuru yap, işverenler seninle direkt iletişime geçsin",
                   ),
                   OnboardingContent(
                     imagePath: AppAssets.onboarding3,

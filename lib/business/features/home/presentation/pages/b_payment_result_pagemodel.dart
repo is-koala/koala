@@ -56,8 +56,7 @@ abstract class BPaymentResultPagemodel extends State<BPaymentResultPage>
       case PaymentStatus.failed:
         base = (
           title: 'Ödeme Başarısız',
-          message:
-              'Ödeme tamamlanamadı. İlan detayına dönüp yeniden deneyebilirsin.',
+          message: 'Ödeme tamamlanamadı. İlan detayına dönüp yeniden deneyebilirsin.',
           icon: AppIcons.cancelCircle,
           color: AppColors.danger,
         );

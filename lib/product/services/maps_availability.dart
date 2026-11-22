@@ -25,9 +25,7 @@ class MapsAvailability extends ChangeNotifier {
   MapsAvailability();
 
   /// Cevabı belli nesne; testler ve `main` dışı kurulumlar için.
-  MapsAvailability.resolved({required bool isAvailable})
-    : _isAvailable = isAvailable,
-      _isResolved = true;
+  MapsAvailability.resolved({required this._isAvailable}) : _isResolved = true;
 
   /// Yerel tarafın cevap verdiği kanal. iOS'ta `AppDelegate`, Android'de
   /// `MainActivity` kaydediyor; ikisi de `isAvailable` metoduna `bool` döner.

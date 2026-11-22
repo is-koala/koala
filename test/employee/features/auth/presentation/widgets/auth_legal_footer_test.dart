@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/auth/presentation/widgets/auth_legal_footer.dart';
 import 'package:koala/employee/features/auth/services/legal_document_browser.dart';

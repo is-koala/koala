@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/presentation/pages/employer_type_page.dart';
@@ -16,8 +16,7 @@ const _companyFormTitle = 'Şirket formu';
 /// Kayıt sonrası tür seçimini gerçek rotalarla sürer; şirket formu ve kimlik
 /// ekranı yerine sözleşmelerini taşıyan sahte sayfalar var.
 class _RegistrationHarness {
-  _RegistrationHarness({required bool identityVerified})
-    : _identityVerified = identityVerified;
+  _RegistrationHarness({required this._identityVerified});
 
   bool _identityVerified;
 

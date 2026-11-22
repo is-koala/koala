@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:koala/employee/features/settings/models/chip_read_failure.dart';
 import 'package:koala/employee/features/settings/models/mrz_key.dart';
@@ -251,9 +251,8 @@ class _LiveMrzScannerState extends State<LiveMrzScanner>
           fitted.destination,
           Offset.zero & surface,
         );
-        final scanRect = MrzScanRegion.pixelRegion(
-          previewRect.size,
-        ).shift(previewRect.topLeft);
+        final scanRect = MrzScanRegion.pixelRegion(previewRect.size)
+            .shift(previewRect.topLeft);
 
         return Stack(
           fit: StackFit.expand,

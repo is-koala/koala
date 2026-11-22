@@ -6,7 +6,7 @@ publish_to: "none"
 version: 1.1.1+3
 
 environment:
-  sdk: ^3.8.1
+  sdk: ^3.13.0
 
 dependencies:
   flutter:
@@ -20,8 +20,14 @@ dependencies:
   connectivity_plus: ^7.3.1
 
   # UI
+  # Material ve Cupertino Flutter 3.50'den beri SDK dışında, ayrı paketler
+  # (UI ayrıştırması). `package:flutter/material.dart` eskidi; uygulama bu
+  # iki paketi doğrudan kullanıyor. Çeviriler de burada:
+  # `GlobalMaterialLocalizations.delegates` (app.dart).
+  material_ui: ^1.11.1
+  cupertino_ui: ^1.1.7
   smooth_page_indicator: ^3.0.0
-  cupertino_icons: ^1.0.9
+  cupertino_icons: ^2.0.0
   reicon_flutter: ^1.0.1
   lottie: ^3.5.1
   flutter_svg: ^2.3.0
@@ -67,11 +73,11 @@ dependencies:
   # dmrtd'nin ham APDU taşıması. Zaten dmrtd'nin bağımlılığı; burada açıkça
   # yazılı çünkü NFC'nin var / kapalı / desteklenmiyor ayrımını doğrudan bu
   # paketin `nfcAvailability` alanından okuyoruz.
-  flutter_nfc_kit: ^3.6.2
+  flutter_nfc_kit: ^3.7.0
 
   # MRZ okuması için **genel OCR**. MRZ ayrıştırıcı değil: TD1 düzeni ve ICAO
   # kontrol hanesi doğrulaması `settings/models/mrz_key.dart` içinde bizim.
-  google_mlkit_text_recognition: ^0.17.1
+  google_mlkit_text_recognition: ^1.0.3
 
   # Serviste biniş teyidi QR'ı (is-koala/koala#217). Yusuf 2026-11-05
   # onayladı; `google_mlkit_barcode_scanning` yerine seçildi.
@@ -90,13 +96,14 @@ dependencies:
   dio: ^5.11.0
   flutter_secure_storage: ^11.0.0
   stomp_dart_client: ^3.0.1
-  file_picker: ^12.2.0
+  file_picker: ^13.4.1
 
   # Push. flutter/packages dışı; Yusuf 2026-09-12 onayladı (#141).
-  # Sürüm FlutterFire 3.47 hattına sabit. flutter_local_notifications yok:
-  # ön planda yerel bildirim çizilmez, arka planı FCM sistem tepsisi taşır.
-  firebase_core: 4.14.0
-  firebase_messaging: 16.6.0
+  # Sürüm sabit (FlutterFire, Flutter 3.50 hattı; built-in Kotlin destekli).
+  # flutter_local_notifications yok: ön planda yerel bildirim çizilmez,
+  # arka planı FCM sistem tepsisi taşır.
+  firebase_core: 5.2.0
+  firebase_messaging: 17.1.0
   share_plus: ^13.3.1
 
 # dmrtd `archive: ^3.6.1` istiyor, lottie 3.5.1 ise `archive: ^4.0.0`; ikisi

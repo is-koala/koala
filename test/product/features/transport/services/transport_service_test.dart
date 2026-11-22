@@ -18,9 +18,8 @@ void main() {
         ),
       );
 
-      final plan = await TransportService.withClient(
-        api.client,
-      ).fetchPlan('job-1');
+      final plan = await TransportService.withClient(api.client)
+          .fetchPlan('job-1');
 
       final request = api.requests.single;
       expect(request.method, 'GET');
@@ -99,9 +98,8 @@ void main() {
         ),
       );
 
-      final transport = await TransportService.withClient(
-        api.client,
-      ).fetchAssignmentTransport('assignment-1');
+      final transport = await TransportService.withClient(api.client)
+          .fetchAssignmentTransport('assignment-1');
 
       expect(
         api.requests.single.path,
@@ -121,9 +119,8 @@ void main() {
         ),
       );
 
-      final transport = await TransportService.withClient(
-        api.client,
-      ).selectSeat('assignment-1', shuttleId: 'shuttle-1', stopId: 'stop-1');
+      final transport = await TransportService.withClient(api.client)
+          .selectSeat('assignment-1', shuttleId: 'shuttle-1', stopId: 'stop-1');
 
       final request = api.requests.single;
       expect(request.method, 'PUT');

@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_sizes.dart';
@@ -12,12 +12,11 @@ import 'package:koala/product/widgets/my_button.dart';
 
 /// Bağlantıdaki token'ı gönderen fonksiyon; oturumun tarafına göre
 /// rotada seçiliyor (işçi kuyruğu ya da işverenin koltuk işareti).
-typedef BoardingLinkSubmit =
-    Future<BoardingResultPanel> Function(
-      BuildContext context,
-      BoardingToken token,
-      DateTime capturedAt,
-    );
+typedef BoardingLinkSubmit = Future<BoardingResultPanel> Function(
+  BuildContext context,
+  BoardingToken token,
+  DateTime capturedAt,
+);
 
 /// Telefonun kendi kamerasıyla okutulan `{şema}://board?t=<token>`
 /// bağlantısı (is-koala/koala#217). `AppLinkDestination` bunu

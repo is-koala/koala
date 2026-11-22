@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/core/widgets/employer_type_badge.dart';
 import 'package:koala/product/widgets/messaging_gate_note.dart';

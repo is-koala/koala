@@ -105,15 +105,13 @@ void main() {
 
     test('işveren yalnız onaylanmış ve tahsil edilmemiş atamada öder', () {
       expect(
-        Assignment.fromJson(
-          assignmentBody(paymentStatus: 'PENDING_COLLECTION'),
-        ).needsEmployerPayment,
+        Assignment.fromJson(assignmentBody(paymentStatus: 'PENDING_COLLECTION'))
+            .needsEmployerPayment,
         isTrue,
       );
       expect(
-        Assignment.fromJson(
-          assignmentBody(paymentStatus: 'FAILED'),
-        ).needsEmployerPayment,
+        Assignment.fromJson(assignmentBody(paymentStatus: 'FAILED'))
+            .needsEmployerPayment,
         isTrue,
       );
       expect(
@@ -373,9 +371,9 @@ void main() {
         isTrue,
       );
       expect(
-        MyJob.fromAssignment(
-          Assignment.fromJson(assignmentBody()),
-        ).messaging.isAvailable,
+        MyJob.fromAssignment(Assignment.fromJson(assignmentBody()))
+            .messaging
+            .isAvailable,
         isFalse,
       );
     });

@@ -18,11 +18,8 @@ typedef BoardingQrLoader = Future<BoardingQr> Function();
 /// eder, [retryDelay] sonra yeniden denenir; süre dolunca [isExpired] olur
 /// ve ekran QR'ı geçersiz diye işaretler.
 class BoardingQrController extends ChangeNotifier {
-  BoardingQrController({
-    required BoardingQrLoader load,
-    DateTime Function()? clock,
-  }) : _load = load,
-       _clock = clock ?? DateTime.now;
+  BoardingQrController({required this._load, DateTime Function()? clock})
+    : _clock = clock ?? DateTime.now;
 
   /// Geçici bir hatayla düşen yenilemeden sonra bekleme.
   static const Duration retryDelay = Duration(seconds: 10);

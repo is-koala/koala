@@ -52,9 +52,8 @@ void main() {
     });
 
     test('konum varken yarıçap kutuya çevriliyor', () {
-      final query = const JobFilterSelection(
-        radiusKm: 5,
-      ).toQuery(latitude: 39.92, longitude: 32.85);
+      final query = const JobFilterSelection(radiusKm: 5)
+          .toQuery(latitude: 39.92, longitude: 32.85);
 
       expect(query.hasBounds, isTrue);
       expect(query.bounds!.minLatitude, lessThan(39.92));
@@ -72,9 +71,8 @@ void main() {
 
     test('başlangıç çipi Instant penceresine çevriliyor', () {
       final now = DateTime.parse('2026-09-15T12:00:00+03:00');
-      final query = const JobFilterSelection(
-        startOn: JobStartOn.today,
-      ).toQuery(now: now);
+      final query = const JobFilterSelection(startOn: JobStartOn.today)
+          .toQuery(now: now);
 
       expect(
         query.toQueryParameters()['startFrom'],

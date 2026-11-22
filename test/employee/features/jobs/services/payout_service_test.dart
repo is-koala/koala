@@ -36,9 +36,8 @@ void main() {
         ),
       );
 
-      final payouts = await PayoutService.withClient(
-        api.client,
-      ).fetchMyPayouts();
+      final payouts = await PayoutService.withClient(api.client)
+          .fetchMyPayouts();
 
       expect(api.requests.single.path, '/users/me/payouts');
       expect(api.requests.single.method, 'GET');
@@ -55,9 +54,8 @@ void main() {
         ),
       );
 
-      final payouts = await PayoutService.withClient(
-        api.client,
-      ).fetchMyPayouts();
+      final payouts = await PayoutService.withClient(api.client)
+          .fetchMyPayouts();
 
       expect(payouts, isEmpty);
     });
@@ -84,9 +82,8 @@ void main() {
           ),
         );
 
-        final payouts = await PayoutService.withClient(
-          api.client,
-        ).fetchMyPayouts();
+        final payouts = await PayoutService.withClient(api.client)
+            .fetchMyPayouts();
 
         expect(payouts.single.amount, '1000.1');
       },

@@ -16,9 +16,8 @@ void main() {
     test('işçi QR\'ı yönle istenir', () async {
       final api = FakeApi(handler: (_) => _data(boardingQrJson()));
 
-      final qr = await TransportService.withClient(
-        api.client,
-      ).fetchWorkerQr('asg-1', direction: ShuttleDirection.returnTrip);
+      final qr = await TransportService.withClient(api.client)
+          .fetchWorkerQr('asg-1', direction: ShuttleDirection.returnTrip);
 
       final request = api.requests.single;
       expect(request.method, 'GET');
@@ -124,9 +123,8 @@ void main() {
         ]),
       );
 
-      final rows = await TransportService.withClient(
-        api.client,
-      ).fetchShuttleBoardings(shuttleUuid);
+      final rows = await TransportService.withClient(api.client)
+          .fetchShuttleBoardings(shuttleUuid);
 
       expect(api.requests.single.path, '/shuttles/$shuttleUuid/boardings');
       expect(rows, hasLength(2));

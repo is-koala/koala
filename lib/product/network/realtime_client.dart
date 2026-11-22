@@ -68,12 +68,11 @@ typedef StompClientFactory = StompClient Function(StompConfig config);
 class RealtimeClient {
   RealtimeClient._({
     TokenStorage? tokenStorage,
-    SessionManager? sessionManager,
+    this._sessionManager,
     StompClientFactory? stompClientFactory,
     Future<void> Function()? sessionProbe,
     DateTime Function()? now,
   }) : _tokenStorage = tokenStorage ?? TokenStorage(),
-       _sessionManager = sessionManager,
        _stompClientFactory = stompClientFactory ?? _defaultStompClientFactory,
        _sessionProbe = sessionProbe ?? _defaultSessionProbe,
        _now = now ?? DateTime.now {

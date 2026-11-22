@@ -41,9 +41,8 @@ void main() {
   });
 
   test('canlı QA girişi kimlikleri yalnız derleme tanımlarından okur', () {
-    final source = File(
-      'integration_test/live_qa_login_test.dart',
-    ).readAsStringSync();
+    final source = File('integration_test/live_qa_login_test.dart')
+        .readAsStringSync();
 
     for (final name in [
       'QA_WORKER_EMAIL',
@@ -60,9 +59,8 @@ void main() {
   });
 
   test('auth-email araştırması düzelmiş kodu hâlâ kusur diye yazmaz', () {
-    final research = File(
-      'docs/research/auth-email-app-links.md',
-    ).readAsStringSync();
+    final research = File('docs/research/auth-email-app-links.md')
+        .readAsStringSync();
 
     expect(research, contains('#131'));
     expect(research, isNot(contains('scheme/authority doğrulamadan')));

@@ -136,15 +136,12 @@ enum MaplessPinOrigin {
 class MapFirstAddressController extends ChangeNotifier {
   MapFirstAddressController({
     required AddressSearchGateway searchGateway,
-    required ReferenceLocationService referenceService,
-    required DeviceLocationSource locationSource,
+    required this._referenceService,
+    required this._locationSource,
     ConfirmedAddress? initialAddress,
-    Duration reverseDebounce = defaultReverseDebounce,
+    this._reverseDebounce = defaultReverseDebounce,
     Duration autocompleteDebounce = const Duration(milliseconds: 350),
   }) : _searchGateway = searchGateway,
-       _referenceService = referenceService,
-       _locationSource = locationSource,
-       _reverseDebounce = reverseDebounce,
        neighborhood = TextEditingController(
          text: initialAddress?.components.neighborhood ?? '',
        ),

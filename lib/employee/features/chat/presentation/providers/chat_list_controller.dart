@@ -290,9 +290,8 @@ class ChatListController extends ChangeNotifier {
   Future<void> refresh() {
     final userId = _currentUserId;
     if (userId == null) return Future.value();
-    return _refreshing ??= _refreshNow(
-      userId,
-    ).whenComplete(() => _refreshing = null);
+    return _refreshing ??= _refreshNow(userId)
+        .whenComplete(() => _refreshing = null);
   }
 
   Future<void> _refreshNow(String userId) async {

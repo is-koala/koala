@@ -168,8 +168,7 @@ void main() {
         handler: (_) => const FakeApiResponse(
           statusCode: 302,
           headers: {
-            'location':
-                'https://bucket.s3.eu-central-1.amazonaws.com/k?X-Amz-Expires=180',
+            'location': 'https://bucket.s3.eu-central-1.amazonaws.com/k?X-Amz-Expires=180',
           },
         ),
       );

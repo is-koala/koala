@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
@@ -18,8 +18,7 @@ const _rejectionKey = ValueKey('gate-rejection');
 /// Kapıyı sürüp sonucunu dışarı veren tek düğmelik ekran; kapı bir widget
 /// değil, `context` isteyen bir fonksiyon.
 class _GateHarness {
-  _GateHarness({required bool identityVerified})
-    : _identityVerified = identityVerified;
+  _GateHarness({required this._identityVerified});
 
   bool _identityVerified;
   late final FakeApi api = FakeApi(

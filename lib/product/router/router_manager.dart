@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/business/core/b_shell_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_create_page.dart';
@@ -443,9 +443,12 @@ class RouterManager {
             pageBuilder: (context, state) => CustomTransitionPage(
               key: state.pageKey,
               child: BHomePage(),
-              transitionsBuilder:
-                  (context, animation, secondaryAnimation, child) =>
-                      FadeTransition(opacity: animation, child: child),
+              transitionsBuilder: (
+                context,
+                animation,
+                secondaryAnimation,
+                child,
+              ) => FadeTransition(opacity: animation, child: child),
               transitionDuration: const Duration(milliseconds: 200),
             ),
           ),
@@ -454,9 +457,12 @@ class RouterManager {
             pageBuilder: (context, state) => CustomTransitionPage(
               key: state.pageKey,
               child: const BPostsPage(),
-              transitionsBuilder:
-                  (context, animation, secondaryAnimation, child) =>
-                      FadeTransition(opacity: animation, child: child),
+              transitionsBuilder: (
+                context,
+                animation,
+                secondaryAnimation,
+                child,
+              ) => FadeTransition(opacity: animation, child: child),
               transitionDuration: const Duration(milliseconds: 200),
             ),
           ),
@@ -465,9 +471,12 @@ class RouterManager {
             pageBuilder: (context, state) => CustomTransitionPage(
               key: state.pageKey,
               child: const BChatListPage(),
-              transitionsBuilder:
-                  (context, animation, secondaryAnimation, child) =>
-                      FadeTransition(opacity: animation, child: child),
+              transitionsBuilder: (
+                context,
+                animation,
+                secondaryAnimation,
+                child,
+              ) => FadeTransition(opacity: animation, child: child),
               transitionDuration: const Duration(milliseconds: 200),
             ),
           ),
@@ -476,9 +485,12 @@ class RouterManager {
             pageBuilder: (context, state) => CustomTransitionPage(
               key: state.pageKey,
               child: BProfilePage(),
-              transitionsBuilder:
-                  (context, animation, secondaryAnimation, child) =>
-                      FadeTransition(opacity: animation, child: child),
+              transitionsBuilder: (
+                context,
+                animation,
+                secondaryAnimation,
+                child,
+              ) => FadeTransition(opacity: animation, child: child),
               transitionDuration: const Duration(milliseconds: 200),
             ),
           ),

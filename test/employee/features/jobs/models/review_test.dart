@@ -178,9 +178,8 @@ void main() {
         markTestSkipped('CreateReviewDto.java bulunamadı');
         return;
       }
-      final match = RegExp(
-        r'@Size\(max = (\d+)\)\s+private String comment;',
-      ).firstMatch(dto.readAsStringSync());
+      final match = RegExp(r'@Size\(max = (\d+)\)\s+private String comment;')
+          .firstMatch(dto.readAsStringSync());
 
       expect(
         match,

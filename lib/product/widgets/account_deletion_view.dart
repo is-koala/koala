@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -14,8 +14,9 @@ import 'package:koala/product/widgets/form_page_body.dart';
 import 'package:koala/product/widgets/my_button.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
 
-typedef AccountDeletionRequest =
-    Future<AccountDeletion> Function({String? reason});
+typedef AccountDeletionRequest = Future<AccountDeletion> Function({
+  String? reason,
+});
 
 /// Hesap silme talebini iki uygulama için aynı davranışla başlatır.
 ///

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/services/availability_service.dart';
 import 'package:koala/product/models/availability.dart';
 import 'package:koala/product/models/availability_day.dart';

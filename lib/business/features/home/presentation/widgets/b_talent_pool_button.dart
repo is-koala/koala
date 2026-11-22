@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/business/features/home/presentation/providers/b_talent_pool_provider.dart';
 import 'package:koala/business/features/home/services/talent_pool_service.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';

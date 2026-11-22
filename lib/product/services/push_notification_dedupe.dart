@@ -9,11 +9,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// çünkü sonsuz bir harita birikmesin.
 class PushNotificationDedupe {
   PushNotificationDedupe({
-    SharedPreferences? prefs,
+    this._prefs,
     DateTime Function()? now,
     this.ttl = const Duration(days: 7),
-  }) : _prefs = prefs,
-       _now = now ?? DateTime.now;
+  }) : _now = now ?? DateTime.now;
 
   static const String storageKey = 'push_handled_notifications';
 

@@ -331,9 +331,8 @@ class ChatThreadController extends ChangeNotifier {
   Future<void> catchUp() {
     final userId = _currentUserId;
     if (userId == null || _isLoading) return Future.value();
-    return _catchingUp ??= _catchUpNow(
-      userId,
-    ).whenComplete(() => _catchingUp = null);
+    return _catchingUp ??= _catchUpNow(userId)
+        .whenComplete(() => _catchingUp = null);
   }
 
   Future<void> _catchUpNow(String userId) async {

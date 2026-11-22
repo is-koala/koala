@@ -63,9 +63,8 @@ void main() {
         longitude: -151.2092955,
       );
 
-      final destination = DirectionsLinks.googleMapsWeb(
-        southWest,
-      ).queryParameters['destination'];
+      final destination = DirectionsLinks.googleMapsWeb(southWest)
+          .queryParameters['destination'];
 
       expect(destination, '-33.868820,-151.209296');
       expect(destination, isNot(contains('%2C')));

@@ -71,9 +71,8 @@ void main() {
         ),
       );
 
-      final profile = await UserService.withClient(
-        api.client,
-      ).fetchPublicProfile('user_9');
+      final profile = await UserService.withClient(api.client)
+          .fetchPublicProfile('user_9');
 
       expect(api.requests.single.path, '/users/user_9');
       expect(profile.jobTitle, 'Barista');
@@ -182,9 +181,8 @@ void main() {
     test('jobTitle ve telefon gövdeye konur', () async {
       final api = buildApi();
 
-      await UserService.withClient(
-        api.client,
-      ).updateProfile(jobTitle: 'Fotoğrafçı', phoneNumber: '5550000000');
+      await UserService.withClient(api.client)
+          .updateProfile(jobTitle: 'Fotoğrafçı', phoneNumber: '5550000000');
 
       expect(api.requests.single.data, {
         'phoneNumber': '5550000000',
@@ -234,9 +232,8 @@ void main() {
         ],
       );
 
-      final result = await UserService.withClient(
-        api.client,
-      ).updateProfile(email: 'yeni@b.com');
+      final result = await UserService.withClient(api.client)
+          .updateProfile(email: 'yeni@b.com');
 
       expect(result.user.email, 'a@b.com');
       expect(result.pendingVerifications.single.isEmail, isTrue);
@@ -391,9 +388,8 @@ void main() {
         ),
       );
 
-      final challenge = await UserService.withClient(
-        api.client,
-      ).startIdentityChallenge();
+      final challenge = await UserService.withClient(api.client)
+          .startIdentityChallenge();
 
       final request = api.requests.single;
       expect(request.path, '/users/me/identity-verification/challenge');
@@ -611,9 +607,8 @@ void main() {
         ),
       );
 
-      await UserService.withClient(
-        api.client,
-      ).updateProfile(iban: 'TR330006100519786457841326');
+      await UserService.withClient(api.client)
+          .updateProfile(iban: 'TR330006100519786457841326');
 
       final body = api.requests.single.data as Map<String, dynamic>;
       expect(body['iban'], 'TR330006100519786457841326');

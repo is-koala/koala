@@ -20,9 +20,8 @@ abstract interface class TimesheetEventStore {
 /// bulunabilsin diye olaylarla son etkin kullanıcıyı aynı SQLite dosyasında
 /// tutan adapter.
 class SqfliteTimesheetEventStore implements TimesheetEventStore {
-  SqfliteTimesheetEventStore({DatabaseFactory? factory, String? databasePath})
-    : _factory = factory ?? databaseFactory,
-      _databasePath = databasePath;
+  SqfliteTimesheetEventStore({DatabaseFactory? factory, this._databasePath})
+    : _factory = factory ?? databaseFactory;
 
   static const String _databaseName = 'koala_timesheet_queue.db';
   static const String _table = 'timesheet_events';

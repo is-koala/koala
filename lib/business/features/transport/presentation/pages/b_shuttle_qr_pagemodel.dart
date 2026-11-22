@@ -91,8 +91,7 @@ abstract class BShuttleQrPagemodel extends State<BShuttleQrPage>
     if (error.type == ApiErrorType.notFound) {
       return 'Servis bulunamadı ya da bu servisi yönetme yetkiniz yok.';
     }
-    return BoardingFailure.classify(
-      error,
-    ).message(BoardingActor.employer, serverMessage: error.message);
+    return BoardingFailure.classify(error)
+        .message(BoardingActor.employer, serverMessage: error.message);
   }
 }

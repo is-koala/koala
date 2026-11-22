@@ -27,6 +27,10 @@ class FirebaseMessagingPushTokenSource implements PushTokenSource {
   Future<String?> currentToken() async {
     try {
       if (!await _allowed()) return null;
+      // firebase_messaging 17 `getToken`/`onTokenRefresh`'i `register()` +
+      // `onRegistered` lehine eskitti; olay tabanlı yeni akışa geçiş ayrı
+      // iş (yaşam döngüsü ve testler değişiyor). Eski API hâlâ çalışıyor.
+      // ignore: deprecated_member_use
       return await _messaging.getToken();
     } catch (error, stackTrace) {
       debugPrint('FCM token okunamadı: $error');
@@ -37,6 +41,7 @@ class FirebaseMessagingPushTokenSource implements PushTokenSource {
 
   @override
   Stream<String> get onRefresh =>
+      // ignore: deprecated_member_use
       _messaging.onTokenRefresh.asyncExpand((token) async* {
         if (await _allowed()) yield token;
       });

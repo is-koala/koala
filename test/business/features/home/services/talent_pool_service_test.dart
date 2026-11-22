@@ -50,9 +50,8 @@ void main() {
         ),
       );
 
-      final result = await TalentPoolService.withClient(
-        api.client,
-      ).fetchTalentPool(page: 0, size: 20);
+      final result = await TalentPoolService.withClient(api.client)
+          .fetchTalentPool(page: 0, size: 20);
 
       final request = api.requests.single;
       expect(request.method, 'GET');
@@ -78,9 +77,8 @@ void main() {
         ),
       );
 
-      await TalentPoolService.withClient(
-        api.client,
-      ).fetchTalentPool(page: 1, size: 20);
+      await TalentPoolService.withClient(api.client)
+          .fetchTalentPool(page: 1, size: 20);
 
       expect(api.requests.single.queryParameters, {'page': 1, 'size': 20});
     });
@@ -96,9 +94,8 @@ void main() {
         ),
       );
 
-      final result = await TalentPoolService.withClient(
-        api.client,
-      ).fetchTalentPool();
+      final result = await TalentPoolService.withClient(api.client)
+          .fetchTalentPool();
 
       expect(result.entries, isEmpty);
       expect(result.totalElements, 0);
@@ -114,9 +111,8 @@ void main() {
         ),
       );
 
-      final saved = await TalentPoolService.withClient(
-        api.client,
-      ).addWorker('worker-1', note: 'Geçen hafta çok iyiydi');
+      final saved = await TalentPoolService.withClient(api.client)
+          .addWorker('worker-1', note: 'Geçen hafta çok iyiydi');
 
       final request = api.requests.single;
       expect(request.method, 'PUT');
@@ -135,9 +131,8 @@ void main() {
         ),
       );
 
-      await TalentPoolService.withClient(
-        api.client,
-      ).addWorker('worker-1', note: 'a' * 1001);
+      await TalentPoolService.withClient(api.client)
+          .addWorker('worker-1', note: 'a' * 1001);
 
       expect((api.requests.single.data as Map)['note'], 'a' * 1000);
     });

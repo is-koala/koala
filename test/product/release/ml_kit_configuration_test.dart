@@ -48,9 +48,8 @@ void main() {
   test(
     'Android OCR ve barkod modellerini kurulum sırasında hazırlamayı ister',
     () {
-      final manifest = File(
-        'android/app/src/main/AndroidManifest.xml',
-      ).readAsStringSync();
+      final manifest = File('android/app/src/main/AndroidManifest.xml')
+          .readAsStringSync();
       final metadata = RegExp(
         r'<meta-data\s+'
         r'android:name="com\.google\.mlkit\.vision\.DEPENDENCIES"\s+'

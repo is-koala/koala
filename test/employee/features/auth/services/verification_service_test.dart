@@ -12,9 +12,8 @@ void main() {
             const FakeApiResponse(statusCode: 200, body: {'success': true}),
       );
 
-      await VerificationService.withClient(
-        api.client,
-      ).confirm('ver-1', '123456');
+      await VerificationService.withClient(api.client)
+          .confirm('ver-1', '123456');
 
       final request = api.requests.single;
       expect(request.path, '/verifications/ver-1/confirm');

@@ -370,9 +370,8 @@ Future<ApiErrorType> _typeFor({required int statusCode, String? category}) {
     ),
   );
 
-  return _captureError(
-    () => api.client.postWithoutData(ApiPaths.login),
-  ).then((error) => error.type);
+  return _captureError(() => api.client.postWithoutData(ApiPaths.login))
+      .then((error) => error.type);
 }
 
 /// Çağrının fırlattığı [ApiException]'ı yakalar; fırlatmazsa testi düşürür.

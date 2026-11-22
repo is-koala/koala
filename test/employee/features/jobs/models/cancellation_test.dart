@@ -53,9 +53,8 @@ void main() {
 
     test('tanınmayan taraf Koala sayılır', () {
       expect(
-        Cancellation.fromJson(
-          cancellationBody(party: 'UZAYLI'),
-        ).cancelledByParty,
+        Cancellation.fromJson(cancellationBody(party: 'UZAYLI'))
+            .cancelledByParty,
         CancellationParty.admin,
       );
     });
@@ -105,9 +104,8 @@ void main() {
         isTrue,
       );
       expect(
-        CancellationPreview.fromJson(
-          previewBody(noticeMinutes: -30),
-        ).hasStarted,
+        CancellationPreview.fromJson(previewBody(noticeMinutes: -30))
+            .hasStarted,
         isTrue,
       );
       expect(CancellationPreview.fromJson(previewBody()).hasStarted, isFalse);
@@ -116,9 +114,8 @@ void main() {
     // Sunucu iptale kapalı atamada 409 yerine bu bayrağı döndürüyor.
     test('iptal edilemeyen atamada cancellableNow false', () {
       expect(
-        CancellationPreview.fromJson(
-          previewBody(cancellableNow: false),
-        ).cancellableNow,
+        CancellationPreview.fromJson(previewBody(cancellableNow: false))
+            .cancellableNow,
         isFalse,
       );
     });

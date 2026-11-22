@@ -77,19 +77,15 @@ class BoardingQueueProvider extends ChangeNotifier with WidgetsBindingObserver {
 
   @visibleForTesting
   BoardingQueueProvider.withAdapters({
-    required BoardingQueueStore store,
-    required BoardingGateway gateway,
+    required this._store,
+    required this._gateway,
     required TimesheetRetryTrigger retryTrigger,
     BoardingUtcNow? utcNow,
     BoardingEventIdFactory? eventIdFactory,
-    SessionManager? sessionManager,
-    BoardingUserIdResolver? currentUserId,
-  }) : _store = store,
-       _gateway = gateway,
-       _utcNow = utcNow ?? DateTime.now,
-       _eventIdFactory = eventIdFactory ?? newBoardingClientEventId,
-       _sessionManager = sessionManager,
-       _currentUserId = currentUserId {
+    this._sessionManager,
+    this._currentUserId,
+  }) : _utcNow = utcNow ?? DateTime.now,
+       _eventIdFactory = eventIdFactory ?? newBoardingClientEventId {
     WidgetsBinding.instance.addObserver(this);
     _retrySubscription = retryTrigger.onNetworkAvailable.listen((_) {
       _schedule(flush);

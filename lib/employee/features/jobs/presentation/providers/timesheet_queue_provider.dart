@@ -29,21 +29,17 @@ class TimesheetQueueProvider extends ChangeNotifier
 
   @visibleForTesting
   TimesheetQueueProvider.withAdapters({
-    required TimesheetEventStore store,
-    required TimesheetEventGateway gateway,
-    required TimesheetRetryTrigger retryTrigger,
+    required this._store,
+    required this._gateway,
+    required this._retryTrigger,
     TimesheetUtcNow? utcNow,
     TimesheetMonotonicNow? monotonicNow,
     TimesheetEventIdFactory? eventIdFactory,
-    SessionManager? sessionManager,
-  }) : _store = store,
-       _gateway = gateway,
-       _retryTrigger = retryTrigger,
-       _utcNow = utcNow ?? DateTime.now,
+    this._sessionManager,
+  }) : _utcNow = utcNow ?? DateTime.now,
        _monotonicNow =
            monotonicNow ?? (() => _processClock.elapsedMicroseconds),
-       _eventIdFactory = eventIdFactory ?? _newEventId,
-       _sessionManager = sessionManager {
+       _eventIdFactory = eventIdFactory ?? _newEventId {
     WidgetsBinding.instance.addObserver(this);
     _retrySubscription = _retryTrigger.onNetworkAvailable.listen((_) {
       _schedule(flush);

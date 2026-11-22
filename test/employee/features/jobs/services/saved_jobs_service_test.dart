@@ -25,9 +25,8 @@ void main() {
         ),
       );
 
-      final jobs = await SavedJobsService.withClient(
-        api.client,
-      ).fetchSavedJobs();
+      final jobs = await SavedJobsService.withClient(api.client)
+          .fetchSavedJobs();
 
       expect(api.requests.single.path, '/users/me/saved-jobs');
       expect(jobs.single.title, 'Garson');

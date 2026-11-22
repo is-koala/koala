@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/services/user_block_service.dart';
 import 'package:koala/product/widgets/app_toast.dart';

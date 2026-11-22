@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/constants/upload_limits.dart';
 import 'package:koala/product/models/gallery_image.dart';
 import 'package:koala/product/network/api_exception.dart';

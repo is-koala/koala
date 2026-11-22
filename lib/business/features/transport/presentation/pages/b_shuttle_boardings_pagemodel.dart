@@ -77,9 +77,8 @@ abstract class BShuttleBoardingsPagemodel extends State<BShuttleBoardingsPage> {
       if (!mounted || generation != _generation) return;
       final message = error.type == ApiErrorType.notFound
           ? 'Servis bulunamadı ya da bu servisi yönetme yetkiniz yok.'
-          : BoardingFailure.classify(
-              error,
-            ).message(BoardingActor.employer, serverMessage: error.message);
+          : BoardingFailure.classify(error)
+                .message(BoardingActor.employer, serverMessage: error.message);
       if (rows == null) {
         setState(() => errorMessage = message);
       } else {

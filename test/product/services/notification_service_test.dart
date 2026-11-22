@@ -34,9 +34,8 @@ void main() {
         ),
       );
 
-      final feed = await NotificationService.withClient(
-        api.client,
-      ).fetchFeed(page: 1, size: 20);
+      final feed = await NotificationService.withClient(api.client)
+          .fetchFeed(page: 1, size: 20);
 
       final request = api.requests.single;
       expect(request.path, '/users/me/notifications');
@@ -92,9 +91,8 @@ void main() {
         ),
       );
 
-      final marked = await NotificationService.withClient(
-        api.client,
-      ).markAllRead();
+      final marked = await NotificationService.withClient(api.client)
+          .markAllRead();
 
       final request = api.requests.single;
       expect(request.path, '/users/me/notifications/read');

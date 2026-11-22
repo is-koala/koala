@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -1417,18 +1417,18 @@ void main() {
         ),
         overrides: {'/respond': (_) => conflict},
       );
-      final refreshesBefore = pathsOf(
-        harness,
-      ).where((path) => path == '/job-assignments/assignment-1').length;
+      final refreshesBefore = pathsOf(harness)
+          .where((path) => path == '/job-assignments/assignment-1')
+          .length;
 
       await tester.tap(find.byKey(const ValueKey('work-detail-accept')));
       await settle(tester);
 
       expect(find.text('Atama bu durumdan cevaplanamaz.'), findsOneWidget);
       expect(
-        pathsOf(
-          harness,
-        ).where((path) => path == '/job-assignments/assignment-1').length,
+        pathsOf(harness)
+            .where((path) => path == '/job-assignments/assignment-1')
+            .length,
         greaterThan(refreshesBefore),
       );
       expect(find.text('İptal Edildi'), findsOneWidget);
@@ -1550,9 +1550,9 @@ void main() {
             .load(),
       );
       await settle(tester);
-      final loadsBefore = pathsOf(
-        harness,
-      ).where((path) => path == '/users/me/applications').length;
+      final loadsBefore = pathsOf(harness)
+          .where((path) => path == '/users/me/applications')
+          .length;
 
       await tester.tap(find.byKey(const ValueKey('work-detail-menu')));
       await tester.pumpAndSettle();

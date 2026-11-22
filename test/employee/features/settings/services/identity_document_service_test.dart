@@ -48,9 +48,8 @@ void main() {
       );
       final photos = writeIdentityPhotos();
 
-      final review = await IdentityDocumentService.withClient(
-        api.client,
-      ).submit(identity: _complete(), photos: photos);
+      final review = await IdentityDocumentService.withClient(api.client)
+          .submit(identity: _complete(), photos: photos);
 
       final request = api.requests.single;
       expect(request.method, 'POST');
@@ -100,9 +99,8 @@ void main() {
       final photos = writeIdentityPhotos()..remove(IdentityPhotoSlot.together);
 
       await expectLater(
-        IdentityDocumentService.withClient(
-          api.client,
-        ).submit(identity: _complete(), photos: photos),
+        IdentityDocumentService.withClient(api.client)
+            .submit(identity: _complete(), photos: photos),
         throwsArgumentError,
       );
       expect(api.requests, isEmpty);
@@ -116,9 +114,8 @@ void main() {
         );
 
         await expectLater(
-          IdentityDocumentService.withClient(
-            api.client,
-          ).submit(identity: _declaration, photos: writeIdentityPhotos()),
+          IdentityDocumentService.withClient(api.client)
+              .submit(identity: _declaration, photos: writeIdentityPhotos()),
           throwsArgumentError,
         );
         expect(api.requests, isEmpty);
@@ -129,9 +126,8 @@ void main() {
       Future<ApiException> submitAgainst(FakeApiResponse response) async {
         final api = FakeApi(handler: (_) => response);
         try {
-          await IdentityDocumentService.withClient(
-            api.client,
-          ).submit(identity: _complete(), photos: writeIdentityPhotos());
+          await IdentityDocumentService.withClient(api.client)
+              .submit(identity: _complete(), photos: writeIdentityPhotos());
         } on ApiException catch (error) {
           return error;
         }
@@ -231,9 +227,8 @@ void main() {
         ),
       );
 
-      final review = await IdentityDocumentService.withClient(
-        api.client,
-      ).fetchCurrent();
+      final review = await IdentityDocumentService.withClient(api.client)
+          .fetchCurrent();
 
       expect(api.requests.single.method, 'GET');
       expect(api.requests.single.path, '/users/me/identity-documents');
@@ -246,9 +241,8 @@ void main() {
     test('IDENTITY_DOCUMENTS_NOT_FOUND ile 404 "yok" demek: null', () async {
       final api = FakeApi(handler: (_) => noIdentityReviewResponse);
 
-      final review = await IdentityDocumentService.withClient(
-        api.client,
-      ).fetchCurrent();
+      final review = await IdentityDocumentService.withClient(api.client)
+          .fetchCurrent();
 
       expect(review, isNull);
     });

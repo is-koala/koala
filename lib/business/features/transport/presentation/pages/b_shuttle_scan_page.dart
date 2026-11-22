@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/features/transport/models/boarding.dart';
@@ -103,9 +103,8 @@ class BShuttleScanPage extends StatefulWidget {
     } on ApiException catch (error) {
       return BoardingResultPanel(
         tone: BoardingResultTone.failure,
-        message: BoardingFailure.classify(
-          error,
-        ).message(BoardingActor.employer, serverMessage: error.message),
+        message: BoardingFailure.classify(error)
+            .message(BoardingActor.employer, serverMessage: error.message),
       );
     }
   }

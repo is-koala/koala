@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -44,8 +44,10 @@ class BoardingCameraCallbacks {
 
 /// Kamera yüzeyini kuran fonksiyon. Üretimde [MobileScannerCamera]; widget
 /// testleri kamerası olmayan bir sahte yüzey verir.
-typedef BoardingCameraBuilder =
-    Widget Function(BuildContext context, BoardingCameraCallbacks callbacks);
+typedef BoardingCameraBuilder = Widget Function(
+  BuildContext context,
+  BoardingCameraCallbacks callbacks,
+);
 
 /// Kalıcı izin reddini soran ve ayarları açan ince seam.
 abstract interface class CameraPermissionProbe {

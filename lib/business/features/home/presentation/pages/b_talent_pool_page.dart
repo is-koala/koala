@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/business/features/home/models/talent_pool_entry.dart';
 import 'package:koala/business/features/home/presentation/providers/b_talent_pool_provider.dart';

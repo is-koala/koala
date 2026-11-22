@@ -34,9 +34,8 @@ void main() {
         ),
       );
 
-      final agreements = await LegalService.withClient(
-        api.client,
-      ).fetchCurrentAgreements();
+      final agreements = await LegalService.withClient(api.client)
+          .fetchCurrentAgreements();
 
       expect(api.requests.single.path, '/legal/agreements');
       expect(agreements, hasLength(2));
@@ -53,9 +52,8 @@ void main() {
         ),
       );
 
-      final agreements = await LegalService.withClient(
-        api.client,
-      ).fetchCurrentAgreements();
+      final agreements = await LegalService.withClient(api.client)
+          .fetchCurrentAgreements();
 
       expect(agreements, isEmpty);
     });
@@ -98,9 +96,8 @@ void main() {
         ),
       );
 
-      final result = await LegalService.withClient(
-        api.client,
-      ).requestAccountDeletion(reason: 'Artık kullanmıyorum');
+      final result = await LegalService.withClient(api.client)
+          .requestAccountDeletion(reason: 'Artık kullanmıyorum');
 
       expect(api.requests.single.path, '/legal/account-deletion');
       expect(api.requests.single.data, {'reason': 'Artık kullanmıyorum'});

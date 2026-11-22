@@ -25,9 +25,8 @@ void main() {
     test('şikayet /reports yoluna gider', () async {
       final api = FakeApi(handler: (_) => _createdReport);
 
-      await ReportService.withClient(
-        api.client,
-      ).createReport(reportedUserId: 'u9', reason: ReportReason.harassment);
+      await ReportService.withClient(api.client)
+          .createReport(reportedUserId: 'u9', reason: ReportReason.harassment);
 
       expect(api.requests.single.path, '/reports');
       expect(api.requests.single.method, 'POST');
@@ -52,9 +51,8 @@ void main() {
     test('ilan şikayeti gövdeye jobId olarak konur', () async {
       final api = FakeApi(handler: (_) => _createdReport);
 
-      await ReportService.withClient(
-        api.client,
-      ).createReport(jobId: 'j7', reason: ReportReason.offPlatformPayment);
+      await ReportService.withClient(api.client)
+          .createReport(jobId: 'j7', reason: ReportReason.offPlatformPayment);
 
       expect(api.requests.single.data, {
         'jobId': 'j7',
@@ -65,9 +63,8 @@ void main() {
     test('mesaj şikayeti gövdeye messageId olarak konur', () async {
       final api = FakeApi(handler: (_) => _createdReport);
 
-      await ReportService.withClient(
-        api.client,
-      ).createReport(messageId: 'm3', reason: ReportReason.spam);
+      await ReportService.withClient(api.client)
+          .createReport(messageId: 'm3', reason: ReportReason.spam);
 
       expect(api.requests.single.data, {'messageId': 'm3', 'reason': 'SPAM'});
     });
@@ -88,9 +85,8 @@ void main() {
     test('verilmeyen hedef alanları gövdede hiç bulunmaz', () async {
       final api = FakeApi(handler: (_) => _createdReport);
 
-      await ReportService.withClient(
-        api.client,
-      ).createReport(reportedUserId: 'u9', reason: ReportReason.harassment);
+      await ReportService.withClient(api.client)
+          .createReport(reportedUserId: 'u9', reason: ReportReason.harassment);
 
       final body = api.requests.single.data! as Map<String, dynamic>;
 
@@ -103,9 +99,8 @@ void main() {
     test('yanıt Report modeline çevrilir', () async {
       final api = FakeApi(handler: (_) => _createdReport);
 
-      final report = await ReportService.withClient(
-        api.client,
-      ).createReport(reportedUserId: 'u9', reason: ReportReason.harassment);
+      final report = await ReportService.withClient(api.client)
+          .createReport(reportedUserId: 'u9', reason: ReportReason.harassment);
 
       expect(report.id, 'r1');
       expect(report.reportedUserId, 'u9');

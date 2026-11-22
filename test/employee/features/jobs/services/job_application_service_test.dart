@@ -37,9 +37,8 @@ void main() {
         ),
       );
 
-      final page = await JobApplicationService.withClient(
-        api.client,
-      ).fetchMyApplications();
+      final page = await JobApplicationService.withClient(api.client)
+          .fetchMyApplications();
 
       expect(api.requests.single.path, '/users/me/applications');
       expect(page.applications.single.id, 'app_1');
@@ -56,9 +55,8 @@ void main() {
         ),
       );
 
-      final page = await JobApplicationService.withClient(
-        api.client,
-      ).fetchMyApplications();
+      final page = await JobApplicationService.withClient(api.client)
+          .fetchMyApplications();
 
       expect(page.applications, isEmpty);
     });
@@ -76,9 +74,8 @@ void main() {
         ),
       );
 
-      await JobApplicationService.withClient(
-        api.client,
-      ).fetchMyApplications(status: ApplicationStatus.unknown);
+      await JobApplicationService.withClient(api.client)
+          .fetchMyApplications(status: ApplicationStatus.unknown);
 
       expect(
         api.requests.single.queryParameters.containsKey('status'),
@@ -97,9 +94,8 @@ void main() {
         ),
       );
 
-      await JobApplicationService.withClient(
-        api.client,
-      ).fetchMyApplications(status: ApplicationStatus.withdrawn);
+      await JobApplicationService.withClient(api.client)
+          .fetchMyApplications(status: ApplicationStatus.withdrawn);
 
       expect(api.requests.single.queryParameters['status'], 'WITHDRAWN');
     });
@@ -125,9 +121,8 @@ void main() {
         ),
       );
 
-      final application = await JobApplicationService.withClient(
-        api.client,
-      ).withdraw('app_1');
+      final application = await JobApplicationService.withClient(api.client)
+          .withdraw('app_1');
 
       expect(api.requests.single.path, '/job-applications/app_1/withdraw');
       expect(api.requests.single.method, 'POST');

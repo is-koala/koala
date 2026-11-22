@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/settings/models/chip_read_failure.dart';
 import 'package:koala/employee/features/settings/models/mrz_key.dart';
@@ -148,9 +148,8 @@ void main() {
     final preview = tester.getRect(
       find.byKey(const ValueKey('fake-camera-preview')),
     );
-    final expected = MrzScanRegion.pixelRegion(
-      preview.size,
-    ).shift(preview.topLeft);
+    final expected = MrzScanRegion.pixelRegion(preview.size)
+        .shift(preview.topLeft);
     expect(
       tester.getRect(find.byKey(const ValueKey('mrz-scan-frame'))),
       expected,

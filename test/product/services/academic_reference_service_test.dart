@@ -66,9 +66,8 @@ void main() {
       );
 
       expect(
-        await AcademicReferenceService.withClient(
-          api.client,
-        ).fetchUniversities(),
+        await AcademicReferenceService.withClient(api.client)
+            .fetchUniversities(),
         isEmpty,
       );
     });

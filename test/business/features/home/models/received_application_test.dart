@@ -120,17 +120,13 @@ void main() {
     test('kapalı ve iptal edilmiş ilan işaretlenir', () {
       expect(ReceivedApplication.fromJson(_dto).isJobClosed, isFalse);
       expect(
-        ReceivedApplication.fromJson({
-          ..._dto,
-          'jobStatus': 'CLOSED',
-        }).isJobClosed,
+        ReceivedApplication.fromJson({..._dto, 'jobStatus': 'CLOSED'})
+            .isJobClosed,
         isTrue,
       );
       expect(
-        ReceivedApplication.fromJson({
-          ..._dto,
-          'jobStatus': 'CANCELLED',
-        }).jobStatus,
+        ReceivedApplication.fromJson({..._dto, 'jobStatus': 'CANCELLED'})
+            .jobStatus,
         JobStatus.cancelled,
       );
     });

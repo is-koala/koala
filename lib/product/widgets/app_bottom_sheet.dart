@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
@@ -161,9 +161,8 @@ class _PullToDismissState extends State<_PullToDismiss>
     return NotificationListener<ScrollNotification>(
       onNotification: _onScroll,
       child: ScrollConfiguration(
-        behavior: ScrollConfiguration.of(
-          context,
-        ).copyWith(physics: const ClampingScrollPhysics()),
+        behavior: ScrollConfiguration.of(context)
+            .copyWith(physics: const ClampingScrollPhysics()),
         child: AnimatedBuilder(
           animation: _offset,
           builder: (context, child) => Transform.translate(

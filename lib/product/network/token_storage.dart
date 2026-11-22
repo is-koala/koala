@@ -19,9 +19,8 @@ class TokenStorage {
 
   /// Testlerin gerçek Keychain'e gitmemesi için sahte bir depo geçilebilir.
   @visibleForTesting
-  TokenStorage.withStorage(FlutterSecureStorage storage, {String? apiOrigin})
-    : _storage = storage,
-      _apiOrigin = apiOrigin;
+  TokenStorage.withStorage(FlutterSecureStorage storage, {this._apiOrigin})
+    : _storage = storage;
 
   final FlutterSecureStorage _storage;
   final String? _apiOrigin;

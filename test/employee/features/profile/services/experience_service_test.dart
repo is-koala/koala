@@ -77,9 +77,8 @@ void main() {
     test('bitiş verilmezse null gider', () async {
       final api = savedApi();
 
-      await ExperienceService.withClient(
-        api.client,
-      ).create(title: 'Barista', startDate: DateTime(2024, 6));
+      await ExperienceService.withClient(api.client)
+          .create(title: 'Barista', startDate: DateTime(2024, 6));
 
       final body = api.requests.single.data as Map<String, dynamic>;
       expect(body['endDate'], isNull);
@@ -97,9 +96,8 @@ void main() {
       );
 
       await expectLater(
-        ExperienceService.withClient(
-          api.client,
-        ).create(title: 'Barista', startDate: DateTime(2024, 6)),
+        ExperienceService.withClient(api.client)
+            .create(title: 'Barista', startDate: DateTime(2024, 6)),
         throwsA(isA<ApiException>()),
       );
     });

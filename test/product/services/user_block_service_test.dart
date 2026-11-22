@@ -57,9 +57,8 @@ void main() {
     test('gerekçe verilirse gövdeye konur', () async {
       final api = FakeApi(handler: (_) => _successResult);
 
-      await UserBlockService.withClient(
-        api.client,
-      ).block('u9', reason: 'Israrla mesaj attı');
+      await UserBlockService.withClient(api.client)
+          .block('u9', reason: 'Israrla mesaj attı');
 
       expect(api.requests.single.data, {'reason': 'Israrla mesaj attı'});
     });
@@ -75,9 +74,8 @@ void main() {
     test('gerekçe 512 karakterle sınırlanıyor', () async {
       final api = FakeApi(handler: (_) => _successResult);
 
-      await UserBlockService.withClient(
-        api.client,
-      ).block('u9', reason: 'a' * 600);
+      await UserBlockService.withClient(api.client)
+          .block('u9', reason: 'a' * 600);
 
       final body = api.requests.single.data as Map<String, dynamic>;
       expect((body['reason'] as String).length, UserBlockService.reasonLimit);
@@ -110,9 +108,8 @@ void main() {
     test('düz liste modele çevriliyor', () async {
       final api = FakeApi(handler: (_) => _blockList);
 
-      final blocks = await UserBlockService.withClient(
-        api.client,
-      ).fetchMyBlocks();
+      final blocks = await UserBlockService.withClient(api.client)
+          .fetchMyBlocks();
 
       expect(blocks, hasLength(1));
 
@@ -133,9 +130,8 @@ void main() {
         ),
       );
 
-      final blocks = await UserBlockService.withClient(
-        api.client,
-      ).fetchMyBlocks();
+      final blocks = await UserBlockService.withClient(api.client)
+          .fetchMyBlocks();
 
       expect(blocks, isEmpty);
     });

@@ -22,12 +22,10 @@ import 'package:koala/product/network/token_storage.dart';
 /// [ApiPaths.publicPaths] içinde değil.
 class AuthInterceptor extends QueuedInterceptor {
   AuthInterceptor({
-    required TokenStorage tokenStorage,
-    required Dio tokenDio,
-    required Future<void> Function() onSessionExpired,
-  }) : _tokenStorage = tokenStorage,
-       _tokenDio = tokenDio,
-       _onSessionExpired = onSessionExpired;
+    required this._tokenStorage,
+    required this._tokenDio,
+    required this._onSessionExpired,
+  });
 
   final TokenStorage _tokenStorage;
 

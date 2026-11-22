@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:app_links/app_links.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/network/api_config.dart';
 import 'package:koala/product/network/app_update_gate.dart';
 import 'package:koala/product/network/realtime_connection_keeper.dart';
@@ -87,6 +87,13 @@ class _AppState extends State<App> {
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       title: 'Koala',
+      // Uygulama yalnız Türkçe. Tarih/saat seçicileri, "Tamam/İptal" gibi
+      // sistem metinleri ve metin seçme menüsü buradan Türkçe geliyor.
+      // `delegates` Material, Cupertino ve Widgets çevirilerinin üçünü de
+      // içeriyor (material_ui; eski flutter_localizations delegeleri eskidi).
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      supportedLocales: const [Locale('tr')],
+      locale: const Locale('tr'),
       theme: lightTheme,
       darkTheme: darkTheme,
       themeMode: context.watch<ThemeProvider>().themeMode,

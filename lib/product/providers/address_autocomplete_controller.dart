@@ -7,10 +7,9 @@ import 'package:koala/product/services/address_search_service.dart';
 
 class AddressAutocompleteController extends ChangeNotifier {
   AddressAutocompleteController({
-    required AddressSearchGateway gateway,
-    Duration debounce = const Duration(milliseconds: 350),
-  }) : _gateway = gateway,
-       _debounce = debounce;
+    required this._gateway,
+    this._debounce = const Duration(milliseconds: 350),
+  });
 
   final AddressSearchGateway _gateway;
   final Duration _debounce;

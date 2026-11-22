@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/employee/features/auth/services/legal_service.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/boarding_queue_provider.dart';
 import 'package:koala/product/models/account_deletion.dart';

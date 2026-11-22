@@ -37,14 +37,13 @@ import 'package:koala/product/network/api_exception.dart';
 class MapExploreController extends ChangeNotifier {
   MapExploreController({
     JobService? service,
-    Duration debounce = const Duration(milliseconds: 500),
+    this._debounce = const Duration(milliseconds: 500),
     this.fetchMargin = defaultFetchMargin,
     this.refreshIndicatorDelay = const Duration(milliseconds: 400),
     this.areaTtl = const Duration(minutes: 3),
     DateTime Function()? clock,
   }) : assert(fetchMargin >= 0),
        _service = service ?? JobService(),
-       _debounce = debounce,
        _clock = clock ?? DateTime.now;
 
   /// Görünen alanın her yöne ne kadar genişletileceği, alanın kendi

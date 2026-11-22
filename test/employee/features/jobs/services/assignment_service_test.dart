@@ -39,9 +39,8 @@ void main() {
         ),
       );
 
-      final page = await AssignmentService.withClient(
-        api.client,
-      ).fetchMyAssignments();
+      final page = await AssignmentService.withClient(api.client)
+          .fetchMyAssignments();
 
       expect(api.requests.single.path, '/users/me/assignments');
       expect(api.requests.single.queryParameters, {'page': 0, 'size': 20});
@@ -59,9 +58,8 @@ void main() {
         ),
       );
 
-      final page = await AssignmentService.withClient(
-        api.client,
-      ).fetchMyAssignments();
+      final page = await AssignmentService.withClient(api.client)
+          .fetchMyAssignments();
 
       expect(page.assignments, isEmpty);
     });
@@ -99,9 +97,8 @@ void main() {
         ),
       );
 
-      final assignment = await AssignmentService.withClient(
-        api.client,
-      ).fetchAssignment('asg_51');
+      final assignment = await AssignmentService.withClient(api.client)
+          .fetchAssignment('asg_51');
 
       expect(api.requests.single.path, '/job-assignments/asg_51');
       expect(api.requests.single.method, 'GET');
@@ -176,9 +173,8 @@ void main() {
         ),
       );
 
-      final status = await AssignmentService.withClient(
-        api.client,
-      ).respond(assignmentId: 'asg_1', accepted: true);
+      final status = await AssignmentService.withClient(api.client)
+          .respond(assignmentId: 'asg_1', accepted: true);
 
       final request = api.requests.single;
       expect(request.path, '/job-assignments/asg_1/respond');
@@ -198,9 +194,8 @@ void main() {
         ),
       );
 
-      final status = await AssignmentService.withClient(
-        api.client,
-      ).respond(assignmentId: 'asg_1', accepted: false);
+      final status = await AssignmentService.withClient(api.client)
+          .respond(assignmentId: 'asg_1', accepted: false);
 
       expect(api.requests.single.data, {'accepted': false});
       expect(status, AssignmentStatus.rejected);
@@ -215,9 +210,8 @@ void main() {
       );
 
       await expectLater(
-        AssignmentService.withClient(
-          api.client,
-        ).respond(assignmentId: 'asg_1', accepted: true),
+        AssignmentService.withClient(api.client)
+            .respond(assignmentId: 'asg_1', accepted: true),
         throwsA(
           isA<ApiException>().having(
             (error) => error.type,
@@ -250,9 +244,8 @@ void main() {
     test('giriş konumla gönderilir', () async {
       final api = sessionApi();
 
-      final session = await AssignmentService.withClient(
-        api.client,
-      ).checkIn(assignmentId: 'asg_1', latitude: 39.92, longitude: 32.85);
+      final session = await AssignmentService.withClient(api.client)
+          .checkIn(assignmentId: 'asg_1', latitude: 39.92, longitude: 32.85);
 
       final request = api.requests.single;
       expect(request.path, '/job-assignments/asg_1/check-in');
@@ -315,9 +308,8 @@ void main() {
     test('konum alınamazsa gövde boş gider', () async {
       final api = sessionApi();
 
-      await AssignmentService.withClient(
-        api.client,
-      ).checkIn(assignmentId: 'asg_1');
+      await AssignmentService.withClient(api.client)
+          .checkIn(assignmentId: 'asg_1');
 
       expect(api.requests.single.data, isEmpty);
     });
@@ -328,9 +320,8 @@ void main() {
         checkOutAt: '2026-03-10T17:30:00Z',
       );
 
-      final session = await AssignmentService.withClient(
-        api.client,
-      ).checkOut(assignmentId: 'asg_1');
+      final session = await AssignmentService.withClient(api.client)
+          .checkOut(assignmentId: 'asg_1');
 
       expect(api.requests.single.path, '/job-assignments/asg_1/check-out');
       expect(session.isOpen, isFalse);
@@ -376,9 +367,8 @@ void main() {
         ),
       );
 
-      final sessions = await AssignmentService.withClient(
-        api.client,
-      ).fetchWorkSessions('asg_1');
+      final sessions = await AssignmentService.withClient(api.client)
+          .fetchWorkSessions('asg_1');
 
       expect(api.requests.single.path, '/job-assignments/asg_1/work-sessions');
       expect(sessions.single.minutes, 480);
@@ -392,9 +382,8 @@ void main() {
         ),
       );
 
-      final sessions = await AssignmentService.withClient(
-        api.client,
-      ).fetchWorkSessions('asg_1');
+      final sessions = await AssignmentService.withClient(api.client)
+          .fetchWorkSessions('asg_1');
 
       expect(sessions, isEmpty);
     });
@@ -419,9 +408,8 @@ void main() {
         ),
       );
 
-      final cancellation = await AssignmentService.withClient(
-        api.client,
-      ).cancel(assignmentId: 'asg_1', reason: 'Hastalandım');
+      final cancellation = await AssignmentService.withClient(api.client)
+          .cancel(assignmentId: 'asg_1', reason: 'Hastalandım');
 
       final request = api.requests.single;
       expect(request.path, '/job-assignments/asg_1/cancel');
@@ -438,9 +426,8 @@ void main() {
       );
 
       await expectLater(
-        AssignmentService.withClient(
-          api.client,
-        ).cancel(assignmentId: 'asg_1', reason: 'Gerekçe'),
+        AssignmentService.withClient(api.client)
+            .cancel(assignmentId: 'asg_1', reason: 'Gerekçe'),
         throwsA(
           isA<ApiException>().having(
             (error) => error.type,
@@ -460,9 +447,8 @@ void main() {
         ),
       );
 
-      final cancellation = await AssignmentService.withClient(
-        api.client,
-      ).fetchCancellation('asg_1');
+      final cancellation = await AssignmentService.withClient(api.client)
+          .fetchCancellation('asg_1');
 
       expect(api.requests.single.path, '/job-assignments/asg_1/cancellation');
       expect(cancellation, isNull);
@@ -506,9 +492,8 @@ void main() {
       );
 
       await expectLater(
-        AssignmentService.withClient(
-          api.client,
-        ).openDispute(assignmentId: 'asg_1', reason: 'Sorun'),
+        AssignmentService.withClient(api.client)
+            .openDispute(assignmentId: 'asg_1', reason: 'Sorun'),
         throwsA(
           isA<ApiException>().having(
             (error) => error.type,
@@ -537,9 +522,8 @@ void main() {
         ),
       );
 
-      final disputes = await AssignmentService.withClient(
-        api.client,
-      ).fetchDisputes('asg_1');
+      final disputes = await AssignmentService.withClient(api.client)
+          .fetchDisputes('asg_1');
 
       expect(api.requests.single.method, 'GET');
       expect(disputes.single.isOpen, isFalse);
@@ -553,9 +537,8 @@ void main() {
         ),
       );
 
-      final disputes = await AssignmentService.withClient(
-        api.client,
-      ).fetchDisputes('asg_1');
+      final disputes = await AssignmentService.withClient(api.client)
+          .fetchDisputes('asg_1');
 
       expect(disputes, isEmpty);
     });
@@ -579,9 +562,8 @@ void main() {
         ),
       );
 
-      final preview = await AssignmentService.withClient(
-        api.client,
-      ).fetchCancellationPreview('asg_1');
+      final preview = await AssignmentService.withClient(api.client)
+          .fetchCancellationPreview('asg_1');
 
       final request = api.requests.single;
       expect(request.path, '/job-assignments/asg_1/cancellation-preview');
@@ -602,9 +584,8 @@ void main() {
         ),
       );
 
-      final preview = await AssignmentService.withClient(
-        api.client,
-      ).fetchCancellationPreview('asg_1');
+      final preview = await AssignmentService.withClient(api.client)
+          .fetchCancellationPreview('asg_1');
 
       expect(preview.cancellableNow, isFalse);
     });
@@ -618,9 +599,8 @@ void main() {
       );
 
       await expectLater(
-        AssignmentService.withClient(
-          api.client,
-        ).fetchCancellationPreview('asg_1'),
+        AssignmentService.withClient(api.client)
+            .fetchCancellationPreview('asg_1'),
         throwsA(
           isA<ApiException>().having(
             (error) => error.type,

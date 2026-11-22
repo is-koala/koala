@@ -6,9 +6,8 @@ void main() {
   test(
     'kamera eklentisinin gereksiz Android izinleri birleşimde kaldırılır',
     () {
-      final manifest = File(
-        'android/app/src/main/AndroidManifest.xml',
-      ).readAsStringSync();
+      final manifest = File('android/app/src/main/AndroidManifest.xml')
+          .readAsStringSync();
 
       expect(
         manifest,

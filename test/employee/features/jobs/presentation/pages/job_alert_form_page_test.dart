@@ -12,7 +12,9 @@ import 'package:provider/provider.dart';
 import '../../../../../support/fake_api.dart';
 import '../../../../../support/pump.dart';
 import '../../../../../support/keyboard.dart';
-import 'package:flutter/material.dart';
+
+import 'package:material_ui/material_ui.dart';
+
 import '../../../../../support/finders.dart';
 
 void main() {

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/widgets/dismiss_keyboard_on_tap.dart';
 import 'package:koala/product/widgets/keyboard_insets.dart';
 

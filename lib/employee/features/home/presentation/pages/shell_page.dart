@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/chat/presentation/pages/chat_list_page.dart';
 import 'package:koala/employee/features/home/presentation/pages/explore_pages/explore_page.dart';
@@ -140,8 +140,7 @@ class _ShellPageState extends State<ShellPage> {
           // PageView ile sayfaları yönet
           PageView(
             controller: _pageController,
-            physics:
-                const NeverScrollableScrollPhysics(), // Sadece programmatik geçiş
+            physics: const NeverScrollableScrollPhysics(), // Sadece programmatik geçiş
             children: _pages,
           ),
           // go_router'ın kabuk navigator'ı: içeriği boş, görünmez; yalnız

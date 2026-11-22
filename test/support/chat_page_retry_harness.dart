@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
 import 'package:koala/employee/features/chat/models/conversation.dart';
@@ -15,8 +15,10 @@ import 'fake_api.dart';
 import 'fake_realtime.dart';
 import 'pump.dart';
 
-typedef ChatPageBuilder =
-    Widget Function(Conversation chat, ChatThreadController? threadController);
+typedef ChatPageBuilder = Widget Function(
+  Conversation chat,
+  ChatThreadController? threadController,
+);
 
 const _chat = Conversation(
   id: 'conv_1',

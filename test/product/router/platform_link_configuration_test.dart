@@ -7,9 +7,9 @@ import 'package:koala/product/router/app_link_destination.dart';
 
 /// `config/<flavor>.json` içindeki `WEB_HOSTS`, Dart'ın okuduğu sırayla.
 List<String> configuredWebHosts(String flavor) {
-  final decoded =
-      jsonDecode(File('config/$flavor.json').readAsStringSync())
-          as Map<String, dynamic>;
+  final decoded = jsonDecode(
+    File('config/$flavor.json').readAsStringSync(),
+  ) as Map<String, dynamic>;
   return (decoded['WEB_HOSTS'] as String)
       .split(',')
       .map((host) => host.trim())
@@ -23,9 +23,8 @@ void main() {
   test('flavor manifestleri hostu yapılandırma placeholderından alır', () {
     for (final flavor in flavors) {
       final hosts = configuredWebHosts(flavor);
-      final manifest = File(
-        'android/app/src/$flavor/AndroidManifest.xml',
-      ).readAsStringSync();
+      final manifest = File('android/app/src/$flavor/AndroidManifest.xml')
+          .readAsStringSync();
 
       expect(manifest, contains('android:autoVerify="true"'), reason: flavor);
       expect(manifest, contains('android:scheme="https"'), reason: flavor);
@@ -79,9 +78,8 @@ void main() {
   });
 
   test('dev ve ana manifest https App Links filtresi taşımaz', () {
-    final main = File(
-      'android/app/src/main/AndroidManifest.xml',
-    ).readAsStringSync();
+    final main = File('android/app/src/main/AndroidManifest.xml')
+        .readAsStringSync();
     expect(main, isNot(contains('android:scheme="https"')));
     expect(main, isNot(contains('android:autoVerify')));
 
@@ -100,15 +98,15 @@ void main() {
       };
       for (final flavor in flavors) {
         final entitlements = File(files[flavor]!).readAsStringSync();
-        final declared = RegExp(
-          r'<string>applinks:([^<]+)</string>',
-        ).allMatches(entitlements).map((match) => match.group(1)).toList();
+        final declared = RegExp(r'<string>applinks:([^<]+)</string>')
+            .allMatches(entitlements)
+            .map((match) => match.group(1))
+            .toList();
         expect(declared, configuredWebHosts(flavor), reason: flavor);
       }
 
-      final project = File(
-        'ios/Runner.xcodeproj/project.pbxproj',
-      ).readAsStringSync();
+      final project = File('ios/Runner.xcodeproj/project.pbxproj')
+          .readAsStringSync();
       expect(
         project,
         contains('CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;'),
