@@ -47,67 +47,92 @@ class SettingsPage extends StatelessWidget {
       children: [
         // Hesap satırları ortak modülden: işverenin ayarları da aynı
         // ekranlara gidiyor. Kazançlar ve iş alarmları çalışana özgü.
-        AccountSettingsTiles.editAccount(context),
-        AccountSettingsTiles.address(context),
-        AccountSettingsTiles.changePassword(context),
-        AccountSettingsTiles.sessions(context),
-        AccountSettingsTiles.notificationPreferences(context),
-        MyListTile(
-          icon: AppIcons.moneyBag,
-          title: 'Kazançlarım',
-          onTap: () => context.push('/earnings'),
+        // Gruplar konuya göre; sıra, en sık açılandan en seyreğe.
+        MyListGroup(
+          title: 'Hesap',
+          children: [
+            AccountSettingsTiles.editAccount(context),
+            AccountSettingsTiles.address(context),
+            AccountSettingsTiles.changePassword(context),
+            AccountSettingsTiles.sessions(context),
+          ],
         ),
-        MyListTile(
-          icon: AppIcons.notification,
-          title: 'İş Alarmlarım',
-          onTap: () => context.push('/job-alerts'),
+        MyListGroup(
+          title: 'İşlerim',
+          children: [
+            MyListTile(
+              icon: AppIcons.moneyBag,
+              title: 'Kazançlarım',
+              onTap: () => context.push('/earnings'),
+            ),
+            MyListTile(
+              icon: AppIcons.notification,
+              title: 'İş Alarmlarım',
+              onTap: () => context.push('/job-alerts'),
+            ),
+          ],
         ),
-        AccountSettingsTiles.reports(context),
-        AccountSettingsTiles.blockedUsers(context),
-        MyListTile(
-          icon: AppIcons.paint,
-          title: "Görünüm",
-          value: context.watch<ThemeProvider>().themeMode.label,
-          onTap: () => ThemeModeSheet.show(context),
+        MyListGroup(
+          title: 'Tercihler',
+          children: [
+            AccountSettingsTiles.notificationPreferences(context),
+            MyListTile(
+              icon: AppIcons.paint,
+              title: "Görünüm",
+              value: context.watch<ThemeProvider>().themeMode.label,
+              onTap: () => ThemeModeSheet.show(context),
+            ),
+          ],
         ),
-        AccountSettingsTiles.deleteAccount(context),
-        MyListTile(
-          icon: AppIcons.logout,
-          title: "Çıkış Yap",
-          onTap: () async {
-            // İlk await'ten önce: eski hesabın bildirimi, çıkan istek
-            // gecikse veya hata verse bile yeni oturuma taşınmamalı.
-            context.read<NotificationProvider>().clear();
+        MyListGroup(
+          title: 'Gizlilik ve Güvenlik',
+          children: [
+            AccountSettingsTiles.reports(context),
+            AccountSettingsTiles.blockedUsers(context),
+          ],
+        ),
+        MyListGroup(
+          children: [
+            AccountSettingsTiles.deleteAccount(context),
+            MyListTile(
+              icon: AppIcons.logout,
+              title: "Çıkış Yap",
+              onTap: () async {
+                // İlk await'ten önce: eski hesabın bildirimi, çıkan istek
+                // gecikse veya hata verse bile yeni oturuma taşınmamalı.
+                context.read<NotificationProvider>().clear();
 
-            final logout = onLogout;
-            if (logout != null) {
-              await logout();
-            } else {
-              // Bekleyen kayıtlar kullanıcı bölümünde kalır; yalnız bu
-              // oturuma ait aktif bölüm işaretçisi temizlenir.
-              await context.read<TimesheetQueueProvider>().pause();
-              // Sunucudaki oturumu da kapatıyor; çağrı başarısız olsa bile
-              // token'lar cihazdan siliniyor.
-              // Canlı bağlantı oturuma bağlı; token silinmeden önce
-              // kapatılıyor ki yeniden bağlanmaya çalışmasın.
-              await RealtimeClient().disconnect();
-              await AuthService().logout();
-            }
+                final logout = onLogout;
+                if (logout != null) {
+                  await logout();
+                } else {
+                  // Bekleyen kayıtlar kullanıcı bölümünde kalır; yalnız bu
+                  // oturuma ait aktif bölüm işaretçisi temizlenir.
+                  await context.read<TimesheetQueueProvider>().pause();
+                  // Sunucudaki oturumu da kapatıyor; çağrı başarısız olsa bile
+                  // token'lar cihazdan siliniyor.
+                  // Canlı bağlantı oturuma bağlı; token silinmeden önce
+                  // kapatılıyor ki yeniden bağlanmaya çalışmasın.
+                  await RealtimeClient().disconnect();
+                  await AuthService().logout();
+                }
 
-            if (context.mounted) {
-              // Bir sonraki oturum, çıkan kullanıcının verisini görmesin.
-              context.read<UserProvider>().clear();
-              context.read<IdentityReviewProvider>().clear();
-              context.read<AvailabilityProvider>().clear();
-              context.read<ApplyProvider>().clear();
-              context.read<SavedJobsProvider>().clear();
-              context.read<JobAlertsProvider>().clear();
-              // Değerlendirme kaydı cihazda duruyor; yeni kullanıcı önceki
-              // kullanıcının işaretlerini görmemeli.
-              context.read<ReviewProvider>().clear();
-              context.go('/auth');
-            }
-          },
+                if (context.mounted) {
+                  // Bir sonraki oturum, çıkan kullanıcının verisini görmesin.
+                  context.read<UserProvider>().clear();
+                  context.read<IdentityReviewProvider>().clear();
+                  context.read<AvailabilityProvider>().clear();
+                  context.read<ApplyProvider>().clear();
+                  context.read<SavedJobsProvider>().clear();
+                  context.read<JobAlertsProvider>().clear();
+                  // Değerlendirme kaydı cihazda duruyor; yeni kullanıcı önceki
+                  // kullanıcının işaretlerini görmemeli.
+                  context.read<ReviewProvider>().clear();
+                  context.go('/auth');
+                }
+              },
+            ),
+          ],
         ),
       ],
     );

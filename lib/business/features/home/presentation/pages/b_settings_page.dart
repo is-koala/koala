@@ -50,77 +50,101 @@ class BSettingsPage extends StatelessWidget {
         // ekranlara gidiyor. Firma, şablon ve yetenek havuzu işverene özgü.
         // "Adresim" işverenin kendi adresi — bireysel işverenin ödemesi bu
         // adres olmadan başlamıyor; şirket adresi firma bilgilerinde.
-        AccountSettingsTiles.editAccount(context),
-        AccountSettingsTiles.address(context),
-        MyListTile(
-          icon: AppIcons.building,
-          title: "Firma Bilgileri Düzenle",
-          onTap: () {
-            context.push('/business/company-info');
-          },
+        MyListGroup(
+          title: 'Hesap',
+          children: [
+            AccountSettingsTiles.editAccount(context),
+            AccountSettingsTiles.address(context),
+            AccountSettingsTiles.changePassword(context),
+            AccountSettingsTiles.sessions(context),
+          ],
         ),
-        MyListTile(
-          icon: AppIcons.fileText,
-          title: "İlan Şablonlarım",
-          onTap: () => context.push('/business/job-templates'),
+        MyListGroup(
+          title: 'İşletme',
+          children: [
+            MyListTile(
+              icon: AppIcons.building,
+              title: "Firma Bilgileri Düzenle",
+              onTap: () {
+                context.push('/business/company-info');
+              },
+            ),
+            MyListTile(
+              icon: AppIcons.fileText,
+              title: "İlan Şablonlarım",
+              onTap: () => context.push('/business/job-templates'),
+            ),
+            MyListTile(
+              icon: AppIcons.bookmark,
+              title: "Yetenek Havuzum",
+              onTap: () => context.push('/business/talent-pool'),
+            ),
+          ],
         ),
-        MyListTile(
-          icon: AppIcons.bookmark,
-          title: "Yetenek Havuzum",
-          onTap: () => context.push('/business/talent-pool'),
+        MyListGroup(
+          title: 'Tercihler',
+          children: [
+            AccountSettingsTiles.notificationPreferences(context),
+            MyListTile(
+              icon: AppIcons.paint,
+              title: "Görünüm",
+              value: context.watch<ThemeProvider>().themeMode.label,
+              onTap: () => ThemeModeSheet.show(context),
+            ),
+          ],
         ),
-        AccountSettingsTiles.changePassword(context),
-        AccountSettingsTiles.sessions(context),
-        AccountSettingsTiles.notificationPreferences(context),
-        AccountSettingsTiles.reports(context),
-        AccountSettingsTiles.blockedUsers(context),
-        MyListTile(
-          icon: AppIcons.paint,
-          title: "Görünüm",
-          value: context.watch<ThemeProvider>().themeMode.label,
-          onTap: () => ThemeModeSheet.show(context),
+        MyListGroup(
+          title: 'Gizlilik ve Güvenlik',
+          children: [
+            AccountSettingsTiles.reports(context),
+            AccountSettingsTiles.blockedUsers(context),
+          ],
         ),
-        AccountSettingsTiles.deleteAccount(context),
-        MyListTile(
-          icon: AppIcons.logout,
-          title: "Çıkış Yap",
-          onTap: () async {
-            // İlk await'ten önce: eski hesabın bildirimi, çıkan istek
-            // gecikse veya hata verse bile yeni oturuma taşınmamalı.
-            context.read<NotificationProvider>().clear();
+        MyListGroup(
+          children: [
+            AccountSettingsTiles.deleteAccount(context),
+            MyListTile(
+              icon: AppIcons.logout,
+              title: "Çıkış Yap",
+              onTap: () async {
+                // İlk await'ten önce: eski hesabın bildirimi, çıkan istek
+                // gecikse veya hata verse bile yeni oturuma taşınmamalı.
+                context.read<NotificationProvider>().clear();
 
-            final logout = onLogout;
-            if (logout != null) {
-              await logout();
-            } else {
-              await context.read<TimesheetQueueProvider>().pause();
-              // Canlı bağlantı oturuma bağlı; token silinmeden önce
-              // kapatılıyor ki yeniden bağlanmaya çalışmasın. İşveren tarafı da
-              // aynı `RealtimeClient` örneğini kullanıyor.
-              await RealtimeClient().disconnect();
+                final logout = onLogout;
+                if (logout != null) {
+                  await logout();
+                } else {
+                  await context.read<TimesheetQueueProvider>().pause();
+                  // Canlı bağlantı oturuma bağlı; token silinmeden önce
+                  // kapatılıyor ki yeniden bağlanmaya çalışmasın. İşveren tarafı da
+                  // aynı `RealtimeClient` örneğini kullanıyor.
+                  await RealtimeClient().disconnect();
 
-              // Sunucudaki oturumu da kapatıyor; çağrı başarısız olsa bile
-              // token'lar cihazdan siliniyor.
-              await AuthService().logout();
-            }
+                  // Sunucudaki oturumu da kapatıyor; çağrı başarısız olsa bile
+                  // token'lar cihazdan siliniyor.
+                  await AuthService().logout();
+                }
 
-            if (!context.mounted) return;
+                if (!context.mounted) return;
 
-            // Provider'lar uygulama boyunca yaşıyor: temizlenmezse bir
-            // sonraki oturum öncekinin ilanlarını ve profilini görürdü.
-            context.read<UserProvider>().clear();
-            context.read<IdentityReviewProvider>().clear();
-            context.read<AvailabilityProvider>().clear();
-            context.read<BJobsProvider>().clear();
-            context.read<BCompanyProvider>().clear();
-            context.read<BJobTemplatesProvider>().clear();
-            context.read<BTalentPoolProvider>().clear();
-            // İşveren de değerlendirme bırakıyor (#185); aynı cihazda açılan
-            // sonraki hesap öncekinin işaretini ve yorumunu görmesin.
-            context.read<ReviewProvider>().clear();
+                // Provider'lar uygulama boyunca yaşıyor: temizlenmezse bir
+                // sonraki oturum öncekinin ilanlarını ve profilini görürdü.
+                context.read<UserProvider>().clear();
+                context.read<IdentityReviewProvider>().clear();
+                context.read<AvailabilityProvider>().clear();
+                context.read<BJobsProvider>().clear();
+                context.read<BCompanyProvider>().clear();
+                context.read<BJobTemplatesProvider>().clear();
+                context.read<BTalentPoolProvider>().clear();
+                // İşveren de değerlendirme bırakıyor (#185); aynı cihazda açılan
+                // sonraki hesap öncekinin işaretini ve yorumunu görmesin.
+                context.read<ReviewProvider>().clear();
 
-            context.go('/auth');
-          },
+                context.go('/auth');
+              },
+            ),
+          ],
         ),
       ],
     );
