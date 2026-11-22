@@ -17,11 +17,8 @@ import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_button.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
 
-/// Formun döndürdüğü değerler.
-///
-/// Sheet ağa yazmıyor: kaydetmeyi çağıran sayfa yapıyor, böylece hata ve
-/// tazeleme tek yerde kalıyor. Referans listelerini **okumak** için ağa
-/// çıkıyor, o ayrı iş.
+/// Formun sonucu; kaydetmeyi çağıran sayfa yapar, hata ve tazeleme tek yerde
+/// kalsın.
 class EducationFormResult {
   const EducationFormResult({
     required this.universityId,
@@ -42,11 +39,8 @@ class EducationFormResult {
   final DateTime? endDate;
 }
 
-/// Öğrenim kaydı ekleme ve düzenleme formu.
-///
-/// Üç seçim birbirine bağlı: fakülteler üniversiteye, bölümler fakülteye
-/// göre isteniyor. Üsttekini değiştirmek alttakileri temizliyor — aksi
-/// hâlde başka üniversitenin fakültesi seçili kalırdı.
+/// Öğrenim formu. Fakülte üniversiteye, bölüm fakülteye bağlı; üsttekini
+/// değiştirmek alttakileri temizler.
 class EducationSheet extends StatefulWidget {
   const EducationSheet({super.key, this.initial});
 
@@ -78,16 +72,14 @@ class _EducationSheetState extends State<EducationSheet> {
   DateTime? _startDate;
   DateTime? _endDate;
 
-  /// Öğrenim sürüyor mu. Sunucuda karşılığı `endDate: null`.
+  /// Sunucuda `endDate: null`.
   late bool _isContinuing;
 
-  /// Hangi alanın listesi çekiliyor; o alanın yerine göstergesi çıkıyor.
   String? _loadingField;
 
-  /// Tarih seçicinin gidebileceği en eski yıl.
   static const int _earliestYear = 1960;
 
-  /// Not ortalamasının üst sınırı; sunucu da 0–4 aralığını zorluyor.
+  /// Sunucu da 0–4 zorluyor.
   static const double _maxGpa = 4;
 
   @override
@@ -103,8 +95,8 @@ class _EducationSheetState extends State<EducationSheet> {
     _endDate = initial?.endDate;
     _isContinuing = initial != null && initial.endDate == null;
 
-    // Düzenlemede kimlikler ve adlar zaten kayıtta; listeleri beklemeden
-    // seçili göstermek için doğrudan kuruluyor.
+    // Düzenlemede kimlik ve adlar kayıtta; listeleri beklemeden seçili
+    // görünsün.
     _university = _referenceOf(initial?.universityId, initial?.universityName);
     _faculty = _referenceOf(initial?.facultyId, initial?.facultyName);
     _department = _referenceOf(initial?.departmentId, initial?.departmentName);
@@ -120,7 +112,6 @@ class _EducationSheetState extends State<EducationSheet> {
     super.dispose();
   }
 
-  /// Sunucunun zorunlu tuttuğu alanlar dolu mu.
   bool get _canSave =>
       _university != null &&
       _faculty != null &&
@@ -128,17 +119,13 @@ class _EducationSheetState extends State<EducationSheet> {
       _startDate != null &&
       _isGpaAcceptable;
 
-  /// Not alanı boş ya da geçerli mi. Boş bırakmak serbest; girilen değer
-  /// aralık dışındaysa kaydettirmiyoruz.
+  /// Boş serbest; aralık dışı değer kaydettirmez.
   bool get _isGpaAcceptable => _gpaText.isEmpty || _parsedGpa != null;
 
   String get _gpaText => _gpa.text.trim().replaceAll(',', '.');
 
-  /// Girilen not. Boşsa ya da okunamıyorsa `null`.
-  ///
-  /// "Girilmedi" ile "hatalı girildi" ayrımı [_isGpaAcceptable] üzerinden
-  /// yapılıyor; ikisini tek bir sayıya (ör. `-1`) sıkıştırmak, sayı gibi
-  /// davranmayan bir sayı üretiyordu.
+  /// Boşsa ya da okunamıyorsa `null`; "girilmedi" ile "hatalı" ayrımı
+  /// [_isGpaAcceptable]'da.
   double? get _parsedGpa {
     final text = _gpaText;
     if (text.isEmpty) return null;
@@ -170,8 +157,6 @@ class _EducationSheetState extends State<EducationSheet> {
               _pickerField(
                 label: 'Fakülte',
                 value: _faculty?.name,
-                // Üniversite seçilmeden fakülte istenemiyor; uç
-                // üniversitenin kimliğiyle çağrılıyor.
                 onTap: _university == null ? null : _pickFaculty,
               ),
               const SizedBox(height: AppSizes.space),
@@ -247,8 +232,7 @@ class _EducationSheetState extends State<EducationSheet> {
     );
   }
 
-  /// Seçim alanı. [onTap] `null` ise alan sönük çiziliyor — üstteki seçim
-  /// yapılmadan alttaki istenemiyor.
+  /// [onTap] `null` ise sönük: üstteki seçilmeden alttaki istenemez.
   Widget _pickerField({
     required String label,
     required String? value,
@@ -305,8 +289,6 @@ class _EducationSheetState extends State<EducationSheet> {
     );
   }
 
-  /// Alan içindeki göstergenin çizgi kalınlığı; varsayılanı kutuda kaba
-  /// duruyor.
   static const double _spinnerStroke = 2;
 
   Widget _continuingToggle() {
@@ -320,8 +302,7 @@ class _EducationSheetState extends State<EducationSheet> {
     );
   }
 
-  /// Listeyi çeker ve seçtirir. Çağrı düşerse hata gösteriliyor, seçim
-  /// değişmiyor.
+  /// Çağrı düşerse hata gösterilir, seçim değişmez.
   Future<AcademicReference?> _pick({
     required String label,
     required Future<List<AcademicReference>> Function() load,
@@ -357,7 +338,7 @@ class _EducationSheetState extends State<EducationSheet> {
 
     setState(() {
       _university = picked;
-      // Üniversite değişti: altındaki iki seçim artık başka bir okula ait.
+      // Altındaki iki seçim artık başka okula ait.
       _faculty = null;
       _department = null;
     });
@@ -443,13 +424,12 @@ class _EducationSheetState extends State<EducationSheet> {
 
     setState(() {
       _startDate = picked;
-      // Bitiş başlangıçtan önce kalamaz; sunucu da reddediyor.
+      // Sunucu da reddediyor.
       if (_endDate != null && _endDate!.isBefore(picked)) _endDate = null;
     });
   }
 
-  /// Bitiş **gelecekte olabilir**: mezuniyet tarihi henüz gelmemiş olabilir.
-  /// Sunucu yalnızca bitişin başlangıçtan önce olmamasını istiyor.
+  /// Bitiş **gelecekte olabilir** (mezuniyet).
   Future<void> _pickEndDate() async {
     final now = DateTime.now();
     final picked = await showDatePicker(
@@ -463,8 +443,6 @@ class _EducationSheetState extends State<EducationSheet> {
     setState(() => _endDate = picked);
   }
 
-  /// Bitiş tarihinin gidebileceği ileri yıl sayısı; bir lisans öğrencisinin
-  /// mezuniyetini seçmesine yetiyor.
   static const int _futureYears = 8;
 
   void _submit() {

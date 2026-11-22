@@ -22,7 +22,6 @@ import 'package:provider/provider.dart';
 
 part 'availability_pagemodel.dart';
 
-/// İş arayanın haftalık müsaitlik şablonu ve tarih istisnaları.
 class AvailabilityPage extends StatefulWidget {
   const AvailabilityPage({super.key});
 

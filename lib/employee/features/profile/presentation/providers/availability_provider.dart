@@ -6,11 +6,8 @@ import 'package:koala/product/models/availability_exception.dart';
 import 'package:koala/product/models/availability_slot.dart';
 import 'package:koala/product/network/api_exception.dart';
 
-/// Oturum sahibinin müsaitlik ekranı için tek durum modülü.
-///
-/// Düzenleme taslağını burada tutmasının önemli bir nedeni var: backend'in
-/// `PUT /users/me/availability` ucu kısmi güncelleme değil. Arayüz bir günü
-/// değiştirir, [saveWeekly] ise her zaman eldeki **bütün** haftayı yollar.
+/// Müsaitlik ekranının durumu. Taslak burada: `PUT` kısmi değil, her zaman
+/// **bütün** hafta gidiyor.
 class AvailabilityProvider extends ChangeNotifier {
   AvailabilityProvider({AvailabilityService? service})
     : _service = service ?? AvailabilityService();
@@ -45,7 +42,6 @@ class AvailabilityProvider extends ChangeNotifier {
   List<AvailabilitySlot> slotsForDay(AvailabilityDay day) =>
       _draftSlots.where((slot) => slot.day == day).toList(growable: false);
 
-  /// Haftalık şablonu ve yaklaşan istisnaları sunucudan getirir.
   Future<void> load(String userId, {bool silent = false}) async {
     if (_isLoadInFlight || _isSaving) return;
     _isLoadInFlight = true;
@@ -74,7 +70,6 @@ class AvailabilityProvider extends ChangeNotifier {
     }
   }
 
-  /// Bir günün taslağını değiştirir; diğer günleri olduğu gibi bırakır.
   bool replaceDaySlots(
     String userId,
     AvailabilityDay day,
@@ -91,7 +86,6 @@ class AvailabilityProvider extends ChangeNotifier {
     return true;
   }
 
-  /// Taslaktaki bütün haftayı sunucuya kaydeder.
   Future<bool> saveWeekly(String userId) async {
     if (!_canMutate(userId)) return false;
 
@@ -106,8 +100,7 @@ class AvailabilityProvider extends ChangeNotifier {
       userId: userId,
       request: () => _service.replaceSlots(_ordered(_draftSlots)),
       apply: (saved) {
-        // Haftalık PUT yanıtı sözleşme gereği istisnaları boş döndürüyor.
-        // İstisnalar ayrı uçtan yönetildiği için eldeki listeyi koruyoruz.
+        // Haftalık `PUT` istisnaları boş döndürüyor; eldeki liste korunur.
         _availability = Availability(
           slots: saved.slots,
           exceptions: _availability?.exceptions ?? const [],
@@ -119,7 +112,7 @@ class AvailabilityProvider extends ChangeNotifier {
     );
   }
 
-  /// Tarih istisnasını ekler veya aynı tarihteki kaydı günceller.
+  /// Aynı tarihteki kayıt varsa günceller.
   Future<bool> saveException({
     required String userId,
     required DateTime date,
@@ -164,7 +157,6 @@ class AvailabilityProvider extends ChangeNotifier {
     );
   }
 
-  /// Tarih istisnasını siler ve başarılı olduğunda görünür listeden çıkarır.
   Future<bool> deleteException(String userId, String exceptionId) {
     return _runSave<void>(
       userId: userId,
@@ -182,7 +174,6 @@ class AvailabilityProvider extends ChangeNotifier {
     );
   }
 
-  /// Çıkışta önceki kullanıcının şablonu sonraki oturumda görünmesin.
   void clear() {
     _stateGeneration++;
     _availability = null;

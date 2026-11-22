@@ -7,7 +7,6 @@ import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_bottom_sheet.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// Özgeçmiş dosyası için sunulan yükleme, değiştirme ve kaldırma eylemleri.
 class CvActionsSheet extends StatelessWidget {
   const CvActionsSheet({
     super.key,

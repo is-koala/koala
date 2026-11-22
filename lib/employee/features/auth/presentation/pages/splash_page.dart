@@ -15,13 +15,8 @@ import 'package:koala/product/services/push_messaging.dart';
 import 'package:koala/product/services/push_token_lifecycle.dart';
 import 'package:provider/provider.dart';
 
-/// Uygulamanın açılış ekranı ve tek başlatma noktası.
-///
-/// Oturum durumunu diskten okuma işi burada: `main` senkron kalıyor, ilk kare
-/// gecikmeden çiziliyor ve okuma bitene kadar kullanıcı boş ekrana bakmıyor.
-/// Okuma bitince [SessionManager] dinleyicilerini uyandırıyor, router'ın
-/// muhafızı da kullanıcıyı gideceği yere yolluyor — bu sayfa kendisi
-/// yönlendirme yapmıyor.
+/// Açılış ekranı ve tek başlatma noktası; `main` senkron kalsın diye oturum
+/// burada okunur. Yönlendirmeyi router muhafızı yapar.
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
 
@@ -30,22 +25,18 @@ class SplashPage extends StatefulWidget {
 }
 
 class _SplashPageState extends State<SplashPage> {
-  /// Logonun kenar uzunluğu; açılış ekranının tek görseli olduğu için
-  /// sayfa içi görsellerden büyük.
   static const double _logoSize = 120;
 
   @override
   void initState() {
     super.initState();
-    // İlk kare çizildikten sonra: açılış görseli okuma beklerken görünsün.
+    // Açılış görseli okuma beklerken görünsün.
     WidgetsBinding.instance.addPostFrameCallback((_) => _initialize());
   }
 
   Future<void> _initialize() async {
-    // Harita bayrağı oturumdan **önce** okunuyor: oturum okunur okunmaz
-    // muhafız kullanıcıyı ana ekrana (haritaya) yolluyor, o ana kadar cevabın
-    // gelmiş olması gerek. Tek kanal gidiş-dönüşü, milisaniyeler; bayrak
-    // kapalıysa keşif listeyle açılsın (is-koala/koala#172).
+    // Harita bayrağı oturumdan **önce**: muhafız kullanıcıyı hemen haritaya
+    // yollar, cevabın gelmiş olması gerek (#172).
     final maps = context.read<MapsAvailability>();
     await maps.resolve();
     if (!mounted) return;
@@ -57,9 +48,8 @@ class _SplashPageState extends State<SplashPage> {
     await session.load();
     if (!mounted) return;
     if (session.isLoggedIn) {
-      // Kimlik inceleme durumu açılışta arka planda okunuyor: profil rozeti
-      // ve kimlik ekranı açıldığında bekletmeden çizilsin. Beklenmiyor —
-      // ağ yavaşsa açılışı geciktirmemeli; sonuç provider'a düşüyor.
+      // Profil rozeti ve kimlik ekranı bekletmesin diye arkada; açılışı
+      // geciktirmemek için beklenmiyor.
       unawaited(context.read<IdentityReviewProvider>().load(silent: true));
     }
     await PushMessaging.ensureInitialized();

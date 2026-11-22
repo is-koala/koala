@@ -1,10 +1,7 @@
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/models/pending_verification.dart';
 
-/// `PATCH /users/me` yanıtı (`UserUpdateResponseDto`).
-///
-/// Güncel kullanıcının yanında, doğrulama beklediği için henüz yazılmamış
-/// alanları da taşıyor.
+/// `PATCH /users/me` yanıtı: güncel kullanıcı ve doğrulama bekleyen alanlar.
 class ProfileUpdateResult {
   const ProfileUpdateResult({
     required this.user,

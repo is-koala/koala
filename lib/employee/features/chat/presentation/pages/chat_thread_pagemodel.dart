@@ -14,12 +14,7 @@ import 'package:koala/product/router/employee_routes.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:provider/provider.dart';
 
-/// İki sohbet sayfasının controller seçimi ve yaşam döngüsü.
-///
-/// Sayfalar yalnızca [chat] ile varsa dışarıdan verilen
-/// [providedThreadController] adapter'ını tanımlar. Controller sahipliği,
-/// parent güncellemesi ve uçuşta kalan yüklemelerin elenmesi burada tek
-/// interface arkasında kalır.
+/// İki sohbet sayfasının ortak denetleyici seçimi ve yaşam döngüsü.
 abstract class ChatThreadPagemodel<T extends StatefulWidget> extends State<T> {
   final TextEditingController messageController = TextEditingController();
   final ScrollController scrollController = ScrollController();
@@ -28,24 +23,17 @@ abstract class ChatThreadPagemodel<T extends StatefulWidget> extends State<T> {
 
   ChatThreadController? get providedThreadController;
 
-  /// Bu sayfa işveren kabuğunda mı. Ödeme kapısının metni tarafa göre
-  /// değişiyor: ödemeyi tamamlayacak olan işveren, bekleyen çalışan.
+  /// Kapının metni tarafa göre değişiyor.
   bool get asEmployer;
 
   late ChatThreadController thread;
   late bool _ownsThread;
   int _bindingGeneration = 0;
 
-  /// Oturum sahibi yüklenemediyse gösterilecek mesaj. Sohbetin kendi hataları
-  /// [ChatThreadController] üzerinde.
   String? sessionError;
 
-  /// Mesaj kutusunun yerine geçecek açıklama; kutu açıksa `null`.
-  ///
-  /// Öncelik sırası: sunucunun az önce söylediği kapı ([ChatThreadController.gate])
-  /// > listeden gelen `closed` bayrağı > engel. Kapı listedeki bayraktan önce,
-  /// çünkü daha taze; engel en sonda, çünkü kapalı bir sohbette engelin bir
-  /// önemi kalmıyor.
+  /// Kutunun yerine geçecek açıklama. Öncelik: sunucunun az önceki kapısı >
+  /// listedeki `closed` > engel.
   String? get composerNotice {
     final gate =
         thread.gate ?? (chat.closed ? MessagingAvailability.closed : null);

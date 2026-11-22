@@ -18,7 +18,7 @@ typedef AvailabilityExceptionInput = ({
   String? note,
 });
 
-/// Tek bir tarihin haftalık şablondan farklı çalışmasını düzenleyen sheet.
+/// Tek tarihin haftalık şablondan farklı çalışması.
 class AvailabilityExceptionSheet extends StatefulWidget {
   const AvailabilityExceptionSheet({super.key, this.initial});
 

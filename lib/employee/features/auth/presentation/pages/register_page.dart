@@ -29,8 +29,7 @@ class _RegisterPageState extends RegisterPagemodel {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.backgroundColor,
-      // Gövde klavyenin üstüne sığıyor; odaklı alan ve KAYIT OL kaydırılarak
-      // görünür kalıyor. Yasal alt satır CTA değil, klavye arkasında kalabilir.
+      // Yasal alt satır CTA değil; klavyenin arkasında kalabilir.
       appBar: AppBar(
         leading: IconButton(
           icon: AppIcon(AppIcons.arrowLeft, color: context.textPrimary),

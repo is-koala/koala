@@ -5,17 +5,12 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:lottie/lottie.dart';
 
-/// E-posta doğrulama bağlantısını ilgili hesap akışı tamamlanana kadar
-/// güvenli biçimde karşılayan geçici ekran.
 class EmailVerificationLinkPage extends StatelessWidget {
   const EmailVerificationLinkPage({super.key, required this.token});
 
-  /// Bağlantıdan gelen ve ileride doğrulama servisine aktarılacak token.
-  ///
-  /// Kullanıcı arayüzünde veya loglarda gösterilmez.
+  /// Arayüzde ya da loglarda gösterilmez.
   final String token;
 
-  /// Bekleme animasyonunun kenar uzunluğu.
   static const double _animationSize = 300;
 
   @override

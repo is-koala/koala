@@ -1,9 +1,5 @@
-/// Takip edilen şirket. Backend `FollowedCompanyDto` karşılığı.
-///
-/// Şirketin tam hâli değil, liste için kırpılmış bir özet: kimlik alanı
-/// `id` değil `companyId` geliyor ve galeri, adres, tür gibi alanlar yok.
-/// Bu yüzden [Company] modeli kullanılmadı — eksik alanları `null`
-/// doldurmak "şirketin adresi yok" gibi okunurdu.
+/// Takip edilen şirketin özeti; [Company] kullanılmadı, eksik alanları `null`
+/// doldurmak "adresi yok" gibi okunurdu.
 class FollowedCompany {
   const FollowedCompany({
     required this.companyId,
@@ -20,7 +16,7 @@ class FollowedCompany {
   final String? description;
   final int followerCount;
 
-  /// Takibin başladığı an. Liste bu alana göre sıralı geliyor.
+  /// Liste buna göre sıralı.
   final DateTime? followedAt;
 
   factory FollowedCompany.fromJson(Map<String, dynamic> json) {
@@ -38,7 +34,6 @@ class FollowedCompany {
   }
 }
 
-/// Sayfalı takip listesi.
 class FollowedCompanyPage {
   const FollowedCompanyPage({
     this.companies = const [],

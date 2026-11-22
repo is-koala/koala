@@ -1,22 +1,18 @@
 import 'package:koala/employee/features/chat/models/conversation.dart';
 
-/// Katılımcının sohbetteki rolü. Backend `ConversationParticipantDto.role`
-/// karşılığı; sunucu sütun tutmuyor, okuma anında hesaplıyor (ilan sahibi →
-/// işveren, atama satırı olan → çalışan, kalanı şirket yetkilisi).
+/// Katılımcının sohbetteki rolü; sunucu okuma anında hesaplıyor.
 enum ChatParticipantRole {
   employer('EMPLOYER', 'İşveren'),
   companyContact('COMPANY_CONTACT', 'Şirket yetkilisi'),
   worker('WORKER', 'Çalışan'),
 
-  /// Alan gelmedi ya da tanınmadı: eski sunucu rolü taşımıyor. Etiket boş
-  /// kalıyor; yanlış bir rol yazmaktansa hiç yazmamak yeğ.
+  /// Eski sunucu rolü taşımıyor; yanlış rol yazmaktansa boş.
   unknown('', '');
 
   const ChatParticipantRole(this.code, this.label);
 
   final String code;
 
-  /// Katılımcı satırındaki etiket; [unknown] için boş.
   final String label;
 
   static ChatParticipantRole fromCode(Object? value) {
@@ -27,15 +23,9 @@ enum ChatParticipantRole {
   }
 }
 
-/// Bir sohbetin katılımcısı. Backend `ConversationParticipantDto` karşılığı
-/// (is-koala/koala-backend#281).
-///
-/// Ayrılanlar `left=true` ile listede kalıyor ki eski mesajların adı hâlâ
-/// çözülebilsin; hesabını silen katılımcı sunucudan anonim adıyla geliyor.
-/// `lastReadAt` kişi başına okundu damgası: "kimler gördü" bu alandan,
-/// `readAt`'ten değil hesaplanıyor — grupta `readAt` ilk okuyan herkes adına
-/// dolduruyor. Eski sunucu bu alanları hiç göndermiyor; o zaman rol
-/// [ChatParticipantRole.unknown], tarihler `null` ve görüldü bilgisi gizli.
+/// Sohbet katılımcısı. Ayrılanlar `left=true` ile kalıyor ki eski mesajların
+/// adı çözülsün. "Kimler gördü" `lastReadAt`'ten: grupta `readAt` ilk okuyan
+/// herkes adına doluyor. Eski sunucuda rol bilinmez, görüldü gizli.
 class ChatParticipant {
   const ChatParticipant({
     required this.id,
@@ -48,15 +38,11 @@ class ChatParticipant {
     this.left = false,
   });
 
-  /// Silinmiş hesap için gösterilen ad; sunucunun anonimleştirmesiyle aynı
-  /// söz, adı hiç çözülemeyen gönderen için istemcinin yedeği.
+  /// Sunucunun anonimleştirmesiyle aynı söz.
   static const String anonymousName = 'Anonim Kullanıcı';
 
-  /// Sohbetten ayrılan katılımcının etiketi; balonda adın yanında ve
-  /// katılımcılar sheet'inde aynı söz.
   static const String leftLabel = 'Ayrıldı';
 
-  /// Kullanıcı kimliği; `MessageDto.senderId` ile aynı.
   final String id;
 
   final String firstName;
@@ -64,26 +50,20 @@ class ChatParticipant {
   final String? profilePictureUrl;
   final ChatParticipantRole role;
 
-  /// Sohbete katılma anı; eski sunucuda `null`.
   final DateTime? joinedAt;
 
-  /// Kişinin sohbeti en son okuduğu an; hiç okumadıysa ya da eski sunucuda
-  /// `null`.
   final DateTime? lastReadAt;
 
-  /// Sohbetten ayrıldı mı (atama iptali, şirketten çıkarılma, hesap silme).
+  /// Atama iptali, şirketten çıkarılma, hesap silme.
   final bool left;
 
-  /// Görünen ad; iki alan da boşsa [anonymousName].
   String get fullName {
     final name = '$firstName $lastName'.trim();
     return name.isEmpty ? anonymousName : name;
   }
 
-  /// Görsel yokken avatarın baş harfleri.
   String get initials => Conversation.initialsOf(fullName);
 
-  /// [sentAt] anında gönderilen mesajı bu kişi gördü mü.
   bool hasReadSince(DateTime sentAt) {
     final lastReadAt = this.lastReadAt;
     return lastReadAt != null && !lastReadAt.isBefore(sentAt);

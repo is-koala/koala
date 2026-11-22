@@ -10,10 +10,7 @@ import 'package:koala/product/widgets/sheet_switch_row.dart';
 import 'package:koala/product/widgets/my_button.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
 
-/// Formun döndürdüğü değerler.
-///
-/// Sheet'in kendisi ağa çıkmıyor: kaydetmeyi çağıran sayfa yapıyor, böylece
-/// hata ve tazeleme tek yerde kalıyor.
+/// Formun sonucu; kaydetmeyi çağıran sayfa yapar.
 class ExperienceFormResult {
   const ExperienceFormResult({
     required this.title,
@@ -34,16 +31,13 @@ class ExperienceFormResult {
   final String? description;
 }
 
-/// Deneyim ekleme ve düzenleme formu.
-///
-/// [initial] doluysa düzenleme: uç `PUT` olduğu için alanlar mevcut
-/// değerlerle doluyor — boş bırakılan alan sunucuda temizleniyor.
+/// Deneyim formu. Uç `PUT` olduğu için düzenlemede alanlar mevcut değerlerle
+/// dolu; boş bırakılan temizlenir.
 class ExperienceSheet extends StatefulWidget {
   const ExperienceSheet({super.key, this.initial});
 
   final Experience? initial;
 
-  /// Sheet'i açar; kaydedilirse form sonucunu, vazgeçilirse `null` döner.
   static Future<ExperienceFormResult?> show(
     BuildContext context, {
     Experience? initial,
@@ -68,11 +62,9 @@ class _ExperienceSheetState extends State<ExperienceSheet> {
   DateTime? _startDate;
   DateTime? _endDate;
 
-  /// Deneyim hâlâ sürüyor mu. Sunucuda karşılığı `endDate: null`.
+  /// Sunucuda `endDate: null`.
   late bool _isCurrent;
 
-  /// Tarih seçicinin gidebileceği en eski yıl; iş geçmişi için fazlasıyla
-  /// yeterli ve seçiciyi gereksiz uzatmıyor.
   static const int _earliestYear = 1960;
 
   @override
@@ -99,7 +91,6 @@ class _ExperienceSheetState extends State<ExperienceSheet> {
     super.dispose();
   }
 
-  /// Kaydedilebilir mi: sunucunun zorunlu tuttuğu iki alan dolu mu.
   bool get _canSave => _title.text.trim().isNotEmpty && _startDate != null;
 
   @override
@@ -157,7 +148,6 @@ class _ExperienceSheetState extends State<ExperienceSheet> {
     );
   }
 
-  /// Çok satırlı açıklama alanının yüksekliği.
   static const double _descriptionHeight = 100;
 
   Widget _employmentTypeField() {
@@ -221,7 +211,6 @@ class _ExperienceSheetState extends State<ExperienceSheet> {
       value: _isCurrent,
       onChanged: (value) => setState(() {
         _isCurrent = value;
-        // Sunucuda "sürüyor" demek bitiş tarihinin olmaması demek.
         if (value) _endDate = null;
       }),
     );
@@ -229,7 +218,7 @@ class _ExperienceSheetState extends State<ExperienceSheet> {
 
   Future<void> _pickStartDate() async {
     final now = DateTime.now();
-    // Sunucu gelecekte başlangıç kabul etmiyor (`@PastOrPresent`).
+    // `@PastOrPresent`.
     final picked = await showDatePicker(
       context: context,
       initialDate: _startDate ?? now,
@@ -240,7 +229,7 @@ class _ExperienceSheetState extends State<ExperienceSheet> {
 
     setState(() {
       _startDate = picked;
-      // Bitiş başlangıçtan önce kalamaz; sunucu da reddediyor.
+      // Sunucu da reddediyor.
       if (_endDate != null && _endDate!.isBefore(picked)) _endDate = null;
     });
   }

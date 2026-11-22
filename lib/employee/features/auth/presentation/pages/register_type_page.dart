@@ -13,13 +13,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 class RegisterTypePage extends StatelessWidget {
   const RegisterTypePage({super.key});
 
-  /// Seçim kartındaki görselin ölçüsü. Dikey dikdörtgen: maskot boydan
-  /// görünsün ve kart yüksekliğini görsel belirlesin diye.
   static const double _cardImageWidth = 100;
   static const double _cardImageHeight = 150;
 
-  /// Kartın kenarlık kalınlığı; kart zeminsiz olduğu için seçilebilir
-  /// olduğunu yalnızca bu çerçeve anlatıyor.
+  /// Kart zeminsiz; seçilebilir olduğunu yalnız çerçeve anlatıyor.
   static const double _cardBorderWidth = 3;
 
   @override

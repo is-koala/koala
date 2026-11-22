@@ -36,8 +36,7 @@ class CompanyInformationsPage extends StatefulWidget {
 
   final BCompanyService? service;
 
-  /// Formun açılışta taşıdığı adres; testler harita ekranını atlamak için
-  /// verir, üretimde işveren adresi haritadan seçer.
+  /// Testler harita ekranını atlamak için verir.
   final ConfirmedAddress? initialAddress;
   final VoidCallback? onSaved;
 
@@ -47,11 +46,9 @@ class CompanyInformationsPage extends StatefulWidget {
 }
 
 class _CompanyInformationsPageState extends CompanyInformationsPagemodel {
-  /// Açıklama alanının yüksekliği; yanındaki logo kutusuyla aynı boyda
-  /// dursun diye satır yüksekliğini bu belirliyor.
+  /// Logo kutusuyla aynı boyda.
   static const double _descriptionHeight = 100;
 
-  /// Logo seçim kutusunun ölçüsü.
   static const double _logoBoxWidth = 80;
   static const double _avatarRadius = 40;
   static const double _editBadgeSize = 30;
@@ -215,7 +212,6 @@ class _CompanyInformationsPageState extends CompanyInformationsPagemodel {
                     )
                   : null,
             ),
-            // Düzenle rozeti köşede
             Positioned(
               bottom: AppSizes.spaceTiny,
               right: AppSizes.spaceTiny,

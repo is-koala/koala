@@ -1,6 +1,5 @@
 import 'package:koala/product/extensions/date_extensions.dart';
 
-/// Öğrenim kademesi. Backend `GradeType` enum'ının karşılığı.
 enum GradeType {
   preparatory('PREPARATORY', 'Hazırlık'),
   firstGrade('FIRST_GRADE', '1. sınıf'),
@@ -24,10 +23,7 @@ enum GradeType {
   }
 }
 
-/// Kullanıcının bir öğrenim kaydı.
-///
-/// Üniversite, fakülte ve bölüm backend'de referans veri; istemci yalnızca
-/// adlarını gösteriyor, kimlikleri düzenleme akışı için taşınıyor.
+/// Öğrenim kaydı; kimlikler düzenleme için taşınıyor.
 class Education {
   const Education({
     required this.id,
@@ -52,13 +48,12 @@ class Education {
   final String? departmentName;
   final GradeType type;
 
-  /// Not ortalaması. Backend `double` döndürüyor; 0 "girilmemiş" demek.
+  /// 0 "girilmemiş" demek.
   final double? gpa;
 
   final DateTime? startDate;
   final DateTime? endDate;
 
-  /// Kartın alt satırı: bölüm ve fakülte.
   String get subtitle {
     final parts = [
       if (departmentName != null && departmentName!.isNotEmpty) departmentName!,

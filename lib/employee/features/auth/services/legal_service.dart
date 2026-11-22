@@ -6,9 +6,6 @@ import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
 /// Sözleşmeler ve onaylar.
-///
-/// Kayıt akışının parçası olduğu için `auth` altında duruyor; hesap silme ve
-/// onay geçmişi ekranları da buraya bağlanacak.
 class LegalService {
   LegalService._(this._apiClient);
 
@@ -23,8 +20,7 @@ class LegalService {
 
   final ApiClient _apiClient;
 
-  /// Yürürlükteki sözleşme sürümleri. Token istemiyor; kayıt sırasında
-  /// gösterilen onay kutuları bu listeden çiziliyor.
+  /// Token istemiyor; kayıttaki onay kutuları bundan.
   Future<List<AgreementVersion>> fetchCurrentAgreements() {
     return _apiClient.get<List<AgreementVersion>>(
       ApiPaths.agreements,
@@ -37,10 +33,7 @@ class LegalService {
     );
   }
 
-  /// Oturum açmış kullanıcının onaylarını günceller.
-  ///
-  /// Kayıt sırasındaki onaylar bu uçtan değil, `complete-registration`
-  /// gövdesinden gidiyor.
+  /// Kayıttaki onaylar bu uçtan değil `complete-registration`'dan gider.
   Future<void> recordConsents(List<ConsentDecision> decisions) {
     return _apiClient.postWithoutData(
       ApiPaths.consents,
@@ -48,7 +41,6 @@ class LegalService {
     );
   }
 
-  /// Hesap silme talebi oluşturur.
   Future<AccountDeletion> requestAccountDeletion({String? reason}) {
     return _apiClient.post<AccountDeletion>(
       ApiPaths.accountDeletion,

@@ -10,8 +10,6 @@ import 'package:koala/product/extensions/context_extensions.dart';
 class AuthPage extends StatelessWidget {
   const AuthPage({super.key});
 
-  /// Logonun yüksekliği. Kelime markasıyla birlikte tek bir blok oluşturuyor;
-  /// ikisinin toplamı ekranın üst yarısını dolduracak kadar.
   static const double _logoHeight = 90;
 
   @override
@@ -22,7 +20,6 @@ class AuthPage extends StatelessWidget {
         bottom: false,
         child: Stack(
           children: [
-            // Background Image
             Positioned.fill(
               child: Image.asset(AppAssets.backgroundMap, fit: BoxFit.cover),
             ),
@@ -43,8 +40,7 @@ class AuthPage extends StatelessWidget {
                           'KOALA',
                           maxLines: 1,
                           overflow: TextOverflow.visible,
-                          // Arkadaki harita görseli iki temada da açık;
-                          // yazı da o yüzden sabit koyu.
+                          // Arkadaki harita iki temada açık; yazı sabit koyu.
                           style: context.textTheme.displayLarge?.copyWith(
                             color: AppColors.onLightSurface,
                           ),

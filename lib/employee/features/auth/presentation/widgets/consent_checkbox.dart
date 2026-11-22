@@ -4,10 +4,8 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/employee/features/auth/services/legal_document_browser.dart';
 
-/// Kayıt ekranındaki tek bir sözleşme onayı.
-///
-/// Zorunlu onaylar sonuna kırmızı bir yıldız alıyor; metnin tamamı
-/// tıklanabilir, böylece küçük kutuyu tutturmak gerekmiyor.
+/// Tek sözleşme onayı; metnin tamamı tıklanabilir, küçük kutuyu tutturmak
+/// gerekmesin.
 class ConsentCheckbox extends StatelessWidget {
   const ConsentCheckbox({
     super.key,
@@ -25,13 +23,10 @@ class ConsentCheckbox extends StatelessWidget {
   final ValueChanged<bool> onChanged;
   final bool isMandatory;
 
-  /// [label] içinde bağlantı olarak çizilecek sözleşme adı.
   final String? linkText;
 
-  /// Backend'in sözleşme sürümü için verdiği içerik adresi.
   final String? contentUrl;
 
-  /// Gerçek tarayıcı yerine test sınırı enjekte edilebilmesini sağlar.
   final LegalDocumentBrowser? legalBrowser;
 
   @override

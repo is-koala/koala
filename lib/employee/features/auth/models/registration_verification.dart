@@ -1,20 +1,16 @@
 import 'package:koala/employee/features/auth/models/current_user.dart';
 
-/// `/auth/verify-registration-token` yanıtı.
-///
-/// E-postadaki bağlantıdan gelen token'ın karşılığı: şifre belirlemek için
-/// kullanılacak ikinci token ve kaydın iş veren kaydı olup olmadığı.
+/// `/auth/verify-registration-token` yanıtı: şifre belirleme token'ı ve kayıt
+/// tipi.
 class RegistrationVerification {
   const RegistrationVerification({
     required this.setPasswordToken,
     required this.isEmployer,
   });
 
-  /// `/auth/complete-registration` çağrısına gönderilecek token.
   final String setPasswordToken;
 
-  /// Kayıt iş veren olarak başlatıldıysa `true`. Şifre adımından sonra
-  /// şirket bilgileri ekranına gidilip gidilmeyeceğini bu belirliyor.
+  /// İşverense şifreden sonra şirket bilgilerine gidilir.
   final bool isEmployer;
 
   factory RegistrationVerification.fromJson(Map<String, dynamic> json) {

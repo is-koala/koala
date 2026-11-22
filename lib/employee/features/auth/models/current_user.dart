@@ -4,7 +4,6 @@ import 'package:koala/employee/features/auth/models/experience.dart';
 import 'package:koala/employee/features/auth/models/user_badge.dart';
 import 'package:koala/product/models/canonical_address.dart';
 
-/// Kullanıcının cinsiyeti. Backend `Gender` enum'ının birebir karşılığı.
 enum Gender {
   male('MALE', 'Erkek'),
   female('FEMALE', 'Kadın'),
@@ -12,14 +11,11 @@ enum Gender {
 
   const Gender(this.code, this.displayName);
 
-  /// Backend'e gidip gelen değer.
   final String code;
 
-  /// Arayüzde gösterilen Türkçe karşılık.
   final String displayName;
 
-  /// Tanınmayan ya da boş değerde [Gender.notSpecified] döner; backend
-  /// ileride yeni bir değer eklerse uygulama patlamasın.
+  /// Tanınmayan ya da boş değerde [Gender.notSpecified].
   static Gender fromCode(Object? value) {
     return Gender.values.firstWhere(
       (gender) => gender.code == value,
@@ -28,10 +24,7 @@ enum Gender {
   }
 }
 
-/// `/users/me` yanıtının tamamı.
-///
-/// Hem oturum (router'ın baktığı [isEmployer]) hem profil ekranı bu modeli
-/// okuyor: uç tek yanıt döndürdüğü için ikiye bölmenin anlamı yok.
+/// `/users/me` yanıtı; hem oturum ([isEmployer]) hem profil okuyor.
 class CurrentUser {
   const CurrentUser({
     required this.id,
@@ -71,61 +64,48 @@ class CurrentUser {
   final DateTime? birthDate;
   final Gender gender;
 
-  /// TC kimlik numarası. Kimlik doğrulaması yapılana kadar `null`.
+  /// Kimlik doğrulanana kadar `null`.
   final String? tcIdentityNumber;
 
-  /// Profil başlığında adın altında görünen ünvan.
   final String? jobTitle;
 
-  /// Profildeki "Hakkımda" metni.
   final String? about;
 
-  /// Kullanıcının yetkinlikleri; backend'de düz metin.
   final String? qualifications;
 
-  /// İlgi alanları; backend'de düz metin.
   final String? interests;
 
-  /// Maskelenmiş IBAN (`TR** **** 1234`). Banka hesabı tanımlı değilse null.
+  /// `TR** **** 1234`; hesap yoksa `null`.
   final String? maskedIban;
 
-  /// Yüklenmiş özgeçmişin bağlantısı; yoksa null.
   final String? cvUrl;
 
-  /// İş deneyimleri, yeniden eskiye.
+  /// Yeniden eskiye.
   final List<Experience> experiences;
 
-  /// Öğrenim kayıtları.
   final List<Education> educations;
 
-  /// Kazanılmış rozetler. Backend rozeti geri almıyor, liste yalnızca büyür.
+  /// Backend rozeti geri almıyor.
   final List<UserBadge> badges;
 
-  /// Kayıtlı adres. Profil başlığındaki konum satırı buradan çiziliyor.
   final CanonicalAddress? address;
 
-  /// Kullanıcının iş veren olup olmadığı. Router hangi arayüzün açılacağına
-  /// buna bakarak karar veriyor.
+  /// Router hangi arayüzün açılacağına buna bakıyor.
   final bool isEmployer;
 
   final bool emailVerified;
   final bool phoneVerified;
 
-  /// Kimlik doğrulaması yapılmış mı. Ödeme akışının ön koşulu.
+  /// Ödeme akışının ön koşulu.
   final bool identityVerified;
 
-  /// `ROLE_USER`, `ROLE_ADMIN` gibi yetki adları.
   final List<String> roles;
 
-  /// Kullanıcının bağlı olduğu şirketler.
   final List<CompanyMembership> companies;
 
   String get fullName => '$firstName $lastName';
 
-  /// İlan açarken kullanılacak şirket.
-  ///
-  /// Onaysız üyelik sayılmıyor: backend onaysız şirket adına ilan açtırmıyor.
-  /// `null` dönmesi "bireysel ilan açılacak" demek, hata değil.
+  /// İlan açarken kullanılacak onaylı şirket; `null` "bireysel ilan" demek.
   CompanyMembership? get activeCompany {
     for (final company in companies) {
       if (company.approved) return company;
@@ -133,11 +113,8 @@ class CurrentUser {
     return null;
   }
 
-  /// Profilde gösterilecek şirket.
-  ///
-  /// [activeCompany]'den farkı onaya bakmaması: onay bekleyen şirketi de
-  /// göstermek gerekiyor, yoksa kullanıcı kurduğu şirketi hiç göremez ve
-  /// kendini bireysel işveren sanır.
+  /// Profilde gösterilecek şirket; onay bekleyeni de kapsıyor, yoksa kullanıcı
+  /// kurduğu şirketi göremez.
   CompanyMembership? get primaryCompany =>
       companies.isEmpty ? null : companies.first;
 
@@ -183,8 +160,7 @@ class CurrentUser {
     );
   }
 
-  /// Dizi alanlarını ayrıştırır. Alan hiç gelmezse ya da beklenmedik bir
-  /// tipteyse boş liste dönüyor; profil ekranı bölümü çizmiyor.
+  /// Alan gelmezse ya da tipi beklenmedikse boş liste.
   static List<T> _listOf<T>(
     Object? value,
     T Function(Map<String, dynamic>) fromJson,
@@ -194,11 +170,8 @@ class CurrentUser {
         : const [];
   }
 
-  /// İş veren bayrağını okur.
-  ///
-  /// Anahtar adı backend'de `@JsonProperty("isEmployer")` ile sabitlendi;
-  /// `/users/me` ve `/auth/verify-registration-token` aynı adı kullandığı
-  /// için iki model de buradan okuyor.
+  /// Backend `@JsonProperty("isEmployer")` ile sabit; iki uç aynı adı
+  /// kullandığı için iki model de buradan okuyor.
   static bool readEmployerFlag(Map<String, dynamic> json) {
     final value = json['isEmployer'];
     if (value is! bool) {

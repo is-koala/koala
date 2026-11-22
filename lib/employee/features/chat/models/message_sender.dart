@@ -2,21 +2,15 @@ import 'package:koala/employee/features/chat/models/chat_participant.dart';
 import 'package:koala/employee/features/chat/models/conversation.dart';
 import 'package:koala/employee/features/chat/models/message.dart';
 
-/// Grup balonunun üstünde yazılan gönderen: ad, avatar ve ayrılma bilgisi.
-///
-/// Üç kaynaktan sırayla çözülüyor: sunucu `senderName` gönderdiyse o
-/// (is-koala/koala-backend#281); yoksa sohbetin katılımcı listesinde
-/// `senderId` eşleşmesi; o da yoksa [ChatParticipant.anonymousName] — eski
-/// sunucu ayrılanları listede taşımıyor, adı çözülemeyen bir gönderen için
-/// boş bırakmaktansa anonim yazılıyor. "Ayrıldı" etiketi yalnız katılımcı
-/// listesinden gelebiliyor; `MessageDto` bunu taşımıyor.
+/// Grup balonundaki gönderen: önce sunucunun `senderName`'i, sonra katılımcı
+/// listesi, en son [ChatParticipant.anonymousName]. "Ayrıldı" yalnız katılımcı
+/// listesinden gelebilir.
 class MessageSender {
   const MessageSender({required this.name, this.avatarUrl, this.left = false});
 
   final String name;
   final String? avatarUrl;
 
-  /// Gönderen sohbetten ayrıldı mı; balonda adın yanına "Ayrıldı" yazılıyor.
   final bool left;
 
   String get initials => Conversation.initialsOf(name);

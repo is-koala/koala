@@ -22,9 +22,8 @@ import 'package:url_launcher/url_launcher.dart';
 part 'company_detail_pagemodel.dart';
 
 class CompanyDetailPage extends StatefulWidget {
-  /// Şirketin kimliği. Ekran kaydı kendisi çekiyor: bir ilandan, bir işten
-  /// ya da bir sohbetten gelinebiliyor ve hepsinin elinde şirketin tam hâli
-  /// olmuyor — yalnızca kimliği oluyor.
+  /// Ekran kaydı kendisi çekiyor: ilan, iş ya da sohbetten gelinebiliyor ve
+  /// elde çoğu zaman yalnız kimlik var.
   final String companyId;
   final CompanyService? companyService;
   final JobService? jobService;
@@ -36,8 +35,6 @@ class CompanyDetailPage extends StatefulWidget {
     this.jobService,
   });
 
-  /// Kapak alanının açık yüksekliği. Logo, şirket adı ve altındaki onay /
-  /// konum satırını birlikte taşıyacak kadar.
   static const double appBarExpandedHeight = 230;
 
   @override
@@ -45,14 +42,11 @@ class CompanyDetailPage extends StatefulWidget {
 }
 
 class _CompanyDetailPageState extends CompanyDetailPagemodel {
-  /// Kapaktaki şirket logosunun kenar uzunluğu.
   static const double _logoSize = 80;
 
-  /// Tümü açılmadan gösterilen ilan sayısı. Çalışan önce işverene bakıyor;
-  /// ilan listesi sayfanın geri kalanını aşağı itmesin.
+  /// Çalışan önce işverene bakıyor; ilanlar sayfayı aşağı itmesin.
   static const int _previewJobCount = 3;
 
-  /// Kapak üstündeki ikincil satırın opaklığı.
   static const double _onCoverMuted = 0.9;
 
   @override
@@ -84,7 +78,6 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
     );
   }
 
-  /// Şirket çekilemediğinde: mesaj ve tekrar deneme.
   Widget _errorState(String message) {
     return Center(
       child: Padding(
@@ -109,9 +102,8 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
 
   // ------------------------------------------------------------------ İçerik
 
-  /// Sıra çalışanın sorusunu izliyor: şirket sayfasına "bu işveren
-  /// güvenilir mi" diye geliniyor; önce özet, kim olduğu ve nasıl
-  /// ulaşılacağı, en sonda başka ilanları.
+  /// Sıra çalışanın sorusunu izliyor ("bu işveren güvenilir mi"): önce özet,
+  /// kim olduğu ve iletişim, en sonda ilanlar.
   Widget _content(Company company) {
     return Padding(
       padding: AppPadding.primaryAll,
@@ -137,13 +129,10 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
             const SizedBox(height: AppSizes.spaceLarge),
             _buildSectionTitle('Galeri'),
             const SizedBox(height: AppSizes.space),
-            // Galerisi olmayan şirkette bölüm hiç çizilmiyor: boş bir başlık
-            // eksik bir sayfa gibi okunurdu.
+            // Galerisiz şirkette bölüm yok; boş başlık eksik sayfa gibi okunur.
             GalleryStrip(images: company.images),
           ],
           ..._contactSection(company),
-          // İletişim grubu kendi alt boşluğunu taşıyor; grup yoksa ilanlar
-          // Hakkında'nın hemen altına yapışmasın.
           if (_contactSection(company).isEmpty)
             const SizedBox(height: AppSizes.spaceLarge),
           _buildJobsSection(),
@@ -153,8 +142,7 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
     );
   }
 
-  /// Kapağın altındaki iki sayı: açık ilan ve takipçi. İlan sayısı
-  /// ilan isteği dönünce dolar; o zamana kadar tire.
+  /// Açık ilan ve takipçi; ilan sayısı istek dönene kadar tire.
   Widget _summaryRow(Company company) {
     return FutureBuilder<List<Job>>(
       future: companyJobsFuture,
@@ -202,8 +190,7 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
     ),
   );
 
-  /// Takip, sayfanın tek eylemi ama asıl karar (ilana başvurmak) başka
-  /// sayfada; o yüzden dolgulu değil çerçeveli duruyor.
+  /// Asıl karar başka sayfada olduğu için çerçeveli, dolgulu değil.
   Widget _followButton(Company company) {
     final following = company.isFollowing;
     return SizedBox(
@@ -235,7 +222,6 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
       pinned: true,
       expandedHeight: CompanyDetailPage.appBarExpandedHeight,
       backgroundColor: context.accentColor,
-      // Kapak marka yeşili; üstündeki her şey temadan bağımsız beyaz.
       leading: IconButton(
         icon: const AppIcon(AppIcons.arrowLeft, color: AppColors.onAccent),
         onPressed: () => context.pop(),
@@ -303,15 +289,12 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
     );
   }
 
-  /// Adın altındaki ikincil satır: şirket türü ve şehir. İkisi de yoksa
-  /// satır çizilmiyor.
   String? _coverSubtitle(Company company) {
     final parts = [?company.type?.displayName, ?company.address?.shortLabel];
     return parts.isEmpty ? null : parts.join(' · ');
   }
 
-  /// Onay durumu. Çalışanın "bu işveren gerçek mi" sorusunun cevabı; rozet
-  /// yerine ikon ve düz metinle söyleniyor.
+  /// "Bu işveren gerçek mi"nin cevabı; rozet değil ikon ve düz metin.
   Widget _trustLine(Company company) {
     final approved = company.isApproved;
     return Row(
@@ -374,9 +357,8 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
 
   // ------------------------------------------------------------------ İlanlar
 
-  /// Açık ilanlar, haritadaki ve listedeki kartın aynısıyla: dokununca ilan
-  /// detayı açılıyor. İlk [_previewJobCount] ilan gösteriliyor, fazlası tek
-  /// dokunuşla açılıyor.
+  /// Açık ilanlar, listedeki kartın aynısıyla; ilk [_previewJobCount], fazlası
+  /// tek dokunuşla.
   Widget _buildJobsSection() {
     return FutureBuilder<List<Job>>(
       future: companyJobsFuture,
@@ -460,10 +442,8 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
 
   // --------------------------------------------------------------- İletişim
 
-  /// E-posta, telefon, web sitesi ve adres tek kartta ([MyListGroup]);
-  /// ayarlardaki satırın aynısı. Her satır dokununca ilgili uygulamayı
-  /// açıyor, o yüzden sağdaki ok dışarı bakıyor. Hiçbiri yoksa bölüm
-  /// çizilmiyor.
+  /// İletişim tek kartta ([MyListGroup]); her satır ilgili uygulamayı açtığı
+  /// için ok dışarı bakıyor. Hiçbiri yoksa bölüm yok.
   List<Widget> _contactSection(Company company) {
     final email = company.email;
     final phone = company.phoneNumber;
@@ -519,8 +499,7 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
     ];
   }
 
-  /// `+905551234567` → `0555 123 45 67`. Türk cep/sabit numarası değilse
-  /// geldiği gibi.
+  /// `+905551234567` → `0555 123 45 67`; Türk numarası değilse olduğu gibi.
   static String _displayPhone(String phone) {
     final digits = phone.replaceAll(RegExp(r'\D'), '');
     final national = digits.startsWith('90') && digits.length == 12
@@ -533,13 +512,11 @@ class _CompanyDetailPageState extends CompanyDetailPagemodel {
         '${national.substring(6, 8)} ${national.substring(8)}';
   }
 
-  /// `https://iskoala.com/` → `iskoala.com`.
   static String _displayWebsite(String website) => website
       .replaceFirst(RegExp(r'^https?://', caseSensitive: false), '')
       .replaceFirst(RegExp(r'^www\.', caseSensitive: false), '')
       .replaceFirst(RegExp(r'/$'), '');
 
-  /// Şemasız girilmiş adres tarayıcıda açılsın diye `https://` eklenir.
   static String _websiteUrl(String website) =>
       RegExp(r'^https?://', caseSensitive: false).hasMatch(website)
       ? website

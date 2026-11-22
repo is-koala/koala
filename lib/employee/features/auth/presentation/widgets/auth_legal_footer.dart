@@ -6,18 +6,13 @@ import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/network/api_exception.dart';
 
-/// Giriş ve kayıt sayfalarının en altındaki kullanım şartları satırı.
-///
-/// İki sayfada da aynı; metin `RichText` çünkü cümlenin ortasındaki iki
-/// bağlantı ayrı ayrı tıklanabilir olmalı.
+/// Giriş ve kayıttaki kullanım şartları satırı; iki bağlantı ayrı tıklanabilsin
+/// diye `RichText`.
 class AuthLegalFooter extends StatefulWidget {
   const AuthLegalFooter({super.key, this.legalService, this.legalBrowser});
 
-  /// Yürürlükteki sözleşmeleri getiren sınır; widget testlerinde sahtesi
-  /// verilebilir.
   final LegalService? legalService;
 
-  /// Yasal metni açan sınır; widget testlerinde gerçek tarayıcıyı açmaz.
   final LegalDocumentBrowser? legalBrowser;
 
   @override
@@ -48,7 +43,7 @@ class _AuthLegalFooterState extends State<AuthLegalFooter> {
         _privacyUrl = _contentUrlFor(agreements, AgreementType.privacyPolicy);
       });
     } on ApiException {
-      // Sözleşme listesi alınamazsa metin düz kalır; ölü link çizilmez.
+      // Liste alınamazsa metin düz kalır; ölü link çizilmez.
     }
   }
 

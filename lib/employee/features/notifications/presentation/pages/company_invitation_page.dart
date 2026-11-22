@@ -18,7 +18,6 @@ import 'package:provider/provider.dart';
 
 part 'company_invitation_pagemodel.dart';
 
-/// Davet edilen kişinin gördüğü kabul / red ekranı.
 class CompanyInvitationPage extends StatefulWidget {
   const CompanyInvitationPage({super.key, required this.invitationId});
 

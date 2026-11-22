@@ -1,8 +1,4 @@
-/// Bir kullanıcının çevrimiçi durumu.
-///
-/// `GET /users/{userId}/presence` ve toplu `POST /presence/lookup` yanıtındaki
-/// `PresenceDto` karşılığı. Sohbet listesi tek tek sormak yerine toplu ucu
-/// kullanıyor.
+/// Çevrimiçi durumu; sohbet listesi toplu ucu kullanıyor.
 class Presence {
   const Presence({required this.userId, this.online = false, this.lastSeenAt});
 

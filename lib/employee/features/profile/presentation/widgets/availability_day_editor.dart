@@ -9,7 +9,6 @@ import 'package:koala/product/models/availability_day.dart';
 import 'package:koala/product/models/availability_slot.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// Haftalık ızgarada tek günün saat aralıklarını düzenleyen satır.
 class AvailabilityDayEditor extends StatelessWidget {
   const AvailabilityDayEditor({
     super.key,

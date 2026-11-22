@@ -29,31 +29,17 @@ import 'package:provider/provider.dart';
 
 part 'public_profile_pagemodel.dart';
 
-/// Çalışanın başka bir kullanıcının herkese açık profilini gördüğü sayfa
-/// (is-koala/koala#182): grup sohbetinin katılımcısı ya da bireysel ilanın
-/// işvereni.
+/// Başka bir kullanıcının herkese açık profili (#182): grup sohbeti katılımcısı
+/// ya da bireysel ilanın işvereni.
 ///
-/// İki kez çiziliyor: [PublicProfileArgs] çağıranın bildiği ad, fotoğraf ve
-/// rolle kapağı hemen çiziyor; `GET /users/{id}` gelince meslek, konum ve
-/// hakkında doluyor, ardından son yorumlar kendi ucundan geliyor (puan özeti
-/// profil yanıtında zaten var). Profilin kendisi gelmeden yorum ve ilan uçları
-/// hiç istenmiyor.
+/// Kapak [PublicProfileArgs] ile hemen çizilir; meslek, konum ve hakkında `GET
+/// /users/{id}`'den, yorumlar sonra gelir. Profil gelmeden yorum ve ilan uçları
+/// istenmez.
 ///
-/// **Tek bir hata durumu var:** yok ya da silinmiş (`404`) ile görmeye yetkisiz
-/// (`403`) ekranda birebir aynı — bu **savunmacı bir eşitlik**: bugün
-/// `GET /users/{id}` hiç `403` üretmiyor, giriş yapmış herkes var olan her
-/// kullanıcıyı görüyor, yani bugün gerçekte yalnız `404` görünür. İleride bir
-/// görünürlük kuralı gelirse hangisi olduğunu söylemek bir hesabın var olup
-/// olmadığını sızdırırdı; ekran şimdiden ayırt etmiyor. Çağıranın verdiği ad
-/// bile bu durumda çizilmiyor. Yalnızca geçici hatalarda (bağlantı, zaman
-/// aşımı, sunucu) başlık aynı kalıyor ve *Tekrar Dene* çıkıyor.
-///
-/// Kendi kimliğiyle açılırsa profil sekmesine yönleniyor: kendi profilinin
-/// "başkasının gözüyle" görünümü ayrı bir ekran değil.
-///
-/// Başlıktaki şikayet eylemi mevcut [ReportSheet]'i açıyor: grup sohbetinde
-/// şikayet/engelle yok, bu çalışanın ekip arkadaşını ya da şirket yetkilisini
-/// bildirebileceği yer. Engelleme yok — sunucu grupta engeli uygulamıyor.
+/// **Tek hata durumu:** `404` ile `403` aynı görünüyor; ileride görünürlük
+/// kuralı gelirse hesabın varlığı sızmasın. Yalnız geçici hatalarda *Tekrar
+/// Dene* var. Kendi kimliğiyle açılırsa profil sekmesine yönlenir. Engelleme
+/// yok: sunucu grupta engeli uygulamıyor.
 class PublicProfilePage extends StatefulWidget {
   const PublicProfilePage({
     super.key,
@@ -63,10 +49,7 @@ class PublicProfilePage extends StatefulWidget {
     this.jobService,
   });
 
-  /// Rotadan sayfayı kurar. Kimlik **yol parametresi** ([userId]); [extra]
-  /// yalnızca kapağı önceden doldurmak için ve yalnızca aynı kişiye aitse
-  /// kullanılıyor — eksik, başka türde ya da başka bir kişinin `extra`'sı
-  /// sayfayı açılmaktan alıkoymuyor.
+  /// Kimlik yol parametresi; [extra] yalnız aynı kişiye aitse kapağı doldurur.
   factory PublicProfilePage.fromRoute({
     Key? key,
     required String userId,
@@ -80,30 +63,24 @@ class PublicProfilePage extends StatefulWidget {
 
   final PublicProfileArgs args;
 
-  /// Testler için; verilmezse üretimdeki tekil servisler.
   final UserService? userService;
   final ReviewService? reviewService;
   final JobService? jobService;
 
   static const String title = 'Profil';
 
-  /// Tek hata durumunun başlığı; kesin retlerde ve geçici hatada aynı.
   static const String unavailableTitle = 'Profil görüntülenemiyor';
 
-  /// Kesin ret (`404`; savunmacı olarak `403` de): iki sebebi de söylüyor,
-  /// hangisi olduğunu söylemiyor.
+  /// Kesin ret: iki sebebi de söylüyor, hangisi olduğunu söylemiyor.
   static const String unavailableNote =
       'Bu profil silinmiş ya da erişiminize kapalı olabilir.';
 
-  /// Geçici hata: sebep kişide değil, tekrar denemek işe yarayabilir.
   static const String retryNote =
       'Profil şu an yüklenemedi. Biraz sonra tekrar deneyin.';
 
-  /// Şirket satırının boyutunun açılma süresi.
   static const Duration companyRevealDuration = Duration(milliseconds: 200);
 
-  /// Hiç değerlendirmesi olmayan birinin yorum bölümü; sahibine değil,
-  /// başkasına konuşuyor.
+  /// Başkasına konuşuyor, profilin sahibine değil.
   static const String noReviewsNote = 'Henüz değerlendirme yok.';
 
   @override
@@ -125,7 +102,6 @@ class _PublicProfilePageState extends PublicProfilePagemodel {
 
   Widget _body(BuildContext context) {
     if (failure != null) return _unavailable();
-    // Kendi profili: sekmeye yönleniyor; o ana kadar çizilecek bir şey yok.
     if (isRedirecting || (isLoading && widget.args.name == null)) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -152,7 +128,6 @@ class _PublicProfilePageState extends PublicProfilePagemodel {
     );
   }
 
-  /// Profil geldikten sonraki bölümler.
   Widget _sections(BuildContext context, PublicProfile loaded) {
     final about = loaded.about;
 
@@ -162,7 +137,6 @@ class _PublicProfilePageState extends PublicProfilePagemodel {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _companySlot(context),
-          // Boş bir "hakkında" kartı başkasının profilinde bir şey söylemiyor.
           if (about != null && about.isNotEmpty) ...[
             _aboutSection(context, about),
             const SizedBox(height: AppSizes.spaceLarge),
@@ -171,7 +145,7 @@ class _PublicProfilePageState extends PublicProfilePagemodel {
             userId: widget.args.userId,
             service: widget.reviewService,
             emptyMessage: PublicProfilePage.noReviewsNote,
-            // Özet profil yanıtında zaten geldi; ayrı uç çağrılmıyor.
+            // Özet profil yanıtında geldi.
             summary: ratingSummary,
           ),
           const SizedBox(height: AppSizes.spaceLarge),
@@ -210,8 +184,6 @@ class _PublicProfilePageState extends PublicProfilePagemodel {
     );
   }
 
-  /// Kişinin temsil ettiği şirket (sohbetin ilanından çözüldü); şirket
-  /// sayfasına bağlantı.
   Widget _companyRow(BuildContext context, JobCompany company) {
     return Material(
       color: context.tileColor,
@@ -263,10 +235,8 @@ class _PublicProfilePageState extends PublicProfilePagemodel {
     );
   }
 
-  /// Şirket satırının yeri. Satır ikinci (ağır) ilan isteğinden sonra
-  /// geliyor ve en üstte; aniden eklense "Hakkında" ile yorumlar aşağı
-  /// sıçrardı. Boyut animasyonla açılıyor; genişlik sabit kalsın diye boşken
-  /// de tam genişlikte, sıfır yükseklikli bir kutu duruyor.
+  /// Şirket satırının yeri: geç gelen satır içeriği aşağı sıçratmasın diye
+  /// boyut animasyonla açılıyor.
   Widget _companySlot(BuildContext context) {
     final found = company;
 
@@ -284,10 +254,8 @@ class _PublicProfilePageState extends PublicProfilePagemodel {
     );
   }
 
-  /// Başlıktaki şikayet düğmesi; yalnız profil geldikten sonra. Beklerken
-  /// (derin bağlantıda, önceden doldurma yokken) form açılsa ve profil sonra
-  /// `404` dönse kullanıcı var olmayan birini bildirmiş olurdu; hata ve
-  /// yönlendirmede de bildirilecek bir profil yok.
+  /// Şikayet yalnız profil geldikten sonra: önce açılsa ve profil `404` dönse
+  /// kullanıcı var olmayan birini bildirmiş olurdu.
   Widget? _reportAction() {
     if (profile == null || failure != null || isRedirecting) return null;
 
@@ -301,8 +269,7 @@ class _PublicProfilePageState extends PublicProfilePagemodel {
     );
   }
 
-  /// Tek hata durumu. Kesin retlerde (`404`/`403`) tekrar deneme yok: sonuç
-  /// değişmeyecek ve düğme bir şeyin geçici olduğunu ima ederdi.
+  /// Kesin retlerde tekrar deneme yok; düğme geçicilik ima ederdi.
   Widget _unavailable() {
     return EmptyState(
       icon: AppIcons.user,

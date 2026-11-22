@@ -1,6 +1,5 @@
 import 'package:koala/product/extensions/date_extensions.dart';
 
-/// Çalışma biçimi. Backend `EmploymentType` enum'ının karşılığı.
 enum EmploymentType {
   fullTime('FULL_TIME', 'Tam zamanlı'),
   partTime('PART_TIME', 'Yarı zamanlı'),
@@ -13,8 +12,7 @@ enum EmploymentType {
   final String code;
   final String displayName;
 
-  /// Tanınmayan değerde [EmploymentType.fullTime] döner; backend yeni bir
-  /// değer eklerse uygulama çökmesin.
+  /// Tanınmayan değerde [EmploymentType.fullTime].
   static EmploymentType fromCode(Object? value) {
     return EmploymentType.values.firstWhere(
       (type) => type.code == value,
@@ -23,10 +21,7 @@ enum EmploymentType {
   }
 }
 
-/// Kullanıcının bir iş deneyimi.
-///
-/// `/users/me` yanıtındaki `experiences` dizisinin elemanı; ayrıca
-/// `/users/me/experiences` uçlarıyla tek tek yönetiliyor.
+/// İş deneyimi; `/users/me`'de gelir, yazma ayrı uçlardan.
 class Experience {
   const Experience({
     required this.id,
@@ -46,12 +41,11 @@ class Experience {
   final String? cityName;
   final DateTime? startDate;
 
-  /// Bitiş tarihi. `null` ise deneyim hâlâ sürüyor.
+  /// `null` ise sürüyor.
   final DateTime? endDate;
 
   final String? description;
 
-  /// Kartta gösterilen alt satır: şirket ve şehir birleşimi.
   String get subtitle {
     final parts = [
       if (companyName != null && companyName!.isNotEmpty) companyName!,
@@ -60,7 +54,7 @@ class Experience {
     return parts.join(' · ');
   }
 
-  /// `Ocak 2023 - Halen` biçiminde süre etiketi.
+  /// `Ocak 2023 - Halen`.
   String get durationLabel => formatDateRange(startDate, endDate);
 
   factory Experience.fromJson(Map<String, dynamic> json) {

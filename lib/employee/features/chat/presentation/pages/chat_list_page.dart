@@ -16,8 +16,7 @@ import 'package:provider/provider.dart';
 class ChatListPage extends StatefulWidget {
   const ChatListPage({super.key, this.controller});
 
-  /// Dışarıdan verilirse yaşam döngüsü çağırana ait olan liste durumu;
-  /// testler için. Verilmezse sayfa kendi denetleyicisini kurup atıyor.
+  /// Testler için; verilmezse sayfa kendisi kurar.
   final ChatListController? controller;
 
   @override
@@ -31,14 +30,10 @@ class _ChatListPageState extends State<ChatListPage>
 
   bool get _ownsController => widget.controller == null;
 
-  /// Oturum sahibi yüklenemediyse gösterilecek mesaj; sohbetlerin kendi
-  /// hataları [ChatListController] üzerinde.
   String? _sessionError;
 
-  /// Son bağımlılık turunda sohbet sekmesi görünür müydü; ilk turda `null`.
   bool? _wasOnChatTab;
 
-  /// Sekmenin yolu; `ShellPage` da aynı eşlemeyi kullanıyor.
   static const String _tabLocation = '/chat';
 
   @override
@@ -50,16 +45,9 @@ class _ChatListPageState extends State<ChatListPage>
     });
   }
 
-  /// Sekmeye her dönüşte listeyi sessizce tazeler.
-  ///
-  /// `ShellPage` bu sayfayı canlı tutuyor (bkz. [wantKeepAlive]), yani
-  /// sekmeye dönüşte `initState` bir daha çalışmıyor. Ödemeyle kurulan ilan
-  /// grubu için sunucu canlı olay göndermiyor; grup ilk mesaj gelene kadar
-  /// listeye ancak yeniden çekilince düşüyor. Ekrana dönüş o an. Yol,
-  /// `ShellPage`'in okuduğu aynı `GoRouterState`'ten geliyor: konum her
-  /// değiştiğinde bu metot çağrılıyor ve yalnızca "başka sekme → sohbet"
-  /// geçişi isteği tetikliyor. Router olmadan (widget testi) hiçbir şey
-  /// yapmıyor.
+  /// Sekmeye her dönüşte sessizce tazeler. Sayfa canlı tutulduğu için
+  /// `initState` tekrar çalışmıyor ve ödemeyle kurulan grup için canlı olay
+  /// yok; grup ancak yeniden çekilince listeye düşüyor.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -86,8 +74,8 @@ class _ChatListPageState extends State<ChatListPage>
   }
 
   Future<void> _load() async {
-    // Karşı tarafın kim olduğu oturum sahibine göre belirleniyor, o yüzden
-    // sohbetlerden önce kullanıcının yüklenmiş olması gerekiyor.
+    // Karşı taraf oturum sahibine göre belirlendiği için önce kullanıcı
+    // yüklenmeli.
     final userProvider = context.read<UserProvider>();
     if (userProvider.user == null) await userProvider.load();
     if (!mounted) return;
@@ -114,8 +102,7 @@ class _ChatListPageState extends State<ChatListPage>
     );
   }
 
-  /// Sekme değiştikçe sayfa atılmasın: denetleyici canlı kalınca hem sohbetler
-  /// yeniden çekilmiyor hem de canlı akış aboneliği kopmuyor.
+  /// Denetleyici canlı kalınca sohbetler yeniden çekilmez, abonelik kopmaz.
   @override
   bool get wantKeepAlive => true;
 
@@ -138,11 +125,7 @@ class _ChatListPageState extends State<ChatListPage>
         itemCount: _controller.conversations.length,
         itemBuilder: (context, index) {
           final chat = _controller.conversations[index];
-          return ChatListTile(
-            chat: chat,
-            // Sohbetten dönünce okunmamış sayacı ve son mesaj değişmiş olur.
-            onReturn: _load,
-          );
+          return ChatListTile(chat: chat, onReturn: _load);
         },
       ),
     );

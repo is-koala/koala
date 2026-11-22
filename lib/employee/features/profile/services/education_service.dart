@@ -4,11 +4,8 @@ import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
-/// Kullanıcının öğrenim kayıtları.
-///
-/// Okuma için ayrı bir çağrı yok: liste `/users/me` yanıtında geliyor ve
-/// `UserProvider` üzerinden okunuyor. Burası yalnızca yazma tarafı; her
-/// değişiklikten sonra çağıran taraf `/users/me`'yi tazeliyor.
+/// Öğrenim kayıtlarının yazma uçları; okuma `/users/me`'den, çağıran her
+/// değişiklikten sonra tazeler.
 class EducationService {
   EducationService._(this._apiClient);
 
@@ -23,11 +20,7 @@ class EducationService {
 
   final ApiClient _apiClient;
 
-  /// Öğrenim kaydı ekler.
-  ///
-  /// Üniversite, fakülte, bölüm, kademe ve başlangıç zorunlu. Not
-  /// ortalaması 0 ile 4 arasında olmalı, bitiş başlangıçtan önce olamaz;
-  /// ikisi de `400`.
+  /// Not 0–4 arası, bitiş başlangıçtan önce olamaz; ikisi de `400`.
   Future<Education> create({
     required String universityId,
     required String facultyId,
@@ -52,10 +45,7 @@ class EducationService {
     );
   }
 
-  /// Kaydı günceller.
-  ///
-  /// Uç `PUT` — kısmi güncelleme değil, kaydın tamamı gönderiliyor. Form da
-  /// bu yüzden mevcut değerlerle açılıyor.
+  /// Uç `PUT`: kaydın tamamı gönderilir.
   Future<Education> update({
     required String educationId,
     required String universityId,
@@ -81,18 +71,15 @@ class EducationService {
     );
   }
 
-  /// Kaydı siler. Başkasının kaydı `404`.
+  /// Başkasının kaydı `404`.
   Future<void> delete(String educationId) {
     return _apiClient.deleteWithoutData(
       ApiPaths.currentUserEducation(educationId),
     );
   }
 
-  /// Gövde. Sunucu tarihleri `LocalDate` bekliyor, saat kısmı
-  /// gönderilmiyor.
-  ///
-  /// [gpa] verilmezse `0` gidiyor: alan `double` ve `null` kabul etmiyor,
-  /// sunucu da 0'ı "girilmemiş" olarak okuyor.
+  /// Tarih `LocalDate`. [gpa] yoksa `0` gider: alan `null` kabul etmiyor,
+  /// sunucu 0'ı "girilmemiş" okuyor.
   Map<String, dynamic> _body({
     required String universityId,
     required String facultyId,

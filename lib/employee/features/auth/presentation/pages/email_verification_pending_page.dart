@@ -14,12 +14,9 @@ class EmailVerificationPendingPage extends StatelessWidget {
 
   final bool isBusiness;
 
-  /// Doğrulama postasının gittiği adres. Kayıt ekranından geliyor; derin
-  /// bağlantıyla doğrudan bu sayfaya düşüldüğünde `null` olabilir.
+  /// Derin bağlantıyla doğrudan gelindiyse `null`.
   final String? email;
 
-  /// Bekleme animasyonunun kenar uzunluğu; sayfanın tek görseli olduğu için
-  /// diğer ekranlardaki görsellerden büyük.
   static const double _animationSize = 300;
 
   @override

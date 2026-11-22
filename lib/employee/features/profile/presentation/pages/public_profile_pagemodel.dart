@@ -5,32 +5,25 @@ abstract class PublicProfilePagemodel extends State<PublicProfilePage> {
 
   JobService get _jobService => widget.jobService ?? JobService();
 
-  /// Sunucudaki profil; gelene kadar `null`.
   PublicProfile? profile;
 
   bool isLoading = true;
 
-  /// Profil çekilemediyse sebebi. Ekranda sebep değil yalnız *kesin mi,
-  /// geçici mi* ayrımı kullanılıyor ([isRefused]).
+  /// Ekranda yalnız *kesin mi, geçici mi* ayrımı kullanılıyor ([isRefused]).
   ApiException? failure;
 
-  /// Kişinin temsil ettiği şirket; çözülene kadar ya da yoksa `null`.
   JobCompany? company;
 
-  /// Kendi profili açıldı, profil sekmesine yönleniyor.
   bool isRedirecting = false;
 
-  /// Sunucu bu profili vermiyor: yok/silinmiş (`404`) ya da — savunmacı
-  /// olarak, bugün üretilmiyor — görme yetkisi yok (`403`). İkisi aynı ekranı
-  /// çiziyor ve tekrar denemek bir şey değiştirmiyor.
+  /// `404` ya da (bugün üretilmiyor) `403`; tekrar denemek bir şey değiştirmez.
   bool get isRefused {
     final type = failure?.type;
     return type == ApiErrorType.notFound || type == ApiErrorType.forbidden;
   }
 
-  /// Puan özeti profil yanıtından; yanıt `reviewCount` **ve** `averageRating`
-  /// taşımıyorsa (eski sunucu, yarım yanıt) `null` ve `ProfileReviews` özeti
-  /// kendi ucundan çekiyor. Yarım özet "0.0" çizdirirdi.
+  /// Yanıt `reviewCount` **ve** `averageRating` taşımıyorsa `null`, özet kendi
+  /// ucundan gelir; yarım özet "0.0" çizdirirdi.
   RatingSummary? get ratingSummary {
     final loaded = profile;
     final count = loaded?.reviewCount;
@@ -43,15 +36,14 @@ abstract class PublicProfilePagemodel extends State<PublicProfilePage> {
     );
   }
 
-  /// Kapaktaki ad: sunucunun söylediği, yoksa çağıranın verdiği.
   String get displayName {
     final fromProfile = profile?.fullName;
     if (fromProfile != null && fromProfile.isNotEmpty) return fromProfile;
     return widget.args.name ?? '';
   }
 
-  /// Profil geldiyse fotoğrafın tek kaynağı o: kişi fotoğrafını kaldırdıysa
-  /// çağıranın elindeki eski bağlantı geri gelmiyor.
+  /// Profil geldiyse tek kaynak o: kaldırılan fotoğrafın eski bağlantısı geri
+  /// gelmesin.
   String? get photoUrl {
     final loaded = profile;
     return loaded == null ? widget.args.imageUrl : loaded.profilePictureUrl;
@@ -96,13 +88,8 @@ abstract class PublicProfilePagemodel extends State<PublicProfilePage> {
     }
   }
 
-  /// Kişi bir şirketi temsil edebiliyorsa (işveren ya da şirket yetkilisi)
-  /// ve sohbetin ilanı biliniyorsa şirketi o ilanın detayından çözer.
-  ///
-  /// Ne profil yanıtında ne katılımcı satırında şirket var; tek kaynak ilan
-  /// detayı (`company{id,name}`). Yalnız **şirket ilanında** satır çiziliyor.
-  /// Profil geldikten sonra isteniyor ve sessiz başarısız oluyor: şirket
-  /// satırı profilin tamamlayıcısı, ön koşulu değil.
+  /// Kişi şirketi temsil edebiliyorsa şirketi sohbetin ilanından çözer; yalnız
+  /// şirket ilanında. Sessiz başarısız olur: satır tamamlayıcı, ön koşul değil.
   Future<void> _loadCompany() async {
     final jobId = widget.args.companyLookupJobId;
     if (jobId == null) return;

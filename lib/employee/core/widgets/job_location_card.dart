@@ -8,11 +8,8 @@ import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// İlan detayındaki konum satırı.
-///
-/// Ayrı bir widget olmasının sebebi, sheet'in içindeki bir extract method
-/// olmaktan çıkarmak: başlık ve alt açıklama [precision]'a göre değişiyor ve bu
-/// kararın sheet'in animasyon durumundan bağımsız sınanabilmesi gerekiyor.
+/// İlan detayının konum satırı; başlık ve açıklama [precision]'a göre değiştiği
+/// için sheet'ten bağımsız sınanabilsin diye ayrı.
 class JobLocationCard extends StatelessWidget {
   const JobLocationCard({
     super.key,
@@ -24,45 +21,32 @@ class JobLocationCard extends StatelessWidget {
     this.plain = false,
   });
 
-  /// Sunucunun konumu bu görüntüleyene hangi kesinlikte verdiği.
-  /// `true` ise kart zemini ve iç boşluğu olmadan çiziliyor (ilan detayı
-  /// sheet'i kartsız düzende).
+  /// `true` ise kart zemini ve iç boşluk yok.
   final bool plain;
 
   final AddressPrecision precision;
 
-  /// Konumun tek satırlık metni.
   final String label;
 
-  /// İşverenin yazdığı tarif (`components.additionalDirections`); sunucu
-  /// bunu yalnızca `EXACT` yanıtta gönderiyor. Yaklaşık konumda çizilmiyor
-  /// — açık adresin parçası olduğu için kendi başına bir sızıntı olurdu.
+  /// İşverenin tarifi; yalnız `EXACT` yanıtta geliyor. Yaklaşıkta çizilmez,
+  /// açık adresin parçası.
   final String? directions;
 
-  /// "Yol tarifi al" düğmesi (is-koala/koala#188). Verilmezse düğme yok —
-  /// ilan kartı (başvuru öncesi) vermiyor, iş detayı yalnız hedef koordinatı
-  /// bilirken veriyor. `APPROXIMATE` yanıtta verilse bile **çizilmiyor**:
-  /// yuvarlanmış koordinata yol tarifi, olmayan bir adrese götürmek olurdu.
+  /// "Yol tarifi al" (#188). `APPROXIMATE`'te verilse bile **çizilmez**:
+  /// yuvarlanmış koordinata yol tarifi olmayan bir adrese götürür.
   final VoidCallback? onDirections;
 
-  /// İşin başlangıcı; düğmenin altında "varış hedefi" olarak yazılıyor.
-  /// Harita bağlantısına yazılmıyor — bkz. `DirectionsLinks`.
+  /// Düğmenin altında yazılır; bağlantıya yazılmaz.
   final DateTime? arrival;
 
-  /// Düğmenin altındaki açıklama: rota toplu taşımayla açılıyor, varış saatini
-  /// harita uygulamasında kullanıcı seçiyor (bağlantı onu taşıyamıyor).
   static String directionsNote(DateTime? arrival) => arrival == null
       ? 'Toplu taşıma rotası harita uygulamasında açılır; varış saatini '
             'orada seçebilirsiniz.'
       : 'Toplu taşıma rotası harita uygulamasında açılır. İş başlangıcı '
             '${arrival.asShortDateTime}; varış saatini orada seçebilirsiniz.';
 
-  /// Yaklaşık konumda başlık ve alt açıklama değişiyor.
-  ///
-  /// Kesinliği ekranda söylemek metni seçmiyor — sunucu `APPROXIMATE` yanıtta
-  /// sokağı, binayı ve daireyi zaten silmiş oluyor. Ama kalan ilçe/il metnini
-  /// "Konum" diye sunmak, adresin bundan ibaret olduğunu ima ederdi; kullanıcı
-  /// "iş burada" diye okur.
+  /// Yaklaşık konumda başlık değişir: ilçe/il'i "Konum" diye sunmak adresin
+  /// bundan ibaret olduğunu ima ederdi.
   bool get _isApproximate => precision.isApproximate;
 
   @override
@@ -81,7 +65,6 @@ class JobLocationCard extends StatelessWidget {
           AppIcon(
             AppIcons.location,
             color: context.accentColor,
-            // Kartsız düzende diğer bilgi satırlarının ikonuyla aynı boyda.
             size: plain ? AppSizes.iconMedium : AppSizes.icon,
           ),
           const SizedBox(width: AppSizes.space),

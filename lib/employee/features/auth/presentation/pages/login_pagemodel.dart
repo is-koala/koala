@@ -8,7 +8,6 @@ abstract class LoginPagemodel extends State<LoginPage> {
 
   bool isPasswordHidden = true;
 
-  /// İstek sürerken buton yükleniyor durumuna geçiyor ve tekrar basılamıyor.
   bool isSubmitting = false;
 
   @override
@@ -42,7 +41,6 @@ abstract class LoginPagemodel extends State<LoginPage> {
     }
   }
 
-  /// Kullanıcı tipine göre açılacak arayüz.
   String _destinationFor(CurrentUser user) {
     return user.isEmployer ? '/business/home' : '/explore';
   }

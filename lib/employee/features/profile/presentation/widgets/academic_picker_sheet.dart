@@ -9,11 +9,8 @@ import 'package:koala/product/widgets/app_bottom_sheet.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
 
-/// Üniversite / fakülte / bölüm seçtiren aranabilir liste.
-///
-/// Açılır liste kullanılmadı: Türkiye'de iki yüzün üzerinde üniversite var
-/// ve `DropdownButton` o uzunlukta kullanılamıyor — aranmadan doğru kaydı
-/// bulmak mümkün değil.
+/// Aranabilir üniversite / fakülte / bölüm listesi; iki yüzü aşkın kayıt açılır
+/// listeyle bulunamaz.
 class AcademicPickerSheet extends StatefulWidget {
   const AcademicPickerSheet({
     super.key,
@@ -26,7 +23,7 @@ class AcademicPickerSheet extends StatefulWidget {
   final List<AcademicReference> items;
   final AcademicReference? selected;
 
-  /// Sheet'i açar; seçim yapılırsa kaydı, vazgeçilirse `null` döner.
+  /// Vazgeçilirse `null`.
   static Future<AcademicReference?> show(
     BuildContext context, {
     required String title,
@@ -47,7 +44,6 @@ class AcademicPickerSheet extends StatefulWidget {
 class _AcademicPickerSheetState extends State<AcademicPickerSheet> {
   final TextEditingController _query = TextEditingController();
 
-  /// Listenin yüksekliği; sheet'in ekranı kaplamaması için sabit.
   static const double _listHeight = 360;
 
   @override
@@ -56,8 +52,8 @@ class _AcademicPickerSheetState extends State<AcademicPickerSheet> {
     super.dispose();
   }
 
-  /// Aramada büyük/küçük harf ve Türkçe karakter ayrımı yapılmıyor:
-  /// kullanıcı "bogazici" yazınca "Boğaziçi" bulunmalı.
+  /// Büyük/küçük harf ve Türkçe karakter ayrımı yok: "bogazici" "Boğaziçi"yi
+  /// bulsun.
   List<AcademicReference> get _filtered {
     final query = _fold(_query.text);
     if (query.isEmpty) return widget.items;
@@ -121,10 +117,8 @@ class _AcademicPickerSheetState extends State<AcademicPickerSheet> {
     );
   }
 
-  /// Satır `ListTile` değil: `AppBottomSheet`'in renkli kabuğu araya
-  /// girdiği için mürekkep efekti görünmüyor ve Flutter assert düşürüyor.
-  /// Projedeki bütün dokunulabilir satırlar bu yüzden `Material` +
-  /// `InkWell` — `ThemeModeSheet._option` ile aynı kurgu.
+  /// `ListTile` değil: sheet'in renkli kabuğunda mürekkep görünmüyor ve assert
+  /// düşüyor.
   Widget _tile(AcademicReference item) {
     final isSelected = item == widget.selected;
 

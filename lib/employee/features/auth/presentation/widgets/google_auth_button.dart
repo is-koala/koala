@@ -5,23 +5,17 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 
-/// Google ile giriş / kayıt butonu.
-///
-/// Görünümü `MyButton`'ın `isReversed` hâliyle aynı; ayrı bir widget olmasının
-/// sebebi solda logoyu taşıması. Logo solda sabit dururken metin butonun
-/// ortasında kalıyor.
+/// Google ile giriş butonu; logo solda sabit, metin ortada.
 class GoogleAuthButton extends StatelessWidget {
   const GoogleAuthButton({super.key, required this.title, this.onPressed});
 
   final String title;
   final VoidCallback? onPressed;
 
-  /// Kenarlık kalınlığı; `MyButton`'ın ters hâliyle aynı olmalı, yoksa iki
-  /// buton alt alta farklı ağırlıkta görünüyor.
+  /// `MyButton`'ın ters hâliyle aynı olmalı; yoksa alt alta farklı ağırlıkta.
   static const double _borderWidth = 3.0;
 
-  /// Metnin sağındaki pay. Soldaki logo metni ortadan kaydırdığı için,
-  /// metin bloğu bu kadar sola çekilerek butonun ortasına oturtuluyor.
+  /// Soldaki logo metni kaydırdığı için metin bu kadar sola çekilir.
   static const double _textBalance = 34.0;
 
   @override
@@ -38,8 +32,6 @@ class GoogleAuthButton extends StatelessWidget {
               borderRadius: AppRadius.primaryCircular,
               side: BorderSide(color: context.accentColor, width: _borderWidth),
             ),
-            // `MyButton`'ın ters hâliyle aynı: zemin sayfanın zemini,
-            // butonu ayıran şey yeşil kenarlık.
             backgroundColor: context.backgroundColor,
             padding: AppPadding.button,
           ),

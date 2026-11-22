@@ -7,11 +7,7 @@ import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 import 'package:koala/product/models/canonical_address.dart';
 
-/// `/users/me` uçlarının sarmalayıcısı.
-///
-/// [AuthService] ile aynı klasörde duruyor çünkü ikisi de aynı kullanıcı
-/// kaydını okuyor: oturum açılırken tip öğrenilirken de, profil ekranı
-/// çizilirken de yanıt aynı uçtan geliyor.
+/// `/users/me` uçları.
 class UserService {
   UserService._(this._apiClient);
 
@@ -19,18 +15,14 @@ class UserService {
 
   factory UserService() => _instance;
 
-  /// Verilen istemciyle kurulu örnek.
-  ///
-  /// Testlerde sahte sunucuya bağlamak için, [AuthService] içinde de aynı
-  /// istemciyi paylaşmak için kullanılıyor.
+  /// Testler ve [AuthService] aynı istemciyi paylaşsın diye.
   factory UserService.withClient(ApiClient apiClient) {
     return UserService._(apiClient);
   }
 
   final ApiClient _apiClient;
 
-  /// Profil fotoğrafını yükler. Başarılı çağrıdan sonra kullanıcı yeniden
-  /// çekilmelidir; backend bu uçta yalnızca başarı zarfı döndürüyor.
+  /// Uç yalnız başarı zarfı döndürüyor; ardından kullanıcı yeniden çekilmeli.
   Future<void> uploadProfilePicture(String filePath) {
     return _apiClient.putFileWithoutData(
       ApiPaths.currentUserProfilePicture,
@@ -39,7 +31,6 @@ class UserService {
     );
   }
 
-  /// PDF/DOC/DOCX özgeçmişi özel depoya yükler.
   Future<String> uploadCv(String filePath) {
     return _apiClient.putFile<String>(
       ApiPaths.currentUserCv,
@@ -53,7 +44,6 @@ class UserService {
     return _apiClient.deleteWithoutData(ApiPaths.currentUserCv);
   }
 
-  /// Oturum açmış kullanıcının bilgileri.
   Future<CurrentUser> fetchCurrentUser() {
     return _apiClient.get<CurrentUser>(
       ApiPaths.currentUser,
@@ -61,10 +51,7 @@ class UserService {
     );
   }
 
-  /// Başka bir kullanıcının herkese açık profili.
-  ///
-  /// Oturum açmış herkese açık; tam adres dönmüyor ve `cvUrl` yalnızca
-  /// yetkili görene doluyor — kuralın tamamı [PublicProfile]'da.
+  /// Tam adres dönmez, `cvUrl` yalnız yetkiliye ([PublicProfile]).
   Future<PublicProfile> fetchPublicProfile(String userId) {
     return _apiClient.get<PublicProfile>(
       ApiPaths.publicProfile(userId),
@@ -72,18 +59,10 @@ class UserService {
     );
   }
 
-  /// Profil alanlarını kısmi olarak günceller.
-  ///
-  /// `null` geçilen parametre gövdeye hiç konmuyor — backend gönderilmeyen
-  /// alana dokunmuyor. Bir alanı temizlemek için `null` değil boş metin
-  /// gönderilmeli.
-  ///
-  /// İki tuzak var:
-  /// - [email] ya da [phoneNumber] değiştirildiğinde değer hemen yazılmıyor;
-  ///   yanıttaki `pendingVerifications` doluysa kullanıcı doğrulamayı
-  ///   tamamlayana kadar eski değer geçerli.
-  /// - Kimliği doğrulanmış kullanıcı ad, soyad ve doğum tarihini
-  ///   değiştiremiyor; backend isteği reddediyor.
+  /// Kısmi güncelleme: `null` alan gönderilmez; temizlemek için boş metin.
+  /// - [email] / [phoneNumber] hemen yazılmaz; `pendingVerifications` doluysa
+  ///   doğrulanana kadar eski değer geçerli.
+  /// - Kimliği doğrulanmış kullanıcı ad, soyad ve doğum tarihini değiştiremez.
   Future<ProfileUpdateResult> updateProfile({
     String? firstName,
     String? lastName,
@@ -102,16 +81,14 @@ class UserService {
       'lastName': ?lastName,
       'phoneNumber': ?phoneNumber,
       'email': ?email,
-      // Backend'deki alan adı bilerek küçük `d` ile: istek DTO'su
-      // `birthdate`, yanıt DTO'su `birthDate` kullanıyor.
+      // İstek DTO'su `birthdate`, yanıt `birthDate`.
       if (birthDate != null) 'birthdate': birthDate.asLocalDate,
       'gender': ?gender?.code,
       'jobTitle': ?jobTitle,
       'about': ?about,
       'qualifications': ?qualifications,
       'interests': ?interests,
-      // Sunucu IBAN'ı bu uçtan alıp birincil banka hesabına yazıyor; ayrı
-      // bir uç yok. Yanıt IBAN'ı maskeli döndürüyor.
+      // Ayrı IBAN ucu yok; yanıt maskeli döner.
       'iban': ?iban,
     };
 
@@ -123,18 +100,9 @@ class UserService {
     );
   }
 
-  /// Parolayı değiştirir.
-  ///
-  /// Sunucu üç şeyi de kendisi doğruluyor ve hepsinde `400` dönüyor: yeni
-  /// parola mevcut parolayla aynıysa, tekrarıyla tutmuyorsa ve mevcut parola
-  /// yanlışsa. Sonuncusu `UsersController`'ın `@ApiResponse`'unda `401`
-  /// yazıyor ama `UserManager` `ValidationException` fırlattığı için gerçekte
-  /// `400`; çağıran taraf ikisini de karşılamalı ve `401`'i oturum sonu
-  /// sanmamalı.
-  ///
-  /// **Başarıdan sonra bu cihaz dışındaki bütün oturumlar kapanıyor**
-  /// (`invalidateActiveSessionsForUserIdExcludingSessionId`). İsteği atan
-  /// cihaz açık kalıyor, yani kullanıcıdan yeniden giriş istenmemeli.
+  /// Parolayı değiştirir. Hataların hepsi `400` (belge `401` dese de); `401`'i
+  /// oturum sonu sanma. **Başarıdan sonra bu cihaz dışındaki oturumlar
+  /// kapanır**; yeniden giriş istenmemeli.
   Future<void> changePassword({
     required String currentPassword,
     required String newPassword,
@@ -150,11 +118,8 @@ class UserService {
     );
   }
 
-  /// Çipe imzalatılacak tek kullanımlık sayıyı alır.
-  ///
-  /// **Kart okunmadan önce** çağrılmalı — imzalanacak şey bu, kart
-  /// okunduktan sonra alınan bir sayı tekrar korumasını sağlamaz. Sayı 8
-  /// bayt, base64, tek kullanımlık ve 10 dakika geçerli.
+  /// **Kart okunmadan önce** çağrılmalı; sonradan alınan sayı tekrar koruması
+  /// sağlamaz. 8 bayt, base64, 10 dakika.
   Future<String> startIdentityChallenge() {
     return _apiClient.post<String>(
       ApiPaths.currentUserIdentityChallenge,
@@ -162,23 +127,10 @@ class UserService {
     );
   }
 
-  /// Kimliği doğrular.
-  ///
-  /// Beş beyan alanı zorunlu; [evidence] varsa çipten okunan kanıt aynı
-  /// istekte, gövdeye base64 alanlar olarak ekleniyor.
-  ///
-  /// **[evidence] bilerek isteğe bağlı.** Sunucudaki
-  /// `IDENTITY_PASSIVE_AUTH_ENABLED` bugün `false`; bayrak kapalıyken
-  /// `verifyChipEvidence` hemen dönüyor ve fazladan alanlar yok sayılıyor.
-  /// Yani kanıtsız çağrı **eskisi gibi** çalışıyor: NFC'si olmayan telefon,
-  /// okunmayan kart ve elle giriş yolu akışın dışına düşmüyor.
-  ///
-  /// Başarılıysa `/users/me`'deki `identityVerified` `true` oluyor —
-  /// çağıran taraf kullanıcıyı tazelemeli.
-  ///
-  /// [tcIdentityNumber] 11 hane ve son hanesi çift olmak zorunda; sunucu
-  /// deseni doğruluyor. [tcDocumentNumber] kimlik kartının üstündeki seri
-  /// numarası.
+  /// Kimliği doğrular. Beş beyan alanı zorunlu; [evidence] bilerek isteğe
+  /// bağlı: sunucuda çip doğrulaması kapalı, kanıtsız çağrı NFC'siz telefonda
+  /// da çalışıyor. Başarıda kullanıcı tazelenmeli. [tcIdentityNumber] 11 hane,
+  /// son hane çift.
   Future<void> verifyIdentity({
     required String firstName,
     required String lastName,
@@ -200,10 +152,7 @@ class UserService {
     );
   }
 
-  /// Adresi toptan değiştirir.
-  ///
-  /// Kısmi güncelleme değil: gönderilmeyen alan siliniyor. Koordinat
-  /// **zorunlu** — sunucu `latitude`/`longitude` olmadan kabul etmiyor.
+  /// Toptan değiştirir; koordinat **zorunlu**.
   Future<CanonicalAddress> updateAddress(AddressWrite address) {
     return _apiClient.put<CanonicalAddress>(
       ApiPaths.currentUserAddress,

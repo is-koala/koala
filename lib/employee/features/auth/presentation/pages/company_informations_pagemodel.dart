@@ -11,7 +11,6 @@ abstract class CompanyInformationsPagemodel
 
   late final BCompanyService companyService;
 
-  /// Haritada onaylanan şirket adresi; seçilene kadar `null`.
   late ConfirmedAddress? address = widget.initialAddress;
   CompanyType companyType = CompanyType.limited;
   String? logoPath;
@@ -21,8 +20,8 @@ abstract class CompanyInformationsPagemodel
   void initState() {
     super.initState();
     companyService = widget.service ?? BCompanyService();
-    // Avatar hem rengini hem baş harflerini firma adından türetiyor; ad
-    // değiştikçe yeniden çizilmesi gerekiyor.
+    // Avatar rengi ve baş harfleri firma adından; ad değiştikçe yeniden
+    // çizilir.
     companyNameController.addListener(_onCompanyNameChanged);
   }
 
@@ -51,7 +50,6 @@ abstract class CompanyInformationsPagemodel
     context.go(RegistrationRoutes.employerType);
   }
 
-  /// Logonun yerine gösterilen baş harfler.
   String get companyInitials {
     final text = companyNameController.text.trim();
     if (text.isEmpty) return 'Logo';
@@ -70,7 +68,6 @@ abstract class CompanyInformationsPagemodel
     setState(() => logoPath = image.path);
   }
 
-  /// Harita-öncelikli adres ekranını açar; kullanıcı onaylarsa özet güncellenir.
   Future<void> pickAddress() async {
     final picked = await context.push<ConfirmedAddress>(
       '/pick-address',
@@ -127,21 +124,19 @@ abstract class CompanyInformationsPagemodel
       if (onSaved != null) {
         onSaved();
       } else if (context.canPop()) {
-        // Ayarlardan `push` ile açıldı: açan ekran tazelenmiş sağlayıcıyı
-        // zaten izliyor, yeni şirketi göstermesi için geri dönmek yetiyor.
+        // Ayarlardan açıldıysa geri dönmek yeter; açan ekran sağlayıcıyı
+        // izliyor.
         context.pop(true);
       } else {
-        // Kayıt akışı: yığında bu formdan başka sayfa yok.
+        // Kayıt akışında yığında başka sayfa yok.
         context.go('/business/home');
       }
     } on ApiException catch (error) {
       if (!mounted) return;
 
-      // Sunucu son sözü söylüyor: yerel bayrak doğrulanmış görünse de ret
-      // gelirse aynı onarım akışı açılıyor. Form arkada kalıyor, doğrulama
-      // bitince kullanıcı taslağıyla buraya dönüp yeniden kaydediyor.
+      // Sunucu son söz: ret gelirse onarım akışı açılır, form arkada taslağıyla
+      // bekler.
       if (CompanyIdentityGate.isIdentityRequired(error)) {
-        // Kutu ve kimlik ekranı açıkken düğme dönmesin.
         setState(() => isSaving = false);
         await CompanyIdentityGate.startVerification(context);
         return;
@@ -153,11 +148,8 @@ abstract class CompanyInformationsPagemodel
     }
   }
 
-  /// Yeni şirketin üyeliğini ve şirket kaydını sağlayıcılara işler.
-  ///
-  /// Üyelik listesi `/users/me`'de duruyor; tazelenmezse işveren ana sayfası
-  /// ve profil, kullanıcıyı hâlâ bireysel sanır. `BCompanyProvider` kimlik
-  /// çiftine göre önbellekliyor, yeni şirket kimliği için zorla okunuyor.
+  /// Yeni üyeliği sağlayıcılara işler; tazelenmezse ana sayfa kullanıcıyı
+  /// bireysel sanır.
   Future<void> _refreshMembership() async {
     final userProvider = context.read<UserProvider>();
     await userProvider.load(silent: true);

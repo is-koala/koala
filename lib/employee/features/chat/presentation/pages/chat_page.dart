@@ -17,7 +17,6 @@ part 'chat_pagemodel.dart';
 class ChatPage extends StatefulWidget {
   final Conversation chat;
 
-  /// Dışarıdan verilirse yaşam döngüsü çağırana ait olan sohbet durumu.
   final ChatThreadController? threadController;
 
   const ChatPage({super.key, required this.chat, this.threadController});
@@ -39,11 +38,8 @@ class _ChatPageState extends ChatPagemodel {
         ),
         body: Column(
           children: [
-            // Mesaj listesine dokunmak ya da onu sürüklemek klavyeyi
-            // kapatıyor; kutu klavyenin üstünde, kapatmanın başka yolu yok.
+            // Kutu klavyenin üstünde; kapatmanın başka yolu yok.
             Expanded(child: DismissKeyboardOnTap(child: _messageList())),
-            // Engelli sohbette mesaj kutusu yerine sebebini söyleyen şerit
-            // duruyor; engel iki yönlü, yazmayı denemenin anlamı yok.
             _composer(),
           ],
         ),
@@ -51,10 +47,7 @@ class _ChatPageState extends ChatPagemodel {
     );
   }
 
-  /// Mesaj kutusu — sohbet kapalı ya da engelliyse yerine [BlockedNotice].
-  ///
-  /// Kapı (ödeme bekleniyor / pencere kapandı) bilgi ikonuyla, engel kırmızı
-  /// engel ikonuyla çiziliyor; ikisi de yazmayı kapatıyor.
+  /// Mesaj kutusu; kapalı ya da engelliyse yerine [BlockedNotice].
   Widget _composer() {
     final notice = composerNotice;
     if (notice != null) {
@@ -72,9 +65,7 @@ class _ChatPageState extends ChatPagemodel {
       onSendMessage: sendMessage,
       isSending: thread.isSending,
       onChanged: (_) => thread.notifyTyping(),
-      onAddPressed: () {
-        // Ek menü işlemleri (dosya ekleme, galeri vb.)
-      },
+      onAddPressed: () {},
     );
   }
 
