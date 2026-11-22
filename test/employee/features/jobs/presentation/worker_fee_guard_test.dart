@@ -2,15 +2,9 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// Çalışan kabuğu komisyon çizmez (is-koala/koala#189 B).
-///
-/// Sunucu `pricing` ve `totalCharged`'ı çalışana artık göndermiyor
-/// (koala-backend#294); ama kural yalnız sunucuya bırakılmıyor — eski bir
-/// sunucu gönderse de çalışan ekranlarında "hizmet bedeli" ya da "işverenin
-/// ödediği toplam" satırı olmamalı. Widget testleri bunu bir sayfa için
-/// ölçüyor; bu test kaynak ağacını okuyup çalışan tarafındaki **hiçbir**
-/// sunum dosyasının o alanlara dokunmadığını sabitliyor. Modeller dışarıda:
-/// `Assignment.pricing` ayrıştırılmaya devam ediyor, çizilmiyor.
+/// Çalışan kabuğu komisyon çizmez (#189). Eski sunucu gönderse de: bu test
+/// kaynak ağacını okuyup çalışan tarafındaki **hiçbir** sunum dosyasının o
+/// alanlara dokunmadığını sabitliyor.
 void main() {
   test('çalışan sunum katmanı komisyon alanlarını okumaz', () {
     final offenders = <String>[];
@@ -21,10 +15,8 @@ void main() {
           .whereType<Directory>()
           .map((feature) => Directory('${feature.path}/presentation')),
     ];
-    // Kod tarafında alan adları ve `pricing` erişimi (`.pricing`,
-    // `?.pricing`), metin tarafında satır başlıkları; büyük/küçük harf
-    // duyarsız. Yorum satırları ayıklanıyor: kuralın kendisi bu adları
-    // anabilir.
+    // Alan adları ve satır başlıkları, büyük/küçük harf duyarsız; yorumlar
+    // ayıklanıyor.
     final forbidden = RegExp(
       r'\b(serviceFeeAmount|serviceFeeRate|serviceFeePercentLabel|'
       r'employerTotal|totalCharged)\b|\?\.pricing\b|\.pricing\b|'

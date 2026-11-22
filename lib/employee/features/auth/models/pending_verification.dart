@@ -1,9 +1,5 @@
-/// `PATCH /users/me` sonrası doğrulanmayı bekleyen alan.
-///
-/// E-posta ya da telefon değiştirildiğinde backend değeri hemen yazmıyor;
-/// yeni adrese/numaraya bir doğrulama gönderip bunu döndürüyor. Yani
-/// güncelleme yanıtındaki kullanıcı eski e-postayı taşımaya devam eder ve
-/// arayüzün koşulsuz "kaydedildi" demesi yanıltıcı olur.
+/// `PATCH /users/me` sonrası doğrulama bekleyen alan. Backend e-posta/telefonu
+/// hemen yazmıyor; koşulsuz "kaydedildi" yanıltıcı olurdu.
 class PendingVerification {
   const PendingVerification({
     required this.id,
@@ -14,25 +10,18 @@ class PendingVerification {
 
   final String id;
 
-  /// `EMAIL` ya da `PHONE`.
   final String type;
 
-  /// Doğrulamanın gönderildiği yeni adres veya numara.
   final String? sentTo;
 
-  /// Kodun sunucudaki son kullanma anı.
-  ///
-  /// Alan eski sunucu sürümlerinde bulunmadığı için nullable tutulur.
+  /// Eski sunucuda yok, o yüzden nullable.
   final DateTime? expiresAt;
 
   bool get isEmail => type == 'EMAIL';
 
-  /// Kod ekranında gösterilen yönerge.
-  ///
-  /// Cümle hedefin e-posta mı telefon mu olduğuna göre uygulamada kuruluyor.
   String get instruction {
     final target = sentTo;
-    // `sentTo` sözleşmede zorunlu değil; boşsa hedefi adlandırmadan söyle.
+    // `sentTo` zorunlu değil; boşsa hedef adlandırılmaz.
     if (target == null || target.isEmpty) {
       return 'Size gönderdiğimiz 6 haneli kodu girin';
     }

@@ -1,32 +1,25 @@
 import 'package:flutter/widgets.dart';
 
-/// Köşe yuvarlaklığı sabitleri.
-///
-/// Hem `double` hem hazır `BorderRadius` karşılıkları var; `BoxDecoration` ve
-/// `ClipRRect` için hazır olanı kullan, tek köşe gerektiğinde `double`'ı.
+/// Köşe yuvarlaklıkları. `BoxDecoration`/`ClipRRect` için hazır
+/// `BorderRadius`'ı, tek köşe için `double`'ı kullan.
 class AppRadius {
-  /// Buton, arama kutusu ve textfield gibi tam yuvarlak duran bileşenler.
+  /// Buton, arama kutusu, textfield.
   static const double primary = 36.0;
 
-  /// Kart, bottom sheet ve büyük kutular.
+  /// Kart, bottom sheet, büyük kutular.
   static const double secondary = 20.0;
 
-  /// Liste satırındaki kare görsel ve küçük kutular. Kartın kendi
-  /// yarıçapının içine oturduğu için ondan küçük; eşit olsaydı iç köşe
-  /// dıştakinden daha yuvarlak görünürdü.
+  /// Kartın içindeki görsel ve kutular; kartla eşit olsa iç köşe dıştakinden
+  /// yuvarlak görünürdü.
   static const double inner = 12.0;
 
-  /// Rozet, etiket ve küçük durum kutuları.
   static const double small = 8.0;
 
-  /// Kutunun yarı yüksekliğini aştığı için çizimde otomatik olarak tam
-  /// yuvarlak (stadium) hâline iner. Yükseklik değişince peşinden
-  /// güncellemek gerekmez — sabit bir yarıçapın aksine.
+  /// Yarı yüksekliği aştığı için her boyda tam yuvarlak (stadium) çizilir.
   static const double stadium = 999.0;
 
-  /// Sohbetteki 40'lık avatarın (başlık, katılımcı ve gören satırları) köşe
-  /// yuvarlaklığı; listedeki 60'lık avatar [secondary] kullanıyor, bu ölçekte
-  /// aynı oran 14'e denk geliyor.
+  /// Sohbetteki 40'lık avatar; 60'lık avatardaki [secondary] oranı bu ölçekte
+  /// 14.
   static const double avatar = 14.0;
 
   // ------------------------------------------------------- BorderRadius'lar
@@ -61,8 +54,7 @@ class AppRadius {
     bottomRight: Radius.circular(secondary),
   );
 
-  /// Bottom sheet'in üst köşeleri. Karttan geniş: sheet ekranın alt kenarına
-  /// yapıştığı için köşeleri daha belirgin olmalı.
+  /// Ekranın alt kenarına yapıştığı için karttan geniş.
   static const double sheet = 24.0;
   static const BorderRadius sheetTop = BorderRadius.vertical(
     top: Radius.circular(sheet),

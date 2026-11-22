@@ -22,9 +22,8 @@ void main() {
         ),
       );
 
-      final review = await ReviewService.withClient(
-        api.client,
-      ).leaveReview(assignmentId: 'asg_1', rating: 5, comment: 'Harikaydı');
+      final review = await ReviewService.withClient(api.client)
+          .leaveReview(assignmentId: 'asg_1', rating: 5, comment: 'Harikaydı');
 
       final request = api.requests.single;
       expect(request.path, '/job-assignments/asg_1/reviews');
@@ -53,9 +52,8 @@ void main() {
         ),
       );
 
-      await ReviewService.withClient(
-        api.client,
-      ).leaveReview(assignmentId: 'asg_1', rating: 3);
+      await ReviewService.withClient(api.client)
+          .leaveReview(assignmentId: 'asg_1', rating: 3);
 
       expect(api.requests.single.data, {'rating': 3, 'anonymous': false});
     });
@@ -73,9 +71,8 @@ void main() {
         ),
       );
 
-      final review = await ReviewService.withClient(
-        api.client,
-      ).leaveReview(assignmentId: 'asg_1', rating: 4, anonymous: true);
+      final review = await ReviewService.withClient(api.client)
+          .leaveReview(assignmentId: 'asg_1', rating: 4, anonymous: true);
 
       final body = api.requests.single.data as Map<String, dynamic>;
       expect(body['anonymous'], isTrue);
@@ -92,9 +89,8 @@ void main() {
       );
 
       await expectLater(
-        ReviewService.withClient(
-          api.client,
-        ).leaveReview(assignmentId: 'asg_1', rating: 5),
+        ReviewService.withClient(api.client)
+            .leaveReview(assignmentId: 'asg_1', rating: 5),
         throwsA(
           isA<ApiException>().having(
             (error) => error.type,
@@ -118,9 +114,8 @@ void main() {
         ),
       );
 
-      final summary = await ReviewService.withClient(
-        api.client,
-      ).fetchRatingSummary('usr_1');
+      final summary = await ReviewService.withClient(api.client)
+          .fetchRatingSummary('usr_1');
 
       expect(api.requests.single.path, '/users/usr_1/rating-summary');
       expect(summary?.averageRating, 4.2);
@@ -136,9 +131,8 @@ void main() {
         ),
       );
 
-      final summary = await ReviewService.withClient(
-        api.client,
-      ).fetchRatingSummary('usr_1');
+      final summary = await ReviewService.withClient(api.client)
+          .fetchRatingSummary('usr_1');
 
       expect(summary, isNull);
     });
@@ -170,9 +164,8 @@ void main() {
         ),
       );
 
-      final page = await ReviewService.withClient(
-        api.client,
-      ).fetchReviewsAbout('usr_1');
+      final page = await ReviewService.withClient(api.client)
+          .fetchReviewsAbout('usr_1');
 
       expect(api.requests.single.path, '/users/usr_1/reviews');
       expect(page.reviews.single.rating, 5);

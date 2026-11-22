@@ -1,14 +1,11 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/models/pending_verification.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
 import 'package:koala/product/network/api_exception.dart';
 
-/// Oturum açmış kullanıcının profil verisi.
-///
-/// Profil, ayarlar ve hesap düzenleme ekranları aynı kaydı gösterdiği için
-/// veri sayfada değil burada tutuluyor: düzenleme ekranından dönüldüğünde
-/// profil başlığı da kendiliğinden tazeleniyor.
+/// Oturum sahibinin profili; profil, ayarlar ve hesap düzenleme aynı kaydı
+/// okuyor.
 class UserProvider extends ChangeNotifier {
   UserProvider({UserService? userService})
     : _userService = userService ?? UserService();
@@ -19,38 +16,28 @@ class UserProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
 
-  /// Ağda bekleyen bir istek var mı. [_isLoading] yalnızca arayüzün
-  /// göstergeyi çizip çizmeyeceğini söylüyor; sessiz tazelemede o kapalı
-  /// kaldığı için tekrarı ayrı bir bayrakla engellemek gerekiyor.
+  /// Sessiz tazelemede [_isLoading] kapalı kaldığı için tekrar ayrı bayrakla
+  /// engelleniyor.
   bool _isRequestInFlight = false;
 
-  /// Çıkıştan sonra tamamlanan isteklerin yeni oturuma yazmasını engeller.
+  /// Çıkıştan sonra dönen istekler yeni oturuma yazmasın.
   int _generation = 0;
 
-  /// Güncel kullanıcı. İlk yükleme bitene kadar `null`.
+  /// İlk yükleme bitene kadar `null`.
   CurrentUser? get user => _user;
 
   bool get isLoading => _isLoading;
 
-  /// Son isteğin hata mesajı; başarılıysa `null`.
   String? get errorMessage => _errorMessage;
 
-  /// Elde gösterilecek veri yokken hata varsa ekran boş değil hatalı çizilmeli.
   bool get hasError => _errorMessage != null;
 
-  /// Süren `load` isteği; ikinci çağıran ağa çıkmak yerine bunu bekliyor.
+  /// Süren istek; ikinci çağıran bunu bekler.
   Future<void>? _loading;
 
-  /// Kullanıcıyı sunucudan çeker.
-  ///
-  /// Elde veri varken tekrar çağrıldığında yükleme göstergesi açılmıyor
-  /// ([silent]): sayfaya her dönüşte iskelet ekranın yanıp sönmesi, tazeleme
-  /// için ödenecek makul bir bedel değil.
-  ///
-  /// Bir yükleme sürerken gelen çağrı ikinci istek atmıyor ama **onu
-  /// bekliyor**: soğuk açılışta işveren ana sayfası `/users/me`'yi zaten
-  /// başlatmışken gelen bir push dokunması `await load()` deyip hâlâ boş
-  /// bir kullanıcı bulmamalı (is-koala/koala#170).
+  /// Kullanıcıyı çeker. Elde veri varken [silent] göstergeyi açmaz. Süren istek
+  /// varken gelen çağrı yeni istek atmaz ama **bekler**: soğuk açılışta push
+  /// dokunması boş kullanıcı bulmasın (#170).
   Future<void> load({bool silent = false}) {
     if (_isRequestInFlight) return _loading ?? Future.value();
 
@@ -84,11 +71,8 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
-  /// Profil alanlarını günceller ve eldeki kullanıcıyı yanıttakiyle değiştirir.
-  ///
-  /// Başarılıysa doğrulama bekleyen alanların listesi dönüyor; boş değilse
-  /// e-posta ya da telefon değişikliği henüz yazılmamış demektir. Hata
-  /// durumunda `null` dönüp mesajı [errorMessage]'a koyuyor.
+  /// Profili günceller. Başarıda doğrulama bekleyen alanlar döner (boş değilse
+  /// e-posta/telefon henüz yazılmadı); hatada `null`.
   Future<List<PendingVerification>?> updateProfile({
     String? firstName,
     String? lastName,
@@ -138,14 +122,12 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
-  /// Profil fotoğrafını yükleyip `/users/me` yanıtını yeniler.
   Future<bool> uploadProfilePicture(String filePath) {
     return _mutateAndReloadCurrentUser(
       () => _userService.uploadProfilePicture(filePath),
     );
   }
 
-  /// Özgeçmişi yükleyip profil kartındaki durumu tazeler.
   Future<bool> uploadCv(String filePath) {
     return _mutateAndReloadCurrentUser(() async {
       await _userService.uploadCv(filePath);
@@ -156,7 +138,6 @@ class UserProvider extends ChangeNotifier {
     return _mutateAndReloadCurrentUser(_userService.deleteCv);
   }
 
-  /// Profili etkileyen dosya işlemini yapıp güncel kullanıcıyı yeniden okur.
   Future<bool> _mutateAndReloadCurrentUser(
     Future<void> Function() action,
   ) async {
@@ -185,8 +166,6 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
-  /// Çıkış yapıldığında eldeki kullanıcıyı düşürür; bir sonraki oturum
-  /// öncekinin profilini görmesin.
   void clear() {
     _generation++;
     _user = null;

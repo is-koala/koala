@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/settings/models/identity_review.dart';
@@ -12,14 +12,9 @@ import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:provider/provider.dart';
 
-/// Kimlik durumu rozeti: doğrulandı / incelemede / reddedildi /
-/// doğrulanmadı. İki uygulamanın profili de çiziyor — çalışan profilinde
-/// adın altında, işveren profilinde yeşil kapağın üstünde ([onAccentSurface]).
-///
-/// Bayrak `/users/me`'den, inceleme [IdentityReviewProvider]'dan; rozetin
-/// kendisi okuma başlatmıyor, onu çizen profil sayfası her açılışta ve
-/// yenilemede provider'ı tazeliyor. Doğrulanmamış hâllerde dokunmak kimlik
-/// akışını açıyor; doğrulanmış rozet düz bir etiket.
+/// Kimlik durumu rozeti (doğrulandı / incelemede / reddedildi / doğrulanmadı).
+/// Kendisi okuma başlatmıyor; profil sayfası provider'ı tazeliyor.
+/// Doğrulanmamış hâlde dokunmak kimlik akışını açar.
 class IdentityStatusBadge extends StatelessWidget {
   const IdentityStatusBadge({
     super.key,
@@ -29,8 +24,7 @@ class IdentityStatusBadge extends StatelessWidget {
 
   final CurrentUser user;
 
-  /// Doygun yeşil kapak üstünde: renk kodu yerine beyaz metin, ikon ve
-  /// çerçeve; yeşil üstünde yeşil rozet okunmazdı.
+  /// Yeşil kapak üstünde: yeşil üstünde yeşil okunmayacağı için beyaz.
   final bool onAccentSurface;
 
   @override

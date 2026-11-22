@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/employee/features/settings/models/identity_photo.dart';
 import 'package:koala/employee/features/settings/models/identity_photo_slot.dart';
 import 'package:koala/product/constants/app_colors.dart';
@@ -11,12 +11,8 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// Dört kareden birinin satırı: kadraj rehberi, önizleme ve eylemler.
-///
-/// Kare seçilmemişken solda rehber ikonu ve "Fotoğraf Ekle"; seçildikten
-/// sonra küçük önizleme, "Değiştir" ve "Kaldır". Önizlemeye dokunmak kareyi
-/// tam boy açıyor: 88 piksellik kutuda kartın yazısının okunup okunmadığı
-/// anlaşılmıyor, personelin reddetmesini beklemektense burada bakılsın.
+/// Bir karenin satırı. Önizlemeye dokunmak tam boy açar: 88 px kutuda yazının
+/// okunup okunmadığı anlaşılmaz, ret beklenmesin.
 class IdentityPhotoTile extends StatelessWidget {
   const IdentityPhotoTile({
     super.key,
@@ -28,29 +24,21 @@ class IdentityPhotoTile extends StatelessWidget {
     this.enabled = true,
   });
 
-  /// Ekrandaki sıra numarası (1'den).
   final int order;
 
   final IdentityPhotoSlot slot;
 
-  /// Seçilmiş kare; yoksa `null`.
   final IdentityPhoto? photo;
 
-  /// Kare ekle / değiştir.
   final VoidCallback onPick;
 
   final VoidCallback onRemove;
 
-  /// Gönderim sürerken düğmeler kapalı: yarı yolda kare değiştirmek gövdeyi
-  /// bozmaz ama kullanıcıya değiştirilmiş gibi görünür.
+  /// Yarı yolda değiştirilen kare gövdeyi bozmaz ama değişmiş gibi görünür.
   final bool enabled;
 
-  /// Önizleme kutusunun kenarı. Satırın yüksekliğini bu belirliyor; üç
-  /// satırlık rehber metniyle aynı boyda.
   static const double _previewSize = 88;
 
-  /// Rehber ikonunun oturduğu kutunun zemin saydamlığı; vurgu rengi tam
-  /// doygunlukta kutu olarak değil hafif bir ton olarak dursun.
   static const double _placeholderAlpha = 0.12;
 
   @override
@@ -139,8 +127,7 @@ class IdentityPhotoTile extends StatelessWidget {
             width: _previewSize,
             height: _previewSize,
             fit: BoxFit.cover,
-            // Dosya silinmiş ya da çözülemiyorsa boş kutu değil bir uyarı:
-            // kullanıcı kareyi yeniden seçebilsin.
+            // Dosya okunamıyorsa uyarı; kullanıcı yeniden seçsin.
             errorBuilder: (_, _, _) => Container(
               width: _previewSize,
               height: _previewSize,
@@ -200,7 +187,6 @@ class IdentityPhotoTile extends StatelessWidget {
     );
   }
 
-  /// Kareyi tam boy, yakınlaştırılabilir açar.
   Future<void> _openPreview(BuildContext context, IdentityPhoto selected) {
     return showDialog<void>(
       context: context,

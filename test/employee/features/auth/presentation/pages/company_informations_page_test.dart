@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/business/features/home/presentation/providers/b_company_provider.dart';
@@ -48,10 +48,7 @@ const _membership = {
   'role': 'ADMIN',
 };
 
-/// Harita ekranının yerine geçen rota: açılır açılmaz Moda'daki adresi
-/// onaylanmış gibi döndürür. Gerçek `MapFirstAddressPage`'in kendi testleri
-/// var; burada formun sözleşmesi sürülüyor — `push<ConfirmedAddress>` ile
-/// açılır, dönen adres özet olarak gösterilir ve kayıtta gövdeye girer.
+/// Harita ekranının yerine geçen rota; formun sözleşmesi sürülüyor.
 const _pickerLocation = '/pick-address';
 const _pickedAddress = ConfirmedAddress(
   country: ReferenceLocation(id: 'country-1', name: 'TÜRKİYE'),
@@ -98,11 +95,8 @@ const _originLocation = '/origin';
 const _businessHomeLocation = '/business/home';
 const _businessHomeTitle = 'İşveren ana sayfası';
 
-/// Şirket formunun konuştuğu bütün uçları karşılayan sahte sunucu.
-///
-/// Durumu var: `POST /companies` başarılı olunca `/users/me` üyeliği
-/// taşımaya başlıyor, tıpkı gerçek sunucuda olduğu gibi. Kayıt sonrası
-/// tazeleme iddiası buna dayanıyor.
+/// Durumlu sahte sunucu: `POST /companies`'ten sonra `/users/me` üyeliği
+/// taşıyor; kayıt sonrası tazeleme iddiası buna dayanıyor.
 class _CompanyServer {
   /// Kullanıcı doğrulanmış açılıyor; kapı testleri kendi sunucusunda,
   /// burası formun sunucuya nasıl tepki verdiğine bakıyor.

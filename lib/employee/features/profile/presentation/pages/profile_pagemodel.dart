@@ -1,10 +1,6 @@
 part of 'profile_page.dart';
 
-/// Profil ekranının durumu ve sunucu çağrıları.
-///
-/// Ekran iki bölümlü: burada veri ve eylemler, `profile_page.dart`'ta
-/// yalnızca çizim. Deneyim ve eğitim CRUD'u eklenince tek dosya
-/// CONTRIBUTING'in ayırma eşiğini geçmişti.
+/// Profil ekranının verisi ve eylemleri; çizim `profile_page.dart`'ta.
 abstract class ProfilePageModel extends State<ProfilePage>
     with AutomaticKeepAliveClientMixin<ProfilePage> {
   final ExperienceService _experienceService = ExperienceService();
@@ -14,9 +10,7 @@ abstract class ProfilePageModel extends State<ProfilePage>
   @override
   void initState() {
     super.initState();
-    // Sayfa `ShellPage`'in `PageView`'ında bir kez kurulup canlı kaldığı için
-    // ilk kare çizildikten sonra tek seferlik yükleme yapılıyor; sekmeye her
-    // dönüşte `initState` çalışmıyor.
+    // Sayfa `PageView`'da bir kez kurulup canlı kalıyor; yükleme tek sefer.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _loadProfileData();
     });
@@ -24,9 +18,7 @@ abstract class ProfilePageModel extends State<ProfilePage>
 
   Future<void> _loadProfileData({bool silent = false}) async {
     final userProvider = context.read<UserProvider>();
-    // Kimlik inceleme durumu her açılışta ve yenilemede tazeleniyor: personel
-    // kararı (red/onay) bu ekranın rozetinde görünmeli, açılıştaki tek
-    // okumada kalmamalı. Kullanıcı yüklemesini bekletmiyor.
+    // Personelin kararı rozette görünsün diye her açılışta tazelenir.
     unawaited(context.read<IdentityReviewProvider>().load(silent: true));
     await userProvider.load(silent: silent);
     if (!mounted) return;
@@ -41,9 +33,8 @@ abstract class ProfilePageModel extends State<ProfilePage>
 
   Future<void> _navigateToAccountInfo(CurrentUser user) async {
     await context.push(AccountRoutes.accountInfo, extra: user);
-    // Düzenleme ekranı kaydı doğrudan provider üzerinden güncelliyor; burada
-    // yalnızca ekranın açık kaldığı sürede sunucuda değişen bir şey varsa
-    // yakalamak için sessiz tazeleme yapılıyor.
+    // Düzenleme provider'ı zaten güncelliyor; bu yalnız sunucuda o arada
+    // değişeni yakalamak için.
     if (mounted) await context.read<UserProvider>().load(silent: true);
   }
 
@@ -89,13 +80,11 @@ abstract class ProfilePageModel extends State<ProfilePage>
     );
   }
 
-  /// Sekme değiştikçe sayfa yeniden kurulmasın: `initState`'teki tek seferlik
-  /// yükleme ancak böyle tek sefer kalıyor, kaydırma konumu da korunuyor.
+  /// Sekme değişince sayfa yeniden kurulmasın; kaydırma konumu da korunur.
   @override
   bool get wantKeepAlive => true;
 
-  /// Tarih aralığı ve kademe. Not ortalaması varsa o da ekleniyor —
-  /// girilmemişse hiç yazılmıyor, "0.0" kötü not gibi okunurdu.
+  /// Not ortalaması girilmemişse yazılmaz; "0.0" kötü not gibi okunur.
   String _educationDuration(Education education) {
     final parts = <String>[
       education.durationLabel,
@@ -143,7 +132,7 @@ abstract class ProfilePageModel extends State<ProfilePage>
     );
   }
 
-  /// Kaydı siler. Geri alınamıyor, önce onay soruluyor.
+  /// Geri alınamadığı için önce onay.
   Future<void> _deleteEducation(Education education) async {
     final confirmed = await ConfirmDialog.show(
       context,
@@ -162,10 +151,8 @@ abstract class ProfilePageModel extends State<ProfilePage>
     );
   }
 
-  /// Ekleme, güncelleme ve silmenin ortak gövdesi.
-  ///
-  /// Eğitimler `/users/me` yanıtından okunuyor; her değişiklikten sonra
-  /// kullanıcı tazeleniyor, dönen kayıt tek başına listeye yamanmıyor.
+  /// Eğitimler `/users/me`'den okunuyor; her değişiklikten sonra kullanıcı
+  /// tazelenir.
   Future<void> _saveEducation(
     Future<void> Function() call, {
     required String successMessage,
@@ -180,7 +167,6 @@ abstract class ProfilePageModel extends State<ProfilePage>
     }
   }
 
-  /// Deneyim ekler.
   Future<void> _addExperience() async {
     final result = await ExperienceSheet.show(context);
     if (result == null || !mounted) return;
@@ -199,7 +185,6 @@ abstract class ProfilePageModel extends State<ProfilePage>
     );
   }
 
-  /// Deneyimi düzenler.
   Future<void> _editExperience(Experience experience) async {
     final result = await ExperienceSheet.show(context, initial: experience);
     if (result == null || !mounted) return;
@@ -219,7 +204,7 @@ abstract class ProfilePageModel extends State<ProfilePage>
     );
   }
 
-  /// Deneyimi siler. Geri alınamıyor, önce onay soruluyor.
+  /// Geri alınamadığı için önce onay.
   Future<void> _deleteExperience(Experience experience) async {
     final confirmed = await ConfirmDialog.show(
       context,
@@ -236,10 +221,8 @@ abstract class ProfilePageModel extends State<ProfilePage>
     );
   }
 
-  /// Ekleme, güncelleme ve silmenin ortak gövdesi.
-  ///
-  /// Deneyimler `/users/me` yanıtından okunuyor; her değişiklikten sonra
-  /// kullanıcı tazeleniyor, dönen kayıt tek başına listeye yamanmıyor.
+  /// Deneyimler `/users/me`'den okunuyor; her değişiklikten sonra kullanıcı
+  /// tazelenir.
   Future<void> _saveExperience(
     Future<void> Function() call, {
     required String successMessage,

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/product/constants/app_assets.dart';
 import 'package:koala/product/constants/app_colors.dart';
@@ -23,8 +23,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
   static const int _pageCount = 3;
 
-  /// Sayfa göstergesinin dikey konumu. Ekranın ortasının biraz altında:
-  /// görselin yanında duruyor, metnin üstüne binmiyor.
+  /// Görselin yanında, metnin üstüne binmeyecek yükseklikte.
   static const double _indicatorHeightRatio = 0.45;
 
   @override
@@ -63,14 +62,12 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   OnboardingContent(
                     imagePath: AppAssets.onboarding1,
                     title: "Günlük İş Bul",
-                    description:
-                        "Sana yakın günlük iş ilanlarını keşfet ve hemen başvur",
+                    description: "Sana yakın günlük iş ilanlarını keşfet ve hemen başvur",
                   ),
                   OnboardingContent(
                     imagePath: AppAssets.onboarding2,
                     title: "Hızlı Başvuru",
-                    description:
-                        "Tek tıkla başvuru yap, işverenler seninle direkt iletişime geçsin",
+                    description: "Tek tıkla başvuru yap, işverenler seninle direkt iletişime geçsin",
                   ),
                   OnboardingContent(
                     imagePath: AppAssets.onboarding3,
@@ -92,9 +89,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     dotWidth: AppSizes.badgeDot,
                     spacing: AppSizes.spaceTiny,
                     activeDotColor: context.accentColor,
-                    // smooth_page_indicator 3.0 varsayılan renkleri artık
-                    // temadan almıyor, sabit bir griye düşüyor. Pasif nokta
-                    // iki temada da doğru okunsun diye elle veriliyor.
+                    // smooth_page_indicator 3.0 renkleri temadan almıyor; pasif
+                    // nokta iki temada okunsun diye elle.
                     dotColor: context.textTertiary,
                   ),
                 ),
@@ -144,8 +140,6 @@ class OnboardingContent extends StatelessWidget {
     required this.description,
   });
 
-  /// Tanıtım görselinin yüksekliği; metin bloğuyla birlikte sayfayı
-  /// dolduracak kadar büyük, gösterge sütununu ezmeyecek kadar küçük.
   static const double _imageHeight = 250;
 
   @override
@@ -174,7 +168,6 @@ class OnboardingContent extends StatelessWidget {
   }
 }
 
-/// Sayfa ilerledikçe tam genişlikten daireye küçülen ileri butonu.
 class _AnimatedButton extends StatelessWidget {
   final double currentPage;
   final bool isLastPage;
@@ -188,33 +181,25 @@ class _AnimatedButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Sayfa 0 iken tam genişlik, sayfa 1'e yaklaştıkça daralır
     final rawProgress = currentPage.clamp(0.0, 1.0);
-    // Daha hızlı küçülme için easing curve uygula
     final progress = Curves.easeOutCubic.transform(rawProgress);
-    // Sayfanın kendi boşluğu + butonun kendi yatay boşluğu
     final padding =
         AppPadding.primary * 2 + AppPadding.horizontalSmall.horizontal;
     final fullWidth = context.width - padding;
     const circularSize = AppSizes.buttonHeight;
 
-    // 0 = full width, 1 = circular
     final buttonWidth = fullWidth - ((fullWidth - circularSize) * progress);
-    // Daralırken köşe yarıçapı da yükseklik yarısına iner; tam daire olur.
     const circularRadius = circularSize / 2;
     final borderRadius =
         AppRadius.primary + ((circularRadius - AppRadius.primary) * progress);
 
-    // Text görünürlüğü: 0-0.5 arası fade out
+    // Metin ilk yarıda kaybolur, ikon ikinci yarıda belirir.
     final textOpacity = (1.0 - (progress * 2)).clamp(0.0, 1.0);
-    // Icon görünürlüğü: 0.5-1 arası fade in
     final iconOpacity = ((progress - 0.5) * 2).clamp(0.0, 1.0);
 
-    // İkinci geçiş için progress (1.0-2.0 arası)
+    // İkinci geçiş: ok kaybolur, tik belirir.
     final secondProgress = (currentPage - 1.0).clamp(0.0, 1.0);
-    // Aşağı ok: 1.0'dan 2.0'a giderken fade out
     final arrowOpacity = (1.0 - secondProgress).clamp(0.0, 1.0);
-    // Tik: 1.0'dan 2.0'a giderken fade in
     final checkOpacity = secondProgress.clamp(0.0, 1.0);
 
     final buttonText = isLastPage ? 'HAYDİ BAŞLAYALIM!' : 'SONRAKİ';

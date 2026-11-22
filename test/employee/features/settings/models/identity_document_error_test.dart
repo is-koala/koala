@@ -2,14 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/settings/models/identity_document_error.dart';
 import 'package:koala/product/network/api_exception.dart';
 
-/// Sunucunun `IdentityMessages` (belge/inceleme), `UserMessages`,
-/// `StorageMessages`, `ImageMessages` ve `GlobalExceptionHandler`
-/// üzerinden fotoğraflı inceleme uçlarında üretebildiği kodlar.
-///
-/// Liste elle duruyor: sunucuya yeni bir kod eklendiğinde bu test kırılıp
-/// istemcinin karşılık yazması gerektiğini söylüyor. Kodların katalogda
-/// gerçekten var olduğunu `test/support/backend_error_codes_test.dart`
-/// `messages_tr.properties` üzerinden ayrıca doğruluyor.
+/// Fotoğraflı inceleme uçlarının kodları. Liste elle: sunucuya yeni kod
+/// eklenince test kırılıp karşılık istesin.
 const List<String> _serverCodes = [
   'IDENTITY_DOCUMENTS_REQUIRED',
   'IDENTITY_DOCUMENTS_ALREADY_PENDING',

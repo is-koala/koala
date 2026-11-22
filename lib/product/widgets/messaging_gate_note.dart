@@ -1,18 +1,12 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// Mesaj düğmesinin yerine geçen kısa açıklama.
-///
-/// Sunucu ödeme emanete geçmeden sohbeti reddediyor; düğmeyi açık bırakıp
-/// `403` yedirmek yerine sebebi burada yazılıyor. İki kabuk da kullanıyor —
-/// çalışanın "İşlerim" satırı ve işverenin başvuran kartı — bu yüzden
-/// `product/` altında. Metin `MessagingAvailability.noteFor` ile tarafa göre
-/// seçiliyor.
-///
-/// [action] isteğe bağlı kısayol — işverende ödeme akışını başlatan düğme.
+/// Mesaj düğmesinin yerine geçen açıklama: sunucu ödeme emanete geçmeden
+/// sohbeti reddediyor, `403` yedirmek yerine sebep yazılıyor. Metin
+/// `MessagingAvailability.noteFor`'dan.
 class MessagingGateNote extends StatelessWidget {
   const MessagingGateNote({
     super.key,
@@ -23,11 +17,9 @@ class MessagingGateNote extends StatelessWidget {
 
   final String message;
 
-  /// Metin ve ikon rengi. Verilmezse ikincil metin rengi; yeşil zemindeki
-  /// satırlar `onAccent` geçiyor.
+  /// Verilmezse ikincil metin rengi.
   final Color? color;
 
-  /// Açıklamanın yanındaki kısayol; yoksa yalnızca metin.
   final Widget? action;
 
   @override

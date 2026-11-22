@@ -4,14 +4,9 @@ import 'package:koala/product/features/dispute/models/evidence_file.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
-/// Gönderim ilerlemesi: kaç bayt gitti, toplam kaç bayt.
 typedef EvidenceUploadProgress = void Function(int sent, int total);
 
-/// `/disputes/{id}/evidence` uçlarının sarmalayıcısı (is-koala/koala#215).
-///
-/// Çalışan da işveren de aynı ucu kullanıyor: sunucu kimin atamanın tarafı
-/// olduğuna bakıyor, taraf olmayana `404`. İki uygulamanın da kullandığı için
-/// `product/` altında.
+/// `/disputes/{id}/evidence` uçları (#215); taraf olmayana `404`.
 class DisputeEvidenceService {
   DisputeEvidenceService._(this._apiClient);
 
@@ -28,11 +23,7 @@ class DisputeEvidenceService {
 
   final ApiClient _apiClient;
 
-  /// Bir uyuşmazlığın kanıtları, eskiden yeniye.
-  ///
-  /// Yalnız metadata; dizi sayfalanmıyor (üst sınır 5). Çözülmüş
-  /// uyuşmazlığın kanıtları da okunuyor — karar sonrası dosyayı görmek
-  /// meşru.
+  /// Kanıtlar, eskiden yeniye; yalnız metadata, sayfasız (en çok 5).
   Future<List<DisputeEvidence>> fetchEvidence(String disputeId) {
     return _apiClient.get<List<DisputeEvidence>>(
       ApiPaths.disputeEvidence(disputeId),
@@ -45,12 +36,8 @@ class DisputeEvidenceService {
     );
   }
 
-  /// Tek dosya yükler, kaydı döner.
-  ///
-  /// `multipart/form-data`, parça adı **`file`**; istek başına bir dosya.
-  /// Parçanın adı ve içerik tipi dosyanın **içeriğinden** ([EvidenceFile]):
-  /// sunucu uzantıya bakıyor, seçicinin verdiği ad ise gerçeği
-  /// yansıtmayabiliyor. [onProgress] gönderilen bayt sayısını veriyor.
+  /// Tek dosya yükler; parça adı **`file`**, ad ve tip içerikten
+  /// ([EvidenceFile]).
   Future<DisputeEvidence> upload(
     String disputeId,
     EvidenceFile file, {
@@ -69,12 +56,8 @@ class DisputeEvidenceService {
     );
   }
 
-  /// Kanıtın indirileceği kısa ömürlü adres.
-  ///
-  /// İndirme ucu `Bearer` ister ve depoya `302` verir; yönlendirme izlenmiyor
-  /// ([ApiClient.getRedirectLocation]), imzalı adres olduğu gibi dönüyor ve
-  /// **üç dakika** geçerli — hemen açılmalı, saklanmamalı. Sunucu imza
-  /// yapamayıp baytları akıtıyorsa `null`.
+  /// İndirme adresi. Yönlendirme izlenmiyor ([ApiClient.getRedirectLocation]);
+  /// imzalı adres **üç dakika** geçerli. Sunucu baytları akıtıyorsa `null`.
   Future<Uri?> resolveDownload(String disputeId, String evidenceId) {
     return _apiClient.getRedirectLocation(
       ApiPaths.disputeEvidenceDownload(disputeId, evidenceId),

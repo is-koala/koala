@@ -70,9 +70,8 @@ void main() {
         ),
       );
 
-      final page = await EmployerJobService.withClient(
-        api.client,
-      ).fetchMyJobs();
+      final page = await EmployerJobService.withClient(api.client)
+          .fetchMyJobs();
 
       expect(api.requests.single.path, '/users/me/jobs');
       expect(page.jobs.single.id, 'job_1');
@@ -97,9 +96,8 @@ void main() {
         ),
       );
 
-      final detail = await EmployerJobService.withClient(
-        api.client,
-      ).createJob(buildRequest(), companyId: 'company_1');
+      final detail = await EmployerJobService.withClient(api.client)
+          .createJob(buildRequest(), companyId: 'company_1');
 
       final request = api.requests.single;
       expect(request.path, '/companies/company_1/jobs');
@@ -127,9 +125,8 @@ void main() {
           ),
         );
 
-        await EmployerJobService.withClient(
-          api.client,
-        ).createJob(buildRequest());
+        await EmployerJobService.withClient(api.client)
+            .createJob(buildRequest());
 
         final request = api.requests.single;
         expect(request.path, '/users/me/jobs');
@@ -208,9 +205,8 @@ void main() {
         ),
       );
 
-      final applicants = await EmployerJobService.withClient(
-        api.client,
-      ).fetchApplicants('job_1');
+      final applicants = await EmployerJobService.withClient(api.client)
+          .fetchApplicants('job_1');
 
       expect(api.requests.single.path, '/jobs/job_1/applications');
       expect(applicants.single.fullName, 'Ayşe Yılmaz');
@@ -224,9 +220,8 @@ void main() {
             const FakeApiResponse(statusCode: 200, body: {'success': true}),
       );
 
-      await EmployerJobService.withClient(
-        api.client,
-      ).acceptApplication('app_1');
+      await EmployerJobService.withClient(api.client)
+          .acceptApplication('app_1');
 
       final request = api.requests.single;
       expect(request.path, '/job-applications/app_1/respond');
@@ -239,9 +234,8 @@ void main() {
             const FakeApiResponse(statusCode: 200, body: {'success': true}),
       );
 
-      await EmployerJobService.withClient(
-        api.client,
-      ).rejectApplication('app_1', reason: 'Deneyim yetersiz');
+      await EmployerJobService.withClient(api.client)
+          .rejectApplication('app_1', reason: 'Deneyim yetersiz');
 
       final body = api.requests.single.data as Map;
       expect(body['status'], ApplicationStatus.rejected.code);
@@ -254,9 +248,8 @@ void main() {
             const FakeApiResponse(statusCode: 200, body: {'success': true}),
       );
 
-      await EmployerJobService.withClient(
-        api.client,
-      ).rejectApplication('app_1');
+      await EmployerJobService.withClient(api.client)
+          .rejectApplication('app_1');
 
       final body = api.requests.single.data as Map;
       expect(body.containsKey('rejectionReason'), isFalse);
@@ -281,9 +274,8 @@ void main() {
           ),
         );
 
-        final session = await EmployerJobService.withClient(
-          api.client,
-        ).createPaymentSession('asg_1');
+        final session = await EmployerJobService.withClient(api.client)
+            .createPaymentSession('asg_1');
 
         expect(
           api.requests.single.path,
@@ -320,9 +312,8 @@ void main() {
         ),
       );
 
-      final page = await EmployerJobService.withClient(
-        api.client,
-      ).fetchMyAssignments();
+      final page = await EmployerJobService.withClient(api.client)
+          .fetchMyAssignments();
 
       final request = api.requests.single;
       expect(request.path, '/users/me/assignments');
@@ -351,9 +342,8 @@ void main() {
         ),
       );
 
-      final assignment = await EmployerJobService.withClient(
-        api.client,
-      ).completeAssignment('asg_1');
+      final assignment = await EmployerJobService.withClient(api.client)
+          .completeAssignment('asg_1');
 
       expect(api.requests.single.path, '/job-assignments/asg_1/complete');
       expect(api.requests.single.method, 'POST');
@@ -405,9 +395,8 @@ void main() {
           },
         );
 
-        final assignments = await EmployerJobService.withClient(
-          api.client,
-        ).fetchAssignmentsForJob('job_1');
+        final assignments = await EmployerJobService.withClient(api.client)
+            .fetchAssignmentsForJob('job_1');
 
         expect(assignments.map((assignment) => assignment.id), [
           'target-0',
@@ -465,9 +454,9 @@ void main() {
         ),
       );
 
-      final assignment = await EmployerJobService.withClient(
-        api.client,
-      ).fetchAssignmentsForJob('job_1').then((list) => list.single);
+      final assignment = await EmployerJobService.withClient(api.client)
+          .fetchAssignmentsForJob('job_1')
+          .then((list) => list.single);
 
       expect(
         assignment.application?.applicationDateTime,
@@ -521,9 +510,8 @@ void main() {
           },
         );
 
-        final assignments = await EmployerJobService.withClient(
-          api.client,
-        ).fetchAssignmentsForJob('job_1');
+        final assignments = await EmployerJobService.withClient(api.client)
+            .fetchAssignmentsForJob('job_1');
 
         expect(assignments.map((assignment) => assignment.id), ['target-1']);
         expect(assignments.single.worker?.fullName, 'Ayşe Çalışan');
@@ -556,9 +544,8 @@ void main() {
       );
 
       await expectLater(
-        EmployerJobService.withClient(
-          api.client,
-        ).fetchAssignmentsForJob('job_1'),
+        EmployerJobService.withClient(api.client)
+            .fetchAssignmentsForJob('job_1'),
         throwsA(
           isA<ApiException>().having(
             (error) => error.errorCode,
@@ -614,9 +601,8 @@ void main() {
           ),
         );
 
-        final identity = await EmployerJobService.withClient(
-          api.client,
-        ).fetchWorkerIdentity('asg_1');
+        final identity = await EmployerJobService.withClient(api.client)
+            .fetchWorkerIdentity('asg_1');
 
         expect(api.requests.single.method, 'GET');
         expect(
@@ -649,9 +635,8 @@ void main() {
         );
 
         await expectLater(
-          EmployerJobService.withClient(
-            api.client,
-          ).fetchWorkerIdentity('asg_1'),
+          EmployerJobService.withClient(api.client)
+              .fetchWorkerIdentity('asg_1'),
           throwsA(
             isA<ApiException>()
                 .having((error) => error.statusCode, 'statusCode', 409)

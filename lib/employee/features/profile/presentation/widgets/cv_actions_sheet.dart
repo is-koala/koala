@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
@@ -7,7 +7,6 @@ import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_bottom_sheet.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// Özgeçmiş dosyası için sunulan yükleme, değiştirme ve kaldırma eylemleri.
 class CvActionsSheet extends StatelessWidget {
   const CvActionsSheet({
     super.key,

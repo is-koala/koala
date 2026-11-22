@@ -1,64 +1,44 @@
 import 'package:koala/product/features/transport/models/transport_error_codes.dart';
 import 'package:koala/product/network/api_exception.dart';
 
-/// Biniş isteğini kimin attığı: cümleler iki tarafa farklı şey söylüyor.
-enum BoardingActor {
-  /// İşçi servisin QR'ını okutuyor ya da kendi QR'ını istiyor.
-  worker,
+/// Cümleler iki tarafa farklı şey söylüyor.
+enum BoardingActor { worker, employer }
 
-  /// İşveren işçinin QR'ını okutuyor, listeden işaretliyor ya da servis
-  /// QR'ını yönetiyor.
-  employer,
-}
-
-/// Biniş uçlarının hatasının ekrandaki hâli (is-koala/koala#217).
-///
-/// Karar `errorCode`'dan veriliyor, kategoriden değil: aynı `404` ya da
-/// `409` birkaç farklı durumu taşıyor ve ekran her birine ayrı bir sonraki
-/// adım söylüyor. Bilinmeyen kod sunucunun kendi mesajıyla gösterilir.
+/// Biniş hatasının ekrandaki hâli (#217). Karar `errorCode`'dan: aynı `404` ya
+/// da `409` birkaç durumu taşıyor ve her birinin sonraki adımı farklı.
 enum BoardingFailure {
-  /// `404` — token geçersiz, başka servisin/koltuğun, anahtarı yenilenmiş ya
-  /// da çağıran taraf değil. Sunucu bunları bilerek ayırmıyor.
+  /// `404`: token geçersiz, başkasının ya da anahtar yenilenmiş; sunucu bilerek
+  /// ayırmıyor.
   invalidQr,
 
-  /// `400 TRANSPORT_TOKEN_EXPIRED`.
   tokenExpired,
 
-  /// `409 TRANSPORT_WRONG_SHUTTLE`.
   wrongShuttle,
 
-  /// `409 TRANSPORT_SEAT_NOT_SELECTED`.
   seatNotSelected,
 
-  /// `409 TRANSPORT_ASSIGNMENT_NOT_ACTIVE`.
   assignmentNotActive,
 
-  /// `409 TRANSPORT_ALREADY_BOARDED` — binmiş koltuğa NO_SHOW.
+  /// Binmiş koltuğa NO_SHOW.
   alreadyBoarded,
 
-  /// `409 TRANSPORT_BOARDING_CONCURRENT` — aynı anda yazıldı; liste bayat.
+  /// Aynı anda yazıldı; liste bayat.
   concurrent,
 
-  /// `409 TRANSPORT_BOARDING_IDEMPOTENCY_CONFLICT`.
   retryConflict,
 
-  /// `429` — biniş kovası (120/dk/IP).
+  /// Biniş kovası (120/dk/IP).
   tooManyRequests,
 
-  /// `400 VALIDATION_FAILED` ya da benzeri doğrulama hatası.
   validation,
 
-  /// Sunucuya ulaşılamadı ya da zaman aşımı. Çevrimdışı kuyruk bunu
-  /// "sonra yeniden dene" diye okur.
+  /// Ulaşılamadı; çevrimdışı kuyruk "sonra dene" diye okur.
   offline,
 
-  /// Sunucu tarafı hata (`5xx`); yeniden denenebilir.
   server,
 
-  /// Tanınmayan hata; sunucunun mesajı gösterilir.
   unknown;
 
-  /// [error]'u ekran durumuna çevirir.
   static BoardingFailure classify(ApiException error) {
     switch (error.errorCode) {
       case TransportErrorCodes.tokenExpired:
@@ -90,26 +70,20 @@ enum BoardingFailure {
     };
   }
 
-  /// Aynı istek daha sonra aynen yeniden denenirse geçebilir mi: bağlantı,
-  /// sunucu hatası ve hız sınırı. Çevrimdışı kuyruk bunlarda olayı tutar,
-  /// diğerlerinde bırakır.
+  /// Aynı istek sonra geçebilir mi; çevrimdışı kuyruk bunlarda olayı tutar.
   bool get isRetryable => switch (this) {
     offline || server || tooManyRequests => true,
     _ => false,
   };
 
-  /// Ekranın elindeki bilgi (liste, koltuk) bayat mı: işveren listeyi
-  /// yeniden okur.
+  /// Ekrandaki liste bayat; işveren yeniden okur.
   bool get staleView => switch (this) {
     concurrent || alreadyBoarded || assignmentNotActive => true,
     _ => false,
   };
 
-  /// Kullanıcıya gösterilen cümle; "siz".
-  ///
-  /// [queued] işçinin çevrimdışı kuyruğundan sonradan gönderilen bir okutma
-  /// için: QR artık önünde değil, "yeniden okutun" demek boşa; işverenden
-  /// işaretleme istemesi söylenir.
+  /// Kullanıcıya gösterilen cümle. [queued] kuyruktan sonradan gönderilen
+  /// okutma: QR artık önünde değil, işverenden işaretleme istemesi söylenir.
   String message(
     BoardingActor actor, {
     String? serverMessage,

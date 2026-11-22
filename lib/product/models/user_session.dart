@@ -2,7 +2,6 @@ import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/network/json_field.dart';
 
-/// Oturumun açıldığı cihazın türü. Backend `DeviceType` karşılığı.
 enum SessionDeviceType {
   ios('IOS', 'iPhone'),
   android('ANDROID', 'Android'),
@@ -23,8 +22,7 @@ enum SessionDeviceType {
   }
 }
 
-/// Cihaz türünün görsel karşılığı; liste satırı ve ayrıntı sayfası aynı
-/// ikonu çiziyor (`JobCategoryStyle` kalıbı).
+/// Cihaz türünün ikonu.
 extension SessionDeviceTypeStyle on SessionDeviceType {
   AppIconData get icon => switch (this) {
     SessionDeviceType.ios || SessionDeviceType.android => AppIcons.mobile,
@@ -33,10 +31,7 @@ extension SessionDeviceTypeStyle on SessionDeviceType {
   };
 }
 
-/// Hesaba açık bir oturum. Backend `SessionDto` karşılığı.
-///
-/// Mesai oturumuyla (`WorkSession`) karıştırılmasın: bu, kullanıcının
-/// giriş yaptığı cihaz.
+/// Hesaba açık bir oturum (giriş yapılan cihaz); mesai oturumu `WorkSession`.
 class UserSession {
   const UserSession({
     required this.id,
@@ -56,18 +51,16 @@ class UserSession {
   final String? deviceName;
   final String? ipAddress;
 
-  /// Sunucunun IP'den çıkardığı yer. Boş gelebiliyor.
+  /// IP'den çıkarılan yer; boş gelebilir.
   final String? location;
 
   final DateTime? lastAccessedAt;
   final DateTime? refreshExpiresAt;
 
-  /// İsteği atan oturum. Sunucu işaretliyor; kullanıcının kendi cihazını
-  /// yanlışlıkla kapatmaması bu bayrağa bağlı.
+  /// Kullanıcı kendi cihazını yanlışlıkla kapatmasın diye.
   final bool isCurrent;
 
-  /// Listede gösterilecek cihaz adı. Sunucu adı vermezse cihaz türü
-  /// yazılıyor — boş satır bırakmaktan iyi.
+  /// Ad yoksa cihaz türü.
   String get displayName {
     final name = deviceName;
     return name != null && name.trim().isNotEmpty

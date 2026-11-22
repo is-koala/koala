@@ -54,9 +54,8 @@ void main() {
             const FakeApiResponse(statusCode: 200, body: _companyBody),
       );
 
-      final company = await CompanyService.withClient(
-        api.client,
-      ).fetchCompany('comp_1');
+      final company = await CompanyService.withClient(api.client)
+          .fetchCompany('comp_1');
 
       expect(api.requests.single.path, '/companies/comp_1');
       expect(company.name, 'Kahve Durağı');
@@ -76,9 +75,8 @@ void main() {
         ),
       );
 
-      final company = await CompanyService.withClient(
-        api.client,
-      ).fetchCompany('c');
+      final company = await CompanyService.withClient(api.client)
+          .fetchCompany('c');
 
       expect(company.type, CompanyType.other);
     });
@@ -89,9 +87,8 @@ void main() {
             const FakeApiResponse(statusCode: 200, body: _companyBody),
       );
 
-      final company = await CompanyService.withClient(
-        api.client,
-      ).fetchCompany('comp_1');
+      final company = await CompanyService.withClient(api.client)
+          .fetchCompany('comp_1');
 
       // Sunucudaki alan adı `approved`; `isApproved` okunursa sessizce
       // "onay bekliyor" görünürdü.
@@ -109,9 +106,8 @@ void main() {
         ),
       );
 
-      final company = await CompanyService.withClient(
-        api.client,
-      ).fetchCompany('c');
+      final company = await CompanyService.withClient(api.client)
+          .fetchCompany('c');
 
       expect(company.isApproved, isFalse);
       expect(company.copyWith(isApproved: true).isApproved, isTrue);
@@ -158,9 +154,8 @@ void main() {
         ),
       );
 
-      final company = await CompanyService.withClient(
-        api.client,
-      ).fetchCompany('c');
+      final company = await CompanyService.withClient(api.client)
+          .fetchCompany('c');
 
       expect(api.requests, hasLength(1));
       expect(company.isFollowing, isTrue);
@@ -185,9 +180,8 @@ void main() {
         ),
       );
 
-      final company = await CompanyService.withClient(
-        api.client,
-      ).fetchCompany('c');
+      final company = await CompanyService.withClient(api.client)
+          .fetchCompany('c');
 
       expect(company.coverImage?.id, 'i1');
     });
@@ -203,9 +197,8 @@ void main() {
         ),
       );
 
-      final company = await CompanyService.withClient(
-        api.client,
-      ).fetchCompany('c');
+      final company = await CompanyService.withClient(api.client)
+          .fetchCompany('c');
 
       expect(company.images, isEmpty);
       expect(company.coverImage, isNull);

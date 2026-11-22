@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/business/core/date_time_picking.dart';
 import 'package:koala/business/features/home/presentation/widgets/b_info_notice.dart';
@@ -18,25 +18,18 @@ import 'package:koala/product/widgets/my_textfield.dart';
 
 part 'b_stop_editor_pagemodel.dart';
 
-/// `/business/transport-stop` rotasının `extra`'sı.
 class BStopEditorArgs {
   const BStopEditorArgs({required this.stop, this.jobStart});
 
-  /// Düzenlenecek durak; sayfa kopyası üzerinde çalışıyor, kaydedince
-  /// kopyayı döndürüyor.
+  /// Kopya üzerinde çalışıyor, kaydedince onu döndürüyor.
   final StopDraft stop;
 
-  /// İşin başlangıcı; saat seçicinin varsayılan günü ve saati.
+  /// Saat seçicinin varsayılanı.
   final DateTime? jobStart;
 }
 
-/// Tek durağın düzenleyicisi (is-koala/koala#197): etiket, kalkış saati ve
-/// harita-önce adres.
-///
-/// Kaydedince [StopDraft] ile kapanıyor; geri çıkınca hiçbir şey
-/// değişmiyor. Adres mevcut akışla seçiliyor (`/pick-address`,
-/// `ConfirmedAddress`); var olan durakta adres yeniden seçilmezse gövdeye
-/// gitmiyor ve sunucu eskisini koruyor.
+/// Tek durağın düzenleyicisi (#197). Var olan durakta adres yeniden seçilmezse
+/// gönderilmez, sunucu eskisini korur.
 class BStopEditorPage extends StatefulWidget {
   const BStopEditorPage({super.key, required this.args});
 
@@ -85,8 +78,7 @@ class _BStopEditorPageState extends BStopEditorPagemodel {
                 onTap: _pickTime,
               ),
               const SizedBox(height: AppSizes.spaceMedium),
-              // Var olan durakta kayıttaki adres ön dolum olarak gösteriliyor
-              // (`fromCanonical`); pinsiz eski kayıt yalnız metniyle kalıyor.
+              // Pinsiz eski kayıt yalnız metniyle kalır.
               ConfirmedAddressField(
                 key: const ValueKey('b-stop-address'),
                 value: _stop.addressForMap,

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/business/features/home/models/company_contact.dart';
 import 'package:koala/business/features/home/services/company_contact_service.dart';
 import 'package:koala/employee/features/auth/models/company_membership.dart';
@@ -24,7 +24,6 @@ import 'package:provider/provider.dart';
 
 part 'b_company_contacts_pagemodel.dart';
 
-/// Şirket yetkilileri listesi ve davet yönetimi.
 class BCompanyContactsPage extends StatefulWidget {
   const BCompanyContactsPage({super.key, this.service});
 

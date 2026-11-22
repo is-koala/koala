@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/business/features/home/models/company_contact_invitation.dart';
 import 'package:koala/business/features/home/services/company_contact_service.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
@@ -18,7 +18,6 @@ import 'package:provider/provider.dart';
 
 part 'company_invitation_pagemodel.dart';
 
-/// Davet edilen kişinin gördüğü kabul / red ekranı.
 class CompanyInvitationPage extends StatefulWidget {
   const CompanyInvitationPage({super.key, required this.invitationId});
 

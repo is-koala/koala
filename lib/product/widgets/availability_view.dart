@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -12,10 +12,8 @@ import 'package:koala/product/models/availability_exception.dart';
 import 'package:koala/product/models/availability_slot.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// Kullanıcının müsaitliğini değiştirmeden gösteren ortak görünüm.
-///
-/// İş arayan kendi profilinde, işveren de aday profilinde aynı sözleşmeyi
-/// okuduğu için iki uygulamanın ortak `product/` katmanında yaşar.
+/// Müsaitliği salt okunur gösterir; çalışan profili ve işverenin aday profili
+/// ortak kullanıyor.
 class AvailabilityView extends StatelessWidget {
   const AvailabilityView({
     super.key,

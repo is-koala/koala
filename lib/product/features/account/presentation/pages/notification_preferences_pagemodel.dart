@@ -9,9 +9,7 @@ abstract class NotificationPreferencesPagemodel
   bool isLoading = true;
   String? errorMessage;
 
-  /// Şu anda sunucuya yazılan kombinasyonlar (`kategori/kanal`). Aynı anahtar
-  /// istek havadayken ikinci kez çevrilemiyor; farklı anahtarlar
-  /// birbirini beklemiyor.
+  /// Yazılmakta olan kombinasyonlar; aynı anahtar istek sürerken çevrilemez.
   final Set<String> _saving = {};
 
   @override
@@ -40,11 +38,8 @@ abstract class NotificationPreferencesPagemodel
 
   bool isSaving(NotificationPreference row) => _saving.contains(_keyOf(row));
 
-  /// Anahtarı çevirir ve sunucunun döndürdüğü tabloyla ekranı yeniler.
-  ///
-  /// Anahtar iyimser çevrilmiyor: sunucu ticari iletide rızayı, işlemselde
-  /// reddi kendisi karara bağlıyor; yanıt gelmeden "açıldı" göstermek, `400`
-  /// geldiğinde geri dönen bir anahtar demek olurdu.
+  /// Anahtarı çevirir, sunucunun tablosuyla yeniler. İyimser değil: karar
+  /// sunucuda, `400`'de geri dönen anahtar kafa karıştırır.
   Future<void> toggle(NotificationPreference row) async {
     final key = _keyOf(row);
     if (_saving.contains(key)) return;

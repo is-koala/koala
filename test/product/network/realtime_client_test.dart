@@ -400,10 +400,8 @@ void main() {
       final second = client.conversationEvents('b').listen((_) {});
       final personal = client.userMessageEvents().listen((_) {});
 
-      // `close()` dinleyicileri iptal ediyor, iptal `onCancel` üzerinden
-      // aynı map'ten siliyor. Map üzerinde doğrudan gezinen eski hâli burada
-      // `ConcurrentModificationError` fırlatıyordu ve kullanıcı çıkış
-      // yapamıyordu.
+      // Map üzerinde gezinirken `close()` silme yaptığı için
+      // `ConcurrentModificationError` çıkışı engelliyordu.
       await expectLater(client.disconnect(), completes);
 
       await first.cancel();

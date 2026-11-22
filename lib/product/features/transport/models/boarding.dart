@@ -1,14 +1,10 @@
-/// Biniş teyidi modelleri (is-koala/koala#217, koala-backend#298 / #335).
-///
-/// Biniş bir kapı değil, kanıttır: işçi servisteki QR'ı okutur ya da işveren
-/// işçinin QR'ını okutur / listeden işaretler. Hiçbir bayrak binişi
-/// reddetmez; sunucu yalnız işaret koyar.
+/// Biniş teyidi modelleri (#217). Biniş kapı değil kanıt: hiçbir bayrak binişi
+/// reddetmez, sunucu yalnız işaret koyar.
 library;
 
 import 'dart:math';
 
-/// Olayın türü. Backend `BoardingKind`: `BOARDED` ya da işverenin
-/// `NO_SHOW` işareti.
+/// `BOARDED` ya da işverenin `NO_SHOW` işareti.
 enum BoardingKind {
   boarded('BOARDED', 'Bindi'),
   noShow('NO_SHOW', 'Binmedi');
@@ -18,8 +14,7 @@ enum BoardingKind {
   final String code;
   final String displayName;
 
-  /// Tanınmayan değerde `null`: sunucu yeni bir tür eklerse uygulama
-  /// çökmemeli, satır "henüz kayıt yok" gibi çizilir.
+  /// Tanınmayan değerde `null`; satır "henüz kayıt yok" gibi çizilir.
   static BoardingKind? fromCode(Object? value) {
     for (final kind in values) {
       if (kind.code == value) return kind;
@@ -28,8 +23,7 @@ enum BoardingKind {
   }
 }
 
-/// Sunucunun makullük bayrakları (`TimesheetPlausibilityFlag` alt kümesi).
-/// Kapı değildir; işverenin listesinde bilgi olarak yazılır.
+/// Sunucunun makullük bayrakları; kapı değil, işverene bilgi.
 enum BoardingFlag {
   farFromStop('FAR_FROM_STOP', 'Durağa uzak'),
   offSchedule('OFF_SCHEDULE', 'Durak saatinden sapma'),
@@ -49,14 +43,13 @@ enum BoardingFlag {
     return null;
   }
 
-  /// Bilinmeyen bayrak sessizce atlanır.
   static Set<BoardingFlag> parseAll(Object? value) => value is List
       ? value.map(fromCode).nonNulls.toSet()
       : const <BoardingFlag>{};
 }
 
-/// Koltuğun o kalkıştaki biniş durumu (`SeatBoardingStatusDto`): BOARDED
-/// olayı, yoksa son NO_SHOW işareti. Kayıt yoksa sunucu `null` gönderir.
+/// Koltuğun o kalkıştaki durumu: BOARDED olayı, yoksa son NO_SHOW; kayıt yoksa
+/// `null`.
 class SeatBoardingStatus {
   const SeatBoardingStatus({required this.kind, required this.occurredAt});
 
@@ -74,7 +67,6 @@ class SeatBoardingStatus {
   }
 }
 
-/// Kaydedilmiş biniş olayı (`BoardingEventDto`).
 class BoardingEvent {
   const BoardingEvent({
     required this.id,
@@ -95,18 +87,15 @@ class BoardingEvent {
   final String? shuttleId;
   final BoardingKind kind;
 
-  /// `WORKER_SCANNED_SHUTTLE_QR`, `EMPLOYER_SCANNED_WORKER_QR` ya da
-  /// `EMPLOYER_MARKED`. Ekranda yalnız işçi okuttu mu sorusu için okunuyor.
+  /// Ekranda yalnız "işçi okuttu mu" için okunuyor.
   final String? source;
   final DateTime occurredAt;
   final DateTime? capturedAt;
   final Set<BoardingFlag> flags;
 
-  /// Yalnız POST yanıtında anlamlı: `true` ise olay zaten kayıtlıydı ve
-  /// yanıt kayıtlı olaydır. İstemci bunu başarı sayar.
+  /// `true` ise olay zaten kayıtlıydı; istemci başarı sayar.
   final bool replayed;
 
-  /// Olayı işçinin kendisi okutarak mı yazdı.
   bool get scannedByWorker => source == 'WORKER_SCANNED_SHUTTLE_QR';
 
   factory BoardingEvent.fromJson(Map<String, dynamic> json) {
@@ -127,11 +116,8 @@ class BoardingEvent {
   }
 }
 
-/// Sunucunun ürettiği biniş QR'ı (`BoardingQrDto`).
-///
-/// [token] imzalı bir HMAC token'ı; istemci onu **üretmez ve değiştirmez**,
-/// QR'a sunucunun verdiği [uri] basılır. Token loglanmaz: [toString] içeriği
-/// yazmaz.
+/// Sunucunun ürettiği biniş QR'ı. [token] imzalı; istemci üretmez ve
+/// değiştirmez. [toString] token'ı yazmaz.
 class BoardingQr {
   const BoardingQr({
     required this.token,
@@ -144,29 +130,20 @@ class BoardingQr {
 
   final String token;
 
-  /// Kâğıda basılabilen süresiz servis QR'ı; [expiresAt] ve [refreshAt]
-  /// `null`.
+  /// Basılabilen süresiz QR; [expiresAt] ve [refreshAt] `null`.
   final bool isStatic;
 
-  /// Sunucunun basım anı. Yenileme cihaz saatine değil bu ana göre
-  /// planlanır (cihaz saat farkı düşülür).
+  /// Yenileme cihaz saatine değil bu ana göre planlanır.
   final DateTime issuedAt;
 
-  /// Sunucu saatiyle kabulün son anı.
   final DateTime? expiresAt;
 
-  /// Ekrandaki QR'ın yenilenmesi gereken an.
   final DateTime? refreshAt;
 
-  /// QR'a basılacak bağlantı: `{appScheme}://board?t=<token>`.
   final String uri;
 
-  /// QR'ın bir sonraki yenilemeye kadar ekranda kalacağı süre, sunucu
-  /// saatiyle (`refreshAt - issuedAt`). Statik QR'da `null`.
-  ///
-  /// Cihaz saatinden bağımsız: yanıtın geldiği andan bu kadar sonra yeni
-  /// QR istenir. Sıfır ya da negatifse (sunucu pencere sınırında bastı)
-  /// [minimumRefresh] kullanılır ki ekran döngüye girmesin.
+  /// Bir sonraki yenilemeye kadarki süre, sunucu saatiyle; statikte `null`.
+  /// Sıfır ya da negatifse [minimumRefresh], ekran döngüye girmesin.
   Duration? get refreshDelay {
     final refresh = refreshAt;
     if (isStatic || refresh == null) return null;
@@ -174,7 +151,6 @@ class BoardingQr {
     return delay < minimumRefresh ? minimumRefresh : delay;
   }
 
-  /// İki yenileme arasındaki en kısa süre.
   static const Duration minimumRefresh = Duration(seconds: 5);
 
   factory BoardingQr.fromJson(Map<String, dynamic> json) {
@@ -200,7 +176,6 @@ class BoardingQr {
       'refreshAt: $refreshAt)';
 }
 
-/// İşverenin biniş listesindeki bir koltuk (`ShuttleBoardingRowDto`).
 class ShuttleBoardingRow {
   const ShuttleBoardingRow({
     required this.seatAssignmentId,
@@ -219,22 +194,19 @@ class ShuttleBoardingRow {
   final String? jobAssignmentId;
   final String? workerId;
 
-  /// İşçi hesabını silmişse `null`; satır yine kalır.
+  /// İşçi hesabını silmişse `null`; satır kalır.
   final String? firstName;
   final String? lastName;
   final String stopId;
   final String? stopLabel;
 
-  /// Durağın kalkış anı (UTC).
   final DateTime scheduledAt;
   final bool boarded;
 
-  /// Satırın durumunu belirleyen olay: BOARDED, yoksa son NO_SHOW, yoksa
-  /// `null` (henüz binmedi).
+  /// BOARDED, yoksa son NO_SHOW, yoksa `null` (henüz binmedi).
   final BoardingEvent? event;
 
-  /// Hesabını silmiş işçi "Adı olmayan çalışan" olarak yazılır — sunucunun
-  /// bildirim metniyle aynı dil.
+  /// Sunucunun bildirim metniyle aynı dil.
   String get displayName {
     final name = [
       firstName ?? '',
@@ -245,7 +217,6 @@ class ShuttleBoardingRow {
 
   bool get isNoShow => !boarded && event?.kind == BoardingKind.noShow;
 
-  /// Durak başlığı: etiket, yoksa "Durak".
   String get stopName {
     final label = stopLabel?.trim();
     return label == null || label.isEmpty ? 'Durak' : label;
@@ -285,12 +256,12 @@ class ShuttleBoardingRow {
   }
 }
 
-/// Biniş token'ının türü: öneki sunucu koyuyor (`BoardingTokens`).
+/// Öneki sunucu koyuyor (`BoardingTokens`).
 enum BoardingTokenKind {
-  /// `s1.` — servisin QR'ı; işçi okutur.
+  /// Servisin QR'ı; işçi okutur.
   shuttle('s1'),
 
-  /// `w1.` — işçinin koltuk QR'ı; işveren okutur.
+  /// İşçinin koltuk QR'ı; işveren okutur.
   worker('w1');
 
   const BoardingTokenKind(this.prefix);
@@ -298,31 +269,22 @@ enum BoardingTokenKind {
   final String prefix;
 }
 
-/// Okutulan QR'dan çıkan biniş token'ı.
-///
-/// Sunucu sözleşmesi: `s1.{shuttleId}.{pencere|static}.{mac}` ve
-/// `w1.{seatAssignmentId}.{pencere}.{mac}`; QR'da
-/// `{appScheme}://board?t=<token>` bağlantısı durur. İstemci yalnız biçimi
-/// okur — hangi uca gidileceğini ve hangi kimliğin yola yazılacağını —
-/// imzayı doğrulamaz, içeriği değiştirmez. Asıl karar sunucunun.
-///
-/// [toString] token'ı yazmaz: QR yükü loglara düşmemeli.
+/// Okutulan QR'dan çıkan token: `s1.{shuttleId}.…` ya da
+/// `w1.{seatAssignmentId}.…`. İstemci yalnız biçimi okur (hangi uç, hangi
+/// kimlik); imzayı doğrulamaz. [toString] token'ı yazmaz, QR yükü loglara
+/// düşmemeli.
 class BoardingToken {
   const BoardingToken._(this.kind, this.subjectId, this.value);
 
   final BoardingTokenKind kind;
 
-  /// Servis token'ında servis, işçi token'ında koltuk (seat assignment)
-  /// kimliği.
   final String subjectId;
 
-  /// Sunucuya `token` alanında giden ham değer.
   final String value;
 
-  /// Sunucunun kabul ettiği en uzun token (`@Size(max = 256)`).
+  /// Sunucunun `@Size(max = 256)` sınırı.
   static const int maxLength = 256;
 
-  /// Bağlantının host'u.
   static const String linkHost = 'board';
 
   static final RegExp _uuid = RegExp(
@@ -331,13 +293,9 @@ class BoardingToken {
   );
   static final RegExp _segment = RegExp(r'^[A-Za-z0-9_-]+$');
 
-  /// Okutulan ham metni çözer; sözleşmeye uymayan her şeyde `null`.
-  ///
-  /// Kabul edilenler: çalışan flavor'ın tam şemasıyla
-  /// `{appScheme}://board?t=<token>` (deep link sözleşmesi: host'tan sonra
-  /// yol yok, tek `t`) ya da çıplak token. Başka flavor'ın şeması (staging
-  /// uygulamasında `koala://`) reddedilir — o QR başka ortamın sunucusuna
-  /// ait.
+  /// Okutulan metni çözer; uymayan her şeyde `null`. Yalnız bu flavor'ın
+  /// şemasıyla `{şema}://board?t=<token>` ya da çıplak token: başka flavor'ın
+  /// QR'ı başka ortamın sunucusuna ait.
   static BoardingToken? parse(String raw, {required String appScheme}) {
     final text = raw.trim();
     if (text.isEmpty) return null;
@@ -359,7 +317,6 @@ class BoardingToken {
     return fromValue(text);
   }
 
-  /// Çıplak token değerini çözer.
   static BoardingToken? fromValue(String value) {
     if (value.isEmpty || value.length > maxLength) return null;
     final parts = value.split('.');
@@ -378,13 +335,11 @@ class BoardingToken {
   String toString() => 'BoardingToken(${kind.prefix})';
 }
 
-/// Binişe eklenen konumun en büyük yaşı. Anlık konum alınamazsa son bilinen
-/// konum yalnız bundan gençse kullanılır; daha eskisi "durağa uzak"
-/// bayrağını yanlış üretir, binişi konumsuz göndermek daha doğru.
+/// Son bilinen konum yalnız bundan gençse eklenir; eskisi "durağa uzak"
+/// bayrağını yanlış üretir.
 const Duration boardingLocationMaxAge = Duration(minutes: 2);
 
-/// Biniş POST'larının `clientEventId`'si: rastgele UUID v4. Aynı kimlikle
-/// yeniden deneme sunucuda güvenli (kayıtlı olay `replayed` döner).
+/// Rastgele UUID v4; aynı kimlikle yeniden deneme güvenli (`replayed`).
 String newBoardingClientEventId() {
   final random = Random.secure();
   final bytes = List<int>.generate(16, (_) => random.nextInt(256));

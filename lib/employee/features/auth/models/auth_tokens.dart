@@ -1,4 +1,3 @@
-/// `/auth/login` ve `/auth/complete-registration` yanıtındaki token çifti.
 class AuthTokens {
   const AuthTokens({
     required this.token,
@@ -6,13 +5,12 @@ class AuthTokens {
     this.refreshExpiresAt,
   });
 
-  /// Erişim token'ı. Backend'de 12 saat geçerli.
+  /// 12 saat geçerli.
   final String token;
 
-  /// Yenileme token'ı. Backend'de 30 gün geçerli, kayan pencereyle uzuyor.
+  /// 30 gün geçerli, kayan pencereyle uzuyor.
   final String refreshToken;
 
-  /// Yenileme token'ının son kullanma anı.
   final DateTime? refreshExpiresAt;
 
   factory AuthTokens.fromJson(Map<String, dynamic> json) {

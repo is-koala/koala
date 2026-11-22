@@ -1,23 +1,12 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_radius.dart';
 
-/// Zemin, metin ve ayraç renkleri buradaki [ColorScheme]'lerden gelir;
-/// widget'lar bunlara `context` üzerinden erişir (bkz. context_extensions).
-/// [AppColors] yalnızca temadan bağımsız marka, durum ve yüzey renklerini
-/// tutar.
-///
-/// `fontFamily` **tek yerde** — burada — tanımlı ve bütün metin ölçeklerine
-/// uygulanır. `TextStyle` içinde tekrar yazma; ölçek gerekiyorsa
-/// `context.textTheme.titleMedium` gibi hazır ölçekleri kullan.
+/// Zemin, metin ve ayraç renkleri buradaki [ColorScheme]'lerden; `fontFamily`
+/// yalnız burada. `TextStyle`'a font ya da boyut yazma, hazır ölçekleri kullan.
 const String _fontFamily = 'Poppins';
 
-/// Uygulamanın metin ölçeği.
-///
-/// Boyutlar Material 3'ün varsayılan ölçeğinden değil, kodda fiilen kullanılan
-/// değerlerden türetildi; amaç mevcut tasarımı bozmadan hard-code `fontSize`
-/// kullanımını ortadan kaldırmak. Yeni bir boyuta ihtiyacın olduğunda buraya
-/// bakıp en yakın slotu kullan, `TextStyle` içine sayı yazma.
+/// Metin ölçeği; mevcut tasarımdaki boyutlardan türetildi.
 ///
 /// | Slot            | Boyut | Nerede |
 /// |-----------------|-------|--------|
@@ -114,7 +103,6 @@ TextTheme _textTheme(Color primary, Color secondary) => TextTheme(
   ),
 );
 
-//light theme
 ThemeData lightTheme = ThemeData(
   useMaterial3: true,
   fontFamily: _fontFamily,
@@ -162,8 +150,7 @@ ThemeData lightTheme = ThemeData(
     AppColors.lightTextPrimary,
     AppColors.lightTextSecondary,
   ),
-  // Biçim `AppToast` ile aynı: doğrudan `SnackBar` kullanan bir yer kalırsa
-  // da köşeler butonlarla ([AppRadius.primary]) hizalı kalsın.
+  // Doğrudan `SnackBar` kullanan kalırsa köşeler butonlarla hizalı kalsın.
   snackBarTheme: const SnackBarThemeData(
     backgroundColor: AppColors.lightTileHigh,
     contentTextStyle: TextStyle(color: AppColors.lightTextPrimary),
@@ -173,7 +160,6 @@ ThemeData lightTheme = ThemeData(
   ),
 );
 
-//dark theme
 ThemeData darkTheme = ThemeData(
   useMaterial3: true,
   fontFamily: _fontFamily,
@@ -182,10 +168,8 @@ ThemeData darkTheme = ThemeData(
   dividerColor: AppColors.darkDivider,
   colorScheme: const ColorScheme.dark(
     primary: AppColors.primaryColor,
-    // Vurgu zemini koyu temada da yeşil, üstündeki içerik de açık temadaki
-    // gibi beyaz. Bir dönem sayfa zeminine (koyu) bağlıydı: yeşil butonun
-    // parlamasını azaltıyordu ama yeşilin üstündeki her şeyi -- buton yazısı,
-    // sohbet balonu, seçili filtre, onay kutusunun tiki -- siyaha çeviriyordu.
+    // Yeşilin üstündeki içerik koyu temada da beyaz; koyu zemin rengine
+    // bağlamak buton yazısını ve tikleri siyaha çevirir.
     onPrimary: AppColors.onAccent,
     secondary: AppColors.primaryDeep,
     onSecondary: AppColors.onAccent,

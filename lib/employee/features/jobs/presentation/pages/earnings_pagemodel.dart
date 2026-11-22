@@ -6,8 +6,7 @@ abstract class EarningsPagemodel extends State<EarningsPage> {
   bool _isLoading = true;
   String? _errorMessage;
 
-  /// Detayı açılmak üzere ataması çekilen ödemenin kimliği; satırları
-  /// kilitliyor.
+  /// Satırları kilitliyor.
   String? _openingPayoutId;
 
   PayoutService get _service => widget.service ?? PayoutService();
@@ -21,11 +20,7 @@ abstract class EarningsPagemodel extends State<EarningsPage> {
     _load();
   }
 
-  /// Ödeme listesini ekranın asıl verisi olarak yükler.
-  ///
-  /// Atama başlıkları ikinci istektir ve bu listeyi bekletmez; ödeme satırları
-  /// gelir gelmez çizilir, atamalar daha sonra kimlik üzerinden eşleşirse iş
-  /// başlığı eklenir.
+  /// Ödemeleri yükler; atama başlıkları ikinci istek ve listeyi bekletmez.
   Future<void> _load() async {
     setState(() {
       _isLoading = _payouts.isEmpty;
@@ -55,11 +50,10 @@ abstract class EarningsPagemodel extends State<EarningsPage> {
         };
       });
     } on ApiException {
-      // Atama etiketi yardımcı bilgidir; ödeme listesini asla kapatmaz.
+      // Atama etiketi yardımcı bilgi; listeyi kapatmaz.
     }
   }
 
-  /// Hakedişin detay sayfasını (alt sayfa) açar; işin detayı oradan.
   Future<void> _openDetail(Payout payout) {
     return PayoutDetailSheet.show(
       context,
@@ -69,12 +63,7 @@ abstract class EarningsPagemodel extends State<EarningsPage> {
     );
   }
 
-  /// Ödemenin işini açar.
-  ///
-  /// Atama listeden biliniyorsa doğrudan; bilinmiyorsa — ödeme ilk 20
-  /// atamanın dışında kaldıysa ya da liste hiç gelmediyse — kimliğiyle
-  /// çekiliyor (`GET /job-assignments/{id}`). Çekilemezse toast; ödeme
-  /// kaydının kendi başına bir detay sayfası yok.
+  /// Atama listede yoksa kimliğiyle çekilir; çekilemezse toast.
   Future<void> _openWork(Payout payout) async {
     if (_openingPayoutId != null) return;
 
@@ -123,11 +112,8 @@ abstract class EarningsPagemodel extends State<EarningsPage> {
     ];
   }
 
-  /// Ondalık tutarları ikili kayan noktaya çevirmeden toplar.
-  ///
-  /// Bu yalnızca kullanıcının ödeme listesinin özetidir; komisyon, hizmet
-  /// bedeli veya işveren toplamı hesaplamaz. Her ödeme tutarı backend'den
-  /// geldiği biçimde önce tam sayı basamaklarına ayrılır.
+  /// Ondalıkları kayan noktaya çevirmeden toplar; yalnız özet, komisyon
+  /// hesaplamaz.
   static String _sumDecimalStrings(Iterable<String> values) {
     final decimals = values.map(_FixedDecimal.parse).toList();
     if (decimals.isEmpty) return '0';

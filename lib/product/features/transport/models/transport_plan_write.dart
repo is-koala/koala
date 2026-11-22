@@ -1,11 +1,9 @@
 import 'package:koala/product/features/transport/models/transport_plan.dart';
 import 'package:koala/product/models/canonical_address.dart';
 
-/// `PUT /jobs/{jobId}/transport-plan` gövdesi (`TransportPlanWriteDto`).
-///
-/// Plan **bütünüyle** yazılıyor: listede `id` taşıyan servis/durak yerinde
-/// güncelleniyor ve koltuklar korunuyor, `id`'siz olan yeni açılıyor, listede
-/// olmayan mevcut kayıt koltuklarıyla birlikte siliniyor.
+/// `PUT /jobs/{jobId}/transport-plan` gövdesi; plan **bütünüyle** yazılıyor:
+/// `id`'li kayıt güncellenir, `id`'siz yeni açılır, listede olmayan
+/// koltuklarıyla silinir.
 class TransportPlanWrite {
   const TransportPlanWrite({
     required this.outboundMethod,
@@ -19,8 +17,7 @@ class TransportPlanWrite {
   final TransportMethod outboundMethod;
   final TransportMethod returnMethod;
 
-  /// Yalnız bir yön `CASH_ALLOWANCE` iken gönderiliyor; sunucu aksini `400`
-  /// ile çeviriyor.
+  /// Yalnız bir yön `CASH_ALLOWANCE` iken; aksi `400`.
   final double? allowanceAmount;
   final String? allowanceNote;
   final String? notes;
@@ -36,7 +33,6 @@ class TransportPlanWrite {
   };
 }
 
-/// `ShuttleWriteDto`.
 class ShuttleWrite {
   const ShuttleWrite({
     required this.direction,
@@ -49,7 +45,7 @@ class ShuttleWrite {
     this.driverPhone,
   });
 
-  /// Var olan servisin kimliği; verilirse yerinde güncelleme.
+  /// Verilirse yerinde güncelleme.
   final String? id;
   final ShuttleDirection direction;
   final String name;
@@ -71,7 +67,6 @@ class ShuttleWrite {
   };
 }
 
-/// `ShuttleStopWriteDto`.
 class ShuttleStopWrite {
   const ShuttleStopWrite({
     required this.scheduledAt,
@@ -83,10 +78,10 @@ class ShuttleStopWrite {
   final String? id;
   final String? label;
 
-  /// Kalkış anı; gövdeye UTC yazılıyor.
+  /// Gövdeye UTC yazılıyor.
   final DateTime scheduledAt;
 
-  /// Yeni durakta zorunlu; var olan durakta verilmezse mevcut adres kalıyor.
+  /// Yeni durakta zorunlu; mevcut durakta verilmezse adres kalır.
   final AddressWrite? address;
 
   Map<String, dynamic> toJson() => {

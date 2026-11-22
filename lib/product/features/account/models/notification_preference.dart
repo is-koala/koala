@@ -1,9 +1,5 @@
-/// Bildirim kategorileri. Backend `NotificationCategory` enum'ının karşılığı.
-///
-/// Sunucu ileride yeni bir kategori eklerse uygulama patlamasın diye
-/// tanınmayan kod [NotificationPreference.category]'de ham hâliyle taşınıyor
-/// ve [NotificationCategoryLabels.of] ona genel bir Türkçe etiket veriyor —
-/// İngilizce enum adını kullanıcıya göstermek yerine.
+/// Bildirim kategorilerinin Türkçe adları; tanınmayan kod ham taşınıyor ve
+/// genel etiket alıyor, İngilizce enum adı gösterilmiyor.
 class NotificationCategoryLabels {
   const NotificationCategoryLabels._();
 
@@ -18,14 +14,11 @@ class NotificationCategoryLabels {
     'NEWSLETTER': 'Bülten',
   };
 
-  /// Tanınmayan kategori ve kanal için genel etiket.
   static const String fallback = 'Diğer';
 
-  /// Kategorinin Türkçe adı; bilinmeyen kod [fallback].
   static String of(String category) => _labels[category] ?? fallback;
 }
 
-/// Bildirim kanalları. Backend `NotificationChannel` enum'ının karşılığı.
 class NotificationChannelLabels {
   const NotificationChannelLabels._();
 
@@ -36,25 +29,22 @@ class NotificationChannelLabels {
     'IN_APP': 'Uygulama içi',
   };
 
-  /// Kanalların ekrandaki sırası; sunucu sırasız gönderebiliyor.
+  /// Sunucu sırasız gönderebiliyor.
   static const List<String> order = ['PUSH', 'IN_APP', 'EMAIL', 'SMS'];
 
   static String of(String channel) =>
       _labels[channel] ?? NotificationCategoryLabels.fallback;
 
-  /// [order]'daki yeri; listede olmayan kanal sona düşüyor.
+  /// Listede olmayan kanal sona düşer.
   static int rank(String channel) {
     final index = order.indexOf(channel);
     return index == -1 ? order.length : index;
   }
 }
 
-/// Tek bir kategori-kanal kararı: `GET /users/me/notification-preferences`
-/// satırı.
-///
-/// [editable] `false` ise satır işlemsel (`TRANSACTIONAL`) bir bildirim:
-/// hesap güvenliği, başvuru sonucu gibi. Sunucu bunları kapatmaya çalışan
-/// `PUT`'u `400` ile reddediyor; ekran anahtarı en baştan kilitli çiziyor.
+/// Tek kategori-kanal kararı. [editable] `false` ise işlemsel bildirim (hesap
+/// güvenliği, başvuru sonucu); sunucu kapatmayı `400` ile reddettiği için
+/// anahtar kilitli çiziliyor.
 class NotificationPreference {
   const NotificationPreference({
     required this.category,
@@ -64,20 +54,17 @@ class NotificationPreference {
     required this.editable,
   });
 
-  /// `ACCOUNT_SECURITY`, `JOB_ALERTS` gibi kategori kodu.
   final String category;
 
-  /// `TRANSACTIONAL`, `ALERT` ya da `COMMERCIAL`.
   final String kind;
 
-  /// `EMAIL`, `SMS`, `PUSH` ya da `IN_APP`.
   final String channel;
 
   final bool enabled;
 
   final bool editable;
 
-  /// Ticari ileti kategorisi: her karar sunucuda rıza kaydına yazılıyor.
+  /// Ticari ileti: her karar sunucuda rıza kaydına yazılıyor.
   bool get isCommercial => kind == 'COMMERCIAL';
 
   factory NotificationPreference.fromJson(Map<String, dynamic> json) {
@@ -90,7 +77,6 @@ class NotificationPreference {
     );
   }
 
-  /// Aynı kategori-kanal, farklı karar.
   NotificationPreference copyWith({required bool enabled}) {
     return NotificationPreference(
       category: category,
@@ -102,7 +88,6 @@ class NotificationPreference {
   }
 }
 
-/// `PUT /users/me/notification-preferences` gövdesindeki tek satır.
 class NotificationPreferenceWrite {
   const NotificationPreferenceWrite({
     required this.category,
@@ -121,8 +106,8 @@ class NotificationPreferenceWrite {
   };
 }
 
-/// Aynı kategorinin kanalları bir arada: ekran bir kategori kartı çiziyor,
-/// sunucu düz liste gönderiyor.
+/// Aynı kategorinin kanalları; ekran kategori kartı çiziyor, sunucu düz liste
+/// gönderiyor.
 class NotificationPreferenceGroup {
   const NotificationPreferenceGroup({
     required this.category,
@@ -133,13 +118,11 @@ class NotificationPreferenceGroup {
   final String category;
   final String kind;
 
-  /// Kanal satırları, [NotificationChannelLabels.order] sırasında.
   final List<NotificationPreference> channels;
 
   String get title => NotificationCategoryLabels.of(category);
 
-  /// Kartın altındaki açıklama: kullanıcı neyi kapatamadığını ve ticari
-  /// iletide ne kabul ettiğini görsün.
+  /// Kullanıcı neyi kapatamadığını ve ticari iletide ne kabul ettiğini görsün.
   String? get hint {
     if (channels.every((row) => !row.editable)) {
       return 'İşlemsel bildirim: hesabınızla ilgili bu iletiler kapatılamaz.';
@@ -151,7 +134,6 @@ class NotificationPreferenceGroup {
     return null;
   }
 
-  /// Düz listeyi kategori sırasını koruyarak gruplar.
   static List<NotificationPreferenceGroup> groupAll(
     List<NotificationPreference> rows,
   ) {
@@ -168,9 +150,9 @@ class NotificationPreferenceGroup {
           kind: kinds[entry.key] ?? '',
           channels: [...entry.value]
             ..sort(
-              (a, b) => NotificationChannelLabels.rank(
-                a.channel,
-              ).compareTo(NotificationChannelLabels.rank(b.channel)),
+              (a, b) =>
+                  NotificationChannelLabels.rank(a.channel)
+                      .compareTo(NotificationChannelLabels.rank(b.channel)),
             ),
         ),
     ];

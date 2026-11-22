@@ -11,12 +11,7 @@ import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/network/api_paths.dart';
 
-/// İşveren ilan ve atama akışlarının uçları.
-///
-/// Çalışan tarafındaki `JobService` ilan **arıyor**; burası ilan **açıyor,
-/// kapatıyor ve başvuruları yanıtlıyor**. Ödeme sonucu gibi işveren
-/// ekranlarının ihtiyaç duyduğu katılımcıya açık atama okumaları da burada
-/// tutuluyor; her uç kendi sahiplik veya katılımcı yetkisini doğruluyor.
+/// İşveren ilan ve atama uçları: ilan açar, kapatır, başvuruları yanıtlar.
 class EmployerJobService {
   EmployerJobService._(this._apiClient);
 
@@ -31,7 +26,7 @@ class EmployerJobService {
 
   final ApiClient _apiClient;
 
-  /// CONFIRMED atama için Iyzico Checkout Form oturumu başlatır.
+  /// CONFIRMED atama için Iyzico ödeme oturumu başlatır.
   Future<BPaymentSession> createPaymentSession(String assignmentId) {
     return _apiClient.post<BPaymentSession>(
       ApiPaths.assignmentPaymentSession(assignmentId),
@@ -39,14 +34,9 @@ class EmployerJobService {
     );
   }
 
-  /// Varsayılan sayfa boyutu; bir işverenin ilan sayısı azdır, tek sayfa
-  /// çoğu durumda yetiyor.
   static const int defaultPageSize = 50;
 
-  /// İşverenin açtığı ilanlar, yeniden eskiye.
-  ///
-  /// Bireysel ve kurumsal ilanların ikisi de burada: backend `creatorId`'ye
-  /// bakıyor, dolayısıyla şirket kimliği geçmeye gerek yok.
+  /// Bireysel ve şirket ilanları birlikte; backend `creatorId`'ye bakıyor.
   Future<JobPage> fetchMyJobs({int page = 0, int size = defaultPageSize}) {
     return _apiClient.get<JobPage>(
       ApiPaths.myJobs,
@@ -55,11 +45,7 @@ class EmployerJobService {
     );
   }
 
-  /// Yeni ilan açar.
-  ///
-  /// [companyId] doluysa ilan şirket adına açılıyor, boşsa bireysel. Kullanıcı
-  /// onaylı bir şirkete bağlıysa kurumsal uç kullanılmalı; ilan o zaman şirket
-  /// adıyla listeleniyor.
+  /// [companyId] doluysa şirket adına, boşsa bireysel ilan.
   Future<JobDetail> createJob(CreateJobRequest request, {String? companyId}) {
     final forCompany = companyId != null;
 
@@ -72,31 +58,19 @@ class EmployerJobService {
     );
   }
 
-  /// İlanı başvuruya kapatır.
-  ///
-  /// İlan geçerliliğini koruyor, yalnızca yeni başvuru alması duruyor.
+  /// İlan geçerli kalır, yeni başvuru durur.
   Future<void> closeJob(String jobId) {
     return _apiClient.postWithoutData(ApiPaths.closeJob(jobId));
   }
 
-  /// İlanı iptal eder.
-  ///
-  /// Kapatmadan farkı ilanı geçersiz kılması ve başvuranlara bildirim
-  /// göndermesi. Kayıt silinmiyor, başvuru geçmişi duruyor — backend'de ilan
-  /// silen bir uç yok, olması da istenmedi.
-  ///
-  /// Devam eden bir iş ataması varsa (`PENDING_CONFIRMATION`, `CONFIRMED`,
-  /// `IN_PROGRESS`) uç `409` döndürüyor: iptal, emanetteki parayı ve iptal
-  /// politikasını arkadan dolanan ikinci bir yol olurdu. O durumda atamanın
-  /// kendi iptal akışı kullanılmalı.
+  /// İptal: ilan geçersiz olur ve başvuranlara bildirim gider; kayıt silinmez.
+  /// Devam eden atama varsa `409`: iptal emanetteki parayı dolanan ikinci yol
+  /// olurdu, atamanın kendi iptal akışı kullanılmalı.
   Future<void> cancelJob(String jobId) {
     return _apiClient.postWithoutData(ApiPaths.cancelJob(jobId));
   }
 
-  /// Bir ilana gelen başvurular.
-  ///
-  /// Yalnızca ilan sahibi çağırabiliyor; sayfalama yok, uç düz liste
-  /// döndürüyor.
+  /// Yalnız ilan sahibi; sayfasız.
   Future<List<JobApplicant>> fetchApplicants(String jobId) {
     return _apiClient.get<List<JobApplicant>>(
       ApiPaths.jobApplications(jobId),
@@ -109,14 +83,8 @@ class EmployerJobService {
     );
   }
 
-  /// İşverenin atamaları, yeniden eskiye.
-  ///
-  /// Aynı uç `asEmployer` bayrağıyla iki tarafa da hizmet ediyor: çalışan
-  /// tarafı `AssignmentService` üzerinden bayraksız çağırıyor, burası
-  /// `true` geçiyor ve sunucu `creatorId`'ye bakıyor.
-  ///
-  /// Tek ilanın ataması için asıl yol [fetchJobAssignments]; burası o ucu
-  /// tanımayan eski sunucuda [fetchAssignmentsForJob]'un düştüğü tarama.
+  /// İşverenin atamaları (`asEmployer`). Tek ilan için asıl yol
+  /// [fetchJobAssignments]; bu, o ucu tanımayan eski sunucudaki tarama.
   Future<AssignmentPage> fetchMyAssignments({
     int page = 0,
     int size = defaultPageSize,
@@ -128,11 +96,7 @@ class EmployerJobService {
     );
   }
 
-  /// Bir ilanın atamaları, `GET /jobs/{jobId}/assignments` (koala-
-  /// backend#282). Varsayılan sıralama `assignmentDateTime` azalan.
-  ///
-  /// Yalnızca ilan sahibi ya da şirket ilanının güncel yetkilisi okuyabiliyor;
-  /// başkası ve olmayan ilan aynı `404 JOB_NOT_FOUND` yanıtını alıyor.
+  /// İlanın atamaları; yalnız sahibi ya da yetkilisi, başkası `404`.
   Future<AssignmentPage> fetchJobAssignments(
     String jobId, {
     int page = 0,
@@ -145,21 +109,12 @@ class EmployerJobService {
     );
   }
 
-  /// Bu ucu tanımayan sunucunun yanıtı. `ErrorResult` kodu boşken kategori
-  /// adına düşüyor, `endpoint.not.found` anahtarı da aynı koda türüyor; iki
-  /// yoldan da aynı dize geliyor.
   static const String _endpointNotFoundCode = 'ENDPOINT_NOT_FOUND';
 
-  /// [jobId] için tüm atamaları sayfa sınırından bağımsız döndürür.
-  ///
-  /// Bir ilanda birden fazla çalışan olabilir; ödeme gibi atama-kimliğine
-  /// bağlı işlemlerde ilk sayfadaki rastgele bir kaydı seçmek güvenli değildir.
-  ///
-  /// Önce ilan başına uç deneniyor. Sunucu o ucu tanımıyorsa
-  /// (`404 ENDPOINT_NOT_FOUND`) işverenin bütün atamaları taranıp ilana göre
-  /// süzülüyor — bu ucun gelmesinden önceki yol. `JOB_NOT_FOUND` dâhil diğer
-  /// hatalar olduğu gibi yükseliyor: ilan gerçekten yoksa ya da yetki yoksa
-  /// tarama da bir şey bulmaz, hatayı gizlemenin anlamı yok.
+  /// İlanın bütün atamaları, sayfa sınırından bağımsız: ödeme gibi işlemlerde
+  /// ilk sayfadan rastgele kayıt seçmek güvenli değil. Uç tanınmıyorsa
+  /// (`ENDPOINT_NOT_FOUND`) işverenin atamaları taranır; diğer hatalar
+  /// yükselir.
   Future<List<Assignment>> fetchAssignmentsForJob(String jobId) async {
     try {
       return await _collectPages(
@@ -191,15 +146,9 @@ class EmployerJobService {
     }
   }
 
-  /// İşi tamamlanmış işaretler.
-  ///
-  /// Yalnızca işveren çağırabiliyor. Tamamlanınca emanetteki para çıkışa
-  /// hazır hâle geliyor ve çalışanın rozetleri yeniden değerlendiriliyor;
-  /// yani geri alınabilir bir işlem değil. `CONFIRMED` ve `IN_PROGRESS`
-  /// dışından çağrılırsa `409`.
-  ///
-  /// İşveren hiç tamamlamazsa sunucu iş bitiminden belirli gün sonra
-  /// kendiliğinden tamamlıyor; bu buton o beklemeyi kısaltıyor.
+  /// İşi tamamlar; emanetteki para çıkışa hazırlanır, geri alınamaz.
+  /// `CONFIRMED`/`IN_PROGRESS` dışında `409`. İşveren yapmazsa sunucu belirli
+  /// gün sonra kendisi tamamlar.
   Future<Assignment> completeAssignment(String assignmentId) {
     return _apiClient.post<Assignment>(
       ApiPaths.completeAssignment(assignmentId),
@@ -207,18 +156,10 @@ class EmployerJobService {
     );
   }
 
-  /// İşe alınan çalışanın kimlik bilgilerini sigorta bildirimi için açar
-  /// (`GET /job-assignments/{id}/worker-identity`, koala-backend#312).
-  ///
-  /// Yalnızca işveren çağırabiliyor; işçi tarafında karşılığı yok. Sunucu
-  /// yalnız `CONFIRMED`, `IN_PROGRESS` ve `COMPLETED` atamada yanıt veriyor,
-  /// başka durumda ve yetkisiz çağrıda `404`. Çalışan kimliğini
-  /// doğrulamadıysa `409 WORKER_IDENTITY_NOT_VERIFIED`, saatlik bütçe
-  /// dolduysa `429`. Her başarılı okuma sunucuda kayda geçiyor ve çalışana
-  /// bildirim gidiyor — bu yüzden çağıran önce açık onay alıyor.
-  ///
-  /// Yanıt önbelleğe alınmıyor ve günlüğe yazılmıyor; çağıran bellekte
-  /// süreli tutup siliyor.
+  /// Sigorta bildirimi için çalışanın kimliğini açar. Yalnız işveren ve
+  /// `CONFIRMED|IN_PROGRESS|COMPLETED`; doğrulanmamışsa `409`, bütçe dolduysa
+  /// `429`. Her okuma kayda geçer ve çalışana bildirilir; çağıran önce onay
+  /// alır, yanıtı önbelleğe ya da günlüğe yazmaz.
   Future<WorkerIdentity> fetchWorkerIdentity(String assignmentId) {
     return _apiClient.get<WorkerIdentity>(
       ApiPaths.assignmentWorkerIdentity(assignmentId),
@@ -226,16 +167,13 @@ class EmployerJobService {
     );
   }
 
-  /// Başvuruyu kabul eder.
-  ///
-  /// Kabul edilen başvuru sunucuda bir **atamaya** dönüşüyor ve atama
-  /// `PENDING_CONFIRMATION` ile başlıyor: iş, çalışan onaylayana kadar
-  /// başlamış sayılmıyor.
+  /// Kabul, `PENDING_CONFIRMATION` bir atama açar; iş çalışan onaylayınca
+  /// başlar.
   Future<void> acceptApplication(String applicationId) {
     return _respond(applicationId, ApplicationStatus.accepted);
   }
 
-  /// Başvuruyu reddeder. [reason] çalışanın gördüğü gerekçe.
+  /// [reason] çalışanın gördüğü gerekçe.
   Future<void> rejectApplication(String applicationId, {String? reason}) {
     return _respond(
       applicationId,
@@ -244,8 +182,7 @@ class EmployerJobService {
     );
   }
 
-  /// Yanıtlanmış bir başvuru ikinci kez yanıtlanamıyor; uç 400 döndürüyor ve
-  /// mesajı doğrudan kullanıcıya gösterilebilir.
+  /// Yanıtlanmış başvuru ikinci kez yanıtlanamaz (`400`).
   Future<void> _respond(
     String applicationId,
     ApplicationStatus status, {

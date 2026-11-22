@@ -8,15 +8,10 @@ import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/network/api_paths.dart';
 
-/// Gönderim ilerlemesi: kaç bayt gitti, toplam kaç bayt.
 typedef IdentityUploadProgress = void Function(int sent, int total);
 
-/// `/users/me/identity-documents` uçlarının sarmalayıcısı.
-///
-/// Çip yolu [UserService]'te (`/users/me/identity-verification`); bu uç
-/// **ayrı** çünkü sonucu da ayrı: çip ucu başarıda kimliği hemen
-/// damgalıyor, burası yalnız bir inceleme kaydı açıyor ve kimlik personel
-/// onayına kadar doğrulanmamış kalıyor.
+/// Fotoğraflı inceleme uçları. Çip ucu kimliği hemen damgalıyor; bu yalnız
+/// inceleme açıyor, kimlik onaya kadar doğrulanmamış kalır.
 class IdentityDocumentService {
   IdentityDocumentService._(this._apiClient);
 
@@ -26,20 +21,15 @@ class IdentityDocumentService {
 
   factory IdentityDocumentService() => _instance;
 
-  /// Verilen istemciyle kurulu örnek; testler sahte sunucuya bağlıyor.
   factory IdentityDocumentService.withClient(ApiClient apiClient) {
     return IdentityDocumentService._(apiClient);
   }
 
   final ApiClient _apiClient;
 
-  /// Dört fotoğrafı ve beyanı tek istekte gönderir, açılan incelemeyi döner.
-  ///
-  /// [photos] dört karenin hepsini taşımalı; eksik kare sunucuda
-  /// `IDENTITY_DOCUMENTS_REQUIRED` ile düşer, o yüzden burada
-  /// [ArgumentError] — bir ekran hatası, ağ hatası kılığına girmesin.
-  /// Beyan `identity` adlı `application/json` parçasında gidiyor: Spring'in
-  /// `@RequestPart` çözümlemesi düz form alanı kabul etmiyor.
+  /// Dört fotoğrafı ve beyanı tek istekte gönderir. Eksik kare [ArgumentError]:
+  /// ekran hatası ağ hatası kılığına girmesin. Beyan `identity` adlı JSON
+  /// parçasında (`@RequestPart`).
   Future<IdentityReview> submit({
     required IdentityDeclaration identity,
     required Map<IdentityPhotoSlot, IdentityPhoto> photos,
@@ -65,8 +55,7 @@ class IdentityDocumentService {
         'tcIdentityNumber': identity.tcIdentityNumber,
         'tcDocumentNumber': identity.tcDocumentNumber,
       },
-      // Parça adı ve içerik tipi gerçek içerikten: Android seçicisi
-      // `.heic` adlı bir JPEG verebiliyor ve sunucu uzantıya bakıyor.
+      // Parça adı ve tip gerçek içerikten; sunucu uzantıya bakıyor.
       files: {
         for (final slot in IdentityPhotoSlot.values)
           slot.fieldName: UploadFile(
@@ -80,12 +69,8 @@ class IdentityDocumentService {
     );
   }
 
-  /// Oturum sahibinin son incelemesi; hiç yükleme yoksa `null`.
-  ///
-  /// `404` yalnız `IDENTITY_DOCUMENTS_NOT_FOUND` koduyla "yok" demek. Başka
-  /// bir `404` (ör. uç taşındı) ya da başka bir hata olduğu gibi fırlıyor:
-  /// ağ hatasını "hiç göndermemiş" diye yorumlamak kullanıcıya yeni bir
-  /// yükleme yaptırıp `ALREADY_PENDING` ile geri çevirtirdi.
+  /// Hiç yükleme yoksa `null`; yalnız `IDENTITY_DOCUMENTS_NOT_FOUND` "yok"
+  /// demek. Başka hatayı "göndermemiş" saymak `ALREADY_PENDING`'e çarptırırdı.
   Future<IdentityReview?> fetchCurrent() async {
     try {
       return await _apiClient.get<IdentityReview?>(

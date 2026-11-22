@@ -2,12 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
-/// `/verifications` uçlarının sarmalayıcısı.
-///
-/// `auth` altında duruyor çünkü doğrulama kaydını üreten uç de burada:
-/// e-posta ya da telefon `PATCH /users/me` ile değiştirildiğinde sunucu
-/// değeri yazmıyor, yeni adrese/numaraya 6 haneli bir kod gönderip bekleyen
-/// doğrulamayı döndürüyor.
+/// `/verifications` uçları; e-posta/telefon değişince sunucu 6 haneli kod
+/// gönderip bekliyor.
 class VerificationService {
   VerificationService._(this._apiClient);
 
@@ -24,16 +20,10 @@ class VerificationService {
 
   final ApiClient _apiClient;
 
-  /// Bekleyen doğrulamayı kullanıcının girdiği kodla onaylar.
-  ///
-  /// Başarılıysa yeni e-posta/telefon o anda uygulanıyor; çağıran taraf
-  /// kullanıcıyı tazelemeli.
-  ///
-  /// Sunucunun hata haritası:
-  /// - kod hatalı ya da süresi dolmuş → `400`, kullanıcı ekranda kalmalı
-  /// - kayıt başkasına ait → `403`, kayıt yok → `404`; ikisinde de kod
-  ///   girmenin anlamı kalmadığı için ekran kapanmalı
-  /// - kayıt zaten doğrulanmış → sessizce `200`
+  /// Kodla onaylar; başarıda değer uygulanır, kullanıcı tazelenmeli.
+  /// - hatalı ya da süresi dolmuş → `400`, ekranda kalınır
+  /// - başkasının (`403`) ya da olmayan (`404`) kayıt → ekran kapanır
+  /// - zaten doğrulanmış → sessizce `200`
   Future<void> confirm(String verificationId, String token) {
     return _apiClient.postWithoutData(
       ApiPaths.verificationConfirm(verificationId),

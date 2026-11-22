@@ -1,8 +1,6 @@
 import 'package:koala/business/features/home/models/company_contact.dart';
 
-/// `/users/me` yanıtındaki şirket üyeliği.
-///
-/// İş verenin hangi şirket adına ilan açabileceğini bu liste söylüyor.
+/// `/users/me`'deki şirket üyeliği; işveren hangi şirket adına ilan açabilir.
 class CompanyMembership {
   const CompanyMembership({
     required this.companyId,
@@ -15,12 +13,10 @@ class CompanyMembership {
 
   final String companyName;
 
-  /// Şirket onaylanmış mı. Onaysız şirket için ilan açılamıyor.
+  /// Onaysız şirket için ilan açılamaz.
   final bool approved;
 
-  /// Kullanıcının şirketteki rolü. Backend `CompanyContactRole`: `ADMIN`
-  /// veya `STAFF`. Düz metin tutuluyor çünkü `/users/me` bu alanı
-  /// serbest bırakıyor; görünen ad [CompanyContactRole] üzerinden.
+  /// `ADMIN` ya da `STAFF`; düz metin, `/users/me` alanı serbest bırakıyor.
   final String? role;
 
   bool get isAdmin => role == CompanyContactRole.admin.code;

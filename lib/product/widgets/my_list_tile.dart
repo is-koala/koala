@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -7,11 +7,8 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// İkon, başlık ve sağda ok taşıyan menü satırı.
-///
-/// Tek başına kendi kartını çiziyor. Bir [MyListGroup] içindeyse kart
-/// grubun oluyor: satır yalnız içeriğini çiziyor, aralarındaki çizgiyi grup
-/// koyuyor.
+/// İkon, başlık ve sağda ok taşıyan menü satırı. Tek başına kendi kartını
+/// çizer; [MyListGroup] içindeyse kartı ve çizgileri grup çizer.
 class MyListTile extends StatelessWidget {
   const MyListTile({
     super.key,
@@ -26,13 +23,11 @@ class MyListTile extends StatelessWidget {
   final AppIconData icon;
   final VoidCallback? onTap;
 
-  /// Satırın sağında, chevron'dan önce gösterilen mevcut değer. Ayarın o
-  /// anki durumunu satırı açmadan görebilmek için (örn. "Sistem").
+  /// Chevron'dan önce gösterilen mevcut değer (ör. "Sistem").
   final String? value;
 
-  /// Dokunma kullanıcıyı uygulama dışına (tarayıcı, arama, harita, posta)
-  /// götürüyorsa `true`: sağdaki ok, sayfa içi geçişin chevron'u yerine
-  /// sağ üste bakan oka döner.
+  /// Uygulama dışına (tarayıcı, arama, harita) götürüyorsa chevron yerine sağ
+  /// üste bakan ok.
   final bool opensExternally;
 
   @override
@@ -51,8 +46,6 @@ class MyListTile extends StatelessWidget {
         child: InkWell(
           borderRadius: AppRadius.innerCircular,
           onTap: onTap,
-          // Zemini ve yarıçapı [Material] çiziyor; satırı sayfadan ayıran
-          // şey zemin tonu, çerçeve değil.
           child: row,
         ),
       ),
@@ -99,21 +92,16 @@ class MyListTile extends StatelessWidget {
   }
 }
 
-/// [MyListTile]'ları tek kartta, aralarında ince çizgiyle toplayan grup.
-///
-/// Ayarlar menüsünü konularına ayırmak ve bir sayfadaki ilişkili satırları
-/// (şirketin iletişim bilgileri gibi) birlikte göstermek için. [title]
-/// verilirse kartın üstünde küçük, sönük bir başlık olarak duruyor.
+/// [MyListTile]'ları tek kartta, aralarında ince çizgiyle toplar. [title]
+/// kartın üstünde küçük, sönük bir başlık.
 class MyListGroup extends StatelessWidget {
   const MyListGroup({super.key, this.title, required this.children});
 
   final String? title;
 
-  /// Genelde [MyListTile]'lar; grubun içindeyken kendi kartlarını çizmiyorlar.
   final List<Widget> children;
 
-  /// Çizgi, ikonun değil başlığın hizasından başlıyor: satır boşluğu + ikon
-  /// + ikonla başlık arası.
+  /// Çizgi ikonun değil başlığın hizasından başlıyor.
   static const double _dividerIndent =
       AppSizes.spaceMedium + AppSizes.icon + AppSizes.spaceMedium;
 
@@ -165,7 +153,6 @@ class MyListGroup extends StatelessWidget {
   }
 }
 
-/// Altındaki [MyListTile]'lara bir grubun içinde olduklarını söylüyor.
 class _MyListGroupScope extends InheritedWidget {
   const _MyListGroupScope({required super.child});
 

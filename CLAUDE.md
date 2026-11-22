@@ -23,7 +23,7 @@ Both files are the single source of truth; do not duplicate their content here.
 
 ## Permissions
 
-`.claude/settings.json` is committed and shared by the team: it pre-approves routine development commands and permanently denies destructive `git reset` plus `pod install/update`.
+`.claude/settings.json` is committed and shared by the team: it pre-approves routine development commands and permanently denies destructive `git reset`. The project has no CocoaPods integration; the leftover `pod install/update` deny entries are harmless.
 
 ## Commands
 
@@ -35,7 +35,7 @@ flutter pub get
 
 # Native tarafa dokunduysan analyze yetmez — ilgili build'i de al.
 flutter build apk --debug
-flutter build ios --no-codesign   # pod çözümlemesini tetikler, önce kullanıcıya sor
+flutter build ios --no-codesign   # bağımlılık değiştiyse SPM paketlerini indirir (~1 GB), önce kullanıcıya sor
 ```
 
 ## Agent skills

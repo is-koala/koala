@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/chat/models/messaging_availability.dart';
@@ -25,56 +25,32 @@ import 'package:koala/product/widgets/reason_dialog.dart';
 import 'package:koala/product/widgets/report_sheet.dart';
 import 'package:provider/provider.dart';
 
-/// Bir iş satırı üzerinde yapılabilen eylemlerin ortak gövdesi.
-///
-/// Kabul/ret, mesai giriş-çıkışı, iptal, sorun bildirme, başvuruyu geri
-/// çekme ve işverenle sohbet — hepsi bir zamanlar yalnızca "İşlerim"
-/// sayfasının `Pagemodel`'indeydi. İş detayı sayfası aynı eylemleri aynı
-/// kurallarla sunuyor (is-koala/koala#177); akışları kopyalamak iki yerde
-/// ayrışan iki `409` davranışı demek olurdu. Bu yüzden iki sayfanın
-/// `Pagemodel`'i de bu tabandan türüyor: sayfa yalnızca servislerini ve
-/// eylem sonrası nasıl tazeleneceğini söylüyor.
-///
-/// Her eylem aynı iskeleti izliyor: ilgili kimliği kilitle, isteği at,
-/// sonucu `AppToast` ile söyle, [refreshWork] ile ekranı tazele; `409` gibi
-/// "sunucudaki durum değişmiş" hatalarında da tazele, çünkü elde tutulan
-/// kayıt bayat demektir.
+/// İş satırındaki eylemlerin ortak gövdesi; İşlerim ve iş detayı aynı
+/// kurallarla sunsun diye (#177). İskelet: kimliği kilitle, isteği at, sonucu
+/// toast'la söyle, [refreshWork] ile tazele; `409`'da da tazele, kayıt
+/// bayattır.
 abstract class WorkActionsPagemodel<T extends StatefulWidget> extends State<T> {
-  /// Uyarı metninin satır aralığı; çok satırlı gövde sıkışık duruyordu.
   static const double _dialogLineHeight = 1.4;
 
   AssignmentService get assignmentService;
   ChatService get chatService;
 
-  /// Bir eylem tamamlandıktan sonra ekranın kendi verisini yeniden çeker.
-  ///
-  /// "İşlerim" bütün listeyi, iş detayı tek atamayı tazeliyor; eylemler
-  /// hangisi olduğunu bilmiyor.
+  /// İşlerim bütün listeyi, iş detayı tek atamayı tazeliyor.
   Future<void> refreshWork();
 
-  /// Mesai isteği sunucuya gitmiş atamanın id'si; butonu kilitliyor.
   String? timesheetBusyAssignmentId;
 
-  /// İptal ya da uyuşmazlık isteği sunucuya gitmiş atamanın id'si.
   String? assignmentActionId;
 
-  /// Cevabı sunucuya gitmiş atamanın id'si; iki butonu da kilitliyor.
-  ///
-  /// Tek bir alan yetiyor çünkü kullanıcı aynı anda tek bir atamaya cevap
-  /// veriyor ve cevap dönene kadar liste tazelenmiyor.
+  /// Kullanıcı aynı anda tek atamaya cevap veriyor; tek alan yeter.
   String? respondingAssignmentId;
 
-  /// İlan sohbeti açılırken ikinci navigasyonu engeller.
   String? openingChatJobId;
 
   TimesheetQueueProvider? _timesheetQueue;
   int _timesheetDeliveryRevision = 0;
 
-  /// Çevrimdışı mesai kuyruğuna bağlanır ve oturum sahibi için başlatır.
-  ///
-  /// `initState` içinden, ilk kare çizildikten sonra çağrılır; provider'lar
-  /// o zaman okunabiliyor. Kuyruk bir kaydı teslim ettiğinde
-  /// [announceTimesheetDelivery] üzerinden haber veriyor.
+  /// Çevrimdışı mesai kuyruğuna bağlanır; ilk kareden sonra çağrılır.
   Future<void> initializeTimesheetQueue() async {
     try {
       final queue = context.read<TimesheetQueueProvider>();
@@ -99,7 +75,6 @@ abstract class WorkActionsPagemodel<T extends StatefulWidget> extends State<T> {
     }
   }
 
-  /// Kuyruk dinleyicisini bırakır; `dispose` içinden çağrılır.
   void disposeTimesheetQueue() {
     _timesheetQueue?.removeListener(_onTimesheetQueueChanged);
     _timesheetQueue = null;
@@ -111,7 +86,6 @@ abstract class WorkActionsPagemodel<T extends StatefulWidget> extends State<T> {
     announceTimesheetDelivery(queue);
   }
 
-  /// Kuyruk bir mesai kaydını teslim ettiyse bir kez söyler ve tazeler.
   void announceTimesheetDelivery(TimesheetQueueProvider queue) {
     if (!mounted) return;
     if (queue.deliveryRevision == _timesheetDeliveryRevision) return;
@@ -121,12 +95,8 @@ abstract class WorkActionsPagemodel<T extends StatefulWidget> extends State<T> {
     unawaited(refreshWork());
   }
 
-  /// Başvurunun veya atamanın bağlı olduğu ilan üzerinden işverenle konuşur.
-  ///
-  /// Sunucu kapıyı kapattıysa (`403 MESSAGING_PAYMENT_REQUIRED`,
-  /// `409 MESSAGING_WINDOW_CLOSED`) düğmenin yerine yazılan metnin aynısı
-  /// gösteriliyor ve liste yeniden çekiliyor: düğme görünüyorsa elimizdeki
-  /// atama bayat demek — ödeme iade edilmiş ya da iş iptal olmuş olabilir.
+  /// İlan üzerinden işverenle konuşur. Kapı kapalıysa aynı açıklama gösterilir
+  /// ve liste yeniden çekilir: düğme görünüyorsa atama bayattır.
   Future<void> openChat(MyJob job) async {
     final jobId = job.jobId;
     final currentUser = context.read<UserProvider>().user;
@@ -156,15 +126,8 @@ abstract class WorkActionsPagemodel<T extends StatefulWidget> extends State<T> {
     }
   }
 
-  /// Başvuruyu geri çeker.
-  ///
-  /// Gerekçe sorulmuyor — sunucu istemiyor ve kullanıcıdan kendi başvurusunu
-  /// geri çekmek için açıklama beklemek gereksiz — o yüzden [ReasonDialog]
-  /// değil [ConfirmDialog].
-  ///
-  /// İstek [ApplyProvider] üzerinden gidiyor: liste o provider'da duruyor ve
-  /// geri çekilen satır orada güncelleniyor, atamalar yeniden çekilmiyor.
-  /// Başarılıysa `true` döner.
+  /// Geri çeker; sunucu gerekçe istemiyor, o yüzden [ConfirmDialog]. Liste
+  /// [ApplyProvider]'da güncellenir.
   Future<bool> withdrawApplication(MyJob job) async {
     final provider = context.read<ApplyProvider>();
     if (provider.withdrawingId != null) return false;
@@ -189,21 +152,13 @@ abstract class WorkActionsPagemodel<T extends StatefulWidget> extends State<T> {
       return true;
     }
 
-    // `409` alındıysa provider listeyi zaten tazeledi; burada yalnızca
-    // sunucunun Türkçe mesajı gösteriliyor.
+    // `409`'da provider listeyi zaten tazeledi.
     AppToast.error(context, provider.errorMessage ?? 'Başvuru geri çekilemedi');
     return false;
   }
 
-  /// Atamayı iptal eder.
-  ///
-  /// Kutu açılmadan önce kesinti önizlemesi çekiliyor: çalışanın iptalinde
-  /// kesinti çıkmıyor ama bunu kullanıcıya **tahmin ettirmek** yerine
-  /// sunucuya sormak doğrusu — oranlar sunucu ayarından geliyor ve
-  /// değişebilir.
-  ///
-  /// Önizleme alınamazsa akış durmuyor: kutu kuralı kelimeyle anlatıyor.
-  /// Kesintiyi öğrenememek iptal hakkını kaldırmamalı.
+  /// İptal eder. Kesinti tahmin ettirilmiyor, sunucuya soruluyor; önizleme
+  /// alınamazsa kutu kuralı kelimeyle anlatır, iptal hakkı kalkmaz.
   Future<void> cancelAssignment(MyJob job) async {
     final assignmentId = job.assignmentId;
     if (assignmentId == null || assignmentActionId != null) return;
@@ -220,7 +175,6 @@ abstract class WorkActionsPagemodel<T extends StatefulWidget> extends State<T> {
 
     if (!mounted) return;
 
-    // Sunucu iptale kapalı atamada hata yerine bu bayrağı döndürüyor.
     if (preview != null && !preview.cancellableNow) {
       AppToast.error(context, 'Bu iş artık iptal edilemez');
       await refreshWork();
@@ -251,11 +205,8 @@ abstract class WorkActionsPagemodel<T extends StatefulWidget> extends State<T> {
     );
   }
 
-  /// İptal kutusunun gövdesi.
-  ///
-  /// Önizleme geldiyse tutar yazılıyor, gelmediyse kural. Her iki durumda da
-  /// tutarın bağlayıcı olmadığı söyleniyor: kesinti işin başlamasına kalan
-  /// süreye bağlı ve sunucu iptal anında yeniden hesaplıyor.
+  /// Önizleme geldiyse tutar, gelmediyse kural; her durumda tutarın bağlayıcı
+  /// olmadığı söylenir.
   String _cancellationDescription(MyJob job, CancellationPreview? preview) {
     final opening =
         '"${job.title}" işi iptal edilecek ve geri alınamayacak. '
@@ -275,11 +226,8 @@ abstract class WorkActionsPagemodel<T extends StatefulWidget> extends State<T> {
         'anında yeniden hesaplanır.';
   }
 
-  /// Uyuşmazlık açar.
-  ///
-  /// Yalnızca para emanetteyken açılabiliyor. Açık uyuşmazlık emanetteki
-  /// parayı donduruyor: ödeme durur, sunucunun kendiliğinden tamamlaması da
-  /// durur. Yani kullanıcıya "ödemen hızlanır" diye sunulacak bir şey değil.
+  /// Uyuşmazlık açar; yalnız para emanetteyken. Ödemeyi ve otomatik tamamlamayı
+  /// dondurur, "ödemen hızlanır" diye sunulmamalı.
   Future<void> openDispute(MyJob job) async {
     final reason = await ReasonDialog.show(
       context,
@@ -303,9 +251,7 @@ abstract class WorkActionsPagemodel<T extends StatefulWidget> extends State<T> {
       },
     );
 
-    // Açılır açılmaz kanıt ekleme ekranına (is-koala/koala#215): dosya çoğu
-    // zaman bildirimle aynı anda elde. Ekran kapanınca satır/kart yeniden
-    // okunuyor — karar bu arada verilmiş olabilir.
+    // Açılınca doğrudan kanıt ekleme (#215); kapanınca satır yeniden okunur.
     final assignmentId = job.assignmentId;
     if (opened && assignmentId != null && mounted) {
       await context.push(DisputeRoutes.location(assignmentId));
@@ -313,8 +259,7 @@ abstract class WorkActionsPagemodel<T extends StatefulWidget> extends State<T> {
     }
   }
 
-  /// İptal ve uyuşmazlığın ortak gövdesi: kilit, hata ve tazeleme. Eylem
-  /// sunucuda başarılı olduysa `true`.
+  /// İptal ve uyuşmazlığın ortak gövdesi; başarılıysa `true`.
   Future<bool> _runAssignmentAction(
     MyJob job, {
     required Future<String> Function(String assignmentId) action,
@@ -333,8 +278,7 @@ abstract class WorkActionsPagemodel<T extends StatefulWidget> extends State<T> {
     } on ApiException catch (error) {
       if (!mounted) return false;
       AppToast.error(context, error.message);
-      // 409: durum sunucuda değişmiş — iş zaten iptal edilmiş ya da emanette
-      // para kalmamış olabilir. Doğrusunu göstermek için tazeleniyor.
+      // Durum sunucuda değişmiş; doğrusu için tazelenir.
       if (error.type.serverStateMoved) await refreshWork();
       return false;
     } finally {
@@ -342,10 +286,7 @@ abstract class WorkActionsPagemodel<T extends StatefulWidget> extends State<T> {
     }
   }
 
-  /// Mesaiye başlar.
-  ///
-  /// Konum isteğe bağlı; alınamazsa giriş yine yapılıyor. Konumun yokluğu
-  /// yüzünden çalışanın mesaisi başlamamazlık edemez.
+  /// Konum alınamazsa giriş yine yapılır.
   Future<void> checkIn(MyJob job) => _runTimesheetAction(
     job,
     action: (queue, id, position) => queue.recordCheckIn(
@@ -355,7 +296,6 @@ abstract class WorkActionsPagemodel<T extends StatefulWidget> extends State<T> {
     ),
   );
 
-  /// Açık mesai oturumunu kapatır.
   Future<void> checkOut(MyJob job) => _runTimesheetAction(
     job,
     action: (queue, id, position) => queue.recordCheckOut(
@@ -399,8 +339,7 @@ abstract class WorkActionsPagemodel<T extends StatefulWidget> extends State<T> {
       if (!mounted) return;
       switch (result) {
         case TimesheetSubmission.sent:
-          // Listener normalde ACK sırasında bildirir; sayfa kuyruğa henüz
-          // bağlanmadıysa aynı tek-tüketim yolunu burada tamamla.
+          // Sayfa kuyruğa henüz bağlanmadıysa teslimat burada bildirilir.
           announceTimesheetDelivery(queue);
         case TimesheetSubmission.pending:
           AppToast.info(context, 'Kaydedildi, gönderilmeyi bekliyor.');
@@ -435,10 +374,7 @@ abstract class WorkActionsPagemodel<T extends StatefulWidget> extends State<T> {
     );
   }
 
-  /// Cihazın konumu; alınamazsa `null`.
-  ///
-  /// Sunucu konumsuz mesai kaydını kabul ediyor, o yüzden izin reddi ya da
-  /// GPS hatası burada yutuluyor — akışı durduracak bir şey değil.
+  /// Alınamazsa `null`; sunucu konumsuz kaydı kabul ediyor.
   Future<Position?> _currentPosition() async {
     try {
       return await Geolocator.getCurrentPosition();
@@ -466,9 +402,8 @@ abstract class WorkActionsPagemodel<T extends StatefulWidget> extends State<T> {
       await refreshWork();
     } on ApiException catch (error) {
       if (!mounted) return;
-      // 409: atama bu durumdan çıkmış — başka bir cihazdan cevaplanmış ya da
-      // işveren iptal etmiş olabilir. Mesaj sunucudan Türkçe geliyor, ama
-      // liste eskimiş demektir; yenilemek doğru olanı gösteriyor.
+      // Atama başka cihazdan cevaplanmış ya da iptal edilmiş olabilir; liste
+      // eskimiş, yenilenir.
       AppToast.error(context, error.message);
       if (error.type.serverStateMoved) await refreshWork();
     } finally {
@@ -476,7 +411,7 @@ abstract class WorkActionsPagemodel<T extends StatefulWidget> extends State<T> {
     }
   }
 
-  /// Reddetme geri alınamıyor: atama kapanıyor ve iş başkasına gidiyor.
+  /// Geri alınamaz: atama kapanır, iş başkasına gider.
   Future<void> confirmReject(MyJob job) async {
     final confirmed = await showDialog<bool>(
       context: context,

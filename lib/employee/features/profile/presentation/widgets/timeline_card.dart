@@ -1,28 +1,23 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 
-/// Profildeki zaman çizelgesi satırı: solda nokta, sağda kart.
-///
-/// Hem deneyim hem eğitim bunu kullanıyor. Alan adları bu yüzden nötr:
-/// deneyimde [subtitle] şirket, eğitimde üniversite oluyor.
+/// Zaman çizelgesi satırı; deneyim ve eğitim ortak, alan adları nötr.
 class TimelineCard extends StatelessWidget {
   final String title;
 
-  /// Başlığın altındaki vurgulu satır — deneyimde şirket, eğitimde okul.
+  /// Deneyimde şirket, eğitimde okul.
   final String subtitle;
 
-  /// [subtitle]'ın yanındaki ikon; çağıran alana göre veriyor.
   final IconData subtitleIcon;
 
   final String duration;
   final String description;
   final bool isLast;
 
-  /// Düzenleme ve silme. `null` ise satırda menü çıkmıyor — başkasının
-  /// profilinde kayıt yalnızca okunuyor.
+  /// `null` ise menü yok: başkasının profilinde salt okunur.
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
@@ -38,13 +33,10 @@ class TimelineCard extends StatelessWidget {
     this.onDelete,
   });
 
-  /// Zaman çizelgesi sütununun genişliği; nokta ortalanacak kadar.
   static const double _timelineWidth = 24;
   static const double _dotSize = 14;
   static const double _lineWidth = 2;
 
-  /// Noktaları birbirine bağlayan çizginin opaklığı; nokta öne çıksın diye
-  /// çizgi soluk.
   static const double _lineAlpha = 0.3;
 
   @override
@@ -61,7 +53,6 @@ class TimelineCard extends StatelessWidget {
     );
   }
 
-  /// Düzenle / sil menüsü. İki eylem de verilmemişse kart salt okunur.
   Widget? _menu(BuildContext context) {
     if (onEdit == null && onDelete == null) return null;
 
@@ -144,8 +135,7 @@ class TimelineCard extends StatelessWidget {
             text: duration,
             style: context.textTheme.labelMedium,
           ),
-          // Eğitim kaydında açıklama yok; boş satır kart yüksekliğini
-          // gereksiz büyütmesin.
+          // Eğitimde açıklama yok; boş satır kartı büyütmesin.
           if (description.isNotEmpty) ...[
             const SizedBox(height: AppSizes.spaceSmall),
             Text(description, style: context.textTheme.bodySmall),

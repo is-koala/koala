@@ -1,18 +1,11 @@
-/// Üniversite / fakülte / bölüm kayıtlarının ortak modeli.
-///
-/// Backend üçü için ayrı DTO döndürüyor (`UniversityDto`, `FacultyDto`,
-/// `DepartmentDto`) ama üçü de yalnızca `id` ve `name` taşıyor. Tek model
-/// tutuluyor çünkü seçiciler de aynı listeyi çiziyor.
-///
-/// [ReferenceLocation] ile alanları aynı ama ayrı duruyor: o ülke/il/ilçe
-/// için ve ülkede bir ISO kodu taşıyor. Tek bir "referans kaydı" modeline
-/// katlamak isimleri yanlış yerlere taşırdı.
+/// Üniversite / fakülte / bölüm kaydı; üç DTO da yalnız `id` ve `name` taşıyor.
+/// [ReferenceLocation]'dan ayrı, çünkü ülkede ISO kodu var ve isimler
+/// karışırdı.
 class AcademicReference {
   const AcademicReference({required this.id, required this.name});
 
   final String id;
 
-  /// Görünen ad: `Boğaziçi Üniversitesi`, `Mühendislik Fakültesi`.
   final String name;
 
   factory AcademicReference.fromJson(Map<String, dynamic> json) {
@@ -22,8 +15,7 @@ class AcademicReference {
     );
   }
 
-  /// Eşitlik [id] üzerinden: açılır listedeki seçili değer farklı bir
-  /// istekten gelmiş olsa da karşılaştırma tutmalı.
+  /// Eşitlik [id] üzerinden: seçili değer başka bir istekten gelse de tutsun.
   @override
   bool operator ==(Object other) =>
       other is AcademicReference && other.id == id;

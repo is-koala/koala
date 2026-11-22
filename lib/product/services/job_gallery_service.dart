@@ -3,10 +3,7 @@ import 'package:koala/product/models/gallery_image.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
-/// İş ilanı galerisinin ortak API sınırı.
-///
-/// Çalışan tarafı yalnız [fetchGallery] çağırır; işveren aynı kaynağı
-/// yönetir. Bütün yazmalar galerinin sunucudaki son hâlini döndürür.
+/// İlan galerisi; yazmaların hepsi galerinin son hâlini döndürür.
 class JobGalleryService {
   JobGalleryService._(this._apiClient);
 
@@ -37,7 +34,7 @@ class JobGalleryService {
     );
   }
 
-  /// [images] galerinin tamamıdır; sıra listedeki konumdan yazılır.
+  /// [images] galerinin tamamı; sıra listedeki konumdan.
   Future<List<GalleryImage>> replaceGallery(
     String jobId,
     List<GalleryImage> images,

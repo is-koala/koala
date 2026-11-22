@@ -1,21 +1,16 @@
 import 'package:koala/employee/features/chat/models/chat_participant.dart';
 
-/// Sohbetin türü. Backend `ConversationKind` karşılığı.
 enum ConversationKind {
-  /// İşveren ile tek bir çalışan arasında.
   direct('DIRECT'),
 
-  /// İlanın ekip sohbeti: ödemesi emanete alınan çalışanlar, ilan sahibi ve
-  /// şirket yetkilileri. Ödemeyle kuruluyor, iş bitiminden 7 gün sonra
-  /// kapanıyor.
+  /// İlanın ekip sohbeti; ödemeyle kurulur, iş bitiminden 7 gün sonra kapanır.
   group('GROUP');
 
   const ConversationKind(this.code);
 
   final String code;
 
-  /// Tanınmayan ya da eksik değer [direct] sayılıyor: eski sunucu bu alanı
-  /// göndermiyor ve onun bütün sohbetleri ikili.
+  /// Eksik değer [direct]: eski sunucunun bütün sohbetleri ikili.
   static ConversationKind fromCode(Object? value) {
     for (final kind in values) {
       if (kind.code == value) return kind;
@@ -24,13 +19,7 @@ enum ConversationKind {
   }
 }
 
-/// Bir ilan üzerinden yürüyen sohbet.
-///
-/// Backend'deki `ConversationDto`'nun karşılığı. Sohbet **ilana bağlı**:
-/// `POST /jobs/{jobId}/conversation` ile açılıyor. İkili sohbetin tarafları
-/// işveren ile çalışan; ilan grubunun katılımcıları ödeme yapılan çalışanlar
-/// ve işveren tarafı. Şirket üzerinden, ilandan bağımsız bir sohbet kavramı
-/// sunucuda yok.
+/// İlana bağlı sohbet. Şirket üzerinden, ilandan bağımsız sohbet sunucuda yok.
 class Conversation {
   const Conversation({
     required this.id,
@@ -51,65 +40,45 @@ class Conversation {
 
   final String id;
 
-  /// Sohbetin açıldığı ilan.
   final String jobId;
 
   final String jobTitle;
 
-  /// Karşı tarafın kullanıcı kimliği. Sohbette iki taraf var; oturumu açan
-  /// kullanıcı hangisiyse diğeri karşı taraf oluyor.
   final String counterpartId;
 
-  /// Karşı tarafın görünen adı.
   final String name;
 
-  /// Görsel yoksa gösterilen baş harfler.
   final String avatar;
 
   final String? avatarUrl;
 
   final DateTime? lastMessageAt;
 
-  /// Son mesajın metni. Sunucu bunu `ConversationDto` üzerinde denormalize
-  /// tutuyor, yani liste satır başına ekstra istek atmıyor.
+  /// Sunucu denormalize tutuyor; satır başına istek yok.
   final String? lastMessage;
 
-  /// Okunmamış mesaj sayısı; sunucudan hazır geliyor.
   final int unreadCount;
 
-  /// Karşı taraf çevrimiçi mi.
-  ///
-  /// `ConversationDto` bunu taşımıyor: presence ayrı bir uçtan
-  /// (`POST /presence/lookup`) toplu olarak çekilip [copyWith] ile
-  /// birleştiriliyor.
+  /// Presence ayrı uçtan toplu çekilip [copyWith] ile birleşiyor.
   final bool isOnline;
 
   final ConversationKind kind;
 
-  /// Katılımcılar, sunucudan geldiği sırayla; ayrılanlar da `left=true` ile
-  /// içinde. Grup balonundaki gönderen adı, katılımcılar sayfası ve "kimler
-  /// gördü" buradan besleniyor. Eski sunucu yalnız `id/firstName/lastName`
-  /// veriyor; rol, tarihler ve ayrılma bilgisi o zaman boş.
+  /// Katılımcılar, ayrılanlar dâhil; gönderen adı ve "kimler gördü" buradan.
   final List<ChatParticipant> participants;
 
-  /// Sohbette hâlâ bulunan katılımcı sayısı: [participants] eksi ayrılanlar.
-  /// Listeden türetiliyor ki `copyWith(participants:)` sayıyı bayat
-  /// bırakamasın. İkili sohbette ve sohbeti açan `POST` yanıtında (liste boş
-  /// geliyor) `0`; eski sunucu `left` göndermediği için orada herkes sayılır.
+  /// Ayrılanlar hariç; listeden türetiliyor ki `copyWith` bayat bırakmasın.
+  /// İkilide `0`.
   int get participantCount =>
       participants.where((participant) => !participant.left).length;
 
-  /// Sohbet salt okunur mu: atama iptal/ret/iade edildi ya da iş bitiminden
-  /// 7 gün geçti. Sunucu okuma anında hesaplıyor; mesaj göndermek
-  /// `409 MESSAGING_WINDOW_CLOSED` ile reddediliyor.
+  /// Salt okunur mu (iptal/ret/iade ya da 7 gün geçti); gönderim `409`.
   final bool closed;
 
   bool get isGroup => kind == ConversationKind.group;
 
-  /// Grup satırının başlığın yanındaki etiketi: "3 katılımcı".
   String get participantLabel => '$participantCount katılımcı';
 
-  /// Sohbet listesinde sağda görünen zaman etiketi.
   String get timeString {
     final lastMessageAt = this.lastMessageAt;
     if (lastMessageAt == null) return '';
@@ -127,14 +96,9 @@ class Conversation {
     return '${lastMessageAt.day}/${lastMessageAt.month}/${lastMessageAt.year}';
   }
 
-  /// `ConversationDto`'yu modele çevirir.
-  ///
-  /// Karşı taraf sunucudan hazır gelmiyor: iki katılımcıdan hangisi
-  /// [currentUserId] değilse o alınıyor. **Grupta karşı taraf yok**: satır
-  /// ilan başlığıyla çiziliyor, `worker` boş geliyor ve `employer` yalnızca
-  /// ilan sahibini söylüyor — onu karşı taraf saymak işverene kendi adını,
-  /// çalışana ise ekibin tek bir üyesini gösterirdi. Presence ve engelleme
-  /// de kişiye bağlı; grup için ikisi de yok.
+  /// `ConversationDto`'yu çevirir. Karşı taraf [currentUserId] olmayan taraf.
+  /// **Grupta karşı taraf yok**: satır ilan başlığıyla çizilir; presence ve
+  /// engel de kişiye bağlı, grupta yok.
   factory Conversation.fromJson(
     Map<String, dynamic> json, {
     required String currentUserId,
@@ -182,7 +146,6 @@ class Conversation {
     );
   }
 
-  /// Görsel yokken gösterilecek baş harf(ler).
   static String initialsOf(String name) {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return '?';

@@ -1,9 +1,5 @@
-/// İlan keşfinin başlangıç günü süzgeci.
-///
-/// Çipler İstanbul takvimine bağlı: bugün/yarın o anın Türkiye günü, bu hafta
-/// Pazartesi–Pazar, hafta sonu o haftanın Cumartesi–Pazar'ı, takvimden seçilen
-/// gün tek bir gündür. Backend `startFrom`/`startTo` Instant bekliyor; dilim
-/// `Europe/Istanbul` ve Türkiye DST kullanmıyor (UTC+3).
+/// Başlangıç günü süzgeci, İstanbul takvimine bağlı (UTC+3, DST yok). Backend
+/// `startFrom`/`startTo` Instant bekliyor.
 class JobStartOn {
   const JobStartOn._({this.preset, this.day})
     : assert(
@@ -13,7 +9,6 @@ class JobStartOn {
 
   const JobStartOn.preset(JobStartOnPreset preset) : this._(preset: preset);
 
-  /// [day] yalnızca yıl-ay-gün olarak okunur; saat yok sayılır.
   JobStartOn.calendarDay(DateTime day)
     : this._(day: DateTime.utc(day.year, day.month, day.day));
 
@@ -25,16 +20,13 @@ class JobStartOn {
   final JobStartOnPreset? preset;
   final DateTime? day;
 
-  /// Çipin üzerinde yazan ad.
   String get label {
     final selected = preset;
     if (selected != null) return selected.label;
     return _calendarLabel(day!);
   }
 
-  /// `GET /jobs` Instant penceresi.
-  ///
-  /// [now] testte dondurulabilsin diye dışarıdan alınır; üretim `DateTime.now()`.
+  /// [now] testte dondurulabilsin diye dışarıdan.
   JobStartWindow toWindow({DateTime? now}) {
     final clock = now ?? DateTime.now();
     final today = IstanbulCalendar.dateOf(clock);
@@ -69,7 +61,6 @@ class JobStartOn {
   int get hashCode => Object.hash(preset, day);
 }
 
-/// Kullanıcının seçtiği hazır başlangıç günü.
 enum JobStartOnPreset {
   today('Bugün'),
   tomorrow('Yarın'),
@@ -78,11 +69,9 @@ enum JobStartOnPreset {
 
   const JobStartOnPreset(this.label);
 
-  /// Çipin üzerinde yazan ad.
   final String label;
 }
 
-/// `startFrom`/`startTo` Instant çifti.
 class JobStartWindow {
   const JobStartWindow({required this.startFrom, required this.startTo});
 
@@ -90,11 +79,9 @@ class JobStartWindow {
   final DateTime startTo;
 }
 
-/// Türkiye takvimi: UTC+3, DST yok.
 abstract final class IstanbulCalendar {
   static const Duration offset = Duration(hours: 3);
 
-  /// UTC Instant'ın İstanbul duvar saati (DST yok).
   static DateTime wallClockOf(DateTime instant) {
     final shifted = instant.toUtc().add(offset);
     return DateTime(

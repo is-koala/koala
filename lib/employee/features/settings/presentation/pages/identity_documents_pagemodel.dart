@@ -1,34 +1,24 @@
 part of 'identity_documents_page.dart';
 
-/// Ekranın hangi adımda olduğu.
 enum IdentityDocumentsStage {
-  /// Son inceleme sunucudan okunuyor.
   loading,
 
-  /// Okunamadı; ne form ne durum çizilebiliyor, kullanıcı tekrar deniyor.
   loadFailed,
 
-  /// Beyan ve dört kare; inceleme yoksa ya da reddedildiyse.
   form,
 
-  /// Tek istek gönderiliyor; ilerleme çiziliyor, düğmeler kapalı.
   uploading,
 
-  /// Personel kuyruğunda bekleyen inceleme.
   pending,
 
-  /// Personel onayladı.
   approved,
 }
 
-/// Gönderimin neden reddedildiği; formun üstünde duran kutunun içeriği.
 class IdentityDocumentsFailure {
   const IdentityDocumentsFailure(this.message, {this.showSupport = false});
 
   final String message;
 
-  /// Kullanıcının tek başına çözemeyeceği durumlarda destek adresi de
-  /// yazılıyor.
   final bool showSupport;
 }
 
@@ -43,26 +33,19 @@ abstract class IdentityDocumentsPagemodel extends State<IdentityDocumentsPage> {
 
   DateTime? birthDate;
 
-  /// Seçilmiş kareler; anahtar kare, dördü de dolunca gönderilebiliyor.
   final Map<IdentityPhotoSlot, IdentityPhoto> photos = {};
 
   IdentityDocumentsStage stage = IdentityDocumentsStage.loading;
 
-  /// Sunucudaki son inceleme; formun üstündeki red gerekçesi ve bekleme
-  /// görünümü buradan.
   IdentityReview? review;
 
-  /// Okuma hatası; yalnız [IdentityDocumentsStage.loadFailed]'da.
   String? loadError;
 
-  /// Son gönderimin hatası; yeni denemede temizleniyor.
   IdentityDocumentsFailure? failure;
 
-  /// Gönderilen payın oranı (0–1); toplam bilinmiyorsa `null` ve çubuk
-  /// belirsiz döner.
+  /// Toplam bilinmiyorsa `null`, çubuk belirsiz.
   double? progress;
 
-  /// Bekleme görünümünde "Durumu Yenile" sürüyor mu.
   bool isRefreshing = false;
 
   @override
@@ -70,15 +53,13 @@ abstract class IdentityDocumentsPagemodel extends State<IdentityDocumentsPage> {
     super.initState();
     _service = widget.service ?? IdentityDocumentService();
     _picker = widget.picker ?? const IdentityPhotoPicker();
-    // Kayıttaki ad, soyad ve doğum tarihi çoğu kullanıcıda kimliktekiyle
-    // aynı; boş açmak yeniden yazdırmak olurdu.
+    // Kayıttaki değerler çoğu kullanıcıda kimliktekiyle aynı; yeniden yazdırma.
     firstName = TextEditingController(text: widget.user.firstName);
     lastName = TextEditingController(text: widget.user.lastName);
     tcIdentity = TextEditingController();
     tcDocument = TextEditingController();
     birthDate = widget.user.birthDate;
-    // İlk kare çizildikten sonra: provider'ın bildirimi kuruluş sırasında
-    // gelirse ağaç "build içinde setState" ile düşüyor.
+    // Kuruluşta gelen bildirim "build içinde setState" ile düşürürdü.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) load();
     });
@@ -93,7 +74,7 @@ abstract class IdentityDocumentsPagemodel extends State<IdentityDocumentsPage> {
     super.dispose();
   }
 
-  /// Ekranın gönderdiği beyan; alanlardan **tek kaynak**.
+  /// Alanlardan **tek kaynak**.
   IdentityDeclaration get declaration => ManualDeclaration(
     firstName: firstName.text.trim(),
     lastName: lastName.text.trim(),
@@ -107,11 +88,8 @@ abstract class IdentityDocumentsPagemodel extends State<IdentityDocumentsPage> {
       declaration.isComplete &&
       photos.length == IdentityPhotoSlot.values.length;
 
-  /// Son incelemeyi okuyup ekranı ona göre kurar.
-  ///
-  /// Provider üzerinden: açılışta başlatılan okuma sürüyorsa aynı yanıt
-  /// bekleniyor, bitmişse yeniden soruluyor — kullanıcı bu ekranı açtığında
-  /// durum dakikalar önceki değil şimdiki olmalı.
+  /// Açılışta başlayan okuma sürüyorsa beklenir, bitmişse yeniden sorulur;
+  /// durum şimdiki olmalı.
   Future<void> load() async {
     setState(() {
       stage = IdentityDocumentsStage.loading;
@@ -133,8 +111,7 @@ abstract class IdentityDocumentsPagemodel extends State<IdentityDocumentsPage> {
     _applyReview(provider.review);
   }
 
-  /// İncelemeye göre aşamayı seçer. Kullanıcı zaten doğrulanmışsa inceleme
-  /// ne derse desin onay görünümü: bayrak son söz.
+  /// Kullanıcı zaten doğrulanmışsa onay görünümü: bayrak son söz.
   void _applyReview(IdentityReview? current) {
     setState(() {
       review = current;
@@ -150,7 +127,6 @@ abstract class IdentityDocumentsPagemodel extends State<IdentityDocumentsPage> {
 
   // ---------------------------------------------------------------- Kareler
 
-  /// Kaynağı sorup kareyi alır, sınırlardan geçirir, yerine koyar.
   Future<void> pick(IdentityPhotoSlot slot) async {
     final source = await IdentityPhotoSourceSheet.show(context, slot: slot);
     if (source == null || !mounted) return;
@@ -213,17 +189,13 @@ abstract class IdentityDocumentsPagemodel extends State<IdentityDocumentsPage> {
     }
   }
 
-  /// Sunucunun reddini ekranın yapacağı şeye çevirir.
-  ///
-  /// Tanınan kodlarda bizim metnimiz ve [IdentityDocumentAction]; tanınmayan
-  /// kodda sunucunun kendi metni ve form olduğu gibi kalıyor.
+  /// Tanınan kodda bizim metin ve eylem; tanınmayanda sunucunun metni.
   Future<void> _handleSubmitFailure(ApiException error) async {
     final known = IdentityDocumentError.of(error);
 
     switch (known?.action) {
       case IdentityDocumentAction.showStatus:
-        // Sunucu bizim bildiğimizden başka bir durumda: yeniden okuyup ona
-        // göre çiz. Okuma da başarısız olursa form ve mesaj kalıyor.
+        // Okuma da düşerse form ve mesaj kalır.
         final provider = context.read<IdentityReviewProvider>();
         await provider.load(silent: true);
         if (!mounted) return;
@@ -261,7 +233,6 @@ abstract class IdentityDocumentsPagemodel extends State<IdentityDocumentsPage> {
 
   // ------------------------------------------------------------------ Durum
 
-  /// Bekleme görünümünden durumu yeniden okur.
   Future<void> refreshStatus() async {
     setState(() => isRefreshing = true);
     final provider = context.read<IdentityReviewProvider>();
@@ -277,11 +248,10 @@ abstract class IdentityDocumentsPagemodel extends State<IdentityDocumentsPage> {
     _applyReview(provider.review);
   }
 
-  /// Bekleme görünümünden çıkış: doğrulama tamamlanmadı, `false`.
+  /// Doğrulama tamamlanmadı: `false`.
   void leave() => context.pop(false);
 
-  /// Onay görünümünden çıkış: `/users/me` tazelenip `true` ile kapanıyor,
-  /// çağıran kapı taze bayrağa bakıyor.
+  /// `/users/me` tazelenip `true`; çağıran taze bayrağa bakar.
   Future<void> leaveVerified() async {
     await context.read<UserProvider>().load(silent: true);
     if (!mounted) return;

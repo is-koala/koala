@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/employee/core/widgets/job_detail_bottom_sheet.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/saved_jobs_provider.dart';
@@ -23,14 +23,12 @@ class SavedJobsPage extends StatefulWidget {
 }
 
 class _SavedJobsPageState extends State<SavedJobsPage> {
-  /// Kaydırıp silme sırasında açılan kırmızı zeminin sağ boşluğu.
   static const double _dismissPadding = 24;
 
   @override
   void initState() {
     super.initState();
-    // Sayfa `ShellPage`'in `PageView`'ında canlı kaldığı için yükleme tek
-    // sefer burada tetikleniyor; provider ikinci kez ağa çıkmıyor.
+    // Sayfa `PageView`'da canlı; yükleme tek sefer.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) context.read<SavedJobsProvider>().load();
     });
@@ -48,7 +46,6 @@ class _SavedJobsPageState extends State<SavedJobsPage> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          // Elde kayıt yokken hata varsa "hiç kaydın yok" demek yanıltıcı.
           final error = provider.errorMessage;
           if (error != null && savedJobs.isEmpty) {
             return _errorState(context, error, provider);
@@ -75,7 +72,6 @@ class _SavedJobsPageState extends State<SavedJobsPage> {
     );
   }
 
-  /// Kayıtlar çekilemediğinde.
   Widget _errorState(
     BuildContext context,
     String message,
@@ -135,7 +131,6 @@ class _SavedJobsPageState extends State<SavedJobsPage> {
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: _dismissPadding),
-        // Silme zemini ve üstündeki ikon temadan bağımsız.
         color: AppColors.danger,
         child: const Icon(
           Icons.delete_outline,

@@ -4,18 +4,12 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
     with AutomaticKeepAliveClientMixin<MapExplorePage> {
   GoogleMapController? _mapController;
 
-  /// Harita bu derlemede çizilebilir mi (is-koala/koala#172). Kapalıysa
-  /// sayfa haritayı hiç kurmaz, konum iznini de sormaz: sorulacak bir
-  /// haritanın üstü yok.
+  /// Kapalıysa (#172) harita kurulmaz, konum izni de sorulmaz.
   late final bool mapsAvailable = MapsAvailability.of(context).isAvailable;
 
-  /// Konum akışı; harita kapalıyken hiç kurulmaz.
   LocationService? _locationService;
 
-  /// İlan durumu. Sayfa kendi kontrolcüsünü kuruyor; test onu
-  /// [MapExplorePage.controller] ile dışarıdan veriyor, çünkü pinlerin
-  /// kesinliğe göre yenilenmesi ancak gerçek ilan akışı üzerinden sınanabilir.
-  /// Kim kurarsa kursun sahibi sayfa: [dispose] onu kapatıyor.
+  /// Testler [MapExplorePage.controller] ile verir; sahibi her durumda sayfa.
   late final MapExploreController _jobs =
       widget.controller ?? MapExploreController();
 
@@ -26,52 +20,36 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
 
   Set<Marker> _markers = {};
 
-  /// Yaklaşık konumlu ilanların belirsizlik daireleri.
-  ///
-  /// Marker'lardan ayrı tutuluyor: daire ilanın kendi verisinden hesaplanıyor,
-  /// üretimi asenkron değil, o yüzden önbelleğe de girmiyor.
+  /// Daire ilanın verisinden eşzamanlı hesaplandığı için önbelleğe girmiyor.
   Set<Circle> _areas = {};
 
-  /// Üretilmiş marker'lar.
-  ///
-  /// Her `onCameraIdle` sonrası bütün pinleri yeniden üretmek gereksiz; neyin
-  /// saklanabileceğine [JobMarkerCache] karar veriyor. Sayfa burada bir map
-  /// tutmuyor — tuttuğu gün onu ilan kimliğiyle indeksleyebilirdi, ki
-  /// is-koala/koala#10'un düşen maddesi tam olarak buydu.
+  /// Neyin saklanacağına [JobMarkerCache] karar veriyor; sayfa ilan kimliğiyle
+  /// indekslenen bir map tutmamalı (#10).
   final JobMarkerCache _markerCache = JobMarkerCache();
 
-  /// Marker üretimi de asenkron; iki güncelleme üst üste gelirse eskisi
-  /// yenisinin üzerine yazmasın diye jetonla korunuyor.
+  /// Eski asenkron üretim yenisinin üzerine yazmasın.
   int _markerToken = 0;
 
-  /// Kameranın son yakınlaştırması. Gruplama ekran pikseliyle ölçüyor, yani
-  /// yakınlaştırma değişince ilanlar değişmese de gruplar yeniden kuruluyor.
-  /// Kamera hareket ederken her karede güncelleniyor ama yeniden çizim
-  /// yalnız kamera durunca yapılıyor.
+  /// Gruplama ekran pikseliyle ölçüyor; yakınlaştırma değişince gruplar yeniden
+  /// kurulur (yalnız kamera durunca).
   double _zoom = AppMap.initialZoom;
 
-  /// Pinlerin en son hangi yakınlaştırmaya göre gruplandığı.
   double? _clusteredZoom;
 
-  /// Pinlerin en son hangi temaya göre çizildiği; pin kenarı temaya bağlı.
+  /// Pin kenarı temaya bağlı.
   Brightness? _markerBrightness;
 
-  /// Bu yakınlaştırmadan sonra gruba dokunmak kamerayı yaklaştırmıyor, listeyi
-  /// açıyor: sokak ölçeğinin de ötesinde hâlâ ayrılmayan ilanlar pratikte
-  /// aynı binada.
+  /// Bu düzeyden sonra ayrılmayan ilanlar pratikte aynı binada; gruba dokunmak
+  /// listeyi açar.
   static const double _clusterListZoom = 19;
 
-  /// Gruba yaklaşırken ilanların ekran kenarına bırakılan payı (piksel).
   static const double _clusterFitPadding = 80;
 
-  // Arama
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
 
-  /// Süzgeç sheet'inin uygulanmış hâli.
-  ///
-  /// Harita kameranın kutusunu koruduğu için sheet'ten yalnız başlangıç günü
-  /// penceresi sunucuya gider; mesafe yarıçapı kutuyu ezerdi.
+  /// Harita kamera kutusunu koruduğu için yalnız başlangıç günü gider; yarıçap
+  /// kutuyu ezerdi.
   JobFilterSelection _selection = const JobFilterSelection();
 
   @override
@@ -90,7 +68,6 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
         });
         _jobs.setOrigin(latitude: pos.latitude, longitude: pos.longitude);
 
-        // Haritayı konuma taşı
         if (_mapController != null) {
           _mapController!.animateCamera(
             CameraUpdate.newLatLngZoom(_currentLatLng!, 16),
@@ -105,7 +82,6 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Tema değişti: pin kenarları yeni zemine göre yeniden çizilmeli.
     if (_markerBrightness != null &&
         _markerBrightness != Theme.of(context).brightness) {
       unawaited(_rebuildMarkers());
@@ -129,12 +105,7 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
     unawaited(_rebuildMarkers());
   }
 
-  /// Kamera durduğunda görünen alanı sunucuya bildirir.
-  ///
-  /// Eskiden harita `GET /jobs`'u argümansız çağırıyordu: haritada en fazla 20
-  /// pin oluyordu ve o 20 ilan sunucunun `createdAt,desc` sırasından geliyordu,
-  /// yani kullanıcının baktığı bölgeyle ilgisi yoktu. Kaydırmak da hiçbir şey
-  /// getirmiyordu.
+  /// Kutusuz `GET /jobs` bölgeyle ilgisiz ilk 20 ilanı döndürür.
   Future<void> _onCameraIdle() async {
     final controller = _mapController;
     if (controller == null) return;
@@ -156,16 +127,11 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
       ),
     );
 
-    // İlanlar değişmese de yakınlaştırma değiştiyse gruplar değişti.
     if (_clusteredZoom != _zoom) unawaited(_rebuildMarkers());
   }
 
-  /// Pinleri gruplayıp yeniden üretir.
-  ///
-  /// Tek kalan ilan sıradan pinini (ve yaklaşık konumdaysa çemberini) alıyor;
-  /// birden fazla ilanlı grup tek bir sayı rozetli pin oluyor. Gruptaki
-  /// ilanların çemberleri çizilmiyor: üst üste binen çemberler, pinlerin
-  /// birleşmesinden kazanılan sadeliği geri götürürdü.
+  /// Tek ilan sıradan pin (ve dairesi); grup sayı rozetli tek pin. Grupta
+  /// daireler çizilmez, sadelik kaybolurdu.
   Future<void> _rebuildMarkers() async {
     final zoom = _zoom;
     final brightness = Theme.of(context).brightness;
@@ -201,7 +167,6 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
     });
   }
 
-  /// Gruba dokunuldu: ilanları ayıracak kadar yaklaş, ayrılmıyorsa listele.
   void _onClusterTap(JobCluster cluster) {
     HapticFeedback.lightImpact();
 
@@ -242,15 +207,11 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
     );
   }
 
-  /// Haritada arama yap.
-  ///
-  /// Metin **sunucuya** gidiyor ve mevcut sınırlayıcı kutuyla birlikte
-  /// süzülüyor; eskiden eldeki en fazla 20 satır bellekte eleniyordu.
+  /// Metin sunucuya gider ve mevcut kutuyla süzülür.
   void _onMapSearch(String query) {
     _jobs.setSearchText(query.trim());
   }
 
-  /// Arama sonucuna tıklanınca haritada o işe odaklan
   void _focusOnJob(Job job) {
     _searchFocusNode.unfocus();
 
@@ -259,8 +220,7 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
     _searchController.clear();
     _jobs.setSearchText('');
 
-    // Haritayı o konuma taşı. Koordinatı olmayan ilan haritada zaten
-    // görünmüyor, kamerayı da oynatmıyoruz.
+    // Koordinatsız ilanda kamera oynamaz.
     if (_mapController != null && job.hasLocation) {
       _mapController!.animateCamera(
         CameraUpdate.newCameraPosition(
@@ -272,7 +232,6 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
       );
     }
 
-    // Kısa bir gecikme ile bottom sheet aç
     Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted) {
         JobDetailBottomSheet.show(context, job);
@@ -280,7 +239,6 @@ abstract class MapExplorePageModel extends State<MapExplorePage>
     });
   }
 
-  /// Marker'a tıklandığında bottom sheet göster
   void _onJobMarkerTap(Job job) {
     HapticFeedback.lightImpact();
     JobDetailBottomSheet.show(context, job);

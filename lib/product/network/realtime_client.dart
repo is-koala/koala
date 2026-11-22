@@ -11,69 +11,44 @@ import 'package:koala/product/network/session_manager.dart';
 import 'package:koala/product/network/token_storage.dart';
 import 'package:stomp_dart_client/stomp_dart_client.dart';
 
-/// Bağlantının durum değişimleri. Tüketiciler bunlara bakarak kopukken
-/// kaçırdıklarını REST'ten tamamlıyor.
+/// Bağlantının durum değişimleri; tüketiciler kopukken kaçırdıklarını REST'ten
+/// tamamlıyor.
 enum RealtimeConnectionEvent {
-  /// CONNECT tamamlandı ve bekleyen abonelikler yeniden kuruldu.
-  ///
-  /// İlk bağlantıda da, her yeniden bağlanmada da gelir. Aradaki fark
-  /// tüketicinin bilgisi: daha önce [disconnected] gördüyse ya da aboneliğini
-  /// bağlantı yokken açtıysa aradaki boşluğu tamamlaması gerekiyor.
+  /// CONNECT tamamlandı ve abonelikler yeniden kuruldu; her bağlanmada gelir.
   connected,
 
-  /// Kurulu bağlantı koptu; abonelikler onunla birlikte düştü.
   disconnected,
 
-  /// Uygulama ön plana döndü ve bağlantı görünüşte ayakta.
-  ///
-  /// Askıdaki bir soket ölmüş olsa bile kalp atışı bekçisi bunu ancak
-  /// birkaç on saniye sonra anlıyor; tüketici bu sinyalde bir kez REST'ten
-  /// tamamlarsa o pencerede gelenler kaçmıyor.
+  /// Uygulama ön plana döndü ve bağlantı görünüşte ayakta. Ölü bir soketi kalp
+  /// atışı ancak on saniyeler sonra fark ediyor; bu sinyalde REST'ten
+  /// tamamlamak o pencereyi kapatıyor.
   resumed,
 }
 
-/// STOMP istemcisini kuran fabrika; testler sahte bir istemci veriyor.
 typedef StompClientFactory = StompClient Function(StompConfig config);
 
-/// Sunucuyla canlı bağlantı (STOMP over WebSocket).
+/// Sunucuyla canlı bağlantı (STOMP over WebSocket, SockJS yok).
 ///
-/// Backend `/ws` üzerinde STOMP konuşuyor, SockJS yok. Kimlik doğrulama
-/// CONNECT karesindeki `Authorization` başlığıyla yapılıyor — soket el
-/// sıkışmasındaki başlıkla değil; `StompAuthChannelInterceptor` bu başlığı
-/// okuyor.
+/// Kimlik CONNECT karesindeki `Authorization` başlığıyla doğrulanıyor, el
+/// sıkışmasındakiyle değil. Kanallar:
+/// - `/topic/conversations/{id}`: yeni mesaj, "yazıyor", okundu
+/// - `/user/queue/messages`: bütün sohbetlerin yeni mesajları tek akışta
+/// - `/topic/presence/{userId}`: tek kullanıcının çevrimiçi durumu
 ///
-/// Üç kanal var:
-/// - `/topic/conversations/{id}` — yeni mesaj, "yazıyor", okundu
-/// - `/user/queue/messages` — kullanıcıya özel tek akış; bütün sohbetlerinin
-///   yeni mesajları buradan geliyor, liste 20 topic'e abone olmak zorunda
-///   kalmıyor
-/// - `/topic/presence/{userId}` — tek bir kullanıcının çevrimiçi değişimleri
+/// ⚠️ Abonelikler sunucuda yetkilendiriliyor ve STOMP'ta hata karesi
+/// **bağlantıyı düşürüyor**: yalnız hakkın olan kanallara abone ol.
 ///
-/// ⚠️ Abonelikler sunucuda yetkilendiriliyor: katılımcısı olmadığın bir
-/// konuşmaya ya da konuşmadığın birinin presence'ına abone olmak `403`
-/// döndürüyor. STOMP'ta hata karesi **bağlantıyı düşürdüğü** için yalnızca
-/// gerçekten hakkın olan kanallara abone ol.
-///
-/// Bağlantı **isteğe bağlı**: kurulamazsa uygulama REST üzerinden çalışmaya
-/// devam ediyor, yalnızca güncellemeler anlık gelmiyor.
-///
-/// **Yeniden bağlanma üç şeyi birlikte yapıyor**, üçü de bir zamanlar eksikti:
-/// token CONNECT anında okunuyor (`beforeConnect`), böylece `AuthInterceptor`
-/// erişim token'ını yenilemişse yeni bağlantı yenisiyle açılıyor; kopan
-/// bağlantının abonelik kayıtları siliniyor, böylece [_onConnect] gerçekten
-/// yeniden `SUBSCRIBE` gönderiyor (eski hâlinde kayıt silinmediği için
-/// yeniden bağlanan soket hiçbir kanala abone olmuyordu); ve her geçiş
-/// [connectionEvents] üzerinden duyuruluyor, böylece sohbet ekranları
-/// kopukken gelenleri REST'ten tamamlıyor.
+/// Bağlantı isteğe bağlı; kurulamazsa uygulama REST ile çalışır. Yeniden
+/// bağlanırken token CONNECT anında okunur, eski abonelik kayıtları silinir ve
+/// geçiş [connectionEvents]'ten duyurulur.
 class RealtimeClient {
   RealtimeClient._({
     TokenStorage? tokenStorage,
-    SessionManager? sessionManager,
+    this._sessionManager,
     StompClientFactory? stompClientFactory,
     Future<void> Function()? sessionProbe,
     DateTime Function()? now,
   }) : _tokenStorage = tokenStorage ?? TokenStorage(),
-       _sessionManager = sessionManager,
        _stompClientFactory = stompClientFactory ?? _defaultStompClientFactory,
        _sessionProbe = sessionProbe ?? _defaultSessionProbe,
        _now = now ?? DateTime.now {
@@ -86,13 +61,8 @@ class RealtimeClient {
 
   factory RealtimeClient() => _instance;
 
-  /// Testler için: gerçek Keychain'e, oturum yöneticisine ve sokete gitmeyen
-  /// bir örnek.
-  ///
-  /// [stompClientFactory] verilmezse `connect()` gerçek bir soket açmaya
-  /// çalışır; birim testleri sahte bir `StompClient` geçiriyor ve
-  /// `StompConfig` geri çağrılarını kendisi tetikliyor. [now] yoklama
-  /// aralığının saati; testler ilerletiyor.
+  /// Testler için: Keychain'e, oturuma ve sokete gitmeyen örnek. [now] yoklama
+  /// aralığının saati.
   @visibleForTesting
   factory RealtimeClient.forTesting({
     TokenStorage? tokenStorage,
@@ -110,16 +80,11 @@ class RealtimeClient {
     );
   }
 
-  /// CONNECT reddedildikten sonra oturumu yoklamalar arasındaki en kısa süre.
-  ///
-  /// Ret genelde süresi dolmuş erişim token'ı demek; yoklama
-  /// `AuthInterceptor`'ın yenileme yolunu tetikliyor ve bir sonraki deneme
-  /// yeni token'la açılıyor. Ret başka bir sebeptense (sunucu canlı katmanı
-  /// kapattı) her 5 saniyelik denemede `/users/me` çekmemek için aralık var.
+  /// CONNECT reddinden sonra oturum yoklamaları arasındaki en kısa süre. Ret
+  /// genelde dolmuş token demek ve yoklama yenilemeyi tetikliyor; ret başka
+  /// sebeptense her denemede `/users/me` çekilmesin.
   static const Duration _sessionProbeInterval = Duration(seconds: 30);
 
-  /// Kopan bağlantının yeniden denenme aralığı; mobilde şebeke sık
-  /// değişiyor, aralık kısa.
   static const Duration _reconnectDelay = Duration(seconds: 5);
 
   final TokenStorage _tokenStorage;
@@ -133,45 +98,37 @@ class RealtimeClient {
   bool _connected = false;
   DateTime? _lastSessionProbeAt;
 
-  /// CONNECT karesine giden başlıklar. `StompConfig` haritayı referansla
-  /// tutuyor ve kareyi gönderirken okuyor; [_refreshConnectHeaders] her
-  /// bağlantı denemesinden önce güncel token'ı buraya yazıyor.
+  /// CONNECT başlıkları. `StompConfig` haritayı referansla tutuyor;
+  /// [_refreshConnectHeaders] her denemeden önce güncel token'ı yazıyor.
   final Map<String, String> _connectHeaders = {};
 
-  /// Bağlantı kurulmadan yapılan abonelikler burada bekliyor; CONNECT
-  /// tamamlanınca hepsi sırayla kuruluyor.
+  /// Bağlantıdan önce açılan abonelikler; CONNECT gelince kuruluyor.
   final Map<String, StreamController<RealtimeEvent>> _controllers = {};
   final Map<String, StompUnsubscribe> _subscriptions = {};
 
   final StreamController<RealtimeConnectionEvent> _connectionEvents =
       StreamController<RealtimeConnectionEvent>.broadcast();
 
-  /// Sunucuyla bağlantı kurulu mu.
   bool get isConnected => _connected;
 
-  /// Bağlantının durum geçişleri; bkz. [RealtimeConnectionEvent].
   Stream<RealtimeConnectionEvent> get connectionEvents =>
       _connectionEvents.stream;
 
   static StompClient _defaultStompClientFactory(StompConfig config) =>
       StompClient(config: config);
 
-  /// Oturumu REST üzerinden yoklar; amaç isteğin kendisi değil, `401`
-  /// alınca `AuthInterceptor`'ın token'ı yenilemesi. Yenileme de tutmazsa
-  /// interceptor oturumu kapatıyor ve [_onSessionChanged] bağlantıyı
-  /// bırakıyor.
+  /// Oturumu REST'ten yoklar; amaç `401` ile `AuthInterceptor`'ın token'ı
+  /// yenilemesi. Yenileme de tutmazsa oturum kapanır ve bağlantı bırakılır.
   static Future<void> _defaultSessionProbe() async {
     try {
       await ApiClient().get<void>(ApiPaths.currentUser, parse: (_) {});
     } on ApiException {
-      // Yut: yoklamanın sonucu değil yan etkisi (yenileme) önemli.
+      // Sonuç değil yan etki (yenileme) önemli.
     }
   }
 
-  /// Bağlantıyı açar. Zaten açıksa hiçbir şey yapmıyor.
-  ///
-  /// Oturum yoksa (token okunamıyorsa) sessizce vazgeçiyor: sohbet ekranı
-  /// REST ile zaten çalışıyor, kullanıcıya gösterilecek bir hata yok.
+  /// Bağlantıyı açar; zaten açıksa bir şey yapmaz. Oturum yoksa sessizce
+  /// vazgeçer, çünkü ekranlar REST ile zaten çalışıyor.
   Future<void> connect() {
     if (_client != null) return Future.value();
     return _connecting ??= _openClient().whenComplete(() => _connecting = null);
@@ -203,7 +160,6 @@ class RealtimeClient {
     client.activate();
   }
 
-  /// Güncel erişim token'ını CONNECT başlığına yazar; token yoksa `false`.
   Future<bool> _refreshConnectHeaders() async {
     final token = await _tokenStorage.readAccessToken();
     if (token == null || token.isEmpty) {
@@ -214,12 +170,9 @@ class RealtimeClient {
     return true;
   }
 
-  /// Her bağlantı denemesinden önce çalışıyor: ilkinde de, kütüphanenin
-  /// kendi yeniden denemelerinde de. Token'ı burada tazelemek yeniden
-  /// bağlanmanın yenilenmiş token'la açılmasını sağlıyor.
-  ///
-  /// Token kalmadıysa oturum kapanmış demektir; istemci durduruluyor ki
-  /// giriş ekranında beş saniyede bir reddedilen CONNECT denenmesin.
+  /// Her bağlantı denemesinden önce çalışır; token burada tazelendiği için
+  /// yeniden bağlanma yenilenmiş token'la açılıyor. Token yoksa istemci durur
+  /// ki giriş ekranında reddedilen CONNECT tekrar tekrar denenmesin.
   Future<void> _beforeConnect(StompClient client) async {
     if (!identical(client, _client)) return;
     if (await _refreshConnectHeaders()) return;
@@ -229,21 +182,15 @@ class RealtimeClient {
   void _onConnect(StompClient client) {
     if (!identical(client, _client)) return;
     _connected = true;
-    // Bekleyen abonelikler ve yeniden bağlanma sonrası eskiler yeniden
-    // kuruluyor: STOMP abonelikleri bağlantıyla birlikte düşüyor.
+    // STOMP abonelikleri bağlantıyla birlikte düştüğü için yeniden kuruluyor.
     for (final destination in _controllers.keys.toList()) {
       _subscribe(destination);
     }
     _connectionEvents.add(RealtimeConnectionEvent.connected);
   }
 
-  /// Soket kapandı ya da sunucu DISCONNECT'i onayladı.
-  ///
-  /// Abonelik kayıtları burada siliniyor: kütüphane her denemede yeni bir
-  /// bağlantı kurduğu için eski `unsubscribe` işlevleri ölü; kayıt kalırsa
-  /// [_subscribe] "zaten abone" sanıp yeniden `SUBSCRIBE` göndermiyor.
-  /// Hiç bağlanamamış bir deneme de buraya düşüyor; o zaman duyurulacak
-  /// bir kopuş yok.
+  /// Soket kapandı. Abonelik kayıtları burada siliniyor: kalırsa [_subscribe]
+  /// "zaten abone" sanıp yeniden `SUBSCRIBE` göndermez.
   void _onDisconnected(StompClient client) {
     if (!identical(client, _client)) return;
     _subscriptions.clear();
@@ -252,12 +199,8 @@ class RealtimeClient {
     _connectionEvents.add(RealtimeConnectionEvent.disconnected);
   }
 
-  /// Bağlantı kurulmadan gelen hata karesi CONNECT'in reddi demek; sunucu
-  /// ardından soketi kapatıyor ve kütüphane yeniden deniyor. Ret büyük
-  /// olasılıkla süresi dolmuş token; oturum yoklanınca token yenileniyor ve
-  /// bir sonraki deneme onu okuyor. Oturum bittiyse [disconnect] istemciyi
-  /// çoktan bırakmıştır; eski istemcinin geç karesi kimlik kontrolünden
-  /// geçemez, ayrıca oturum bakmaya gerek yok.
+  /// Bağlantıdan önce gelen hata karesi CONNECT reddi; büyük olasılıkla dolmuş
+  /// token, o yüzden oturum yoklanıyor.
   void _onStompError(StompClient client, StompFrame frame) {
     debugPrint('Realtime STOMP hatası: ${frame.body}');
     if (!identical(client, _client) || _connected) return;
@@ -274,14 +217,9 @@ class RealtimeClient {
     unawaited(disconnect());
   }
 
-  /// Uygulama ön plana döndü ya da ağ geri geldi.
-  ///
-  /// Dinleyen kimse yoksa hiçbir şey yapmıyor: bağlantıyı açan ekranlar,
-  /// boş yere soket tutulmuyor. Bağlantı yoksa ya da çağıran soketin ölmüş
-  /// olabileceğini söylüyorsa ([suspectStale]: uzun süre arka planda kalma,
-  /// ağ değişimi) kütüphanenin zamanlayıcısı beklenmeden hemen yeni bir
-  /// bağlantı kuruluyor. Bağlantı ayaktaysa yalnızca
-  /// [RealtimeConnectionEvent.resumed] duyuruluyor.
+  /// Uygulama ön plana döndü ya da ağ geri geldi. Dinleyen yoksa bir şey
+  /// yapmaz. Bağlantı yoksa ya da [suspectStale] ise hemen yeniden bağlanır;
+  /// ayaktaysa yalnız [RealtimeConnectionEvent.resumed] duyurulur.
   void resume({bool suspectStale = false}) {
     if (_controllers.isEmpty) return;
     if (_client == null || !_connected || suspectStale) {
@@ -291,9 +229,7 @@ class RealtimeClient {
     _connectionEvents.add(RealtimeConnectionEvent.resumed);
   }
 
-  /// Mevcut bağlantıyı bırakıp yenisini kurar; abonelikler yeni bağlantıda
-  /// yeniden açılıyor. Kopuş duyurulduğu için tüketiciler aradaki boşluğu
-  /// [RealtimeConnectionEvent.connected] gelince tamamlıyor.
+  /// Bağlantıyı bırakıp yenisini kurar; abonelikler yeniden açılır.
   Future<void> reconnect() {
     final wasConnected = _connected;
     _teardownClient();
@@ -303,8 +239,7 @@ class RealtimeClient {
     return connect();
   }
 
-  /// İstemciyi durdurur; abonelik akışları açık kalıyor, yeni bağlantıda
-  /// yeniden kurulacaklar.
+  /// İstemciyi durdurur; abonelik akışları açık kalır.
   void _teardownClient() {
     final client = _client;
     _client = null;
@@ -317,25 +252,17 @@ class RealtimeClient {
     }
   }
 
-  /// Bir sohbetin olay akışı: yeni mesaj, "yazıyor", okundu.
   Stream<RealtimeEvent> conversationEvents(String conversationId) {
     return _streamFor('/topic/conversations/$conversationId');
   }
 
-  /// Kullanıcıya özel mesaj akışı.
-  ///
-  /// Sohbet listesi bunu dinliyor: hangi konuşmaya gelirse gelsin yeni mesaj
-  /// buradan da düşüyor. Sohbet ekranı açıkken aynı mesaj hem konuşma
-  /// topic'inden hem buradan gelir — tüketen taraf `message.id` ile
-  /// tekilleştirmeli.
+  /// Kullanıcıya özel mesaj akışı. Sohbet açıkken aynı mesaj konuşma
+  /// topic'inden de gelir; tüketen `message.id` ile tekilleştirmeli.
   Stream<RealtimeEvent> userMessageEvents() =>
       _streamFor('/user/queue/messages');
 
-  /// Tek bir kullanıcının çevrimiçi durumu.
-  ///
-  /// Global presence kanalı kaldırıldı: yalnızca kendi durumunu ve paylaştığın
-  /// bir konuşması olan kişilerin durumunu izleyebiliyorsun. Yabancı bir
-  /// kimliğe abone olmak bağlantıyı düşürür.
+  /// Tek kullanıcının çevrimiçi durumu. Yalnız kendin ve konuşman olan kişiler
+  /// izlenebilir; yabancı bir kimliğe abone olmak bağlantıyı düşürür.
   Stream<RealtimeEvent> presenceEventsFor(String userId) =>
       _streamFor('/topic/presence/$userId');
 
@@ -376,8 +303,7 @@ class RealtimeClient {
     );
   }
 
-  /// Dinleyicisi kalmayan kanalın aboneliği bırakılıyor; sunucuya boşuna
-  /// olay yollatmamak için.
+  /// Dinleyicisi kalmayan kanal bırakılıyor ki sunucu boşuna olay yollamasın.
   void _releaseIfUnused(String destination) {
     final controller = _controllers[destination];
     if (controller == null || controller.hasListener) return;
@@ -387,9 +313,7 @@ class RealtimeClient {
     controller.close();
   }
 
-  /// Karşı tarafa "yazıyor" bilgisi gönderir.
-  ///
-  /// Bağlantı yoksa sessizce yok sayılıyor: yazma göstergesi kritik değil.
+  /// "Yazıyor" bilgisi gönderir; bağlantı yoksa sessizce geçer.
   void sendTyping(String conversationId) {
     final client = _client;
     if (client == null || !_connected) return;
@@ -397,16 +321,11 @@ class RealtimeClient {
     client.send(destination: '/app/conversations/$conversationId/typing');
   }
 
-  /// Bağlantıyı kapatır ve bütün abonelikleri bırakır. Çıkışta çağrılıyor;
-  /// oturum başka bir yoldan bittiğinde de [_onSessionChanged] çağırıyor.
+  /// Bağlantıyı kapatır ve abonelikleri bırakır.
   ///
-  /// ⚠️ **Önce kopya alınıp map'ler boşaltılıyor, sonra kapatılıyor.**
-  /// `controller.close()` dinleyicileri iptal ediyor, iptal [_streamFor]'daki
-  /// `onCancel`'ı tetikliyor, o da [_releaseIfUnused] üzerinden aynı map'ten
-  /// siliyor — map üzerinde gezinirken. Doğrudan `_controllers.values` üzerinde
-  /// dönmek bu yüzden `ConcurrentModificationError` fırlatıyordu ve çıkış
-  /// yapılamıyordu. Map'ler önden boşaldığı için yeniden giren
-  /// [_releaseIfUnused] artık silecek bir şey bulamıyor.
+  /// ⚠️ Map'ler kapatmadan **önce** boşaltılıyor: `controller.close()`
+  /// [_releaseIfUnused] üzerinden aynı map'ten siliyor, üzerinde gezinirken
+  /// `ConcurrentModificationError` fırlar.
   Future<void> disconnect() async {
     final unsubscribes = _subscriptions.values.toList();
     final controllers = _controllers.values.toList();
@@ -414,8 +333,8 @@ class RealtimeClient {
     _controllers.clear();
 
     for (final unsubscribe in unsubscribes) {
-      // Kopmuş bir bağlantıda abonelik bırakmak hata verebiliyor; kapanışı
-      // durdurmamalı, oturum her hâlükârda sonlanmalı.
+      // Kopmuş bağlantıda abonelik bırakmak hata verebilir; oturum yine de
+      // sonlanmalı.
       try {
         unsubscribe(unsubscribeHeaders: null);
       } catch (error) {
@@ -423,8 +342,8 @@ class RealtimeClient {
       }
     }
 
-    // İstemci akışlar kapanmadan, eşzamanlı olarak bırakılıyor: bu noktadan
-    // sonra eski soketten gelen hiçbir kare kimlik kontrolünden geçemez.
+    // Eşzamanlı bırakılıyor: bundan sonra eski soketin karesi kimlik
+    // kontrolünden geçemez.
     _teardownClient();
 
     for (final controller in controllers) {

@@ -65,9 +65,8 @@ void main() {
     test('yetkililer listesi modele çevriliyor', () async {
       final api = FakeApi(handler: (_) => _ok([_contact]));
 
-      final contacts = await CompanyContactService.withClient(
-        api.client,
-      ).fetchContacts('comp_1');
+      final contacts = await CompanyContactService.withClient(api.client)
+          .fetchContacts('comp_1');
 
       expect(api.requests.single.method, 'GET');
       expect(api.requests.single.path, '/companies/comp_1/contacts');
@@ -190,9 +189,8 @@ void main() {
             const FakeApiResponse(statusCode: 200, body: {'success': true}),
       );
 
-      await CompanyContactService.withClient(
-        api.client,
-      ).removeContact('comp_1', 'user-2');
+      await CompanyContactService.withClient(api.client)
+          .removeContact('comp_1', 'user-2');
 
       expect(api.requests.single.method, 'DELETE');
       expect(api.requests.single.path, '/companies/comp_1/contacts/user-2');
@@ -207,9 +205,9 @@ void main() {
       );
 
       final error = await _catch(
-        () => CompanyContactService.withClient(
-          api.client,
-        ).removeContact('comp_1', 'user-1'),
+        () =>
+            CompanyContactService.withClient(api.client)
+                .removeContact('comp_1', 'user-1'),
       );
 
       expect(
@@ -223,9 +221,8 @@ void main() {
     test('davet detayı GET ile çekiliyor', () async {
       final api = FakeApi(handler: (_) => _ok(_invitation));
 
-      final invitation = await CompanyContactService.withClient(
-        api.client,
-      ).fetchInvitation('invite-1');
+      final invitation = await CompanyContactService.withClient(api.client)
+          .fetchInvitation('invite-1');
 
       expect(api.requests.single.method, 'GET');
       expect(api.requests.single.path, '/contact-invitations/invite-1');
@@ -241,9 +238,8 @@ void main() {
         handler: (_) => _ok({..._invitation, 'status': 'ACCEPTED'}),
       );
 
-      final invitation = await CompanyContactService.withClient(
-        api.client,
-      ).answerInvitation('invite-1', accepted: true);
+      final invitation = await CompanyContactService.withClient(api.client)
+          .answerInvitation('invite-1', accepted: true);
 
       final request = api.requests.single;
       expect(request.method, 'POST');
@@ -259,9 +255,9 @@ void main() {
       );
 
       final error = await _catch(
-        () => CompanyContactService.withClient(
-          api.client,
-        ).answerInvitation('invite-1', accepted: false),
+        () =>
+            CompanyContactService.withClient(api.client)
+                .answerInvitation('invite-1', accepted: false),
       );
 
       expect(
@@ -280,9 +276,9 @@ void main() {
       );
 
       final error = await _catch(
-        () => CompanyContactService.withClient(
-          api.client,
-        ).fetchInvitation('invite-missing'),
+        () =>
+            CompanyContactService.withClient(api.client)
+                .fetchInvitation('invite-missing'),
       );
 
       expect(

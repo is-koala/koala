@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/profile_avatar.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
@@ -9,16 +9,9 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// Bir kişinin profil kapağı: marka yeşili gradyan üstünde fotoğraf, ad,
-/// meslek ve küçük etiketler (rol, konum).
-///
-/// İki ekran aynı kapağı çiziyor: işverenin aday sayfası
-/// (`BUserProfilePage`) ve çalışanın başkasının profilini açtığı sayfa
-/// (`PublicProfilePage`, is-koala/koala#182). Salt çizim; hangi veriyi nereden
-/// bulacağı sayfanın işi.
-///
-/// Zemin temadan bağımsız marka yeşili, o yüzden üstündeki her şey de iki
-/// temada aynı beyaz ([AppColors.onAccent]); `context`'ten renk okunmuyor.
+/// Profil kapağı: yeşil gradyan üstünde fotoğraf, ad, meslek ve etiketler. Aday
+/// sayfası ve herkese açık profil kullanıyor. Zemin temadan bağımsız, o yüzden
+/// içerik iki temada da [AppColors.onAccent].
 class ProfileCover extends StatelessWidget {
   const ProfileCover({
     super.key,
@@ -29,29 +22,24 @@ class ProfileCover extends StatelessWidget {
     this.location,
   });
 
-  /// Görünen ad.
   final String name;
 
-  /// Profil fotoğrafı; yoksa ya da açılamazsa varsayılan koala görseli.
+  /// Yoksa ya da açılamazsa varsayılan koala görseli.
   final String? imageUrl;
 
-  /// Adın altındaki satır, genelde meslek; boşsa çizilmiyor.
+  /// Genelde meslek; boşsa çizilmez.
   final String? subtitle;
 
-  /// Kişinin bağlamdaki rolü ("İşveren", "Çalışan" ...); boşsa etiket yok.
+  /// Bağlamdaki rol ("İşveren", "Çalışan"); boşsa etiket yok.
   final String? roleLabel;
 
-  /// `Çankaya/Ankara`; boşsa etiket yok.
   final String? location;
 
-  /// Kapaktaki profil fotoğrafı ve çevresindeki beyaz halka.
   static const double _avatarSize = 100;
   static const double _avatarBorder = 3;
 
-  /// Gradyanın koyu ucunun opaklığı.
   static const double _gradientEndAlpha = 0.8;
 
-  /// Kapak üzerindeki ikincil metin ve etiketlerin opaklıkları.
   static const double _onCoverMuted = 0.9;
   static const double _onCoverSurface = 0.2;
 
@@ -123,7 +111,6 @@ class ProfileCover extends StatelessWidget {
     );
   }
 
-  /// Kapak üstündeki yarı saydam hap: rol ya da konum.
   Widget _badge(
     BuildContext context, {
     required String label,

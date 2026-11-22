@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/employee/features/auth/presentation/widgets/auth_legal_footer.dart';
@@ -29,8 +29,7 @@ class _LoginPageState extends LoginPagemodel {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.backgroundColor,
-      // Gövde klavyenin üstüne sığıyor; odaklı alan ve GİRİŞ YAP kaydırılarak
-      // görünür kalıyor. Yasal alt satır CTA değil, klavye arkasında kalabilir.
+      // Yasal alt satır CTA değil; klavyenin arkasında kalabilir.
       appBar: AppBar(
         leading: IconButton(
           icon: AppIcon(AppIcons.arrowLeft, color: context.textPrimary),

@@ -1,6 +1,5 @@
 import 'package:koala/product/constants/app_assets.dart';
 
-/// Rozet ailesi. Backend `BadgeFamily` enum'ının karşılığı.
 enum BadgeFamily {
   gezgin('GEZGIN'),
   rating('RATING'),
@@ -20,7 +19,6 @@ enum BadgeFamily {
   }
 }
 
-/// Rozet kademesi. Backend `BadgeTier` enum'ının karşılığı.
 enum BadgeTier {
   bronze('BRONZE'),
   silver('SILVER'),
@@ -31,7 +29,7 @@ enum BadgeTier {
 
   final String code;
 
-  /// Kademenin adı; kademesiz rozette `null`, ad tek başına yazılıyor.
+  /// Kademesiz rozette `null`.
   String? get label => switch (this) {
     BadgeTier.bronze => 'Bronz',
     BadgeTier.silver => 'Gümüş',
@@ -47,10 +45,7 @@ enum BadgeTier {
   }
 }
 
-/// Kullanıcının kazandığı bir rozet.
-///
-/// Sınıf adı bilerek `Badge` değil: Material'ın `Badge` widget'ıyla çakışıyor
-/// ve profil sayfası ikisini birden import ediyor.
+/// Kazanılmış rozet. Adı `Badge` değil: Material'inkiyle çakışıyor.
 class UserBadge {
   const UserBadge({
     required this.code,
@@ -68,17 +63,13 @@ class UserBadge {
   final BadgeTier tier;
   final String? description;
 
-  /// Sunucudaki rozet görseli. Uygulama önce yerel varlığa bakıyor
-  /// ([localAsset]); yalnızca karşılığı yoksa bu kullanılıyor.
+  /// Önce [localAsset]'e bakılır; yoksa bu.
   final String? iconUrl;
 
   final DateTime? earnedAt;
 
-  /// Uygulamanın içinde duran rozet görseli.
-  ///
-  /// Elde yalnızca Gezgin ailesinin altın ve gümüş görselleri var. Diğer
-  /// aileler ve kademeler için `null` dönüyor; çağıran tarafın [iconUrl]'e
-  /// düşmesi gerekiyor.
+  /// Uygulamada yalnız Gezgin altın/gümüş görseli var; diğerlerinde `null`,
+  /// çağıran [iconUrl]'e düşer.
   String? get localAsset {
     if (family != BadgeFamily.gezgin) return null;
 

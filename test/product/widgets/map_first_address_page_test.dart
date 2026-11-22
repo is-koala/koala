@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -22,6 +22,7 @@ import '../../support/fake_maps_availability.dart';
 import '../../support/finders.dart';
 import '../../support/reference_location_fixtures.dart';
 import '../../support/keyboard.dart';
+
 import 'package:koala/product/widgets/form_page_body.dart';
 
 const _debounce = MapFirstAddressController.defaultReverseDebounce;
@@ -761,10 +762,8 @@ void main() {
   });
 
   group('harita anahtarı yokken', () {
-    // is-koala/koala#172: iOS'ta anahtar boşken `GoogleMap` kurulduğu an
-    // uygulama çöküyordu. Bayrak kapalıysa harita hiç kurulmaz; ekran
-    // arama + il/ilçe ile çalışır, pin şehir merkezi ya da son bilinen
-    // konumdur, ters geokod istenmez.
+    // #172: bayrak kapalıysa harita kurulmaz; arama + il/ilçe ile çalışır, ters
+    // geokod istenmez.
     for (final brightness in Brightness.values) {
       testWidgets(
         '${brightness.name} temada harita yerine yer tutucu çizer, pin '

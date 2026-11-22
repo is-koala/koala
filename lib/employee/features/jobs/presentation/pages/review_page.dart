@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/employee/features/jobs/models/review.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/review_provider.dart';
 import 'package:koala/product/constants/app_colors.dart';
@@ -15,13 +15,9 @@ import 'package:koala/product/widgets/form_page_body.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:provider/provider.dart';
 
-/// Tamamlanmış bir işi değerlendirme ekranı; iki kabuk da açıyor.
-///
-/// Çalışan işvereni, işveren çalışanı değerlendiriyor; farkı [ReviewSubject]
-/// taşıyor. Sunucu karşı tarafı yazardan çıkarıyor, istek her iki tarafta da
-/// aynı uca gidiyor. Anonim yayınlama yalnızca çalışana sunuluyor: işverenin
-/// kartında "Değerlendirdiniz: ★N" satırı yazarı biz olan kaydı sunucudan
-/// bulabilmeye dayanıyor, anonim kayıtta yazar gelmiyor.
+/// Tamamlanmış işi değerlendirme; iki kabuk açıyor, fark [ReviewSubject]'te.
+/// Anonim yayın yalnız çalışana: işverenin "Değerlendirdiniz" satırı yazarı
+/// bilinen kayda dayanıyor.
 class ReviewPage extends StatefulWidget {
   final ReviewSubject subject;
 
@@ -39,13 +35,10 @@ class _ReviewPageState extends State<ReviewPage> {
 
   static const int _maxRating = 5;
 
-  /// Dokunulabilir yıldızın boyutu; ekranın ana eylemi olduğu için büyük.
   static const double _starSize = 52;
 
-  /// İş bilgisi kartındaki ikon kutusu.
   static const double _jobIconBox = 52;
 
-  /// Seçim satırındaki tik dairesi.
   static const double _radioSize = 24;
 
   static const Duration _animation = Duration(milliseconds: 200);
@@ -62,8 +55,6 @@ class _ReviewPageState extends State<ReviewPage> {
       return;
     }
 
-    // Değerlendirme atamaya bırakılıyor; başvurudan gelen bir satırın atama
-    // kimliği yok ve zaten "Değerlendir" butonu da o satırlarda çıkmıyor.
     final assignmentId = widget.subject.assignmentId;
     if (assignmentId == null) {
       AppToast.error(context, 'Bu iş henüz değerlendirilemez');
@@ -85,8 +76,7 @@ class _ReviewPageState extends State<ReviewPage> {
     setState(() => _isSubmitting = false);
 
     if (!sent) {
-      // 409 "zaten değerlendirilmiş" de buraya düşüyor; sunucunun mesajı
-      // Türkçe geliyor ve durumu kullanıcıya olduğu gibi anlatıyor.
+      // `409` "zaten değerlendirilmiş" de buraya; sunucunun mesajı yeterli.
       AppToast.error(
         context,
         provider.errorMessage ?? 'Değerlendirme gönderilemedi',
@@ -94,8 +84,7 @@ class _ReviewPageState extends State<ReviewPage> {
       return;
     }
 
-    // Toast `ScaffoldMessenger`'a düşüyor, sayfanın kapanmasından
-    // etkilenmiyor; o yüzden önce gösterilip sonra kapatılıyor.
+    // Toast sayfa kapanmasından etkilenmiyor; önce gösterilip sonra kapanır.
     AppToast.success(context, 'Değerlendirmeniz gönderildi!');
     Navigator.pop(context, true);
   }
@@ -311,11 +300,8 @@ class _ReviewPageState extends State<ReviewPage> {
 
   // ----------------------------------------------------- Yayınlama tercihi
 
-  /// Anonim yayınlama seçimi.
-  ///
-  /// Sunucu yazarı yalnızca yanıt katmanında gizliyor: kayıt veritabanında
-  /// yazarına bağlı kalıyor, puan ortalamaya giriyor ve tek değerlendirme
-  /// sınırı işlemeye devam ediyor. Seçim sonradan değiştirilemiyor.
+  /// Anonim yayın. Gizleme yalnız yanıtta: kayıt yazarına bağlı, puan
+  /// ortalamaya girer. Sonradan değişmez.
   Widget _anonymousToggle() {
     return Container(
       padding: AppPadding.primaryAll,
@@ -342,10 +328,9 @@ class _ReviewPageState extends State<ReviewPage> {
           ),
           if (_isAnonymous) ...[
             const SizedBox(height: AppSizes.spaceSmall),
-            // Bir işin yalnızca iki tarafı var: değerlendirilen kişi hangi
-            // işten geldiğini görünce kimin yazdığını çıkarabilir. Anonimlik
-            // profili gezen üçüncü kişilere karşı çalışıyor; sözü olduğundan
-            // büyük vermemek gerekiyor.
+            // İşin iki tarafı var; değerlendirilen kişi kimin yazdığını
+            // çıkarabilir. Anonimlik üçüncü kişilere karşı; söz büyük
+            // verilmemeli.
             Text(
               'Adın profilinde ve listelerde görünmez. İşveren, hangi işe ait '
               'olduğundan yola çıkarak yine de tahmin edebilir.',
@@ -439,10 +424,8 @@ class _ReviewPageState extends State<ReviewPage> {
     );
   }
 
-  /// Seçili kartın zemin opaklığı ve kenarlık kalınlığı.
   static const double _selectedTint = 0.1;
   static const double _selectedBorder = 2;
 
-  /// Seçili kartın alt satırı; başlıktan bir tık soluk.
   static const double _subtitleAlpha = 0.7;
 }

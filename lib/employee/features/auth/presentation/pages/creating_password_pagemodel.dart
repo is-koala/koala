@@ -1,30 +1,21 @@
 part of 'creating_password_page.dart';
 
 abstract class CreatingPasswordPagemodel extends State<CreatingPasswordPage> {
-  /// #58: giriş ve şifre değiştir ile aynı; göz düğmesi açar.
   bool isPasswordHidden = true;
   bool isConfirmPasswordHidden = true;
 
-  /// Kayıt tipi. İş veren, şifreden sonra bir de şirket bilgileri adımına
-  /// gidiyor; çalışan doğrudan uygulamaya giriyor.
-  ///
-  /// Kaynağı `/auth/verify-registration-token` yanıtı; token yoksa kayıt tipi
-  /// ekranında yazılan yerel bayrağa düşülüyor.
+  /// İşveren şifreden sonra şirket bilgilerine gider. Kaynak token yanıtı;
+  /// yoksa kayıt tipi ekranının yerel bayrağı.
   bool isBusiness = false;
 
-  /// Token doğrulanıp sözleşmeler çekilirken açık kalan yükleniyor durumu.
   bool isPreparing = false;
 
-  /// Hazırlık adımlarından biri başarısız olduysa gösterilecek mesaj.
   String? preparationError;
 
-  /// Onaylanacak sözleşmeler.
   List<AgreementVersion> agreements = const [];
 
-  /// Sözleşme kimliğinden onay durumuna. Kutular buradan çiziliyor.
   final Map<String, bool> consents = {};
 
-  /// `/auth/complete-registration` çağrısına gönderilecek token.
   String? _setPasswordToken;
 
   bool isSubmitting = false;
@@ -43,15 +34,13 @@ abstract class CreatingPasswordPagemodel extends State<CreatingPasswordPage> {
   bool get isPasswordStrong =>
       PasswordRule.isSatisfiedBy(passwordController.text);
 
-  /// Zorunlu sözleşmelerin hepsi işaretlendi mi. Backend eksik onayla kaydı
-  /// reddettiği için buton bu sağlanana kadar pasif duruyor.
+  /// Backend eksik onayla kaydı reddediyor.
   bool get areMandatoryConsentsGranted {
     return agreements
         .where((agreement) => agreement.mandatory)
         .every((agreement) => consents[agreement.id] == true);
   }
 
-  /// Buton basılabilir mi.
   bool get canSubmit =>
       _setPasswordToken != null && areMandatoryConsentsGranted;
 
@@ -68,8 +57,7 @@ abstract class CreatingPasswordPagemodel extends State<CreatingPasswordPage> {
     super.dispose();
   }
 
-  /// Ekranın açılabilmesi için gereken iki çağrı: token doğrulama ve
-  /// sözleşmeleri çekme. İkisi paralel gidiyor, ikisi de zorunlu.
+  /// Token doğrulama ve sözleşmeler paralel; ikisi de zorunlu.
   Future<void> bootstrap() async {
     setState(() {
       isPreparing = true;
@@ -82,7 +70,6 @@ abstract class CreatingPasswordPagemodel extends State<CreatingPasswordPage> {
     setState(() => isPreparing = false);
   }
 
-  /// E-postadaki bağlantıdan gelen token'ı şifre belirleme token'ına çevirir.
   Future<void> _resolveToken() async {
     final token = widget.token;
 
@@ -103,10 +90,7 @@ abstract class CreatingPasswordPagemodel extends State<CreatingPasswordPage> {
     }
   }
 
-  /// Yürürlükteki sözleşmeleri çeker.
-  ///
-  /// Alınamazsa kayıt tamamlanamaz: hangi onayların zorunlu olduğu
-  /// bilinmeden gönderilecek liste kurulamıyor.
+  /// Alınamazsa kayıt tamamlanamaz: zorunlu onaylar bilinmiyor.
   Future<void> _loadAgreements() async {
     try {
       final current = await _legalService.fetchCurrentAgreements();
@@ -157,16 +141,14 @@ abstract class CreatingPasswordPagemodel extends State<CreatingPasswordPage> {
 
       if (!mounted) return;
 
-      // Hesap bu noktada oluştu ve oturum açıldı. İşveren bundan sonra
-      // bireysel ilan veya gerçek şirket profili arasında seçim yapar.
+      // Hesap oluştu ve oturum açık; işveren bireysel ya da şirket yolunu
+      // seçer.
       context.go(isBusiness ? RegistrationRoutes.employerType : '/explore');
     } on ApiException catch (error) {
       if (!mounted) return;
 
-      // Kayıt ilk çağrıda tamamlanmış olabilir: bekleyen kayıt tüketildiği
-      // için ikinci çağrı `404` döner. Oturum açıksa hesap gerçekten
-      // oluşmuştur; kullanıcıya hata göstermek başarılı kaydı başarısız
-      // gibi sunar.
+      // Kayıt ilk çağrıda tamamlanmış olabilir (ikinci `404`); oturum açıksa
+      // hesap oluşmuştur, hata göstermek başarıyı başarısız gösterir.
       if (SessionManager().isLoggedIn) {
         context.go(isBusiness ? RegistrationRoutes.employerType : '/explore');
         return;

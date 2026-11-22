@@ -1,12 +1,9 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/constants/app_assets.dart';
 import 'package:koala/product/constants/app_radius.dart';
 
-/// Profil fotoğrafı.
-///
-/// Backend bir R2 bağlantısı döndürüyor; kullanıcı fotoğraf yüklemediyse alan
-/// `null` geliyor. Bağlantı ölü de olabildiği için hem boş hem hatalı durumda
-/// varsayılan koala görseline düşülüyor — kırık görsel ikonu gösterilmiyor.
+/// Profil fotoğrafı; yoksa ya da bağlantı ölüyse varsayılan koala görseli,
+/// kırık ikon değil.
 class ProfileAvatar extends StatelessWidget {
   const ProfileAvatar({super.key, required this.imageUrl, required this.size});
 

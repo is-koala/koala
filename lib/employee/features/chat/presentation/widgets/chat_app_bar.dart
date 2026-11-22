@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/chat/models/conversation.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/chat_avatar.dart';
@@ -12,16 +12,9 @@ import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/block_user_action.dart';
 import 'package:koala/product/widgets/report_sheet.dart';
 
-/// Sohbet başlığının taşma menüsündeki eylemler.
-///
-/// Yeni bir eylem eklenirken buraya bir değer, menüye bir `PopupMenuItem` ve
-/// [ChatAppBar._onAction]'a bir dal giriyor.
 enum _ChatAppBarAction { report, block }
 
-/// Sohbet detayının başlığı: avatar, ad, çevrimiçi durumu ve taşma menüsü.
-///
-/// Employee ve business tarafı aynı sohbet ekranını kullanıyor; başlık da
-/// ortak — buradaki tek değişiklik iki uygulamayı birden kapsıyor.
+/// Sohbet başlığı: avatar, ad, çevrimiçi durum ve menü; iki taraf ortak.
 class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   const ChatAppBar({
     super.key,
@@ -32,18 +25,13 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   final Conversation chat;
 
-  /// Karşı taraf şu an yazıyor mu. Canlı bağlantıdan geliyor ve kısa süre
-  /// sonra kendiliğinden sönüyor.
   final bool isTyping;
 
-  /// Başlığa (avatar + ad) dokununca çalışır; grupta katılımcılar sayfasını
-  /// açıyor. `null` ise başlık dokunulmuyor — ikili sohbette öyle.
+  /// Grupta katılımcıları açar; ikili sohbette `null`.
   final VoidCallback? onTitleTap;
 
-  /// Başlıktaki çevrimiçi noktası; listedekinden küçük.
   static const double _avatarDotSize = 12;
 
-  /// Erişilebilirlik etiketi: grupta başlık katılımcıları açan bir düğme.
   static const String participantsSemanticsLabel = 'Katılımcıları göster';
 
   @override
@@ -67,8 +55,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                 child: _title(context),
               ),
             ),
-      // Şikayet ve engel bir kişiye yönelik; grupta hedef alınacak tek bir
-      // karşı taraf olmadığı için menü çizilmiyor.
+      // Şikayet ve engel kişiye yönelik; grupta menü yok.
       actions: [if (!chat.isGroup) _overflowMenu(context)],
     );
   }
@@ -96,8 +83,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              // "Yazıyor" çevrimiçi bilgisinin yerine geçiyor: ikisi de
-              // aynı satırda ve yazıyorsa zaten çevrimiçi.
+              // Yazıyorsa zaten çevrimiçi.
               if (isTyping)
                 Text(
                   'yazıyor...',
@@ -106,8 +92,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                     fontStyle: FontStyle.italic,
                   ),
                 )
-              // Grupta tek bir karşı taraf yok; çevrimiçi yerine ekibin
-              // kaç kişi olduğu yazılıyor.
+              // Grupta çevrimiçi yerine kişi sayısı.
               else if (chat.isGroup)
                 Text(
                   chat.participantLabel,
@@ -129,10 +114,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
     );
   }
 
-  /// Sohbetin taşma menüsü: şikayet ve engelleme.
-  ///
-  /// İkisi de karşı tarafa yönelik ve ikisi de nadir kullanılıyor; başlıkta
-  /// iki ayrı ikon yerine tek menü duruyor.
+  /// Şikayet ve engel nadir; iki ikon yerine tek menü.
   Widget _overflowMenu(BuildContext context) {
     return PopupMenuButton<_ChatAppBarAction>(
       icon: AppIcon(AppIcons.more, color: context.textPrimary),
@@ -144,8 +126,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
         ),
         PopupMenuItem(
           value: _ChatAppBarAction.block,
-          // Şikayetten farkı sonucun anında ve karşılıklı olması; kırmızı
-          // metin ikisini menüde ayırıyor.
+          // Engelin sonucu anında ve karşılıklı; kırmızı metin ayırıyor.
           child: Text(
             'Engelle',
             style: context.textTheme.bodyMedium?.copyWith(
@@ -160,7 +141,6 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   void _onAction(BuildContext context, _ChatAppBarAction action) {
     switch (action) {
       case _ChatAppBarAction.report:
-        // Şikayet edilen karşı taraf; sohbetin kendisi değil.
         ReportSheet.show(
           context,
           ReportTarget.user(userId: chat.counterpartId, name: chat.name),
@@ -171,11 +151,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
     }
   }
 
-  /// Karşı tarafı engeller ve sohbetten çıkar.
-  ///
-  /// Ekranda kalmanın anlamı yok: mesaj kutusu kilitleniyor ve iki taraf da
-  /// yazamıyor. Geri çıkmak ayrıca sohbet listesini de tazeliyor —
-  /// `ChatListTile.onReturn` dönüşte listeyi yeniden çekiyor.
+  /// Engeller ve çıkar: kutu kilitlenir, dönüşte liste tazelenir.
   Future<void> _block(BuildContext context) async {
     final blocked = await BlockUserAction.confirmAndBlock(
       context,

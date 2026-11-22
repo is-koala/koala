@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
@@ -18,20 +18,12 @@ import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/empty_state.dart';
 import 'package:provider/provider.dart';
 
-/// Bildirim listesinin gövdesi. İki uygulama da aynı listeyi gösteriyor,
-/// yalnızca alt boşlukları farklı.
-///
-/// Ekranın kendisi değil gövdesi: `Scaffold` ve başlık çubuğu çağırana ait,
-/// çünkü iki tarafın başlık çubuğu farklı kuruluyor.
-///
-/// Akış yalnızca `IN_APP` kanalını döndürüyor, yani bir olay listede bir
-/// kez görünüyor. Satıra dokunmak bildirimi okundu işaretliyor ve hedefine
-/// götürüyor.
+/// Bildirim listesinin gövdesi; `Scaffold` ve başlık çağırana ait. Satıra
+/// dokunmak okundu işaretler ve hedefe götürür.
 class NotificationView extends StatefulWidget {
   const NotificationView({super.key, this.bottomPadding = AppSizes.space});
 
-  /// Listenin altındaki boşluk. İşveren tarafında navbar'ın altında
-  /// kalmaması için büyütülüyor.
+  /// İşveren tarafında navbar'ın altında kalmasın diye büyütülüyor.
   final double bottomPadding;
 
   @override
@@ -41,8 +33,7 @@ class NotificationView extends StatefulWidget {
 class _NotificationViewState extends State<NotificationView> {
   final ScrollController _controller = ScrollController();
 
-  /// Listenin sonuna bu kadar kala sonraki sayfa isteniyor; kullanıcı dibe
-  /// değmeden yükleme başlasın.
+  /// Dibe değmeden sonraki sayfa yüklenmeye başlasın.
   static const double _loadMoreThreshold = 240;
 
   @override
@@ -129,12 +120,8 @@ class _NotificationViewState extends State<NotificationView> {
     );
   }
 
-  /// Bildirimin hedefine götürür.
-  ///
-  /// Sunucu kaydın kimliğini veriyor ama uygulamada kimlikle açılan ekran
-  /// yok — sohbet ekranı hazır bir `Conversation`, iş ekranı hazır bir
-  /// `Job` bekliyor. Bu yüzden kaydın **listesine** gidiliyor: listeler
-  /// kısa ve durumlarına göre gruplu, kullanıcı aradığını görüyor.
+  /// Bildirimin hedefine götürür. Kimlikle açılan ekran olmadığı için (sohbet
+  /// hazır `Conversation` bekliyor) kaydın **listesine** gidiliyor.
   void _openTarget(AppNotification notification) {
     final provider = context.read<NotificationProvider>();
     unawaited(provider.markRead(notification.id));
@@ -158,15 +145,14 @@ class _NotificationViewState extends State<NotificationView> {
 
     if (route == null) return;
 
-    // Davet bir yığın sayfası: sekmeye `go` etmek geri dönüşü silerdi.
+    // Davet bir yığın sayfası: `go` geri dönüşü silerdi.
     if (notification.targetType ==
         NotificationTargetType.companyContactInvitation) {
       context.push(route);
       return;
     }
 
-    // Sekmeler `go` ile değişiyor: kabuk açık kalsın, üstüne yeni bir
-    // kopya yığılmasın.
+    // Sekmeler `go` ile: kabuk açık kalsın, üstüne kopya yığılmasın.
     context.go(route);
   }
 
@@ -202,8 +188,8 @@ class _NotificationViewState extends State<NotificationView> {
             Container(
               width: AppSizes.iconTile,
               height: AppSizes.iconTile,
-              // Hizasız `Container` çocuğuna tight constraint geçiriyor ve
-              // `AppIcon` kendi ölçüsünü isteyemeden kutuyu dolduruyor.
+              // Hizasız `Container` sıkı kısıt geçiriyor ve ikon kutuyu
+              // dolduruyor.
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: style.color.withValues(
@@ -255,8 +241,7 @@ class _NotificationViewState extends State<NotificationView> {
               ),
           ],
         ),
-        // Olayın kendisi: "Başvurunuz kabul edildi". Başlık zaten bu
-        // metinse (ilan başlığı gelmemişse) burada tekrarlanmıyor.
+        // Başlık zaten bu metinse tekrarlanmıyor.
         if (detail != null) ...[
           const SizedBox(height: AppSizes.spaceTiny),
           Text(
@@ -279,10 +264,7 @@ class _NotificationViewState extends State<NotificationView> {
     );
   }
 
-  /// Kategori adı ve zaman.
-  ///
-  /// Başlık kategoriye düşmüşse (ne konu ne gövde var) burada
-  /// tekrarlanmıyor.
+  /// Kategori adı ve zaman; başlık kategoriye düştüyse tekrarlanmıyor.
   String _subtitle(AppNotification notification) {
     final sentAt = notification.sentAt;
     final hasText = notification.hasSubject || notification.hasBody;
@@ -339,10 +321,8 @@ class _CategoryStyle {
   final Color color;
 }
 
-/// Başlık çubuğundaki "Tümünü Oku" eylemi.
-///
-/// Okunmamış yokken hiç çizilmiyor: basıldığında hiçbir şey yapmayan bir
-/// düğme, kullanıcıya işin yürümediğini düşündürüyor.
+/// "Tümünü Oku"; okunmamış yokken çizilmiyor, boşa basılan düğme işin
+/// yürümediğini düşündürür.
 class MarkAllReadAction extends StatelessWidget {
   const MarkAllReadAction({super.key});
 

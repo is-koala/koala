@@ -1,20 +1,14 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
-/// İşveren formlarının tarih + saat seçtirme akışı.
-///
-/// İlan formunun başlangıç/bitişi ve ulaşım durağının kalkış saati aynı
-/// iki adımı yürüyor: önce gün, sonra saat; ikisinden biri iptal edilirse
-/// `null` ve çağıranda hiçbir şey değişmiyor. Seçici bugünden öncesini
-/// kapatıyor — geçmiş bir saate ilan ya da servis açılmasın.
+/// İşveren formlarının tarih + saat seçimi: önce gün, sonra saat; biri iptal
+/// edilirse `null`. Geçmiş bir saate ilan ya da servis açılmasın diye bugünden
+/// öncesi kapalı.
 abstract final class DateTimePicking {
-  /// Seçici açılışta ne kadar ileride: yarın.
   static const Duration defaultStartOffset = Duration(days: 1);
 
-  /// Seçilebilen en uzak gün.
   static const Duration horizon = Duration(days: 365);
 
-  /// [initial] seçicinin açılış değeri; yoksa yarın. Geçmişe düşen bir
-  /// açılış değeri bugüne çekiliyor.
+  /// Geçmişe düşen açılış değeri bugüne çekilir.
   static Future<DateTime?> pick(
     BuildContext context, {
     DateTime? initial,

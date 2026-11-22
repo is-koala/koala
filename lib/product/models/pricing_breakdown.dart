@@ -1,10 +1,7 @@
 import 'package:koala/product/network/json_field.dart';
 
-/// Backend'in hesapladığı fiyat dökümü.
-///
-/// İlan formunda güncel quote yanıtını, atamada ise yayımlanırken sabitlenen
-/// snapshot'ı taşır. Bütün ondalıklar dize olarak kalır; istemci hizmet
-/// bedelini veya işveren toplamını yeniden hesaplamaz.
+/// Backend'in hesapladığı fiyat dökümü (formda güncel teklif, atamada
+/// sabitlenmiş snapshot). Ondalıklar dize; istemci yeniden hesaplamaz.
 class PricingBreakdown {
   const PricingBreakdown({
     required this.pricingVersion,
@@ -48,14 +45,10 @@ class PricingBreakdown {
     );
   }
 
-  /// Hizmet bedeli oranının yüzde etiketi: `0.075` → `7,5`.
-  ///
-  /// İki kabuk da aynı etiketi yazıyor (işverenin fiyat dökümü kartı ve
-  /// çalışanın iş detayı); biçim tek yerde dursun diye burada.
+  /// `0.075` → `7,5`.
   String get serviceFeePercentLabel => percentLabel(serviceFeeRate);
 
-  /// Backend'in oran dizesini yalnızca yüzde etiketi için ondalık noktası iki
-  /// basamak sağa kaydırarak biçimler. Ücret veya hizmet bedeli hesaplamaz.
+  /// Oranı yalnız etiket için iki basamak kaydırır; hesap yapmaz.
   static String percentLabel(String rate) {
     final match = RegExp(r'^([+-]?)(\d+)(?:\.(\d+))?$').firstMatch(rate);
     if (match == null) return rate.replaceAll('.', ',');

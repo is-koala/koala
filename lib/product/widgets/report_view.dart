@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -13,19 +13,12 @@ import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/empty_state.dart';
 
-/// Kullanıcının açtığı şikayetlerin listesi.
-///
-/// Ekranın kendisi değil gövdesi: `Scaffold` ve başlık çubuğu çağırana ait,
-/// çünkü iki uygulamanın başlık çubuğu farklı kuruluyor — [SessionView] ve
-/// [NotificationView] ile aynı düzen.
-///
-/// Şikayetin karşılığında ne yapıldığını kullanıcı buradan öğreniyor;
-/// moderasyonun bıraktığı not da satırda duruyor.
+/// Kullanıcının şikayetleri; `Scaffold` ve başlık çağırana ait. Moderasyonun
+/// notu satırda görünüyor.
 class ReportView extends StatefulWidget {
   const ReportView({super.key, this.bottomPadding = AppSizes.space});
 
-  /// Listenin altındaki boşluk. İşveren tarafında navbar'ın altında
-  /// kalmasın diye büyütülüyor.
+  /// İşveren tarafında navbar'ın altında kalmasın diye büyütülüyor.
   final double bottomPadding;
 
   @override
@@ -43,8 +36,7 @@ class _ReportViewState extends State<ReportView> {
   int _page = 0;
   String? _errorMessage;
 
-  /// Listenin sonuna bu kadar kala sonraki sayfa isteniyor; kullanıcı dibe
-  /// değmeden yükleme başlasın.
+  /// Dibe değmeden sonraki sayfa yüklenmeye başlasın.
   static const double _loadMoreThreshold = 240;
 
   @override
@@ -91,11 +83,8 @@ class _ReportViewState extends State<ReportView> {
     }
   }
 
-  /// Sonraki sayfayı listenin sonuna ekler.
-  ///
-  /// Hata durumunda liste olduğu gibi kalıyor ve sayfalama duruyor: elde
-  /// duran şikayetleri hata ekranıyla değiştirmek, kullanıcının görebildiği
-  /// bilgiyi de alırdı. Yenilemek için aşağı çekmek yeterli.
+  /// Sonraki sayfayı ekler. Hatada liste kalır ve sayfalama durur: eldeki
+  /// şikayetleri hata ekranıyla değiştirmek bilgiyi de alırdı.
   Future<void> _loadMore() async {
     if (_isLoading || _isLoadingMore || !_hasMore) return;
 
@@ -120,7 +109,7 @@ class _ReportViewState extends State<ReportView> {
 
   @override
   Widget build(BuildContext context) {
-    // Üç durum ayrı ayrı çiziliyor: yükleniyor, açılamadı, gerçekten boş.
+    // Yükleniyor, açılamadı ve gerçekten boş ayrı çiziliyor.
     if (_isLoading && _reports.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -242,8 +231,6 @@ class _ReportViewState extends State<ReportView> {
             ),
           ),
         ],
-        // Moderasyonun notu yalnızca incelenmiş şikayette dolu; kullanıcının
-        // en çok merak ettiği satır bu.
         if (reviewNote != null && reviewNote.trim().isNotEmpty) ...[
           const SizedBox(height: AppSizes.spaceSmall),
           Text(
@@ -258,8 +245,7 @@ class _ReportViewState extends State<ReportView> {
     );
   }
 
-  /// Hedef türü ve açılma tarihi. Sunucu hedefin kendisini döndürmediği için
-  /// satırda ilanın başlığı değil "İlan şikayeti" yazıyor.
+  /// Sunucu hedefi döndürmediği için ilan başlığı değil "İlan şikayeti".
   String _subtitle(Report report) {
     final createdAt = report.createdAt;
     if (createdAt == null) return report.targetLabel;
@@ -286,14 +272,12 @@ class _ReportViewState extends State<ReportView> {
     );
   }
 
-  /// Durumun rengi. Sunum tarafı modelde değil burada: `ReportStatus`
-  /// sunucunun sözleşmesi, renk uygulamanın kararı.
+  /// `ReportStatus` sunucunun sözleşmesi, renk uygulamanın kararı.
   Color _statusColor(ReportStatus status) {
     return switch (status) {
       ReportStatus.open => AppColors.info,
       ReportStatus.underReview => AppColors.warning,
       ReportStatus.actioned => AppColors.success,
-      // "Kapatıldı" bir başarı da başarısızlık da değil; nötr kalıyor.
       ReportStatus.dismissed || ReportStatus.unknown => context.textTertiary,
     };
   }

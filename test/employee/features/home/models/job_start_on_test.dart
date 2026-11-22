@@ -15,9 +15,8 @@ void main() {
 
   group('JobStartOn.toWindow', () {
     test('belirli gün İstanbul gün sınırına gider', () {
-      final window = JobStartOn.calendarDay(
-        DateTime(2026, 9, 20),
-      ).toWindow(now: now);
+      final window = JobStartOn.calendarDay(DateTime(2026, 9, 20))
+          .toWindow(now: now);
 
       expect(
         window.startFrom.toUtc().toIso8601String(),

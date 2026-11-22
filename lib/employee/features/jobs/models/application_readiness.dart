@@ -2,17 +2,9 @@ import 'package:koala/employee/features/auth/models/current_user.dart';
 import 'package:koala/product/features/account/account_routes.dart';
 import 'package:koala/product/features/account/models/address_required_error_codes.dart';
 
-/// İlana başvurabilmek için karşılanması gereken şart.
-///
-/// Sunucu `POST /jobs/{id}/applications` isteğinde üçünü **bu sırayla**
-/// kontrol ediyor (`JobApplicationManager.assertReadyToWork`) ve her biri
-/// kendi `errorCode`'unu döndürüyor. Sıra keyfi değil, çalışanın düzeltme
-/// sırası: kimliği doğrulanmadan adresi anlamsız, adresi olmadan ödeme
-/// yapılamaz.
-///
-/// Şartlar, işçinin İyzico alt üye işyeri kaydının (`createSubMerchantDtoFor
-/// Worker`) istedikleriyle birebir aynı; ayrışırlarsa hata başvuruda değil
-/// kabul anında patlar.
+/// Başvuru şartı. Sunucu üçünü **bu sırayla** kontrol ediyor ve her biri kendi
+/// `errorCode`'unu döndürüyor; sıra düzeltme sırası. Şartlar İyzico alt üye
+/// işyeri kaydınınkilerle aynı; ayrışırlarsa hata kabul anında patlar.
 enum ApplicationRequirement {
   identity(
     errorCode: 'APPLICANT_IDENTITY_NOT_VERIFIED',
@@ -46,17 +38,15 @@ enum ApplicationRequirement {
     required this.route,
   });
 
-  /// Sunucunun döndürdüğü makine okunur kod.
   final String errorCode;
 
   final String title;
   final String description;
   final String actionLabel;
 
-  /// Şartı karşılayan ekranın yolu.
   final String route;
 
-  /// Sunucunun hata kodundan şartı bulur; tanımadığı kodda `null`.
+  /// Tanımadığı kodda `null`.
   static ApplicationRequirement? fromErrorCode(String? errorCode) {
     if (errorCode == null) return null;
 
@@ -67,21 +57,16 @@ enum ApplicationRequirement {
   }
 }
 
-/// Kullanıcının başvuruya hazır olup olmadığı.
-///
-/// `/users/me` zaten üç bilgiyi de taşıyor (`identityVerified`, `address`,
-/// `maskedIban`), o yüzden eksik şart başvuru gönderilmeden **önce**
-/// söylenebiliyor. Sunucudan gelen hata yine de yakalanıyor: kullanıcı
-/// başka bir cihazdan bilgisini silmiş olabilir.
+/// Başvuruya hazır mı. `/users/me` üç bilgiyi de taşıdığı için eksik şart
+/// gönderimden **önce** söylenir; sunucunun hatası yine yakalanır.
 class ApplicationReadiness {
   const ApplicationReadiness(this.missing);
 
-  /// Karşılanmamış şartlar, sunucunun kontrol ettiği sırayla.
+  /// Sunucunun kontrol sırasıyla.
   final List<ApplicationRequirement> missing;
 
   bool get isReady => missing.isEmpty;
 
-  /// Kullanıcının önce halletmesi gereken şart.
   ApplicationRequirement? get first => missing.isEmpty ? null : missing.first;
 
   factory ApplicationReadiness.of(CurrentUser? user) {
@@ -90,7 +75,7 @@ class ApplicationReadiness {
     return ApplicationReadiness([
       if (!user.identityVerified) ApplicationRequirement.identity,
       if (user.address == null) ApplicationRequirement.address,
-      // Sunucu IBAN'ı maskeli döndürüyor; dolu olması hesabın var demek.
+      // Maskeli IBAN dolu ise hesap var.
       if (user.maskedIban == null || user.maskedIban!.isEmpty)
         ApplicationRequirement.bankAccount,
     ]);

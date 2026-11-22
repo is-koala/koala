@@ -3,13 +3,11 @@ import 'dart:ui';
 
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
-/// Önizleme çerçevesiyle OCR'a giden piksel alanının tek geometrisi.
 abstract final class MrzScanRegion {
   static const double aspectRatio = 3.2;
   static const double widthFraction = 0.88;
   static const Offset normalizedCenter = Offset(0.5, 0.575);
 
-  /// MRZ kadrajını verilen dik önizleme alanında piksel olarak döndürür.
   static Rect pixelRegion(Size uprightSize) {
     final width = uprightSize.width * widthFraction;
     final height = width / aspectRatio;
@@ -23,7 +21,6 @@ abstract final class MrzScanRegion {
     ).intersect(Offset.zero & uprightSize);
   }
 
-  /// Dik önizlemedeki kadrajı sensörün ham piksel koordinatına çevirir.
   static Rect rawPixelRegion({
     required Size rawSize,
     required InputImageRotation rotation,
@@ -91,7 +88,6 @@ abstract final class MrzScanRegion {
   }
 }
 
-/// ML Kit'e verilen, kadraj dışı pikselleri içermeyen bellek içi kare.
 class MrzCroppedFrame {
   const MrzCroppedFrame({
     required this.bytes,
@@ -108,7 +104,6 @@ class MrzCroppedFrame {
   final double meanLuminance;
 }
 
-/// NV21/BGRA kamera karesini OCR'dan önce MRZ kadrajına indirger.
 abstract final class MrzFrameCropper {
   static MrzCroppedFrame? crop({
     required Uint8List bytes,

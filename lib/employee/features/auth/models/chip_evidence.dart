@@ -1,17 +1,9 @@
-/// Kimlik kartının çipinden okunan ve sunucuya gönderilen kanıt.
+/// Kimlik çipinden okunan kanıt (base64 alanlar); sunucu SOD'u CSCA'ya kadar
+/// zincirleyip MRZ'yi beyanla eşleştiriyor.
 ///
-/// `POST /users/me/identity-verification` gövdesine beş beyan alanının
-/// yanına ekleniyor (`VerifyIdentityDto`). Alanların hepsi **base64**;
-/// sunucu çözüp SOD imzasını CSCA köküne kadar zincirliyor, veri grubu
-/// özetlerini karşılaştırıyor ve MRZ'yi beyanla eşleştiriyor.
-///
-/// **Bugün hiçbiri zorunlu değil.** Sunucudaki `IDENTITY_PASSIVE_AUTH_ENABLED`
-/// `false` ve öyle kalıyor; bayrak kapalıyken `verifyChipEvidence` hemen
-/// dönüyor ve gövdedeki fazladan alanlar yok sayılıyor. Yani kanıt gönderen
-/// yol var ama akışı bloke etmiyor: bu sürüm tek başına yayına çıkabilir.
-///
-/// **DG2 kasıtlı olarak yok.** Sunucu istemiyor; yüz eşleştirmesi cihazda
-/// kalıyor ve bu dilimin dışında.
+/// **Bugün hiçbiri zorunlu değil:** `IDENTITY_PASSIVE_AUTH_ENABLED` kapalı ve
+/// fazladan alanlar yok sayılıyor; akış bloke olmuyor. **DG2 kasıtlı olarak
+/// yok:** yüz eşleştirmesi cihazda.
 class ChipEvidence {
   const ChipEvidence({
     required this.sod,
@@ -23,50 +15,37 @@ class ChipEvidence {
     this.activeAuthenticationSignature,
   });
 
-  /// Document Security Object. Kartın imzası burada; kanıtın omurgası.
+  /// Kartın imzası; kanıtın omurgası.
   final String sod;
 
-  /// MRZ'nin çipteki kopyası. Sunucu TCKN, doğum tarihi ve adı buradan
-  /// okuyup istekteki beyanla karşılaştırıyor.
+  /// MRZ'nin çipteki kopyası; sunucu beyanla karşılaştırıyor.
   final String dg1;
 
-  /// Ad ve soyadın ASCII'ye katlanmamış hâli. DG1'deki MRZ **ÇAĞRI**'yı
-  /// **CAGRI** yazıyor; DG11 de SOD'da özetlendiği için daha az güvenilir
-  /// değil, yalnızca doğru. Kartta yoksa `null`.
+  /// Ad/soyadın ASCII'ye katlanmamış hâli: MRZ **ÇAĞRI**'yı **CAGRI** yazıyor.
+  /// Yoksa `null`.
   final String? dg11;
 
-  /// Çipin güvenlik bilgileri (ICAO 9303 Part 11 `SecurityInfos`). Sunucu
-  /// için önemli olan `ActiveAuthenticationInfo.signatureAlgorithm`: imzayı
-  /// hangi algoritmayla doğrulayacağını tahmin etmek yerine buradan
-  /// okuyor. Kartta yoksa ya da okunamadıysa `null`; sunucu o zaman
-  /// algoritma yelpazesini kendi geniş tutuyor.
+  /// `SecurityInfos`; sunucu Active Authentication algoritmasını buradan
+  /// okuyor. Yoksa `null`, sunucu geniş yelpaze dener.
   final String? dg14;
 
-  /// Çipin açık anahtarı. Yoksa Active Authentication adımı atlanıyor ve
-  /// akış yine tamamlanıyor — sunucu bugün bunu kabul ediyor.
+  /// Yoksa Active Authentication atlanır, akış yine tamamlanır.
   final String? dg15;
 
-  /// Çipe imzalatılan tek kullanımlık sayı, sunucudan geldiği gibi.
-  ///
-  /// `sod` ve `dg1` bir kart için **sabit**; bir kez okuyan sonsuza dek
-  /// tekrar gönderebilirdi. Tekrar deliğini kapatan tek şey bu imza.
+  /// Sunucunun verdiği tek kullanımlık sayı. `sod` ve `dg1` kart için sabit;
+  /// tekrar gönderimi engelleyen tek şey bu imza.
   final String? challenge;
 
-  /// `INTERNAL AUTHENTICATE` yanıtı: challenge'ın ham baytlarının çipin
-  /// içinden hiç çıkmayan özel anahtarla imzalanmış hâli.
+  /// Challenge'ın çipten hiç çıkmayan anahtarla imzası.
   final String? activeAuthenticationSignature;
 
-  /// Çip varlığı kanıtlanabildi mi. DG15 taşımayan kartta `false` olur ve
-  /// akış yine tamamlanır.
+  /// DG15'siz kartta `false`; akış yine tamamlanır.
   bool get provesChipPresence =>
       dg15 != null &&
       challenge != null &&
       activeAuthenticationSignature != null;
 
-  /// İstek gövdesine eklenecek alanlar.
-  ///
-  /// Boş olanlar hiç konmuyor: sunucu `null` ile `""` arasında ayrım
-  /// yapıyor ve boş metin `SOD_UNREADABLE` yolunu tetikleyebilir.
+  /// Boş alanlar konmuyor: `""` `SOD_UNREADABLE` yolunu tetikleyebilir.
   Map<String, dynamic> toJson() {
     return {
       'sod': sod,

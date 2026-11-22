@@ -3,11 +3,8 @@ import 'dart:io';
 
 import 'backend_contract_root.dart';
 
-/// Backend'in yayımladığı `ErrorCategory` kümesini okur.
-///
-/// Önce `KOALA_OPENAPI_PATH` (OpenAPI belgesi), yoksa
-/// [BackendContractRoot] üzerinden `ErrorCategory.java`. İkinci bir Dart
-/// listesi değil; Java/şema eklenince eşleme testi kırmızıya döner.
+/// Backend'in `ErrorCategory` kümesi; OpenAPI ya da `ErrorCategory.java`'dan.
+/// İkinci bir Dart listesi değil.
 class BackendErrorCategories {
   static const javaRelativePath = BackendContractRoot.identityRelativePath;
 
@@ -40,9 +37,8 @@ class BackendErrorCategories {
   }
 
   static Set<String> parseJava(String source) {
-    final match = RegExp(
-      r'enum\s+ErrorCategory\s*\{([^}]*)\}',
-    ).firstMatch(source);
+    final match = RegExp(r'enum\s+ErrorCategory\s*\{([^}]*)\}')
+        .firstMatch(source);
     if (match == null) {
       throw StateError('ErrorCategory enum gövdesi bulunamadı.');
     }
@@ -50,9 +46,10 @@ class BackendErrorCategories {
     final withoutComments = constantsPart
         .replaceAll(RegExp(r'//.*'), '')
         .replaceAll(RegExp(r'/\*[\s\S]*?\*/'), '');
-    final names = RegExp(
-      r'\b([A-Z][A-Z0-9_]*)\b',
-    ).allMatches(withoutComments).map((m) => m.group(1)!).toSet();
+    final names = RegExp(r'\b([A-Z][A-Z0-9_]*)\b')
+        .allMatches(withoutComments)
+        .map((m) => m.group(1)!)
+        .toSet();
     if (names.isEmpty) {
       throw StateError('ErrorCategory.java içinde sabit yok.');
     }

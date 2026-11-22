@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:koala/employee/features/home/models/job_search_query.dart';
 import 'package:koala/employee/features/home/models/job.dart';
@@ -20,12 +20,8 @@ import 'package:koala/product/widgets/my_textfield.dart';
 import 'package:koala/product/widgets/option_sheet.dart';
 import 'package:koala/product/widgets/sheet_switch_row.dart';
 
-/// Keşfet'in tek süzgeç sheet'i.
-///
-/// Sunucunun kabul ettiği on bir alan yatay bir çubuğa sığmadığı için üç ayrı
-/// düğme yerine tek sheet var. Seçimler sayfaya **"Uygula"ya basılana kadar**
-/// yansımıyor: her değişimde istek atmak `GET /jobs`'un dakikada 120 istekli
-/// PUBLIC kovasını tüketirdi.
+/// Keşfet'in tek süzgeç sheet'i. Seçimler **"Uygula"ya basılana kadar**
+/// yansımaz; her değişimde istek dakikada 120 sınırını tüketirdi.
 class JobFilterSheet extends StatefulWidget {
   const JobFilterSheet({
     super.key,
@@ -39,27 +35,20 @@ class JobFilterSheet extends StatefulWidget {
 
   final JobFilterSelection selection;
 
-  /// Sheet'in başında sıralama bölümü de çizilsin mi. Harita filtre ve
-  /// sıralamayı tek düğmede topluyor; liste sayfasında ikisi ayrı düğme
-  /// olduğu için orada kapalı.
+  /// Haritada süzgeç ve sıralama tek düğmede; listede ayrı.
   final bool showSort;
 
-  /// Sunucudan gelen kategoriler; `JobCategoryProvider` bunları uygulama
-  /// boyunca elde tutuyor.
   final List<JobCategory> categories;
 
-  /// Konum biliniyor mu. Bilinmiyorsa mesafe süzgeci **sessizce atlanmıyor**,
-  /// kapalı çiziliyor ve sebebini yazıyor.
+  /// Bilinmiyorsa mesafe süzgeci kapalı çizilir ve sebebini yazar.
   final bool hasLocation;
 
-  /// Konum izni istemeyi dener; izin alınırsa `true` döner.
   final Future<bool> Function()? onRequestLocation;
 
-  /// İl/ilçe listelerinin kaynağı. Verilmezse uygulamanın tekil örneği
-  /// kullanılıyor; testler kendi istemcisini geçiyor.
+  /// Testler kendi istemcisini geçer.
   final ReferenceLocationService? locationService;
 
-  /// Sheet'i açar ve **yalnız "Uygula"ya basılırsa** yeni seçimi döndürür.
+  /// Yalnız "Uygula"da yeni seçimi döndürür.
   static Future<JobFilterSelection?> show(
     BuildContext context, {
     required JobFilterSelection selection,
@@ -82,9 +71,7 @@ class JobFilterSheet extends StatefulWidget {
     );
   }
 
-  /// Mesafe süzgecinin kovaları, km. Sunucu yarıçap değil sınırlayıcı kutu
-  /// süzüyor; kutu bir halkanın **dışını** ifade edemediği için "20+ km" gibi
-  /// açık uçlu bir kova yok.
+  /// Kutu halkanın dışını ifade edemediği için "20+ km" yok.
   static const List<double> radiusOptions = [5, 10, 20, 50];
 
   @override
@@ -92,8 +79,6 @@ class JobFilterSheet extends StatefulWidget {
 }
 
 class _JobFilterSheetState extends State<JobFilterSheet> {
-  /// İçeriğin kaplayabileceği en fazla yükseklik oranı; altındaki liste
-  /// görünmeye devam etsin.
   static const double _maxHeightRatio = 0.75;
 
   late JobFilterSelection _draft = widget.selection;
@@ -167,8 +152,8 @@ class _JobFilterSheetState extends State<JobFilterSheet> {
 
   // --------------------------------------------------------------- Bölümler
 
-  /// Sıralama, [JobSortSheet] ile aynı kural: seçenekler [JobSortOption]'dan
-  /// türetiliyor, "En yakın" konum olmadan kapalı ve sebebi yazıyor.
+  /// Seçenekler [JobSortOption]'dan; "En yakın" konumsuz kapalı ve sebebi
+  /// yazılı.
   Widget _sortSection() {
     return _section(
       'Sırala',
@@ -240,11 +225,8 @@ class _JobFilterSheetState extends State<JobFilterSheet> {
     );
   }
 
-  /// Kategori ve tür **ayrı** bölümler.
-  ///
-  /// Eskiden tek listedeydiler ve "Günlük" seçen kullanıcı kategorisini
-  /// kaybediyordu: ikisi tek `String` alanda tutuluyordu. Sunucuda da ayrı iki
-  /// alan — `categoryId` ve `type`.
+  /// Kategori ve tür ayrı: tek listede olsalar "Günlük" seçen kategorisini
+  /// kaybederdi.
   Widget _categorySection() {
     return _section(
       'Kategori',
@@ -284,7 +266,7 @@ class _JobFilterSheetState extends State<JobFilterSheet> {
     );
   }
 
-  /// İl ve ilçe: 81 il çip dizisine sığmadığı için [OptionSheet].
+  /// 81 il çipe sığmıyor; [OptionSheet].
   Widget _locationSection() {
     return _section(
       'Konum',
@@ -301,9 +283,7 @@ class _JobFilterSheetState extends State<JobFilterSheet> {
             label: 'İlçe',
             value: _draft.district?.name,
             loading: _loadingDistricts,
-            // İl seçilmeden ilçe listesi açılmıyor: uç
-            // `/reference/cities/{cityId}/districts`, il kimliği olmadan
-            // çağrılamıyor.
+            // Uç il kimliği olmadan çağrılamıyor.
             onTap: _draft.city == null ? null : _pickDistrict,
           ),
         ],
@@ -411,12 +391,7 @@ class _JobFilterSheetState extends State<JobFilterSheet> {
     );
   }
 
-  /// Ücret aralığı iki sayısal alan.
-  ///
-  /// Kova çipleri (`0-500`, `2000+`) kaldırıldı: sunucuda karşılıkları
-  /// `minSalary`/`maxSalary` `BigDecimal` çifti ve kovalar aradaki değerleri
-  /// seçilemez yapıyordu. `lib/` altında hiç `RangeSlider` yok, bu yüzden
-  /// mevcut desen olan iki `MyTextfield` kullanılıyor.
+  /// Ücret aralığı iki alan: kova çipleri aradaki değerleri seçilemez yapardı.
   Widget _salaryRangeSection() {
     return _section(
       'Ücret aralığı',
@@ -452,11 +427,7 @@ class _JobFilterSheetState extends State<JobFilterSheet> {
 
   static double? _parse(String value) => double.tryParse(value.trim());
 
-  /// Mesafe süzgeci.
-  ///
-  /// Konum izni yokken seçenekler **kapalı** çiziliyor ve altında sebebi
-  /// yazıyor; eskiden izin yoksa süzgeç sessizce yok sayılıyordu ve kullanıcı
-  /// seçtiği süzgecin çalışmadığını hiç öğrenmiyordu.
+  /// Konum izni yokken seçenekler kapalı ve sebebi yazılı.
   Widget _distanceSection() {
     return _section(
       'Mesafe',
@@ -504,11 +475,8 @@ class _JobFilterSheetState extends State<JobFilterSheet> {
     );
   }
 
-  /// Sigorta ve deneyim şartı.
-  ///
-  /// Anahtar kapalıyken alan sorguya **hiç konmuyor** (`null`), açıkken `true`
-  /// gidiyor. Kapalıyı `false` göndermek "şartsız ilanları getir" demek olurdu;
-  /// kullanıcı anahtarı kapatarak bunu istemiş olmuyor.
+  /// Kapalı anahtar sorguya **konmaz** (`null`); `false` "şartsız ilanları
+  /// getir" demek olurdu.
   Widget _requirementSection() {
     return _section(
       'Şartlar',
@@ -574,8 +542,8 @@ class _JobFilterSheetState extends State<JobFilterSheet> {
                 ),
                 elevation: 0,
               ),
-              // textTheme slotları renk taşıyor; verilmezse buton zemini yeşil
-              // olduğu hâlde metin koyu kalır.
+              // `textTheme` slotları renk taşıyor; verilmezse yeşil zeminde
+              // metin koyu kalır.
               child: Text(
                 'Uygula',
                 style: context.textTheme.titleSmall?.copyWith(
@@ -591,12 +559,10 @@ class _JobFilterSheetState extends State<JobFilterSheet> {
 
   // ---------------------------------------------------------------- Eylemler
 
-  /// Taslağı sıfırlar ama sayfaya yansıtmaz: "Uygula"ya basılana kadar hiçbir
-  /// şey değişmemeli kuralı temizlemede de geçerli.
+  /// "Uygula"ya kadar hiçbir şey değişmez kuralı temizlemede de geçerli.
   void _clear() {
     setState(() {
-      // Sıralama sheet'te görünüyorsa "Temizle" onu da varsayılana döndürür;
-      // görünmüyorsa kullanıcının ayrı seçtiği sıralamaya dokunulmaz.
+      // Sıralama görünmüyorsa ona dokunulmaz.
       _draft = widget.showSort
           ? _draft.cleared().copyWith(sort: JobSortOption.newest)
           : _draft.cleared();
@@ -612,8 +578,7 @@ class _JobFilterSheetState extends State<JobFilterSheet> {
     setState(() => _hasLocation = granted);
   }
 
-  /// İl listesi bir **ülke kimliği** istiyor: `/reference/cities` diye bir uç
-  /// yok, uç `/reference/countries/{countryId}/cities`.
+  /// `/reference/cities` diye uç yok; ülke kimliği gerekiyor.
   Future<void> _pickCity() async {
     setState(() {
       _loadingCities = true;
@@ -653,8 +618,7 @@ class _JobFilterSheetState extends State<JobFilterSheet> {
     );
     if (picked == null || !mounted) return;
 
-    // İl değişince ilçe seçimi düşüyor: başka bir ilin ilçesi sorguda kalırsa
-    // sonuç sessizce boşalır.
+    // Başka ilin ilçesi kalırsa sonuç sessizce boşalır.
     setState(() => _draft = _draft.copyWith(city: picked, district: null));
   }
 
@@ -694,6 +658,5 @@ class _JobFilterSheetState extends State<JobFilterSheet> {
     setState(() => _draft = _draft.copyWith(district: picked));
   }
 
-  /// `ReferenceLocation.code` ülkede ISO kodunu taşıyor.
   static const String _turkeyCode = 'TR';
 }

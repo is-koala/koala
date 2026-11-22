@@ -23,8 +23,7 @@ abstract class WorkerBoardingQrPagemodel extends State<WorkerBoardingQrPage>
     super.dispose();
   }
 
-  /// Arka planda zamanlayıcı işlemez; öne gelince QR hemen tazelenir —
-  /// arada `refreshAt` geçmiş olabilir.
+  /// Arka planda zamanlayıcı işlemez; öne gelince QR hemen tazelenir.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
@@ -39,8 +38,7 @@ abstract class WorkerBoardingQrPagemodel extends State<WorkerBoardingQrPage>
     }
   }
 
-  /// QR alınamadığında ekrandaki cümle. `404` burada "QR tanınmadı" değil,
-  /// atamanın bu işçiye ait olmadığı ya da kalktığı demek.
+  /// `404` burada atamanın bu işçiye ait olmadığı ya da kalktığı demek.
   String errorMessage(ApiException error) {
     final failure = BoardingFailure.classify(error);
     if (failure == BoardingFailure.invalidQr) {

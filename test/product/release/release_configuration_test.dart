@@ -7,9 +7,8 @@ import '../../../tool/validate_release_tag.dart';
 void main() {
   test('release etiketi pubspec ve istemci sürümüyle aynı olmalıdır', () {
     final pubspec = File('pubspec.yaml').readAsStringSync();
-    final appInfo = File(
-      'lib/product/constants/app_info.dart',
-    ).readAsStringSync();
+    final appInfo = File('lib/product/constants/app_info.dart')
+        .readAsStringSync();
 
     expect(
       releaseValidationError(
@@ -45,9 +44,8 @@ void main() {
   test('PR kapısı GitHub-hosted Linux’ta; macOS PR’da koşmaz', () {
     final ci = File('.github/workflows/ci.yml').readAsStringSync();
     final ios = File('.github/workflows/ios.yml').readAsStringSync();
-    final release = File(
-      '.github/workflows/mobile-release.yml',
-    ).readAsStringSync();
+    final release = File('.github/workflows/mobile-release.yml')
+        .readAsStringSync();
 
     expect(ci, contains('pull_request:'));
     expect(ci, contains('workflow_dispatch:'));
@@ -70,9 +68,8 @@ void main() {
   });
 
   test('mobil release workflow etiketten iki iç test kanalını yükler', () {
-    final workflow = File(
-      '.github/workflows/mobile-release.yml',
-    ).readAsStringSync();
+    final workflow = File('.github/workflows/mobile-release.yml')
+        .readAsStringSync();
 
     for (final contract in [
       'mobile-v*',
@@ -117,16 +114,15 @@ void main() {
   });
 
   test('Android nöbetçisi yalnız güncel AGP aapt2 adaylarını ölçer', () {
-    final action = File(
-      '.github/actions/setup-android-x64-tools/action.yml',
-    ).readAsStringSync();
+    final action = File('.github/actions/setup-android-x64-tools/action.yml')
+        .readAsStringSync();
     final settings = File('android/settings.gradle.kts').readAsStringSync();
     final agpVersion = RegExp(
       r'id\("com\.android\.application"\) version "([^"]+)"',
     ).firstMatch(settings)!.group(1)!;
-    final aapt2Version = RegExp(
-      r'agp-aapt2-version:[\s\S]*?default: "([^"]+)"',
-    ).firstMatch(action)!.group(1)!;
+    final aapt2Version = RegExp(r'agp-aapt2-version:[\s\S]*?default: "([^"]+)"')
+        .firstMatch(action)!
+        .group(1)!;
 
     expect(aapt2Version, startsWith('$agpVersion-'));
     expect(action, contains(r'-path "*/aapt2-$AGP_AAPT2_VERSION-linux/aapt2"'));
@@ -138,9 +134,8 @@ void main() {
   });
 
   test('Android nöbetçisinin bütün hataları tek runbooka yönlenir', () {
-    final action = File(
-      '.github/actions/setup-android-x64-tools/action.yml',
-    ).readAsStringSync();
+    final action = File('.github/actions/setup-android-x64-tools/action.yml')
+        .readAsStringSync();
     final errorLines = action
         .split('\n')
         .where((line) => line.contains('echo "::error::'))
@@ -157,9 +152,8 @@ void main() {
   });
 
   test('Android nöbetçisi runbooku PR ve etiket yayınını ayırır', () {
-    final runbook = File(
-      'docs/research/raspberry-pi-self-hosted-ci.md',
-    ).readAsStringSync();
+    final runbook = File('docs/research/raspberry-pi-self-hosted-ci.md')
+        .readAsStringSync();
 
     expect(runbook, contains('workflow_dispatch'));
     expect(runbook, contains('mobile-v*'));

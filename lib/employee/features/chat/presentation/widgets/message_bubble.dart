@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/employee/features/chat/models/chat_participant.dart';
 import 'package:koala/employee/features/chat/models/message.dart';
 import 'package:koala/employee/features/chat/models/message_sender.dart';
@@ -12,19 +12,16 @@ import 'package:koala/product/models/report.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/report_sheet.dart';
 
-/// Balona uzun basınca çıkan menünün eylemleri.
 enum _MessageAction { report }
 
 class MessageBubble extends StatelessWidget {
   final Message message;
   final bool isNextSameSender;
 
-  /// Grupta karşı tarafın balonunun üstüne yazılan gönderen. İkili sohbette
-  /// ve kendi mesajında `null`: orada kimin yazdığı hizadan belli.
+  /// Kendi mesajında ve ikilide `null`.
   final MessageSender? sender;
 
-  /// Grupta kendi mesajını görmüş katılımcılar. Boşsa satır çizilmiyor —
-  /// henüz kimse görmediyse de, eski sunucu damga göndermiyorsa da.
+  /// Boşsa satır çizilmez.
   final List<ChatParticipant> seenBy;
 
   const MessageBubble({
@@ -35,27 +32,18 @@ class MessageBubble extends StatelessWidget {
     this.seenBy = const [],
   });
 
-  /// Balonun kaplayabileceği en fazla genişlik. Karşı tarafın balonuyla
-  /// aynı hizada durmaması için ekranın tamamını kaplamıyor.
   static const double _maxWidthRatio = 0.75;
 
-  /// Balonun karşı kenarında bırakılan boşluk; kimin yazdığı hizadan
-  /// anlaşılsın diye.
+  /// Kimin yazdığı hizadan anlaşılsın.
   static const double _oppositeMargin = 48;
 
-  /// Balonun köşe yuvarlaklığı. Sabit listelerdeki değerlerden bağımsız:
-  /// sohbet balonuna özgü bir ölçü.
   static const double _bubbleRadius = 18;
 
-  /// Gönderen avatarı; başlıktakinden de küçük, balonun yanında duruyor.
   static const double _senderAvatarSize = 28;
   static const double _senderAvatarRadius = 10;
 
-  /// Zaman ve görüldü satırı gövdeden daha soluk: aynı ön plan rengi, bu
-  /// alfa ile. İki satır da aynı değeri kullanıyor ki üst üste tutarlı dursun.
   static const double _metaAlpha = 0.7;
 
-  /// Kendi balonunun altındaki "N kişi gördü" etiketi; dokununca liste.
   static String seenLabel(int count) => '$count kişi gördü';
 
   @override
@@ -97,15 +85,12 @@ class MessageBubble extends StatelessWidget {
     );
 
     return GestureDetector(
-      // Kendi mesajını şikayet etmek anlamsız — sunucu da kendini şikayet
-      // etmeyi reddediyor. O yüzden menü karşı tarafın mesajında açılıyor,
-      // kendi mesajında uzun basmak hiçbir şey yapmıyor.
+      // Kendi mesajını şikayet anlamsız; menü yalnız karşı tarafın mesajında.
       onLongPress: isMe ? null : () => _openMenu(context),
       child: Align(
         alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
         child: Padding(
           padding: EdgeInsets.only(
-            // Aynı kişinin peş peşe mesajları birbirine yakın dursun.
             bottom: isNextSameSender ? AppSizes.spaceTiny : AppSizes.space,
             left: isMe ? _oppositeMargin : 0,
             right: isMe ? 0 : _oppositeMargin,
@@ -131,7 +116,6 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
-  /// Balonun ilk satırı: gönderenin adı, ayrıldıysa yanında etiketi.
   Widget _senderLine(BuildContext context, MessageSender sender) {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -159,7 +143,6 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
-  /// Kendi balonunun altındaki görüldü satırı; dokununca görenlerin listesi.
   Widget _seenLine(BuildContext context, Color foreground) {
     final color = foreground.withValues(alpha: _metaAlpha);
     final label = seenLabel(seenBy.length);
@@ -188,10 +171,7 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
-  /// Balonun üstünde şikayet menüsünü açar.
-  ///
-  /// Menü balonun kapladığı alana yerleşiyor: hangi mesaja basıldığı
-  /// menünün nerede açıldığından anlaşılsın diye.
+  /// Menü balonun üstünde açılır ki hangi mesaj olduğu belli olsun.
   Future<void> _openMenu(BuildContext context) async {
     final bubble = context.findRenderObject() as RenderBox?;
     final overlay =

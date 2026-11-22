@@ -4,10 +4,7 @@ import 'package:koala/employee/features/jobs/models/review.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
-/// Değerlendirme uçları.
-///
-/// Yazma atama üzerinden, okuma kişi üzerinden yapılıyor: değerlendirme bir
-/// işe bırakılıyor ama o işin karşı tarafındaki kişiye yazılıyor.
+/// Değerlendirme uçları: yazma atama, okuma kişi üzerinden.
 class ReviewService {
   ReviewService._(this._apiClient);
 
@@ -22,16 +19,8 @@ class ReviewService {
 
   final ApiClient _apiClient;
 
-  /// Tamamlanmış bir işi değerlendirir.
-  ///
-  /// [rating] 1 ile 5 arasında olmalı; dışına çıkarsa sunucu `400` döndürüyor.
-  /// [comment] isteğe bağlı, en fazla 2000 karakter. İş tamamlanmamışsa ya da
-  /// kullanıcı bu işi zaten değerlendirmişse `409` geliyor — ikisi de
-  /// çağıranın kullanıcıya göstermesi gereken durumlar.
-  ///
-  /// [anonymous] işaretlenirse yanıtlarda yazar gizleniyor; puan yine
-  /// ortalamaya giriyor ve kayıt veritabanında yazarına bağlı kalıyor.
-  /// Sonradan değiştirilemiyor, güncelleme ucu da yok.
+  /// [rating] 1-5, [comment] ≤2000. Tamamlanmamış ya da zaten değerlendirilmiş
+  /// işte `409`. [anonymous] yazarı yanıtlarda gizler; sonradan değişmez.
   Future<Review> leaveReview({
     required String assignmentId,
     required int rating,
@@ -45,7 +34,6 @@ class ReviewService {
     );
   }
 
-  /// Bir kullanıcı hakkında yazılmış değerlendirmeler, yeniden eskiye.
   Future<ReviewPage> fetchReviewsAbout(
     String userId, {
     int page = 0,
@@ -58,11 +46,7 @@ class ReviewService {
     );
   }
 
-  /// Bir kullanıcının puan özeti.
-  ///
-  /// Hiç değerlendirilmemiş kullanıcıda uç `data: null` döndürüyor; burada
-  /// sıfırlı bir özet uydurulmuyor, `null` olduğu gibi geçiyor. Çağıran
-  /// "puanı yok" ile "puanı düşük"ü ayırt edebilmeli.
+  /// Hiç değerlendirilmemişte `null`; "puanı yok" ile "düşük" ayrılabilsin.
   Future<RatingSummary?> fetchRatingSummary(String userId) {
     return _apiClient.get<RatingSummary?>(
       ApiPaths.userRatingSummary(userId),

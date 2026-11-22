@@ -3,18 +3,10 @@ import 'package:koala/product/features/transport/models/transport_plan_write.dar
 import 'package:koala/product/models/canonical_address.dart';
 import 'package:koala/product/models/confirmed_address.dart';
 
-/// İşverenin düzenleyicide kurduğu ulaşım planı (is-koala/koala#197).
-///
-/// Sunucudaki [TransportPlan] salt okunur; düzenleyici bu taslak üzerinde
-/// çalışıyor ve kaydederken [toWrite] ile `TransportPlanWriteDto`'ya
-/// çeviriyor. `id` taşıyan servis/durak yerinde güncelleniyor ve koltuklar
-/// korunuyor; [seatsTaken] sunucudan gelen sayı, silme uyarısı ve kapasite
-/// alt sınırı bunu okuyor.
-///
-/// Doğrulama sunucunun kurallarının kopyası ([validate]): kullanıcıya eksik
-/// alanı Türkçe ve sırayla söylemek, `400`'ün tek alan adını göstermekten
-/// iyi. Sunucunun `409`ları (kapasite koltukların altında, yön kilitli)
-/// yine de yakalanıyor — ekran başka bir cihazda değişmiş olabilir.
+/// Düzenleyicideki ulaşım planı (#197); kaydederken [toWrite] ile yazılıyor.
+/// [validate] sunucu kurallarının kopyası: eksik alanı Türkçe ve sırayla
+/// söylemek `400`'ün tek alan adından iyi. Sunucunun `409`'ları yine
+/// yakalanıyor.
 class TransportPlanDraft with TransportMethods {
   TransportPlanDraft({
     this.outboundMethod = TransportMethod.none,
@@ -25,7 +17,6 @@ class TransportPlanDraft with TransportMethods {
     List<ShuttleDraft>? shuttles,
   }) : shuttles = shuttles ?? [];
 
-  /// Sunucudaki plandan düzenlenebilir kopya.
   factory TransportPlanDraft.fromPlan(TransportPlan plan) => TransportPlanDraft(
     outboundMethod: plan.outboundMethod,
     returnMethod: plan.returnMethod,
@@ -45,7 +36,6 @@ class TransportPlanDraft with TransportMethods {
   String notes;
   final List<ShuttleDraft> shuttles;
 
-  /// Sunucudaki alan sınırları (`TransportPlanWriteDto`).
   static const int maxAllowanceNoteLength = 500;
   static const int maxNotesLength = 1000;
 
@@ -61,8 +51,7 @@ class TransportPlanDraft with TransportMethods {
   List<ShuttleDraft> shuttlesFor(ShuttleDirection direction) =>
       shuttles.where((shuttle) => shuttle.direction == direction).toList();
 
-  /// Derin kopya: düzenleyici kopya üstünde çalışır ki geri çıkınca
-  /// çağıranın elindeki taslak değişmemiş olsun.
+  /// Derin kopya: geri çıkınca çağıranın taslağı değişmemiş olsun.
   TransportPlanDraft copy() => TransportPlanDraft(
     outboundMethod: outboundMethod,
     returnMethod: returnMethod,
@@ -72,17 +61,14 @@ class TransportPlanDraft with TransportMethods {
     shuttles: [for (final shuttle in shuttles) shuttle.copy()],
   );
 
-  /// Hiç plan girilmemiş hâl: iki yön de "sağlanmıyor", servis ve not yok.
-  /// İlan oluşturma bu hâlde planı hiç yazmıyor.
+  /// Hiç plan girilmemiş; ilan oluşturma bu hâlde planı yazmaz.
   bool get isBlank =>
       outboundMethod == TransportMethod.none &&
       returnMethod == TransportMethod.none &&
       shuttles.isEmpty &&
       notes.trim().isEmpty;
 
-  /// Bu taslak kaydedilirse kaç koltuk düşer: [original]'da olup listede
-  /// olmayan servislerin ve durakların `seatsTaken` toplamı. Silme
-  /// uyarısının sayısı buradan ("N çalışanın koltuğu düşecek").
+  /// Kaydedilirse düşecek koltuk sayısı; silme uyarısı buradan.
   int droppedSeats(TransportPlan? original) {
     if (original == null) return 0;
     var dropped = 0;
@@ -102,7 +88,6 @@ class TransportPlanDraft with TransportMethods {
     return dropped;
   }
 
-  /// İlk eksik alanın Türkçe açıklaması; taslak geçerliyse `null`.
   String? validate() {
     if (hasCashAllowance) {
       final amount = allowanceAmount;
@@ -145,7 +130,6 @@ class TransportPlanDraft with TransportMethods {
   );
 }
 
-/// Düzenleyicideki servis.
 class ShuttleDraft {
   ShuttleDraft({
     required this.direction,
@@ -171,8 +155,7 @@ class ShuttleDraft {
     stops: [for (final stop in shuttle.stops) StopDraft.from(stop)],
   );
 
-  /// Sunucudaki kimlik; yeni serviste `null`. Yön kaydedildikten sonra
-  /// değiştirilemiyor (`TRANSPORT_SHUTTLE_DIRECTION_LOCKED`).
+  /// Yeni serviste `null`. Yön kaydedilince değişmez.
   final String? id;
   final ShuttleDirection direction;
   String name;
@@ -181,12 +164,10 @@ class ShuttleDraft {
   String driverName;
   String driverPhone;
 
-  /// Sunucudaki seçilmiş koltuk sayısı; kapasite bunun altına inemez ve
-  /// silme bu kadar koltuğu düşürür.
+  /// Kapasite bunun altına inemez.
   final int seatsTaken;
   final List<StopDraft> stops;
 
-  /// Sunucudaki alan sınırları (`ShuttleWriteDto`).
   static const int minCapacity = 1;
   static const int maxCapacity = 100;
   static const int maxNameLength = 120;
@@ -194,16 +175,14 @@ class ShuttleDraft {
   static const int maxDriverNameLength = 120;
   static const int maxDriverPhoneLength = 32;
 
-  /// Kapasite alanının kabul ettiği basamak sayısı; [maxCapacity]'den
-  /// türüyor ki üst sınır değişince alan da değişsin.
+  /// [maxCapacity]'den türüyor ki üst sınırla birlikte değişsin.
   static final int capacityDigits = maxCapacity.toString().length;
 
   bool get isNew => id == null;
 
-  /// Bu servisin silinmesiyle düşecek koltuk sayısı.
   int get droppedSeatsIfRemoved => seatsTaken;
 
-  /// Kart altındaki tek satır: `34 ABC 12 · 12 koltuk · 3 durak`.
+  /// `34 ABC 12 · 12 koltuk · 3 durak`.
   String get summaryLine {
     final parts = [
       if (plate.trim().isNotEmpty) plate.trim(),
@@ -268,13 +247,8 @@ class ShuttleDraft {
   );
 }
 
-/// Düzenleyicideki durak.
-///
-/// Adres iki kaynaktan gelebiliyor: sunucudaki kayıt ([existingAddress],
-/// yalnız `id`'li durakta) ve haritada yeni onaylanan [pickedAddress].
-/// Yeni seçilen varsa gövdeye o gidiyor; yoksa ve durak eskiyse adres hiç
-/// gönderilmiyor — sunucu mevcut adresi koruyor. Yeni durakta adres
-/// zorunlu.
+/// Düzenleyicideki durak. Yeni seçilen [pickedAddress] varsa o gider; yoksa ve
+/// durak eskiyse adres gönderilmez, sunucu mevcudu korur. Yeni durakta zorunlu.
 class StopDraft {
   StopDraft({
     this.id,
@@ -296,12 +270,10 @@ class StopDraft {
   final String? id;
   String label;
 
-  /// Yerel saatle tutuluyor; gövdeye UTC yazılıyor.
   DateTime? scheduledAt;
   final CanonicalAddress? existingAddress;
   ConfirmedAddress? pickedAddress;
 
-  /// Sunucudaki, bu durağı seçen koltuk sayısı.
   final int seatsTaken;
 
   static const int maxLabelLength = 120;
@@ -310,11 +282,9 @@ class StopDraft {
 
   bool get hasAddress => pickedAddress != null || existingAddress != null;
 
-  /// Haritayı yeniden açarken ön dolum: yeni seçilen, yoksa kayıttaki.
   ConfirmedAddress? get addressForMap =>
       pickedAddress ?? ConfirmedAddress.fromCanonical(existingAddress);
 
-  /// Ekranda yazılan adres: yeni seçilenin özeti, yoksa kayıttaki satır.
   String? get addressSummary {
     final picked = pickedAddress;
     if (picked != null) return picked.summary;
@@ -323,7 +293,6 @@ class StopDraft {
     return existingAddress?.shortLabel;
   }
 
-  /// Listede yazılan ad: etiket, yoksa adresin ilçesi, o da yoksa "Durak".
   String get displayName {
     if (label.trim().isNotEmpty) return label.trim();
     final district =

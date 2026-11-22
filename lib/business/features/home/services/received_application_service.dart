@@ -4,12 +4,8 @@ import 'package:koala/employee/features/jobs/models/job_application.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
-/// İşverenin ilanlar arası başvuru gelen kutusu.
-///
-/// Kapsamı sunucu kuruyor: bireysel ilanda ilanı açan, şirket ilanında
-/// şirketin **güncel** yetkilisi. Şirket ilanını açıp sonra yetkiden çıkan
-/// kullanıcı o ilanın başvurularını görmez; istemcinin ayrıca süzmesi ya da
-/// kapsamı genişletmesi gerekmiyor.
+/// İlanlar arası gelen kutusu. Kapsamı sunucu kuruyor (bireyselde ilanı açan,
+/// şirkette **güncel** yetkili); istemci süzmüyor.
 class ReceivedApplicationService {
   ReceivedApplicationService._(this._apiClient);
 
@@ -23,24 +19,16 @@ class ReceivedApplicationService {
     return ReceivedApplicationService._(apiClient);
   }
 
-  /// Sunucunun kendi varsayılanıyla aynı (`PageableDefault(size = 20)`);
-  /// üst sınırı 100. Ayrışırsa sayfa sınırı sessizce kayar.
+  /// Sunucunun varsayılanıyla aynı; ayrışırsa sayfa sınırı kayar.
   static const int defaultPageSize = 20;
 
-  /// Sunucunun kabul ettiği en büyük sayfa boyutu (`PageableSanitizer`).
   static const int maxPageSize = 100;
 
   final ApiClient _apiClient;
 
-  /// Gelen başvurular; [status], [jobId] ve [companyId] boşsa süzgeç yok.
-  ///
-  /// **`sort` gönderilmiyor.** Sunucunun varsayılan sırası bekleyenleri öne
-  /// alıyor, sonra başvuru tarihine göre yeniden eskiye gidiyor; `sort`
-  /// verildiğinde bu sıra tümüyle yerini bırakıyor ve "bekleyen önce" bir
-  /// `Sort` ile ifade edilemiyor.
-  ///
-  /// [status] `unknown` olamaz: sunucu bilinmeyen durum değerine `400`
-  /// veriyor. Kapsam dışı [jobId] / [companyId] hata değil, boş sayfa.
+  /// Gelen başvurular. **`sort` gönderilmiyor**: sunucunun "bekleyen önce"
+  /// sırası bir `Sort` ile ifade edilemiyor. [status] `unknown` olamaz (`400`);
+  /// kapsam dışı kimlik boş sayfa döner.
   Future<ReceivedApplicationPage> fetchReceivedApplications({
     ApplicationStatus? status,
     String? jobId,

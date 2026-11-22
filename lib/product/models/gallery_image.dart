@@ -1,7 +1,4 @@
-/// Şirket ve ilan galerilerindeki tek bir medya görseli.
-///
-/// Backend `GalleryImageDto` karşılığı. [id] galeri ilişkisinin değil medya
-/// kaydının kimliğidir; bütün galeri uçları aynı modeli döndürür.
+/// Galerideki tek görsel; [id] galeri ilişkisinin değil medyanın kimliği.
 class GalleryImage {
   const GalleryImage({
     required this.id,
@@ -27,7 +24,6 @@ class GalleryImage {
     );
   }
 
-  /// Galeri uçlarının döndürdüğü `List<GalleryImageDto>`yu dönüştürür.
   static List<GalleryImage> listFromJson(Object? data) {
     if (data is! List) return const [];
     return data
@@ -46,10 +42,8 @@ class GalleryImage {
     );
   }
 
-  /// Toptan galeri `PUT` gövdesindeki `GalleryImageEntryDto` satırı.
-  ///
-  /// Başlık arayüzde düzenlenmese bile gönderilir; atlanırsa sunucu onu
-  /// siler. [sortOrder] listedeki güncel konumdan verilmelidir.
+  /// Toptan `PUT` satırı. Başlık düzenlenmese de gönderilir, yoksa sunucu
+  /// siler; [sortOrder] güncel konumdan.
   Map<String, dynamic> toEntryJson({int? sortOrder}) {
     return {
       'imageId': id,

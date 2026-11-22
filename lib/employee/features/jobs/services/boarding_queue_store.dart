@@ -5,9 +5,7 @@ import 'package:koala/product/features/transport/models/boarding.dart';
 import 'package:koala/product/features/transport/services/transport_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Bekleyen biniş okutmalarının saklama seam'i (is-koala/koala#217).
 abstract interface class BoardingQueueStore {
-  /// Tüm kullanıcıların kayıtları, eklenme sırasıyla.
   Future<List<PendingBoarding>> readAll();
 
   Future<void> writeAll(List<PendingBoarding> entries);
@@ -17,10 +15,7 @@ abstract interface class BoardingQueueStore {
   Future<void> setLastActiveUser(String? userId);
 }
 
-/// `SharedPreferences` üzerinde JSON liste.
-///
-/// Kayıtlar az (günde yön başına en fazla bir okutma) ve kısa ömürlü;
-/// mesai kuyruğunun SQLite deposu kadar ağır bir yapıya gerek yok.
+/// `SharedPreferences` üzerinde JSON; kayıtlar az ve kısa ömürlü.
 class SharedPreferencesBoardingQueueStore implements BoardingQueueStore {
   const SharedPreferencesBoardingQueueStore();
 
@@ -71,12 +66,10 @@ class SharedPreferencesBoardingQueueStore implements BoardingQueueStore {
   }
 }
 
-/// Okutmayı sunucuya taşıyan seam.
 abstract interface class BoardingGateway {
   Future<BoardingEvent> send(PendingBoarding entry);
 }
 
-/// `POST /shuttles/{shuttleId}/boardings`.
 class TransportBoardingGateway implements BoardingGateway {
   TransportBoardingGateway({TransportService? service})
     : _service = service ?? TransportService();

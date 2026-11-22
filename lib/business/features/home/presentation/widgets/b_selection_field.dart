@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
@@ -6,11 +6,8 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// Dokununca bir seçici açan, `MyTextfield` görünümündeki alan.
-///
-/// İlan oluşturma ekranında yazıyla değil seçimle doldurulan alanlar için:
-/// il, ilçe, tarih, harita konumu. `InputDecorator` kullanılıyor ki çerçeve,
-/// etiket ve iç boşluk metin alanlarıyla birebir aynı dursun.
+/// Dokununca seçici açan, `MyTextfield` görünümündeki alan; çerçeve ve etiket
+/// metin alanlarıyla aynı olsun diye `InputDecorator`.
 class BSelectionField extends StatelessWidget {
   const BSelectionField({
     super.key,
@@ -24,31 +21,25 @@ class BSelectionField extends StatelessWidget {
     this.iconColor,
   });
 
-  /// Alanın üstündeki etiket.
   final String label;
 
-  /// Seçili değer; boşsa [placeholder] soluk çiziliyor.
+  /// Boşsa [placeholder] soluk çizilir.
   final String? value;
 
   final String? placeholder;
 
   final VoidCallback onTap;
 
-  /// Kapalıyken dokunulamıyor ve soluk çiziliyor: önce başka bir alanın
-  /// doldurulması gerekiyorsa (ilçe için il gibi).
+  /// Önce başka alan doldurulmalıysa (ilçe için il) kapalı.
   final bool enabled;
 
-  /// Seçenekler hâlâ geliyor mu. Açıkken sağda küçük bir gösterge dönüyor.
   final bool isLoading;
 
-  /// Değerin solunda gösterilen ikon. Kategori gibi görsel karşılığı olan
-  /// seçimlerde alan, sheet'teki satırla aynı şeyi göstersin diye.
+  /// Kategori gibi görsel karşılığı olan seçimlerde.
   final AppIconData? icon;
 
-  /// [icon]'un rengi; verilmezse tema vurgusu.
   final Color? iconColor;
 
-  /// Ok ve gösterge aynı genişlikte dursun diye sabit.
   static const double _trailingSize = AppSizes.iconMedium;
 
   @override

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 import 'package:koala/employee/features/home/presentation/providers/page_provider.dart';
 import 'package:koala/employee/features/home/presentation/pages/explore_pages/map_explore_page.dart';
@@ -18,8 +18,7 @@ class _ExplorePageState extends State<ExplorePage>
   @override
   void initState() {
     super.initState();
-    // Sağlayıcı listeyle başlıyorsa (harita bu derlemede yok) ilk kare de
-    // liste olsun; aşağıdaki kare-sonrası atlama yalnız sonraki geçişler için.
+    // Sağlayıcı listeyle başlıyorsa (harita yok) ilk kare de liste olsun.
     _pageController = PageController(
       initialPage:
           context.read<PageProvider>().exploreViewType == ExploreViewType.map
@@ -39,7 +38,6 @@ class _ExplorePageState extends State<ExplorePage>
     super.build(context);
     return Consumer<PageProvider>(
       builder: (context, pageProvider, child) {
-        // PageProvider değiştiğinde sayfa animasyonu yap
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_pageController.hasClients) {
             _pageController.jumpToPage(

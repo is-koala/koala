@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:koala/employee/features/settings/models/national_identity_number.dart';
 import 'package:koala/product/widgets/settings_hint.dart';
@@ -9,16 +9,9 @@ import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
 
-/// Elle beyanın beş alanı: ad, soyad, TCKN, seri no ve doğum tarihi.
-///
-/// İki ekran aynı beyanı topluyor — çip/beyan formu
-/// (`POST /users/me/identity-verification`) ve fotoğraflı inceleme
-/// (`identity` JSON parçası). Alanlar ve doğum tarihi seçicinin sınırları
-/// tek yerde dursun ki iki ekran farklı yaş sınırı ya da farklı etiket
-/// taşımasın.
-///
-/// Denetleyiciler dışarıdan geliyor: sayfa beyanı onlardan kuruyor ve
-/// gönderim gövdesi ekrandakiyle aynı kaynaktan okunuyor.
+/// Elle beyanın beş alanı; çip/beyan formu ve fotoğraflı inceleme ortak ki
+/// sınırlar ve etiketler ayrışmasın. Denetleyiciler dışarıdan, gövde
+/// ekrandakiyle aynı kaynaktan.
 class IdentityDeclarationFields extends StatelessWidget {
   const IdentityDeclarationFields({
     super.key,
@@ -38,16 +31,13 @@ class IdentityDeclarationFields extends StatelessWidget {
 
   final DateTime? birthDate;
 
-  /// Metin alanlarından biri değişti; sayfa gönder düğmesini yeniden
-  /// değerlendiriyor.
   final VoidCallback onChanged;
 
   final ValueChanged<DateTime> onBirthDateChanged;
 
-  /// Doğum tarihi seçicinin gidebileceği en eski yıl.
   static const int earliestYear = 1920;
 
-  /// Çalışma yaşı alt sınırı; seçici bundan yenisini göstermiyor.
+  /// Çalışma yaşı alt sınırı.
   static const int minimumAge = 15;
 
   @override

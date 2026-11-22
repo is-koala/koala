@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/business/core/date_time_picking.dart';
 import 'package:koala/business/features/home/models/create_job_request.dart';
@@ -55,28 +55,22 @@ class BCreatePage extends StatefulWidget {
 
   final BPaymentService? paymentService;
 
-  /// Testler için; verilmezse üretimdeki tekil servis.
   final TransportService? transportService;
 
-  /// Formun açılışta taşıdığı adres; testler harita ekranını atlamak için
-  /// verir, üretimde işveren adresi haritadan seçer.
+  /// Testler harita ekranını atlamak için verir.
   final ConfirmedAddress? initialAddress;
 
-  /// Formun açılışta taşıdığı ulaşım taslağı; testler düzenleyiciyi atlamak
-  /// için verir.
+  /// Testler düzenleyiciyi atlamak için verir.
   final TransportPlanDraft? initialTransport;
 
-  /// Ulaşım planı yazılamadığında başarı kutusuna eklenen satır.
   static const String transportFailedText =
       'Ulaşım planı kaydedilemedi — ilan detayından ekleyin.';
 
-  /// Şirket ilanında adres açıkken altında yazan açıklama.
   static const String addressPublicNotice =
       'Tam konum (harita pini, sokak ve bina) ilanda herkese görünür. Kat, '
       'daire ve adres tarifini yalnızca siz ve işe atadığınız çalışan '
       'görürsünüz.';
 
-  /// Şirket ilanında "Adresi gizle" açıkken altında yazan açıklama.
   static const String addressHiddenNotice =
       'Adres gizli: ilan haritada ve aramada yalnızca yaklaşık konumla '
       'görünür. Tam adresi yalnızca siz ve işe atadığınız çalışan '
@@ -89,8 +83,8 @@ class BCreatePage extends StatefulWidget {
 class _BCreatePageState extends BCreatePageModel {
   @override
   Widget build(BuildContext context) {
-    // İlan kurumsal mı bireysel mi açılacak: onaylı şirket üyeliği varsa
-    // kurumsal. Kullanıcının bunu seçmesi gerekmiyor ama görmesi gerekiyor.
+    // Onaylı şirket üyeliği varsa ilan kurumsal; kullanıcı seçmiyor ama
+    // görmeli.
     final company = context.watch<UserProvider>().user?.activeCompany;
 
     return Scaffold(
@@ -111,7 +105,6 @@ class _BCreatePageState extends BCreatePageModel {
               ?_identityNotice(),
               _templateSection(),
 
-              // Temel Bilgiler
               _sectionLabel("Temel Bilgiler"),
               const SizedBox(height: AppSizes.spaceMedium),
               MyTextfield(
@@ -130,7 +123,6 @@ class _BCreatePageState extends BCreatePageModel {
 
               const SizedBox(height: AppSizes.spaceLarge),
 
-              // Kategori & Tip
               _sectionLabel("Kategori ve Tip"),
               const SizedBox(height: AppSizes.spaceMedium),
               _categorySelector(),
@@ -139,7 +131,6 @@ class _BCreatePageState extends BCreatePageModel {
 
               const SizedBox(height: AppSizes.spaceLarge),
 
-              // Ücret & Tarih
               _sectionLabel("Ücret ve Tarih"),
               const SizedBox(height: AppSizes.spaceMedium),
               MyTextfield(
@@ -171,21 +162,18 @@ class _BCreatePageState extends BCreatePageModel {
 
               const SizedBox(height: AppSizes.spaceLarge),
 
-              // Konum
               _sectionLabel("Konum"),
               const SizedBox(height: AppSizes.spaceMedium),
               _locationSection(isCompanyJob: company != null),
 
               const SizedBox(height: AppSizes.spaceLarge),
 
-              // Ulaşım (isteğe bağlı)
               _sectionLabel("Ulaşım"),
               const SizedBox(height: AppSizes.spaceMedium),
               _transportSection(),
 
               const SizedBox(height: AppSizes.spaceLarge),
 
-              // Detaylı Bilgiler
               _sectionLabel("Detaylı Bilgiler"),
               const SizedBox(height: AppSizes.spaceMedium),
               MyTextfield(labelText: "Görevler", controller: _dutiesController),
@@ -197,7 +185,6 @@ class _BCreatePageState extends BCreatePageModel {
 
               const SizedBox(height: AppSizes.spaceLarge),
 
-              // Gereksinimler
               _sectionLabel("Gereksinimler"),
               const SizedBox(height: AppSizes.space),
               Row(
@@ -225,15 +212,14 @@ class _BCreatePageState extends BCreatePageModel {
                 value: _experienceRequired,
                 onChanged: (v) => setState(() => _experienceRequired = v),
               ),
-              // Sigorta yalnızca kurumsal ilanlarda sorulabiliyor: bireysel
-              // ilan ucu `insuranceRequired`'ı zorla `false` yazıyor ve
-              // sigorta gerektiren kategorilerde ilan açtırmıyor.
+              // Sigorta yalnız şirket ilanında: bireysel uç onu `false`
+              // yazıyor.
               if (company != null) ...[
                 _switchTile(
                   title: "Sigorta Gerekli",
                   value: _insuranceRequired,
-                  // Kategori sigorta zorunlu kılıyorsa anahtar kapatılamıyor:
-                  // sunucu o ilanı zaten kabul etmiyor.
+                  // Kategori sigortayı zorunlu kılıyorsa anahtar kapanamaz;
+                  // sunucu kabul etmiyor.
                   onChanged: _insuranceLocked
                       ? null
                       : (v) => setState(() => _insurancePreference = v),
@@ -252,7 +238,6 @@ class _BCreatePageState extends BCreatePageModel {
 
   // ---------------------------------------------------------------- Başlık
 
-  /// İlanın kimin adına açılacağını söyleyen bilgi satırı.
   Widget _employerNotice(String? companyName) {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSizes.spaceLarge),
@@ -288,13 +273,10 @@ class _BCreatePageState extends BCreatePageModel {
     );
   }
 
-  /// Bilgi kutularının zemin opaklığı.
   static const double _noticeAlpha = 0.1;
 
-  /// "Şablondan doldur" düğmesi ve uygulandıktan sonraki bilgi satırı.
-  ///
-  /// Formun en üstünde ama kimlik uyarısının altında: uyarı ilanın hiç
-  /// açılamayacağını söylüyor, şablon yalnızca yazma emeğini azaltıyor.
+  /// Kimlik uyarısının altında: uyarı ilanın hiç açılamayacağını, şablon yalnız
+  /// emeği azalttığını söylüyor.
   Widget _templateSection() {
     final appliedName = _appliedTemplateName;
 
@@ -328,10 +310,8 @@ class _BCreatePageState extends BCreatePageModel {
     );
   }
 
-  /// Doğrulanmamış bireysel işverene gösterilen uyarı.
-  ///
-  /// Formu doldurup en sonda kapıya çarpmaktansa baştan söylemek daha iyi —
-  /// sigorta kategorilerini baştan elemekle aynı gerekçe.
+  /// Doğrulanmamış bireysel işverene uyarı; formu doldurup sonda kapıya
+  /// çarpmasın.
   Widget? _identityNotice() {
     if (!_needsIdentityVerification) return null;
 
@@ -371,13 +351,9 @@ class _BCreatePageState extends BCreatePageModel {
     );
   }
 
-  /// Bireysel işverene sigorta anahtarı yerine gösterilen açıklama.
-  ///
-  /// Kural sunucuda: SGK bildirimi işverenin yükümlülüğü olduğu için bir
-  /// günlük iş açan bireysel işverenden beklenmiyor; sigortalı çalışma
-  /// gerektiren kategoriler de bireysel ilana kapalı. Anahtarı sessizce
-  /// gizlemek yerine nedenini yazmak, kategori listesinde neden daha az
-  /// seçenek olduğunu da açıklıyor.
+  /// Bireysel işverene sigorta yerine açıklama: SGK bildirimi bir günlük iş
+  /// açan bireyden beklenmiyor ve sigortalı kategoriler kapalı. Nedeni yazmak
+  /// listenin neden kısa olduğunu da açıklıyor.
   Widget _insuranceNotice() {
     return Container(
       width: double.infinity,
@@ -410,12 +386,9 @@ class _BCreatePageState extends BCreatePageModel {
 
   // ----------------------------------------------------------------- Konum
 
-  /// İlanın adresi haritada seçiliyor; burada özeti ve giriş kapısı var.
-  ///
-  /// Şirket ilanında altına "Adresi gizle" anahtarı ve kimin neyi
-  /// göreceğini söyleyen satır geliyor. Kural sunucuda: istemci yalnız
-  /// `addressPublic`'i gönderiyor, kesinliği sunucu belirliyor. Bireysel
-  /// ilanda anahtar yok — bireysel ilan herkese her zaman yaklaşık.
+  /// İlan adresi haritada seçiliyor; burada özet. Şirket ilanında "Adresi
+  /// gizle" anahtarı var, kesinliği sunucu belirliyor; bireysel ilan her zaman
+  /// yaklaşık.
   Widget _locationSection({required bool isCompanyJob}) {
     final field = ConfirmedAddressField(
       value: _address,
@@ -445,8 +418,8 @@ class _BCreatePageState extends BCreatePageModel {
 
   // ---------------------------------------------------------------- Ulaşım
 
-  /// Ulaşım planı isteğe bağlı: taslak yokken tek bir giriş düğmesi, varken
-  /// özet + Düzenle/Kaldır (is-koala/koala#197).
+  /// Ulaşım planı isteğe bağlı (#197): taslak yokken giriş düğmesi, varken
+  /// özet.
   Widget _transportSection() {
     final transport = _transport;
     if (transport == null || transport.isBlank) {
@@ -584,7 +557,6 @@ class _BCreatePageState extends BCreatePageModel {
 
   // -------------------------------------------------------------- Parçalar
 
-  /// Kategori çipleri çizilemediğinde onların yerine geçen kutu.
   Widget _categoryNotice(String message, {required bool canRetry}) {
     return Container(
       width: double.infinity,
@@ -624,12 +596,8 @@ class _BCreatePageState extends BCreatePageModel {
   Widget _sectionLabel(String title) =>
       Text(title, style: context.textTheme.titleMedium);
 
-  /// Kategori alanı.
-  ///
-  /// Liste sunucudan geliyor ve büyüyebilir; o yüzden çip dizisi değil, il
-  /// seçimiyle aynı açılır alan. Kategoriler hiç gelmediyse (hata ya da boş
-  /// tanım) alanın yerine açıklama kutusu çiziliyor — dokunulduğunda boş bir
-  /// sheet açan bir alan göstermenin anlamı yok.
+  /// Kategori alanı; liste büyüyebildiği için açılır alan. Kategori hiç
+  /// gelmediyse alanın yerine açıklama çizilir, boş sheet açılmaz.
   Widget _categorySelector() {
     final provider = context.watch<JobCategoryProvider>();
 
@@ -705,8 +673,6 @@ class _BCreatePageState extends BCreatePageModel {
     return const [];
   }
 
-  /// Yan yana duran, tek seçimli kutucuklar. İş tipi ve ücret tipi aynı
-  /// görünümü paylaşıyor.
   Widget _segmentedSelector<T>({
     required List<T> options,
     required T selected,
@@ -762,17 +728,12 @@ class _BCreatePageState extends BCreatePageModel {
       controller: _descriptionController,
       height: BCreatePageModel._descriptionHeight,
       expands: true,
-      // Tek satırlık alanların tam yuvarlak köşesi bu yükseklikte metni
-      // sıkıştırıyor.
+      // Tam yuvarlak köşe bu yükseklikte metni sıkıştırıyor.
       borderRadius: AppRadius.innerCircular,
     );
   }
 
-  /// Anahtar kilitliyken neden kapatılamadığını söyleyen açıklama.
-  ///
-  /// Devre dışı bir anahtar tek başına "bozuk" görünüyor; kuralın kategoriden
-  /// geldiğini yazmak, kategoriyi değiştirince kilidin kalkacağını da
-  /// anlatıyor.
+  /// Kilitli anahtarın nedeni; tek başına kapalı anahtar bozuk görünür.
   Widget _insuranceLockedNotice() {
     return const Padding(
       padding: EdgeInsets.only(top: AppSizes.spaceSmall),

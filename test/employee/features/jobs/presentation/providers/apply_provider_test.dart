@@ -87,8 +87,7 @@ void main() {
       expect(myJob.date, '05.03.2026');
     });
 
-    // Sabit `null` şirket bağlantısını her başvuru satırında öldürüyordu
-    // (is-koala/koala#177); `MyApplicationDto.job` bir `JobSummaryDto` ve
+    // Sabit `null` şirket bağlantısını öldürüyordu (#177); `JobSummaryDto`
     // `companyId` taşıyor.
     test('başvuru satırı gerçek companyId ve işveren türünü taşır', () async {
       final api = FakeApi(
@@ -389,10 +388,8 @@ void main() {
   });
 
   group('ApplicationStatus', () {
-    // Tanınmayan kod eskiden `applied`'a düşüyordu: sunucu yeni bir durum
-    // eklediğinde o başvuru "yanıt bekliyor" gibi görünüyor, iki taraf da
-    // sunucunun reddedeceği bir işlemi deniyordu. Var olan bir duruma
-    // benzemek, bilinmediğini söylemekten tehlikeli.
+    // Tanınmayan kod var olan bir duruma benzememeli: `applied` gibi görünse
+    // reddedilecek bir işleme davet ederdi.
     test('tanınmayan durum bilinmiyor sayılır', () {
       expect(ApplicationStatus.fromCode('UZAYLI'), ApplicationStatus.unknown);
       expect(
@@ -427,9 +424,8 @@ void main() {
     });
   });
 
-  // Sunucu geri çekilen ilana yeniden başvuruyu kabul ediyor
-  // (`existsByJobIdAndUserIdAndStatusNot(jobId, userId, WITHDRAWN)`); istemci
-  // saymaya devam ederse o kural uygulamadan erişilemez kalıyordu.
+  // Sunucu geri çekilen ilana yeniden başvuruyu kabul ediyor; istemci saymaya
+  // devam etse o kural erişilemez kalırdı.
   group('ApplyProvider.hasApplied', () {
     Future<ApplyProvider> loadWith(List<Map<String, dynamic>> content) async {
       final api = FakeApi(
@@ -498,9 +494,8 @@ void main() {
   });
 
   group('ApplyProvider.withdraw', () {
-    /// Önce listeyi doldurur, sonra geri çekme isteğine [onWithdraw] yanıtını
-    /// verir. Geri çekme `409` dönerse provider listeyi tazelediği için
-    /// listeleme yanıtı birden çok kez istenebiliyor.
+    /// `409`'da provider listeyi tazelediği için listeleme yanıtı birden çok
+    /// kez istenebilir.
     (ApplyProvider, FakeApi) buildWith({
       required FakeApiResponse onWithdraw,
       String listedStatus = 'APPLIED',
@@ -548,8 +543,7 @@ void main() {
       expect(provider.hasApplied('job_1'), isFalse);
     });
 
-    // Uç `ShortJobDto` döndürüyor (yalnızca id ve başlık): dönen kayıt olduğu
-    // gibi listedekinin yerine konsaydı satırın ücreti, şirketi ve özeti
+    // Uç `ShortJobDto` döndürüyor; kayıt yerine konsa ücret, şirket ve özet
     // silinirdi. Sunucudan alınan tek şey durum.
     test('satırın ilan özeti korunur', () async {
       final (provider, _) = buildWith(
@@ -600,9 +594,8 @@ void main() {
       expect(api.requests.last.path, '/users/me/applications');
     });
 
-    // İki çakışma kategorisi de ekrandaki listeyi bayat yapıyor; tazeleme
-    // yalnız birine bağlanırsa diğerinde kullanıcı yanlış durumu görmeye
-    // devam eder.
+    // İki çakışma kategorisi de listeyi bayat yapıyor; tazeleme ikisine de
+    // bağlı olmalı.
     for (final category in ['DATA_CONFLICT', 'BUSINESS_RULE_VIOLATION']) {
       test('$category alınırsa liste yine tazeleniyor', () async {
         final (provider, api) = buildWith(
@@ -749,7 +742,7 @@ void main() {
       expect(provider.appliedJobs.single.status, MyJobStatus.pending);
     });
 
-    // Kullanıcı reddedildiğini öğrenemiyordu: satır "beklemede" çiziliyordu.
+    // Reddedilen başvuru "beklemede" çizilmemeli.
     test('reddedilen başvuru kendi durumunu taşır', () async {
       final provider = await loadWith([
         applicationBody(
@@ -773,8 +766,7 @@ void main() {
       expect(job.subtitle, job.description);
     });
 
-    // Geri çekilen başvuru "Başvuru Bekliyor" çiziliyordu: kullanıcı kendi
-    // geri çektiği başvuruyu hâlâ değerlendiriliyor sanıyordu.
+    // Geri çekilen başvuru "Başvuru Bekliyor" çizilmemeli.
     test('geri çekilen başvuru kendi durumunu taşır', () async {
       final provider = await loadWith([applicationBody(status: 'WITHDRAWN')]);
 

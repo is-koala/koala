@@ -2,18 +2,14 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Aynı `notificationId`'nin ikinci teslimatını yutar.
-///
-/// Backend aynı olayı yeniden gönderebiliyor. Kayıt diskte durur çünkü
-/// süreç öldükten sonra gelen kopya da işlenmemeli; yedi gün sonra silinir
-/// çünkü sonsuz bir harita birikmesin.
+/// Aynı `notificationId`'nin ikinci teslimatını yutar. Süreç ölse de kopya
+/// işlenmesin diye diskte; yedi gün sonra silinir.
 class PushNotificationDedupe {
   PushNotificationDedupe({
-    SharedPreferences? prefs,
+    this._prefs,
     DateTime Function()? now,
     this.ttl = const Duration(days: 7),
-  }) : _prefs = prefs,
-       _now = now ?? DateTime.now;
+  }) : _now = now ?? DateTime.now;
 
   static const String storageKey = 'push_handled_notifications';
 
@@ -21,7 +17,7 @@ class PushNotificationDedupe {
   final DateTime Function() _now;
   final Duration ttl;
 
-  /// İlk kez görülürse `true`; kopya ya da süresi dolmamış kayıtta `false`.
+  /// İlk kez görülürse `true`.
   Future<bool> claim(String notificationId) async {
     if (notificationId.isEmpty) return false;
 

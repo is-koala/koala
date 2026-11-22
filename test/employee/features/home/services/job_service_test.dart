@@ -41,9 +41,8 @@ void main() {
         ),
       );
 
-      final result = await JobService.withClient(
-        api.client,
-      ).search(const JobSearchQuery());
+      final result = await JobService.withClient(api.client)
+          .search(const JobSearchQuery());
 
       expect(api.requests.single.path, '/jobs');
       expect(result.jobs.single.title, 'Garson');
@@ -133,9 +132,8 @@ void main() {
         ),
       );
 
-      await JobService.withClient(
-        api.client,
-      ).search(const JobSearchQuery(), page: 2, size: 100);
+      await JobService.withClient(api.client)
+          .search(const JobSearchQuery(), page: 2, size: 100);
 
       final query = api.requests.single.queryParameters;
       expect(query['page'], 2);
@@ -206,9 +204,8 @@ void main() {
         ),
       );
 
-      await JobService.withClient(
-        api.client,
-      ).search(const JobSearchQuery(sort: JobSortOption.salaryDesc));
+      await JobService.withClient(api.client)
+          .search(const JobSearchQuery(sort: JobSortOption.salaryDesc));
 
       expect(api.requests.single.queryParameters['sort'], 'salary,desc');
     });
@@ -224,9 +221,8 @@ void main() {
         ),
       );
 
-      final result = await JobService.withClient(
-        api.client,
-      ).search(const JobSearchQuery());
+      final result = await JobService.withClient(api.client)
+          .search(const JobSearchQuery());
 
       expect(result.jobs, isEmpty);
     });
@@ -309,9 +305,8 @@ void main() {
           },
         );
 
-        final jobs = await JobService.withClient(
-          api.client,
-        ).fetchByCompany('company-7');
+        final jobs = await JobService.withClient(api.client)
+            .fetchByCompany('company-7');
 
         expect(jobs, hasLength(101));
         expect(jobs.first.id, 'job-0');

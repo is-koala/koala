@@ -1,15 +1,6 @@
-/// Bir kullanıcının herkese açık profili.
-///
-/// `GET /users/{userId}` yanıtındaki `PublicProfileDto`. [CurrentUser] ile
-/// karıştırılmamalı: o oturum sahibinin tam kaydı, bu başkasının görebildiği
-/// kadarı.
-///
-/// Sunucu bilerek kısıtlı döndürüyor:
-/// - **Tam adres hiç gelmiyor**, yalnızca il ve ilçe.
-/// - [cvUrl] ilişkiye bağlı — kişinin kendisi ya da o kişinin başvurduğu bir
-///   ilanın işvereni görüyor, diğerlerinde `null`. İndirme yolu da ayrıca
-///   sahiplik kontrolü yapıyor, yani adres sızsa bile dosya inmiyor.
-/// - Uç oturum açmış kullanıcılara açık, anonime değil.
+/// Başkasının görebildiği profil (`PublicProfileDto`); oturum sahibinin tam
+/// kaydı [CurrentUser]. Tam adres gelmez (il/ilçe); [cvUrl] yalnız kişinin
+/// kendisine ya da başvurduğu ilanın işverenine dolu. Anonime kapalı.
 class PublicProfile {
   const PublicProfile({
     required this.id,
@@ -32,28 +23,22 @@ class PublicProfile {
   final String? username;
   final String? profilePictureUrl;
 
-  /// Kişinin mesleği; profil başlığında adın altında görünüyor.
   final String? jobTitle;
 
-  /// "Hakkında" metni.
   final String? about;
 
   final String? cityName;
   final String? districtName;
 
-  /// Özgeçmişin indirme adresi; yoksa ya da görme yetkisi yoksa `null`.
   final String? cvUrl;
 
-  /// Hakkındaki değerlendirme sayısı ve ortalaması (koala-backend#282,
-  /// `GET /users/{id}/rating-summary` ile aynı kaynak). Alan yoksa — eski
-  /// sunucu — `null`: "değerlendirme yok" ile "sunucu göndermedi" farklı
-  /// şeyler, ikincisinde özet ayrı uçtan çekiliyor.
+  /// Eski sunucuda `null`: "değerlendirme yok" ile "göndermedi" farklı,
+  /// ikincide özet ayrı uçtan çekilir.
   final int? reviewCount;
   final double? averageRating;
 
   String get fullName => '$firstName $lastName'.trim();
 
-  /// `Çankaya/Ankara`. İkisi de boşsa `null`.
   String? get locationLabel {
     final parts = [
       if (districtName != null && districtName!.isNotEmpty) districtName!,
@@ -62,7 +47,6 @@ class PublicProfile {
     return parts.isEmpty ? null : parts.join('/');
   }
 
-  /// Özgeçmiş görüntülenebilir mi.
   bool get hasCv => cvUrl != null && cvUrl!.isNotEmpty;
 
   factory PublicProfile.fromJson(Map<String, dynamic> json) {
@@ -82,8 +66,7 @@ class PublicProfile {
     );
   }
 
-  /// `averageRating` sunucuda `BigDecimal`; JSON'da sayı ya da dize olarak
-  /// gelebiliyor. Alan yoksa ya da tanınmıyorsa `null`.
+  /// `BigDecimal` sayı ya da dize gelebiliyor; tanınmazsa `null`.
   static double? _decimal(Object? value) => switch (value) {
     final num number => number.toDouble(),
     final String text => double.tryParse(text),

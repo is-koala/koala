@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/chat/presentation/pages/chat_list_page.dart';
 import 'package:koala/employee/features/home/presentation/pages/explore_pages/explore_page.dart';
@@ -19,8 +19,7 @@ class ShellPage extends StatefulWidget {
 
   const ShellPage({super.key, required this.child});
 
-  /// Kabuk rotalarının çizdiği boş sayfa. İçerik [ShellPage]'in kendi
-  /// `PageView`'ında; rota yalnız sekme seçiyor.
+  /// Kabuk rotalarının boş sayfası; içerik [ShellPage]'in `PageView`'ında.
   static const Widget tabPlaceholder = SizedBox.shrink();
 
   @override
@@ -31,7 +30,7 @@ class _ShellPageState extends State<ShellPage> {
   int _selectedIndex = 0;
   late PageController _pageController;
 
-  // State korunması için sayfaları burada tanımla
+  // Sayfalar burada ki durumları korunsun.
   static const List<Widget> _pages = [
     ExplorePage(),
     JobsPage(),
@@ -53,27 +52,25 @@ class _ShellPageState extends State<ShellPage> {
 
   void _onItemTapped(int index, String path) {
     if (index == 0) {
-      // Home butonuna basıldığında
       final pageProvider = Provider.of<PageProvider>(context, listen: false);
 
       if (_selectedIndex != 0) {
-        // Diğer sayfalardan home'a geliyorsa -> map göster
+        // Başka sekmeden gelince harita.
         pageProvider.setExploreViewToMap();
       } else {
-        // Zaten home'dayken tekrar basıldıysa -> toggle yap
+        // Zaten buradaysa görünümü değiştir.
         pageProvider.toggleExploreView();
       }
     }
 
     if (index == 1) {
-      // Jobs butonuna basıldığında
       final pageProvider = Provider.of<PageProvider>(context, listen: false);
 
       if (_selectedIndex != 1) {
-        // Diğer sayfalardan jobs'a geliyorsa -> home göster
+        // Başka sekmeden gelince ana görünüm.
         pageProvider.setJobsViewType(JobsViewType.home);
       } else {
-        // Zaten jobs'dayken tekrar basıldıysa -> toggle yap
+        // Zaten buradaysa görünümü değiştir.
         pageProvider.toggleJobsView();
       }
     }
@@ -82,7 +79,6 @@ class _ShellPageState extends State<ShellPage> {
       _selectedIndex = index;
     });
 
-    // PageView'i animasyon olmadan değiştir
     _pageController.jumpToPage(index);
 
     context.go(path);
@@ -91,7 +87,6 @@ class _ShellPageState extends State<ShellPage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // URL'e göre index'i güncelle
     final location = GoRouterState.of(context).matchedLocation;
     int newIndex = 0;
     switch (location) {
@@ -114,7 +109,6 @@ class _ShellPageState extends State<ShellPage> {
         _selectedIndex = newIndex;
       });
 
-      // PageController'ı güncelle
       if (_pageController.hasClients) {
         _pageController.animateToPage(
           newIndex,
@@ -125,7 +119,6 @@ class _ShellPageState extends State<ShellPage> {
     }
   }
 
-  /// Keşfet sekmesi harita görünümünde mi.
   bool _showsMap(BuildContext context) =>
       _selectedIndex == 0 &&
       context.watch<PageProvider>().exploreViewType == ExploreViewType.map;
@@ -137,28 +130,23 @@ class _ShellPageState extends State<ShellPage> {
       extendBody: true,
       body: Stack(
         children: [
-          // PageView ile sayfaları yönet
           PageView(
             controller: _pageController,
-            physics:
-                const NeverScrollableScrollPhysics(), // Sadece programmatik geçiş
+            physics: const NeverScrollableScrollPhysics(), // Sadece programmatik geçiş
             children: _pages,
           ),
-          // go_router'ın kabuk navigator'ı: içeriği boş, görünmez; yalnız
-          // geri tuşunun okuyabileceği bir navigator olsun diye ağaçta.
+          // Kabuk navigator'ı görünmez ama ağaçta; geri tuşu onu okuyor.
           Offstage(child: widget.child),
-          // Sayfanın altında zemine giden geçiş. Haritada çizilmiyor: harita
-          // ekranın tamamı, kesilecek bir liste yok; geçiş haritanın altını
-          // ve Google logosunu beyazla örtüyordu.
+          // Haritada çizilmez: geçiş haritanın altını ve Google logosunu
+          // örtüyordu.
           if (!_showsMap(context))
             Positioned(
               left: 0,
               right: 0,
               bottom: 0,
               child: IgnorePointer(
-                // Listenin son satırı navbar'ın altına girerken sertçe
-                // kesilmesin diye. En altta bile tam opak değil: tam beyaz
-                // sayfanın altına sert bir bant çiziyordu.
+                // Son satır navbar'ın altında sertçe kesilmesin; tam opak bant
+                // çiziyordu.
                 child: Container(
                   height: AppSizes.navBar,
                   decoration: BoxDecoration(

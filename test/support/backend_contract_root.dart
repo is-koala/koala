@@ -1,11 +1,7 @@
 import 'dart:io';
 
-/// Backend sözleşme kökü — tek resolver (is-koala/koala#139).
-///
-/// `from` verilmişse yalnızca o dizin, içindeki `koala-backend` ve
-/// bir üst kardeş bakılır; süreç ortamı ve üst atalar fixture
-/// sınırını aşamaz. `from` yoksa `KOALA_BACKEND_ROOT` /
-/// `KOALA_BACKEND_PATH`, sonra paket kökünden yukarı kardeş aranır.
+/// Backend sözleşme kökü, tek resolver (#139). `from` verilirse yalnız o dizin
+/// ve yakını; yoksa ortam değişkeni, sonra paket kökünden yukarı.
 class BackendContractRoot {
   static const identityRelativePath =
       'src/main/java/com/exskylab/koala/core/utilities/results/ErrorCategory.java';

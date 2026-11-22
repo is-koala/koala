@@ -34,9 +34,8 @@ void main() {
       ),
     );
 
-    final availability = await AvailabilityService.withClient(
-      api.client,
-    ).fetchForUser('user_1');
+    final availability = await AvailabilityService.withClient(api.client)
+        .fetchForUser('user_1');
 
     expect(api.requests.single.method, 'GET');
     expect(api.requests.single.path, '/users/user_1/availability');
@@ -191,9 +190,8 @@ void main() {
       );
 
       await expectLater(
-        AvailabilityService.withClient(
-          api.client,
-        ).saveException(date: DateTime(2020), available: false),
+        AvailabilityService.withClient(api.client)
+            .saveException(date: DateTime(2020), available: false),
         throwsA(
           isA<ApiException>().having(
             (error) => error.type,
@@ -210,9 +208,8 @@ void main() {
             const FakeApiResponse(statusCode: 200, body: {'success': true}),
       );
 
-      await AvailabilityService.withClient(
-        api.client,
-      ).deleteException('exception_1');
+      await AvailabilityService.withClient(api.client)
+          .deleteException('exception_1');
 
       expect(api.requests.single.method, 'DELETE');
       expect(

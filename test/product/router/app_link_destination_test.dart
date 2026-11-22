@@ -12,9 +12,9 @@ const stagingHosts = {'iskoala.com'};
 
 /// `config/<flavor>.json` dosyasındaki `WEB_HOSTS`, uygulamanın okuduğu yoldan.
 Set<String> configuredWebHosts(String flavor) {
-  final decoded =
-      jsonDecode(File('config/$flavor.json').readAsStringSync())
-          as Map<String, dynamic>;
+  final decoded = jsonDecode(
+    File('config/$flavor.json').readAsStringSync(),
+  ) as Map<String, dynamic>;
   return ApiConfig.resolveWebHosts(
     flavor: flavor,
     configuredHosts: decoded['WEB_HOSTS'] as String,
@@ -143,27 +143,24 @@ void main() {
     );
   });
 
-  test(
-    'iki flavor da e-postadaki iskoala.com kayıt bağlantısını aynı rotaya çevirir',
-    () {
-      // Backend e-postaya https://iskoala.com/hesap-dogrula?token=… yazıyor;
-      // staging de production web'ini kullandığı için ikisi de açmalı (#155).
-      for (final (flavor, scheme) in [
-        ('staging', 'koala-staging'),
-        ('production', 'koala'),
-      ]) {
-        expect(
-          AppLinkDestination.routeFor(
-            Uri.parse('https://iskoala.com/hesap-dogrula?token=x'),
-            appScheme: scheme,
-            webHosts: configuredWebHosts(flavor),
-          ),
-          '/auth/register-type/register/creating-password?token=x',
-          reason: flavor,
-        );
-      }
-    },
-  );
+  test('iki flavor da e-postadaki iskoala.com kayıt bağlantısını aynı rotaya çevirir', () {
+    // Backend e-postaya https://iskoala.com/hesap-dogrula?token=… yazıyor;
+    // staging de production web'ini kullandığı için ikisi de açmalı (#155).
+    for (final (flavor, scheme) in [
+      ('staging', 'koala-staging'),
+      ('production', 'koala'),
+    ]) {
+      expect(
+        AppLinkDestination.routeFor(
+          Uri.parse('https://iskoala.com/hesap-dogrula?token=x'),
+          appScheme: scheme,
+          webHosts: configuredWebHosts(flavor),
+        ),
+        '/auth/register-type/register/creating-password?token=x',
+        reason: flavor,
+      );
+    }
+  });
 
   test('HTTPS hostu şemadan değil yapılandırmadan gelir', () {
     expect(
@@ -385,32 +382,29 @@ void main() {
     );
   });
 
-  test(
-    'company-invitation bağlantısı davet kimliğiyle authenticated rotaya dönüşür',
-    () {
-      final route = AppLinkDestination.routeFor(
-        Uri.parse(
-          'koala://company-invitation?id=11111111-1111-1111-1111-111111111111'
-          '&utm_source=mail',
-        ),
+  test('company-invitation bağlantısı davet kimliğiyle authenticated rotaya dönüşür', () {
+    final route = AppLinkDestination.routeFor(
+      Uri.parse(
+        'koala://company-invitation?id=11111111-1111-1111-1111-111111111111'
+        '&utm_source=mail',
+      ),
+      appScheme: 'koala',
+      webHosts: productionHosts,
+    );
+
+    expect(
+      route,
+      '/company-invitation?id=11111111-1111-1111-1111-111111111111',
+    );
+    expect(
+      AppLinkDestination.routeFor(
+        Uri.parse('koala://company-invitation?id=ilk&id=ikinci'),
         appScheme: 'koala',
         webHosts: productionHosts,
-      );
-
-      expect(
-        route,
-        '/company-invitation?id=11111111-1111-1111-1111-111111111111',
-      );
-      expect(
-        AppLinkDestination.routeFor(
-          Uri.parse('koala://company-invitation?id=ilk&id=ikinci'),
-          appScheme: 'koala',
-          webHosts: productionHosts,
-        ),
-        isNull,
-      );
-    },
-  );
+      ),
+      isNull,
+    );
+  });
 
   test('company-invitation kimliği yoksa veya boşsa reddedilir', () {
     for (final link in [

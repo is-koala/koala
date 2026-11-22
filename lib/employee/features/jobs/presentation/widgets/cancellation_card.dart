@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/employee/features/jobs/models/cancellation.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -10,18 +10,14 @@ import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/formatters/turkish_money_formatter.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// İptal edilmiş işin kartı: kim, ne zaman, neden ve para ne oldu.
-///
-/// `CancellationDto` şimdiye kadar hiç okunmuyordu (is-koala/koala#177);
-/// iş iptal olunca kullanıcı yalnızca kırmızı bir "İptal Edildi" görüyordu.
-/// Kesinti çalışanın kendi iptalinde çıkmıyor; işverenin geç iptalinde
-/// çıkabiliyor ve iade işverene gidiyor — kart bunu rakamla söylüyor.
+/// İptal edilmiş işin kartı: kim, ne zaman, neden, para ne oldu (#177).
+/// İşverenin geç iptalinde kesinti ve iade rakamla söylenir.
 class CancellationCard extends StatelessWidget {
   const CancellationCard({super.key, required this.cancellation});
 
   final Cancellation cancellation;
 
-  /// İptal tutarları TRY; `CancellationDto` para birimi taşımıyor.
+  /// `CancellationDto` para birimi taşımıyor.
   static const String _currency = 'TRY';
 
   @override

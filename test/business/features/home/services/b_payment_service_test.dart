@@ -27,9 +27,8 @@ void main() {
           ),
         );
 
-        final quote = await BPaymentService.withClient(
-          api.client,
-        ).quote('1000.10');
+        final quote = await BPaymentService.withClient(api.client)
+            .quote('1000.10');
 
         final request = api.requests.single;
         expect(request.path, '/payment-quotes');
@@ -123,9 +122,8 @@ void main() {
         ),
       );
 
-      final attempts = await BPaymentService.withClient(
-        api.client,
-      ).fetchAttempts('assignment-1');
+      final attempts = await BPaymentService.withClient(api.client)
+          .fetchAttempts('assignment-1');
 
       expect(
         api.requests.single.path,
@@ -150,9 +148,8 @@ void main() {
         ),
       );
 
-      final attempts = await BPaymentService.withClient(
-        api.client,
-      ).fetchAttempts('assignment-1');
+      final attempts = await BPaymentService.withClient(api.client)
+          .fetchAttempts('assignment-1');
 
       expect(attempts, isEmpty);
     });
@@ -181,9 +178,8 @@ void main() {
           ),
         );
 
-        final attempts = await BPaymentService.withClient(
-          api.client,
-        ).fetchAttempts('assignment-1');
+        final attempts = await BPaymentService.withClient(api.client)
+            .fetchAttempts('assignment-1');
 
         expect(attempts.single.workerPayout, '1000.1');
       },

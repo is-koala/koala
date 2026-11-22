@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -10,7 +10,6 @@ import 'package:koala/product/widgets/app_bottom_sheet.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:provider/provider.dart';
 
-/// Ayarlarda gösterilen tema adı.
 extension ThemeModeLabel on ThemeMode {
   String get label => switch (this) {
     ThemeMode.system => 'Sistem',
@@ -31,19 +30,14 @@ extension ThemeModeLabel on ThemeMode {
   };
 }
 
-/// Görünüm tercihini seçtiren bottom sheet.
-///
-/// Seçim anında uygulanıyor; ayrı bir "kaydet" adımı yok — kullanıcı temayı
-/// sheet açıkken görüp karar verebilsin diye.
+/// Görünüm seçimi; anında uygulanıyor ki kullanıcı sheet açıkken görüp karar
+/// versin.
 class ThemeModeSheet extends StatelessWidget {
   const ThemeModeSheet({super.key});
 
-  /// Seçili satırın zemin opaklığı.
   static const double _selectedTintAlpha = 0.1;
 
-  /// Seçili satırın halkası. Zemin tonu tek başına seçimi anlatacak kadar
-  /// belirgin değil; kalınlığı normal bir çerçeveden fazla ki halka olduğu
-  /// anlaşılsın.
+  /// Zemin tonu seçimi anlatmaya yetmiyor; kalın halka.
   static const double _selectedBorderWidth = 2.0;
 
   static Future<void> show(BuildContext context) {
@@ -55,7 +49,7 @@ class ThemeModeSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // watch: seçim yapılınca sheet'in kendisi de yeni temaya boyanıyor.
+    // `watch`: seçim yapılınca sheet de yeni temaya boyanıyor.
     final provider = context.watch<ThemeProvider>();
 
     return AppBottomSheet(
@@ -98,8 +92,6 @@ class ThemeModeSheet extends StatelessWidget {
           padding: AppPadding.tileTall,
           decoration: BoxDecoration(
             borderRadius: AppRadius.innerCircular,
-            // Halka yalnızca seçili satırda: seçili olmayanı zaten zemin
-            // tonu ayırıyor.
             border: isSelected
                 ? Border.all(color: accent, width: _selectedBorderWidth)
                 : null,

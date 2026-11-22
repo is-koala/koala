@@ -168,8 +168,7 @@ void main() {
         handler: (_) => const FakeApiResponse(
           statusCode: 302,
           headers: {
-            'location':
-                'https://bucket.s3.eu-central-1.amazonaws.com/k?X-Amz-Expires=180',
+            'location': 'https://bucket.s3.eu-central-1.amazonaws.com/k?X-Amz-Expires=180',
           },
         ),
       );
@@ -255,10 +254,7 @@ void main() {
     });
   });
 
-  // Dio çok parçalı gövdeyi kendisi kodluyor; `filename` UTF-8 baytları olarak
-  // gitmeli (Spring isteği UTF-8 çözüyor). Gövde sonuna kadar akıtılıp başlık
-  // satırındaki baytlar okunuyor — adı yalnız `part.filename` ile karşılaştırmak
-  // kodlamayı hiç sınamazdı.
+  // `filename` UTF-8 baytlarıyla gitmeli; kodlamayı ancak akıtılan gövde sınar.
   test('UTF-8 dosya adı gövdede UTF-8 baytlarıyla gider', () async {
     final api = FakeApi(
       handler: (_) => dataResponse(evidenceJson('e'), statusCode: 201),

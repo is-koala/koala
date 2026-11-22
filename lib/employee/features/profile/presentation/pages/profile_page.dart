@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
@@ -39,8 +39,7 @@ part 'profile_pagemodel.dart';
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key, this.reviewService});
 
-  /// Değerlendirme şeridinin servisi; testlerde sahte sunucuya bağlanıyor,
-  /// üretimde `null` ve şerit kendi tekilini kullanıyor.
+  /// Testlerde sahte sunucu; üretimde `null`.
   final ReviewService? reviewService;
 
   @override
@@ -48,16 +47,12 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends ProfilePageModel {
-  /// Profil fotoğrafının kenar uzunluğu.
   static const double _avatarSize = 100;
 
-  /// Rozet şeridinin yüksekliği; rozetler kare görseller.
   static const double _badgeStripHeight = 150;
 
-  /// Navbar'ın altında kalmasın diye sayfanın sonuna eklenen pay.
   static const double _bottomClearance = AppSizes.navBarClearance;
 
-  /// Hata durumundaki ikon; boş durum ekranlarındaki ölçüyle aynı.
   static const double _errorIconSize = 64;
 
   @override
@@ -190,10 +185,7 @@ class _ProfilePageState extends ProfilePageModel {
     );
   }
 
-  /// Kazanılan rozetler.
-  ///
-  /// Rozeti olmayan kullanıcıya boş bir şerit göstermek yerine bölüm hiç
-  /// çizilmiyor; rozet kazanmak bir başarı, yokluğu vurgulanmamalı.
+  /// Rozeti olmayana boş şerit yerine bölüm hiç çizilmez; yokluk vurgulanmasın.
   Widget rosettes(CurrentUser user) {
     if (user.badges.isEmpty) return const SizedBox.shrink();
 
@@ -216,11 +208,8 @@ class _ProfilePageState extends ProfilePageModel {
     );
   }
 
-  /// Tek rozet görseli.
-  ///
-  /// Uygulamada yalnızca Gezgin ailesinin altın ve gümüş görselleri var;
-  /// diğerleri sunucudaki ikona düşüyor. İkisi de yoksa rozet adı yazılıyor,
-  /// böylece kazanılmış bir rozet hiç görünmez olmuyor.
+  /// Uygulamada yalnız Gezgin altın/gümüş görseli var; diğerleri sunucu
+  /// ikonuna, o da yoksa ada düşer, rozet hiç görünmez olmasın.
   Widget _badge(UserBadge badge) {
     final asset = badge.localAsset;
     final url = badge.iconUrl;
@@ -252,10 +241,7 @@ class _ProfilePageState extends ProfilePageModel {
     );
   }
 
-  /// Deneyim listesi.
-  ///
-  /// Boşken de çiziliyor: eskiden bölüm hiç görünmüyordu ve kullanıcı
-  /// deneyim ekleyebileceğini fark edemiyordu.
+  /// Boşken de çiziliyor: yoksa kullanıcı deneyim ekleyebileceğini fark etmez.
   Widget experienceSection(CurrentUser user) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -296,10 +282,7 @@ class _ProfilePageState extends ProfilePageModel {
     );
   }
 
-  /// Öğrenim kayıtları.
-  ///
-  /// Deneyim bölümüyle aynı kurgu: boşken de çiziliyor ki kullanıcı
-  /// ekleyebileceğini görsün.
+  /// Deneyimle aynı: boşken de çiziliyor.
   Widget educationSection(CurrentUser user) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -356,16 +339,14 @@ class _ProfilePageState extends ProfilePageModel {
             color: isEmpty ? context.textTertiary : null,
           ),
         ),
-        // Yetkinlik ve ilgi alanı, tanıtım yazısının aksine **boşken hiç
-        // çizilmiyor**: ikisi de isteğe bağlı ve profili üç boş başlıkla
-        // karşılamak kullanıcıya eksik bırakmış hissi veriyor.
+        // Yetkinlik ve ilgi alanı **boşken çizilmiyor**: isteğe bağlılar, üç
+        // boş başlık eksiklik hissi verir.
         ?_textSection("Yetkinlikler", user.qualifications),
         ?_textSection("İlgi Alanları", user.interests),
       ],
     );
   }
 
-  /// Doluysa başlık ve metni çizer, boşsa hiçbir şey döndürmez.
   Widget? _textSection(String title, String? value) {
     if (value == null || value.trim().isEmpty) return null;
 
@@ -449,9 +430,8 @@ class _ProfilePageState extends ProfilePageModel {
               if (location != null)
                 Text(location, style: context.textTheme.bodyMedium),
               const SizedBox(height: AppSizes.spaceSmall),
-              // Kimlik durumu: doğrulandı / incelemede / reddedildi /
-              // doğrulanmadı. Başvurunun ilk şartı bu; kullanıcı profilini
-              // her açtığında nerede durduğunu görsün.
+              // Başvurunun ilk şartı; kullanıcı nerede durduğunu her açılışta
+              // görsün.
               IdentityStatusBadge(user: user),
             ],
           ),

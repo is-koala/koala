@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:koala/employee/features/home/models/job_filter_selection.dart';
 import 'package:koala/employee/features/home/models/job_search_query.dart';
@@ -32,14 +32,11 @@ class ListExplorePage extends StatefulWidget {
 }
 
 class _ListExplorePageState extends ListExplorePagemodel {
-  /// Arama kutusunu da taşıyan appbar'ın yüksekliği. Açılıp kapanmıyor,
-  /// bu yüzden expanded ve collapsed değerleri aynı.
+  /// Açılıp kapanmadığı için genişletilmiş ve toplanmış değer aynı.
   static const double _appBarHeight = 124;
 
-  /// Arama kutusunun kapalıyken genişliği: yalnızca arama ikonu kadar.
   static const double _collapsedSearchWidth = 50;
 
-  /// Aktif filtre butonunun zemin opaklığı.
   static const double _activeFilterAlpha = 0.15;
 
   @override
@@ -51,9 +48,8 @@ class _ListExplorePageState extends ListExplorePagemodel {
     return GestureDetector(
       onTap: () => _searchFocusNode.unfocus(),
       child: Scaffold(
-        // Uygulamanın geri kalanıyla aynı kural: zemin sayfa rengi, kartlar
-        // `tileColor`. Eskiden bu ekran tersini yapıyordu (gri zemin, beyaz
-        // kart) ve ilan detayından dönünce renkler yer değiştiriyordu.
+        // Zemin sayfa rengi, kartlar `tileColor`: uygulamanın geri kalanıyla
+        // aynı.
         backgroundColor: context.backgroundColor,
         extendBody: true,
         extendBodyBehindAppBar: false,
@@ -61,13 +57,10 @@ class _ListExplorePageState extends ListExplorePagemodel {
           onRefresh: () => _search.load(silent: true),
           child: CustomScrollView(
             controller: _scrollController,
-            // Liste kısayken de aşağı çekilebilsin: RefreshIndicator'ın
-            // çalışması buna bağlı.
+            // Liste kısayken de aşağı çekilebilsin.
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               appBar(context),
-              // Uygulama çubuğu ile filtreler arasında ayrı boşluk yok: çubuğun
-              // kendi alt payı ve filtre çubuğunun üst payı zaten ayırıyor.
               filters(),
               if (_searchController.text.isNotEmpty)
                 SliverToBoxAdapter(child: _searchSummary(search)),
@@ -113,9 +106,8 @@ class _ListExplorePageState extends ListExplorePagemodel {
     child: Center(child: CircularProgressIndicator(color: context.accentColor)),
   );
 
-  /// Listenin bölüm başlığı. Kart başlıklarıyla aynı boyda olunca (18)
-  /// kaybolup filtrelere ve ilk karta yapışıyordu; bölüm başlığı ölçeğinde
-  /// (`titleLarge`) ve üstte filtrelerden, altta listeden ayrılarak duruyor.
+  /// Bölüm başlığı `titleLarge`: kart başlığıyla aynı boyda kaybolup kartlara
+  /// yapışıyordu.
   Widget _listHeader() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -128,11 +120,8 @@ class _ListExplorePageState extends ListExplorePagemodel {
     );
   }
 
-  /// Sayfa eklenemediğinde listenin altına düşen şerit.
-  ///
-  /// Liste ekranda kalıyor — hata yüzünden eldeki ilanları silmek kullanıcıyı
-  /// kazandığı yerden geri atardı; `debugPrint` ise kullanıcıya hiçbir şey
-  /// söylemiyor.
+  /// Sayfa eklenemedi şeridi; liste kalır, ilanları silmek kullanıcıyı geri
+  /// atardı.
   Widget _errorStrip(String message) {
     return Padding(
       padding: AppPadding.primaryAll,
@@ -198,10 +187,8 @@ class _ListExplorePageState extends ListExplorePagemodel {
     );
   }
 
-  /// Boş liste üç ayrı sebepten olabiliyor ve üçü farklı çıkış istiyor.
-  ///
-  /// Süzgeç sunucuya taşındıktan sonra da ayrım korunuyor: ayrımı listenin
-  /// kendisi değil, **uygulanan sorgu** anlatıyor.
+  /// Boş listenin üç sebebi var, çıkışları farklı; ayrımı uygulanan sorgu
+  /// anlatıyor.
   String _emptyMessage(JobSearchProvider search) {
     final query = search.query;
     if (search.errorMessage != null) return search.errorMessage!;
@@ -269,11 +256,8 @@ class _ListExplorePageState extends ListExplorePagemodel {
 
   // ----------------------------------------------------------- Filtre çubuğu
 
-  /// Süzgeç çubuğu: tek "Süzgeçler" düğmesi + etkin süzgeç rozeti, yanında
-  /// "Sırala".
-  ///
-  /// Eskiden dört ayrı düğmeydi; sunucunun kabul ettiği alan sayısı üçten on
-  /// bire çıktığı için hepsi yatay çubuğa sığmıyor, tek sheet'e taşındı.
+  /// Tek "Süzgeçler" düğmesi + rozet ve "Sırala"; on bir süzgeç alanı yatay
+  /// çubuğa sığmıyor.
   SliverToBoxAdapter filters() {
     final activeCount = _selection.activeCount;
 
@@ -284,7 +268,6 @@ class _ListExplorePageState extends ListExplorePagemodel {
           horizontal: AppPadding.primary,
           vertical: AppSizes.spaceSmall,
         ),
-        // Süzgeç çubuğu bir kart değil, sayfanın parçası: zemin sayfa rengi.
         color: context.backgroundColor,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -300,8 +283,6 @@ class _ListExplorePageState extends ListExplorePagemodel {
                 ),
                 const SizedBox(width: AppSizes.spaceSmall),
                 _buildFilterButton(
-                  // `AppIcons.sort` tanımlıydı ama kullanılmıyordu; sıralama
-                  // düğmesinin ikonu artık o.
                   icon: AppIcons.sort,
                   label: 'Sırala',
                   isActive: !_selection.sort.isDefault,
@@ -322,8 +303,7 @@ class _ListExplorePageState extends ListExplorePagemodel {
     );
   }
 
-  /// Etkin süzgeçlerin özeti. Her çip kendi alanını temizliyor; sonda hepsini
-  /// birden kaldıran bir çıkış duruyor.
+  /// Her çip kendi alanını temizler; sonda hepsini kaldıran çıkış.
   Widget _activeFilterChips() {
     return Padding(
       padding: const EdgeInsets.only(top: AppSizes.spaceSmall),
@@ -403,8 +383,7 @@ class _ListExplorePageState extends ListExplorePagemodel {
     );
   }
 
-  /// Kaç süzgecin açık olduğunu söyleyen rozet; düğmenin vurgusu tek başına
-  /// "kaç tane" sorusunu yanıtlamıyordu.
+  /// Vurgu "kaç tane" sorusunu yanıtlamıyor.
   Widget _badge(int count) {
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -472,7 +451,6 @@ class _ListExplorePageState extends ListExplorePagemodel {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeInOut,
-      // Açıkken ekranın iki yanında ana boşluk kadar pay bırakır.
       width: isOpen
           ? context.width - AppPadding.primary * 2
           : _collapsedSearchWidth,

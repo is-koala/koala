@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:koala/employee/core/widgets/job_detail_bottom_sheet.dart';
@@ -39,13 +39,9 @@ part 'map_explore_pagemodel.dart';
 class MapExplorePage extends StatefulWidget {
   const MapExplorePage({super.key, this.controller});
 
-  /// İlan durumunu dışarıdan vermek için tek dikiş.
-  ///
-  /// Üretimde `null`: sayfa kendi [MapExploreController]'ını kuruyor. Testte
-  /// sahte bir sunucuya bağlı bir kontrolcü veriliyor — pinlerin **yetki
-  /// değişince** yenilendiğini görebilmenin başka yolu yok, çünkü o karar
-  /// haritanın gerçek ilan akışında veriliyor. Verilen kontrolcünün sahipliği
-  /// de sayfaya geçer, `dispose` onu kapatır.
+  /// Testler için; üretimde `null` ve sayfa kendi kontrolcüsünü kurar. Pinlerin
+  /// yetki değişince yenilendiği yalnız gerçek ilan akışında sınanabiliyor.
+  /// Sahipliği sayfaya geçer.
   final MapExploreController? controller;
 
   @override
@@ -53,11 +49,8 @@ class MapExplorePage extends StatefulWidget {
 }
 
 class _MapExplorePageState extends MapExplorePageModel {
-  /// Mini `FloatingActionButton`'ın kenarı.
   static const double _locationButtonSize = 40;
 
-  /// Harita yokken gösterilen metin; testler ve diğer harita ekranı aynı
-  /// cümleyi kullanıyor.
   static const String unavailableTitle = 'Harita bu derlemede kullanılamıyor';
 
   @override
@@ -77,9 +70,8 @@ class _MapExplorePageState extends MapExplorePageModel {
           map(),
           if (_loading) loadingOverlay(),
 
-          // Üstteki kartların hangisinin çizileceğine `MapExploreOverlay`
-          // karar veriyor. Buraya bir `if` daha koymak, hata ve kırpılma
-          // uyarısını arama açıkken yutan kusuru geri getirir.
+          // Hangi kartın çizileceğine `MapExploreOverlay` karar veriyor; buraya
+          // `if` eklemek hatayı arama açıkken yutan kusuru geri getirir.
           Positioned(
             top: context.padding.top + kToolbarHeight + AppSizes.spaceSmall,
             left: AppPadding.primary,
@@ -102,9 +94,8 @@ class _MapExplorePageState extends MapExplorePageModel {
     );
   }
 
-  /// Harita anahtarı olmayan derlemede haritanın yerine geçen ekran
-  /// (is-koala/koala#172). `GoogleMap` hiç kurulmuyor — iOS'ta kurulduğu an
-  /// çöküyordu. İlanlar liste görünümünde; düğme oraya götürüyor.
+  /// Harita anahtarı olmayan derlemede (#172) `GoogleMap` kurulmaz, iOS'ta
+  /// çöküyor; düğme listeye götürür.
   Scaffold unavailableView() {
     return Scaffold(
       backgroundColor: context.backgroundColor,
@@ -127,12 +118,7 @@ class _MapExplorePageState extends MapExplorePageModel {
     );
   }
 
-  /// Konum düğmesinin alttan uzaklığı, navbar'ın ölçülerinden.
-  ///
-  /// Navbar ortada ve sabit genişlikte; yanında düğmeye yer varsa düğme
-  /// navbar'ın sağında, alt kenarı navbar'ın alt kenarıyla aynı çizgide. Dar ekranda navbar'la çakışacağı
-  /// için navbar'ın üstüne çıkıyor. Eskiden sabit 110'du: her ekranda
-  /// navbar'ın üstünde ve sağdaki boş alanı kullanmadan havada duruyordu.
+  /// Yer varsa navbar'ın sağında, alt kenarı hizalı; dar ekranda üstünde.
   double _locationButtonBottom(BuildContext context) {
     const navBarBottom = AppPadding.bottomNavBarPadding;
     final sideRoom =
@@ -155,9 +141,7 @@ class _MapExplorePageState extends MapExplorePageModel {
         ),
         child: FloatingActionButton(
           mini: true,
-          // Gölge dış kutudan çiziliyor; mini FAB'ın 48'lik dokunma payı
-          // kalırsa gölge 40'lık görünür dairenin 4 dışından başlıyor ve
-          // diğer yüzen öğelerden kalın görünüyordu.
+          // Mini FAB'ın 48'lik dokunma payı gölgeyi kalın gösteriyordu.
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           backgroundColor: context.accentColor,
           foregroundColor: context.onAccentColor,
@@ -183,7 +167,6 @@ class _MapExplorePageState extends MapExplorePageModel {
 
   Container loadingOverlay() {
     return Container(
-      // Karartma haritanın üstünde; temadan bağımsız koyu kalıyor.
       color: AppColors.scrim.withValues(alpha: 0.2),
       child: Center(
         child: Column(
@@ -218,16 +201,13 @@ class _MapExplorePageState extends MapExplorePageModel {
       myLocationEnabled: true,
       myLocationButtonEnabled: false,
       zoomControlsEnabled: false,
-      // Android'de pine dokununca çıkan "yol tarifi / Haritalar'da aç"
-      // düğmeleri; ilan kartı zaten kendi aksiyonlarını taşıyor.
+      // Android'in pin araç çubuğu; kart kendi eylemlerini taşıyor.
       mapToolbarEnabled: false,
       markers: _markers,
-      // Yaklaşık konumlu ilanın altındaki belirsizlik dairesi. Pin tek başına
-      // bir nokta iddiası; daire o iddiayı ilanın gerçekten taşıdığı
-      // kesinliğe indiriyor (ADR-0003, is-koala/koala#93).
+      // Yaklaşık konumun belirsizlik dairesi; pin tek başına bir nokta iddiası
+      // (ADR-0003, #93).
       circles: _areas,
-      // Kamera durduğunda görünen alan sunucuya gidiyor; hangi ilanların
-      // çekileceğini artık kullanıcının baktığı yer belirliyor.
+      // Hangi ilanların çekileceğini kullanıcının baktığı yer belirliyor.
       onCameraMove: (position) => _zoom = position.zoom,
       onCameraIdle: _onCameraIdle,
       onMapCreated: (GoogleMapController controller) {
@@ -243,12 +223,10 @@ class _MapExplorePageState extends MapExplorePageModel {
           );
         }
 
-        // İlk çizimde kamera "durmuş" sayılmıyor; ilk kutuyu kendimiz
-        // gönderiyoruz, yoksa harita kullanıcı kaydırana kadar boş kalırdı.
+        // İlk çizim "durdu" sayılmıyor; ilk kutu elle gönderiliyor.
         unawaited(_onCameraIdle());
       },
       onTap: (_) {
-        // Haritaya tıklanınca aramayı kapat
         final searchProvider = Provider.of<SearchProvider>(
           context,
           listen: false,
@@ -261,8 +239,7 @@ class _MapExplorePageState extends MapExplorePageModel {
   }
 
   AppBar appBar(SearchProvider searchProvider) {
-    // Appbar saydamken arkasında harita var: harita iki temada da açık
-    // çizdiği için durum çubuğu ikonları sabit koyu kalmalı.
+    // Harita iki temada açık çizdiği için durum çubuğu ikonları sabit koyu.
     const overMapStyle = SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.dark,
@@ -271,9 +248,7 @@ class _MapExplorePageState extends MapExplorePageModel {
 
     if (searchProvider.isSearching) {
       return AppBar(
-        // Arama açıkken appbar'ın kendi zemini var; ikon parlaklığını
-        // Flutter o zeminden çıkarsın, yoksa koyu temada koyu ikon koyu
-        // zeminde kayboluyor.
+        // Arama açıkken ikon parlaklığını Flutter zeminden çıkarsın.
         backgroundColor: context.backgroundColor,
         elevation: 2,
         shadowColor: AppColors.barShadow,
@@ -319,12 +294,8 @@ class _MapExplorePageState extends MapExplorePageModel {
       title: const ExploreBrandTitle(floating: true),
       centerTitle: false,
       actions: [
-        // Filtre ve arama tek yeşil hapın içinde: zeminsiz koyu filtre ikonu
-        // haritanın sokak adları üstünde kayboluyordu.
-        //
-        // Hapın iç boşluğu 8 (üstte, altta, kenarlarda): kare düğmenin kendi
-        // payı. İki ikonun arası iki düğmenin payları kadar: 16.
-        // 48'lik IconButton kutusu kenarlara da 12 bırakıp hapı şişiriyordu.
+        // Filtre ve arama tek yeşil hapta; zeminsiz ikon sokak adlarında
+        // kayboluyordu. 48'lik `IconButton` hapı şişirdiği için kare düğmeler.
         DecoratedBox(
           decoration: BoxDecoration(
             color: context.accentColor,
@@ -334,10 +305,9 @@ class _MapExplorePageState extends MapExplorePageModel {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Filtre ve sıralama tek düğme: ikisi de aynı sheet'te.
               _pillButton(
                 tooltip: 'Filtrele ve sırala',
-                // Huni yalnız "filtre" diyordu; düğme sıralamayı da açıyor.
+                // Düğme sıralamayı da açıyor; huni yalnız "filtre" diyordu.
                 icon: AppIcons.sort,
                 onPressed: _openFilterSheet,
               ),
@@ -354,7 +324,6 @@ class _MapExplorePageState extends MapExplorePageModel {
     );
   }
 
-  /// Harita hapındaki tek düğme: kare, ikonun her yanında 8.
   Widget _pillButton({
     required String tooltip,
     required AppIconData icon,

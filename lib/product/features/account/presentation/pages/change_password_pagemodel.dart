@@ -20,11 +20,7 @@ abstract class ChangePasswordPagemodel extends State<ChangePasswordPage> {
     super.dispose();
   }
 
-  /// Girdileri doğrulayıp parolayı değiştirir.
-  ///
-  /// Dört doğrulama da sunucuya gitmeden yapılıyor. Backend bunların
-  /// hepsini `400` ile reddediyor zaten; ağ turu beklemeden söylemek
-  /// kullanıcının işine yarıyor.
+  /// Doğrulayıp parolayı değiştirir; kurallar ağ turu beklemeden istemcide.
   Future<void> submit() async {
     final current = currentPassword.text;
     final next = newPassword.text;
@@ -59,8 +55,7 @@ abstract class ChangePasswordPagemodel extends State<ChangePasswordPage> {
       );
       if (!mounted) return;
 
-      // Bu cihazın oturumu sunucuda açık kalıyor; kullanıcıdan yeniden
-      // giriş istemek gereksiz olurdu.
+      // Bu cihazın oturumu açık kalıyor; yeniden giriş istenmez.
       AppToast.success(
         context,
         'Şifreniz güncellendi. Diğer cihazlardaki oturumlarınız kapatıldı.',
@@ -73,18 +68,9 @@ abstract class ChangePasswordPagemodel extends State<ChangePasswordPage> {
         context.pop();
       }
     } on ApiException catch (error) {
-      // Mevcut parola yanlışken sunucu `400` dönüyor: `UserManager`
-      // `ValidationException` fırlatıyor ve `GlobalExceptionHandler` onu
-      // `400`'e çeviriyor. `UsersController`'ın `@ApiResponse`'u `401`
-      // yazsa da gerçek davranış bu.
-      //
-      // Yine de `401` gelirse: `AuthInterceptor` token'ı bir kez tazeleyip
-      // isteği tekrarlıyor, ikinci `401`'de `_retriedKey` işaretli olduğu
-      // için hata buraya olduğu gibi ulaşıyor — oturum kapanmıyor,
-      // kullanıcı ekranda kalıyor ve sunucunun mesajını görüyor. Oturumun
-      // gerçekten kapandığı tek durum yenilemenin de başarısız olması, ki o
-      // zaman oturum zaten ölmüş demektir. Bu yüzden yolun interceptor'dan
-      // muaf tutulması gerekmiyor.
+      // Yanlış mevcut parolada sunucu `400` döndürüyor. `401` gelse de
+      // `AuthInterceptor` bir kez tazeleyip hatayı buraya bırakıyor; oturum
+      // yalnız yenileme de düşerse kapanır.
       if (mounted) AppToast.error(context, error.message);
     } finally {
       if (mounted) setState(() => isSaving = false);

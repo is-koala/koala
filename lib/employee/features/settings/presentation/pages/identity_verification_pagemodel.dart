@@ -5,9 +5,8 @@ abstract class IdentityVerificationPagemodel
   late final UserService _userService;
   late final ChipReader _chipReader;
 
-  /// Elle beyanın taslağı. Çip okunduğunda **dokunulmuyor**: kilitli ekran
-  /// bu denetleyicileri hiç okumuyor, okuma kaldırıldığında da taslak
-  /// olduğu gibi geri geliyor.
+  /// Elle beyanın taslağı; çip okunduğunda dokunulmuyor, okuma kalkınca geri
+  /// gelir.
   late final TextEditingController firstName;
   late final TextEditingController lastName;
   late final TextEditingController tcIdentity;
@@ -16,22 +15,14 @@ abstract class IdentityVerificationPagemodel
   DateTime? birthDate;
   bool isSubmitting = false;
 
-  /// Giriş kararı verildi ve bu ekran çizilecek. `false` iken ya karar
-  /// bekleniyor ya da fotoğraf akışı üstte açık ve bu ekran onun sonucuyla
-  /// kapanacak.
+  /// `false` iken karar bekleniyor ya da fotoğraf akışı açık.
   bool isReady = false;
 
-  /// Çip yolu az önce başarısız oldu — cihazda okunamadı ya da sunucu
-  /// kanıtı reddetti. Fotoğraf kartı uyarı olarak çiziliyor.
+  /// Fotoğraf kartı uyarı olarak çizilir.
   bool chipFailed = false;
 
-  /// Çipten okunan kanıt ve ondan türeyen kart sahibi. `null` ise akış
-  /// **eskisi gibi** çalışıyor: beyan formu doldurulup gönderiliyor ve
-  /// sunucu bayrağı kapalı olduğu için istek aynen kabul ediliyor.
-  ///
-  /// Çipten türeyen beş alan **ayrıca saklanmıyor**; hepsi bu nesnenin
-  /// görünümü. Bu yüzden "kanıt gitti ama kilitli değerler kaldı" ya da
-  /// tersi bir durum yazılamıyor: `chip = null` ikisini birden bırakıyor.
+  /// Çip kanıtı ve sahibi; `null` ise beyan formu. Beş alan ayrıca saklanmıyor:
+  /// `chip = null` ikisini birden bırakır, ayrışamaz.
   IdentityChipResult? chip;
 
   @override
@@ -39,8 +30,7 @@ abstract class IdentityVerificationPagemodel
     super.initState();
     _userService = widget.userService ?? UserService();
     _chipReader = widget.chipReader ?? ChipReader();
-    // Kayıtta girilen ad ve soyad çoğu kullanıcıda kimliktekiyle aynı;
-    // form boş açılırsa gereksiz yere yeniden yazdırmış oluruz.
+    // Kayıttaki ad çoğu kullanıcıda kimliktekiyle aynı.
     firstName = TextEditingController(text: widget.user.firstName);
     lastName = TextEditingController(text: widget.user.lastName);
     tcIdentity = TextEditingController();
@@ -60,12 +50,8 @@ abstract class IdentityVerificationPagemodel
     super.dispose();
   }
 
-  /// Ekranın gösterdiği ve göndereceği beyan — **tek kaynak**.
-  ///
-  /// Çip varsa [ChipDeclaration]: beş alan kanıttan türüyor ve
-  /// denetleyicilerdeki taslak hiç okunmuyor. Yoksa [ManualDeclaration]:
-  /// denetleyicilerin o anki metni. Hangi hâlde olunduğu ayrı bir bayrakla
-  /// değil beyanın tipiyle belli; `build` ve [submit] aynı nesneye bakıyor.
+  /// Gösterilen ve gönderilen beyan, **tek kaynak**: çip varsa
+  /// [ChipDeclaration], yoksa [ManualDeclaration].
   IdentityDeclaration get declaration {
     return switch (chip) {
       null => ManualDeclaration(
@@ -83,20 +69,9 @@ abstract class IdentityVerificationPagemodel
 
   // ------------------------------------------------------------------ Giriş
 
-  /// Hangi yolun açılacağına karar verir.
-  ///
-  /// Fotoğraf akışına **doğrudan** gidilen üç hâl var: bekleyen ya da
-  /// onaylanmış bir inceleme var (ikisinin de ekranı orada; çip okutmanın
-  /// bir anlamı kalmadı), telefon iOS (çip okuma bu sürümde açık değil) ya
-  /// da NFC donanımı yok. Bu hâllerde bu ekranın gösterecek bir şeyi yok:
-  /// fotoğraf akışı kapanınca aynı sonuçla kapanıyor ki çağıran kapı tek
-  /// bir `push` sonucu görsün.
-  ///
-  /// **Reddedilen** inceleme çip yolunu kapatmıyor: kullanıcı yeni
-  /// fotoğraflarla da, kartı okutarak da devam edebilmeli; fotoğraf kartı
-  /// o durumda reddi söylüyor. İnceleme durumu okunamazsa "yok" sayılıyor:
-  /// ağ hatası yüzünden kullanıcıyı çip formundan mahrum etmek yerine form
-  /// açılıyor, fotoğraf yolu zaten tepede.
+  /// Yolu seçer. Doğrudan fotoğraf akışı: bekleyen/onaylı inceleme, iOS ya da
+  /// NFC yok; akış kapanınca bu ekran aynı sonuçla kapanır. **Reddedilen**
+  /// inceleme çip yolunu kapatmaz. Durum okunamazsa "yok" sayılır, form açılır.
   Future<void> enter() async {
     final provider = context.read<IdentityReviewProvider>();
     await provider.load(silent: true);
@@ -120,23 +95,16 @@ abstract class IdentityVerificationPagemodel
     setState(() => isReady = true);
   }
 
-  /// Çip yolu bu cihazda denenebilir mi.
-  ///
-  /// iOS'ta hayır: kart okuma Apple'ın NFC yetkisini istiyor ve bu sürüm
-  /// onu taşımıyor. Android'de NFC donanımı yoksa hayır; **kapalıysa** evet,
-  /// kullanıcı ayarlardan açabiliyor ve çip ekranı bunu söylüyor.
+  /// iOS'ta hayır (NFC yetkisi bu sürümde yok); Android'de donanım yoksa hayır,
+  /// kapalıysa evet.
   Future<bool> _chipPossible() async {
     if (defaultTargetPlatform == TargetPlatform.iOS) return false;
     final availability = await _chipReader.availability();
     return availability != NfcAvailability.unsupported;
   }
 
-  /// Fotoğraf akışını açar.
-  ///
-  /// Dönüşte bekleyen bir inceleme varsa (kullanıcı gönderdi) ya da akış
-  /// `true` ile kapandıysa bu ekranın yapacağı bir şey kalmadı, o da
-  /// kapanıyor. Kullanıcı hiçbir şey yapmadan geri döndüyse — reddedilmiş
-  /// eski kayıt dahil — çip formu olduğu yerde duruyor.
+  /// Bekleyen inceleme varsa ya da akış `true` ile kapandıysa bu ekran da
+  /// kapanır; hiçbir şey yapılmadıysa form kalır.
   Future<void> openPhotos() async {
     final provider = context.read<IdentityReviewProvider>();
     final result = await context.push<bool>(
@@ -150,7 +118,6 @@ abstract class IdentityVerificationPagemodel
     }
   }
 
-  /// Son inceleme reddedildiyse o kayıt; fotoğraf kartı gerekçeyi yazıyor.
   IdentityReview? get rejectedReview {
     final review = context.read<IdentityReviewProvider>().review;
     return (review?.isRejected ?? false) ? review : null;
@@ -158,14 +125,8 @@ abstract class IdentityVerificationPagemodel
 
   // ------------------------------------------------------------------- Çip
 
-  /// Çip okuma ekranını açar ve dönen sonucu forma işler.
-  ///
-  /// Üç sonuç var: okunan kanıt forma yazılıyor; `IdentityChipHandoff.photos`
-  /// kullanıcının hata ekranından "Fotoğrafla Devam Et" dediği anlamına
-  /// geliyor ve fotoğraf akışı açılıyor; `null` ise hiçbir şey değişmiyor
-  /// — kullanıcı vazgeçmiş ya da NFC yokmuş demektir ve eldeki durum
-  /// olduğu gibi duruyor. Geçerli bir okumayı, ikinci denemeden vazgeçildi
-  /// diye atmak kartı boşuna yeniden okutmak olurdu.
+  /// Çip ekranını açar: kanıt forma yazılır, `photos` fotoğraf akışını açar,
+  /// `null`'da bir şey değişmez; geçerli okuma boşuna atılmaz.
   Future<void> readChip() async {
     final result = await context.push<Object>('/identity-chip');
     if (!mounted) return;
@@ -183,22 +144,15 @@ abstract class IdentityVerificationPagemodel
     }
   }
 
-  /// Okumayı bırakır: kanıt ve ondan türeyen beş alan **tek geçişte**
-  /// gidiyor, form elle düzenlemeye dönüyor.
-  ///
-  /// Elle düzenlemeye dönüşün tek geçişi bu ve iki yerden tetikleniyor:
-  /// kullanıcının karttaki "Okumayı Kaldır"ı ve sunucunun eldeki kanıtı
-  /// artık kabul etmeyeceğini söylediği `IDENTITY_CHALLENGE_INVALID` yanıtı
-  /// ([_showFailure]). İkincisi de aynı yoldan geçiyor, çünkü geçersiz
-  /// kanıtın türevlerini kilitli beyan diye göstermek, kanıtla beyanın
-  /// ayrışmasına izin vermek olurdu.
+  /// Okumayı bırakır: kanıt ve beş alan **tek geçişte** gider. Kullanıcının
+  /// "Okumayı Kaldır"ı ve `IDENTITY_CHALLENGE_INVALID` aynı yoldan geçer;
+  /// geçersiz kanıtın türevleri kilitli beyan gibi kalmasın.
   void removeChip() => setState(() => chip = null);
 
   // --------------------------------------------------------------- Gönderim
 
   Future<void> submit() async {
-    // Gövde ekrandaki beyandan kuruluyor, denetleyicilerden değil: çip
-    // varken denetleyicilerde ne yazdığının bir önemi yok.
+    // Gövde ekrandaki beyandan kurulur.
     final declaration = this.declaration;
     final birthDate = declaration.birthDate;
     if (birthDate == null) return;
@@ -212,14 +166,11 @@ abstract class IdentityVerificationPagemodel
         birthDate: birthDate,
         tcIdentityNumber: declaration.tcIdentityNumber,
         tcDocumentNumber: declaration.tcDocumentNumber,
-        // Kanıt varsa aynı istekte gidiyor; yoksa gövde eskisiyle birebir
-        // aynı kalıyor.
         evidence: declaration.evidence,
       );
 
       if (!mounted) return;
-      // `identityVerified` bayrağı `/users/me`'den okunuyor; başvuru kapısı
-      // da oraya bakıyor, o yüzden kullanıcı tazelenmeden dönülmemeli.
+      // Başvuru kapısı `/users/me`'ye bakıyor; tazelenmeden dönülmemeli.
       await context.read<UserProvider>().load(silent: true);
 
       if (!mounted) return;
@@ -233,15 +184,9 @@ abstract class IdentityVerificationPagemodel
     }
   }
 
-  /// Sunucunun hatasını kullanıcıya ne yapacağını söyleyen bir mesaja
-  /// çevirir ve fotoğraf yolunu öne çıkarır.
-  ///
-  /// Sunucunun kendi metni **ne olduğunu** anlatıyor, **ne yapılacağını**
-  /// değil; tanınan `IDENTITY_*` kodlarında bizim karşılığımız gösteriliyor.
-  /// Tanınmayan kodda sunucunun mesajı olduğu gibi kalıyor — uydurulmuş bir
-  /// yönlendirme, hiç yönlendirmemekten kötü. Kod ne olursa olsun çip yolu
-  /// bu sefer yürümedi; fotoğraf kartı uyarı olarak çiziliyor ki kullanıcı
-  /// aynı okumayı döngüye girmeden bırakabilsin.
+  /// Tanınan `IDENTITY_*` kodunda bizim karşılık, tanınmayanda sunucunun
+  /// mesajı. Her durumda fotoğraf kartı uyarı olur ki aynı okuma döngüye
+  /// girmesin.
   void _showFailure(ApiException error) {
     final known = IdentityError.fromErrorCode(error.errorCode);
     AppToast.error(context, known?.message ?? error.message);
@@ -249,14 +194,9 @@ abstract class IdentityVerificationPagemodel
 
     if (known == null) return;
 
-    // Süresi dolmuş tek kullanımlık sayıyla ikinci kez denemek aynı hatayı
-    // verir: `challenge` ve imzası kanıtın parçası, kanıt bir bütün olarak
-    // geçersiz ve baştan okunmalı. Bu, elle düzenlemeye dönüşün kullanıcı
-    // eylemi olmayan tek yolu ve bilerek [removeChip] ile aynı geçiş —
-    // sunucunun az önce reddettiği kanıtı "doğrulandı" diye ekranda tutmak,
-    // kilidin kapattığı açığı (kanıtla ayrışan beyan) geri açmak olurdu.
-    // Yalnız bu kodda: imza ya da makam hatası kanıtı geçersiz kılmıyor,
-    // kullanıcı toast'taki yönlendirmeyle yeniden okutur ya da desteğe yazar.
+    // Süresi dolmuş sayıyla kanıt bütünüyle geçersiz ve baştan okunmalı;
+    // kullanıcı eylemi olmayan tek dönüş yolu, [removeChip] ile aynı geçiş.
+    // Yalnız bu kodda: imza ya da makam hatası kanıtı geçersiz kılmıyor.
     if (known.needsFreshChallenge) removeChip();
   }
 }

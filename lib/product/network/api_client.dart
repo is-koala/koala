@@ -19,26 +19,20 @@ import 'package:koala/product/network/token_storage.dart';
 
 /// Multipart isteğe eklenecek tek dosya.
 ///
-/// [filename] ve [contentType] verilmezse dio dosya adından türetiyor;
-/// dosyanın adı içeriğini yansıtmıyorsa (Android seçicisinin `.heic` adıyla
-/// verdiği JPEG gibi) çağıran ikisini gerçek içeriğe göre yazıyor — sunucu
-/// uzantıya bakıyor.
+/// Sunucu uzantıya bakıyor; dosya adı içeriği yansıtmıyorsa (Android'in `.heic`
+/// adlı JPEG'i) çağıran [filename] ve [contentType]'ı içeriğe göre yazar.
 class UploadFile {
   const UploadFile(this.path, {this.filename, this.contentType});
 
   final String path;
 
-  /// Parçanın `filename` alanı; `null` ise dosyanın kendi adı.
   final String? filename;
 
-  /// Parçanın içerik tipi (`image/jpeg` gibi); `null` ise addan türetilir.
   final String? contentType;
 }
 
-/// Backend'e giden bütün isteklerin geçtiği tek kapı.
-///
-/// İki işi var: yanıt zarfını açmak ve `DioException`'ı [ApiException]'a
-/// çevirmek. Servisler dio'yu hiç görmüyor.
+/// Backend'e giden bütün isteklerin geçtiği tek kapı: zarfı açar,
+/// `DioException`'ı [ApiException]'a çevirir.
 class ApiClient {
   ApiClient._internal() : _dio = _buildDio() {
     _attachInterceptors(
@@ -53,18 +47,11 @@ class ApiClient {
 
   factory ApiClient() => _instance;
 
-  /// Testlerde sahte bir `HttpClientAdapter` takılı dio geçilebilsin diye.
+  /// Testler için; sahte `HttpClientAdapter` takılı dio alır.
   ///
-  /// Zinciri **üretimdekiyle aynı** kuruyor. Eskiden hiçbir interceptor
-  /// takmıyordu; 630 testin hiçbiri `Authorization` başlığını, `X-Device-Id`'yi
-  /// ya da `401` sonrası yenilemeyi çalıştırmıyordu, yani bir interceptor
-  /// bozulsa hiçbir test kırmızıya dönmüyordu (is-koala/koala#21).
-  ///
-  /// Keychain ve `SharedPreferences` testte yok, o yüzden [tokenStorage] ile
-  /// [deviceIdentity] dışarıdan veriliyor — üretim tekilleri varsayılan
-  /// yapılsaydı testler platform kanalına gitmeye çalışırdı. [deviceHints]
-  /// verilmezse test makinesinin kendi değerleri gidiyor; başlıkları ölçen
-  /// test sabit bir ipucu geçiyor.
+  /// Zinciri **üretimdekiyle aynı** kuruyor, yoksa bozulan bir interceptor
+  /// hiçbir testi kırmaz (is-koala/koala#21). [tokenStorage] ve
+  /// [deviceIdentity] dışarıdan geliyor çünkü testte platform kanalı yok.
   @visibleForTesting
   ApiClient.withDio(
     this._dio, {
@@ -77,8 +64,7 @@ class ApiClient {
       deviceIdentity: deviceIdentity,
       deviceHints: deviceHints,
       tokenStorage: tokenStorage,
-      // Yenileme ve tekrar deneme ayrı bir dio'dan gidiyor; testte o da aynı
-      // sahte katmandan geçmeli, yoksa gerçek ağa çıkmaya çalışırdı.
+      // Yenileme ayrı bir dio'dan gidiyor; testte o da sahte katmandan geçmeli.
       tokenDio: Dio(_dio.options)..httpClientAdapter = _dio.httpClientAdapter,
       onSessionExpired: onSessionExpired,
     );
@@ -86,10 +72,8 @@ class ApiClient {
 
   final Dio _dio;
 
-  /// İstek hattının tamamı: cihaz başlığı, sonra oturum.
-  ///
-  /// İki kurucu da buradan geçiyor — zincirin şekli tek yerde durmazsa
-  /// testlerdeki istemci üretimdekinden sessizce ayrılıyor.
+  /// İstek hattı: cihaz başlığı, sonra oturum. İki kurucu da buradan geçiyor ki
+  /// test istemcisi üretimdekinden ayrışmasın.
   void _attachInterceptors({
     required DeviceIdentity deviceIdentity,
     required TokenStorage tokenStorage,
@@ -97,8 +81,7 @@ class ApiClient {
     required Future<void> Function() onSessionExpired,
     DeviceHints? deviceHints,
   }) {
-    // Cihaz başlıkları hem ana istemciye hem yenileme istemcisine gerekiyor:
-    // backend oturumu yenilerken de cihazı doğruluyor ve adını tazeliyor.
+    // Backend yenileme sırasında da cihazı doğruluyor.
     final hints = deviceHints ?? DeviceHints.current();
     tokenDio.interceptors.add(DeviceInterceptor(deviceIdentity, hints: hints));
 
@@ -122,9 +105,8 @@ class ApiClient {
         headers: {
           HttpHeaders.acceptLanguageHeader: ApiConfig.acceptLanguage,
           HttpHeaders.userAgentHeader: DeviceIdentity.userAgent,
-          // Sunucu bu başlığa bakarak eski istemciyi `426` ile geri
-          // çeviriyor. Başlık yoksa filtre isteği geçiriyor, yani
-          // göndermemek zorunlu güncellemeyi tamamen devre dışı bırakıyor.
+          // Sunucu eski istemciyi bu başlıkla `426`'ya çeviriyor; başlık yoksa
+          // zorunlu güncelleme hiç çalışmaz.
           ApiConfig.appVersionHeader: AppInfo.version,
         },
         contentType: Headers.jsonContentType,
@@ -135,7 +117,6 @@ class ApiClient {
     return dio;
   }
 
-  /// Gövdesinde veri dönen `GET` isteği.
   Future<T> get<T>(
     String path, {
     Map<String, dynamic>? queryParameters,
@@ -147,7 +128,6 @@ class ApiClient {
     );
   }
 
-  /// Gövdesinde veri dönen `POST` isteği.
   Future<T> post<T>(
     String path, {
     Object? body,
@@ -164,11 +144,9 @@ class ApiClient {
     );
   }
 
-  /// JSON bir parça ve isteğe bağlı tek dosya içeren multipart POST.
-  ///
-  /// Şirket oluşturma gibi Spring `@RequestPart` uçlarında JSON gövdesi
-  /// sıradan form alanı değil `application/json` içerik tipli ayrı bir parça
-  /// olmalı. Bu ayrıntıyı servislerin her birinde tekrar etmiyoruz.
+  /// JSON parçası ve isteğe bağlı tek dosyalı multipart `POST`. Spring
+  /// `@RequestPart` uçlarında JSON, `application/json` tipli ayrı bir parça
+  /// olmalı.
   Future<T> postMultipartJson<T>(
     String path, {
     required String jsonFieldName,
@@ -199,14 +177,9 @@ class ApiClient {
     );
   }
 
-  /// JSON bir parça ve **birden çok** dosya içeren multipart POST.
-  ///
-  /// [postMultipartJson]'dan farkı dosya sayısı ve ilerleme: kimlik
-  /// belgeleri gibi dört dosyayı tek istekte taşıyan uçlar için. [files]
-  /// parça adı → dosya; her dosya kendi parçasında, adı ve içerik tipi
-  /// [UploadFile]'dan. [onSendProgress] gönderilen ve toplam bayt sayısını
-  /// veriyor — kırk megabaytlık bir gövde mobil ağda dakikalar sürebiliyor,
-  /// kullanıcı takıldığını sanmasın.
+  /// JSON parçası ve birden çok dosyalı multipart `POST` (ör. dört kimlik
+  /// belgesi). [onSendProgress] var çünkü 40 MB'lık gövde mobil ağda dakikalar
+  /// sürebilir.
   Future<T> postMultipartJsonFiles<T>(
     String path, {
     required String jsonFieldName,
@@ -238,16 +211,10 @@ class ApiClient {
     );
   }
 
-  /// Tek dosya yükleyen, ad ve içerik tipini kendisi yazan `POST` isteği.
+  /// Tek dosya yükleyen `POST`; ad ve içerik tipi [UploadFile]'dan.
   ///
-  /// [postFile]'dan farkı, parçanın `filename` ve `Content-Type`'ının
-  /// [UploadFile]'dan gelmesi ve ilerleme: sunucu uzantıya bakıyor, seçicinin
-  /// verdiği ad ise içeriği yansıtmayabiliyor (Android'in `.heic` adlı JPEG'i).
-  /// [onSendProgress] gönderilen ve toplam bayt sayısını veriyor.
-  ///
-  /// `async`: dosya açılamazsa (seçicinin geçici kopyası bu arada silinmiş
-  /// olabilir) hata eşzamanlı fırlamak yerine `Future`'dan, yani çağıranın
-  /// `await`'inden [ApiException] olarak çıkıyor.
+  /// `async`, böylece açılamayan dosya (silinmiş geçici kopya) eşzamanlı
+  /// fırlamak yerine [ApiException] olarak `await`'ten çıkar.
   Future<T> postUploadFile<T>(
     String path, {
     required String fieldName,
@@ -268,18 +235,11 @@ class ApiClient {
     );
   }
 
-  /// [UploadFile]'ı multipart parçasına çevirir; ad ve içerik tipi dosyanın
-  /// kendisinden değil [UploadFile]'dan.
+  /// [UploadFile]'ı multipart parçasına çevirir.
   ///
-  /// Dosya **eşzamanlı** açılıyor: boyut tek `stat` ile okunuyor, içerik
-  /// gönderim sırasında akıtılıyor. Eşzamansız `fromFile` widget testlerinin
-  /// sahte saatinde hiç dönmüyor ve akış ekranda takılı kalıyordu; gerçek
-  /// cihazda iki yol arasında ölçülebilir fark yok.
-  ///
-  /// Dosya yoksa ya da okunamıyorsa `FileSystemException` değil
-  /// [ApiException]: servisler yalnızca onu yükseltir (CONTRIBUTING, "Veri
-  /// Katmanı") ve sayfa tek bir hata yolu yönetir. Seçicinin geçici dosyası
-  /// işletim sistemi tarafından temizlenmiş olabilir (iOS `tmp`).
+  /// Dosya **eşzamanlı** açılıyor: eşzamansız `fromFile` widget testlerinin
+  /// sahte saatinde hiç dönmüyor. Okunamayan dosya [ApiException] olur ki sayfa
+  /// tek hata yolu yönetsin.
   MultipartFile _multipartFile(UploadFile file) {
     final contentType = file.contentType;
     try {
@@ -298,26 +258,14 @@ class ApiClient {
     }
   }
 
-  /// Yönlendirmeyle cevap veren bir `GET`'in hedef adresini döndürür.
+  /// Yönlendirmeyle cevap veren bir `GET`'in hedefini döndürür.
   ///
-  /// Dosya indirme uçları (`.../download`) imzalı bir depo adresine `302`
-  /// veriyor ve kendileri `Authorization` istiyor. Yönlendirmeyi **izlemek**
-  /// o başlığı depoya taşıyabilir (S3 imzalı adres + ikinci kimlik doğrulama
-  /// `400` döner, üstelik token üçüncü bir sunucuya gider); o yüzden `302`
-  /// burada duruyor ve `Location` okunuyor.
+  /// İndirme uçları `Authorization` istiyor ve imzalı depo adresine `302`
+  /// veriyor; yönlendirmeyi izlemek token'ı depoya taşır. O yüzden `Location`
+  /// okunuyor, gövde akış olarak alınıp okunmadan bırakılıyor.
   ///
-  /// Yanıt gövdesi **akış** olarak alınıyor ve hiç okunmadan bırakılıyor:
-  /// yalnız başlık gerekiyor. Varsayılan JSON yanıt tipinde sunucunun
-  /// akıttığı üç megabaytlık bir dosya bütünüyle belleğe alınıp metne
-  /// çevriliyordu. Hata yanıtlarının (küçük) zarfı ise okunup olağan
-  /// [ApiException]'a çevriliyor.
-  ///
-  /// Hedefin şeması [allowedSchemes] içinde olmalı (varsayılan:
-  /// [ApiConfig.externalUrlSchemes] — yalnız `https`, dev'de `http` de): bu
-  /// adres harici uygulamaya veriliyor, `intent:` ya da şifresiz `http`
-  /// buraya sızmamalı. Sunucu depo imzası yapamıyorsa baytları kendisi
-  /// akıtıyor (`200`); o durumda `null` dönüyor — çağıran "uygulama içinde
-  /// açılamıyor" demeli.
+  /// Hedef şeması [allowedSchemes] içinde olmalı, çünkü adres harici uygulamaya
+  /// veriliyor. Sunucu baytları kendisi akıtıyorsa (`200`) `null` döner.
   Future<Uri?> getRedirectLocation(
     String path, {
     @visibleForTesting Set<String>? allowedSchemes,
@@ -354,19 +302,15 @@ class ApiClient {
     }
   }
 
-  /// Gövdesi okunmayacak bir akışı kapatır: bağlantı dosyanın geri kalanını
-  /// beklemeden bırakılıyor. İptal **beklenmiyor**: bağlantıyı kapatmak
-  /// çağıranın sonucunu geciktirmemeli (ve sahte saatli widget testlerinde
-  /// bu iptal hiç tamamlanmıyor); iptalin hatası da kimsenin işi değil.
+  /// Okunmayacak akışı kapatır. İptal beklenmiyor: sonucu geciktirmemeli ve
+  /// sahte saatli testlerde hiç tamamlanmıyor.
   void _discardBody(ResponseBody? body) {
     if (body == null) return;
     unawaited(body.stream.listen(null).cancel().catchError((Object _) {}));
   }
 
-  /// Akış olarak alınmış bir hata yanıtının gövdesini okuyup JSON zarfı olarak
-  /// yerine koyar; [_toApiException] zarfı ancak çözülmüş hâliyle okuyabiliyor.
-  /// Zarf küçük: [_maxErrorBodyBytes]'ı aşan ya da JSON olmayan gövde okunmamış
-  /// sayılıyor ve karar durum koduna kalıyor.
+  /// Akış olarak alınan hata gövdesini okuyup JSON zarfı olarak koyar. Sınırı
+  /// aşan ya da JSON olmayan gövdede karar durum koduna kalır.
   Future<DioException> _withReadBody(DioException error) async {
     final response = error.response;
     final body = response?.data;
@@ -400,16 +344,10 @@ class ApiClient {
     );
   }
 
-  /// Akış olarak alınan hata gövdesinin okunacak en büyük boyutu.
   static const int _maxErrorBodyBytes = 64 * 1024;
 
-  /// Tek dosya yükleyen `POST` isteği.
-  ///
-  /// [postMultipartJson]'dan farkı, JSON parçası istememesi: galeriye görsel
-  /// ekleyen uçlar yalnızca `@RequestPart("image") MultipartFile` alıyor,
-  /// yanına konacak bir JSON parçası uydurmak sunucunun beklemediği bir
-  /// parçayı göndermek olurdu. [putFile]'dan farkı yöntemin `POST` olması.
-  /// [fieldName] backend'in beklediği parça adı (`image`, `file` ...).
+  /// JSON parçası olmadan tek dosya yükleyen `POST` (ör. galeri
+  /// `@RequestPart("image")`). [fieldName] parça adı.
   Future<T> postFile<T>(
     String path, {
     required String fieldName,
@@ -425,38 +363,25 @@ class ApiClient {
     );
   }
 
-  /// Yalnızca başarı/başarısızlık dönen `POST` isteği (`SuccessResult`).
   Future<void> postWithoutData(String path, {Object? body}) {
     return _send<void>(() => _dio.post<dynamic>(path, data: body));
   }
 
-  /// Yalnızca başarı/başarısızlık dönen `PUT` isteği (`SuccessResult`).
-  ///
-  /// [put]'tan farkı `parse` istememesi: parola değiştirme gibi uçlar
-  /// gövdesinde veri döndürmüyor, zorunlu bir `parse` orada yazılacak hiçbir
-  /// şeyi olmayan bir dönüştürücü uydurmayı gerektirirdi.
+  /// Veri dönmeyen `PUT`; gereksiz bir `parse` uydurmamak için.
   Future<void> putWithoutData(String path, {Object? body}) {
     return _send<void>(() => _dio.put<dynamic>(path, data: body));
   }
 
-  /// Yalnızca başarı/başarısızlık dönen `DELETE` isteği.
   Future<void> deleteWithoutData(String path) {
     return _send<void>(() => _dio.delete<dynamic>(path));
   }
 
-  /// Gövdesinde veri dönen `DELETE` isteği.
-  ///
-  /// Bazı uçlar silme sonrası kaydın yeni hâlini döndürüyor (ör. logo
-  /// kaldırıldıktan sonra şirketin kendisi); ikinci bir okuma isteği
-  /// atmamak için.
+  /// Veri dönen `DELETE`; ör. logo kaldırınca şirketin yeni hâli.
   Future<T> delete<T>(String path, {required T Function(Object? data) parse}) {
     return _send<T>(() => _dio.delete<dynamic>(path), parse: parse);
   }
 
-  /// Tek dosya yükleyen `PUT` isteği.
-  ///
-  /// Dosyayı `multipart/form-data` olarak gönderiyor; [fieldName] backend'in
-  /// beklediği parça adı (`logo`, `image`, `file` ...).
+  /// Tek dosyalı multipart `PUT`. [fieldName] parça adı.
   Future<T> putFile<T>(
     String path, {
     required String fieldName,
@@ -471,7 +396,6 @@ class ApiClient {
     );
   }
 
-  /// Veri gövdesi döndürmeyen tek dosyalı multipart PUT isteği.
   Future<void> putFileWithoutData(
     String path, {
     required String fieldName,
@@ -483,10 +407,7 @@ class ApiClient {
     );
   }
 
-  /// Gövdesinde veri dönen `PUT` isteği.
-  ///
-  /// [patch]'ten farkı, kaydın tamamının gönderilmesi: gövdeye konmayan alan
-  /// "değişmedi" değil "boş" anlamına geliyor.
+  /// Veri dönen `PUT`. Kaydın tamamı gönderilir: konmayan alan "boş" demek.
   Future<T> put<T>(
     String path, {
     Object? body,
@@ -495,10 +416,7 @@ class ApiClient {
     return _send<T>(() => _dio.put<dynamic>(path, data: body), parse: parse);
   }
 
-  /// Gövdesinde veri dönen `PATCH` isteği.
-  ///
-  /// Backend kısmi güncellemede yalnızca gönderilen alanlara bakıyor, o yüzden
-  /// [body]'ye değişmeyen alanları koymamak gerekiyor.
+  /// Veri dönen `PATCH`. Yalnız değişen alanlar gönderilmeli.
   Future<T> patch<T>(
     String path, {
     Object? body,
@@ -507,18 +425,12 @@ class ApiClient {
     return _send<T>(() => _dio.patch<dynamic>(path, data: body), parse: parse);
   }
 
-  /// Multipart isteklerin içerik tipi. Taban ayarlarda `application/json`
-  /// yazdığı için `FormData` verilse bile açıkça geçersiz kılınması gerekiyor;
-  /// aksi hâlde Spring isteği `415` ile geri çevirir.
-  ///
-  /// Her çağrıda yeni bir nesne veriyor: dio `Options.method`'u geçilen
-  /// nesnenin üstüne yazıyor, paylaşılan tek bir örnek `POST` ile `PUT`
-  /// isteklerinin birbirinin yöntemini ezmesine açık kapı bırakırdı.
+  /// Taban ayar `application/json` olduğu için multipart'ta tip açıkça
+  /// yazılmalı, yoksa Spring `415` döner. Her çağrıda yeni nesne: dio
+  /// `Options.method`'u üstüne yazıyor.
   static Options get _multipartOptions =>
       Options(contentType: Headers.multipartFormDataContentType);
 
-  /// Tek dosya taşıyan multipart gövde. [fieldName] backend'in beklediği
-  /// parça adı (`image`, `logo`, `file` ...).
   Future<FormData> _fileFormData(String fieldName, String filePath) async {
     return FormData.fromMap({
       fieldName: await MultipartFile.fromFile(filePath),
@@ -540,9 +452,7 @@ class ApiClient {
         );
       }
 
-      // Başarı bayrağı önce kontrol ediliyor: başarısız yanıtta `data` ya hiç
-      // yok ya da beklenen biçimde değil, ayrıştırmaya kalkmak gerçek hata
-      // mesajının üstünü örterdi.
+      // Başarısız yanıtta `data`'yı ayrıştırmak gerçek hata mesajını örterdi.
       if (body['success'] != true) {
         final envelope = ApiResponse.fromJson<void>(body);
 
@@ -622,12 +532,7 @@ class ApiClient {
     if (body is! Map<String, dynamic>) {
       return ApiException(
         message: 'Beklenmeyen bir hata oluştu.',
-        // Zarf yok, yani okunacak kategori de yok — ama yedek tabloya
-        // doğrudan gidilmiyor. `errorCategory: null` "bu yanıtın kategorisi
-        // yok" demenin kuralın kendi diliyle yazılmış hâli; karar yine tek
-        // kapıdan geçiyor. Yedeğe buradan kestirme atılsaydı tablo dışarıya
-        // açık kalmak zorunda kalır, o kapıdan giren bir çağıran da
-        // kategoriyi hiç okumadan #86'nın kusurunu geri getirirdi.
+        // Zarf yok; yine de karar tek kapıdan geçiyor.
         type: ApiErrorType.classify(
           errorCategory: null,
           statusCode: statusCode,
@@ -640,8 +545,7 @@ class ApiClient {
 
     final type = _typeFor(envelope, statusCode);
 
-    // Sürüm kapısı her uçtan gelebiliyor; çağıranın karşılamasını beklemek
-    // yerine burada bir kez yakalanıyor.
+    // Sürüm kapısı her uçtan gelebilir; burada bir kez yakalanıyor.
     if (type == ApiErrorType.upgradeRequired) {
       AppUpdateGate().block(envelope.message);
     }
@@ -655,11 +559,6 @@ class ApiClient {
     );
   }
 
-  /// Zarfın taşıdığı kategori ile durum kodunu tipe çevirir.
-  ///
-  /// Kuralın kendisi [ApiErrorType.classify]'da: `AuthInterceptor` de aynı
-  /// kararı vermek zorunda ve kural iki kopyaya bölünmemeli
-  /// (is-koala/koala#86).
   ApiErrorType _typeFor(ApiResponse<void> envelope, int? statusCode) {
     return ApiErrorType.classify(
       errorCategory: envelope.errorCategory,

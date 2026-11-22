@@ -1,9 +1,5 @@
-/// Engellenen kişinin herkese açık kimliği. Backend `SafeUserDto` karşılığı.
-///
-/// Projede bu sözleşmenin karşılığı olan bir model yoktu: [PublicProfile] çok
-/// daha geniş (meslek, konum, özgeçmiş) ve `GET /users/{id}` üzerinden
-/// geliyor. Engel listesi bunların hiçbirini döndürmüyor — yalnızca satırı
-/// çizmeye yetecek kadarını.
+/// Engellenen kişinin herkese açık kimliği (`SafeUserDto`); yalnız satırı
+/// çizmeye yetecek kadar.
 class BlockedUser {
   const BlockedUser({
     required this.id,
@@ -18,17 +14,10 @@ class BlockedUser {
   final String? lastName;
   final String? username;
 
-  /// Profil görseli. Sözleşmede var; "Engellediklerim" listesi satırı
-  /// [SessionView] ve [ReportView] ile aynı ikon kutusuyla çizdiği için
-  /// şimdilik hiçbir ekran okumuyor.
+  /// Sözleşmede var ama şimdilik hiçbir ekran okumuyor.
   final String? profilePictureUrl;
 
-  /// Satırda görünen ad.
-  ///
-  /// Ad ve soyad gelmeyebiliyor (kimliği doğrulanmamış hesap); o durumda
-  /// kullanıcı adı gösteriliyor. Hiçbiri yoksa satır boş kalmasın diye yer
-  /// tutucu yazılıyor — kullanıcı kimi engellediğini en azından tarihten
-  /// çıkarabilmeli.
+  /// Ad yoksa kullanıcı adı, o da yoksa yer tutucu.
   String get displayName {
     final fullName = [
       ?firstName,
@@ -54,11 +43,7 @@ class BlockedUser {
   }
 }
 
-/// Oturum sahibinin koyduğu tek bir engel. Backend `UserBlockDto` karşılığı.
-///
-/// Engel **iki yönlü**: kayıt yalnızca engelleyenin listesinde duruyor ama
-/// sonucu iki tarafı da bağlıyor — engellenen kişi de artık yazamıyor
-/// (`MessagingManager.java:294-298`).
+/// Oturum sahibinin koyduğu engel; sonucu iki tarafı da bağlıyor.
 class UserBlock {
   const UserBlock({
     required this.id,
@@ -69,12 +54,9 @@ class UserBlock {
 
   final String id;
 
-  /// Engellenen kişi.
   final BlockedUser blocked;
 
-  /// Engelleme gerekçesi; isteğe bağlı, sunucuda en fazla 512 karakter.
-  ///
-  /// Yalnızca moderasyon için tutuluyor, karşı taraf görmüyor.
+  /// En fazla 512 karakter; yalnız moderasyon görür.
   final String? reason;
 
   final DateTime? createdAt;

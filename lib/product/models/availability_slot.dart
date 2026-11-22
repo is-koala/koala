@@ -1,8 +1,6 @@
 import 'package:koala/product/models/availability_day.dart';
 
-/// Haftalık müsaitlik şablonundaki tek saat aralığı.
-///
-/// Saatler modelde `HH:mm` dizesidir; `TimeOfDay` yalnız arayüzde kullanılır.
+/// Şablondaki tek saat aralığı; saatler `HH:mm` dizesi.
 class AvailabilitySlot {
   const AvailabilitySlot({
     this.id,
@@ -25,7 +23,7 @@ class AvailabilitySlot {
     );
   }
 
-  /// PUT gövdesi kimlik taşımaz; sunucu bütün şablonu silip yeniden yazar.
+  /// Kimlik yok: sunucu bütün şablonu silip yeniden yazıyor.
   Map<String, dynamic> toRequestJson() => {
     'dayOfWeek': day.code,
     'startTime': startTime,

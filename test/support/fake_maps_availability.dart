@@ -4,13 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/product/services/maps_availability.dart';
 import 'package:provider/provider.dart';
 
-/// Harita bayrağını çözülmüş hâliyle ağaca verir; üretimde `main.dart` aynı
-/// sağlayıcıyı okunmamış kurar ve açılış ekranı çözer.
-///
-/// Harita çizen ekranlar (`MapExplorePage`, `MapFirstAddressPage`) bayrağı
-/// `MapsAvailability.of` ile okur ve sağlayıcı yoksa `Provider` hata verir.
-/// [available] `false` ise ekranlar `GoogleMap` yerine yer tutucu çizer
-/// (is-koala/koala#172).
+/// Harita bayrağını çözülmüş hâlde ağaca verir; [available] `false` ise
+/// ekranlar yer tutucu çizer (#172).
 Widget withMapsAvailability(Widget child, {bool available = true}) {
   return ChangeNotifierProvider<MapsAvailability>(
     create: (_) => MapsAvailability.resolved(isAvailable: available),
@@ -18,12 +13,8 @@ Widget withMapsAvailability(Widget child, {bool available = true}) {
   );
 }
 
-/// Yerel kanalın yerine geçen sahte: çağrıları sayar, ilk [missingFirst]
-/// çağrıda kanal kayıtlı değilmiş gibi davranır (`MissingPluginException`),
-/// sonra `isAvailable`'a [available] döner. [available] `null` ise kanal hep
-/// cevapsızdır.
-///
-/// Test bitince kaldırılır; testler arasında sızmaz.
+/// Yerel kanal sahtesi: ilk [missingFirst] çağrıda kanal yokmuş gibi davranır,
+/// sonra [available] döner; `null` ise hep cevapsız.
 class FakeMapsAvailabilityChannel {
   FakeMapsAvailabilityChannel({
     required this.available,

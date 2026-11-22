@@ -4,43 +4,29 @@ import 'package:koala/product/network/api_paths.dart';
 import 'package:koala/product/network/api_response.dart';
 import 'package:koala/product/network/token_storage.dart';
 
-/// İsteklere `Authorization` başlığını ekler ve oturumun bittiğini söyleyen
-/// isteği bir kez `/auth/refresh-token` ile tazeleyip tekrar dener.
+/// İsteklere `Authorization` ekler; oturumun bittiğini söyleyen isteği bir kez
+/// `/auth/refresh-token` ile tazeleyip tekrar dener.
 ///
-/// "Oturum bitti" ölçüsü [ApiErrorType.unauthenticated]: karar zarftaki
-/// `errorCategory` alanından çıkıyor, `401` yalnızca yedek — ayrıntı
-/// [_shouldRefresh]'te.
-///
-/// `QueuedInterceptor`'dan türüyor: aynı anda oturum hatası alan birden fazla
-/// istek olduğunda token yalnızca bir defa yenilensin diye istekler sıraya
-/// giriyor.
-///
-/// Yenileme çağrısı, süresi **dolmuş** erişim token'ıyla da çalışıyor:
-/// backend `/auth/refresh-token` yolunda oturum filtresini atlıyor ve oturum
-/// kimliğini süresi dolmuş JWT'nin claim'lerinden okuyor. Bu yüzden istek
-/// yine de `Authorization` başlığını taşımak zorunda — yol bilerek
-/// [ApiPaths.publicPaths] içinde değil.
+/// `QueuedInterceptor`: aynı anda oturum hatası alan istekler için token bir
+/// kez yenilensin. Yenileme süresi **dolmuş** token'la da çalışıyor (backend
+/// oturumu onun claim'lerinden okuyor), o yüzden yol [ApiPaths.publicPaths]
+/// içinde değil.
 class AuthInterceptor extends QueuedInterceptor {
   AuthInterceptor({
-    required TokenStorage tokenStorage,
-    required Dio tokenDio,
-    required Future<void> Function() onSessionExpired,
-  }) : _tokenStorage = tokenStorage,
-       _tokenDio = tokenDio,
-       _onSessionExpired = onSessionExpired;
+    required this._tokenStorage,
+    required this._tokenDio,
+    required this._onSessionExpired,
+  });
 
   final TokenStorage _tokenStorage;
 
-  /// Yenileme ve tekrar deneme bu istemci üzerinden gidiyor; kendi
-  /// interceptor'ına takılıp sonsuz döngüye girmesin diye ayrı.
+  /// Kendi interceptor'ına takılıp döngüye girmesin diye ayrı istemci.
   final Dio _tokenDio;
 
   final Future<void> Function() _onSessionExpired;
 
-  /// Bir isteğin zaten bir kez tekrar denendiğini işaretleyen anahtar.
   static const String _retriedKey = 'koala_retried';
 
-  /// İsteğin çıktığı erişim-token neslini taşıyan anahtar.
   static const String _accessTokenGenerationKey =
       'koala_access_token_generation';
 
@@ -85,10 +71,8 @@ class AuthInterceptor extends QueuedInterceptor {
       return;
     }
 
-    // `QueuedInterceptor` ikinci 401'i ilk yenileme bittikten sonra ele alsa
-    // bile iki istek aynı nesli taşıdığı için tamamlanmış sonucu paylaşır.
-    // Logout/login sırasında storage başka bir hesaba geçtiyse eski isteği o
-    // hesabın token'ıyla yeniden oynatmamak için yeni bir yenileme başlatma.
+    // Aynı nesli taşıyan istekler tamamlanmış sonucu paylaşır. Bu arada başka
+    // hesaba geçildiyse eski istek o hesabın token'ıyla oynatılmasın.
     final existingAttempt = generation.refreshAttempt;
     if (existingAttempt == null &&
         await _tokenStorage.readAccessToken() != generation.accessToken) {
@@ -111,23 +95,9 @@ class AuthInterceptor extends QueuedInterceptor {
     }
   }
 
-  /// Bu hatanın oturumun bitmesi anlamına gelip gelmediğine karar verir.
-  ///
-  /// Ölçü **kategori**, durum kodu değil: sunucu `TOKEN_EXPIRED`'ı bir gün
-  /// `401` dışında bir durum koduyla gönderirse yenileme sessizce çalışmaz
-  /// hâle gelirdi (is-koala/koala#86). Ayrım `ApiErrorType`'ta zaten vardı
-  /// ama oturumu yenileyen yol onu hiç okumuyordu; tip ile davranış
-  /// arasındaki bağ yalnızca "sunucu bu kategorileri `401` ile gönderiyor"
-  /// varsayımıyla ayakta duruyordu.
-  ///
-  /// `401` **yedek olarak duruyor**, birincil kapı olarak değil:
-  /// [ApiErrorType.classify] kategori taşımayan zarfta durum koduna düşüyor,
-  /// yani eski sunucu, zarfı elle yazan filtreler, gövdesi JSON olmayan
-  /// yanıtlar ve yanıtsız ağ hataları bugünkü davranışı koruyor.
-  ///
-  /// Kararın `ApiClient`'takiyle aynı fonksiyondan çıkması şart: iki kopya,
-  /// aynı yanıt için yenileme yolunun ve kullanıcıya gösterilen tipin
-  /// sessizce ayrışması demek olurdu.
+  /// Hatanın oturumun bittiği anlamına gelip gelmediği. Ölçü kategori; `401`
+  /// yalnız yedek (is-koala/koala#86). Karar `ApiClient`'takiyle aynı
+  /// fonksiyondan çıkmalı, yoksa yenileme ile gösterilen tip ayrışır.
   bool _shouldRefresh(DioException err) {
     final type = ApiErrorType.classify(
       errorCategory: ApiResponse.errorCategoryOf(err.response?.data),
@@ -142,9 +112,8 @@ class AuthInterceptor extends QueuedInterceptor {
     return err.requestOptions.extra[_retriedKey] != true;
   }
 
-  /// Aynı erişim token'ıyla gönderilmiş isteklerin paylaştığı yenileme.
-  /// Oturum sonlandırma da bu future'ın içinde olduğundan başarısız bir
-  /// yenileme, kohort başına yalnız bir kez çıkışa düşürür.
+  /// Aynı token'la gönderilmiş isteklerin paylaştığı yenileme; başarısızlık
+  /// kohort başına bir kez çıkışa düşürür.
   Future<String?> _refreshGeneration(_AccessTokenGeneration generation) async {
     try {
       final refreshedAccessToken = await _refreshAccessToken(
@@ -156,9 +125,8 @@ class AuthInterceptor extends QueuedInterceptor {
       }
       return refreshedAccessToken;
     } finally {
-      // Yenileme tamamlandıktan sonra çıkacak yeni istekler yeni bir hücre
-      // alır. Eski istekler kendi hücresindeki tamamlanmış sonucu paylaşmayı
-      // sürdürür; kalıcı token->future haritası gerekmez.
+      // Yenilemeden sonra çıkan istekler yeni hücre alır; kalıcı bir
+      // token→future haritası gerekmez.
       if (identical(_currentGeneration, generation)) {
         _currentGeneration = null;
       }
@@ -183,8 +151,7 @@ class AuthInterceptor extends QueuedInterceptor {
       final newAccessToken = data['token'] as String?;
       if (newAccessToken == null) return null;
 
-      // Yenileme uçuş hâlindeyken logout/login olduysa eski oturumun
-      // yanıtıyla yeni oturumun token'ını ezme.
+      // Yenileme sürerken hesap değiştiyse yeni oturumun token'ını ezme.
       if (await _tokenStorage.readAccessToken() != expectedAccessToken) {
         return null;
       }
@@ -196,16 +163,9 @@ class AuthInterceptor extends QueuedInterceptor {
     }
   }
 
-  /// İsteği tazelenmiş token'la bir kez daha gönderir.
-  ///
-  /// Multipart gövde tek kullanımlık: `FormData` ilk gönderimde akışa
-  /// dönüştürülüp mühürleniyor, aynı nesne ikinci kez gönderilince dio
-  /// "The FormData has already been finalized" diye düşüyor. Yani dosya
-  /// yükleyen bir istek, yükleme sırasında erişim token'ı dolduğunda hiç
-  /// tekrar denenemiyordu. `clone()` parçaları yeniden okunabilir biçimde
-  /// kopyaladığı için tekrar denenen istek dosyayı yine taşıyor — kopyalamak
-  /// yerine `FormData`'yı burada yeniden kurmak, isteği kimin kurduğunu
-  /// bilmeyi gerektirirdi.
+  /// İsteği tazelenmiş token'la bir kez daha gönderir. `FormData` tek
+  /// kullanımlık ("already been finalized"); `clone()` ile dosya yükleyen istek
+  /// de tekrar denenebiliyor.
   Future<Response<dynamic>> _retry(
     RequestOptions options,
     String accessToken,
@@ -223,11 +183,8 @@ class AuthInterceptor extends QueuedInterceptor {
   }
 }
 
-/// Aynı access token'la çıkan isteklerin yenileme sonucu.
-///
-/// Hücre doğrudan `RequestOptions.extra`da taşındığı için yalnız ilgili
-/// istekler yaşadığı sürece kalır; token değerlerine göre büyüyen bir cache
-/// oluşturmaz.
+/// Aynı token'la çıkan isteklerin yenileme sonucu. `RequestOptions.extra`da
+/// taşındığı için istekler yaşadıkça kalır, büyüyen bir önbellek olmaz.
 class _AccessTokenGeneration {
   _AccessTokenGeneration(this.accessToken);
 

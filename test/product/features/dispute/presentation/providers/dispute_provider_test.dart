@@ -379,9 +379,8 @@ void main() {
       final provider = DisputeProvider(
         assignmentId: 'assignment-1',
         assignmentService: AssignmentService.withClient(
-          FakeApi(
-            handler: (_) => dataResponse([disputeJson('dispute-1')]),
-          ).client,
+          FakeApi(handler: (_) => dataResponse([disputeJson('dispute-1')]))
+              .client,
         ),
         evidenceService: DisputeEvidenceService.withClient(api.client),
         clock: _fixedClock,

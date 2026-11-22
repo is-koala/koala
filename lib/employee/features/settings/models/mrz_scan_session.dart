@@ -1,6 +1,5 @@
 import 'package:koala/employee/features/settings/models/mrz_key.dart';
 
-/// Kameradaki tek karenin MRZ açısından gözlenen sonucu.
 class MrzFrameObservation {
   const MrzFrameObservation.valid(MrzKey this.key)
     : guidance = MrzScanGuidance.holdSteady;
@@ -11,7 +10,6 @@ class MrzFrameObservation {
   final MrzScanGuidance guidance;
 }
 
-/// Kullanıcının bir sonraki kareyi iyileştirmek için yapacağı şey.
 enum MrzScanGuidance {
   preparing('Kamera hazırlanıyor'),
   improveLighting('Işığı artır'),
@@ -24,7 +22,6 @@ enum MrzScanGuidance {
   final String message;
 }
 
-/// Canlı taramanın kullanıcıya ve çağırana açtığı durum.
 class MrzScanState {
   const MrzScanState({required this.guidance, this.key});
 
@@ -35,7 +32,7 @@ class MrzScanState {
   bool get isReady => key != null;
 }
 
-/// Tek bir doğru OCR karesini başarı saymak yerine kararlılık arar.
+/// Tek doğru kareyi başarı saymak yerine kararlılık arar.
 class MrzScanSession {
   MrzScanSession({required this.requiredStableFrames})
     : assert(requiredStableFrames > 0);

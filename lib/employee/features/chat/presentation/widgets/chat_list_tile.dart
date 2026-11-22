@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/chat/models/conversation.dart';
 import 'package:koala/employee/features/chat/presentation/widgets/chat_avatar.dart';
@@ -11,14 +11,11 @@ import 'package:koala/product/extensions/context_extensions.dart';
 class ChatListTile extends StatelessWidget {
   final Conversation chat;
 
-  /// Sohbetten dönüldüğünde çağrılıyor: okunmamış sayacı ve son mesaj
-  /// değişmiş olabilir, liste tazelenmeli.
+  /// Dönüşte sayaç ve son mesaj değişmiş olabilir.
   final Future<void> Function()? onReturn;
 
   const ChatListTile({super.key, required this.chat, this.onReturn});
 
-  /// Satır yüksekliği avatardan büyük: avatarın altında ve üstünde eşit pay
-  /// kalsın ve bütün satırlar aynı boyda dursun.
   static const double _tileHeight = 74;
 
   @override
@@ -72,11 +69,8 @@ class ChatListTile extends StatelessWidget {
     );
   }
 
-  /// Satır başlığı: ikili sohbette karşı tarafın adı, grupta ilan başlığı
-  /// ve yanında katılımcı sayısı.
-  ///
-  /// Sayı başlığın içine değil yanına yazılıyor: uzun bir ilan adı üç
-  /// noktayla kısalırken sayı kaybolmasın.
+  /// İkilide ad, grupta ilan başlığı + sayı; sayı ayrı ki uzun başlık
+  /// kısalırken kaybolmasın.
   Widget _title(BuildContext context) {
     return Row(
       children: [
@@ -113,7 +107,6 @@ class ChatListTile extends StatelessWidget {
       ),
       child: Text(
         chat.unreadCount.toString(),
-        // Rozet zemini temadan bağımsız kırmızı; üstündeki sayı da öyle.
         style: context.textTheme.labelSmall?.copyWith(
           color: AppColors.onAccent,
         ),

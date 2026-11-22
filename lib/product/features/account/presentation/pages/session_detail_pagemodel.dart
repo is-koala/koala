@@ -5,18 +5,13 @@ abstract class SessionDetailPagemodel extends State<SessionDetailPage> {
 
   late SessionDetail detail = widget.initial;
 
-  /// Adlandırma ya da kapatma havada mı. İkisi aynı anda koşmuyor.
   bool isWorking = false;
 
-  /// Cihaz adının üst sınırı; sunucu `@Size(max = 60)` ile aynı sayıyı
-  /// tutuyor, kutu daha uzununu yazdırmıyor.
+  /// Sunucunun `@Size(max = 60)` sınırı.
   static const int nameMaxLength = 60;
 
-  /// Ayrıntıyı sunucudan yeniden çeker.
-  ///
-  /// Hata sessiz geçiyor: elde zaten gösterilecek bir ayrıntı var, eskisi
-  /// kalıyor. Oturum bu arada kapandıysa (`404`) sayfa kapanıyor ve liste
-  /// kendini tazeliyor.
+  /// Ayrıntıyı yeniden çeker. Hata sessiz, eldeki kalır; oturum kapandıysa
+  /// (`404`) sayfa kapanır.
   Future<void> reload() async {
     try {
       final fresh = await _service.fetchDetail(detail.session.id);
@@ -32,12 +27,8 @@ abstract class SessionDetailPagemodel extends State<SessionDetailPage> {
     }
   }
 
-  /// "Cihazı adlandır": adı sorar, sunucuya yazar, ayrıntıyı tazeler.
-  ///
-  /// Kutu kullanıcının **kendi** verdiği adla açılıyor
-  /// ([SessionDetail.deviceCustomName]); sunucunun türettiği ad kutuya
-  /// konsaydı kullanıcı onu kendi yazmış sanırdı. Boş ad `400` — kutu boşken
-  /// onayı kapalı tutuyor, sunucuya gitmeden.
+  /// "Cihazı adlandır". Kutu kullanıcının **kendi** verdiği adla açılıyor;
+  /// türetilmiş ad konsaydı kendisi yazmış sanırdı.
   Future<void> rename() async {
     final deviceId = detail.session.deviceId;
     if (isWorking || deviceId == null) return;
@@ -69,8 +60,7 @@ abstract class SessionDetailPagemodel extends State<SessionDetailPage> {
     }
   }
 
-  /// "Oturumu kapat": onay ister, kapatır ve `true` ile sayfayı kapatır;
-  /// liste bu değeri görünce kendini yeniden çekiyor.
+  /// Onay ister, kapatır ve `true` ile döner.
   Future<void> revoke() async {
     if (isWorking) return;
 

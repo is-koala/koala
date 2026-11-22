@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
@@ -22,10 +22,8 @@ import '../../../../../support/identity_document_fixtures.dart';
 import '../../../../../support/keyboard.dart';
 import '../../../../../support/finders.dart';
 
-/// Kayıtta girilen ad-soyad ve doğum tarihi kimliktekiyle **aynı değil**:
-/// çip okununca hangisinin gönderildiği buradan ayırt ediliyor. Karttaki
-/// doğum tarihi 07.04.1998; kayıttaki başka bir gün, yoksa doğum tarihi
-/// ayağı hiçbir şeyi kanıtlamazdı.
+/// Kayıttaki ad ve doğum tarihi kimliktekiyle **aynı değil**: çip okununca
+/// hangisinin gönderildiği buradan ayırt ediliyor.
 final CurrentUser _user = CurrentUser.fromJson(const {
   'id': 'user-1',
   'firstName': 'Cagri',
@@ -44,9 +42,8 @@ IdentityChipResult _chipResult({bool withChipProof = false}) {
   );
 }
 
-/// NFC donanımı olan bir Android telefon: kimlik ekranı çip formunu çiziyor.
-/// Testte yerli eklenti yok, sorulsa "yok" derdi ve ekran doğrudan fotoğraf
-/// akışına geçerdi — bu dosyanın ölçtüğü çip formu hiç açılmazdı.
+/// NFC'li Android telefon; yerli eklenti olmadan sorulsa "yok" der ve ekran
+/// doğrudan fotoğraf akışına geçerdi.
 class _AvailableChipReader extends ChipReader {
   @override
   Future<NfcAvailability> availability() async => NfcAvailability.available;
@@ -460,12 +457,9 @@ void main() {
 
     testWidgets('sunucu challenge\'ı geçersiz sayınca kanıt bırakılıyor ve '
         'sebebi söyleniyor', (tester) async {
-      // Elle düzenlemeye dönüşün kullanıcı eylemi olmayan tek yolu. Süresi
-      // dolmuş tek kullanımlık sayıyla imzalanan kanıt bir daha kabul
-      // edilmeyecek; kartı "doğrulandı" diye göstermeye devam etmek, sunucunun
-      // az önce reddettiği kanıtı ekranda tutmak olurdu. Kanıtla birlikte
-      // ondan türeyen beş alan da gidiyor ve kullanıcı neden baştan
-      // okutacağını toast'tan öğreniyor.
+      // Elle düzenlemeye dönüşün kullanıcı eylemi olmayan tek yolu: süresi
+      // dolmuş sayıyla imzalanan kanıt bir daha kabul edilmez, beş alanla
+      // birlikte gider.
       final api = rejectingApi(IdentityError.challengeInvalid.code);
       await pumpPage(tester, api, chipResult: () => _chipResult());
       await readChip(tester);
@@ -493,9 +487,8 @@ void main() {
     testWidgets('challenge dışındaki bir ret kanıtı yerinde bırakıyor', (
       tester,
     ) async {
-      // Bozuk imza ya da tanınmayan makam kanıtı geçersiz kılmıyor; kullanıcı
-      // metindeki yönlendirmeye göre yeniden okutur ya da desteğe yazar.
-      // Kanıtı her hatada atmak, kartı boşuna yeniden okutmak olurdu.
+      // İmza ya da makam hatası kanıtı geçersiz kılmıyor; her hatada atmak
+      // kartı boşuna yeniden okuturdu.
       final api = rejectingApi(IdentityError.signatureInvalid.code);
       await pumpPage(tester, api, chipResult: () => _chipResult());
       await readChip(tester);
@@ -767,8 +760,8 @@ void main() {
     });
   });
 
-  // iOS'ta bu ekran açılır açılmaz fotoğraf akışına geçiyor; "Bitti" şeridi
-  // TCKN alanını taşıyan `IdentityDocumentsPage` testinde ölçülüyor.
+  // iOS'ta ekran doğrudan fotoğraf akışına geçiyor; TCKN şeridi
+  // `IdentityDocumentsPage` testinde ölçülüyor.
   group('klavye (is-koala/koala#190)', () {
     for (final brightness in Brightness.values) {
       testWidgets(

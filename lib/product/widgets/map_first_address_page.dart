@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -31,23 +31,13 @@ import 'package:koala/product/widgets/option_sheet.dart';
 
 part 'map_first_address_pagemodel.dart';
 
-/// Harita-öncelikli adres ekranı: tam ekran harita, ortada sabit pin, altta
-/// kayan kart.
+/// Harita-öncelikli adres ekranı (ADR-0007): tam ekran harita, sabit pin, altta
+/// kayan kart. Pin durunca ters geokod alanları doldurur; kullanıcı
+/// daire/kat/tarif ekleyip kaydeder.
 ///
-/// Kullanıcı adresi, şirket adresi ve ilan adresi aynı ekranı kullanır
-/// (ADR-0007). Akış: kullanıcı haritayı kaydırır, pin durunca ters geokod
-/// adayı karttaki alanları doldurur, kullanıcı yalnız daire/kat/tarif ekler
-/// ve **Adresi kaydet** der. Arama kutusu ve alanların elle düzenlenmesi aynı
-/// kartın içinde ikincil yol olarak durur; "Sadece pini kullan" adayın
-/// yazdıklarını boşaltıp pini korur.
-///
-/// Sonuç [ConfirmedAddress] olarak `context.pop` ile döner. [onSave]
-/// verilirse geri dönmeden önce çağrılır (çalışan adresi `PUT` ile yazılır);
-/// `ApiException` fırlatırsa ekran kapanmaz ve hata toast olarak gösterilir.
-///
-/// Açılışta konum izni **zaten** verilmişse harita cihaza gider; verilmemişse
-/// düzenlenen adresin pinine, o da yoksa şehir merkezine açılır. İzin
-/// diyaloğu yalnız "Konumumu kullan" düğmesinde açılır.
+/// Sonuç [ConfirmedAddress] olarak döner. [onSave] `ApiException` fırlatırsa
+/// ekran kapanmaz. Konum izni zaten verilmişse harita cihaza açılır; izin
+/// diyaloğu yalnız "Konumumu kullan"da.
 class MapFirstAddressPage extends StatefulWidget {
   const MapFirstAddressPage({
     super.key,
@@ -64,14 +54,11 @@ class MapFirstAddressPage extends StatefulWidget {
 
   final String title;
 
-  /// Düzenlenen adres; harita onun pinine açılır, alanlar ondan dolar.
   final ConfirmedAddress? initialAddress;
 
-  /// Onaylanan adresi kalıcılaştıran çağrı; `null` ise ekran yalnız adresi
-  /// döndürür (ilan ve şirket formu kaydı kendisi yapar).
+  /// `null` ise ekran yalnız adresi döndürür; kaydı form yapar.
   final Future<void> Function(ConfirmedAddress address)? onSave;
 
-  /// Testlerin sürmek için verdiği kontrolcü; verilmezse sayfa kendi kurar.
   final MapFirstAddressController? controller;
 
   final AddressSearchGateway? addressSearchGateway;
@@ -85,25 +72,20 @@ class MapFirstAddressPage extends StatefulWidget {
 }
 
 class _MapFirstAddressPageState extends MapFirstAddressPagemodel {
-  /// Harita üstündeki yuvarlak düğmelerin çapı.
   static const double _overlayButtonSize = 44;
 
-  /// Sabit pinin boyu; ucu kamera hedefine denk gelsin diye kendi boyu kadar
-  /// yukarı kaydırılıyor.
+  /// Ucu kamera hedefine denk gelsin diye boyu kadar yukarıda.
   static const double _pinSize = AppSizes.mapPin;
 
-  /// Kartın gölgesi.
   static const double _sheetShadowBlur = 16;
 
-  /// Sağlayıcı logosunun kenarı.
   static const double _providerLogoSize = 16;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.backgroundColor,
-      // Klavye açılınca harita yeniden ölçülmesin; kart kendi alt payını
-      // klavye kadar büyütüp kaydırılabilir kalıyor.
+      // Klavye haritayı yeniden ölçtürmesin; kart kendi payını büyütüyor.
       resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
@@ -116,10 +98,7 @@ class _MapFirstAddressPageState extends MapFirstAddressPagemodel {
     );
   }
 
-  /// Harita anahtarı olmayan derlemede haritanın yerine geçen zemin
-  /// (is-koala/koala#172). [EmptyState] kendi üst payıyla kartın üstünde
-  /// kalan alana düşüyor; kart açılınca altında kalması sorun değil, kart
-  /// zaten adres girişinin yolu.
+  /// Harita anahtarı olmayan derlemede haritanın yerini tutan zemin (#172).
   Widget _mapPlaceholder() {
     return ColoredBox(
       key: const ValueKey('map-unavailable'),
@@ -150,7 +129,6 @@ class _MapFirstAddressPageState extends MapFirstAddressPagemodel {
     );
   }
 
-  /// Haritanın merkezindeki sabit pin.
   Widget _centerPin() {
     return IgnorePointer(
       child: Center(
@@ -167,10 +145,7 @@ class _MapFirstAddressPageState extends MapFirstAddressPagemodel {
     );
   }
 
-  /// Geri düğmesi, başlık ve "Konumumu kullan".
-  ///
-  /// Harita iki temada da açık çizdiği için üstündeki düğmelerin zemini ve
-  /// yazısı temadan bağımsız sabit kalıyor.
+  /// Harita iki temada da açık çizdiği için düğme renkleri sabit.
   Widget _topBar() {
     return SafeArea(
       child: Padding(
@@ -282,11 +257,7 @@ class _MapFirstAddressPageState extends MapFirstAddressPagemodel {
               ),
             ],
           ),
-          // Tek sütun, tembel liste değil: alanlar bir formun parçası, hepsi
-          // birlikte kurulur ki odaklanma ve kaydırma tek ağaç üzerinde
-          // çalışsın. Sayfa `Scaffold`'u küçülmediği için klavye payını
-          // gövde ekliyor; kartın boş alanına dokunmak ya da kartı
-          // sürüklemek klavyeyi kapatıyor, harita dokunuşu odağı düşürmüyor.
+          // Tembel liste değil: odaklanma ve kaydırma tek ağaçta çalışsın.
           child: FormPageBody(
             controller: scrollController,
             padding: AppPadding.sheet.copyWith(
@@ -334,12 +305,8 @@ class _MapFirstAddressPageState extends MapFirstAddressPagemodel {
   Widget _sectionLabel(String title) =>
       Text(title, style: context.textTheme.titleMedium);
 
-  /// "Adresi kaydet" ve kapalıysa yanındaki gerekçe.
-  ///
-  /// Hizmet alanı dışındaki pinle düğme kapalı: sunucu aynı pini yine
-  /// reddederdi. Gerekçe düğmenin altında görünür metin olarak ve düğmenin
-  /// kendi semantik düğümünde ipucu olarak durur ([MyButton.semanticHint]);
-  /// kullanıcı pini taşıyınca ikisi de kalkar.
+  /// "Adresi kaydet". Hizmet alanı dışındaki pinde kapalı (sunucu reddederdi);
+  /// gerekçe hem metin hem [MyButton.semanticHint] olarak duruyor.
   List<Widget> _saveSection() {
     final blockedReason = controller.saveBlockedReason;
     return [
@@ -486,11 +453,8 @@ class _MapFirstAddressPageState extends MapFirstAddressPagemodel {
 
   // ------------------------------------------------------------- Pin durumu
 
-  /// Pinin altında ne olduğu: öneri hazırlanıyor, öneri alınamadı ya da
-  /// alanlar bir adaydan doldu.
-  ///
-  /// Düşen ters geokodun şeridi nedene göre değişir: metin ve eylem
-  /// [ReverseGeocodeFailure]'dan gelir; hizmet alanı dışında eylem yok.
+  /// Pinin altında ne olduğu: öneri hazırlanıyor, alınamadı ya da alanlar
+  /// doldu. Hata metni ve eylem [ReverseGeocodeFailure]'dan.
   List<Widget> _pinStatus() {
     final failure = controller.reverseFailure;
     final maplessOrigin = controller.maplessPinOrigin;
@@ -562,9 +526,7 @@ class _MapFirstAddressPageState extends MapFirstAddressPagemodel {
     ];
   }
 
-  /// Haritasız kipte kaydedilecek konumun nereden geldiği. Kullanıcı pini
-  /// göremediği için söylenmesi gerekiyor; şehir merkezi seçiliyken arama
-  /// daha kesin bir konum verir.
+  /// Haritasız kipte pin görünmediği için konumun kaynağı söyleniyor.
   String _maplessPinNote(MaplessPinOrigin origin) => switch (origin) {
     MaplessPinOrigin.saved => 'Kayıtlı adresinizin konumu korunuyor.',
     MaplessPinOrigin.device => 'Konum cihazınızdan alındı.',
@@ -574,7 +536,6 @@ class _MapFirstAddressPageState extends MapFirstAddressPagemodel {
           'adresinizi arayın ya da "Konumumu kullan" deyin.',
   };
 
-  /// Bilgi şeridi; [actionLabel] `null` ise yalnız metin.
   Widget _strip(
     String message, {
     required String? actionLabel,
@@ -717,8 +678,7 @@ class _MapFirstAddressPageState extends MapFirstAddressPagemodel {
     );
   }
 
-  /// Dokununca liste açan alan; `MyTextfield` çerçevesinde durur ki yazılan
-  /// alanlarla aynı ızgarada otursun.
+  /// Dokununca liste açan alan; yazılan alanlarla aynı çerçevede.
   Widget _pickerField({
     required String label,
     required String? value,
@@ -766,8 +726,6 @@ class _MapFirstAddressPageState extends MapFirstAddressPagemodel {
     );
   }
 
-  /// Alanın altındaki hata satırı; kaydet denenmediyse ya da alan geçerliyse
-  /// hiç çizilmez.
   Widget? _inlineError(AddressField field) {
     final message = controller.errorFor(field);
     if (message == null) return null;

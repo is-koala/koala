@@ -1,12 +1,10 @@
 part of 'b_talent_pool_page.dart';
 
 abstract class BTalentPoolPagemodel extends State<BTalentPoolPage> {
-  /// Satırdaki avatar; başvuran kartıyla aynı ölçek.
   static const double _avatarSize = 48;
 
   final ScrollController _scrollController = ScrollController();
 
-  /// Listenin sonuna bu kadar kala sonraki sayfa isteniyor.
   static const double _loadMoreThreshold = 240;
 
   @override

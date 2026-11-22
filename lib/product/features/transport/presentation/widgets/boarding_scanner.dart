@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -16,47 +16,38 @@ import 'package:koala/product/widgets/app_icon.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-/// Kamera yüzeyinin bildirebildiği hatalar.
 enum BoardingCameraError {
-  /// Kullanıcı kamera iznini vermedi.
   permissionDenied,
 
-  /// Cihazda kamera yok.
   unsupported,
 
-  /// Kamera açık ama QR çözücü çalışmıyor. Android'de barkod modeli Play
-  /// Services'tan geliyor (`useUnbundled`); Play Services'ı olmayan cihazda
-  /// (Huawei vb.) ya da model henüz inmediyse her kare hata döner.
+  /// QR çözücü çalışmıyor: Play Services'ı olmayan cihaz ya da model inmedi.
   scannerUnavailable,
 
-  /// Başka bir kamera hatası.
   failed,
 }
 
-/// Kamera yüzeyinin sayfaya ilettikleri.
 class BoardingCameraCallbacks {
   const BoardingCameraCallbacks({required this.onCode, required this.onError});
 
-  /// Okunan QR'ın ham metni. Yüzey içeriğe bakmaz; ayrıştırmak sayfanın işi.
+  /// Ham metin; ayrıştırmak sayfanın işi.
   final ValueChanged<String> onCode;
   final ValueChanged<BoardingCameraError> onError;
 }
 
-/// Kamera yüzeyini kuran fonksiyon. Üretimde [MobileScannerCamera]; widget
-/// testleri kamerası olmayan bir sahte yüzey verir.
-typedef BoardingCameraBuilder =
-    Widget Function(BuildContext context, BoardingCameraCallbacks callbacks);
+/// Testler kamerasız sahte yüzey verir.
+typedef BoardingCameraBuilder = Widget Function(
+  BuildContext context,
+  BoardingCameraCallbacks callbacks,
+);
 
-/// Kalıcı izin reddini soran ve ayarları açan ince seam.
 abstract interface class CameraPermissionProbe {
-  /// İzin kalıcı olarak reddedilmiş mi: sistem diyaloğu bir daha
-  /// açılmayacak, kullanıcı ayarlara gitmeli.
+  /// Sistem diyaloğu bir daha açılmayacak; kullanıcı ayarlara gitmeli.
   Future<bool> isPermanentlyDenied();
 
   Future<bool> openSettings();
 }
 
-/// `permission_handler` ile gerçek izin durumu.
 class PermissionHandlerCameraProbe implements CameraPermissionProbe {
   const PermissionHandlerCameraProbe();
 
@@ -64,8 +55,7 @@ class PermissionHandlerCameraProbe implements CameraPermissionProbe {
   Future<bool> isPermanentlyDenied() async {
     try {
       final status = await Permission.camera.status;
-      // iOS ilk retten sonra diyaloğu bir daha göstermiyor; durum `denied`
-      // değil `permanentlyDenied` geliyor. Android'de iki ret sonrası aynı.
+      // iOS ilk retten, Android iki retten sonra `permanentlyDenied` veriyor.
       return status.isPermanentlyDenied || status.isRestricted;
     } catch (_) {
       return false;
@@ -82,15 +72,9 @@ class PermissionHandlerCameraProbe implements CameraPermissionProbe {
   }
 }
 
-/// Servis binişinde QR okutan ekranların ortak gövdesi (is-koala/koala#217).
-///
-/// Kamera yalnız bu widget ağaçtayken açık: yüzey kendi denetleyicisini
-/// `dispose`'ta kapatır, uygulama `inactive`/`paused` olunca kamerayı
-/// durdurur ve `resumed`'da yeniden başlatır ([MobileScannerCamera]; dışarıdan
-/// denetleyici verildiği için `mobile_scanner` bunu kendisi yapmıyor).
-/// Okunan metin ayrıştırılır
-/// ([BoardingToken.parse]); yalnız [acceptedKind] türündeki token
-/// [onToken]'a gider. Ham içerik hiçbir yere yazdırılmaz.
+/// Biniş QR'ı okutan ekranların ortak gövdesi (#217). Kamera yalnız bu ağaç
+/// varken açık ve arka planda durur. Yalnız [acceptedKind] türündeki token
+/// [onToken]'a gider; ham içerik yazdırılmaz.
 class BoardingScannerView extends StatefulWidget {
   const BoardingScannerView({
     super.key,
@@ -113,31 +97,23 @@ class BoardingScannerView extends StatefulWidget {
   /// Kabul edilen token ve okutma anı (UTC).
   final void Function(BoardingToken token, DateTime capturedAt) onToken;
 
-  /// Vizörün altındaki yönerge.
   final String instruction;
 
-  /// Okutma sunucudayken yeni kod kabul edilmez.
   final bool busy;
 
-  /// Son okutmanın sonucu; yönergenin yerine çizilir.
   final Widget? status;
 
-  /// QR okuyucu çalışmadığında başka yolu söyleyen cümle.
   final String? unavailableHint;
 
   final BoardingCameraBuilder? cameraBuilder;
   final CameraPermissionProbe? permissionProbe;
 
-  /// Testte flavor şeması; verilmezse [ApiConfig.appUrlScheme].
   final String? appScheme;
   final DateTime Function()? now;
 
-  /// Gönderilen (ya da reddedilen) bir kod, araya farklı bir kod girmedikçe
-  /// bu süre boyunca yeniden işlenmez: kamera saniyede birkaç kare okuyor
-  /// ve aynı QR'ı önünde tutan kullanıcı ikinci bir istek göndermemeli.
+  /// Aynı QR'ı önünde tutan kullanıcı ikinci istek göndermesin.
   static const Duration repeatWindow = Duration(seconds: 30);
 
-  /// Yanlış QR uyarısının ekranda kalma süresi.
   static const Duration hintDuration = Duration(seconds: 4);
 
   static String wrongKindMessage(BoardingTokenKind accepted) =>
@@ -154,7 +130,6 @@ class BoardingScannerView extends StatefulWidget {
 
 class _BoardingScannerViewState extends State<BoardingScannerView>
     with WidgetsBindingObserver {
-  /// Bekleme halkasının kalınlığı.
   static const double _spinnerStroke = 2;
 
   BoardingCameraError? _error;
@@ -165,8 +140,7 @@ class _BoardingScannerViewState extends State<BoardingScannerView>
   String? _lastCode;
   DateTime? _lastCodeAt;
 
-  /// "Ayarları Aç" ile sistem ayarlarına gidildi; dönüşte (`resumed`)
-  /// kamera yeniden denenir. Hemen denemek izni henüz verilmemişken yine
+  /// Ayarlardan dönüşte kamera yeniden denenir; hemen denemek yine
   /// reddedilirdi.
   bool _awaitingSettings = false;
 
@@ -261,7 +235,6 @@ class _BoardingScannerViewState extends State<BoardingScannerView>
   Future<void> _openSettings() async {
     _awaitingSettings = true;
     final opened = await _probe.openSettings();
-    // Ayarlar açılamadıysa dönülecek bir yer yok; bekleme bırakılır.
     if (!opened) _awaitingSettings = false;
   }
 
@@ -457,15 +430,13 @@ class _BoardingScannerViewState extends State<BoardingScannerView>
   }
 }
 
-/// `mobile_scanner` ile gerçek kamera yüzeyi: yalnız QR biçimi, ortada kare
-/// tarama penceresi, fener düğmesi.
+/// Gerçek kamera: yalnız QR, ortada kare pencere, fener.
 class MobileScannerCamera extends StatefulWidget {
   const MobileScannerCamera({super.key, required this.callbacks});
 
   final BoardingCameraCallbacks callbacks;
 
-  /// Tarama penceresinin kısa kenara oranı: QR'ı ortalamaya zorlar, kenardaki
-  /// başka kodları dışarıda bırakır.
+  /// QR'ı ortalamaya zorlar, kenardaki kodları dışarıda bırakır.
   static const double windowFraction = 0.72;
 
   @override
@@ -478,8 +449,6 @@ class _MobileScannerCameraState extends State<MobileScannerCamera>
     formats: const [BarcodeFormat.qrCode],
   );
 
-  /// Kısa sürede üst üste gelen çözümleme hataları: QR okuyucu çalışmıyor
-  /// (Android'de Play Services modeli yok ya da inmedi).
   final ScannerFailureWindow _failures = ScannerFailureWindow();
   bool _reported = false;
 
@@ -496,9 +465,8 @@ class _MobileScannerCameraState extends State<MobileScannerCamera>
     super.dispose();
   }
 
-  /// Denetleyiciyi biz verdiğimiz için `mobile_scanner` yaşam döngüsünü
-  /// kendisi izlemiyor: uygulama öne geçmeyince kamera kapanır, dönünce
-  /// açılır. İzin yokken başlatmak yeni bir izin diyaloğu açardı.
+  /// Denetleyiciyi biz verdiğimiz için yaşam döngüsünü `mobile_scanner`
+  /// izlemiyor. İzin yokken başlatmak yeni diyalog açardı.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (!_controller.value.hasCameraPermission) return;
@@ -514,13 +482,12 @@ class _MobileScannerCameraState extends State<MobileScannerCamera>
     }
   }
 
-  /// Zaten çalışan kamerayı başlatmak ya da kapanmış denetleyiciyi durdurmak
-  /// `MobileScannerException` atar; yaşam döngüsü geçişinde bu zararsız.
+  /// Geçişte zararsız `MobileScannerException`'ları yutar.
   static Future<void> _quietly(Future<void> operation) async {
     try {
       await operation;
     } on MobileScannerException {
-      // Bilinçli olarak yutuluyor.
+      // Bilerek yutuluyor.
     }
   }
 
@@ -544,7 +511,6 @@ class _MobileScannerCameraState extends State<MobileScannerCamera>
   }
 
   void _onDetectError(Object error, StackTrace stackTrace) {
-    // Hata nesnesi kare içeriği taşımıyor ama yine de yazdırılmıyor.
     if (_failures.record(DateTime.now())) {
       _report(BoardingCameraError.scannerUnavailable);
     }

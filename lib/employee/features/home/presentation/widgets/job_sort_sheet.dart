@@ -1,18 +1,12 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/employee/features/home/models/job_search_query.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_bottom_sheet.dart';
 import 'package:koala/product/widgets/filter_pill.dart';
 
-/// Keşfet listesinin sıralama menüsü.
-///
-/// Seçenekler [JobSortOption]'dan **türetiliyor**, elle yazılmıyor: sunucu
-/// sıralamayı beyaz listeliyor ve listede olmayan bir alan boş sonuç değil
-/// `400` (`PAGE_SORT_FIELD_NOT_ALLOWED`) döndürüyor.
-///
-/// "En yakın" konum ister: `lat`/`lng` + `sort=distance,asc`. İzin yoksa
-/// seçenek kapalı çizilir ve sebebi yazılır; sessizce yok sayılmaz.
+/// Sıralama menüsü; seçenekler [JobSortOption]'dan (sunucu beyaz liste
+/// uyguluyor). "En yakın" izin yoksa kapalı ve sebebi yazılı.
 class JobSortSheet extends StatelessWidget {
   const JobSortSheet({
     super.key,
@@ -23,7 +17,7 @@ class JobSortSheet extends StatelessWidget {
   final JobSortOption selected;
   final bool hasLocation;
 
-  /// Sheet'i açar ve seçilen sıralamayı döndürür; vazgeçilirse `null`.
+  /// Vazgeçilirse `null`.
   static Future<JobSortOption?> show(
     BuildContext context, {
     required JobSortOption selected,

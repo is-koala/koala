@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/employee/features/chat/models/conversation.dart';
 import 'package:koala/employee/features/chat/presentation/pages/chat_thread_pagemodel.dart';
 import 'package:koala/employee/features/chat/presentation/providers/chat_thread_controller.dart';
@@ -17,7 +17,6 @@ part 'b_chat_pagemodel.dart';
 class BChatPage extends StatefulWidget {
   final Conversation chat;
 
-  /// Dışarıdan verilirse yaşam döngüsü çağırana ait olan sohbet durumu.
   final ChatThreadController? threadController;
 
   const BChatPage({super.key, required this.chat, this.threadController});
@@ -40,11 +39,8 @@ class _BChatPageState extends BChatPagemodel {
         ),
         body: Column(
           children: [
-            // Mesaj listesine dokunmak ya da onu sürüklemek klavyeyi
-            // kapatıyor; kutu klavyenin üstünde, kapatmanın başka yolu yok.
+            // Kutu klavyenin üstünde; kapatmanın başka yolu yok.
             Expanded(child: DismissKeyboardOnTap(child: _messageList())),
-            // Engelli sohbette mesaj kutusu yerine sebebini söyleyen şerit
-            // duruyor; engel iki yönlü, yazmayı denemenin anlamı yok.
             _composer(),
           ],
         ),
@@ -52,10 +48,7 @@ class _BChatPageState extends BChatPagemodel {
     );
   }
 
-  /// Mesaj kutusu — sohbet kapalı ya da engelliyse yerine [BlockedNotice].
-  ///
-  /// Kapı (ödeme bekleniyor / pencere kapandı) bilgi ikonuyla, engel kırmızı
-  /// engel ikonuyla çiziliyor; ikisi de yazmayı kapatıyor.
+  /// Mesaj kutusu; sohbet kapalı ya da engelliyse yerine [BlockedNotice].
   Widget _composer() {
     final notice = composerNotice;
     if (notice != null) {
@@ -73,9 +66,7 @@ class _BChatPageState extends BChatPagemodel {
       onSendMessage: sendMessage,
       isSending: thread.isSending,
       onChanged: (_) => thread.notifyTyping(),
-      onAddPressed: () {
-        // Ek menü işlemleri (dosya ekleme, galeri vb.)
-      },
+      onAddPressed: () {},
     );
   }
 

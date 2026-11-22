@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -9,7 +9,6 @@ import 'package:koala/product/models/availability_day.dart';
 import 'package:koala/product/models/availability_slot.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// Haftalık ızgarada tek günün saat aralıklarını düzenleyen satır.
 class AvailabilityDayEditor extends StatelessWidget {
   const AvailabilityDayEditor({
     super.key,

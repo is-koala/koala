@@ -22,71 +22,62 @@ void main() {
     await directory.delete(recursive: true);
   });
 
-  test(
-    'gerçek SQLite şeması yeniden açılınca FIFO, kullanıcı bölümü ve metadata korunur',
-    () async {
-      final first = SqfliteTimesheetEventStore(
-        factory: databaseFactoryFfi,
-        databasePath: databasePath,
-      );
-      final firstForA = _event(
-        id: 'event-a-1',
-        userId: 'user-a',
-        monotonicMicros: 20,
-      );
-      final forB = _event(
-        id: 'event-b-1',
-        userId: 'user-b',
-        monotonicMicros: 10,
-      );
-      final secondForA = _event(
-        id: 'event-a-2',
-        userId: 'user-a',
-        monotonicMicros: 5,
-      );
+  test('gerçek SQLite şeması yeniden açılınca FIFO, kullanıcı bölümü ve metadata korunur', () async {
+    final first = SqfliteTimesheetEventStore(
+      factory: databaseFactoryFfi,
+      databasePath: databasePath,
+    );
+    final firstForA = _event(
+      id: 'event-a-1',
+      userId: 'user-a',
+      monotonicMicros: 20,
+    );
+    final forB = _event(id: 'event-b-1', userId: 'user-b', monotonicMicros: 10);
+    final secondForA = _event(
+      id: 'event-a-2',
+      userId: 'user-a',
+      monotonicMicros: 5,
+    );
 
-      await first.add(firstForA);
-      await first.add(forB);
-      await first.add(secondForA);
-      await first.markRequiresSupport('event-a-2', 'Destek gerekiyor.');
-      await first.setLastActiveUser('user-a');
+    await first.add(firstForA);
+    await first.add(forB);
+    await first.add(secondForA);
+    await first.markRequiresSupport('event-a-2', 'Destek gerekiyor.');
+    await first.setLastActiveUser('user-a');
 
-      await expectLater(
-        first.add(
-          _event(id: 'event-a-1', userId: 'user-b', monotonicMicros: 99),
-        ),
-        throwsA(isA<DatabaseException>()),
-      );
-      await first.close();
+    await expectLater(
+      first.add(_event(id: 'event-a-1', userId: 'user-b', monotonicMicros: 99)),
+      throwsA(isA<DatabaseException>()),
+    );
+    await first.close();
 
-      final reopened = SqfliteTimesheetEventStore(
-        factory: databaseFactoryFfi,
-        databasePath: databasePath,
-      );
-      final eventsForA = await reopened.readForUser('user-a');
+    final reopened = SqfliteTimesheetEventStore(
+      factory: databaseFactoryFfi,
+      databasePath: databasePath,
+    );
+    final eventsForA = await reopened.readForUser('user-a');
 
-      expect(eventsForA.map((event) => event.clientEventId), [
-        'event-a-1',
-        'event-a-2',
-      ]);
-      expect(eventsForA.last.requiresSupport, isTrue);
-      expect(eventsForA.last.supportMessage, 'Destek gerekiyor.');
-      expect(
-        (await reopened.readForUser('user-b')).single.clientEventId,
-        'event-b-1',
-      );
-      expect(await reopened.readLastActiveUser(), 'user-a');
+    expect(eventsForA.map((event) => event.clientEventId), [
+      'event-a-1',
+      'event-a-2',
+    ]);
+    expect(eventsForA.last.requiresSupport, isTrue);
+    expect(eventsForA.last.supportMessage, 'Destek gerekiyor.');
+    expect(
+      (await reopened.readForUser('user-b')).single.clientEventId,
+      'event-b-1',
+    );
+    expect(await reopened.readLastActiveUser(), 'user-a');
 
-      await reopened.remove('event-a-1');
-      expect(
-        (await reopened.readForUser('user-a')).single.clientEventId,
-        'event-a-2',
-      );
-      await reopened.setLastActiveUser(null);
-      expect(await reopened.readLastActiveUser(), isNull);
-      await reopened.close();
-    },
-  );
+    await reopened.remove('event-a-1');
+    expect(
+      (await reopened.readForUser('user-a')).single.clientEventId,
+      'event-a-2',
+    );
+    await reopened.setLastActiveUser(null);
+    expect(await reopened.readLastActiveUser(), isNull);
+    await reopened.close();
+  });
 }
 
 TimesheetEvent _event({

@@ -1,7 +1,6 @@
 part of 'b_stop_editor_page.dart';
 
 abstract class BStopEditorPagemodel extends State<BStopEditorPage> {
-  /// Kalkış saatinin varsayılanı: işin başlangıcından bu kadar önce.
   static const Duration _defaultLeadBeforeJob = Duration(hours: 1);
 
   late final StopDraft _stop = widget.args.stop.copy();
@@ -36,8 +35,7 @@ abstract class BStopEditorPagemodel extends State<BStopEditorPage> {
     _stop.label = _labelController.text;
     final error = _stop.validate();
     if (error != null) {
-      // Durak doğrulaması "durağın ..." diye küçük harfle başlıyor; servis
-      // düzenleyicisi adın önüne koyuyor. Burada tek başına yazılıyor.
+      // Doğrulama metni küçük harfle başlıyor; burada tek başına yazılıyor.
       AppToast.error(context, _capitalize(error));
       return;
     }

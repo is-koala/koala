@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:koala/product/models/availability_exception.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -18,7 +18,7 @@ typedef AvailabilityExceptionInput = ({
   String? note,
 });
 
-/// Tek bir tarihin haftalık şablondan farklı çalışmasını düzenleyen sheet.
+/// Tek tarihin haftalık şablondan farklı çalışması.
 class AvailabilityExceptionSheet extends StatefulWidget {
   const AvailabilityExceptionSheet({super.key, this.initial});
 

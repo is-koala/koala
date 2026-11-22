@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
@@ -6,9 +6,7 @@ import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/models/user_session.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// Oturumun cihaz türünü gösteren vurgu renkli ikon karosu.
-///
-/// Oturum listesi satırı ve oturum ayrıntısı başlığı aynı karoyu çiziyor.
+/// Oturumun cihaz türünü gösteren ikon karosu.
 class SessionDeviceIcon extends StatelessWidget {
   const SessionDeviceIcon(this.type, {super.key});
 

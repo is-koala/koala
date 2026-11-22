@@ -1,9 +1,6 @@
 import 'package:koala/employee/features/home/models/job_detail.dart';
 
-/// Havuzdaki bir işçi. Backend `TalentPoolEntryDto` karşılığı.
-///
-/// İşçi [JobCreator] — `SafeUserDto` alanları zaten orada; ikinci bir kopya
-/// çıkarılmıyor.
+/// Havuzdaki işçi (`TalentPoolEntryDto`).
 class TalentPoolEntry {
   const TalentPoolEntry({
     required this.id,
@@ -53,10 +50,6 @@ class TalentPoolEntry {
       value is String ? DateTime.tryParse(value) : null;
 }
 
-/// Sayfalı havuz yanıtı. Backend `PageDto<TalentPoolEntryDto>` karşılığı.
-///
-/// JSON anahtarları `JobPage` ile aynı: `content, page, size, totalElements,
-/// totalPages, first, last`. Liste alanı içeriğe göre [entries].
 class TalentPoolPage {
   const TalentPoolPage({
     this.entries = const [],

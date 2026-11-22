@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
@@ -39,11 +39,8 @@ const Map<String, Object> _writtenReview = {
 };
 
 void main() {
-  /// Profil sayfasının açılışta vurduğu her uç: kullanıcı, kimlik incelemesi,
-  /// müsaitlik, değerlendirmeler. İnceleme yanıtı [review] ile değişiyor.
-  ///
-  /// `/users/me` puan taşımıyor; kendi skoru `/users/{id}/rating-summary`
-  /// üzerinden geliyor. [summary] verilmezse uç `data: null` döner.
+  /// Profilin açılışta vurduğu uçlar. Kendi puanı `rating-summary`'den;
+  /// [summary] yoksa `data: null`.
   FakeApi serverWith(
     FakeApiResponse Function() review, {
     Map<String, Object>? summary,

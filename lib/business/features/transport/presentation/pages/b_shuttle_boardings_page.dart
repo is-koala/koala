@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
@@ -22,13 +22,9 @@ import 'package:koala/product/widgets/my_appbar.dart';
 
 part 'b_shuttle_boardings_pagemodel.dart';
 
-/// Servisin biniş listesi (is-koala/koala#217): `GET /shuttles/{id}/boardings`.
-///
-/// Durak ve kalkış saatine göre gruplanmış koltuklar; her satırda bindi /
-/// binmedi / bekleniyor ve sunucunun bayrakları. İşveren elle BİNDİ ya da
-/// BİNMEDİ işaretleyebilir (`POST /seat-assignments/{id}/boardings`, token
-/// yok), servisin QR'ını açabilir ya da çalışanın QR'ını okutabilir.
-/// `SHUTTLE_NOTICE_NOT_BOARDED` push'u bu ekranı açar.
+/// Servisin biniş listesi (#217): durak ve saate göre koltuklar, durum ve
+/// bayraklar. İşveren elle işaretleyebilir, servis QR'ını açabilir ya da
+/// çalışan QR'ı okutabilir.
 class BShuttleBoardingsPage extends StatefulWidget {
   const BShuttleBoardingsPage({
     super.key,
@@ -265,6 +261,5 @@ class _BShuttleBoardingsPageState extends BShuttleBoardingsPagemodel {
     );
   }
 
-  /// Bekleme halkasının kalınlığı.
   static const double _spinnerStroke = 2;
 }

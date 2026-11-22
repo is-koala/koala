@@ -1,14 +1,10 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/business/features/home/models/job_template.dart';
 import 'package:koala/business/features/home/services/job_template_service.dart';
 import 'package:koala/product/network/api_exception.dart';
 
-/// İşverenin ilan şablonları.
-///
-/// Liste sunucuda sayfalanmıyor ve kullanıcı bazlı; bir kez çekilip uygulama
-/// boyunca elde tutuluyor. Silme iyimser çalışıyor: satır dokunulduğu anda
-/// kalkıyor, sunucu reddederse eski yerine geri konuyor — kaydedilen ilanlarla
-/// aynı desen.
+/// İlan şablonları; sayfasız, bir kez çekilir. Silme iyimser: reddedilirse
+/// satır geri konur.
 class BJobTemplatesProvider extends ChangeNotifier {
   BJobTemplatesProvider({JobTemplateService? service})
     : _service = service ?? JobTemplateService();
@@ -20,7 +16,7 @@ class BJobTemplatesProvider extends ChangeNotifier {
   bool _hasLoaded = false;
   String? _errorMessage;
 
-  /// Çıkıştan sonra dönen istekler yeni oturumun listesine yazmasın diye.
+  /// Çıkıştan sonra dönen istekler yeni listeye yazmasın.
   int _generation = 0;
 
   List<JobTemplate> get templates => List.unmodifiable(_templates);
@@ -29,7 +25,6 @@ class BJobTemplatesProvider extends ChangeNotifier {
 
   bool get hasLoaded => _hasLoaded;
 
-  /// Son işlemin hata mesajı. Bir sonraki işlemde temizleniyor.
   String? get errorMessage => _errorMessage;
 
   Future<void> load({bool force = false}) async {
@@ -58,10 +53,7 @@ class BJobTemplatesProvider extends ChangeNotifier {
     }
   }
 
-  /// Var olan bir ilandan şablon çıkarır.
-  ///
-  /// Başarılıysa `true` döner ve şablon listenin başına giriyor — sunucu da
-  /// en yeniyi başta döndürüyor, ikinci bir okuma isteğine gerek yok.
+  /// Başarıda şablon başa girer (sunucu da en yeniyi başta döndürüyor).
   Future<bool> createFromJob({
     required String jobId,
     required String templateName,
@@ -90,7 +82,6 @@ class BJobTemplatesProvider extends ChangeNotifier {
     }
   }
 
-  /// Şablonu siler. Reddedilirse satır eski sırasına geri konuyor.
   Future<bool> delete(String templateId) async {
     final index = _templates.indexWhere(
       (template) => template.id == templateId,
@@ -115,13 +106,8 @@ class BJobTemplatesProvider extends ChangeNotifier {
     }
   }
 
-  /// Sunucunun makine okunur kodunu Türkçe bir cümleye çeviriyor.
-  ///
-  /// Kod mesaja değil `errorCode` alanına bakılarak ayrılıyor: sunucu mesajı
-  /// yerelleştiriliyor, kod sabit. İki kod da `404` dönüyor ve düz
-  /// "bulunamadı" metni kullanıcıya neyin yanlış gittiğini anlatmıyor.
-  /// Başkasının şablonu `Concealment` ile `JOB_TEMPLATE_NOT_FOUND` olur;
-  /// `JOB_TEMPLATE_NOT_OWNER` diye bir anahtar yok.
+  /// Kod `errorCode`'dan: iki durum da `404` ve düz "bulunamadı" ne olduğunu
+  /// anlatmıyor.
   String _messageFor(ApiException error) {
     switch (error.errorCode) {
       case 'JOB_TEMPLATE_JOB_NOT_FOUND':
@@ -133,7 +119,6 @@ class BJobTemplatesProvider extends ChangeNotifier {
     return error.message;
   }
 
-  /// Çıkışta önceki kullanıcının şablonları kalmasın.
   void clear() {
     _generation++;
     _templates.clear();

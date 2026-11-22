@@ -1,7 +1,5 @@
-/// Backend uç noktalarının yolları.
-///
-/// Tek yerde durmalarının sebebi, [AuthInterceptor]'ın "bu yol token ister mi"
-/// sorusunu string kopyalamadan yanıtlayabilmesi.
+/// Backend uç noktalarının yolları. Tek yerde duruyorlar ki [AuthInterceptor]
+/// "bu yol token ister mi" sorusunu string kopyalamadan yanıtlayabilsin.
 class ApiPaths {
   // --------------------------------------------------------------------- Auth
 
@@ -23,66 +21,50 @@ class ApiPaths {
   static const String currentUserCv = '/users/me/cv';
   static const String currentUserAddress = '/users/me/address';
 
-  /// Oturum sahibinin haftalık müsaitlik şablonu. `PUT` bu şablonu toptan
-  /// değiştirir; eksik gönderilen bir gün sunucuda silinir.
+  /// Haftalık müsaitlik şablonu. `PUT` toptan değiştirir; gönderilmeyen gün
+  /// sunucuda silinir.
   static const String currentUserAvailability = '/users/me/availability';
 
-  /// Tarihe özel çalışabilir / çalışamaz istisnaları.
   static const String currentUserAvailabilityExceptions =
       '$currentUserAvailability/exceptions';
 
   static String currentUserAvailabilityException(String exceptionId) =>
       '$currentUserAvailabilityExceptions/$exceptionId';
 
-  /// Kimlik doğrulama. Ad, soyad, doğum tarihi, TC kimlik ve belge numarası
-  /// gönderiliyor; sunucu NVİ'ye soruyor.
-  ///
-  /// İlana başvurabilmenin ilk şartı bu — doğrulanmamış kullanıcının
-  /// başvurusu `APPLICANT_IDENTITY_NOT_VERIFIED` ile reddediliyor.
+  /// Kimlik doğrulama (sunucu NVİ'ye soruyor). Doğrulanmamış kullanıcının
+  /// başvurusu `APPLICANT_IDENTITY_NOT_VERIFIED` ile reddedilir.
   static const String currentUserIdentityVerification =
       '/users/me/identity-verification';
 
-  /// Çipe imzalatılacak tek kullanımlık sayı.
-  ///
-  /// **Kart okunmadan önce** alınmalı: imzalanacak şey bu. `sod` ve `dg1`
-  /// bir kart için sabit olduğundan, tekrar gönderimi engelleyen tek şey
-  /// bu sayının çipe imzalatılması.
-  ///
-  /// Sunucu 8 bayt üretip base64 döndürüyor; **tek kullanımlık** ve
-  /// **10 dakika** geçerli (`IdentityChallengeManager`).
+  /// Çipe imzalatılacak tek kullanımlık sayı (8 bayt, base64, 10 dakika).
+  /// **Kart okunmadan önce** alınmalı: `sod` ve `dg1` kart için sabit
+  /// olduğundan tekrar gönderimi yalnız bu imza engelliyor.
   static const String currentUserIdentityChallenge =
       '$currentUserIdentityVerification/challenge';
 
   /// Fotoğraflı kimlik incelemesi.
   ///
-  /// `POST` multipart: `identity` JSON parçası (ad, soyad, doğum tarihi,
-  /// TCKN, seri no) ve dört dosya parçası `selfie`, `front`, `back`,
-  /// `together`. Personel kuyruğuna düşer; kimlik **onaydan sonra**
-  /// damgalanır, yanıt hemen `identityVerified` yapmaz. Tek dosya 10 MiB,
-  /// toplam gövde 42 MB (`413`); bekleyen inceleme varken ikinci yükleme
-  /// `IDENTITY_DOCUMENTS_ALREADY_PENDING` (`400`).
+  /// `POST` multipart: `identity` JSON parçası ve `selfie`, `front`, `back`,
+  /// `together` dosyaları (tek dosya 10 MiB, toplam 42 MB). Personel kuyruğuna
+  /// düşer; `identityVerified` onaydan sonra gelir. Bekleyen inceleme varken
+  /// `IDENTITY_DOCUMENTS_ALREADY_PENDING`.
   ///
-  /// `GET`: oturum sahibinin son incelemesi; hiç yükleme yoksa `404`
-  /// `IDENTITY_DOCUMENTS_NOT_FOUND`.
+  /// `GET`: son inceleme; hiç yükleme yoksa `404 IDENTITY_DOCUMENTS_NOT_FOUND`.
   static const String currentUserIdentityDocuments =
       '/users/me/identity-documents';
 
-  /// Oturum sahibinin takip ettiği şirketler. Sayfalı.
+  /// Takip edilen şirketler, sayfalı.
   static const String followedCompanies = '/users/me/followed-companies';
 
   // ----------------------------------------------------------------- Eğitim
 
-  /// Oturum sahibinin öğrenim kayıtları.
-  ///
-  /// Liste `/users/me` yanıtında da geliyor; bu uçlar ekleme, güncelleme ve
-  /// silme için.
+  /// Öğrenim kayıtları. Liste `/users/me`'de de geliyor; bu uçlar yazma için.
   static const String currentUserEducations = '/users/me/educations';
 
   static String currentUserEducation(String educationId) =>
       '$currentUserEducations/$educationId';
 
-  /// Üniversite / fakülte / bölüm referans listeleri. Üçü de kimlik
-  /// doğrulama istemiyor.
+  /// Kimlik doğrulama istemeyen üniversite / fakülte / bölüm listeleri.
   static const String universities = '/reference/universities';
 
   static String universityFaculties(String universityId) =>
@@ -93,54 +75,41 @@ class ApiPaths {
 
   // ---------------------------------------------------------------- Oturumlar
 
-  /// Hesabın açık oturumları. `DELETE` isteği atan oturum hariç hepsini
-  /// kapatıyor.
+  /// Açık oturumlar. `DELETE` isteği atan oturum dışındakileri kapatır.
   static const String currentUserSessions = '/users/me/sessions';
 
-  /// Tek oturum: `GET` ayrıntı (IP, konum, giriş geçmişi — koala-backend#306,
-  /// eski sunucuda `404`), `DELETE` kapatma.
+  /// Tek oturum: `GET` ayrıntı (eski sunucuda `404`), `DELETE` kapatma.
   static String currentUserSession(String sessionId) =>
       '$currentUserSessions/$sessionId';
 
-  /// Kullanıcının bir cihazı. `PATCH {name}` cihaza özel ad veriyor; ad
-  /// oturum listesinde ve ayrıntısında `deviceName` olarak dönüyor.
+  /// Cihaz. `PATCH {name}` oturum listesindeki `deviceName`'i değiştirir.
   static String currentUserDevice(String deviceId) =>
       '/users/me/devices/$deviceId';
 
   // ------------------------------------------------------------- Bildirimler
 
-  /// Oturum sahibinin bildirim akışı. Sayfalı; okunmamış sayısı da aynı
-  /// yanıtta geliyor.
+  /// Bildirim akışı, sayfalı; okunmamış sayısı da aynı yanıtta.
   static const String currentUserNotifications = '/users/me/notifications';
 
-  /// Hepsini okundu işaretler ve kaç tanesinin işaretlendiğini döndürür.
   static const String currentUserNotificationsRead =
       '$currentUserNotifications/read';
 
-  /// Tek bir bildirimi okundu işaretler. Zaten okunmuşsa ya da başkasına
-  /// aitse sunucu sessizce geçiyor.
+  /// Zaten okunmuş ya da başkasına ait bildirimde sunucu sessizce geçer.
   static String currentUserNotificationRead(String notificationId) =>
       '$currentUserNotifications/$notificationId/read';
 
-  /// Kategori × kanal bildirim tercihleri. `GET` çözümlenmiş tabloyu
-  /// döndürüyor (satırı olmayan kombinasyon kategorinin varsayılanına
-  /// düşüyor); `PUT` yalnız gövdedeki kombinasyonlara dokunuyor ve güncel
-  /// tabloyu geri veriyor.
+  /// Kategori × kanal tercihleri. `GET` çözümlenmiş tabloyu döndürür; `PUT`
+  /// yalnız gövdedeki kombinasyonlara dokunur.
   static const String currentUserNotificationPreferences =
       '/users/me/notification-preferences';
 
-  /// Bu cihazın FCM/APNs token'ı. Oturum ister; `publicPaths`'e girmez.
-  ///
-  /// Kaynak #29 bitene kadar boş olabilir. Yaşam döngüsü yine de bu ucu
-  /// kullanır: token gelince yazar, çıkışta siler.
+  /// Bu cihazın push token'ı. Oturum ister; token gelince yazılır, çıkışta
+  /// silinir.
   static const String currentUserPushToken = '/users/me/devices/push-token';
 
-  // -------------------------------------------------------------------- Users
+  // ------------------------------------------------------------------ Deneyim
 
-  /// Oturum sahibinin iş deneyimleri.
-  ///
-  /// Liste `/users/me` yanıtında da geliyor; bu uçlar tek tek ekleme,
-  /// güncelleme ve silme için. Başkasının kaydına dokunmak `404`.
+  /// İş deneyimleri. Liste `/users/me`'de de geliyor; başkasının kaydı `404`.
   static const String currentUserExperiences = '/users/me/experiences';
 
   static String currentUserExperience(String experienceId) =>
@@ -150,71 +119,49 @@ class ApiPaths {
 
   static const String jobs = '/jobs';
 
-  /// Tek ilanın detayı.
   static String job(String jobId) => '$jobs/$jobId';
 
-  /// Bir ilana başvurma.
   static String jobApplications(String jobId) => '$jobs/$jobId/applications';
 
-  /// Bir ilanın atamaları, sayfalı (koala-backend#282).
-  ///
-  /// Yalnızca ilan sahibi ya da şirket ilanının güncel yetkilisi okuyabiliyor;
-  /// başkası ve olmayan ilan aynı `404 JOB_NOT_FOUND` yanıtını alıyor. Bu
-  /// ucu tanımayan eski sunucu `404 ENDPOINT_NOT_FOUND` döndürüyor; işveren
-  /// servisi o durumda [myAssignments] taramasına düşüyor.
+  /// İlanın atamaları, sayfalı. Yalnız ilan sahibi ya da şirket yetkilisi;
+  /// başkası `404 JOB_NOT_FOUND`. Ucu tanımayan eski sunucu `404
+  /// ENDPOINT_NOT_FOUND` döndürür, servis o zaman [myAssignments]'a düşer.
   static String assignmentsOfJob(String jobId) => '$jobs/$jobId/assignments';
 
-  /// İlanın ulaşım planı (koala-backend#297, 0.9.28). `GET` işveren
-  /// görünümü (plaka, şoför, tam adres, `seatsTaken`); `PUT` planı bütünüyle
-  /// yazar. Yalnız ilan sahibi ya da şirket yetkilisi; başkası ve planı
-  /// olmayan ilan `404`.
+  /// İlanın ulaşım planı. `GET` işveren görünümü, `PUT` planı bütünüyle yazar.
+  /// Yalnız ilan sahibi ya da şirket yetkilisi; planı yoksa `404`.
   static String jobTransportPlan(String jobId) => '$jobs/$jobId/transport-plan';
 
-  /// Oturum açmış kullanıcının başvuruları.
   static const String myApplications = '/users/me/applications';
 
   /// Kabul edilmiş başvuruların dönüştüğü işler.
   static const String myAssignments = '/users/me/assignments';
 
-  /// Oturum sahibi iş arayana yapılan ödeme çıkışları. Düz liste döner.
   static const String currentUserPayouts = '/users/me/payouts';
 
-  /// Kaydedilen ilanlar.
   static const String savedJobs = '/users/me/saved-jobs';
 
-  /// Tek bir ilanı kaydetme / kaydı kaldırma.
   static String savedJob(String jobId) => '$savedJobs/$jobId';
 
-  /// İş alarmında en az bir ölçüt zorunludur; ilçe tek başına ölçüt sayılmaz.
-  /// İl ve ilçe adları sunucuda metin olarak eşleştiği için referans
-  /// listesinden seçilir. Kullanıcı başına en fazla 10 alarm vardır.
+  /// İş alarmı: en az bir ölçüt zorunlu (ilçe tek başına sayılmaz), kullanıcı
+  /// başına en çok 10. İl/ilçe sunucuda metinle eşleştiği için referans
+  /// listesinden seçilir.
   static const String currentUserJobAlerts = '/users/me/job-alerts';
 
   static String currentUserJobAlert(String alertId) =>
       '$currentUserJobAlerts/$alertId';
 
-  /// İşverenin ilan şablonları.
+  /// İşverenin ilan şablonları, kullanıcı bazlı ve sayfasız.
   ///
-  /// Şablon formdan değil, **var olan bir ilandan** çıkarılıyor: `POST`
-  /// gövdesi yalnızca `templateName` ve `jobId` taşıyor, alanları sunucu
-  /// ilandan kopyalıyor. İlanın sahibi ya da şirketinin yetkilisi olmayan
-  /// biri şablon çıkaramıyor; reddi `404`.
-  ///
-  /// **Adres, tarih ve durum kopyalanmıyor** — aynı ilan bir sonraki hafta
-  /// başka güne, çoğu zaman başka adrese açılıyor. Liste sayfalı değil, düz
-  /// bir dizi dönüyor ve kullanıcı bazlı; aynı şirketin başka yetkilisinin
-  /// şablonları görünmüyor.
+  /// Şablon **var olan bir ilandan** çıkarılır: `POST` yalnız `templateName` ve
+  /// `jobId` taşır. Adres, tarih ve durum kopyalanmaz.
   static const String currentUserJobTemplates = '/users/me/job-templates';
 
   static String currentUserJobTemplate(String templateId) =>
       '$currentUserJobTemplates/$templateId';
 
-  /// İşverenin yetenek havuzu. Sayfalı; sıralama yalnızca `createdAt`.
-  ///
-  /// Havuz işveren **kullanıcı** bazlıdır, şirket bazlı değil. `PUT`
-  /// upsert'tir: aynı işçiyi ikinci kez eklemek yeni satır açmaz, var olan
-  /// kaydın notunu günceller. **Gövdesiz `PUT` var olan notu siler.**
-  /// `DELETE` havuzda olmayan biri için sessizce geçer, `404` atmaz.
+  /// İşverenin yetenek havuzu (kullanıcı bazlı), sayfalı. `PUT` upsert;
+  /// **gövdesiz `PUT` notu siler**. Havuzda olmayan için `DELETE` `404` atmaz.
   static const String currentUserTalentPool = '/users/me/talent-pool';
 
   static String currentUserTalentPoolEntry(String workerId) =>
@@ -224,129 +171,96 @@ class ApiPaths {
 
   static const String jobAssignments = '/job-assignments';
 
-  /// Tek bir atama.
   static String jobAssignment(String assignmentId) =>
       '$jobAssignments/$assignmentId';
 
-  /// Çalışanın atamayı kabul etmesi ya da reddetmesi.
-  ///
-  /// İşveren bir başvuruyu kabul ettiğinde atama `PENDING_CONFIRMATION`
-  /// durumunda açılıyor ve iş, çalışan buradan onay verene kadar başlamıyor.
-  /// Atama bu durumdan çıktıysa sunucu `409` döndürüyor.
+  /// Çalışanın atamayı kabul ya da reddetmesi. Atama `PENDING_CONFIRMATION`
+  /// dışındaysa `409`.
   static String respondToAssignment(String assignmentId) =>
       '${jobAssignment(assignmentId)}/respond';
 
   static String assignmentPaymentSession(String assignmentId) =>
       '${jobAssignment(assignmentId)}/payment-session';
 
-  /// İşe alınan çalışanın sigorta bildirimi için kimlik bilgileri
-  /// (koala-backend#312, 0.9.27). Yalnız ilan sahibi / şirket yetkilisi,
-  /// atama `CONFIRMED|IN_PROGRESS|COMPLETED`; her okuma sunucuda kayda
-  /// geçiyor ve çalışana bildiriliyor.
+  /// Sigorta bildirimi için çalışanın kimlik bilgileri. Yalnız işveren, atama
+  /// `CONFIRMED|IN_PROGRESS|COMPLETED`; her okuma kayda geçer ve çalışana
+  /// bildirilir.
   static String assignmentWorkerIdentity(String assignmentId) =>
       '${jobAssignment(assignmentId)}/worker-identity';
 
-  /// Atamanın bütün ödeme denemeleri. Düz liste döner.
   static String assignmentPayments(String assignmentId) =>
       '${jobAssignment(assignmentId)}/payments';
 
-  /// İlan yayımlanmadan önce backend fiyat snapshot'ını önizler.
+  /// Yayımlamadan önce fiyat snapshot'ı önizlemesi.
   static const String paymentQuotes = '/payment-quotes';
 
-  /// Mesai başlatma ve bitirme. İkisini de yalnızca işi yapan kişi
-  /// çağırabiliyor; konum gövdesi isteğe bağlı.
-  ///
-  /// Giriş, atamayı `IN_PROGRESS`'e çeviriyor. Para emanete alınmadan
-  /// (`HELD_IN_ESCROW`) giriş yapılamıyor — sunucu `409` döndürüyor.
+  /// Mesai başlatma / bitirme; yalnız işi yapan kişi, konum isteğe bağlı. Para
+  /// emanete alınmadan (`HELD_IN_ESCROW`) giriş `409`.
   static String assignmentCheckIn(String assignmentId) =>
       '${jobAssignment(assignmentId)}/check-in';
 
   static String assignmentCheckOut(String assignmentId) =>
       '${jobAssignment(assignmentId)}/check-out';
 
-  /// Atamanın mesai oturumları. İki taraf da okuyabiliyor.
   static String assignmentWorkSessions(String assignmentId) =>
       '${jobAssignment(assignmentId)}/work-sessions';
 
-  /// Atamayı iptal etme ve iptal kaydını okuma.
-  ///
-  /// İki taraf da iptal edebiliyor; kesinti oranı kimin iptal ettiğine ve
-  /// işin başlamasına kalan süreye göre sunucuda hesaplanıyor. Gerekçe
-  /// zorunlu. Atama başına tek kayıt: ikincisi `409`.
-  ///
-  /// Kesintiyi iptal öncesi öğrenmek için [assignmentCancellationPreview]
-  /// kullanılıyor; oranların kendisi `/admin/settings` altında ve uygulamaya
-  /// kapalı.
+  /// Atamayı iptal etme ve iptal kaydını okuma. Gerekçe zorunlu, atama başına
+  /// tek kayıt (ikincisi `409`). Kesinti sunucuda hesaplanır; önceden görmek
+  /// için [assignmentCancellationPreview].
   static String cancelAssignment(String assignmentId) =>
       '${jobAssignment(assignmentId)}/cancel';
 
   static String assignmentCancellation(String assignmentId) =>
       '${jobAssignment(assignmentId)}/cancellation';
 
-  /// İptal edilse ne kesileceğini, iptal **etmeden** döndürür.
-  ///
-  /// Kayıt oluşturmuyor. Uygun olmayan durumda hata değil
-  /// `cancellableNow: false` dönüyor; taraf olmayan `404` alıyor.
+  /// İptal etmeden ne kesileceğini döndürür. Uygun değilse hata değil
+  /// `cancellableNow: false`.
   static String assignmentCancellationPreview(String assignmentId) =>
       '${jobAssignment(assignmentId)}/cancellation-preview';
 
-  /// Atamanın uyuşmazlıkları: açma (`POST`) ve listeleme (`GET`).
-  ///
-  /// Yalnızca para emanetteyken açılabiliyor ve aynı anda tek açık
-  /// uyuşmazlık olabiliyor; ikisi de `409`.
+  /// Uyuşmazlık açma ve listeleme. Yalnız para emanetteyken ve aynı anda tek
+  /// açık uyuşmazlık; ikisi de `409`.
   static String assignmentDisputes(String assignmentId) =>
       '${jobAssignment(assignmentId)}/disputes';
 
-  /// Bir uyuşmazlığın kanıtları (is-koala/koala#215).
-  ///
-  /// `GET` metadata dizisi, `POST` tek dosya (`multipart`, parça adı `file`).
-  /// Yalnızca atamanın tarafları; başkasına uyuşmazlık yokmuş gibi `404`.
-  /// Yükleme yalnız sonuçlanmamış uyuşmazlığa, uyuşmazlık başına en çok 5.
+  /// Uyuşmazlık kanıtları: `GET` liste, `POST` tek dosya (`file` parçası).
+  /// Yalnız taraflar; sonuçlanmamış uyuşmazlığa en çok 5.
   static String disputeEvidence(String disputeId) =>
       '$disputes/$disputeId/evidence';
 
-  /// Kanıtın indirme ucu: `Bearer` ister ve kısa ömürlü imzalı depo adresine
-  /// `302` verir (yerel depoda baytları akıtır).
+  /// `Bearer` ister ve kısa ömürlü imzalı adrese `302` verir.
   static String disputeEvidenceDownload(String disputeId, String evidenceId) =>
       '${disputeEvidence(disputeId)}/$evidenceId/download';
 
   static const String disputes = '/disputes';
 
-  /// İşi tamamlanmış işaretleme.
-  ///
-  /// Yalnızca **işveren** çağırabiliyor: ilan sahibi ya da şirket yetkilisi.
-  /// `CONFIRMED` ve `IN_PROGRESS` dışından çağrılırsa `409`.
+  /// İşi tamamlandı işaretleme; yalnız işveren. `CONFIRMED`/`IN_PROGRESS`
+  /// dışında `409`.
   static String completeAssignment(String assignmentId) =>
       '${jobAssignment(assignmentId)}/complete';
 
-  /// Atamanın ulaşım görünümü (koala-backend#297, 0.9.28): ilanın
-  /// servisleri ve durakları tam adresle, bu atamanın koltukları. İşçi
-  /// görünümünde plaka/şoför yalnız koltuk seçilen serviste dolu. Taraf
-  /// olmayan `404`.
+  /// Atamanın ulaşım görünümü. Plaka/şoför yalnız koltuk seçilen serviste dolu.
   static String assignmentTransport(String assignmentId) =>
       '${jobAssignment(assignmentId)}/transport';
 
-  /// Koltuk seçimi (`PUT {shuttleId, stopId}`). Yön servisten türer, o
-  /// yöndeki önceki seçimin yerine geçer. Dolu servis `409`
-  /// `TRANSPORT_SHUTTLE_FULL`; aktif olmayan atama `409`.
+  /// Koltuk seçimi (`PUT {shuttleId, stopId}`); o yöndeki önceki seçimin yerine
+  /// geçer. Dolu servis `409 TRANSPORT_SHUTTLE_FULL`.
   static String assignmentTransportSeat(String assignmentId) =>
       '${assignmentTransport(assignmentId)}/seat';
 
-  /// İşçinin biniş QR'ı (is-koala/koala#217, koala-backend#298):
-  /// `GET ?direction=OUTBOUND|RETURN`. Yalnız atamanın işçisi; koltuk yoksa
-  /// ya da atama binişe kapalıysa `409`.
+  /// İşçinin biniş QR'ı: `GET ?direction=OUTBOUND|RETURN`. Koltuk yoksa ya da
+  /// biniş kapalıysa `409`.
   static String assignmentTransportQr(String assignmentId) =>
       '${assignmentTransport(assignmentId)}/qr';
 
-  /// Servisin kökü.
   static String shuttle(String shuttleId) => '/shuttles/$shuttleId';
 
-  /// Servisin biniş QR'ı: `GET ?static=false|true`. İlan sahibi ya da şirket
-  /// yetkilisi; başkası `404`.
+  /// Servisin biniş QR'ı: `GET ?static=false|true`; yalnız işveren.
   static String shuttleQr(String shuttleId) => '${shuttle(shuttleId)}/qr';
 
-  /// Servis QR anahtarını yeniler (`POST`): basılı QR dahil eski bütün servis
-  /// ve işçi QR'ları geçersizleşir.
+  /// QR anahtarını yeniler: basılı olanlar dahil bütün servis ve işçi QR'ları
+  /// geçersizleşir.
   static String shuttleQrRotate(String shuttleId) =>
       '${shuttleQr(shuttleId)}/rotate';
 
@@ -354,59 +268,43 @@ class ApiPaths {
   static String shuttleBoardings(String shuttleId) =>
       '${shuttle(shuttleId)}/boardings';
 
-  /// İşverenin koltuk binişi: işçi QR'ı okutma ya da listeden
-  /// BOARDED/NO_SHOW işareti (`POST`).
+  /// İşverenin koltuk binişi: işçi QR'ı ya da BOARDED/NO_SHOW işareti.
   static String seatBoardings(String seatAssignmentId) =>
       '/seat-assignments/$seatAssignmentId/boardings';
 
-  /// Tamamlanmış bir işin değerlendirmesi.
-  ///
-  /// Değerlendirme atamaya bırakılıyor ama karşı tarafa yazılıyor; okuması
-  /// [userReviews] üzerinden. Her taraf bir kez yazabiliyor, ikincisi `409`.
+  /// Değerlendirme yazma; okuması [userReviews]. Taraf başına bir kez, ikincisi
+  /// `409`.
   static String assignmentReviews(String assignmentId) =>
       '${jobAssignment(assignmentId)}/reviews';
 
   // ----------------------------------------------------------------- İşveren
 
-  /// Oturum sahibinin açtığı ilanlar. Bireysel ve kurumsal ilanların ikisi de
-  /// burada: backend `creatorId`'ye bakıyor, şirkete değil.
+  /// Oturum sahibinin açtığı ilanlar. Şirket ilanları da burada: backend
+  /// `creatorId`'ye bakıyor.
   static const String myJobs = '/users/me/jobs';
 
-  /// İşverenin ilanlar arası başvuru gelen kutusu (koala-backend#233).
-  ///
-  /// Sahibi olunan bireysel ilanlar ile yetkilisi olunan şirketlerin ilanlarına
-  /// gelen başvurular, sayfalı. `GET /users/me/applications` **gönderilen**
-  /// başvurular; bu ad onunla karışmasın diye ayrı. Süzgeçler `status`,
-  /// `jobId`, `companyId`; kapsam dışı kimlik hata değil boş sayfa. Sıralama
-  /// gönderilmezse bekleyenler (`APPLIED`) önde gelir.
+  /// İşverene gelen başvurular, sayfalı (gönderilenler [myApplications]).
+  /// Süzgeçler `status`, `jobId`, `companyId`; kapsam dışı kimlik boş sayfa
+  /// döndürür. Sıralama verilmezse `APPLIED` önde.
   static const String receivedApplications = '/users/me/received-applications';
 
-  /// Bireysel ilan açma. Kurumsal ilan [companyJobs] üzerinden gidiyor.
+  /// Bireysel ilan açma; şirket ilanı [companyJobs].
   static const String createIndividualJob = myJobs;
 
-  /// Şirket adına ilan açma.
   static String companyJobs(String companyId) => '/companies/$companyId/jobs';
 
-  /// İlanı başvuruya kapatma: yeni başvuru gelmez, ilan geçerliliğini korur.
+  /// Başvuruya kapatma: yeni başvuru gelmez, ilan geçerli kalır.
   static String closeJob(String jobId) => '${job(jobId)}/close';
 
-  /// İlanı iptal etme: ilan geçersiz olur ve başvuranlara bildirim gider.
-  ///
-  /// Silme değil — kayıt ve başvuru geçmişi duruyor. Devam eden bir iş
-  /// ataması varken sunucu `409` döndürüyor; o durumda atamanın kendi iptal
-  /// akışı kullanılmalı.
+  /// İptal: ilan geçersiz olur, başvuranlara bildirim gider. Devam eden atama
+  /// varken `409`; o zaman atamanın iptal akışı kullanılmalı.
   static String cancelJob(String jobId) => '${job(jobId)}/cancel';
 
-  /// Bir başvuruyu kabul etme ya da reddetme.
   static String respondToApplication(String applicationId) =>
       '/job-applications/$applicationId/respond';
 
-  /// Başvuranın kendi başvurusunu geri çekmesi.
-  ///
-  /// Silme değil — kayıt duruyor, durumu `WITHDRAWN` oluyor ve işverenin
-  /// listesinde görünmeye devam ediyor. Yalnızca `APPLIED` durumundan
-  /// geçilebiliyor; başkasının başvurusu `404` (varlığı sızmasın diye `403`
-  /// değil).
+  /// Başvuruyu geri çekme: kayıt `WITHDRAWN` olarak kalır. Yalnız `APPLIED`
+  /// durumundan; başkasının başvurusu varlığı sızmasın diye `404`.
   static String withdrawApplication(String applicationId) =>
       '/job-applications/$applicationId/withdraw';
 
@@ -414,148 +312,113 @@ class ApiPaths {
 
   static const String companies = '/companies';
 
-  /// Şirket detayı (GET) ve güncelleme (PATCH). Güncellemeyi yalnızca
-  /// şirketin `ADMIN` yetkilisi yapabiliyor; üye olmayan 404 alıyor.
+  /// `GET` detay, `PATCH` güncelleme (yalnız `ADMIN`; üye olmayan `404`).
   static String company(String companyId) => '$companies/$companyId';
 
-  /// Şirketi takip etme (`POST`) ve takibi bırakma (`DELETE`).
-  ///
-  /// Takip durumu ayrıca sorulmuyor: `GET /companies/{id}` yanıtı `following`
-  /// alanını taşıyor.
+  /// Takip (`POST`) / takibi bırakma (`DELETE`). Durum şirket detayındaki
+  /// `following` alanında.
   static String companyFollow(String companyId) =>
       '${company(companyId)}/follow';
 
-  /// Şirketin galerisi: `GET` herkese açık, `POST` ve `PUT` yalnızca
-  /// şirketin `ADMIN` yetkilisine.
+  /// Şirket galerisi: `GET` herkese açık, yazma yalnız `ADMIN`.
   ///
-  /// Okumak için gerekmiyor — şirket detayı görselleri zaten gövdesinde
-  /// döndürüyor. Yazma tarafında üç kural var:
+  /// - `POST` multipart, parça adı **`image`**.
+  /// - `PUT` galeriyi **toptan değiştirir**: listede olmayan görsel düşer, yani
+  ///   sıra ya da kapak değişince galerinin tamamı gönderilmeli.
+  /// - En çok **10 görsel**; aşılırsa `409`.
   ///
-  /// - `POST` multipart ve parçanın adı **`image`**; JSON parçası yok, yanıt
-  ///   `201` ve galerinin tamamı.
-  /// - `PUT` galeriyi **toptan değiştiriyor**: gövdedeki listede olmayan
-  ///   görsel galeriden düşüyor, yani sıralama ya da kapak değişikliğinde
-  ///   galerinin tamamı gönderilmeli.
-  /// - Galeri en fazla **10 görsel** taşıyor; aşılırsa `409`.
-  ///
-  /// Dört uç da galerinin son hâlini döndürüyor, ikinci bir okuma gereksiz.
+  /// Bütün uçlar galerinin son hâlini döndürür.
   static String companyImages(String companyId) =>
       '${company(companyId)}/images';
 
-  /// Galerideki tek bir görsel: `DELETE` ile galeriden düşürülüyor.
-  ///
-  /// [imageId] galeri satırının değil **görselin** kimliği; listede dönen
-  /// `GalleryImageDto.id` doğrudan buraya konuyor.
+  /// Galeriden görsel kaldırma. [imageId] galeri satırının değil **görselin**
+  /// kimliği (`GalleryImageDto.id`).
   static String companyImage(String companyId, String imageId) =>
       '${companyImages(companyId)}/$imageId';
 
-  /// İlan galerisi. `GET` herkese açık; yazma uçları yalnız ilanı
-  /// düzenleyebilen işverene açıktır. Dört yöntem de galerinin tamamını
-  /// döndürür ve `PUT` gövdede olmayan ilişkileri kaldırır.
+  /// İlan galerisi. `GET` herkese açık, yazma ilanı düzenleyebilen işverene.
+  /// Hepsi galerinin tamamını döndürür; `PUT` gövdede olmayanı kaldırır.
   static String jobImages(String jobId) => '${job(jobId)}/images';
 
-  /// İlan galerisindeki medya ilişkisini medya kimliğiyle kaldırır.
   static String jobImage(String jobId, String imageId) =>
       '${jobImages(jobId)}/$imageId';
 
-  /// Şirketin yetkilileri. `GET` şirketin yetkilisine açık.
-  ///
-  /// `DELETE` [companyContact] üzerinden; son `ADMIN` çıkarılamaz (`409`
-  /// `COMPANY_LAST_ADMIN_CANNOT_BE_REMOVED`).
+  /// Şirket yetkilileri. Son `ADMIN` çıkarılamaz (`409
+  /// COMPANY_LAST_ADMIN_CANNOT_BE_REMOVED`).
   static String companyContacts(String companyId) =>
       '${company(companyId)}/contacts';
 
-  /// Tek bir yetkiliyi çıkarma. [userId] yetkili kaydının değil
-  /// **kullanıcının** kimliği.
+  /// [userId] yetkili kaydının değil **kullanıcının** kimliği.
   static String companyContact(String companyId, String userId) =>
       '${companyContacts(companyId)}/$userId';
 
-  /// Şirkete yetkili daveti gönderme (`POST`) ve şirketin davetlerini
-  /// listeleme (`GET`). İkisi de şirketin `ADMIN` yetkilisine açık;
-  /// diğer herkes `404` `USER_NOT_ASSOCIATED_WITH_COMPANY` alır.
+  /// Yetkili daveti gönderme ve listeleme; yalnız `ADMIN`, diğerleri `404
+  /// USER_NOT_ASSOCIATED_WITH_COMPANY`.
   static String companyContactInvitations(String companyId) =>
       '${company(companyId)}/contact-invitations';
 
-  /// Davet detayı (`GET`) ve cevap (`POST { accepted }`).
-  ///
-  /// Okuma: davetli, davet eden, şirket ADMIN'i. Cevap: yalnız davetli.
-  /// Diğer herkes `404` `COMPANY_CONTACT_INVITATION_NOT_FOUND` alır —
-  /// "var ama senin değil" ile "yok" ayrımı yok.
+  /// Davet detayı (`GET`) ve cevap (`POST { accepted }`, yalnız davetli).
+  /// Yetkisiz herkes `404`; "senin değil" ile "yok" ayrılmıyor.
   static String contactInvitation(String invitationId) =>
       '/contact-invitations/$invitationId';
 
-  /// Şirket logosu: `PUT` ile değiştiriliyor, `DELETE` ile kaldırılıyor.
-  /// Yalnızca şirketin `ADMIN` yetkilisi çağırabiliyor.
+  /// Logo: `PUT` değiştirir, `DELETE` kaldırır; yalnız `ADMIN`.
   static String companyLogo(String companyId) => '${company(companyId)}/logo';
 
   // ------------------------------------------------------------- Kullanıcı
 
-  /// Bir kullanıcının herkese açık profili.
-  ///
-  /// Tam adres dönmüyor, yalnızca il ve ilçe. `cvUrl` yalnızca kişinin
-  /// kendisine ya da o kişinin başvurduğu bir ilanın işverenine doluyor.
+  /// Herkese açık profil: adres yalnız il/ilçe. `cvUrl` yalnız kişinin
+  /// kendisine ya da başvurduğu ilanın işverenine dolu.
   static String publicProfile(String userId) => '/users/$userId';
 
-  /// Bir kullanıcının herkese açık haftalık müsaitliği ve yaklaşan tarih
-  /// istisnaları.
+  /// Haftalık müsaitlik ve yaklaşan istisnalar.
   static String userAvailability(String userId) =>
       '${publicProfile(userId)}/availability';
 
-  /// Bir kullanıcı hakkında yazılmış değerlendirmeler. Sayfalı ve herkese
-  /// açık.
+  /// Kullanıcı hakkındaki değerlendirmeler, sayfalı.
   static String userReviews(String userId) =>
       '${publicProfile(userId)}/reviews';
 
-  /// Bir kullanıcının puan özeti: ortalama ve değerlendirme sayısı.
-  ///
-  /// Hiç değerlendirilmemiş kullanıcı için `data: null` dönüyor.
+  /// Puan özeti; hiç değerlendirilmemişse `data: null`.
   static String userRatingSummary(String userId) =>
       '${publicProfile(userId)}/rating-summary';
 
-  /// Bir kullanıcının kazandığı rozetler. Düz liste, herkese açık; kazanılan
-  /// rozet geri alınmıyor.
   static String userBadges(String userId) => '${publicProfile(userId)}/badges';
 
-  /// Bir işverenin istatistikleri: açtığı ilan, tamamlanan iş, puan.
-  ///
-  /// Şirkete değil **kişiye** bağlı; şirket adına açılan ilanlar da ilanı
-  /// açan kullanıcının sayısına yazılıyor.
+  /// İşveren istatistikleri. Şirkete değil **kişiye** bağlı: şirket adına
+  /// açılan ilan da açan kullanıcıya yazılır.
   static String employerStats(String userId) => '/users/$userId/employer-stats';
 
   // ---------------------------------------------------------------- Sohbet
 
   static const String conversations = '/conversations';
 
-  /// Bir ilan üzerinden sohbet açar. Sohbet daima ilana bağlı.
+  /// İlan üzerinden sohbet açar; sohbet hep bir ilana bağlı.
   static String jobConversation(String jobId) => '$jobs/$jobId/conversation';
 
-  /// Tek bir sohbet; bildirimden gelirken listeyi çekip aramak yerine.
+  /// Tek sohbet; bildirimden açarken listeyi taramamak için.
   static String conversation(String conversationId) =>
       '$conversations/$conversationId';
 
-  /// Sohbetin mesajları. `after=<messageId>` sorgusu yalnız o mesajdan
-  /// sonrakileri artan sırada verir; o kipte `sort` gönderilmez.
+  /// Mesajlar. `after=<messageId>` o mesajdan sonrakileri artan sırada verir; o
+  /// kipte `sort` gönderilmez.
   static String conversationMessages(String conversationId) =>
       '$conversations/$conversationId/messages';
 
   static String conversationRead(String conversationId) =>
       '$conversations/$conversationId/read';
 
-  /// Birden çok kullanıcının çevrimiçi durumu, tek istekte.
   static const String presenceLookup = '/presence/lookup';
 
   // ---------------------------------------------------------- Reference data
 
   static const String jobCategories = '/reference/job-categories';
 
-  /// Ülkeler. İl/ilçe seçicisi buradan başlıyor.
   static const String countries = '/reference/countries';
 
-  /// Bir ülkenin illeri.
   static String cities(String countryId) => '$countries/$countryId/cities';
 
-  /// Bir ilin ilçeleri. Yol `/reference/cities/...` — [cities] ile
-  /// karıştırılmamalı, o ülke altında.
+  /// İlçeler `/reference/cities/...` altında, [cities] ülke altında.
   static String districts(String cityId) =>
       '/reference/cities/$cityId/districts';
 
@@ -575,41 +438,29 @@ class ApiPaths {
 
   // ------------------------------------------------------------------ Şikayet
 
-  /// Kullanıcı ya da içerik şikayeti açma. Gövde dört hedef alanından
-  /// (`reportedUserId`, `jobId`, `messageId`, `imageId`) en az birini
-  /// taşımak zorunda; kendini şikayet etmek `400`.
+  /// Şikayet açma. `reportedUserId`, `jobId`, `messageId`, `imageId`'den en az
+  /// biri zorunlu; kendini şikayet `400`.
   static const String reports = '/reports';
 
-  /// Oturum sahibinin açtığı şikayetler. Sayfalı, varsayılan `size=20`.
-  ///
-  /// Moderasyonun gördüğü `/admin/reports` uygulamaya kapalı.
+  /// Oturum sahibinin şikayetleri, sayfalı.
   static const String myReports = '$reports/me';
 
   // ---------------------------------------------------------------- Engelleme
 
-  /// Oturum sahibinin engellediği kullanıcılar. **Sayfalı değil**; düz bir
-  /// liste dönüyor.
+  /// Engellenenler; **sayfalı değil**.
   static const String userBlocks = '/users/me/blocks';
 
-  /// Tek bir kullanıcıyı engelleme (`POST`) ve engeli kaldırma (`DELETE`).
-  ///
-  /// `POST` gövdeyi zorunlu tutuyor (`@RequestBody @Valid`): gerekçe boş olsa
-  /// bile en azından `{}` gönderilmeli. İkisi de idempotent — aynı kişiyi
-  /// yeniden engellemek ya da engellenmemiş birinin engelini kaldırmak hata
-  /// üretmiyor.
+  /// Engelleme (`POST`) / kaldırma (`DELETE`), ikisi de idempotent. `POST`
+  /// gövde istiyor: gerekçe yoksa da `{}` gönderilmeli.
   static String userBlock(String userId) => '$userBlocks/$userId';
 
   // ------------------------------------------------------------- Doğrulamalar
 
-  /// E-posta ya da telefon değişikliğinin 6 haneli kodunu onaylar.
+  /// E-posta / telefon değişikliğinin 6 haneli kodunu onaylar (15 dakika).
+  /// Kayıt `PATCH /users/me` yanıtındaki `pendingVerifications`'tan gelir.
   ///
-  /// Kayıt `PATCH /users/me` yanıtındaki `pendingVerifications` içinden
-  /// geliyor. Kodun ömrü 15 dakika; onaylanana kadar yeni değer
-  /// uygulanmıyor.
-  ///
-  /// **Tekrar gönderme ucu yok**: aynı yeni değerle `PATCH /users/me`
-  /// yeniden çağrıldığında sunucu doğrulanmamış eski kaydı silip yeni bir
-  /// kod üretiyor.
+  /// **Tekrar gönderme ucu yok**: aynı değerle `PATCH` yeniden çağrılınca
+  /// sunucu yeni kod üretir.
   static String verificationConfirm(String verificationId) =>
       '/verifications/$verificationId/confirm';
 
@@ -619,11 +470,9 @@ class ApiPaths {
   static const String consents = '/legal/consents';
   static const String accountDeletion = '/legal/account-deletion';
 
-  /// Token taşımadan çağrılan uçlar. Bunların dışındaki her isteğe
-  /// `Authorization` başlığı ekleniyor.
-  ///
-  /// [refreshToken] bilerek listede değil: backend oturum kimliğini süresi
-  /// dolmuş erişim token'ından okuduğu için o çağrı da başlığı taşımalı.
+  /// Token taşımadan çağrılan uçlar; diğer her isteğe `Authorization`
+  /// ekleniyor. [refreshToken] bilerek dışarıda: backend oturumu süresi dolmuş
+  /// erişim token'ından okuyor.
   static const Set<String> publicPaths = {
     startRegistration,
     verifyRegistrationToken,
@@ -632,9 +481,8 @@ class ApiPaths {
     forgotPassword,
     resetPassword,
     agreements,
-    // `/reference/**` GET'leri backend'de `permitAll`. İl/ilçe uçlarının yolu
-    // değişken olduğu için bu kümeye giremiyor; token taşımaları zararsız,
-    // yalnızca oturum açmış işveren çağırıyor.
+    // İl/ilçe yolları değişken olduğu için kümeye giremiyor; token taşımaları
+    // zararsız.
     jobCategories,
     countries,
   };

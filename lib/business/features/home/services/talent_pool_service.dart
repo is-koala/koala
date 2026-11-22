@@ -3,11 +3,8 @@ import 'package:koala/business/features/home/models/talent_pool_entry.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
-/// İşverenin yetenek havuzu.
-///
-/// Havuz kullanıcı bazlıdır; bu dilim [companyId] göndermez. Gönderilirse
-/// gövdeye yalnızca dolu olduğunda girer — sunucu bir kez yazılan şirketi
-/// temizlemez.
+/// Yetenek havuzu (kullanıcı bazlı). [companyId] yalnız doluysa gönderilir;
+/// sunucu yazılan şirketi temizlemez.
 class TalentPoolService {
   TalentPoolService._(this._apiClient);
 
@@ -20,18 +17,13 @@ class TalentPoolService {
     return TalentPoolService._(apiClient);
   }
 
-  /// Sunucunun not üst sınırı (`SaveTalentPoolEntryDto`).
   static const int maxNoteLength = 1000;
 
-  /// Varsayılan sayfa boyutu; sunucunun kendi varsayılanıyla aynı.
   static const int defaultPageSize = 20;
 
   final ApiClient _apiClient;
 
-  /// Oturum sahibinin havuzu, yeniden eskiye (`createdAt,desc`).
-  ///
-  /// `sort` gönderilmiyor: sunucu yalnız `createdAt` kabul ediyor, başka bir
-  /// alan `400`.
+  /// `sort` gönderilmiyor: yalnız `createdAt` kabul ediliyor.
   Future<TalentPoolPage> fetchTalentPool({
     int page = 0,
     int size = defaultPageSize,
@@ -43,10 +35,8 @@ class TalentPoolService {
     );
   }
 
-  /// İşçiyi havuza ekler ya da var olan kaydın notunu günceller.
-  ///
-  /// Gövdesiz `PUT` var olan notu siler. Not verildiyse gövdeye girer;
-  /// 1000 karakteri aşan kısım kesilir.
+  /// Ekler ya da notu günceller. Gövdesiz `PUT` notu siler; 1000 karakteri aşan
+  /// kısım kesilir.
   Future<TalentPoolEntry> addWorker(
     String workerId, {
     String? note,
@@ -59,7 +49,7 @@ class TalentPoolService {
     );
   }
 
-  /// İşçiyi havuzdan çıkarır. Havuzda değilse sunucu sessizce geçer.
+  /// Havuzda değilse sessizce geçer.
   Future<void> removeWorker(String workerId) {
     return _apiClient.deleteWithoutData(
       ApiPaths.currentUserTalentPoolEntry(workerId),

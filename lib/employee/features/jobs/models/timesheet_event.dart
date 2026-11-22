@@ -1,4 +1,3 @@
-/// Cihazda yakalanan mesai eylemi.
 enum TimesheetEventAction {
   checkIn('CHECK_IN'),
   checkOut('CHECK_OUT');
@@ -15,7 +14,6 @@ enum TimesheetEventAction {
   }
 }
 
-/// Kalıcı kaydın gönderim durumu.
 enum TimesheetEventStatus {
   pending('PENDING'),
   requiresSupport('REQUIRES_SUPPORT');
@@ -32,7 +30,7 @@ enum TimesheetEventStatus {
   }
 }
 
-/// Sunucuya ulaşana kadar cihazda saklanan tek giriş veya çıkış olayı.
+/// Sunucuya ulaşana kadar cihazda saklanan giriş ya da çıkış.
 class TimesheetEvent {
   const TimesheetEvent({
     required this.clientEventId,
@@ -53,7 +51,7 @@ class TimesheetEvent {
   final TimesheetEventAction action;
   final DateTime capturedAt;
 
-  /// Yalnız cihaz içindeki sıra ve yeniden başlatma teşhisi içindir.
+  /// Yalnız cihaz içi sıra ve teşhis için.
   final int monotonicMicros;
 
   final double? latitude;

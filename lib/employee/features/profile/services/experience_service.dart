@@ -4,11 +4,7 @@ import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
-/// Kullanıcının iş deneyimleri.
-///
-/// Okuma için ayrı bir çağrı yok: liste `/users/me` yanıtında geliyor ve
-/// `UserProvider` üzerinden okunuyor. Burası yalnızca yazma tarafı; her
-/// değişiklikten sonra çağıran taraf `/users/me`'yi tazeliyor.
+/// Deneyimlerin yazma uçları; okuma `/users/me`'den.
 class ExperienceService {
   ExperienceService._(this._apiClient);
 
@@ -23,10 +19,8 @@ class ExperienceService {
 
   final ApiClient _apiClient;
 
-  /// Deneyim ekler.
-  ///
-  /// [title] ve [startDate] zorunlu. Başlangıç gelecekte olamıyor, bitiş
-  /// başlangıçtan önce olamıyor; ikisi de `400`.
+  /// [title] ve [startDate] zorunlu; başlangıç gelecekte, bitiş başlangıçtan
+  /// önce olamaz (`400`).
   Future<Experience> create({
     required String title,
     required DateTime startDate,
@@ -51,11 +45,7 @@ class ExperienceService {
     );
   }
 
-  /// Deneyimi günceller.
-  ///
-  /// Uç `PUT` — kısmi güncelleme değil, kaydın tamamı gönderiliyor. Bu yüzden
-  /// form açılırken mevcut değerlerle dolduruluyor; boş bırakılan alan
-  /// temizlenmiş sayılıyor.
+  /// Uç `PUT`: kaydın tamamı gönderilir, boş alan temizlenmiş sayılır.
   Future<Experience> update({
     required String experienceId,
     required String title,
@@ -81,17 +71,14 @@ class ExperienceService {
     );
   }
 
-  /// Deneyimi siler. Başkasının kaydı `404`.
+  /// Başkasının kaydı `404`.
   Future<void> delete(String experienceId) {
     return _apiClient.deleteWithoutData(
       ApiPaths.currentUserExperience(experienceId),
     );
   }
 
-  /// Gövde. Sunucu tarihi `LocalDate` bekliyor, saat kısmı gönderilmiyor.
-  ///
-  /// Boş metinler `null` olarak gidiyor: `""` göndermek alanı boş bir metne
-  /// eşitlerdi, oysa kastedilen "yok".
+  /// Boş metin `null` gider: kastedilen "yok", `""` değil.
   Map<String, dynamic> _body({
     required String title,
     required DateTime startDate,

@@ -1,29 +1,23 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/features/account/account_navigation.dart';
 import 'package:koala/product/features/account/account_routes.dart';
 import 'package:koala/product/widgets/my_list_tile.dart';
 
-/// Ayarlar menüsünün hesap satırları.
-///
-/// Çalışan ve işveren ayarları aynı hesap ekranlarını açıyor; satırların
-/// başlığı, ikonu ve gittiği rota tek yerde dursun diye burada. Menüler
-/// bunları kendi rol-özel satırlarının (kazançlar, firma bilgileri...)
-/// arasına diziyor; sıra menünün kararı, hedef modülün.
+/// Ayarlar menüsünün hesap satırları; iki rolün menüsü de bunları kendi
+/// satırları arasına diziyor.
 class AccountSettingsTiles {
   const AccountSettingsTiles._();
 
-  /// Hesabı Düzenle. Profil yüklenmemişse önce `/users/me` getiriliyor;
-  /// ekran `extra` olarak kullanıcıyı istiyor.
+  /// Profil yüklenmemişse önce `/users/me` getiriliyor.
   static Widget editAccount(BuildContext context) => MyListTile(
     icon: AppIcons.user,
     title: 'Hesabı Düzenle',
     onTap: () => AccountNavigation.openAccountInfo(context),
   );
 
-  /// Adresim. İşveren ayarlarında ilk kez bir yol: bireysel işverenin
-  /// ödemesi bu adres olmadan başlamıyor.
+  /// Bireysel işverenin ödemesi bu adres olmadan başlamıyor.
   static Widget address(BuildContext context) => MyListTile(
     icon: AppIcons.location,
     title: 'Adresim',

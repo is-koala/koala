@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/business/features/transport/models/transport_plan_draft.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -8,12 +8,8 @@ import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// İşverenin ulaşım planı özeti (is-koala/koala#197).
-///
-/// İlan oluşturma formunda (taslak) ve ilan detayında (sunucudaki plan,
-/// [TransportPlanDraft.fromPlan] ile) aynı kart: yöntemler, yol parası,
-/// servisler — plaka, doluluk (`seatsTaken/capacity`) ve duraklar saatiyle.
-/// İşveren görünümü olduğu için plaka her serviste yazılıyor.
+/// İşverenin ulaşım planı özeti (#197); form ve ilan detayı ortak. Plaka her
+/// serviste yazılıyor.
 class BTransportPlanSummary extends StatelessWidget {
   const BTransportPlanSummary({
     super.key,
@@ -25,15 +21,12 @@ class BTransportPlanSummary extends StatelessWidget {
 
   final TransportPlanDraft plan;
 
-  /// "Düzenle" düğmesi; verilmezse yok.
   final VoidCallback? onEdit;
 
-  /// "Kaldır" düğmesi (yalnız ilan oluşturma taslağında).
+  /// Yalnız ilan oluşturma taslağında.
   final VoidCallback? onRemove;
 
-  /// Servisin biniş ekranı (is-koala/koala#217): liste, QR, okutma.
-  /// Yalnız sunucuda kaydı olan (kimlikli) serviste ve ilan detayında
-  /// verilir; taslakta servis henüz yok.
+  /// Yalnız kayıtlı serviste ve ilan detayında verilir.
   final void Function(ShuttleDraft shuttle)? onOpenBoardings;
 
   @override

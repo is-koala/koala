@@ -6,12 +6,8 @@ import 'package:koala/product/network/session_manager.dart';
 import 'package:koala/product/services/push_token_service.dart';
 import 'package:koala/product/services/push_token_source.dart';
 
-/// Token'ı oturuma göre sunucuya yazar, bekletir, siler.
-///
-/// Yenileme olayı `currentToken`'dan önce gelir: FCM olayı geldiğinde
-/// `getToken` henüz eski değeri dönebilir. Yazım başarısızlığı kullanıcıya
-/// gösterilmez ve oturumu düşürmez. Çıkışta silme düşse bile çıkış
-/// tamamlanır — çağıran `clearQuietly` kullanır, sonra `/auth/logout` gider.
+/// Token'ı oturuma göre sunucuya yazar ve siler. Yazım hatası kullanıcıya
+/// gösterilmez; çıkışta silme düşse de çıkış tamamlanır.
 class PushTokenLifecycle {
   PushTokenLifecycle._(this._service, this._source, this._session);
 
@@ -23,10 +19,7 @@ class PushTokenLifecycle {
 
   factory PushTokenLifecycle() => _instance;
 
-  /// Verilen bağımlılıklarla kurulu örnek.
-  ///
-  /// Testlerde sahte kaynak ve istemci bağlamak için, [AuthService]
-  /// test fabrikasında da aynı oturumu paylaşmak için kullanılıyor.
+  /// Testler ve [AuthService] aynı oturumu paylaşsın diye.
   factory PushTokenLifecycle.withDependencies({
     required PushTokenService service,
     required PushTokenSource source,
@@ -42,10 +35,8 @@ class PushTokenLifecycle {
   String? _pending;
   StreamSubscription<String>? _refreshSub;
 
-  /// Firebase ayağa kalktıktan sonra gerçek FCM kaynağına geçmek için.
-  ///
-  /// Üretim tekili [AuthService] yüklenirken kurulur; o anda Firebase
-  /// henüz yok. Splash başlatınca kaynak değişir, dinleyici yeniden bağlanır.
+  /// Üretim tekili Firebase'den önce kuruluyor; splash gerçek FCM kaynağına
+  /// geçirir.
   void useSource(PushTokenSource source) {
     _source = source;
     final subscription = _refreshSub;

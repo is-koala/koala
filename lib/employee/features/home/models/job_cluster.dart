@@ -3,10 +3,7 @@ import 'dart:math';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_map_bounds.dart';
 
-/// Haritada tek bir noktada gösterilen ilan grubu.
-///
-/// Tek ilanlı grup sıradan bir pin; birden fazla ilanlı grup sayı rozetli
-/// grup pini olarak çiziliyor.
+/// Haritada tek noktada gösterilen ilan grubu; tek ilanlı grup sıradan pin.
 class JobCluster {
   JobCluster._(this.jobs)
     : assert(jobs.isNotEmpty),
@@ -23,52 +20,37 @@ class JobCluster {
         maxLongitude: jobs.map((job) => job.longitude!).reduce(max),
       );
 
-  /// Gruptaki ilanlar, kimliğe göre sıralı.
   final List<Job> jobs;
 
-  /// Grup pininin durduğu nokta: ilanların ortalaması.
   final double latitude;
   final double longitude;
 
-  /// İlanları kapsayan en küçük kutu; gruba dokununca kamera buna yaklaşıyor.
   final JobMapBounds bounds;
 
   bool get isSingle => jobs.length == 1;
 
-  /// Bütün ilanlar aynı noktada mı. Yaklaşık konumlu ilanlar sunucuda aynı
-  /// hücreye yuvarlandığında olur; yakınlaştırmak onları ayırmaz, gruba
-  /// dokununca liste açılıyor.
+  /// Hepsi aynı noktada mı (yaklaşık konumlar aynı hücreye yuvarlanınca);
+  /// yakınlaştırmak ayırmaz, dokununca liste açılır.
   bool get isStacked =>
       bounds.maxLatitude - bounds.minLatitude < _samePointDegrees &&
       bounds.maxLongitude - bounds.minLongitude < _samePointDegrees;
 
-  /// "Aynı nokta" eşiği: ~1 m. Koordinatlar altı haneye yuvarlı geliyor.
   static const double _samePointDegrees = 0.00001;
 
-  /// Grubun kararlı kimliği: aynı ilanlar her zaman aynı kimliği üretiyor,
-  /// harita da pini yeniden kurmak yerine yerinde tutuyor.
+  /// Aynı ilanlar aynı kimliği üretir; harita pini yerinde tutar.
   String get id => jobs.map((job) => job.id).join(',');
 }
 
-/// İlanları ekranda birbirine yakın olanlar tek pin olacak biçimde gruplar.
-///
-/// Mesafe **ekran pikseliyle** ölçülüyor, metreyle değil: üst üste binme
-/// yakınlaştırma düzeyine bağlı bir görüntü sorunu. Uzaktan bakınca aynı
-/// semtteki ilanlar birleşiyor, yaklaşınca ayrılıyor.
-///
-/// Yöntem açgözlü ve kararlı: ilanlar kimliğe göre sıralanıp sırayla tohum
-/// oluyor, tohumun [radius] içindeki atanmamış ilanlar onun grubuna giriyor.
-/// Aynı ilanlar ve aynı yakınlaştırma her seferinde aynı grupları veriyor;
-/// pinler kamera her durduğunda yer değiştirmiyor. Komşu arama ızgarayla
-/// yapılıyor, yani grup kurmak ilan sayısıyla doğrusal büyüyor.
+/// Ekranda yakın ilanları tek pinde toplar. Mesafe **ekran pikseliyle**: üst
+/// üste binme yakınlaştırmaya bağlı. Açgözlü ve kararlı: aynı girdi her
+/// seferinde aynı grupları verir, pinler kamera durdukça yer değiştirmez.
+/// Izgarayla komşu arama doğrusal.
 class JobClusterer {
   const JobClusterer._();
 
-  /// İki pinin ayrı durması için gereken ekran mesafesi (mantıksal piksel).
-  /// Pin ~50 piksel geniş; daha yakınlar birbirini örtüyor.
+  /// Pin ~50 px geniş; daha yakınlar birbirini örtüyor.
   static const double defaultRadius = 60;
 
-  /// Web Mercator'da 0. yakınlaştırmada dünyanın kenarı (piksel).
   static const double _tileSize = 256;
 
   static List<JobCluster> cluster(
@@ -85,8 +67,7 @@ class JobClusterer {
       for (final job in located) _project(job, worldSize.toDouble()),
     ];
 
-    // Hücre kenarı yarıçap kadar: yarıçap içindeki her komşu tohumun 3×3
-    // komşuluğunda.
+    // Hücre kenarı yarıçap kadar: her komşu 3×3 komşulukta.
     final grid = <(int, int), List<int>>{};
     for (var i = 0; i < points.length; i++) {
       grid.putIfAbsent(_cell(points[i], radius), () => []).add(i);
@@ -117,7 +98,6 @@ class JobClusterer {
     return clusters;
   }
 
-  /// Enlem/boylamı o yakınlaştırmadaki dünya pikseline çevirir.
   static (double, double) _project(Job job, double worldSize) {
     final sinLat = sin(job.latitude!.clamp(-85.0511, 85.0511) * pi / 180);
     final x = (job.longitude! + 180) / 360 * worldSize;

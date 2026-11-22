@@ -1,9 +1,4 @@
-/// Bir sohbetteki tek mesaj.
-///
-/// Backend'deki `MessageDto` (`{id, senderId, senderName,
-/// senderProfilePictureUrl, body, sentAt, readAt}`) karşılığı.
-/// `conversationId` ve [isMe] sunucudan gelmiyor; ikisi de çağrının
-/// bağlamından türetiliyor.
+/// Tek mesaj (`MessageDto`); `conversationId` ve [isMe] bağlamdan.
 class Message {
   const Message({
     required this.id,
@@ -20,39 +15,27 @@ class Message {
 
   final String id;
 
-  /// Mesajın ait olduğu sohbet. `MessageDto` taşımıyor — mesajlar zaten
-  /// `/conversations/{id}/messages` altından geldiği için biliniyor.
   final String conversationId;
 
   final String senderId;
 
-  /// Gönderenin ad soyadı; is-koala/koala-backend#281 ile geliyor. Eski
-  /// sunucuda ve adı boş kullanıcıda `null` — grup balonu o zaman adı
-  /// sohbetin katılımcı listesinden çözüyor.
+  /// Eski sunucuda `null`; grup balonu adı katılımcılardan çözer.
   final String? senderName;
 
   final String? senderProfilePictureUrl;
 
-  /// Mesaj metni. Sunucuda en fazla 4000 karakter.
+  /// En fazla 4000 karakter.
   final String body;
 
   final DateTime sentAt;
 
-  /// Karşı tarafın mesajı okuduğu an; okunmadıysa `null`.
   final DateTime? readAt;
 
-  /// Mesajı oturumu açan kullanıcı mı gönderdi. [senderId] ile karşılaştırma
-  /// sonucunda doluyor.
   final bool isMe;
 
-  /// Gönderim durumu.
-  ///
-  /// Sunucu yalnızca okundu/okunmadı ayrımı yapıyor ([readAt]);
-  /// [MessageStatus.sending] ve [MessageStatus.failed] iyimser gönderim için
-  /// yalnızca istemcide yaşıyor.
+  /// [MessageStatus.sending] ve [MessageStatus.failed] yalnız istemcide.
   final MessageStatus status;
 
-  /// Balonun altındaki zaman etiketi.
   String get timeString {
     final difference = DateTime.now().difference(sentAt);
 

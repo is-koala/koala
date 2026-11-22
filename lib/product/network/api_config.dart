@@ -11,7 +11,6 @@ class ApiConfig {
     'production': 'koala',
   };
 
-  /// Ortam seçimini ağ istemcisi kurulmadan önce doğrular.
   static String resolveBaseUrl({
     required String? flavor,
     required String configuredUrl,
@@ -34,24 +33,19 @@ class ApiConfig {
     return uri.replace(path: '').toString();
   }
 
-  /// İstemci sürümünün gittiği başlık. Sunucudaki
-  /// `MinimumAppVersionFilter` bu adı okuyor.
+  /// Sunucudaki `MinimumAppVersionFilter`'ın okuduğu sürüm başlığı.
   static const String appVersionHeader = 'X-App-Version';
 
-  /// API'nin kök adresi. Sonunda `/` yok; yol sabitleri `/` ile başlıyor.
+  /// API kökü; sonunda `/` yok, yollar `/` ile başlıyor.
   static String get baseUrl => resolveBaseUrl(
     flavor: appFlavor,
     configuredUrl: const String.fromEnvironment('API_BASE_URL'),
   );
 
-  /// Çalışan flavor'ın native uygulama bağlantısı şeması.
-  ///
-  /// Android manifest ve iOS xcconfig değerleriyle aynı eşlemeyi kullanır;
-  /// böylece staging'e gönderilen bir production bağlantısı yanlışlıkla
-  /// kabul edilmez.
+  /// Flavor'ın uygulama bağlantısı şeması; native eşlemeyle aynı, böylece
+  /// staging'e gelen production bağlantısı kabul edilmez.
   static String get appUrlScheme => resolveAppUrlScheme(flavor: appFlavor);
 
-  /// Flavor'ı native uygulama bağlantısı şemasına çevirir.
   @visibleForTesting
   static String resolveAppUrlScheme({required String? flavor}) {
     final scheme = _appUrlSchemes[flavor];
@@ -62,24 +56,15 @@ class ApiConfig {
   }
 
   /// Flavor'ın doğrulanmış web hostları; `https://<host>/...` bağlantıları
-  /// yalnız bu hostlardan kabul edilir.
-  ///
-  /// Değer `config/<flavor>.json` içindeki `WEB_HOSTS` anahtarından gelir;
-  /// Android `build.gradle.kts` aynı dosyayı okuyup manifest'in
-  /// `appLinkHost` placeholder'ını doldurur, iOS entitlements aynı listeyi
-  /// taşır. Böylece Dart tarafının kabul ettiği host ile işletim sisteminin
-  /// uygulamaya verdiği host tek kaynaktan gelir; staging'in production
-  /// web'ini kullandığı bugünkü durumda şemadan türetilen sabit liste
-  /// `iskoala.com` bağlantısını sessizce reddediyordu (#155).
+  /// yalnız bunlardan kabul edilir. `config/<flavor>.json` → `WEB_HOSTS`;
+  /// Android manifest ve iOS entitlements aynı listeyi kullanıyor (#155).
   static Set<String> get webHosts => resolveWebHosts(
     flavor: appFlavor,
     configuredHosts: const String.fromEnvironment('WEB_HOSTS'),
   );
 
-  /// Virgülle ayrılmış `WEB_HOSTS` değerini doğrulanmış host kümesine çevirir.
-  ///
-  /// Yalnız çıplak alan adı kabul edilir; dev ortamı public HTTPS host
-  /// sahiplenmediği için boş liste yalnız orada geçerlidir.
+  /// `WEB_HOSTS`'u host kümesine çevirir. Yalnız çıplak alan adı; boş liste
+  /// yalnız dev'de geçerli.
   @visibleForTesting
   static Set<String> resolveWebHosts({
     required String? flavor,
@@ -94,8 +79,8 @@ class ApiConfig {
         .where((host) => host.isNotEmpty)
         .toSet();
     for (final host in hosts) {
-      // Uri host'u normalize eder: şema, port, yol, kullanıcı bilgisi veya
-      // büyük harf taşıyan bir giriş geri okunduğunda kendisine eşit çıkmaz.
+      // Şema, port, yol ya da büyük harf taşıyan giriş geri okununca kendisine
+      // eşit çıkmaz.
       final uri = Uri.tryParse('https://$host/');
       if (uri == null || uri.host != host) {
         throw StateError('WEB_HOSTS yalnız küçük harfli alan adları taşır.');
@@ -120,12 +105,8 @@ class ApiConfig {
     );
   }
 
-  /// Harici uygulamaya (tarayıcı) verilebilecek sunucu kaynaklı adreslerin
-  /// şemaları.
-  ///
-  /// Sunucunun yönlendirdiği imzalı depo adresi gibi adresler `launchUrl`'e
-  /// gitmeden önce bununla süzülüyor: `intent:`, `file:` ve şifresiz `http`
-  /// girmez. [resolveBaseUrl] ile aynı kural: `http` yalnız dev'de.
+  /// Harici uygulamaya verilebilecek sunucu kaynaklı adres şemaları: `intent:`,
+  /// `file:` ve şifresiz `http` girmez (`http` yalnız dev'de).
   static Set<String> get externalUrlSchemes =>
       resolveExternalUrlSchemes(flavor: appFlavor);
 
@@ -133,27 +114,20 @@ class ApiConfig {
   static Set<String> resolveExternalUrlSchemes({required String? flavor}) =>
       flavor == 'dev' ? const {'https', 'http'} : const {'https'};
 
-  /// STOMP/WebSocket adresi.
-  ///
-  /// [baseUrl]'den türetiliyor: şema `http` → `ws`, `https` → `wss`.
-  /// Yol backend'deki `realtime.endpoint` ayarıyla aynı olmalı.
+  /// STOMP adresi; [baseUrl]'den türüyor (`http`→`ws`, `https`→`wss`).
   static String get websocketUrl {
     final uri = Uri.parse(baseUrl);
     final scheme = uri.scheme == 'https' ? 'wss' : 'ws';
     return uri.replace(scheme: scheme, path: websocketPath).toString();
   }
 
-  /// Backend'in STOMP uç noktası (`RealtimeProperties.endpoint`).
   static const String websocketPath = '/ws';
 
-  /// Bağlantı kurulmasını bekleme süresi. Mobil şebekede ilk el sıkışma
-  /// uzayabildiği için varsayılan 10 sn'den biraz cömert tutuldu.
+  /// Mobil şebekede ilk el sıkışma uzayabildiği için 10 sn'den cömert.
   static const Duration connectTimeout = Duration(seconds: 15);
 
-  /// Yanıtın tamamının okunmasını bekleme süresi.
   static const Duration receiveTimeout = Duration(seconds: 20);
 
-  /// Backend hata mesajlarını `messages_tr.properties`'ten döndürsün diye
-  /// her isteğe eklenen dil başlığı. Uygulama tek dilli olduğu sürece sabit.
+  /// Backend hata mesajlarını Türkçe döndürsün diye.
   static const String acceptLanguage = 'tr';
 }

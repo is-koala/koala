@@ -1,29 +1,21 @@
 part of 'verification_code_page.dart';
 
 abstract class VerificationCodePagemodel extends State<VerificationCodePage> {
-  /// Sunucunun ürettiği kod tam 6 hane
-  /// (`100000 + SECURE_RANDOM.nextInt(900000)`).
   static const int codeLength = 6;
 
-  /// Eski sunucu sürümü son kullanma anını döndürmezse kullanılan yaklaşık
-  /// kod ömrü.
+  /// Eski sunucu son kullanma anını döndürmezse.
   static const Duration codeLifetime = Duration(minutes: 15);
 
-  /// Tekrar gönderme düğmesinin soğuma süresi. Sunucunun ayrı bir tekrar
-  /// gönderme ucu yok, düğme `PATCH /users/me`'yi tekrarlıyor; arka arkaya
-  /// basılırsa kullanıcıya art arda SMS giderdi.
+  /// Düğme `PATCH`'i tekrarlıyor; arka arkaya basmak art arda SMS gönderirdi.
   static const Duration resendCooldown = Duration(seconds: 60);
 
   final TextEditingController code = TextEditingController();
 
-  /// Onaylanacak doğrulama. Tekrar gönderim yeni bir kayıt ürettiği için
-  /// `widget.verification` değil bu alan esas alınıyor.
+  /// Tekrar gönderim yeni kayıt ürettiği için `widget.verification` değil bu.
   late PendingVerification verification;
 
   bool isConfirming = false;
 
-  /// Sunucunun mutlak son kullanma anı; eski sunucuda ekran açılışından
-  /// itibaren [codeLifetime] sonrası kullanılır.
   late DateTime _codeDeadline;
   int _resendSecondsLeft = resendCooldown.inSeconds;
 
@@ -42,8 +34,7 @@ abstract class VerificationCodePagemodel extends State<VerificationCodePage> {
     super.initState();
     verification = widget.verification;
     _codeDeadline = _deadlineFor(verification);
-    // Ekran kod yeni gönderilmişken açıldığı için soğuma süresi o andan
-    // başlıyor.
+    // Kod yeni gönderilmiş olduğu için soğuma şimdi başlıyor.
     _startTicker();
   }
 
@@ -61,7 +52,6 @@ abstract class VerificationCodePagemodel extends State<VerificationCodePage> {
       setState(() {
         if (_resendSecondsLeft > 0) _resendSecondsLeft--;
       });
-      // Sayacak bir şey kalmadıysa boşuna kare çizdirmeye gerek yok.
       if (_codeSecondsLeft == 0 && _resendSecondsLeft == 0) timer.cancel();
     });
   }
@@ -73,28 +63,23 @@ abstract class VerificationCodePagemodel extends State<VerificationCodePage> {
         Duration.microsecondsPerSecond;
   }
 
-  /// Kodun sunucunun bildirdiği veya geriye uyumlu tahmini ömrü kaldı mı.
   bool get hasTimeLeft => _codeSecondsLeft > 0;
 
-  /// Kalan süre `dd:ss` biçiminde.
   String get remainingLabel {
     final minutes = (_codeSecondsLeft ~/ 60).toString().padLeft(2, '0');
     final seconds = (_codeSecondsLeft % 60).toString().padLeft(2, '0');
     return '$minutes:$seconds';
   }
 
-  /// Soğuma süresinden kalan saniye.
   int get resendCooldownSeconds => _resendSecondsLeft;
 
-  /// Soğuma süresi ancak istek dönünce kuruluyor. Bu bayrak olmadan istek
-  /// havadayken düğme açık kalır ve ikinci dokunuş ikinci bir `PATCH` — yani
-  /// kullanıcıya ikinci bir SMS — gönderirdi.
+  /// Soğuma istek dönünce kuruluyor; bu bayrak olmadan ikinci dokunuş ikinci
+  /// SMS gönderirdi.
   bool _isResending = false;
 
   bool get canResend =>
       !isConfirming && !_isResending && _resendSecondsLeft == 0;
 
-  /// Girilen kodu onaylar.
   Future<void> confirm() async {
     final token = code.text.trim();
     if (token.length != codeLength) {
@@ -107,8 +92,6 @@ abstract class VerificationCodePagemodel extends State<VerificationCodePage> {
       await _verificationService.confirm(verification.id, token);
       if (!mounted) return;
 
-      // Yeni e-posta/telefon bu noktada uygulandı; hesap ekranının değeri
-      // görebilmesi için kullanıcı tazeleniyor.
       await context.read<UserProvider>().load(silent: true);
       if (!mounted) return;
 
@@ -122,17 +105,8 @@ abstract class VerificationCodePagemodel extends State<VerificationCodePage> {
     } on ApiException catch (error) {
       if (!mounted) return;
 
-      // `forbidden` başkasının kaydı, `notFound` hiç olmayan kayıt. İkisinde
-      // de kod girmenin anlamı kalmadı; kullanıcı değişikliği baştan
-      // başlatmalı.
-      //
-      // Tipe bakılıyor, `statusCode`'a değil: ayrımın kaynağı sunucunun
-      // `errorCategory` alanı (`ACCESS_DENIED`, `RESOURCE_NOT_FOUND`),
-      // `403`/`404` yalnızca kategori gelmediğinde devreye giren yedek
-      // (is-koala/koala#86).
-      //
-      // Tek toast gösteriliyor: [AppToast.show] sıradakini beklemeden
-      // öncekini gizlediği için iki mesaj üst üste yazmanın anlamı yok.
+      // Başkasının ya da olmayan kayıt: kod girmenin anlamı kalmadı, kullanıcı
+      // baştan başlamalı. Tipe bakılıyor, durum koduna değil (#86).
       if (error.type == ApiErrorType.forbidden ||
           error.type == ApiErrorType.notFound) {
         AppToast.error(
@@ -143,8 +117,7 @@ abstract class VerificationCodePagemodel extends State<VerificationCodePage> {
         return;
       }
 
-      // Kod hatalı ya da süresi dolmuş: sunucunun mesajı gösteriliyor,
-      // kullanıcı ekranda kalıyor ve yeniden deniyor.
+      // Hatalı ya da süresi dolmuş kod: kullanıcı yeniden dener.
       AppToast.error(context, error.message);
       code.clear();
     } finally {
@@ -152,12 +125,8 @@ abstract class VerificationCodePagemodel extends State<VerificationCodePage> {
     }
   }
 
-  /// Kodu yeniden göndertir.
-  ///
-  /// Sunucunun tekrar gönderme ucu yok: aynı yeni değerle `PATCH /users/me`
-  /// çağrıldığında doğrulanmamış eski kayıt siliniyor ve yeni bir kod
-  /// üretiliyor. Dönen yeni kimlik eskisinin yerine geçmeli, yoksa kullanıcı
-  /// yeni kodu eski kayda göndermeye çalışır.
+  /// Kodu yeniden göndertir: aynı değerle `PATCH` yeni kod üretir. Dönen yeni
+  /// kimlik eskisinin yerine geçmeli.
   Future<void> resend() async {
     if (_isResending) return;
 
@@ -177,11 +146,8 @@ abstract class VerificationCodePagemodel extends State<VerificationCodePage> {
       if (!mounted) return;
 
       if (pending == null) {
-        // Soğuma hata yolunda da kuruluyor. İstemcide zaman aşımına uğrayan
-        // ya da `500` dönen bir `PATCH` sunucuda işlenmiş ve kod gönderilmiş
-        // olabilir; düğmeyi aynı karede yeniden açmak, kullanıcının arka
-        // arkaya basıp pes peşe SMS ürettirmesine izin verirdi. Soğumanın
-        // varlık sebebi zaten tam olarak bu.
+        // Hatada da kuruluyor: zaman aşımına uğrayan `PATCH` sunucuda işlenmiş
+        // ve SMS gitmiş olabilir.
         _armResendCooldown();
         AppToast.error(context, provider.errorMessage ?? 'Kod gönderilemedi.');
         return;
@@ -189,17 +155,9 @@ abstract class VerificationCodePagemodel extends State<VerificationCodePage> {
 
       final refreshed = pending.where((item) => item.type == verification.type);
       if (refreshed.isEmpty) {
-        // Boş liste tek bir anlama geliyor: `UserManager.patchCurrentUser`
-        // gönderilen değer kullanıcının mevcut değerine eşitse doğrulama
-        // açmadan `200` dönüyor. Yani bekleyen doğrulama bu arada (örneğin
-        // başka bir cihazda) tamamlanmış ve değer uygulanmış. Kod istemenin
-        // anlamı kalmadı; "yeni kod gönderildi" demek kullanıcıyı hiç
-        // gelmeyecek bir kod için bekletirdi.
-        //
-        // Çıkış `true` ile: değer gerçekten yazıldı ve `updateProfile`
-        // sağlayıcıdaki kullanıcıyı zaten tazeledi. `false` dönmek çağıranın
-        // doğrulama zincirini keserdi (`verified != true` → `break`), yani
-        // aynı kaydetmede bekleyen ikinci doğrulama hiç sorulmazdı.
+        // Boş liste: değer bu arada başka yerde doğrulanıp uygulanmış. "Yeni
+        // kod gönderildi" demek kullanıcıyı boşuna bekletirdi. `true` ile
+        // çıkılıyor ki çağıranın doğrulama zinciri kesilmesin.
         AppToast.success(
           context,
           verification.isEmail
@@ -223,11 +181,7 @@ abstract class VerificationCodePagemodel extends State<VerificationCodePage> {
     }
   }
 
-  /// Soğuma süresini baştan kurar.
-  ///
-  /// Sayaç sıfıra inince kendini durduruyor; süre yeniden kurulduğunda
-  /// tıklama da yeniden başlatılmalı, yoksa kalan saniye hiç azalmaz ve
-  /// düğme bir daha açılmaz.
+  /// Sayaç sıfırda kendini durdurduğu için yeniden başlatılmalı.
   void _armResendCooldown() {
     setState(() => _resendSecondsLeft = resendCooldown.inSeconds);
     _startTicker();

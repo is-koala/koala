@@ -1,8 +1,5 @@
-/// Bir mesai oturumu: bir giriş, varsa bir çıkış.
-///
-/// Backend `WorkSessionDto` karşılığı. Bir atamada birden çok oturum
-/// olabiliyor (ara verilip dönülüyor), ama aynı anda **açık** olan yalnızca
-/// bir tane: sunucu ikinci girişi `409` ile reddediyor.
+/// Mesai oturumu. Atamada birden çok olabilir ama aynı anda tek **açık**;
+/// ikinci giriş `409`.
 class WorkSession {
   const WorkSession({
     required this.id,
@@ -30,7 +27,6 @@ class WorkSession {
 
   final DateTime? checkInAt;
 
-  /// Çıkış yapılmadıysa `null`; oturumun açık olması bu demek.
   final DateTime? checkOutAt;
 
   final String? checkInClientEventId;
@@ -42,26 +38,22 @@ class WorkSession {
   final DateTime? checkOutReceivedAt;
   final Set<TimesheetPlausibility> checkOutPlausibilityFlags;
 
-  /// Giriş ve çıkış konumları. Konum isteğe bağlı — sunucu gövdesiz istek de
-  /// kabul ediyor — o yüzden hepsi `null` olabiliyor.
+  /// Konum isteğe bağlı.
   final double? checkInLatitude;
   final double? checkInLongitude;
   final double? checkOutLatitude;
   final double? checkOutLongitude;
 
-  /// Oturumun süresi, dakika. Çıkış yapılınca sunucu hesaplıyor.
+  /// Çıkışta sunucu hesaplar.
   final int? minutes;
 
-  /// Oturum hâlâ açık mı. Açıksa sıradaki eylem çıkış, değilse giriş.
   bool get isOpen => checkOutAt == null;
 
   bool get checkInNeedsReview => checkInPlausibilityFlags.isNotEmpty;
 
   bool get checkOutNeedsReview => checkOutPlausibilityFlags.isNotEmpty;
 
-  /// Girişten bu yana geçen süre. Kapalı oturumda sunucunun yazdığı
-  /// [minutes] kullanılıyor; açık oturumda saat işlediği için o an
-  /// hesaplanıyor.
+  /// Kapalıda sunucunun [minutes]'ı, açıkta o an hesaplanır.
   Duration get elapsed {
     final start = checkInAt;
     if (start == null) return Duration.zero;
@@ -106,7 +98,6 @@ class WorkSession {
       : const {};
 }
 
-/// Sunucunun cihaz saati ve iş penceresi için verdiği inceleme işareti.
 enum TimesheetPlausibility {
   deviceTimeImplausible('DEVICE_TIME_IMPLAUSIBLE'),
   outsideJobWindow('OUTSIDE_JOB_WINDOW'),

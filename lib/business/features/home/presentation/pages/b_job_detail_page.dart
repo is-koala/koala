@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/chat/models/messaging_availability.dart';
@@ -73,10 +73,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 part 'b_job_detail_pagemodel.dart';
 
-/// İşverenin kendi ilanının detayı ve o ilana gelen başvurular.
-///
-/// İki kaynaktan besleniyor: ilanın kendisi `GET /jobs/{id}`'den, başvurular
-/// [BJobsProvider] üzerinden `GET /jobs/{id}/applications`'tan.
+/// İşverenin ilan detayı ve başvurular: ilan `GET /jobs/{id}`'den, başvurular
+/// [BJobsProvider]'dan.
 class BJobDetailPage extends StatefulWidget {
   const BJobDetailPage({
     super.key,
@@ -100,12 +98,10 @@ class BJobDetailPage extends StatefulWidget {
   final BPaymentBrowser? paymentBrowser;
   final JobGalleryProvider? galleryProvider;
 
-  /// Testler için; verilmezse üretimdeki tekil servis.
   final ChatService? chatService;
   final TransportService? transportService;
 
-  /// Özgeçmiş bağlantısını açan kapı; verilmezse harici tarayıcı
-  /// (`url_launcher`). Testler sahte bir açıcı geçiyor.
+  /// Testler sahte açıcı geçiyor; verilmezse `url_launcher`.
   final Future<bool> Function(Uri url)? openExternalUrl;
 
   @override
@@ -156,8 +152,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
       );
     }
 
-    // İlan yürürlükte mi: karar sunucudaki duruma ait. Provider'daki kayıt
-    // henüz gelmemiş olabilir, o yüzden detayın durumuna bakılıyor.
+    // Provider'daki kayıt gelmemiş olabilir; detayın durumuna bakılıyor.
     final isActive = job.status == JobStatus.open;
 
     return SingleChildScrollView(
@@ -209,8 +204,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     );
   }
 
-  /// Ulaşım planı özeti + Düzenle (is-koala/koala#197). Plan yokken "plan
-  /// ekle"; yüklenirken ve hatada kendi satırı.
+  /// Ulaşım planı özeti (#197); yokken "plan ekle".
   List<Widget> _transportSection() {
     if (_transportUnavailable) return const [];
     final plan = _transportPlan;
@@ -268,10 +262,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     );
   }
 
-  /// İş takibi: atamanın durumu, mesai oturumları ve tamamlama butonu.
-  ///
-  /// Yalnızca ataması olan ilanda çiziliyor — başvuru kabul edilmeden ortada
-  /// takip edilecek bir iş yok.
+  /// İş takibi: durum, mesai ve tamamlama; yalnız ataması olan ilanda.
   List<Widget> _timesheetSection() {
     final assignment = _assignment;
     if (assignment == null) {
@@ -534,16 +525,8 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     );
   }
 
-  /// Atamanın zaman çizelgesi tek satırda: başvuru, kabul, ödeme durumu ve
-  /// tamamlanma.
-  ///
-  /// Damgalar `MyAssignmentDto`'nun koala-backend#282 alanları
-  /// ([Assignment.application], [Assignment.paymentSecuredAt],
-  /// [Assignment.payout]); göndermeyen sunucuda değerin yerine "—" yazılıyor
-  /// ki satırın hangi bilgiyi taşıdığı yine okunsun. Kabul anı sözleşmedeki
-  /// gibi başvurunun `answeredDateTime`'ı. Ödeme sütunu durumun metniyle
-  /// birlikte emanete alınma anını, para çalışana geçtiyse hesaba ulaştığı
-  /// anı söylüyor.
+  /// Atamanın zaman çizelgesi: başvuru, kabul, ödeme, tamamlanma. Göndermeyen
+  /// sunucuda "—" yazılıyor ki satırın neyi taşıdığı okunsun.
   Widget _assignmentTimelineRow(Assignment assignment) {
     final application = assignment.application;
     final securedAt = assignment.paymentSecuredAt;
@@ -567,12 +550,10 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     );
   }
 
-  /// Zaman damgasının satırdaki hâli; yoksa "—".
   static String _stamp(DateTime? value) =>
       value?.toLocal().asShortDateTime ?? '—';
 
-  /// Tek mesai oturumu: giriş, çıkış ve süre. Açık oturumda çıkış yerine
-  /// "sürüyor" yazıyor.
+  /// Açık oturumda çıkış yerine "sürüyor".
   Widget _workSessionRow(WorkSession session) {
     final start = session.checkInAt;
     final end = session.checkOutAt;
@@ -609,10 +590,8 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     );
   }
 
-  /// Toplam çalışılan süre.
-  ///
-  /// Açık oturumun süresi de sayılıyor ama sunucudaki `workHours` yalnızca
-  /// kapanmış oturumlardan türüyor; ikisi mesai sürerken farklı olabilir.
+  /// Toplam süre; açık oturum da sayılıyor, sunucunun `workHours`'ı yalnız
+  /// kapanmışlardan, mesai sürerken farklı olabilir.
   Widget _totalWorkedRow() {
     final total = _workSessions.fold<Duration>(
       Duration.zero,
@@ -639,12 +618,8 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     );
   }
 
-  /// Uyuşmazlığın girişi: açıksa uyarı bandı, sonuçlanmışsa özet kartı.
-  ///
-  /// İkisi de uyuşmazlık ekranını açıyor (kanıt ekleme ve görüntüleme,
-  /// is-koala/koala#215). Karardan sonra da bir giriş kalıyor: işveren
-  /// sonucu, destek notunu ve kanıtları ekranda görebilmeli (liste ve indirme
-  /// karardan sonra da açık).
+  /// Uyuşmazlık girişi: açıksa uyarı bandı, sonuçlanmışsa özet (#215).
+  /// Kararlardan sonra da sonuç ve kanıtlar görülebilmeli.
   Widget? _disputeEntry() {
     if (_disputes.isEmpty) return null;
 
@@ -661,12 +636,8 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     );
   }
 
-  /// Açık uyuşmazlık uyarısı.
-  ///
-  /// Açık uyuşmazlık emanetteki parayı donduruyor; tamamlama butonunun
-  /// neden beklediğini söylemek gerekiyor. Aynı zamanda ekranın girişi:
-  /// `Material` + `InkWell` (süslü bir `Container`'ın altında mürekkep
-  /// görünmez — `DisputeSummaryCard` ile aynı kalıp).
+  /// Açık uyuşmazlık parayı donduruyor; tamamlamanın neden beklediği
+  /// söylenmeli.
   Widget _openDisputeBanner(Dispute open) {
     return Padding(
       padding: const EdgeInsets.only(top: AppSizes.spaceMedium),
@@ -725,11 +696,9 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     );
   }
 
-  /// Sigorta bildirimi için kimlik bilgileri: düğme ya da açılmış kart.
-  ///
-  /// Düğme yalnız işe alınmış atamada ([_canRevealWorkerIdentity]); sunucu
-  /// bu atama için `404` dediyse hiç çizilmiyor. Kart açıkken düğme yok —
-  /// aynı bilgiyi ikinci kez istemek ikinci bir kayıt ve bildirim demek.
+  /// Sigorta için kimlik: düğme ya da açılmış kart. Sunucu `404` dediyse
+  /// çizilmez; kart açıkken düğme yok, ikinci istek ikinci kayıt ve bildirim
+  /// demek.
   List<Widget> _workerIdentitySection(Assignment assignment) {
     final identity = _revealedIdentityFor(assignment);
     if (identity != null) {
@@ -768,10 +737,8 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     ];
   }
 
-  /// İptal ve sorun bildirme.
-  ///
-  /// İptal yalnızca iş kapanmadan; sorun bildirme yalnızca para emanetteyken
-  /// ve ortada açık bir bildirim yokken. İkisi de sunucunun tuttuğu kapı.
+  /// İptal iş kapanmadan; sorun bildirme para emanetteyken ve açık bildirim
+  /// yokken. İkisi de sunucunun kapısı.
   List<Widget> _assignmentActions(Assignment assignment) {
     final canCancel = _canCompleteAssignment(assignment);
     final canDispute = _canOpenDisputeFor(assignment);
@@ -804,12 +771,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     ];
   }
 
-  /// Değerlendirme: tamamlanmış atamada durum ve düğme.
-  ///
-  /// Çalışan kabuğundaki `WorkDetailPage._reviewCard`'ın işveren karşılığı;
-  /// aynı [ReviewStateRow]. "Değerlendirdim mi" sunucudan (`myReview`),
-  /// içerik de oradan; [ReviewProvider] yalnız az önce gönderilenin boşluğunu
-  /// dolduruyor. Çalışan işvereni değerlendirdiyse küçük rozet.
+  /// Değerlendirme durumu ve düğmesi; çalışan tarafıyla aynı [ReviewStateRow].
   Widget _reviewRow(Assignment assignment) {
     final reviews = context.watch<ReviewProvider>();
 
@@ -896,16 +858,9 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     );
   }
 
-  /// Alt bölüm: aktif ilanda onaylananlar ve bekleyen başvurular, kapanmış
-  /// ilanda işi alan kişi.
-  ///
-  /// Başvurular ilan detayından ayrı geliyor; henüz gelmediyse boş liste
-  /// yerine yükleme gösteriliyor — "henüz başvuru yok" yanlış bilgi olurdu.
-  ///
-  /// **Onaylananlar bekleyenlerin üstünde.** Bir başvuruyu kabul etmek ilanı
-  /// kapatmıyor (sunucu atama açıp çalışanın onayını bekliyor), o yüzden
-  /// kabul edilen aday ilan açıkken de gösterilmeli; önceki hâlinde bekleyen
-  /// listesinden düşüp görünmez oluyordu.
+  /// Aktif ilanda onaylananlar ve bekleyenler, kapanmışta işi alan kişi.
+  /// Başvurular gelmediyse yükleme gösteriliyor, "henüz başvuru yok" değil.
+  /// Onaylananlar üstte: kabul ilanı kapatmıyor.
   List<Widget> _peopleSection(
     BJobPost? post, {
     required bool isActive,
@@ -915,9 +870,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
   }) {
     final sectionTitle = isActive ? 'Başvuranlar' : 'Yapan Kişi';
     if (post == null) {
-      // Liste geldi ve ilan ne listede ne benimsenmiş (BJobsProvider.adoptJob):
-      // başkasının bireysel ilanı. Sunucu o başvuruları vermez; bölüm
-      // çizilmiyor, tekrar denemenin gidecek yeri yok.
+      // Başkasının bireysel ilanı: sunucu başvuruları vermez, bölüm çizilmez.
       final settled = jobsError == null && !jobsLoading && jobsHaveLoaded;
       if (settled) return const [];
 
@@ -962,9 +915,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     }
 
     final accepted = post.acceptedApplicants;
-    // Geri çekilen ve durumu tanınmayan başvurular da bu listede: sunucu
-    // kaydı silmiyor ve işverenin listesinde tutuyor. Kartları çiziliyor,
-    // yalnızca kabul/ret butonları çıkmıyor.
+    // Geri çekilenler de listede; kartları var, kabul/ret yok.
     final unanswered = post.unansweredApplicants;
 
     return [
@@ -1127,8 +1078,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     );
   }
 
-  /// İlanın sunucudaki durumu. "Aktif / Geçmiş" yerine gerçek durum
-  /// yazılıyor: kapanmış bir ilanla iptal edilmiş bir ilan aynı şey değil.
+  /// Gerçek durum: kapanmışla iptal edilmiş aynı şey değil.
   Widget _statusBadge(BuildContext context, JobStatus status) {
     final isLive = status == JobStatus.open;
     final color = switch (status) {
@@ -1145,10 +1095,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     );
   }
 
-  /// Renkli zemin üstünde kalın, küçük bir etiket taşıyan rozet.
-  ///
-  /// İlanın ve başvurunun durum rozetleri aynı biçimi kuruyordu; ikisi de
-  /// buradan geçiyor ki bir gün biçim değişirse tek yerde değişsin.
+  /// İlan ve başvuru rozetlerinin ortak biçimi.
   Widget _labelBadge(
     BuildContext context, {
     required String label,
@@ -1314,10 +1261,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
 
   // ------------------------------------------------------------- Başvuranlar
 
-  /// Yanıt bekleyen başvurular.
-  ///
-  /// [hasAccepted] doluyken boş durum metni değişiyor: yukarıda onaylanmış
-  /// bir aday dururken "henüz başvuru yok" demek yanlış olurdu.
+  /// Yukarıda onaylı aday varken boş durum "henüz başvuru yok" demez.
   Widget _applicantsList(
     BuildContext context,
     List<JobApplicant> applicants, {
@@ -1343,11 +1287,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     );
   }
 
-  /// Aday kartı.
-  ///
-  /// [isAccepted] iken kabul/ret butonları yerine yeşil bir rozet çiziliyor:
-  /// yanıtlanmış bir başvuru ikinci kez yanıtlanamıyor, sunucu `400`
-  /// döndürüyor.
+  /// Aday kartı; [isAccepted] iken kabul/ret yerine yeşil rozet.
   Widget _applicantCard(
     BuildContext context,
     JobApplicant applicant, {
@@ -1374,7 +1314,6 @@ class _BJobDetailPageState extends BJobDetailPageModel {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Profil satırı — tıklanabilir
           GestureDetector(
             onTap: () =>
                 context.push(BusinessRoutes.userProfile, extra: applicant),
@@ -1455,10 +1394,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
                 ],
               ),
             )
-          // Butonlar başvurunun durumuna bakıyor, yalnızca [isAccepted]
-          // bayrağına değil: geri çekilmiş ya da durumu tanınmayan bir
-          // başvuruya basmak sunucudan `409` getirirdi. Bekleyenler listesi
-          // zaten süzüyor, bu kartın kendi güvencesi.
+          // Butonlar durumuna bakıyor: geri çekilmişe basmak `409` getirirdi.
           else if (applicant.isPending)
             _applicantActions(context, applicant, enabled: canRespond)
           else
@@ -1468,8 +1404,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     );
   }
 
-  /// Kartın sağ üst köşesindeki tarihler: başvuru ve — sunucu gönderiyorsa —
-  /// yanıt anı. Kabul edilen kartta yanıt kabul tarihidir.
+  /// Başvuru ve (varsa) yanıt anı.
   Widget _applicantDates(BuildContext context, JobApplicant applicant) {
     final answeredAt = applicant.answeredDateTime;
     final style = context.textTheme.labelMedium?.copyWith(
@@ -1491,9 +1426,8 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     );
   }
 
-  /// Özgeçmiş bağlantısı. Adres doğrudan dosya değil, sunucunun sahipliği
-  /// doğrulayıp kısa ömürlü imzalı adrese yönlendirdiği bir yol; profil
-  /// ekranıyla aynı biçimde harici tarayıcıda açılıyor.
+  /// Sunucu sahipliği doğrulayıp kısa ömürlü adrese yönlendiriyor; harici
+  /// tarayıcıda açılır.
   Widget _applicantCvLink(BuildContext context, JobApplicant applicant) {
     return Align(
       alignment: Alignment.centerLeft,
@@ -1511,17 +1445,10 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     );
   }
 
-  /// Adayla mesajlaşma: düğme ya da düğmenin yerine geçen açıklama.
-  ///
-  /// Kapı adayın bu ilandaki atamasından okunuyor (`messagingAvailable`).
-  /// **Atama yoksa hiçbir şey çizilmiyor**: bekleyen, reddedilen ya da geri
-  /// çekilen başvuranla mesajlaşma yolu yok ve "ödemeyi tamamlayınca açılır"
-  /// demek işverene ödenecek bir şey varmış gibi yanlış bir vaat olurdu.
-  /// Atama varken ödeme bekleniyorsa açıklama, atama ödenebilir durumdaysa
-  /// yanında ödeme akışına kısayol; pencere kapandıysa yalnızca "Bu sohbet
-  /// kapandı". Atama listesi ilk kez yüklenirken de hiçbir şey çizilmiyor:
-  /// bir an "ödeme bekleniyor" deyip hemen düğmeye dönmek yanlış bir
-  /// izlenim bırakırdı.
+  /// Adayla mesajlaşma ya da yerine açıklama. **Atama yoksa hiçbir şey**:
+  /// reddedilen ya da bekleyen adayla mesajlaşma yolu yok ve "ödeyince açılır"
+  /// yanlış vaat olurdu. Atama listesi yüklenirken de çizilmez, yanlış izlenim
+  /// bırakmasın.
   List<Widget> _applicantMessaging(
     BuildContext context,
     JobApplicant applicant,
@@ -1580,10 +1507,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     ];
   }
 
-  /// Yanıtlanamayan bir başvurunun durumunu yazan nötr rozet.
-  ///
-  /// Kabul rozetinin yeşili yalnızca kabule ait; reddedilen ya da geri
-  /// çekilen başvuruyu aynı renkle çizmek yanlış bilgi olurdu.
+  /// Kabulün yeşili yalnız kabule ait; ret ve geri çekme nötr.
   Widget _applicationStatusBadge(
     BuildContext context,
     ApplicationStatus status,
@@ -1604,8 +1528,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     const padding = EdgeInsets.symmetric(vertical: AppSizes.spaceSmall);
     const shape = RoundedRectangleBorder(borderRadius: AppRadius.smallCircular);
 
-    // Yanıt beklenirken bütün butonlar kapanıyor: aynı başvuru iki kez
-    // yanıtlanırsa sunucu 400 döndürüyor.
+    // Aynı başvuru iki kez yanıtlanırsa `400`.
     final isBusy = !enabled || _respondingApplicationId != null;
 
     return Row(
@@ -1646,10 +1569,7 @@ class _BJobDetailPageState extends BJobDetailPageModel {
     );
   }
 
-  /// Reddetme gerekçesini soran kutu.
-  ///
-  /// Gerekçe isteğe bağlı: backend `rejectionReason`'ı zorunlu tutmuyor ve
-  /// boş bırakan işvereni engellemenin bir karşılığı yok.
+  /// Gerekçe isteğe bağlı; backend zorunlu tutmuyor.
   @override
   Future<String?> _askRejectionReason(JobApplicant applicant) {
     final controller = TextEditingController();

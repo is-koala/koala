@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/models/current_user.dart';
@@ -19,10 +19,8 @@ const _employer = {
 };
 
 void main() {
-  // `JobAssignmentManager.initiatePaymentSession` bireysel işverenin adresi
-  // yokken İyzico alıcı kaydını kuramıyor ve `400` + bu kodla dönüyor.
-  // Mesaj ("İşverenin adres bilgisi eksik.") ne yapılacağını söylemiyor;
-  // uygulama kullanıcıyı doğrudan adres ekranına götürmeli.
+  // Bireysel işverenin adresi yoksa ödeme `400` ile dönüyor ve mesaj ne
+  // yapılacağını söylemiyor; kullanıcı adres ekranına götürülmeli.
   testWidgets('adres eksik hatası işvereni adres ekranına götürür', (
     tester,
   ) async {

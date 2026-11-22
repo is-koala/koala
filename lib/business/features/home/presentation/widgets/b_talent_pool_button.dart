@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/business/features/home/presentation/providers/b_talent_pool_provider.dart';
 import 'package:koala/business/features/home/services/talent_pool_service.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
@@ -10,11 +10,8 @@ import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/reason_dialog.dart';
 import 'package:provider/provider.dart';
 
-/// Adayı yetenek havuzuna ekleyen / çıkaran yer imi düğmesi.
-///
-/// Üyelik bilinmiyorken dolu çizilmez ve dokununca önce sayfalar yüklenir.
-/// Havuzdaysa ikinci dokunuş `DELETE` atar — gövdesiz `PUT` var olan notu
-/// silerdi.
+/// Yetenek havuzu yer imi. Üyelik bilinmiyorken önce sayfalar yüklenir;
+/// havuzdaysa `DELETE` atar, gövdesiz `PUT` notu silerdi.
 class BTalentPoolButton extends StatefulWidget {
   const BTalentPoolButton({super.key, required this.worker, this.iconSize});
 

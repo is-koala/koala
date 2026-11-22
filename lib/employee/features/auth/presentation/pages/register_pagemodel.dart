@@ -9,8 +9,7 @@ abstract class RegisterPagemodel extends State<RegisterPage> {
 
   bool isSubmitting = false;
 
-  /// Sunucuya boş yere gitmemek için kullanılan kaba e-posta kontrolü.
-  /// Asıl doğrulamayı backend `@Email` ile yapıyor.
+  /// Kaba kontrol; asıl doğrulama backend'de.
   static final RegExp _emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
   @override
@@ -48,8 +47,8 @@ abstract class RegisterPagemodel extends State<RegisterPage> {
 
       if (!mounted) return;
 
-      // Adres zaten kayıtlıysa da backend 200 dönüyor (hesabın varlığını
-      // sızdırmamak için), o yüzden her durumda bekleme ekranına geçiliyor.
+      // Kayıtlı adreste de `200` dönüyor (hesap varlığı sızmasın); her durumda
+      // bekleme ekranı.
       context.go(
         '/auth/register-type/register/email-verification-pending'
         '?isBusiness=${widget.isBusiness}&email=${Uri.encodeQueryComponent(email)}',

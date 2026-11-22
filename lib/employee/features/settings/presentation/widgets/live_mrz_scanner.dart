@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:koala/employee/features/settings/models/chip_read_failure.dart';
 import 'package:koala/employee/features/settings/models/mrz_key.dart';
@@ -13,7 +13,6 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 
-/// Canlı kamera, MRZ kadrajı ve kullanıcı yönlendirmesinin tek yüzeyi.
 class LiveMrzScanner extends StatefulWidget {
   const LiveMrzScanner({
     super.key,
@@ -30,10 +29,8 @@ class LiveMrzScanner extends StatefulWidget {
   final ValueChanged<ChipReadFailure> onFailure;
   final VoidCallback onManualEntry;
 
-  /// Yeşil durumun ekranda okunmasına fırsat veren kısa bekleme.
   final Duration successHold;
 
-  /// Testte platform titreşimini cihaz sınırında değiştirebilmek için.
   final Future<void> Function()? haptic;
 
   @override
@@ -77,7 +74,6 @@ class _LiveMrzScannerState extends State<LiveMrzScanner>
     _requestLifecycleSync();
   }
 
-  /// Hızlı `inactive → paused → resumed` zincirini tek seri kuyruğa indirger.
   void _requestLifecycleSync() {
     if (_lifecycleSync != null) return;
     final operation = _drainLifecycleChanges();
@@ -135,8 +131,8 @@ class _LiveMrzScannerState extends State<LiveMrzScanner>
   }
 
   Future<void> _finish(MrzKey key) async {
-    // Başarı kesinleştiği anda yeni ham kare almayı kesiyoruz; yeşil durum
-    // ekranda kalırken kamera gereksiz kişisel veri üretmesin.
+    // Başarı kesinleşince ham kare alımı durur; gereksiz kişisel veri
+    // üretilmesin.
     try {
       final lifecycleSync = _lifecycleSync;
       if (lifecycleSync != null) await lifecycleSync;
@@ -251,9 +247,8 @@ class _LiveMrzScannerState extends State<LiveMrzScanner>
           fitted.destination,
           Offset.zero & surface,
         );
-        final scanRect = MrzScanRegion.pixelRegion(
-          previewRect.size,
-        ).shift(previewRect.topLeft);
+        final scanRect = MrzScanRegion.pixelRegion(previewRect.size)
+            .shift(previewRect.topLeft);
 
         return Stack(
           fit: StackFit.expand,

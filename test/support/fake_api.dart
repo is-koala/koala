@@ -8,17 +8,8 @@ import 'package:koala/product/network/device_hints.dart';
 import 'package:koala/product/network/device_identity.dart';
 import 'package:koala/product/network/token_storage.dart';
 
-/// Ağ katmanı testleri için sahte HTTP katmanı.
-///
-/// Gerçek soket açmadan, isteğe karşılık verilecek yanıtı testin kendisi
-/// belirliyor. Yakalanan istekler [FakeApi.requests] listesinde birikiyor;
-/// böylece hangi yola, hangi gövdeyle gidildiği de doğrulanabiliyor.
-///
-/// Ürettiği istemci **üretimdeki interceptor zincirini** taşıyor: token
-/// başlığı, cihaz başlığı ve `401` sonrası yenileme testlerde de çalışıyor
-/// (is-koala/koala#21). Bunların dayandığı iki bağımlılık — Keychain ve
-/// `SharedPreferences` — testte platform kanalına gitmesin diye bellekteki
-/// [FakeTokenStorage] ve [FakeDeviceIdentity] ile karşılanıyor.
+/// Gerçek soket açmayan sahte HTTP katmanı. İstemci **üretimdeki interceptor
+/// zincirini** taşıyor (#21); Keychain ve `SharedPreferences` bellekte.
 class FakeApi {
   FakeApi({
     required this.handler,
@@ -28,49 +19,33 @@ class FakeApi {
   }) : tokenStorage = tokenStorage ?? FakeTokenStorage(),
        deviceIdentity = deviceIdentity ?? FakeDeviceIdentity();
 
-  /// Gelen isteğe karşılık dönülecek sahte yanıtı üretir.
   final FutureOr<FakeApiResponse> Function(RequestOptions options) handler;
 
-  /// İstemcinin token'ları okuyup yazdığı depo. Testin kendisi de okuyabilir:
-  /// yenileme sonrası yeni erişim token'ının saklandığı buradan görülüyor.
+  /// Yenileme sonrası saklanan token buradan görülüyor.
   final TokenStorage tokenStorage;
 
   final DeviceIdentity deviceIdentity;
 
-  /// Cihaz ipucu başlıkları (`X-Koala-OS` …). Verilmezse test makinesinin
-  /// kendi değerleri gidiyor; başlıkları ölçen test sabit bir ipucu geçiyor.
+  /// Verilmezse test makinesinin değerleri gider.
   final DeviceHints? deviceHints;
 
-  /// Sahte sunucuya ulaşan istekler, sırayla.
   final List<RequestOptions> requests = [];
 
-  /// Beklenen istek sayısına göre bekleyenler; anahtar eşiğin kendisi.
   final Map<int, Completer<void>> _arrivals = {};
 
-  /// Yenileme başarısız olduğunda `AuthInterceptor`'ın oturum sonlandırmayı
-  /// kaç kez istediği. Eşzamanlı hataların aynı sonucu paylaştığı testlerde
-  /// yalnız bir kez çağrıldığını da ölçebilmek için sayaç tutuluyor.
+  /// Eşzamanlı hataların tek sonucu paylaştığını ölçmek için sayaç.
   int sessionExpirationCount = 0;
 
   bool get sessionExpired => sessionExpirationCount > 0;
 
-  /// Sahte katmana ulaşan istek sayısı [count] olana kadar bekler.
-  ///
-  /// Uçuştaki bir isteğin araya girmesini beklemenin **tek doğru** yolu bu:
-  /// `Future.delayed` ile duvar saatinden pay biçmek yüklü bir makinede
-  /// sessizce yetmiyor ve iddia, üretim kodu doğruyken kırmızıya dönüyor
-  /// (is-koala/koala#88). İstek üretimdeki interceptor zincirinden geçtiği
-  /// için beş olay-döngüsü turu istiyor; kaç milisaniye sürdüğü makinenin o
-  /// anki yüküne bağlı, yani tahmin edilemez. Burada beklenen olayın
-  /// kendisi: istek adaptöre ulaştığı anda bu `Future` tamamlanıyor.
-  ///
-  /// Sayı çağrı anında zaten [count] ise beklemeden döner.
+  /// İstek sayısı [count] olana kadar bekler. Uçuştaki isteği beklemenin **tek
+  /// doğru** yolu: `Future.delayed` yüklü makinede yetmiyor (#88). İstek
+  /// adaptöre ulaşınca tamamlanır; sayı zaten [count] ise hemen döner.
   Future<void> requestsReach(int count) {
     if (requests.length >= count) return Future<void>.value();
     return (_arrivals[count] ??= Completer<void>()).future;
   }
 
-  /// Adaptörün isteği kaydettiği tek yer; bekleyenler buradan uyandırılıyor.
   void _recordRequest(RequestOptions options) {
     requests.add(options);
     for (final entry in _arrivals.entries) {
@@ -80,7 +55,6 @@ class FakeApi {
     }
   }
 
-  /// Testte kullanılacak, sahte katmana bağlı istemci.
   ApiClient get client {
     final dio = Dio(BaseOptions(baseUrl: 'https://test.local'))
       ..httpClientAdapter = _FakeAdapter(this);
@@ -95,11 +69,8 @@ class FakeApi {
   }
 }
 
-/// Bellekte duran token deposu.
-///
-/// `TokenStorage`'ın kendisi Keychain'e gidiyor; testte platform kanalı yok.
-/// Gerçek saklama davranışını sınayan testler `TokenStorage.withStorage` ile
-/// sahte güvenli depoyu kullanmayı sürdürüyor.
+/// Bellekteki token deposu; gerçek saklamayı sınayan testler
+/// `TokenStorage.withStorage` kullanıyor.
 class FakeTokenStorage implements TokenStorage {
   FakeTokenStorage({
     this.accessToken,
@@ -147,7 +118,6 @@ class FakeTokenStorage implements TokenStorage {
   }
 }
 
-/// Sabit cihaz kimliği; gerçeği `SharedPreferences`'a gidiyor.
 class FakeDeviceIdentity implements DeviceIdentity {
   FakeDeviceIdentity({this.id = 'test-device-id'});
 
@@ -157,7 +127,6 @@ class FakeDeviceIdentity implements DeviceIdentity {
   Future<String> deviceId() async => id;
 }
 
-/// Sahte sunucunun döndüreceği yanıt.
 class FakeApiResponse {
   const FakeApiResponse({
     required this.statusCode,
@@ -165,24 +134,19 @@ class FakeApiResponse {
     this.headers = const {},
   }) : rawBody = null;
 
-  /// JSON olmayan gövde döndüren yanıt (ör. bir hata sayfası).
   const FakeApiResponse.raw({required this.statusCode, required String body})
     : body = null,
       headers = const {},
       rawBody = body;
 
-  /// Ağa hiç çıkılamamış gibi davranan yanıt (bağlantı hatası).
   const FakeApiResponse.connectionError()
     : statusCode = -1,
       body = null,
       headers = const {},
       rawBody = null;
 
-  /// Sunucuya ulaşılmış ama zamanında yanıt gelmemiş hâl.
-  ///
-  /// [FakeApiResponse.connectionError]'dan ayrı: ikisi farklı
-  /// `DioExceptionType` üretiyor ve `ApiClient` bunları farklı tiplere
-  /// çeviriyor. Bu yol da zarf taşımıyor, yani hata kategorisi olamaz.
+  /// Zaman aşımı; bağlantı hatasından farklı `DioExceptionType` üretiyor. Zarf
+  /// taşımadığı için kategorisi yok.
   const FakeApiResponse.timeout()
     : statusCode = -2,
       body = null,
@@ -192,10 +156,8 @@ class FakeApiResponse {
   final int statusCode;
   final Map<String, dynamic>? body;
 
-  /// Yanıta eklenen başlıklar (`location` gibi); yönlendirmeler için.
   final Map<String, String> headers;
 
-  /// Doluysa gövde JSON'a çevrilmeden olduğu gibi gönderilir.
   final String? rawBody;
 
   bool get isConnectionError => statusCode == -1;

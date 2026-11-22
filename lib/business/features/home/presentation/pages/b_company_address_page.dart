@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/business/features/home/presentation/providers/b_company_provider.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
@@ -12,16 +12,9 @@ import 'package:koala/product/widgets/map_first_address_page.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:provider/provider.dart';
 
-/// Şirket adresi: harita-öncelikli ekranın `PATCH /companies/{id}`
-/// gövdesindeki `address` alanına bağlanmış hâli (is-koala/koala#184).
-///
-/// *Adresim* (`AddressPage`) ile aynı kalıp: ekran adresi kendisi kaydeder,
-/// sunucu reddederse `MapFirstAddressPage` açık kalıp hatayı gösterir,
-/// başarıda `BCompanyProvider` yanıttaki şirketle tazelenir ve ekran
-/// kapanır; firma bilgileri sayfası sağlayıcıyı zaten izliyor.
-///
-/// Firma bilgileri sayfası buraya yalnızca şirket yüklüyken ve kullanıcı
-/// `ADMIN` iken yol veriyor; sunucu da yetkiyi kendisi denetliyor.
+/// Şirket adresi: harita ekranının `PATCH /companies/{id}`'e bağlı hâli (#184).
+/// *Adresim* ile aynı kalıp: red gelirse ekran açık kalır, başarıda
+/// `BCompanyProvider` tazelenir. Yalnız `ADMIN`.
 class BCompanyAddressPage extends StatelessWidget {
   const BCompanyAddressPage({
     super.key,

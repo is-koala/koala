@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/employee/core/widgets/job_detail_bottom_sheet.dart';
@@ -79,13 +79,9 @@ FakeApi _api(Map<String, dynamic> detail) {
   );
 }
 
-/// Sheet'i **açık** hâlde çizer.
-///
-/// Konum kartı yalnız sheet genişleyince çiziliyor (`expandProgress`), ve o
-/// oran `DraggableScrollableController`'dan geliyor — o yüzden kart, üretimde
-/// olduğu gibi gerçek bir `DraggableScrollableSheet` içinde açılıyor. Kapalı
-/// sheet'i kandırıp kartı zorla çizmek, kartın hiç görünmediği bir kusuru
-/// yeşile boyardı.
+/// Sheet'i **açık** çizer: konum kartı yalnız açılınca çiziliyor, o yüzden
+/// gerçek `DraggableScrollableSheet` içinde. Kartı zorla çizmek görünmeyen
+/// kartı yeşile boyardı.
 Future<void> _pumpOpenSheet(
   WidgetTester tester, {
   required Job job,
@@ -248,10 +244,8 @@ void main() {
           brightness: brightness,
         );
 
-        // Harness sheet'i konum kartına kadar kaydırıyor; işveren türü en
-        // üstteki şirket satırında ve tembel listede yeniden yukarı çıkmadan
-        // yok. Rozet değil, adın önünde bir ikon; türü erişilebilirlik
-        // etiketi söylüyor.
+        // Şirket satırı en üstte; tembel listede görünmesi için yukarı
+        // kaydırılıyor. Tür adın önünde ikon, erişilebilirlik etiketi söylüyor.
         final scrollable = find.byType(Scrollable).first;
         final employerType = find.byWidgetPredicate(
           (widget) =>

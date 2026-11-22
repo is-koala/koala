@@ -5,7 +5,6 @@ import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/network/api_paths.dart';
 
-/// Şirket yetkilileri ve davet uçları.
 class CompanyContactService {
   CompanyContactService._(this._apiClient);
 
@@ -71,11 +70,7 @@ class CompanyContactService {
     );
   }
 
-  /// Sunucu kodunu kullanıcıya gösterilecek metne çevirir.
-  ///
-  /// Yönlendirme `errorCode` üzerinden: 404 hem "kullanıcı yok" hem
-  /// "davet size ait değil" olabiliyor, 409 hem "zaten yetkili" hem
-  /// "bekleyen davet" hem "son yönetici".
+  /// `errorCode`'a bakılıyor: `404` ve `409` birkaç ayrı durumu taşıyor.
   static String messageFor(ApiException error) {
     switch (error.errorCode) {
       case 'USER_NOT_FOUND_BY_EMAIL':

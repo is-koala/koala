@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/network/api_config.dart';
 import 'package:koala/business/features/home/presentation/providers/b_page_provider.dart';
 import 'package:koala/employee/features/home/presentation/providers/job_category_provider.dart';
@@ -32,10 +32,8 @@ void main() {
   runApp(
     MultiProvider(
       providers: [
-        // Harita anahtarı derlemede var mı: nesne burada okunmadan kuruluyor,
-        // cevabı açılış ekranı alıyor (`SplashPage._initialize`) — `main`
-        // senkron kalır. Kapalıysa harita ekranları yer tutucu gösterir
-        // (is-koala/koala#172).
+        // Nesne okunmadan kuruluyor, cevabı splash alıyor; `main` senkron kalır
+        // (#172).
         ChangeNotifierProvider(create: (_) => MapsAvailability()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
@@ -50,17 +48,13 @@ void main() {
           create: (_) => TimesheetQueueProvider(),
           lazy: false,
         ),
-        // Çevrimdışı servis biniş okutmaları (is-koala/koala#217): mesai
-        // kuyruğuyla aynı gerekçe, açılışta boşalması gerekiyor.
+        // Çevrimdışı biniş okutmaları (#217); açılışta boşalmalı.
         ChangeNotifierProvider(
           create: (_) => BoardingQueueProvider(),
           lazy: false,
         ),
-        // "Değerlendirdim mi" artık sunucudan (`myReview`); provider yalnız
-        // oturumluk "az önce gönderdim" belleği. Provider tembel: önceki
-        // sürümlerin disk önbelleği her açılışta provider ilk okunduğunda
-        // taranıyor; ilk temizlikten sonra silinecek anahtar kalmadığı için
-        // boş bir döngü (is-koala/koala#189).
+        // "Az önce gönderdim" belleği; tembel, ilk okunuşta eski disk
+        // önbelleğini temizler (#189).
         ChangeNotifierProvider(
           create: (_) {
             unawaited(ReviewProvider.purgeLegacyCache());

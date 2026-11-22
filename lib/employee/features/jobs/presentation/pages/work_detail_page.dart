@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/core/directions_links.dart';
@@ -63,38 +63,27 @@ import 'package:url_launcher/url_launcher.dart';
 
 part 'work_detail_pagemodel.dart';
 
-/// Üst menüdeki ikincil eylemler.
 enum _WorkMenuAction { cancel, dispute, withdraw }
 
-/// `/work-detail` rotasının `extra`'sı: kayıt + açılış bağlamı.
-///
-/// İşlerim satırı yalnız [MyJob] veriyor; `TRANSPORT` push'u (`SEAT_DROPPED`)
-/// buradan geliyor ve ulaşım kartını "yeniden seçin" hâlinde açtırıyor
-/// (is-koala/koala#197). Rota ikisini de kabul ediyor.
+/// Rotanın `extra`'sı: kayıt + açılış bağlamı. `SEAT_DROPPED` push'u ulaşım
+/// kartını "yeniden seçin" hâlinde açtırır (#197).
 class WorkDetailArgs {
   const WorkDetailArgs({required this.job, this.seatDropped = false});
 
   final MyJob job;
 
-  /// Koltuğu düşmüş bir atamaya bildirimden gelindi.
   final bool seatDropped;
 
-  /// `extra` bir [MyJob] ya da [WorkDetailArgs]; başka bir şeyse rota
-  /// eskisi gibi fırlatıyor.
+  /// Başka türse rota eskisi gibi fırlatır.
   static WorkDetailArgs fromExtra(Object? extra) => switch (extra) {
     final WorkDetailArgs args => args,
     _ => WorkDetailArgs(job: extra as MyJob),
   };
 }
 
-/// Bir işin — başvurunun ya da atamanın — detay sayfası.
-///
-/// İşlerim'in her satırı buraya açılıyor; Kazançlar'daki ödeme önce
-/// hakediş detayını açıyor, oradaki düğme buraya geliyor (is-koala/koala#177,
-/// #189). Satır bir özet; burada ilanın açık adresi (atama
-/// kurulduysa), işverenin kimliği, kazancı, ödemenin durumu, zaman
-/// çizelgesi, iptal kaydı ve satırdaki eylemlerin aynısı var. Eylemler
-/// [WorkActionsPagemodel]'den geliyor; İşlerim'le aynı akış, aynı kurallar.
+/// Başvurunun ya da atamanın detay sayfası (#177): açık adres, işveren, kazanç,
+/// ödeme, çizelge, iptal ve satırdaki eylemlerin aynısı
+/// ([WorkActionsPagemodel]).
 class WorkDetailPage extends StatefulWidget {
   const WorkDetailPage({
     super.key,
@@ -107,23 +96,17 @@ class WorkDetailPage extends StatefulWidget {
     this.seatDropped = false,
   });
 
-  /// Açılan kayıt. [MyJob.assignment] ya da [MyJob.application] dolu olmalı;
-  /// sayfa çizelgeyi ve işvereni satırdan değil kaynaktan okuyor.
+  /// Kaynak kayıt dolu olmalı; çizelge ve işveren oradan okunuyor.
   final MyJob job;
 
-  /// Testler için: verilmezse üretimdeki tekil servisler kullanılıyor.
   final AssignmentService? assignmentService;
   final ChatService? chatService;
   final JobService? jobService;
   final TransportService? transportService;
 
-  /// `SEAT_DROPPED` push'undan açıldı: ulaşım kartı koltuğu olmayan servis
-  /// yönünü "plandan kaldırıldı, yeniden seçin" diye açıklıyor.
   final bool seatDropped;
 
-  /// Harita bağlantısını açan kapı; verilmezse harici uygulama
-  /// (`url_launcher`). Testler sahte bir açıcı geçip hangi adresin
-  /// açıldığını ölçüyor — `BJobDetailPage.openExternalUrl` ile aynı kalıp.
+  /// Testler hangi adresin açıldığını ölçüyor; verilmezse `url_launcher`.
   final Future<bool> Function(Uri url)? openExternalUrl;
 
   @override
@@ -131,12 +114,9 @@ class WorkDetailPage extends StatefulWidget {
 }
 
 class _WorkDetailPageState extends WorkDetailPagemodel {
-  /// Buton içindeki bekleme halkasının kalınlığı.
   static const double _spinnerStroke = 2;
 
-  /// Kazancın para birimi. Çalışan görünümünde fiyat snapshot'ı gelmiyor
-  /// (koala-backend#294), ilan ücreti `salary` birim taşımıyor ve uygulama
-  /// yalnız TRY'de çalışıyor.
+  /// Çalışana snapshot gelmiyor ve ücret birim taşımıyor; uygulama yalnız TRY.
   static const String _defaultCurrency = 'TRY';
 
   @override
@@ -211,9 +191,7 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
 
   // ------------------------------------------------------------- Üst menü
 
-  /// İkincil eylemler: iptal, sorun bildirme, başvuruyu geri çekme.
-  ///
-  /// Koşullar [MyJob] üzerinde; İşlerim satırının menüsü aynı kuralı okuyor.
+  /// Koşullar [MyJob]'da; İşlerim menüsüyle aynı.
   Widget? _menu() {
     final canCancel = job.canCancel;
     final canDispute = job.canDispute;
@@ -274,7 +252,6 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
     );
   }
 
-  /// İlan detayı çekilemediğinde üstte duran şerit; sayfa kalanıyla çalışıyor.
   Widget _detailErrorStrip() {
     return Container(
       padding: AppPadding.card,
@@ -299,7 +276,6 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
     );
   }
 
-  /// Başlık kartı: durum, ilan başlığı, kategori, ücret ve tarih.
   Widget _headerCard() {
     final summary = summaryJob;
     final description = detail?.description ?? job.description;
@@ -421,7 +397,6 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
     MyJobStatus.withdrawn || MyJobStatus.unknown => context.textTertiary,
   };
 
-  /// İşin tarihi: ilanın başlangıç–bitiş anı, o yoksa satırdaki tarih.
   Widget _dateLine(Job? summary) {
     final start = summary?.startDateTime;
     final end = summary?.endDateTime;
@@ -449,13 +424,8 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
     );
   }
 
-  /// Ücret: atamada çalışanın kazancı, başvuruda ilan ücreti.
-  ///
-  /// Çalışan yalnız **kendi kazancını** görür (`workerPayout`;
-  /// koala-backend#294). Hizmet bedeli ve işverenin ödediği toplam bu
-  /// kabukta hiçbir koşulda çizilmiyor — sunucu artık `pricing`'i çalışana
-  /// göndermiyor, eski sunucu gönderse de buradan okunmuyor
-  /// (`worker_fee_guard_test` bunu sabitliyor).
+  /// Atamada çalışanın kazancı, başvuruda ilan ücreti. Hizmet bedeli ve işveren
+  /// toplamı bu kabukta hiçbir koşulda çizilmez (`worker_fee_guard_test`).
   Widget _priceBlock() {
     final payoutLabel = TurkishMoneyFormatter.format(
       job.price.toStringAsFixed(2),
@@ -487,10 +457,8 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
     );
   }
 
-  /// İşveren kartı: şirket ilanında ad + logo + şirket bağlantısı, bireyselde
-  /// ad + fotoğraf + kişinin profiline bağlantı. Kaynak sırası: atamanın kendi
-  /// alanları (koala-backend#282), sonra ilan detayı, sonra özetteki şirket
-  /// adı.
+  /// Şirket ilanında ad + logo + şirket, bireyselde ad + fotoğraf + profil.
+  /// Kaynak: atama, sonra ilan detayı, sonra özet.
   Widget _employerCard() {
     final assignment = job.assignment;
     final isCompany = job.employerType == JobEmployerType.company;
@@ -519,18 +487,9 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
     );
   }
 
-  /// Adres: sunucu `EXACT` verdiyse açık adres ve tarif, vermediyse ilçe/il.
-  ///
-  /// Kesinliğe **detay** karar veriyor; özet yalnızca ilçe/il taşıyor.
-  /// Detay gelmeden ya da gelemezse özetin kesinliği geçerli — o da
-  /// bilinmiyorsa yaklaşık, çünkü kanıtlanmamış yetki kesin sayılmaz.
-  ///
-  /// Yaklaşık yanıtta açık adres de tarif de **çizilmiyor**, gövdede gelmiş
-  /// olsa bile: sunucu `APPROXIMATE` derken sokak yazmak ADR-0003'ün
-  /// istemci tarafındaki ihlali olurdu. O zaman yalnız ilçe/il var.
-  ///
-  /// "Yol tarifi al" da aynı kapının arkasında (is-koala/koala#188): yalnız
-  /// kesin konumda ve hedef koordinat biliniyorsa ([directionsTarget]).
+  /// Adres: `EXACT` ise açık adres ve tarif, değilse ilçe/il. Kesinliğe detay
+  /// karar verir; bilinmiyorsa yaklaşık. Yaklaşıkta gövdede gelse bile sokak
+  /// yazılmaz (ADR-0003). "Yol tarifi al" da aynı kapının arkasında (#188).
   Widget _addressCard() {
     final address = detail?.address;
     final precision = addressPrecision;
@@ -553,12 +512,9 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
     );
   }
 
-  /// Ulaşım kartı (is-koala/koala#197): koltuk seçimi, seçilen servisin
-  /// plakası/şoförü, durağın adresi ve yol tarifi. Plan yoksa (eski sunucu
-  /// dahil) [transport] `null` ve kart çizilmiyor.
+  /// Ulaşım kartı (#197); plan yoksa çizilmez.
   Widget _transportCard(AssignmentTransport transport) {
-    // Biniş kuyruğu `main.dart`'ta kayıtlı; testlerin çoğu onu kurmuyor,
-    // o yüzden yoksa bekleyen okutma da yok sayılıyor.
+    // Testlerin çoğu kuyruğu kurmuyor; yoksa bekleyen okutma da yok.
     final queue = context.watch<BoardingQueueProvider?>();
     final assignmentId = job.assignmentId;
     final pending = <ShuttleDirection, List<PendingBoarding>>{
@@ -567,8 +523,8 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
           direction: queue.entriesFor(
             assignmentId,
             direction,
-            // Telefon kamerasıyla okutulan kayıt atamayı bilmiyor; koltuğun
-            // servisiyle eşleşiyor.
+            // Kamerayla açılan kayıt atamayı bilmiyor; koltuğun servisiyle
+            // eşleşir.
             shuttleId: transport.seatFor(direction)?.shuttleId,
           ),
     };
@@ -590,7 +546,6 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
     );
   }
 
-  /// Ödeme durumu: dört hâlin her biri kendi cümlesiyle.
   Widget _paymentCard() {
     final status = job.paymentStatus!;
     final payout = job.assignment?.payout;
@@ -647,11 +602,7 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
     PaymentStatus.failed || PaymentStatus.refunded => AppColors.danger,
   };
 
-  /// Değerlendirme: tamamlanmış atamada durum ve düğme.
-  ///
-  /// "Değerlendirdim mi" sunucudan geliyor (`myReview`); [ReviewProvider]
-  /// yalnız az önce gönderilenin boşluğunu dolduruyor. Kart iş tamamlanınca
-  /// çıkıyor, ödemenin serbest bırakılmasını beklemiyor.
+  /// Durum sunucudan (`myReview`); iş tamamlanınca çıkar, ödemeyi beklemez.
   bool get _canReview =>
       job.assignmentId != null &&
       (job.status == MyJobStatus.completed || job.status == MyJobStatus.past);
@@ -675,7 +626,6 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
     );
   }
 
-  /// Mesaj kapısı: açıksa düğme, kapalıysa sebebi.
   Widget _messageCard() {
     final note = job.messaging.noteFor(asEmployer: false);
 
@@ -713,7 +663,6 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
     );
   }
 
-  /// Çevrimdışı kuyrukta bekleyen mesai kayıtları.
   List<Widget> _queueStatus() {
     final assignmentId = job.assignmentId;
     if (assignmentId == null) return const [];
@@ -733,11 +682,8 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
 
   // ---------------------------------------------------------- Alt çubuk
 
-  /// Birincil eylem, satırdakiyle aynı koşullarla.
-  ///
-  /// Cevap bekleyen atamada iki karar butonu; onaylanmış işte mesai (ücret
-  /// emanetteyse); süren işte çıkış. Ödeme bekleyen işte sebep zaten ödeme
-  /// kartında yazıyor, çubuk çizilmiyor.
+  /// Birincil eylem, satırdakiyle aynı koşullarda. Ödeme bekleyen işte sebep
+  /// ödeme kartında, çubuk yok.
   Widget? _actionBar() {
     final content = switch (job.status) {
       MyJobStatus.awaitingApproval => _respondButtons(),
@@ -816,9 +762,8 @@ class _WorkDetailPageState extends WorkDetailPagemodel {
     );
   }
 
-  /// Mesai butonu: açık oturum (ya da kuyrukta bekleyen giriş) varsa
-  /// "Mesaiyi Bitir", yoksa "Mesaiyi Başlat". Destek gerektiren kuyruk
-  /// kaydı varken buton yok; kuyruk şeridi yolu gösteriyor.
+  /// Açık oturum (ya da kuyruktaki giriş) varsa "Bitir", yoksa "Başlat". Destek
+  /// gerektiren kayıt varken buton yok.
   Widget? _timesheetButton() {
     final assignmentId = job.assignmentId;
     if (assignmentId == null) return null;

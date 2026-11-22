@@ -3,7 +3,6 @@ part of 'shared_job_page.dart';
 abstract class SharedJobPageModel extends State<SharedJobPage> {
   late final JobService _jobService = widget.jobService ?? JobService();
 
-  /// Doluysa ilan açılamadı; sayfa sebebini ve keşfete dönüşü gösteriyor.
   String? errorMessage;
 
   @override
@@ -27,9 +26,8 @@ abstract class SharedJobPageModel extends State<SharedJobPage> {
     }
     if (!mounted) return;
 
-    // Keşfete geçiliyor, sheet keşfetin üstünde açılıyor: kapanınca kullanıcı
-    // boş bir ara sayfada değil, uygulamanın kendisinde kalıyor. Bu sayfa
-    // `go` ile kalkacağı için sheet kök navigator'ın bağlamıyla açılıyor.
+    // Sheet keşfetin üstünde açılır ki kapanınca kullanıcı uygulamada kalsın;
+    // bu sayfa `go` ile kalktığı için kök navigator'ın bağlamı.
     final rootNavigator = RouterManager.router.routerDelegate.navigatorKey;
     context.go('/explore');
     WidgetsBinding.instance.addPostFrameCallback((_) {

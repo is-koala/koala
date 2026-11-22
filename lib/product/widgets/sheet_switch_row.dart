@@ -1,18 +1,11 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 
-/// Bottom sheet içindeki açma/kapama satırı.
-///
-/// İki uygulamanın sheet'leri de kullanabilsin diye `product/` altında.
-///
-/// `SwitchListTile` **kullanılamıyor**: içeride bir `ListTile` kuruyor ve
-/// `AppBottomSheet`'in renkli kabuğu araya girdiği için Flutter
-/// "background color or ink splashes may be invisible" assert'ini düşürüyor.
-/// Projedeki bütün dokunulabilir satırlar gibi bu da `Material` + `InkWell`
-/// — `ThemeModeSheet._option` ile aynı kurgu.
+/// Bottom sheet içindeki açma/kapama satırı. `SwitchListTile` değil: içindeki
+/// `ListTile` renkli kabukta "ink splashes may be invisible" assert'i veriyor.
 class SheetSwitchRow extends StatelessWidget {
   const SheetSwitchRow({
     super.key,
@@ -31,8 +24,8 @@ class SheetSwitchRow extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: AppRadius.innerCircular,
-        // Etikete dokunmak da anahtarı çeviriyor; `SwitchListTile`'ın
-        // kaybedilen tek davranışı buydu.
+        // Etikete dokunmak da çeviriyor; `SwitchListTile`'dan kaybedilen tek
+        // davranış buydu.
         onTap: () => onChanged(!value),
         child: Padding(
           padding: AppPadding.tile,

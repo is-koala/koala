@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -31,17 +31,15 @@ class LocationService with WidgetsBindingObserver {
     if (_disposed) return;
 
     if (status.isGranted) {
-      // İzin var, doğruluk kontrolü
       final accuracy = await Geolocator.getLocationAccuracy();
       if (_disposed) return;
       if (accuracy == LocationAccuracyStatus.reduced) {
-        // Yaklaşık konum verilmiş → request atma, dialog göster
+        // Yaklaşık konum verilmiş: istek atma, diyalog göster.
         if (!_dialogShown) {
           _dialogShown = true;
           _showPermissionDialog();
         }
       } else {
-        // Tam konum izni verildi - açık dialog varsa kapat
         if (_dialogShown && context.mounted) {
           Navigator.of(
             context,
@@ -53,7 +51,7 @@ class LocationService with WidgetsBindingObserver {
         _getLocation();
       }
     } else if (status.isDenied) {
-      // Sadece hiç izin verilmemişse request at
+      // Yalnız hiç izin verilmemişse istek at.
       if (!_requestedOnce) {
         _requestedOnce = true;
         status = await Permission.location.request();
@@ -61,7 +59,6 @@ class LocationService with WidgetsBindingObserver {
       }
 
       if (status.isGranted) {
-        // İzin verildi - açık dialog varsa kapat
         if (_dialogShown && context.mounted) {
           Navigator.of(
             context,
@@ -71,7 +68,6 @@ class LocationService with WidgetsBindingObserver {
         _dialogShown = false;
         _getLocation();
       } else {
-        // Yaklaşık veya reddedilmiş → dialog göster
         if (!_dialogShown) {
           _dialogShown = true;
           _showPermissionDialog();

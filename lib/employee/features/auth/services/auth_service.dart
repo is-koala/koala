@@ -12,10 +12,7 @@ import 'package:koala/product/services/push_token_lifecycle.dart';
 import 'package:koala/product/services/push_token_service.dart';
 import 'package:koala/product/services/push_token_source.dart';
 
-/// Kimlik doğrulama uçlarının tek sarmalayıcısı.
-///
-/// Token'ların saklanması ve oturum bayraklarının yazılması da burada:
-/// sayfalar `SharedPreferences`'a doğrudan yazmak yerine bu servisi çağırıyor.
+/// Kimlik doğrulama uçları; token'ları ve oturum bayraklarını da burası yazar.
 class AuthService {
   AuthService._(
     this._apiClient,
@@ -59,10 +56,8 @@ class AuthService {
   final UserService _userService;
   final PushTokenLifecycle _pushTokens;
 
-  /// Kayıt akışının ilk adımı: backend doğrulama e-postası gönderiyor.
-  ///
-  /// Kullanıcı zaten kayıtlıysa uç yine 200 dönüyor (hesabın varlığını
-  /// sızdırmamak için), yani başarı yanıtı "mail gitti" garantisi değil.
+  /// Kayıtlı kullanıcıda da `200` döner (varlık sızmasın); başarı "mail gitti"
+  /// garantisi değil.
   Future<void> startRegistration({
     required String firstName,
     required String lastName,
@@ -75,16 +70,13 @@ class AuthService {
         'firstName': firstName,
         'lastName': lastName,
         'email': email,
-        // Backend bu alanı `@JsonProperty("isEmployer")` ile sabitledi ve
-        // `@NotNull` yaptı: eksik ya da farklı adla gönderilirse istek
-        // doğrulamadan dönüyor.
+        // Backend `@NotNull` ve adı sabit; eksik ya da farklı adla istek döner.
         'isEmployer': isEmployer,
       },
     );
   }
 
-  /// Kayıt akışının ikinci adımı: e-postadaki bağlantıdan gelen token'ı
-  /// şifre belirleme token'ına çevirir.
+  /// E-postadaki token'ı şifre belirleme token'ına çevirir.
   Future<RegistrationVerification> verifyRegistrationToken(
     String registrationToken,
   ) {
@@ -96,11 +88,8 @@ class AuthService {
     );
   }
 
-  /// Kayıt akışının son adımı: şifreyi belirler, kullanıcıyı oluşturur ve
-  /// oturumu açar.
-  ///
-  /// [consents] zorunlu: backend yürürlükteki zorunlu sözleşmelerin hepsinin
-  /// onaylanmış olmasını istiyor, eksikse kaydı reddediyor.
+  /// Şifreyi belirler, kullanıcıyı oluşturur ve oturumu açar. [consents]
+  /// zorunlu; eksik onayla backend reddeder.
   Future<void> completeRegistration({
     required String setPasswordToken,
     required String password,
@@ -121,11 +110,8 @@ class AuthService {
     await _pushTokens.syncQuietly();
   }
 
-  /// E-posta ve şifreyle giriş yapar, oturumu açar.
-  ///
-  /// Giriş yanıtı kullanıcının iş veren olup olmadığını taşımadığı için
-  /// hemen ardından `/users/me` çağrılıp tip güncelleniyor. Profil alınamazsa
-  /// yarım oturum temizlenir ve giriş başarısız sayılır.
+  /// Giriş yanıtı kullanıcı tipini taşımadığı için ardından `/users/me` okunur;
+  /// alınamazsa yarım oturum temizlenir.
   Future<CurrentUser> login({
     required String email,
     required String password,
@@ -161,31 +147,23 @@ class AuthService {
     }
   }
 
-  /// Oturumu açmış kullanıcının bilgileri.
-  ///
-  /// Ucun tek sarmalayıcısı [UserService]; buradaki kısayol giriş akışının
-  /// kendi içinde kapalı kalması için duruyor.
+  /// Giriş akışının kendi içinde kapalı kalsın diye kısayol.
   Future<CurrentUser> fetchCurrentUser() => _userService.fetchCurrentUser();
 
-  /// Çıkış yapar.
-  ///
-  /// Sunucu çağrısı başarısız olsa bile yerel oturum kapatılıyor: kullanıcı
-  /// çıkmak istediğinde cihazda token bırakmamak, sunucudaki oturumu
-  /// kapatmaktan daha önemli.
+  /// Sunucu çağrısı düşse de yerel oturum kapanır: cihazda token bırakmamak
+  /// daha önemli.
   Future<void> logout() async {
     try {
       await _pushTokens.clearQuietly();
       await _apiClient.postWithoutData(ApiPaths.logout);
     } on ApiException {
-      // Yut: yerel temizlik aşağıda yapılıyor.
+      // Yerel temizlik aşağıda yapılıyor.
     } finally {
       await _sessionManager.end();
     }
   }
 
-  /// Şifre sıfırlama e-postası ister.
-  ///
-  /// Adres kayıtlı değilse de 200 dönüyor.
+  /// Kayıtlı olmayan adreste de `200`.
   Future<void> forgotPassword(String email) {
     return _apiClient.postWithoutData(
       ApiPaths.forgotPassword,
@@ -193,7 +171,6 @@ class AuthService {
     );
   }
 
-  /// E-postadaki bağlantıdan gelen token ile yeni şifreyi yazar.
   Future<void> resetPassword({
     required String resetToken,
     required String newPassword,

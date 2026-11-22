@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -10,11 +10,8 @@ import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/features/dispute/models/dispute_evidence.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// Kanıt listesindeki tek dosya: ad, tür, boyut, yükleyen ve tarih.
-///
-/// Dokunmak dosyayı indirir ([onDownload]); dosya uygulamada **çizilmiyor** —
-/// sunucu `attachment` olarak servis ediyor ve imzalı adres üç dakika
-/// geçerli, önizleme için saklanamaz.
+/// Kanıt satırı; dokununca indirir. Dosya uygulamada çizilmiyor: imzalı adres
+/// üç dakika geçerli, önizleme için saklanamaz.
 class EvidenceTile extends StatelessWidget {
   const EvidenceTile({
     super.key,
@@ -26,19 +23,15 @@ class EvidenceTile extends StatelessWidget {
 
   final DisputeEvidence evidence;
 
-  /// Dokunuş: indirme isteği.
   final VoidCallback onDownload;
 
-  /// Bu satırın indirmesi sürüyor.
   final bool isDownloading;
 
   /// Başka bir indirme sürüyor; bu satır kilitli.
   final bool isBusy;
 
-  /// Tür ikonunun kutusu.
   static const double _iconBox = 40;
 
-  /// Dosya adının görünen en fazla satırı.
   static const int _nameMaxLines = 2;
 
   @override

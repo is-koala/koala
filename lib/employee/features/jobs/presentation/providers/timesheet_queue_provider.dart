@@ -16,7 +16,6 @@ typedef TimesheetEventIdFactory = String Function();
 
 final Stopwatch _processClock = Stopwatch()..start();
 
-/// Çevrimdışı mesai olayının kalıcılık, sıra ve uzlaştırma modülü.
 class TimesheetQueueProvider extends ChangeNotifier
     with WidgetsBindingObserver {
   TimesheetQueueProvider()
@@ -29,21 +28,17 @@ class TimesheetQueueProvider extends ChangeNotifier
 
   @visibleForTesting
   TimesheetQueueProvider.withAdapters({
-    required TimesheetEventStore store,
-    required TimesheetEventGateway gateway,
-    required TimesheetRetryTrigger retryTrigger,
+    required this._store,
+    required this._gateway,
+    required this._retryTrigger,
     TimesheetUtcNow? utcNow,
     TimesheetMonotonicNow? monotonicNow,
     TimesheetEventIdFactory? eventIdFactory,
-    SessionManager? sessionManager,
-  }) : _store = store,
-       _gateway = gateway,
-       _retryTrigger = retryTrigger,
-       _utcNow = utcNow ?? DateTime.now,
+    this._sessionManager,
+  }) : _utcNow = utcNow ?? DateTime.now,
        _monotonicNow =
            monotonicNow ?? (() => _processClock.elapsedMicroseconds),
-       _eventIdFactory = eventIdFactory ?? _newEventId,
-       _sessionManager = sessionManager {
+       _eventIdFactory = eventIdFactory ?? _newEventId {
     WidgetsBinding.instance.addObserver(this);
     _retrySubscription = _retryTrigger.onNetworkAvailable.listen((_) {
       _schedule(flush);
@@ -80,8 +75,7 @@ class TimesheetQueueProvider extends ChangeNotifier
   int get deliveryRevision => _deliveryRevision;
   TimesheetEvent? get lastDeliveredEvent => _lastDeliveredEvent;
 
-  /// Son teslim bilgisini, sayfa olaydan sonra bağlansa bile, tam bir kez
-  /// gösterebilmesi için tüketir.
+  /// Sayfa olaydan sonra bağlansa da tam bir kez gösterilsin.
   TimesheetEvent? takeDeliveryAcknowledgement() {
     final event = _lastDeliveredEvent;
     _lastDeliveredEvent = null;
@@ -105,9 +99,8 @@ class TimesheetQueueProvider extends ChangeNotifier
     }
   }
 
-  /// UI/lifecycle başlatmasının yakalanmayan async hataya dönüşmesini
-  /// engeller. Etkileşimli kayıt yolu, kullanıcıya hata gösterebilmek için
-  /// [startForUser] üzerinden hatayı yükseltmeye devam eder.
+  /// Arka plan başlatması yakalanmayan hataya dönüşmesin; etkileşimli yol
+  /// [startForUser] ile hatayı yükseltir.
   Future<bool> tryStartForUser(String userId) async {
     if (_isDisposed) return false;
     try {
@@ -119,7 +112,6 @@ class TimesheetQueueProvider extends ChangeNotifier
     }
   }
 
-  /// Profil isteği çevrimdışıyken de önceki oturumun kalıcı kuyruğunu açar.
   Future<void> resumeLastUser() async {
     if (_isDisposed) return;
     final userId = await _store.readLastActiveUser();
@@ -218,7 +210,6 @@ class TimesheetQueueProvider extends ChangeNotifier
         : TimesheetSubmission.pending;
   }
 
-  /// Açılış, resume, bağlantı dönüşü ve yeni olay aynı tek-uçuş yolunu kullanır.
   Future<void> flush() {
     if (_isDisposed || _activeUserId == null) return Future.value();
     _flushAgain = true;
@@ -268,18 +259,14 @@ class TimesheetQueueProvider extends ChangeNotifier
     try {
       await _gateway.send(event);
       if (generation != _generation) return false;
-      // Makullük bayrakları ret değil, sunucuda kalıcılaştırılmış bir
-      // inceleme işaretidir. Başarılı 2xx olayı kuyrukta bırakmak aynı
-      // atamanın sonraki check-in/check-out olaylarını sonsuza dek kilitler.
-      // Sayfa modeli teslim revizyonuyla oturumları yeniden yükleyip sunucudaki
-      // bayraklı kaydı görür.
+      // Makullük bayrağı ret değil, inceleme işareti. 2xx olayı kuyrukta
+      // bırakmak atamanın sonraki olaylarını sonsuza dek kilitler.
       await _acknowledge(event);
       return true;
     } on ApiException catch (error) {
       if (generation != _generation) return false;
-      // İki çakışma kategorisi de "sunucudaki hâl kuyruktakinden farklı"
-      // demek; olayı kuyrukta kilitli bırakmamak için ikisi de uzlaştırmaya
-      // gidiyor.
+      // İki çakışma kategorisi de "sunucu farklı" demek; olay kilitli kalmasın
+      // diye uzlaştırmaya gider.
       if (error.type.serverStateMoved) {
         return _reconcileConflict(
           event,
@@ -391,8 +378,7 @@ class TimesheetQueueProvider extends ChangeNotifier
   }
 
   void _reportBackgroundFailure() {
-    // SQLite hata metni sorgu argümanlarını (kullanıcı kimliği/konum)
-    // içerebilir. Arka plan sınırında yalnız sabit, PII'siz mesaj yaz.
+    // SQLite hata metni kimlik/konum içerebilir; yalnız sabit mesaj.
     debugPrint('Mesai kuyruğu arka plan işlemi tamamlanamadı.');
   }
 

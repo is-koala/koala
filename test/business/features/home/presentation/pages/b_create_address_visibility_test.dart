@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/business/features/home/presentation/pages/b_create_page.dart';
@@ -20,11 +20,8 @@ import '../../../../../support/fake_api.dart';
 import '../../../../../support/finders.dart';
 import '../../../../../support/keyboard.dart';
 
-/// İlan konum kuralı (Yusuf, 04.11.2026): şirket ilanında tam konum
-/// varsayılan olarak herkese açık, işveren "Adresi gizle" ile kapatabiliyor
-/// ve istek `addressPublic` taşıyor. Bireysel ilanda anahtar yok, alan da
-/// gönderilmiyor — bireysel ilan herkese her zaman yaklaşık. Kesinliği
-/// sunucu belirliyor; istemci yalnız tercihi iletiyor.
+/// Şirket ilanında tam konum varsayılan açık, "Adresi gizle" ile kapanır ve
+/// istek `addressPublic` taşır. Bireysel ilanda anahtar ve alan yok.
 const _createLocation = '/business/create';
 
 const _moda = ConfirmedAddress(

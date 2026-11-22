@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/employee/features/profile/presentation/providers/availability_provider.dart';
 import 'package:koala/employee/features/profile/presentation/providers/user_provider.dart';
 import 'package:koala/employee/features/profile/presentation/widgets/availability_day_editor.dart';
@@ -22,7 +22,6 @@ import 'package:provider/provider.dart';
 
 part 'availability_pagemodel.dart';
 
-/// İş arayanın haftalık müsaitlik şablonu ve tarih istisnaları.
 class AvailabilityPage extends StatefulWidget {
   const AvailabilityPage({super.key});
 

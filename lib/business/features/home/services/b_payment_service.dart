@@ -4,7 +4,6 @@ import 'package:koala/business/features/home/models/b_pricing_breakdown.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
-/// İşverenin fiyat önizleme ve ödeme denemesi uçları.
 class BPaymentService {
   BPaymentService._(this._apiClient);
 
@@ -19,7 +18,6 @@ class BPaymentService {
 
   final ApiClient _apiClient;
 
-  /// Çalışan ücreti için backend'in fiyat dökümünü getirir.
   Future<BPricingBreakdown> quote(String workerPayout) {
     return _apiClient.post<BPricingBreakdown>(
       ApiPaths.paymentQuotes,
@@ -29,7 +27,6 @@ class BPaymentService {
     );
   }
 
-  /// Atamanın bütün ödeme denemeleri, yeniden eskiye.
   Future<List<BPaymentAttempt>> fetchAttempts(String assignmentId) {
     return _apiClient.get<List<BPaymentAttempt>>(
       ApiPaths.assignmentPayments(assignmentId),

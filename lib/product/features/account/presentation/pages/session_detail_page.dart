@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -22,28 +22,18 @@ import 'package:koala/product/widgets/status_badge.dart';
 
 part 'session_detail_pagemodel.dart';
 
-/// Tek bir oturumun ayrıntısı: cihaz, IP, yaklaşık konum, zamanlar, giriş
-/// sayısı ve son girişler; altında "Cihazı adlandır" ve "Oturumu kapat".
-///
-/// Sayfa yüklenmiş bir [SessionDetail] ile açılıyor — liste ayrıntıyı önce
-/// kendisi çekiyor, çünkü eski sunucu ucu tanımıyor ve `404`'ü listede
-/// yutmak boş bir sayfa açmaktan iyi. Aşağı çekince yeniden okunuyor.
-/// Oturum kapatılınca `true` ile kapanır; liste bunu görüp yenileniyor.
+/// Oturum ayrıntısı ve "Cihazı adlandır" / "Oturumu kapat". Yüklenmiş
+/// [SessionDetail] ile açılır; kapatılınca `true` ile döner.
 class SessionDetailPage extends StatefulWidget {
   const SessionDetailPage({super.key, required this.initial, this.service});
 
-  /// Listenin çektiği ayrıntı; sayfa bununla açılıyor.
   final SessionDetail initial;
 
-  /// Testlerde sahte sunucuya bağlı örnek geçilebilsin diye.
   final SessionService? service;
 
-  /// Sunucu konum çıkaramadığında (ve IP gibi boş gelen her alanda)
-  /// yazılan tire.
   static const String missing = '—';
 
-  /// Giriş geçmişi boşken yazılan not: sunucu girişleri 0.9.28'den beri
-  /// kaydediyor, o günden önceki girişler listede yok.
+  /// Sunucu girişleri yakın zamandan beri kaydediyor; öncekiler listede yok.
   static const String emptyHistoryNote =
       'Geçmiş, güncellemeden sonraki girişleri kapsar.';
 
@@ -156,9 +146,7 @@ class _SessionDetailPageState extends SessionDetailPagemodel {
     );
   }
 
-  /// Adlandırma cihaz kimliği olmadan yapılamıyor; kendi oturumunu kapatmak
-  /// çıkış yapmak demek — o iş ayarlardaki "Çıkış Yap"a ait, listede olduğu
-  /// gibi burada da düğme çizilmiyor.
+  /// Kendi oturumunu kapatmak çıkış demek; düğme çizilmiyor.
   Widget _actions() {
     final canRename = detail.session.deviceId != null;
     final canRevoke = !detail.session.isCurrent;
@@ -259,7 +247,6 @@ class _SessionDetailPageState extends SessionDetailPagemodel {
     );
   }
 
-  /// Bilgi ve geçmiş kartlarının ortak zemini.
   Widget _card(List<Widget> rows) {
     return Container(
       decoration: BoxDecoration(
@@ -270,7 +257,6 @@ class _SessionDetailPageState extends SessionDetailPagemodel {
     );
   }
 
-  /// Kart içindeki satır: son satır hariç altı çizgili.
   Widget _row(Widget child, {required bool last}) {
     return Container(
       decoration: last
@@ -291,8 +277,8 @@ class _SessionDetailPageState extends SessionDetailPagemodel {
       ? value
       : SessionDetailPage.missing;
 
-  /// Konum IP'den çıkarılıyor; "Yaklaşık" demek, kullanıcının şehri değil
-  /// sağlayıcının çıkış noktası olabileceğini söylüyor.
+  /// Konum IP'den; "Yaklaşık" sağlayıcının çıkış noktası olabileceğini
+  /// söylüyor.
   static String _locationText(String? location) =>
       location != null && location.trim().isNotEmpty
       ? 'Yaklaşık: $location'

@@ -1,6 +1,6 @@
 import 'package:koala/product/extensions/date_extensions.dart';
 
-/// Haftalık şablonu tek bir tarih için geçersiz kılan müsaitlik kaydı.
+/// Haftalık şablonu tek bir tarih için geçersiz kılan kayıt.
 class AvailabilityException {
   const AvailabilityException({
     this.id,
@@ -9,7 +9,7 @@ class AvailabilityException {
     this.note,
   });
 
-  /// Sunucudan okunmuş kayıtlarda doludur; PUT isteği hazırlanırken yoktur.
+  /// Sunucudan okunan kayıtta dolu, istek hazırlanırken yok.
   final String? id;
   final DateTime date;
   final bool available;

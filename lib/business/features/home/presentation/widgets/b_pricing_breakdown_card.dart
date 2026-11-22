@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/business/features/home/models/b_pricing_breakdown.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
@@ -6,7 +6,7 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/formatters/turkish_money_formatter.dart';
 
-/// Backend fiyat snapshot'ını hesap yapmadan gösteren ortak kutu.
+/// Fiyat snapshot'ını hesap yapmadan gösterir.
 class BPricingBreakdownCard extends StatelessWidget {
   const BPricingBreakdownCard({super.key, required this.breakdown});
 

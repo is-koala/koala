@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/business/core/b_shell_page.dart';
 import 'package:koala/business/features/home/presentation/pages/b_create_page.dart';
@@ -78,15 +78,10 @@ import 'package:koala/product/router/employee_routes.dart';
 import 'package:koala/product/widgets/map_first_address_page.dart';
 
 class RouterManager {
-  /// Kullanıcı tipinin ana sayfası.
   static String _homeFor(String? userType) =>
       userType == SessionManager.businessType ? '/business/home' : '/explore';
 
-  /// Yönlendirme kararını veren saf fonksiyon.
-  ///
-  /// Oturum durumunu okuma [SessionManager]'ın işi; karar mantığı burada:
-  /// girdileri parametre olduğu için testten doğrudan çağrılabiliyor.
-  /// `null` dönmesi "olduğun yerde kal" demek.
+  /// Yönlendirme kararını veren saf fonksiyon; `null` "olduğun yerde kal".
   @visibleForTesting
   static String? resolveRedirect({
     required bool loggedIn,
@@ -95,17 +90,14 @@ class RouterManager {
     bool initialized = true,
     bool seenOnboarding = true,
   }) {
-    // Oturum durumu daha okunmadı: karar verilemez, splash'ta beklenir.
-    // "Okunmadı" ile "giriş yapmamış" aynı şey değil — ikisini karıştırmak
-    // açılışta giriş ekranını bir an gösterip sonra ana sayfaya atlamak
-    // demek.
+    // Oturum okunmadı: splash'ta beklenir. "Okunmadı" "giriş yapmamış"
+    // değildir; karıştırmak açılışta giriş ekranını bir an gösterir.
     if (!initialized) {
       return location == splashLocation ? null : splashLocation;
     }
 
-    // Splash geçici bir ekran: oturum okunduğuna göre kimse orada kalmaz.
-    // Bunu auth rotalarıyla aynı kümeye koymak, giriş yapmamış kullanıcıyı
-    // "zaten auth'ta" sayıp splash'ta kilitliyor.
+    // Splash'ı auth rotalarıyla aynı kümeye koymak giriş yapmamış kullanıcıyı
+    // splash'ta kilitler.
     if (location == splashLocation) {
       return loggedIn
           ? _homeFor(userType)
@@ -117,17 +109,14 @@ class RouterManager {
     final isPublicTokenRoute =
         location == '/reset-password' || location == '/email-verification';
 
-    // Giriş yapmamışsa: tanıtımı görmemişse önce o, görmüşse giriş ekranı.
     if (!loggedIn && !isAuthRoute && !isPublicTokenRoute) {
       return seenOnboarding ? '/auth' : '/onboarding';
     }
 
-    // Giriş yapmışsa ve auth sayfasındaysa kullanıcı tipine göre yönlendir
     if (loggedIn && isAuthRoute) {
       return _homeFor(userType);
     }
 
-    // Business kullanıcısı employee sayfalarına erişmeye çalışırsa
     final employeeRoutes = [
       '/explore',
       '/jobs',
@@ -136,15 +125,9 @@ class RouterManager {
       EmployeeRoutes.ownProfile,
       '/availability',
       '/earnings',
-      // Başkasının profilini çalışan açıyor; işverenin karşılığı
-      // `BusinessRoutes.userProfile`.
       EmployeeRoutes.publicProfilePrefix,
-      // Paylaşılan ilan çalışanın keşfinde açılıyor; işveren kendi ana
-      // sayfasına yönleniyor.
       '/shared-job',
-      // İşçinin biniş QR'ı ve servis QR'ı okutma ekranı (#217). İşverenin
-      // karşılıkları `/business/shuttle-*`; ortak bağlantı sayfası
-      // `/boarding-link` iki listede de yok.
+      // Biniş ekranları (#217); ortak `/boarding-link` iki listede de yok.
       EmployeeRoutes.boardingPrefix,
     ];
     final isEmployeeRoute = employeeRoutes.any(
@@ -154,7 +137,6 @@ class RouterManager {
       return '/business/home';
     }
 
-    // Employee kullanıcısı business sayfalarına erişmeye çalışırsa
     final businessRoutes = ['/business'];
     final isBusinessRoute = businessRoutes.any(
       (route) => location.startsWith(route),
@@ -166,32 +148,20 @@ class RouterManager {
     return null;
   }
 
-  /// Shell dışındaki bir sayfanın `Page`'i.
-  ///
-  /// Rotalar `builder:` ile bırakıldığında sayfayı go_router uygulama tipine
-  /// bakarak kendi seçiyor; bu sürümde o tespit `MaterialApp` altında bile
-  /// başarısız olup `NoTransitionPage`'e düşüyor ve shell dışındaki bütün
-  /// sayfalar animasyonsuz açılıyordu. Sayfayı burada açıkça vermek
-  /// platformun kendi geçişini geri getiriyor: iOS'ta yandan kayma,
-  /// Android'de `FadeForwards`.
-  ///
-  /// Navbar sekmeleri bunu kullanmıyor; onların kendi `pageBuilder`'ları var.
+  /// Shell dışındaki sayfanın `Page`'i. `builder:` ile go_router
+  /// `NoTransitionPage`'e düşüyor; açıkça vermek platform geçişini geri
+  /// getiriyor. Navbar sekmeleri kendi `pageBuilder`'larını kullanıyor.
   static Page<void> _page(GoRouterState state, Widget child) =>
       MaterialPage<void>(key: state.pageKey, child: child);
 
-  /// Telefon kamerasıyla okutulan biniş QR'ının indiği ortak sayfa
-  /// (is-koala/koala#217); `AppLinkDestination` `board` host'unu buraya
-  /// çeviriyor.
+  /// Telefon kamerasıyla okutulan biniş QR'ının indiği sayfa (#217).
   static const String boardingLinkPath = '/boarding-link';
 
-  /// Açılış ekranının yolu. Uygulama buradan başlıyor ve oturum durumu
-  /// okunana kadar burada kalıyor.
+  /// Oturum okunana kadar burada kalınır.
   static const String splashLocation = '/';
 
   static final GoRouter router = GoRouter(
     initialLocation: splashLocation,
-    // Oturum açılıp kapandığında yönlendirme yeniden değerlendiriliyor;
-    // splash'ın okuması bittiğinde kullanıcıyı buradan yola çıkarıyor.
     refreshListenable: SessionManager(),
     redirect: (context, state) {
       final session = SessionManager();
@@ -204,7 +174,6 @@ class RouterManager {
       );
     },
     routes: [
-      // Auth Routes
       GoRoute(
         path: '/auth',
         pageBuilder: (context, state) => _page(state, const AuthPage()),
@@ -260,10 +229,8 @@ class RouterManager {
         ],
       ),
 
-      // Şirket bilgileri adımı bilerek `/auth` altında değil: kayıt bittiğinde
-      // oturum açılmış oluyor ve `redirect` giriş yapmış kullanıcıyı auth
-      // rotalarından kendi ana sayfasına atıyor. Üst seviyede durunca adım
-      // kayıttan sonra açılabiliyor.
+      // Şirket bilgileri bilerek `/auth` altında değil: kayıt bitince oturum
+      // açık olur ve muhafız auth rotalarından ana sayfaya atardı.
       GoRoute(
         path: '/reset-password',
         pageBuilder: (context, state) => _page(
@@ -313,7 +280,6 @@ class RouterManager {
       GoRoute(
         path: '/company-detail',
         pageBuilder: (context, state) {
-          // Ekran şirketi kendisi çekiyor; buraya yalnızca kimlik geçiyor.
           final companyId = state.extra as String;
           return _page(state, CompanyDetailPage(companyId: companyId));
         },
@@ -338,8 +304,7 @@ class RouterManager {
       GoRoute(
         path: '/work-detail',
         pageBuilder: (context, state) {
-          // İşlerim satırı ya da Kazançlar satırı `MyJob` veriyor; ulaşım
-          // push'u `WorkDetailArgs` ile açılış bağlamını da taşıyor.
+          // `MyJob` ya da açılış bağlamını taşıyan `WorkDetailArgs`.
           final args = WorkDetailArgs.fromExtra(state.extra);
           return _page(
             state,
@@ -373,9 +338,6 @@ class RouterManager {
         pageBuilder: (context, state) => _page(state, const AvailabilityPage()),
       ),
 
-      // Kimlik doğrulama başvuru kapısının şartlarından; hesap bilgilerinden
-      // ve başvuru ekranından açılıyor. Adres hesap modülünde
-      // (`AccountRoutes.address`).
       GoRoute(
         path: '/identity-verification',
         pageBuilder: (context, state) {
@@ -384,19 +346,14 @@ class RouterManager {
         },
       ),
 
-      // Çip okuma, kimlik ekranından açılıyor ve sonucu ona geri veriyor.
-      // Kimliğin kendisini doğrulamıyor: kanıt üretip kapanıyor, kanıtsız
-      // kapanması da meşru bir sonuç.
+      // Çip okuma: kanıt üretip kapanır; kanıtsız kapanması da meşru.
       GoRoute(
         path: '/identity-chip',
         pageBuilder: (context, state) => _page(state, const IdentityChipPage()),
       ),
 
-      // Fotoğraflı inceleme: dört kare + beyan tek istekte, sonra personel
-      // onayı. Kimlik ekranı iOS'ta, NFC'siz cihazda ve bir inceleme kaydı
-      // varken buraya doğrudan geçiyor; Android'de çip formunun tepesinden
-      // ve çip hatalarından da açılıyor. `true` ile yalnız onaylanmış
-      // incelemede kapanıyor.
+      // Fotoğraflı inceleme: dört kare + beyan, sonra personel onayı. `true`
+      // ile yalnız onaylanmış incelemede kapanır.
       GoRoute(
         path: '/identity-documents',
         pageBuilder: (context, state) {
@@ -405,12 +362,8 @@ class RouterManager {
         },
       ),
 
-      // Harita-öncelikli adres seçici iki uygulamanın da işine yarıyor:
-      // işveren ilan ve şirket adresini buradan seçiyor (kullanıcının kendi
-      // adresi `/address` üzerinden aynı ekrana `PUT` bağlanmış hâliyle
-      // gidiyor).
-      // `context.push<ConfirmedAddress>` ile çağrılır; `extra` daha önce
-      // onaylanmış adres olabilir, ekran ona açılır.
+      // Harita-öncelikli adres seçici; `context.push<ConfirmedAddress>` ile
+      // çağrılır, `extra` önceki adres olabilir.
       GoRoute(
         path: '/pick-address',
         pageBuilder: (context, state) {
@@ -424,15 +377,10 @@ class RouterManager {
         },
       ),
 
-      // Hesap modülü: hesap bilgileri, adres, parola, oturumlar, bildirim
-      // tercihleri, şikayetler, engellenenler, hesap silme ve doğrulama kodu.
-      // Hesap kullanıcıya ait, tarafına değil — iki kabuk da aynı rotalara
-      // gidiyor, `/business/` kopyaları yok.
+      // Hesap kullanıcıya ait, tarafına değil: iki kabuk aynı rotalara gidiyor.
       ...AccountRoutes.routes(_page),
 
-      // Uyuşmazlık ve kanıtları (is-koala/koala#215): çalışan da işveren de
-      // açıyor, o yüzden `/business/` öneki yok — `AccountRoutes` ile aynı
-      // gerekçe.
+      // Uyuşmazlık (#215): iki taraf da açıyor, `/business/` öneki yok.
       ...DisputeRoutes.routes(_page),
 
       ShellRoute(
@@ -443,9 +391,12 @@ class RouterManager {
             pageBuilder: (context, state) => CustomTransitionPage(
               key: state.pageKey,
               child: BHomePage(),
-              transitionsBuilder:
-                  (context, animation, secondaryAnimation, child) =>
-                      FadeTransition(opacity: animation, child: child),
+              transitionsBuilder: (
+                context,
+                animation,
+                secondaryAnimation,
+                child,
+              ) => FadeTransition(opacity: animation, child: child),
               transitionDuration: const Duration(milliseconds: 200),
             ),
           ),
@@ -454,9 +405,12 @@ class RouterManager {
             pageBuilder: (context, state) => CustomTransitionPage(
               key: state.pageKey,
               child: const BPostsPage(),
-              transitionsBuilder:
-                  (context, animation, secondaryAnimation, child) =>
-                      FadeTransition(opacity: animation, child: child),
+              transitionsBuilder: (
+                context,
+                animation,
+                secondaryAnimation,
+                child,
+              ) => FadeTransition(opacity: animation, child: child),
               transitionDuration: const Duration(milliseconds: 200),
             ),
           ),
@@ -465,9 +419,12 @@ class RouterManager {
             pageBuilder: (context, state) => CustomTransitionPage(
               key: state.pageKey,
               child: const BChatListPage(),
-              transitionsBuilder:
-                  (context, animation, secondaryAnimation, child) =>
-                      FadeTransition(opacity: animation, child: child),
+              transitionsBuilder: (
+                context,
+                animation,
+                secondaryAnimation,
+                child,
+              ) => FadeTransition(opacity: animation, child: child),
               transitionDuration: const Duration(milliseconds: 200),
             ),
           ),
@@ -476,9 +433,12 @@ class RouterManager {
             pageBuilder: (context, state) => CustomTransitionPage(
               key: state.pageKey,
               child: BProfilePage(),
-              transitionsBuilder:
-                  (context, animation, secondaryAnimation, child) =>
-                      FadeTransition(opacity: animation, child: child),
+              transitionsBuilder: (
+                context,
+                animation,
+                secondaryAnimation,
+                child,
+              ) => FadeTransition(opacity: animation, child: child),
               transitionDuration: const Duration(milliseconds: 200),
             ),
           ),
@@ -510,8 +470,7 @@ class RouterManager {
         pageBuilder: (context, state) => _page(state, const BCompanyInfoPage()),
       ),
 
-      // Şirket adresi: harita-öncelikli ekranın `PATCH /companies/{id}`'e
-      // bağlanmış hâli. Firma bilgilerinin üstüne tam sayfa açılıyor.
+      // Şirket adresi: harita ekranının `PATCH /companies/{id}`'e bağlı hâli.
       GoRoute(
         path: '/business/company-address',
         pageBuilder: (context, state) =>
@@ -541,8 +500,7 @@ class RouterManager {
         pageBuilder: (context, state) => _page(state, const BTalentPoolPage()),
       ),
 
-      // İlanlar arası başvuru gelen kutusu (is-koala/koala#213). Navbar'ın
-      // üstünü kaplıyor, o yüzden shell'in dışında.
+      // Navbar'ın üstünü kapladığı için shell dışında.
       GoRoute(
         path: BusinessRoutes.applications,
         pageBuilder: (context, state) =>
@@ -557,9 +515,8 @@ class RouterManager {
         },
       ),
 
-      // Ulaşım planı düzenleyicisi ve alt sayfaları (is-koala/koala#197).
-      // Üçü de üst düzeyde: `/pick-address` gibi navbar'ın üstünü kaplar
-      // ve kaydedince `pop` ile taslağı geri verir.
+      // Ulaşım planı ve alt sayfaları (#197); kaydedince `pop` ile taslağı
+      // döndürür.
       GoRoute(
         path: BusinessRoutes.transportPlan,
         pageBuilder: (context, state) => _page(
@@ -587,11 +544,8 @@ class RouterManager {
         },
       ),
 
-      // Çalışanın başkasının profilini açtığı sayfa (is-koala/koala#182):
-      // sohbet katılımcıları ve bireysel işveren kartı. Navbar'ın üstünü
-      // kaplıyor, o yüzden shell'in dışında. Kimlik yol parametresi; `extra`
-      // isteğe bağlı bir `PublicProfileArgs` ve yalnız kapağı önceden doldurur
-      // (yoksa, başka türdeyse ya da başka kişiye aitse yok sayılır).
+      // Başkasının profili (#182); navbar'ın üstünü kapladığı için shell
+      // dışında.
       GoRoute(
         path: EmployeeRoutes.publicProfilePattern,
         pageBuilder: (context, state) => _page(
@@ -626,8 +580,7 @@ class RouterManager {
             _page(state, const BNotificationsPage()),
       ),
 
-      // Paylaşılan ilan bağlantısı (`/is-ilanlari/<id>`); sayfa ilanı yükleyip
-      // keşfette detay sheet'ini açıyor.
+      // Paylaşılan ilan; keşfette detay sheet'ini açar.
       GoRoute(
         path: '/shared-job',
         pageBuilder: (context, state) => _page(
@@ -636,9 +589,8 @@ class RouterManager {
         ),
       ),
 
-      // Telefon kamerasıyla okutulan biniş QR'ı (`{şema}://board?t=…`,
-      // #217). İki tarafa da açık: işçi servis QR'ını, işveren çalışan
-      // QR'ını gönderir; yanlış taraf ne yapacağını okur.
+      // Biniş QR'ı bağlantısı (#217); iki tarafa da açık, yanlış taraf ne
+      // yapacağını okur.
       GoRoute(
         path: boardingLinkPath,
         pageBuilder: (context, state) {
@@ -748,15 +700,10 @@ class RouterManager {
         },
       ),
 
-      //Employee Main Shell
-      //
-      // Sekmelerin içeriğini `ShellPage` kendi `PageView`'ında kuruyor; rota
-      // yalnız hangi sekmenin açık olduğunu söylüyor. Bu yüzden rotalar boş
-      // bir yer tutucu çiziyor (`ShellPage.tabPlaceholder`) ve `ShellPage`
-      // `child`'ı görünmez yerleştiriyor. `child`'ı hiç yerleştirmemek kabuk
-      // navigator'ını kurmuyordu; go_router geri tuşunda o navigator'ı
-      // `currentState!` ile okuduğu için Android'de geri hareketi null
-      // hatasıyla patlıyor, açık bir sheet de kapanmıyordu.
+      // Çalışan kabuğu. Sekmeleri `ShellPage` kendi `PageView`'ında kuruyor;
+      // rotalar yer tutucu çiziyor ve `child` görünmez yerleştiriliyor. Hiç
+      // yerleştirilmezse kabuk navigator'ı kurulmaz ve Android geri hareketi
+      // null hatasıyla patlar.
       ShellRoute(
         builder: (context, state, child) => ShellPage(child: child),
         routes: [

@@ -39,9 +39,8 @@ void main() {
     test('süzgeçsiz istek yalnız sayfa ve boyut taşır', () async {
       final api = _apiReturning(_page());
 
-      final result = await ReceivedApplicationService.withClient(
-        api.client,
-      ).fetchReceivedApplications();
+      final result = await ReceivedApplicationService.withClient(api.client)
+          .fetchReceivedApplications();
 
       final request = api.requests.single;
       expect(request.method, 'GET');
@@ -58,15 +57,14 @@ void main() {
       () async {
         final api = _apiReturning(_page());
 
-        await ReceivedApplicationService.withClient(
-          api.client,
-        ).fetchReceivedApplications(
-          status: ApplicationStatus.accepted,
-          jobId: 'job-1',
-          companyId: 'company-1',
-          page: 2,
-          size: 60,
-        );
+        await ReceivedApplicationService.withClient(api.client)
+            .fetchReceivedApplications(
+              status: ApplicationStatus.accepted,
+              jobId: 'job-1',
+              companyId: 'company-1',
+              page: 2,
+              size: 60,
+            );
 
         expect(api.requests.single.queryParameters, {
           'status': 'ACCEPTED',
@@ -99,9 +97,9 @@ void main() {
       final api = _apiReturning(_page());
 
       expect(
-        () => ReceivedApplicationService.withClient(
-          api.client,
-        ).fetchReceivedApplications(status: ApplicationStatus.unknown),
+        () =>
+            ReceivedApplicationService.withClient(api.client)
+                .fetchReceivedApplications(status: ApplicationStatus.unknown),
         throwsA(isA<AssertionError>()),
       );
       expect(api.requests, isEmpty);
@@ -110,9 +108,8 @@ void main() {
     test('boş sayfa hata değil', () async {
       final api = _apiReturning(_page(content: const []));
 
-      final result = await ReceivedApplicationService.withClient(
-        api.client,
-      ).fetchReceivedApplications(companyId: 'someone-elses');
+      final result = await ReceivedApplicationService.withClient(api.client)
+          .fetchReceivedApplications(companyId: 'someone-elses');
 
       expect(result.applications, isEmpty);
       expect(result.last, isTrue);
@@ -131,9 +128,8 @@ void main() {
       );
 
       await expectLater(
-        ReceivedApplicationService.withClient(
-          api.client,
-        ).fetchReceivedApplications(),
+        ReceivedApplicationService.withClient(api.client)
+            .fetchReceivedApplications(),
         throwsA(
           isA<ApiException>()
               .having(

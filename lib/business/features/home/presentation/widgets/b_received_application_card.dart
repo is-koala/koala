@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/business/features/home/models/received_application.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/jobs/models/job_application.dart';
@@ -11,11 +11,8 @@ import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/widgets/status_badge.dart';
 
-/// Gelen kutusundaki tek başvuru kartı.
-///
-/// Kartın kendisi başvuruyu **incelemeye** götürüyor ([onOpen]: ilanın karar
-/// ekranı, kabul/ret orada); adayın profili ayrı bir düğme ([onOpenProfile]).
-/// Gelen kutusu karar vermiyor, o yüzden kartta kabul/ret düğmesi yok.
+/// Gelen kutusundaki başvuru kartı. Karta dokunmak ilanın karar ekranını, düğme
+/// adayın profilini açar; kartta kabul/ret yok.
 class BReceivedApplicationCard extends StatelessWidget {
   const BReceivedApplicationCard({
     super.key,
@@ -26,16 +23,12 @@ class BReceivedApplicationCard extends StatelessWidget {
 
   final ReceivedApplication application;
 
-  /// Karta dokunuş: başvurunun geldiği ilanın karar ekranı.
   final VoidCallback onOpen;
 
-  /// "Adayın profili" düğmesi.
   final VoidCallback onOpenProfile;
 
-  /// Satırdaki avatar; başvuran kartıyla aynı ölçek.
   static const double _avatarSize = 48;
 
-  /// Başvuru notunun en fazla görünen satırı; tamamı karar ekranında.
   static const int _notesMaxLines = 2;
 
   @override
@@ -132,7 +125,6 @@ class BReceivedApplicationCard extends StatelessWidget {
     );
   }
 
-  /// Başvuru tarihi, varsa yanıt tarihi ve kapanmış ilan rozeti.
   Widget _dates(BuildContext context) {
     final style = context.textTheme.labelMedium?.copyWith(
       color: context.textTertiary,
@@ -164,9 +156,8 @@ class BReceivedApplicationCard extends StatelessWidget {
   }
 }
 
-/// Gelen kutusunun durum dili. Süzgeç çipleri de aynı sözcükleri kullanıyor.
+/// Gelen kutusunun durum dili; süzgeç çipleri de aynı sözcükleri kullanıyor.
 extension InboxApplicationStatus on ApplicationStatus {
-  /// Kartın rozeti.
   String get inboxLabel => switch (this) {
     ApplicationStatus.applied => 'Bekliyor',
     ApplicationStatus.accepted => 'Kabul edildi',
@@ -175,7 +166,6 @@ extension InboxApplicationStatus on ApplicationStatus {
     ApplicationStatus.unknown => 'Bilinmiyor',
   };
 
-  /// Süzgeç çipinin adı.
   String get inboxFilterLabel => switch (this) {
     ApplicationStatus.applied => 'Bekleyenler',
     ApplicationStatus.accepted => 'Kabul edilenler',
@@ -184,17 +174,14 @@ extension InboxApplicationStatus on ApplicationStatus {
     ApplicationStatus.unknown => 'Bilinmiyor',
   };
 
-  /// Yanıt tarihinin etiketi. Geri çekme yanıt değil başvuranın kendi kararı
-  /// ve sunucu onda `answeredDateTime` yazmıyor; yine de gelirse yanıt
-  /// sayılmıyor, "Yanıt" demek yanlış olurdu.
+  /// Geri çekme başvuranın kararı, yanıt değil; "Yanıt" demek yanlış olur.
   String get answerLabel => switch (this) {
     ApplicationStatus.accepted => 'Kabul',
     ApplicationStatus.rejected => 'Red',
     _ => 'Yanıt',
   };
 
-  /// Rozet rengi. Bekleyen, çalışanın "başvuru bekliyor" bölümüyle aynı mor;
-  /// tanınmayan ve geri çekilen durum hiçbir eylem önermediği için nötr.
+  /// Bekleyen mor (çalışan tarafıyla aynı); eylem önermeyen durumlar nötr.
   Color inboxColor(BuildContext context) => switch (this) {
     ApplicationStatus.applied => AppColors.pending,
     ApplicationStatus.accepted => AppColors.successStrong,
@@ -205,7 +192,6 @@ extension InboxApplicationStatus on ApplicationStatus {
 }
 
 extension InboxJobStatus on JobStatus {
-  /// Kapanmış ilanın rozeti; açık ilanda çizilmiyor.
   String get inboxLabel => switch (this) {
     JobStatus.open => 'İlan açık',
     JobStatus.closed => 'İlan kapalı',

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
 import 'package:koala/employee/features/chat/models/conversation.dart';
@@ -53,10 +53,8 @@ const _emptyPage = FakeApiResponse(
   },
 );
 
-/// Mesajlaşma kapısının iki sohbet ekranındaki davranışını doğrular.
-///
-/// Kapı metni tarafa göre değişiyor: [expectedPaymentNote] o kabuğun ödeme
-/// bekleniyor cümlesi. Kapalı sohbet cümlesi iki tarafta aynı.
+/// İki sohbet ekranında mesajlaşma kapısı; [expectedPaymentNote] kabuğun
+/// cümlesi.
 void registerChatPageGateTests({
   required String role,
   required String currentUserId,

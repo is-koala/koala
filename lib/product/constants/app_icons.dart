@@ -1,8 +1,5 @@
-/// Projede kullanılan ikon adları.
-///
-/// Değerler `AppIcon` widget'ına verilir; widget adı `Reicon.outline` veya
-/// `Reicon.filled` ağırlığından çözer. Yeni ikon eklerken adın pakette
-/// bulunduğundan emin ol: `Reicon.outline.names`.
+/// İkon adları; `AppIcon` `Reicon.outline` / `Reicon.filled`'dan çözer. Yeni ad
+/// eklerken pakette olduğuna bak: `Reicon.outline.names`.
 abstract final class AppIcons {
   // ────────────────────────────────────── Navigasyon & Genel
   static const String home = 'home';
@@ -18,8 +15,7 @@ abstract final class AppIcons {
   static const String notification = 'bell';
   static const String plus = 'plus';
 
-  /// Taşma menüsü (üç nokta). Başlık çubuğunda tek başına duran eylemler
-  /// yerine birden fazla eylemi bir menüde toplayan düğme.
+  /// Taşma menüsü (üç nokta).
   static const String more = 'more';
 
   // ────────────────────────────────────── Genel Eylemler & Yönler
@@ -33,15 +29,11 @@ abstract final class AppIcons {
   static const String cancelCircle = 'closeCircle';
   static const String tick = 'check';
 
-  /// Tek bir seçimi temizleyen çarpı — süzgeç çipinin sağındaki gibi.
-  /// Sette çıplak bir çarpı iki adla var: `x` dolu gövdeli, `xmark` ise
-  /// çevredeki `chevronDown` ve `arrowLeft` ile aynı 1.5 kalınlıkta çizgi
-  /// ailesinden, o yüzden bu seçildi. [cancelCircle] daireli olanı ve daha
-  /// ağır bir "iptal" anlamı taşıyor.
+  /// Tek seçimi temizleyen çarpı. `xmark` çevredeki ikonlarla aynı çizgi
+  /// kalınlığında; [cancelCircle] daha ağır bir "iptal".
   static const String close = 'xmark';
 
-  /// "Dokun ve seç" alanının sağındaki ok. Bir yöne gitmeyi değil, altında bir
-  /// liste açılacağını anlatıyor; [arrowRight] gezinme için duruyor.
+  /// Altında liste açılacağını anlatan ok; gezinme için [arrowRight].
   static const String chevronDown = 'chevronDown';
 
   // ────────────────────────────────────── Kullanıcı & Hesap
@@ -58,44 +50,32 @@ abstract final class AppIcons {
   static const String location = 'location';
   static const String moneyBag = 'moneyBag';
 
-  /// Banka hesabı; hakediş satırındaki maskeli IBAN.
   static const String bank = 'bank';
   static const String calendar = 'calendar';
 
-  /// Bitiş tarihi; başlangıçtaki [calendar] ile aynı aileden, tikli.
   static const String calendarTick = 'calendarTick';
   static const String clock = 'clock';
   static const String route = 'route';
 
-  /// Ulaşım planı: servis kartlarının ve "Ulaşım" başlığının ikonu
-  /// (is-koala/koala#197).
   static const String bus = 'bus';
 
-  /// Koltuk seçimi; servisin içindeki yer. `armchair` sette koltuğa en yakın
-  /// biçim, `bus` ile karışmıyor.
   static const String seat = 'armchair';
 
-  /// Biniş teyidi (is-koala/koala#217): QR'ı göster.
   static const String qr = 'qr';
 
-  /// Biniş teyidi: kamerayla QR okut.
   static const String scan = 'scanBarcode';
 
-  /// Tarama ekranındaki fener; kapalı ve açık hâli.
   static const String flashlight = 'flashlight';
   static const String flashlightOn = 'flashlightOn';
 
-  /// QR'ı yenile / anahtarı değiştir.
   static const String refresh = 'refresh';
 
-  /// Haritayı cihazın bulunduğu yere götüren düğme. Nişangâh biçimi
-  /// [location] pininden ayrışsın diye: pin "seçilen yer", bu "sizin
-  /// olduğunuz yer".
+  /// Haritayı cihaz konumuna götüren düğme; [location] pini "seçilen yer", bu
+  /// "bulunduğunuz yer".
   static const String myLocation = 'gps';
   static const String sort = 'sort';
 
-  /// Süzgeç sheet'ini açan düğme. Sıralamadan ayrı bir kavram olduğu için
-  /// [sort] ile aynı ikonu paylaşmıyor.
+  /// Süzgeç; sıralamadan ayrı kavram olduğu için [sort]'la aynı değil.
   static const String filter = 'filter';
   static const String transferV = 'transferV';
   static const String star = 'star';
@@ -115,7 +95,6 @@ abstract final class AppIcons {
   static const String download = 'download';
   static const String delete = 'trash';
 
-  /// Panoya kopyalama; hakediş detayındaki sağlayıcı referansı.
   static const String copy = 'copy';
 
   // ────────────────────────────────────── Görünüm / Tema
@@ -129,42 +108,31 @@ abstract final class AppIcons {
   static const String info = 'infoCircle';
   static const String shield = 'shield';
 
-  /// Doğrulanmış/onaylı işaret (dişli kenarlı rozet içinde tik); filled
-  /// kullanılıyor.
+  /// Filled ağırlığıyla kullanılıyor.
   static const String verified = 'verified';
 
-  /// Şikayet eylemi. "İhbar et / işaretle" anlamı ikon setinde bu adla;
-  /// [shield] güvenlik bölümünün kendisini, bu ise tek bir şikayeti
-  /// anlatıyor.
+  /// Şikayet; [shield] güvenlik bölümünün kendisi.
   static const String flag = 'flag';
 
-  /// Paylaş: ilanı sistemin paylaşım menüsüyle gönderir.
   static const String share = 'share';
 
-  /// Kullanıcı engelleme. Sette yalın bir yasak işareti (`ban`) da var ama
-  /// üstünde insan silüeti olan bu ad, engellenenin bir kişi olduğunu
-  /// söylüyor.
   static const String userBlock = 'userBlock';
   static const String building = 'building';
 
-  /// Pozisyon / unvan.
   static const String personalCard = 'personalcard';
   static const String paint = 'palette';
   static const String task = 'task';
   static const String dress = 'tshirt';
 
-  /// Şirket galerisi: boş galeri durumu ve yüklenemeyen görselin yerine.
   static const String gallery = 'gallery';
 
-  // ────────────────────────────────────── İş Kategorileri
-  // Liste kartları ve harita pinleri aynı ikonu çiziyor; pinde Filled ağırlığı
-  // kullanıldığı için her adın Filled karşılığı olmalı (job_marker_generator).
+  // ────────────────────────────────────── İş Kategorileri Pinler Filled
+  // ağırlığı çizdiği için her adın Filled karşılığı olmalı.
   static const String camera = 'camera';
   static const String foodTray = 'foodTray';
   static const String pet = 'pet';
   static const String paintbrush = 'paintbrush';
   static const String coffee = 'coffee';
 
-  /// Uygulamanın tanımadığı kategori kodu için nötr ikon.
   static const String briefcase = 'briefcase';
 }

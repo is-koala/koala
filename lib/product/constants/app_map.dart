@@ -1,34 +1,21 @@
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-/// Harita ekranlarının paylaştığı konum sabitleri.
-///
-/// Koala bugün yalnızca İstanbul'da hizmet veriyor; backend de adres
-/// kaydını bu alanın dışında reddediyor. Değerler hem iş arayanın keşif
-/// haritasında hem de işverenin konum seçicisinde kullanıldığı için
-/// koordinatı ekrana gömmek yerine buradan okunur.
+/// Harita ekranlarının paylaştığı konum sabitleri. Koala yalnız İstanbul'da;
+/// backend bu alanın dışındaki adresi reddediyor.
 class AppMap {
-  /// Kullanıcı konumu yokken haritanın açıldığı nokta (Sultanahmet).
-  ///
-  /// Şehir merkezine yakın olduğu için ilk karede ilan pinlerinin çoğu
-  /// görüş alanına giriyor. Hizmet alanı dışında bir varsayılan (örneğin
-  /// Ankara) harita boş görünmesine yol açtığı için kullanılmaz.
+  /// Konum yokken açılış noktası (Sultanahmet); ilk karede pinlerin çoğu
+  /// görünüyor.
   static const LatLng istanbulCenter = LatLng(41.008238, 28.978359);
 
-  /// Backend'in kabul ettiği İstanbul hizmet alanı.
-  ///
-  /// Pin bu dikdörtgenin dışına taşındığında kayıt sunucuda
-  /// reddedileceği için kamera ve pin hareketi aynı sınırla kısıtlanır.
+  /// Backend'in kabul ettiği alan; kamera ve pin bununla sınırlı.
   static final LatLngBounds istanbulBounds = LatLngBounds(
     southwest: const LatLng(40.80, 28.55),
     northeast: const LatLng(41.35, 29.50),
   );
 
-  /// Şehir ölçeğinde başlangıç yakınlaştırması; sokak seviyesine inmek
-  /// kullanıcıya bırakılır.
   static const double initialZoom = 15;
 
-  /// Bilinen bir noktaya (cihaz konumu, kayıtlı adres, arama sonucu)
-  /// odaklanırken kullanılan sokak ölçeği: bina numarası okunacak kadar
-  /// yakın, cadde bağlamı kaybolmayacak kadar uzak.
+  /// Bilinen bir noktaya odaklanırken: bina numarası okunacak, cadde bağlamı
+  /// kaybolmayacak kadar yakın.
   static const double streetZoom = 17;
 }

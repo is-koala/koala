@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -17,11 +17,7 @@ import 'package:koala/product/widgets/empty_state.dart';
 import 'package:koala/product/widgets/session_device_icon.dart';
 import 'package:koala/product/widgets/status_badge.dart';
 
-/// Hesaba giriş yapılmış cihazların listesi.
-///
-/// Ekranın kendisi değil gövdesi: `Scaffold` ve başlık çubuğu çağırana ait,
-/// çünkü iki uygulamanın başlık çubuğu farklı kuruluyor —
-/// [NotificationView] ile aynı düzen.
+/// Giriş yapılmış cihazlar listesi; `Scaffold` ve başlık çağırana ait.
 class SessionView extends StatefulWidget {
   const SessionView({
     super.key,
@@ -29,11 +25,9 @@ class SessionView extends StatefulWidget {
     this.service,
   });
 
-  /// Listenin altındaki boşluk. İşveren tarafında navbar'ın altında
-  /// kalmasın diye büyütülüyor.
+  /// İşveren tarafında navbar'ın altında kalmasın diye büyütülüyor.
   final double bottomPadding;
 
-  /// Testlerde sahte sunucuya bağlı örnek geçilebilsin diye.
   final SessionService? service;
 
   @override
@@ -48,16 +42,12 @@ class _SessionViewState extends State<SessionView> {
   bool _isWorking = false;
   String? _errorMessage;
 
-  /// Sunucu oturum ayrıntısını veriyor mu.
-  ///
-  /// Ayrıntı ucu 0.9.28 ile geldi; eski sunucu `404` döndürüyor. İlk `404`
-  /// ekran boyunca akılda tutuluyor ve satırlar dokunulmaz oluyor: her
-  /// dokunuşta aynı `404`'ü alıp sessiz kalmak, kullanıcıya bozuk bir düğme
-  /// gibi görünürdü. Baştan "var" sayılıyor; bir istek atmadan bilmenin yolu
-  /// yok.
+  /// Sunucu oturum ayrıntısını veriyor mu. Eski sunucu `404` döndürüyor; ilk
+  /// `404`'ten sonra satırlar dokunulmaz olur, yoksa her dokunuş bozuk düğme
+  /// gibi görünürdü.
   bool _detailAvailable = true;
 
-  /// Ayrıntısı şu anda çekilen oturum; aynı satıra ikinci dokunuş beklemiyor.
+  /// Aynı satıra ikinci dokunuş beklemiyor.
   String? _openingId;
 
   @override
@@ -66,7 +56,6 @@ class _SessionViewState extends State<SessionView> {
     _load();
   }
 
-  /// Kullanıcının kendi cihazı dışındaki oturumlar.
   Iterable<UserSession> get _others =>
       _sessions.where((session) => !session.isCurrent);
 
@@ -88,10 +77,8 @@ class _SessionViewState extends State<SessionView> {
     }
   }
 
-  /// Kapatma çağrılarının ortak gövdesi.
-  ///
-  /// Liste sunucudan yeniden çekiliyor, elde silinmiyor: kapatılan oturum
-  /// bir başkasını da düşürmüş olabilir.
+  /// Kapatma çağrılarının ortak gövdesi. Liste yeniden çekiliyor: kapatılan
+  /// oturum başkasını da düşürmüş olabilir.
   Future<void> _run(
     Future<void> Function() call, {
     required String successMessage,
@@ -110,13 +97,8 @@ class _SessionViewState extends State<SessionView> {
     }
   }
 
-  /// Satıra dokununca ayrıntıyı çekip sayfayı açar.
-  ///
-  /// Ayrıntı önce burada çekiliyor, sayfada değil: eski sunucunun `404`'ü
-  /// boş bir sayfa yerine burada yutuluyor — toast yok, satır bundan sonra
-  /// dokunulmuyor. Aynı `404` bu arada kapanmış bir oturum için de gelir;
-  /// liste sessizce yenilenip oturum hâlâ duruyorsa "sunucu ucu tanımıyor"
-  /// sayılıyor, düşmüşse yalnızca liste güncellenmiş oluyor.
+  /// Ayrıntıyı çekip sayfayı açar. Eski sunucunun `404`'ü burada sessizce
+  /// yutuluyor; liste yenilenip oturum hâlâ duruyorsa uç yok sayılıyor.
   Future<void> _openDetail(UserSession session) async {
     if (_openingId != null || !_detailAvailable) return;
     setState(() => _openingId = session.id);
@@ -184,9 +166,6 @@ class _SessionViewState extends State<SessionView> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Eylem başlık çubuğunda değil listenin üstünde: gövde iki ayrı
-        // ekranda kullanılıyor ve durum burada duruyor, çubuğa taşımak
-        // sayfaları kalınlaştırırdı.
         ?_revokeOthersBar(),
         Expanded(child: _body()),
       ],
@@ -270,8 +249,7 @@ class _SessionViewState extends State<SessionView> {
               SessionDeviceIcon(session.deviceType),
               const SizedBox(width: AppSizes.space),
               Expanded(child: _tileContent(session)),
-              // Kendi oturumunu kapatmak çıkış yapmak demek; o iş ayarlardaki
-              // "Çıkış Yap"a ait, burada düğme çizilmiyor.
+              // Kendi oturumunu kapatmak çıkış demek; o iş "Çıkış Yap"ın.
               if (!session.isCurrent)
                 IconButton(
                   onPressed: _isWorking ? null : () => _revoke(session),
@@ -281,8 +259,7 @@ class _SessionViewState extends State<SessionView> {
                     size: AppSizes.iconMedium,
                   ),
                 ),
-              // Ok yalnız ayrıntı açılabiliyorsa: eski sunucuda satır düz bir
-              // satır, gidilecek yeri yokmuş gibi görünmeli.
+              // Ok yalnız ayrıntı açılabiliyorsa.
               if (_detailAvailable)
                 Padding(
                   padding: const EdgeInsets.only(top: AppSizes.space),
@@ -335,8 +312,7 @@ class _SessionViewState extends State<SessionView> {
     );
   }
 
-  /// Yer ve son kullanım. İkisi de boş gelebiliyor, o zaman satır hiç
-  /// çizilmiyor — "null · null" göstermektense boş bırakmak iyi.
+  /// İkisi de boşsa satır çizilmiyor; "null · null"dan iyi.
   String _subtitle(UserSession session) {
     final parts = <String>[
       if (session.location != null && session.location!.trim().isNotEmpty)

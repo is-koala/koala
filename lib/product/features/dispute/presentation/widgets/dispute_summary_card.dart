@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/employee/features/jobs/models/dispute.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -9,12 +9,8 @@ import 'package:koala/product/features/dispute/presentation/widgets/dispute_card
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/status_badge.dart';
 
-/// Atama sayfasındaki uyuşmazlık özeti: durum, gerekçenin ilk satırları ve
-/// uyuşmazlık ekranına giden dokunuş (is-koala/koala#215).
-///
-/// Çalışanın iş detayı kullanıyor; işverenin uyarı bandı kendi çiziminde.
-/// En yeni uyuşmazlığı gösteriyor — sunucu aynı anda tek açık uyuşmazlığa izin
-/// veriyor, öncekiler sonuçlanmış oluyor ve ekranın içinde duruyor.
+/// İş detayındaki uyuşmazlık özeti (#215); en yeni uyuşmazlığı gösteriyor (aynı
+/// anda tek açık olabilir).
 class DisputeSummaryCard extends StatelessWidget {
   const DisputeSummaryCard({
     super.key,
@@ -26,14 +22,12 @@ class DisputeSummaryCard extends StatelessWidget {
 
   final VoidCallback onOpen;
 
-  /// Gerekçenin özette görünen en fazla satırı; tamamı ekranda.
   static const int _reasonMaxLines = 2;
 
   @override
   Widget build(BuildContext context) {
     final reason = dispute.reason;
-    // Açık uyuşmazlıkta asıl eylem kanıt eklemek; sonuçlanmışta yalnız
-    // okumak — düğme neyin mümkün olduğunu söylüyor.
+    // Açıkta asıl eylem kanıt eklemek, sonuçlanmışta okumak.
     final label = dispute.isOpen
         ? 'Kanıt ekle ya da görüntüle'
         : 'Kanıtları görüntüle';

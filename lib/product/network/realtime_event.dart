@@ -1,12 +1,11 @@
-/// Sunucudan gelen anlık olayın türü. Backend `RealtimeEventType` karşılığı.
 enum RealtimeEventType {
   message('MESSAGE'),
   typing('TYPING'),
   read('READ'),
   presence('PRESENCE'),
 
-  /// Tanınmayan tür. Backend yeni bir olay eklerse istemci çökmesin diye var;
-  /// dinleyiciler bunu yok sayıyor.
+  /// Backend yeni bir olay eklerse istemci çökmesin diye; dinleyiciler yok
+  /// sayıyor.
   unknown('');
 
   const RealtimeEventType(this.code);
@@ -21,11 +20,8 @@ enum RealtimeEventType {
   }
 }
 
-/// STOMP kanallarından gelen olay. Backend `RealtimeEventDto` karşılığı.
-///
-/// Tek bir gövde dört farklı olayı taşıyor; hangi alanın dolu olduğu [type]'a
-/// bağlı. [message] ham JSON olarak duruyor çünkü `Message` modeline
-/// çevirmek için oturum sahibinin kimliği gerekiyor ve o bilgi bu katmanda yok.
+/// STOMP kanallarından gelen olay; dolu alanlar [type]'a bağlı. [message] ham
+/// JSON, çünkü `Message`'a çevirmek oturum sahibinin kimliğini istiyor.
 class RealtimeEvent {
   const RealtimeEvent({
     required this.type,
@@ -39,23 +35,19 @@ class RealtimeEvent {
 
   final RealtimeEventType type;
 
-  /// Olayın ait olduğu sohbet. `PRESENCE` olaylarında `null`.
+  /// `PRESENCE` olaylarında `null`.
   final String? conversationId;
 
-  /// Olayı tetikleyen kullanıcı: mesajı gönderen, yazan ya da okuyan.
+  /// Mesajı gönderen, yazan ya da okuyan.
   final String? userId;
 
-  /// `MESSAGE` olaylarında yeni mesajın ham gövdesi (`MessageDto`).
   final Map<String, dynamic>? message;
 
-  /// `PRESENCE` olaylarında kullanıcının çevrimiçi olup olmadığı.
   final bool? online;
 
   final DateTime? at;
 
-  /// `READ` olaylarında okuyanın yeni okundu damgası
-  /// (is-koala/koala-backend#281). Eski sunucu göndermiyor; o zaman `null`
-  /// ve dinleyiciler [at]'e düşüyor.
+  /// `READ` olayında okundu damgası; eski sunucuda `null`, o zaman [at].
   final DateTime? lastReadAt;
 
   factory RealtimeEvent.fromJson(Map<String, dynamic> json) {

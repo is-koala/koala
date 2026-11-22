@@ -1,27 +1,17 @@
-/// Kimlik kartının makine okunabilir alanından (MRZ) türeyen çip anahtarı.
+/// Kimlik kartının MRZ'sinden türeyen çip anahtarı: belge no, doğum tarihi, son
+/// geçerlilik (ICAO 9303 Part 11 §4.3.2). Türetmeyi `dmrtd` yapıyor; bizim
+/// işimiz üç alanı **doğru** okumak.
 ///
-/// Çipi açan üç alan burada: **belge numarası, doğum tarihi ve son geçerlilik
-/// tarihi**. BAC/PACE anahtarı bu üçünün her birinin kendi kontrol hanesiyle
-/// birleştirilmesinden üretiliyor (ICAO Doc 9303 Part 11 §4.3.2); türetmeyi
-/// `dmrtd` yapıyor, bizim işimiz üç alanı **doğru** okumak.
-///
-/// TCKK'nın MRZ'si kartın **arka yüzünde** ve **TD1** biçiminde: 3 satır ×
-/// 30 karakter. Pasaportun TD3'ü (2 × 44) değil — alanların yeri bambaşka.
-///
-/// Bu dosyada Flutter'a ya da bir eklentiye bağımlılık **yok**; OCR'ın
-/// kendisi [MrzScanner]'da. Ayrım bilerek: ayrıştırma ve kontrol hanesi
-/// doğrulaması cihaz olmadan test edilebilmeli.
+/// TCKK'nın MRZ'si arka yüzde ve **TD1** (3 × 30); pasaportun TD3'ü değil.
+/// Flutter bağımlılığı yok ki cihaz olmadan test edilsin.
 library;
 
 import 'package:koala/employee/features/settings/models/national_identity_number.dart';
 
-/// TD1 MRZ'sinin bir satırındaki karakter sayısı.
 const int _lineLength = 30;
 
-/// TD1 MRZ'sindeki satır sayısı.
 const int _lineCount = 3;
 
-/// Çipi açan üç alan.
 class MrzKey {
   const MrzKey({
     required this.documentNumber,
@@ -31,35 +21,23 @@ class MrzKey {
     this.normalizedTd1,
   });
 
-  /// Belge (seri) numarası; `<` dolgusu temizlenmiş hâli. TCKK'da dokuz
-  /// karakter ve `A01B23456` gibi harf-rakam karışık.
+  /// `<` dolgusu temizlenmiş; TCKK'da `A01B23456` gibi dokuz karakter.
   final String documentNumber;
 
   final DateTime birthDate;
 
   final DateTime expiryDate;
 
-  /// TCKK'da TC kimlik numarası MRZ'nin birinci satırındaki isteğe bağlı
-  /// veri alanında taşınıyor. Her belgede dolu olmadığı için `null`
-  /// olabilir.
-  ///
-  /// Formu **doldurmuyor**: ekrandaki TCKN çip okunduğunda DG1'den
-  /// (`ChipHolder`) geliyor, okunmadığında kullanıcı yazıyor — taramanın
-  /// sonucu beyana hiç karışmıyor, çünkü OCR'ın okuduğu değer kanıt değil.
-  /// Alanın burada durmasının sebebi canlı taramanın kararlılık imzası:
-  /// `MrzScanSession` ardışık karelerin aynı kartı okuduğuna satırın tamamı
-  /// (ya da ham satır yokken bu üç-dört alan) üzerinden karar veriyor.
-  /// Kural [NationalIdentityNumber] ile ortak; çip yolu da aynı yere bakıyor.
+  /// Birinci satırın isteğe bağlı alanındaki TCKN; her belgede yok. Formu
+  /// **doldurmuyor** (OCR kanıt değil); `MrzScanSession`'ın kararlılık imzası
+  /// için duruyor.
   final String? nationalIdentityNumber;
 
-  /// Canlı taramada kararlılığı ölçen, düzeltilmiş üç TD1 satırının tamamı.
-  /// Elle girişte ham MRZ olmadığı için `null` kalır.
+  /// Canlı taramada kararlılığı ölçen düzeltilmiş üç satır; elle girişte
+  /// `null`.
   final String? normalizedTd1;
 
-  /// Elle girişten gelen anahtar.
-  ///
-  /// Yıpranmış ya da kötü ışıkta okunmayan kartı kurtaran tek yol bu; OCR
-  /// yolunun yedeği olarak her hâlükârda açık kalıyor.
+  /// Yıpranmış ya da kötü ışıktaki kartı kurtaran yol; her zaman açık.
   factory MrzKey.manual({
     required String documentNumber,
     required DateTime birthDate,
@@ -72,12 +50,9 @@ class MrzKey {
     );
   }
 
-  /// OCR'dan gelen ham metinden TD1 MRZ'sini ayrıştırır.
-  ///
-  /// Kontrol hanelerinden biri tutmazsa `null` döner — **bu kasıtlı bir
-  /// güvenlik ağı**: yanlış okunmuş bir alanla çipe gidilirse kart oturumu
-  /// açılmadan reddediyor ve kullanıcı nedenini anlamıyor. Burada elenen
-  /// tarama, başarısız bir çip oturumuna değil bir tekrara dönüşüyor.
+  /// Ham OCR metninden TD1 ayrıştırır. Kontrol hanelerinden biri tutmazsa
+  /// `null` — **kasıtlı güvenlik ağı**: yanlış alanla çipe gitmek anlaşılmaz
+  /// bir oturum hatası verir, burada elenen tarama yalnız bir tekrar olur.
   static MrzKey? parseTd1(String rawText) {
     final lines = _candidateLines(rawText);
 
@@ -92,11 +67,9 @@ class MrzKey {
     return null;
   }
 
-  /// ICAO Doc 9303 Part 3 §4.9 kontrol hanesi.
-  ///
-  /// Ağırlıklar 7-3-1 sırasıyla dönüyor; rakam kendi değeri, `A`-`Z`
-  /// 10-35, `<` sıfır sayılıyor. Tanımsız bir karakter geçerse `null`
-  /// dönüyor: sıfır saymak, hatalı okumayı geçerli göstermek olurdu.
+  /// ICAO 9303 Part 3 §4.9: ağırlıklar 7-3-1, `A`-`Z` 10-35, `<` sıfır.
+  /// Tanımsız karakterde `null`; sıfır saymak hatalı okumayı geçerli
+  /// gösterirdi.
   static int? checkDigit(String field) {
     const weights = [7, 3, 1];
     var sum = 0;
@@ -109,7 +82,6 @@ class MrzKey {
     return sum % 10;
   }
 
-  /// Alanın sonundaki kontrol hanesi doğru mu.
   static bool isCheckDigitValid(String field, String digit) {
     final expected = checkDigit(field);
     if (expected == null) return false;
@@ -119,21 +91,14 @@ class MrzKey {
   static int? _characterValue(String character) {
     final code = character.codeUnitAt(0);
 
-    // '<'
     if (character == '<') return 0;
-    // '0'-'9'
     if (code >= 0x30 && code <= 0x39) return code - 0x30;
-    // 'A'-'Z'
     if (code >= 0x41 && code <= 0x5A) return code - 0x41 + 10;
     return null;
   }
 
-  /// Ham OCR metnini MRZ satırı adaylarına indirger.
-  ///
-  /// OCR üç satırı ayrı ayrı da verebiliyor, hepsini tek bloğa da
-  /// yapıştırabiliyor; ikisi de karşılanıyor. Ayrıca `<` karakteri sıkça
-  /// `«` ya da `K` olarak okunuyor — ilkini düzeltiyoruz, ikincisini
-  /// **düzeltmiyoruz** çünkü `K` isim alanında meşru bir harf.
+  /// OCR satırları ayrı ya da tek blok verebiliyor. `«` `<`'e düzeltiliyor; `K`
+  /// **düzeltilmiyor**, isim alanında meşru harf.
   static List<String> _candidateLines(String rawText) {
     final lines = <String>[];
 
@@ -143,7 +108,6 @@ class MrzKey {
         lines.add(sanitized);
       } else if (sanitized.length > _lineLength &&
           sanitized.length % _lineLength == 0) {
-        // Üç satırı tek satıra yapıştıran okuma.
         for (var start = 0; start < sanitized.length; start += _lineLength) {
           lines.add(sanitized.substring(start, start + _lineLength));
         }
@@ -171,20 +135,14 @@ class MrzKey {
     String rawSecond,
     String third,
   ) {
-    // Üçüncü satır ad-soyad; içeriğine bakmıyoruz ama TD1'in üç satırlı
-    // olduğunu doğrulamak için varlığı aranıyor.
+    // Ad satırına bakılmıyor ama TD1 olduğunu doğrulamak için varlığı aranıyor.
     if (third.length != _lineLength) return null;
-    // Kimlik kartı `I`, ikamet belgesi `A` ya da `C` ile başlıyor.
+    // Kimlik kartı `I`, ikamet belgesi `A` ya da `C`.
     if (!RegExp(r'^[IAC]').hasMatch(rawFirst)) return null;
 
-    // Yalnız rakam taşıyabilen konumlar **doğrulamadan önce** düzeltiliyor.
-    // Sonradan düzeltmek yetmiyor: bileşik kontrol hanesi satırın tamamı
-    // üzerinden hesaplanıyor, tek tek alanları düzeltip satırı ham
-    // bırakmak bileşiği her seferinde düşürürdü.
-    //
-    // Kontrol hanelerinin kendisi de düzeltiliyor; onlar da rakam ve OCR
-    // onları da karıştırıyor. Güvenlik ağı zayıflamıyor, çünkü hane ile
-    // alanın **birlikte** tutması gerekiyor.
+    // Yalnız rakam olabilen konumlar **doğrulamadan önce** düzeltiliyor:
+    // bileşik hane satırın tamamından hesaplanıyor. Haneler de düzeltiliyor;
+    // hane ile alan **birlikte** tutmalı, güvenlik ağı zayıflamıyor.
     final first = _repairAt(rawFirst, const [14]);
     final second = _repairAt(rawSecond, const [
       0, 1, 2, 3, 4, 5, 6, // doğum tarihi ve kontrol hanesi
@@ -195,10 +153,8 @@ class MrzKey {
     final documentNumberField = first.substring(5, 14);
     final documentNumberDigit = first[14];
 
-    // Dokuz karakterden uzun belge numarası isteğe bağlı veri alanına
-    // taşıyor ve kontrol hanesinin yerine `<` konuyor. TCKK'da böyle bir
-    // numara yok; desteklemek yerine taramayı reddedip elle girişe
-    // düşürüyoruz — yanlış ayrıştırmaktansa açıkça başarısız olsun.
+    // Dokuzdan uzun belge numarası TCKK'da yok; yanlış ayrıştırmaktansa elle
+    // girişe düşülür.
     if (documentNumberDigit == '<') return null;
     if (!isCheckDigitValid(documentNumberField, documentNumberDigit)) {
       return null;
@@ -210,9 +166,8 @@ class MrzKey {
     final expiryField = second.substring(8, 14);
     if (!isCheckDigitValid(expiryField, second[14])) return null;
 
-    // Bileşik kontrol hanesi: üst satırın 6-30, orta satırın 1-7, 9-15 ve
-    // 19-29 pozisyonları. Tek tek alanlar tutup bileşik tutmuyorsa satırın
-    // başka bir yerinde okuma hatası var demektir.
+    // Bileşik hane: tek alanlar tutup bu tutmuyorsa başka yerde okuma hatası
+    // var.
     final composite =
         first.substring(5, 30) +
         second.substring(0, 7) +
@@ -233,11 +188,8 @@ class MrzKey {
     );
   }
 
-  /// Yalnız rakam taşıyabilen konumlarda OCR'ın en sık karıştırdığı
-  /// harfleri rakama çeviriyor.
-  ///
-  /// Yanlış bir düzeltme kontrol hanesinde yakalanıyor, o yüzden bu adım
-  /// riski değil tekrar sayısını azaltıyor.
+  /// OCR'ın en sık karıştırdığı harfleri rakama çevirir; yanlış düzeltme
+  /// kontrol hanesinde yakalanır.
   static String _repairAt(String line, List<int> indices) {
     const replacements = {
       'O': '0',
@@ -259,17 +211,11 @@ class MrzKey {
     return characters.join();
   }
 
-  /// TD1'in birinci satırındaki isteğe bağlı veri alanından TC kimlik
-  /// numarası; kural [NationalIdentityNumber]'da, çipteki DG1 ile ortak.
   static String? _optionalIdentityNumber(String first) =>
       NationalIdentityNumber.fromMrzOptionalData(first.substring(15));
 
-  /// `YYMMDD`'yi tarihe çevirir.
-  ///
-  /// MRZ yüzyıl taşımıyor. Son geçerlilik her zaman 2000'li yıllar: 19xx'te
-  /// biten bir kart zaten geçersiz. Doğum tarihinde ise iki haneli yıl
-  /// bugünün iki hanesinden büyükse 19xx sayılıyor — aksi hâlde 2043
-  /// doğumlu bir kullanıcı üretirdik.
+  /// `YYMMDD` → tarih. Son geçerlilik hep 2000'li; doğum tarihinde yıl bugünün
+  /// iki hanesinden büyükse 19xx, yoksa 2043 doğumlu üretirdik.
   static DateTime? _parseDate(String field, {required bool isExpiry}) {
     if (!RegExp(r'^\d{6}$').hasMatch(field)) return null;
 
@@ -284,8 +230,7 @@ class MrzKey {
         : (shortYear > currentShortYear ? 1900 : 2000) + shortYear;
 
     final date = DateTime(year, month, day);
-    // `DateTime(2025, 2, 30)` sessizce 2 Mart'a taşıyor; taşma olduysa
-    // okuma hatalı demektir.
+    // `DateTime(2025, 2, 30)` 2 Mart'a taşar; taşma okuma hatası demek.
     if (date.month != month || date.day != day) return null;
     return date;
   }

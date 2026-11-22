@@ -6,15 +6,8 @@ import 'package:koala/employee/features/chat/models/presence.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
-/// Sohbet uçları.
-///
-/// İki arayüz de bunu kullanıyor: `GET /conversations` oturumu açan kullanıcının
-/// sohbetlerini döndürüyor, kullanıcının işveren mi çalışan mı olduğuna
-/// bakmıyor.
-///
-/// Her çağrı [currentUserId] istiyor çünkü sunucu "karşı taraf" ve "bu mesajı
-/// ben mi gönderdim" bilgisini vermiyor; ikisi de iki katılımcıdan hangisinin
-/// oturum sahibi olduğuna bakılarak türetiliyor.
+/// Sohbet uçları; iki taraf ortak. Sunucu "karşı taraf" ve "ben mi gönderdim"i
+/// vermediği için her çağrı [currentUserId] istiyor.
 class ChatService {
   ChatService._(this._apiClient);
 
@@ -29,7 +22,6 @@ class ChatService {
 
   final ApiClient _apiClient;
 
-  /// Kullanıcının sohbetleri, son mesaja göre.
   Future<ConversationPage> fetchConversations({
     required String currentUserId,
     int page = 0,
@@ -45,11 +37,7 @@ class ChatService {
     );
   }
 
-  /// Tek bir sohbet, listedeki satırla aynı hesapla.
-  ///
-  /// Bildirimden gelirken kullanılıyor: listeyi çekip içinde aramak yerine
-  /// `GET /conversations/{id}`. Taraf olmayan kullanıcı ve olmayan sohbet
-  /// aynı `404`'ü alıyor.
+  /// Bildirimden açarken; taraf olmayan ve olmayan sohbet aynı `404`.
   Future<Conversation> fetchConversation({
     required String conversationId,
     required String currentUserId,
@@ -63,16 +51,9 @@ class ChatService {
     );
   }
 
-  /// Bir sohbetin mesajları.
-  ///
-  /// Sunucunun varsayılan sayfa boyutu 30; aynı değer burada da varsayılan.
-  ///
-  /// [after] verilirse yalnız o mesajdan **sonra** gönderilenler döner
-  /// (kopukluk sonrası artımlı tamamlama). Sunucu bu kipte sırayı kendisi
-  /// sabitliyor ve `sort` parametresini `400` ile reddediyor; burada zaten
-  /// hiçbir kipte `sort` gönderilmiyor. Çapa bu sohbetin bir mesajı değilse
-  /// ya da silinmişse `400 MESSAGING_AFTER_UNKNOWN` gelir; çağıran listeyi
-  /// baştan çeker.
+  /// Mesajlar (sayfa 30). [after] verilirse yalnız sonrakiler (artımlı
+  /// tamamlama); `sort` hiç gönderilmiyor. Çapa bilinmiyorsa `400
+  /// MESSAGING_AFTER_UNKNOWN`.
   Future<MessagePage> fetchMessages({
     required String conversationId,
     required String currentUserId,
@@ -91,8 +72,7 @@ class ChatService {
     );
   }
 
-  /// Mesaj gönderir. Sunucu en fazla 4000 karakter kabul ediyor ve boş
-  /// gövdeyi reddediyor.
+  /// En fazla 4000 karakter; boş gövde reddedilir.
   Future<Message> sendMessage({
     required String conversationId,
     required String currentUserId,
@@ -109,17 +89,13 @@ class ChatService {
     );
   }
 
-  /// Sohbeti okundu işaretler; okunmamış sayacını sıfırlıyor.
   Future<void> markRead(String conversationId) {
     return _apiClient.postWithoutData(
       ApiPaths.conversationRead(conversationId),
     );
   }
 
-  /// Bir ilan üzerinden sohbet açar; zaten varsa mevcut sohbeti döndürüyor.
-  ///
-  /// [workerId] yalnızca işveren tarafı için: hangi başvuranla konuşulacağını
-  /// belirtiyor. Çalışan tarafı geçmiyor, karşı taraf zaten ilan sahibi.
+  /// Varsa mevcut sohbeti döndürür. [workerId] yalnız işveren için.
   Future<Conversation> openConversationForJob({
     required String jobId,
     required String currentUserId,
@@ -135,10 +111,7 @@ class ChatService {
     );
   }
 
-  /// Birden çok kullanıcının çevrimiçi durumu, tek istekte.
-  ///
-  /// Sohbet listesi satır başına ayrı istek atmasın diye toplu uç kullanılıyor.
-  /// Boş liste ile çağrılırsa ağa hiç çıkmıyor.
+  /// Toplu uç; boş listede ağa çıkmaz.
   Future<Map<String, Presence>> fetchPresence(List<String> userIds) async {
     if (userIds.isEmpty) return const {};
 

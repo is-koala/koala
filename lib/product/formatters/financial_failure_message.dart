@@ -1,6 +1,5 @@
-/// Backend'in kalıcı finansal hata anahtarlarını kullanıcıya güvenli Türkçe
-/// metin olarak sunar. Sağlayıcıdan veya bankadan gelen tanınmayan ham metin
-/// hiçbir zaman ekrana taşınmaz.
+/// Kalıcı finansal hata anahtarlarını Türkçe metne çevirir; sağlayıcının ham
+/// metni ekrana taşınmaz.
 abstract final class FinancialFailureMessage {
   static const paymentFallback = 'Ödeme tamamlanamadı. Lütfen tekrar dene.';
   static const payoutFallback =
@@ -14,8 +13,7 @@ abstract final class FinancialFailureMessage {
         'Ödeme sağlayıcısına şu anda ulaşılamıyor. Lütfen tekrar dene.',
     '{payment.provider.rejected}':
         'Ödeme sağlayıcısı işlemi reddetti. Başka bir yöntem deneyebilirsin.',
-    '{payment.fraud.review}':
-        'Ödeme güvenlik kontrolünde reddedildi. Destekle iletişime geçebilirsin.',
+    '{payment.fraud.review}': 'Ödeme güvenlik kontrolünde reddedildi. Destekle iletişime geçebilirsin.',
     'paymentStatus=FAILURE':
         'Ödeme sağlayıcı tarafından tamamlanmadı. Lütfen tekrar dene.',
   };

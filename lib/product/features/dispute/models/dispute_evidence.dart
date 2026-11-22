@@ -1,13 +1,11 @@
 import 'package:koala/employee/features/home/models/job_detail.dart';
 
-/// Kanıtın türü; liste satırının ikonunu belirler.
 enum EvidenceKind {
   image,
   pdf,
   other;
 
-  /// Sunucunun `contentType`'ından (uzantıdan türetilmiş, istemciden
-  /// alınmıyor) ve gerekirse dosya adından.
+  /// Sunucunun `contentType`'ından, gerekirse dosya adından.
   static EvidenceKind of({required String contentType, required String name}) {
     final type = contentType.toLowerCase();
     if (type.startsWith('image/')) return image;
@@ -23,9 +21,7 @@ enum EvidenceKind {
   }
 }
 
-/// Bir uyuşmazlığa eklenmiş kanıt dosyasının **metadata**'sı. Backend
-/// `DisputeEvidenceDto` karşılığı: dosyanın kendisi indirme ucundan geliyor,
-/// yanıt depo anahtarı ya da kalıcı adres taşımıyor.
+/// Kanıt dosyasının **metadata**'sı; dosyanın kendisi indirme ucundan.
 class DisputeEvidence {
   const DisputeEvidence({
     required this.id,
@@ -40,17 +36,13 @@ class DisputeEvidence {
   final String id;
   final String disputeId;
 
-  /// Dosyayı yükleyen. Backend `SafeUserDto` döndürüyor; atamanın iki
-  /// tarafından biri.
   final JobCreator? uploadedBy;
 
   final String fileName;
 
-  /// Sunucunun uzantıdan türettiği tür; yükleme sırasında istemcinin
-  /// başlığı kullanılmıyor.
+  /// Sunucunun uzantıdan türettiği tür.
   final String contentType;
 
-  /// Bayt cinsinden boyut.
   final int fileSize;
 
   final DateTime? createdAt;
@@ -58,7 +50,7 @@ class DisputeEvidence {
   EvidenceKind get kind =>
       EvidenceKind.of(contentType: contentType, name: fileName);
 
-  /// Yükleyenin adı; ad boşsa kullanıcı adına, o da yoksa "Kullanıcı".
+  /// Ad boşsa kullanıcı adı, o da yoksa "Kullanıcı".
   String get uploaderName {
     final user = uploadedBy;
     if (user == null) return 'Kullanıcı';
@@ -93,9 +85,7 @@ class DisputeEvidence {
   }
 }
 
-/// Bayt sayısının okunur hâli: `842 B`, `1,4 MB`.
-///
-/// Ondalık ayracı virgül; 1024 tabanı — sunucunun sınırı da MiB.
+/// `842 B`, `1,4 MB`; 1024 tabanı, sunucunun sınırı da MiB.
 String formatFileSize(int bytes) {
   if (bytes < 1024) return '$bytes B';
   if (bytes < 1024 * 1024) {

@@ -5,31 +5,19 @@ import 'package:koala/employee/features/jobs/presentation/pages/work_detail_page
 import 'package:koala/employee/features/jobs/services/assignment_service.dart';
 import 'package:koala/product/network/api_exception.dart';
 
-/// `type=TRANSPORT` push'una dokunulunca gidilecek yeri bulur
-/// (is-koala/koala#197).
-///
-/// Bildirim `jobAssignmentId` taşıyor, iş detayı ise `extra` olarak bir
-/// [MyJob] istiyor; atama `GET /job-assignments/{id}` ile okunuyor ve
-/// `/work-detail` [WorkDetailArgs] ile açılıyor (`SEAT_DROPPED` olayı
-/// `seatDropped` bağlamıyla). Atama okunamazsa (`404`, ağ) yalnız İşlerim
-/// listesi açılıyor: dokunan kullanıcı bir yere varmalı.
-///
-/// Ulaşım push'u yalnız işçiye gider (`TransportManager.notifyWorker`);
-/// işveren oturumunda `PushMessaging` bu açıcıyı hiç çağırmaz, bildirim
-/// ekranına düşer.
+/// `type=TRANSPORT` push'una dokunulunca iş detayını açar (#197). Atama `GET
+/// /job-assignments/{id}` ile okunuyor; okunamazsa yalnız İşlerim açılır.
+/// İşveren oturumunda hiç çağrılmaz.
 class PushWorkDetailOpener {
   PushWorkDetailOpener({
     required this.navigate,
     AssignmentService? assignmentService,
   }) : _assignmentService = assignmentService ?? AssignmentService();
 
-  /// İşlerim listesinin yolu.
   static const String jobsRoute = '/jobs';
 
-  /// İş detayının yolu; `extra` [WorkDetailArgs].
   static const String detailRoute = '/work-detail';
 
-  /// [args] doluysa liste üstüne iş detayı, boşsa yalnız liste.
   final void Function(WorkDetailArgs? args) navigate;
 
   final AssignmentService _assignmentService;
@@ -53,11 +41,7 @@ class PushWorkDetailOpener {
   }
 }
 
-/// İşlerim'e gider; kayıt varsa üstüne iş detayını iter.
-///
-/// `openChatOn` ile aynı gerekçe: önce liste ki geri çıkınca kullanıcı
-/// listeye düşsün; `push` bir sonraki kareye bırakılıyor ki `go`'nun rota
-/// çözümü tamamlanmış olsun.
+/// Önce İşlerim'e `go`, sonraki karede detay `push`; geri çıkınca liste.
 void openWorkDetailOn(GoRouter router, WorkDetailArgs? args) {
   router.go(PushWorkDetailOpener.jobsRoute);
   if (args == null) return;

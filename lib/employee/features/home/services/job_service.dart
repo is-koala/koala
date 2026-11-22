@@ -6,10 +6,8 @@ import 'package:koala/employee/features/home/models/job_search_query.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
-/// İş ilanlarının kaynağı.
-///
-/// Liste ve detay bilerek ayrı: `GET /jobs` kart ve pin çizmeye yetecek kadarını
-/// döndürüyor, açıklama/görevler/adres yalnızca `GET /jobs/{id}`'de var.
+/// İlanlar. Liste kart ve pin için yeterli; açıklama, görevler ve adres yalnız
+/// `GET /jobs/{id}`'de.
 class JobService {
   JobService._(this._apiClient);
 
@@ -24,18 +22,10 @@ class JobService {
 
   final ApiClient _apiClient;
 
-  /// Varsayılan sayfa boyutu; backend'in kendi varsayılanıyla aynı.
   static const int defaultPageSize = 20;
 
-  /// İlan arar.
-  ///
-  /// Bütün ölçütler tek bir [JobSearchQuery] içinde geliyor: liste ve harita
-  /// sekmeleri aynı tipi kurduğu için ikisi zamanla ayrışamıyor. Sınırlayıcı
-  /// kutu da sorgunun bir alanı — haritanın görünen alanı oraya yazılıyor.
-  ///
-  /// [page] ve [size] sorgunun değil sayfalamanın parçası, o yüzden ayrı
-  /// duruyor. Sunucu boyutu **100** ile sınırlıyor; üstü sessizce kırpılmıyor,
-  /// 20'ye çekiliyor.
+  /// İlan arar; liste ve harita aynı [JobSearchQuery]'yi kuruyor. Sunucu boyutu
+  /// 100 ile sınırlıyor; üstü kırpılmaz, 20'ye çekilir.
   Future<JobPage> search(
     JobSearchQuery query, {
     int page = 0,
@@ -52,11 +42,8 @@ class JobService {
     );
   }
 
-  /// Bir şirketin açık ilanlarını bütün sayfalardan toplar.
-  ///
-  /// Sunucu şirket kimliğini arama sorgusunda süzer; istemci şirket adına
-  /// bakmaz. En büyük izinli sayfa boyutuyla başlanır, yine de yüzü aşan
-  /// şirketlerde sonraki sayfalar okunur.
+  /// Şirketin açık ilanlarını bütün sayfalardan toplar; süzme şirket kimliğiyle
+  /// sunucuda.
   Future<List<Job>> fetchByCompany(String companyId) async {
     const pageSize = 100;
     final jobs = <Job>[];
@@ -74,7 +61,6 @@ class JobService {
     }
   }
 
-  /// Tek bir ilanın tam hâli.
   Future<JobDetail> getById(String jobId) {
     return _apiClient.get<JobDetail>(
       ApiPaths.job(jobId),

@@ -1,14 +1,11 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/models/app_notification.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/network/session_manager.dart';
 import 'package:koala/product/services/notification_service.dart';
 
-/// Bildirim akışı. İki uygulama da aynı sağlayıcıyı okuyor.
-///
-/// Akışın kendisi sayfalı; okunmamış sayısı sayfadan **türetilmiyor**,
-/// sunucu ayrıca gönderiyor. İlk sayfada okunmamış görünmese bile rozette
-/// sayı olabilir.
+/// Bildirim akışı; iki uygulama okuyor. Okunmamış sayısı sayfadan türemiyor,
+/// sunucu ayrıca gönderiyor.
 class NotificationProvider extends ChangeNotifier {
   NotificationProvider({
     NotificationService? service,
@@ -18,7 +15,6 @@ class NotificationProvider extends ChangeNotifier {
     _sessionManager.addListener(_handleSessionChange);
   }
 
-  /// Sayfa başına kayıt. Sunucunun varsayılanıyla aynı.
   static const int _pageSize = 20;
 
   final NotificationService _service;
@@ -30,10 +26,8 @@ class NotificationProvider extends ChangeNotifier {
   int _page = 0;
   bool _isLast = true;
 
-  /// Bir ilk-sayfa isteği uçuyor mu. [_isLoading]'den ayrı tutuluyor:
-  /// sessiz yükleme göstergeyi açmıyor ama yine de tek başına uçmalı.
-  /// İkisini tek bayrakta toplayınca sessiz yol korumasız kalıyor ve iki
-  /// yükleme listeyi birlikte yeniden kuruyordu.
+  /// İlk sayfa isteği uçuyor mu; [_isLoading]'den ayrı, çünkü sessiz yükleme de
+  /// tek başına uçmalı.
   bool _isFetching = false;
   bool _isLoading = false;
   bool _isLoadingMore = false;
@@ -58,32 +52,21 @@ class NotificationProvider extends ChangeNotifier {
 
   String? get errorMessage => _errorMessage;
 
-  /// Akış bir kez çekilmişse tekrar çekmez.
-  ///
-  /// Zil rozetinin sayıyı bilmesi için akışın okunmuş olması gerekiyor, ama
-  /// zil her ekran çiziminde istek atmamalı — okunmamış sayısı bildirim
-  /// ekranı açılıp kapandığında zaten tazeleniyor.
+  /// Bir kez çekilmişse tekrar çekmez; zil her çizimde istek atmasın.
   Future<void> ensureLoaded() async {
     if (_hasLoaded || _isFetching) return;
     await load(silent: true);
   }
 
-  /// Akış daha önce çekildiyse göstergesiz yeniden çeker.
-  ///
-  /// Uygulama ön plana dönünce çağrılıyor: rozet için canlı bir kanal yok
-  /// (STOMP yalnızca sohbet olaylarını taşıyor), ön planda FCM `onMessage`
-  /// tazeliyor; arka planda gelenler de dönüşte böyle sayılıyor. Hiç
-  /// çekilmediyse zil kendi [ensureLoaded] çağrısını yapacak, burada
-  /// başlatılmıyor — oturum yokken istek atmamak için.
+  /// Daha önce çekildiyse göstergesiz yeniler; ön plana dönüşte çağrılıyor
+  /// (rozet için canlı kanal yok). Hiç çekilmediyse başlatmaz, oturum yokken
+  /// istek atılmasın.
   Future<void> refreshQuietly() async {
     if (!_hasLoaded || _isFetching) return;
     await load(silent: true);
   }
 
-  /// İlk sayfayı çeker; yenilemede de bu çağrılıyor.
-  ///
-  /// [silent] verildiğinde yükleniyor göstergesi açılmıyor — ekrana her
-  /// dönüşte listenin boşalıp yeniden dolması göz yoruyor.
+  /// İlk sayfayı çeker. [silent] göstergeyi açmaz.
   Future<void> load({bool silent = false}) async {
     if (_isFetching) return;
 
@@ -115,7 +98,6 @@ class NotificationProvider extends ChangeNotifier {
     }
   }
 
-  /// Sonraki sayfayı listenin sonuna ekler.
   Future<void> loadMore() async {
     if (_isLoadingMore || _isFetching || _isLast) return;
 
@@ -132,8 +114,7 @@ class NotificationProvider extends ChangeNotifier {
       _page = feed.page;
       _isLast = feed.last;
     } on ApiException catch (error) {
-      // Sayfa eklenemedi diye eldeki liste silinmiyor; kullanıcı okumaya
-      // devam edebilsin.
+      // Eldeki liste silinmiyor, okumaya devam edilebilsin.
       if (generation == _generation) _errorMessage = error.message;
     } finally {
       if (generation == _generation) {
@@ -143,12 +124,8 @@ class NotificationProvider extends ChangeNotifier {
     }
   }
 
-  /// Tek bir bildirimi okundu işaretler.
-  ///
-  /// Liste **elde** güncelleniyor, yeniden çekilmiyor: kullanıcı satıra
-  /// dokunup gidiyor, dönüşte listenin baştan kurulması için beklemesin.
-  /// Çağrı düşerse rozet olduğu gibi kalıyor; okunmamışı okundu göstermek
-  /// yanlış tarafa hata yapmak olurdu.
+  /// Okundu işaretler ve listeyi yerelde günceller. Çağrı düşerse rozet olduğu
+  /// gibi kalır; okunmamışı okundu göstermek yanlış yöne hata olur.
   Future<void> markRead(String notificationId) async {
     final index = _notifications.indexWhere(
       (notification) => notification.id == notificationId,
@@ -167,9 +144,8 @@ class NotificationProvider extends ChangeNotifier {
     }
     if (generation != _generation) return;
 
-    // İşaretleme uçuşurken ilk sayfa yenilenmiş olabilir. Eski sayısal indeks
-    // artık başka bir bildirime ait olabilir; hedefi güncel listede yeniden
-    // bulmadan hiçbir satıra ve sayaca dokunma.
+    // Bu arada liste yenilenmiş olabilir; hedef güncel listede yeniden
+    // bulunmalı.
     final currentIndex = _notifications.indexWhere(
       (notification) => notification.id == notificationId,
     );
@@ -182,11 +158,7 @@ class NotificationProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Hepsini okundu işaretler. Başarılıysa `true` döner.
-  ///
-  /// Tek tek işaretlemek için [markRead] var; bu, listedeki her şeyi
-  /// birden kapatıyor. Yanıt kaç kaydın işaretlendiğini söylüyor; sıfır
-  /// dönmesi hata değil, "zaten hepsi okunmuştu" demek.
+  /// Hepsini okundu işaretler; başarılıysa `true`.
   Future<bool> markAllRead() async {
     if (_isMarkingRead || !hasUnread) return false;
 
@@ -211,7 +183,6 @@ class NotificationProvider extends ChangeNotifier {
     }
   }
 
-  /// Çıkışta önceki hesabın bildirimleri sonraki oturumda görünmesin.
   void clear() {
     _generation++;
     _notifications.clear();
@@ -228,9 +199,8 @@ class NotificationProvider extends ChangeNotifier {
   }
 
   void _handleSessionChange() {
-    // SessionManager, ApiClient'in zorunlu oturum sonlandırmasının da tek
-    // sınırı. `start` router'ı erken tetiklememek için bildirim atmadığından
-    // burada yalnız çıkış durumuna bakmak, bütün end yollarını kapsıyor.
+    // `SessionManager` zorunlu çıkışın da tek sınırı; çıkış durumuna bakmak
+    // bütün `end` yollarını kapsıyor.
     if (!_sessionManager.isLoggedIn) clear();
   }
 

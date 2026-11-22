@@ -5,14 +5,8 @@ import 'package:koala/employee/features/home/presentation/widgets/job_marker_cac
 
 import '../../../../../support/fixtures.dart';
 
-/// Kesinlik testleri için **koordinatı sabit** çift.
-///
-/// Fikstürlerin koordinatı bilerek aynı: bayraktan başka hiçbir şey
-/// değişmiyor. Koordinatı da değiştiren bir çift, anahtardan kesinlik alanı
-/// düşürülse bile iddiayı ayakta tutardı — iki durum yine farklı anahtar
-/// alırdı, ama bunu kesinlik değil koordinat farkı sağlardı. Sızıntının
-/// gerçekte ortaya çıktığı durum ise sunucunun aynı noktayı iki farklı
-/// kesinlikle vermesi.
+/// Koordinatı **sabit** çift: yalnız bayrak değişiyor. Koordinat da değişse,
+/// anahtardan kesinlik düşürülse bile iddia ayakta kalırdı.
 Job _sameSpot(AddressPrecision precision) => buildJob(
   id: 'job_ayni',
   latitude: roundedLatitude,

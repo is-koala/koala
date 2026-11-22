@@ -1,7 +1,5 @@
-/// `/legal/agreements` yanıtındaki sözleşme sürümü.
-///
-/// Kayıt tamamlanırken zorunlu olanların hepsi onaylanmış olmalı; backend
-/// eksik onayla kaydı reddediyor.
+/// Sözleşme sürümü; zorunlu olanların hepsi onaylanmadan backend kaydı
+/// reddediyor.
 class AgreementVersion {
   const AgreementVersion({
     required this.id,
@@ -15,19 +13,16 @@ class AgreementVersion {
 
   final String id;
 
-  /// Sözleşme tipi (`TERMS_OF_SERVICE`, `PRIVACY_POLICY` ...). Bilinmeyen bir
-  /// tip gelirse [AgreementType.unknown] olur; ekran yine de çizilir.
+  /// Bilinmeyen tip [AgreementType.unknown]; ekran yine çizilir.
   final AgreementType type;
 
   final String version;
 
   final String locale;
 
-  /// Onaylanması zorunlu mu.
   final bool mandatory;
 
-  /// Sözleşme metninin public HTTPS adresi. Dolu ve geçerliyse başlık
-  /// harici tarayıcıda açılabilir.
+  /// Doluysa başlık harici tarayıcıda açılabilir.
   final String? contentUrl;
 
   final DateTime? effectiveFrom;
@@ -61,7 +56,6 @@ class AgreementVersion {
   }
 }
 
-/// Backend'in `AgreementType` enum'unun karşılığı.
 enum AgreementType {
   termsOfService('TERMS_OF_SERVICE'),
   privacyPolicy('PRIVACY_POLICY'),
@@ -69,18 +63,13 @@ enum AgreementType {
   explicitConsent('EXPLICIT_CONSENT'),
   commercialMessage('COMMERCIAL_MESSAGE'),
 
-  /// Backend yeni bir tip eklerse uygulama çökmesin diye.
   unknown('UNKNOWN');
 
   const AgreementType(this.code);
 
-  /// Backend'in gönderdiği değer.
   final String code;
 
-  /// Onay kutusunun yanında yazan cümle.
-  ///
-  /// Her tip için ayrı ayrı yazıldı; Türkçe ek uyumu tek bir şablonla doğru
-  /// üretilemiyor.
+  /// Türkçe ek uyumu tek şablonla doğru üretilemediği için her tip ayrı.
   String get consentLabel {
     switch (this) {
       case AgreementType.termsOfService:
@@ -98,7 +87,6 @@ enum AgreementType {
     }
   }
 
-  /// Onay kutusunda görünen ad.
   String get displayName {
     switch (this) {
       case AgreementType.termsOfService:

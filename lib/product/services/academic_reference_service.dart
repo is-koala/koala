@@ -3,13 +3,8 @@ import 'package:koala/product/models/academic_reference.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
-/// Üniversite / fakülte / bölüm listelerinin kaynağı (`/reference/**`).
-///
-/// Üç uç da kimlik doğrulama istemiyor (`@SecurityRequirements`), yani
-/// giriş yapılmadan da okunabiliyor.
-///
-/// Listeler nadiren değiştiği için bir kez çekilip bellekte tutuluyor;
-/// fakülte ve bölüm de üstündeki kayda göre ayrı ayrı önbellekleniyor.
+/// Üniversite / fakülte / bölüm listeleri; giriş gerektirmiyor. Nadiren
+/// değiştikleri için bellekte önbelleklenir.
 class AcademicReferenceService {
   AcademicReferenceService._(this._apiClient);
 
@@ -58,8 +53,6 @@ class AcademicReferenceService {
     );
   }
 
-  /// Önbelleği boşaltır. Yalnızca testler için; listeler oturum boyunca
-  /// değişmiyor.
   @visibleForTesting
   void clearCache() {
     _universities = null;

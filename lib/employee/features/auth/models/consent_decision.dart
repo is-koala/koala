@@ -1,7 +1,4 @@
-/// Kullanıcının bir sözleşme sürümü için verdiği karar.
-///
-/// `/auth/complete-registration` ve `/legal/consents` gövdelerinde liste
-/// hâlinde gidiyor.
+/// Bir sözleşme sürümü için verilen karar.
 class ConsentDecision {
   const ConsentDecision({
     required this.agreementVersionId,

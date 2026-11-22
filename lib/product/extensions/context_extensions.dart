@@ -1,5 +1,6 @@
 import 'dart:math';
-import 'package:flutter/material.dart';
+
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_radius.dart';
 
@@ -45,91 +46,60 @@ extension ThemeExtension on BuildContext {
   TextTheme get primaryTextTheme => Theme.of(this).primaryTextTheme;
 }
 
-/// Temaya göre değişen renkler.
-///
-/// Marka, durum ve yüzey renkleri (`primaryColor`, `success`, `scrim` ...)
-/// [AppColors] içinde sabit kalır; zemin, metin ve ayraç gibi açık/koyu
-/// temada farklılaşan her şey buradan okunur.
+/// Temaya göre değişen renkler; sabit marka ve durum renkleri [AppColors]'ta.
 ///
 /// ```dart
-/// // ❌ iki temadan birinde sessizce kırılır
-/// color: Colors.white
+/// // ❌ iki temadan birinde kırılır
 /// color: Colors.grey[600]
-///
 /// // ✅
-/// color: context.backgroundColor
 /// color: context.textSecondary
 /// ```
 ///
-/// Buradan gelen renk derleme zamanı sabiti olmadığı için o widget `const`
-/// olamaz; `const` anahtarını kaldır.
+/// Bu renkler sabit olmadığı için kullanan widget `const` olamaz.
 extension AppColorExtension on BuildContext {
-  /// Sayfa zemini.
   Color get backgroundColor => theme.scaffoldBackgroundColor;
 
-  /// Kart, tile ve bottom sheet zemini.
   Color get tileColor => colorScheme.surfaceContainer;
 
-  /// Zeminden bir tık yükseltilmiş yüzey: buton, ikon dairesi, navbar.
+  /// Bir tık yükseltilmiş yüzey: buton, ikon dairesi, navbar.
   Color get elevatedColor => colorScheme.surfaceContainerHigh;
 
-  /// Başlık ve gövde metni.
   Color get textPrimary => colorScheme.onSurface;
 
-  /// Açıklama, etiket, ikincil metin.
   Color get textSecondary => colorScheme.onSurfaceVariant;
 
-  /// En soluk metin ve ikonlar (satır sonundaki chevron gibi).
+  /// En soluk metin ve ikonlar (satır sonundaki chevron).
   Color get textTertiary => colorScheme.outline;
 
-  /// Ayraç ve ince kenarlıklar.
   Color get dividerColor => theme.dividerColor;
 
-  /// Vurgu rengi: marka yeşili.
   Color get accentColor => colorScheme.primary;
 
-  /// Tema koyu mu.
-  ///
-  /// Renk seçmek için genelde gerekmez — [ColorScheme] zaten temaya göre
-  /// dönüyor. Yalnızca açık ve koyu temada **yön değiştiren** durumlar için:
+  /// Renk seçmek için genelde gerekmez; yalnız temaya göre **yön değiştiren**
+  /// durumlar için.
   bool get isDarkTheme => theme.brightness == Brightness.dark;
 
-  /// "Başvurularım" bölümünün renkli zemini.
   Color get pendingSurface =>
       isDarkTheme ? AppColors.surfacePendingDark : AppColors.surfacePending;
 
-  /// "Ödeme Bekleniyor" bölümünün renkli zemini.
   Color get payoutSurface =>
       isDarkTheme ? AppColors.surfacePayoutDark : AppColors.surfacePayout;
 
-  /// "Onayını Bekleyen İşler" bölümünün renkli zemini.
   Color get awaitingSurface =>
       isDarkTheme ? AppColors.surfaceAwaitingDark : AppColors.surfaceAwaiting;
 
-  /// "Devam Eden İş" bölümünün renkli zemini.
   Color get progressSurface =>
       isDarkTheme ? AppColors.surfaceProgressDark : AppColors.surfaceProgress;
 
-  /// [accentColor] zemini üzerindeki metin ve ikon: iki temada da beyaz.
-  ///
-  /// Değer [AppColors.onAccent] ile aynı; ikisi arasındaki fark nereden
-  /// okunduğu. Yeşil bir zeminin üstüne çizen widget bunu kullanır, böylece
-  /// tema bir gün yön değiştirirse tek yerden döner. [AppColors.onAccent]
-  /// ise temadan bağımsız olduğu baştan belli olan yüzeyler için (business
-  /// navbar'ı, kapak görselinin üstü).
-  ///
-  /// Yeşilin **üstü** demek: yeşilin *yerine* duran ters butonun zemini
-  /// buradan değil [backgroundColor]'dan gelir.
+  /// [accentColor] zemini üzerindeki içerik. Değer [AppColors.onAccent] ile
+  /// aynı; fark, temaya bağlı okunması. Yeşilin *yerine* duran ters butonun
+  /// zemini [backgroundColor].
   Color get onAccentColor => colorScheme.onPrimary;
 }
 
 extension ButtonStyleExtension on BuildContext {
-  /// Vurgu rengiyle çerçeveli ikincil eylem düğmesi: metin ve kenar
-  /// [accentColor], köşe [AppRadius.smallCircular].
-  ///
-  /// İş detayının "İşverenle mesajlaş"ı, hakediş sheet'inin "İş detayını
-  /// aç"ı ve konum kartının "Yol tarifi al"ı aynı düğme; üç yerde ayrı
-  /// `styleFrom` kopyası birinin değişip diğerlerinin kalmasına açıktı.
+  /// Vurgu renginde çerçeveli ikincil eylem düğmesi ("İşverenle mesajlaş", "Yol
+  /// tarifi al").
   ButtonStyle get accentOutlinedButtonStyle => OutlinedButton.styleFrom(
     foregroundColor: accentColor,
     side: BorderSide(color: accentColor),

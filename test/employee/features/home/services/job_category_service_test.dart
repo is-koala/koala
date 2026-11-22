@@ -30,9 +30,8 @@ void main() {
         ),
       );
 
-      final categories = await JobCategoryService.withClient(
-        api.client,
-      ).fetchCategories();
+      final categories = await JobCategoryService.withClient(api.client)
+          .fetchCategories();
 
       expect(api.requests.single.path, '/reference/job-categories');
       expect(categories, hasLength(2));
@@ -48,9 +47,8 @@ void main() {
         ),
       );
 
-      final categories = await JobCategoryService.withClient(
-        api.client,
-      ).fetchCategories();
+      final categories = await JobCategoryService.withClient(api.client)
+          .fetchCategories();
 
       expect(categories, isEmpty);
     });

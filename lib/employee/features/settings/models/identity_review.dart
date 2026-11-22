@@ -1,26 +1,17 @@
-/// Personel incelemesinin durumu. Sunucunun `IdentityReviewStatus`
-/// enum'ının karşılığı.
 enum IdentityReviewStatus {
-  /// Fotoğraflar kuyrukta; personel henüz bakmadı. Bu durumda yeni yükleme
-  /// kabul edilmiyor (`IDENTITY_DOCUMENTS_ALREADY_PENDING`).
+  /// Bu durumda yeni yükleme kabul edilmiyor.
   pending('PENDING'),
 
-  /// Personel onayladı; `/users/me`'deki `identityVerified` de `true`.
   approved('APPROVED'),
 
-  /// Personel reddetti; gerekçe [IdentityReview.rejectionReason]'da ve
-  /// kullanıcı yeni fotoğraflarla tekrar gönderebiliyor.
+  /// Gerekçe [IdentityReview.rejectionReason]'da; yeniden gönderilebilir.
   rejected('REJECTED');
 
   const IdentityReviewStatus(this.code);
 
-  /// Sunucudan gelen değer.
   final String code;
 
-  /// Sunucu kodundan durumu bulur; tanımadığı değerde `null`.
-  ///
-  /// `PENDING_REVIEW` da bekliyor sayılıyor: ürün metinleri durumu bu adla
-  /// anıyor ve sunucu bir gün enum'ı o yöne çevirirse uygulama kör kalmasın.
+  /// Tanımadığı değerde `null`. `PENDING_REVIEW` da bekliyor sayılıyor.
   static IdentityReviewStatus? fromCode(Object? value) {
     if (value is! String) return null;
     if (value == 'PENDING_REVIEW') return IdentityReviewStatus.pending;
@@ -31,12 +22,8 @@ enum IdentityReviewStatus {
   }
 }
 
-/// `GET /users/me/identity-documents` yanıtı: oturum sahibinin **son**
-/// incelemesi.
-///
-/// TCKN yanıtta geliyor ama buraya alınmıyor: ekranın ihtiyacı durum,
-/// gerekçe ve tarihler; kimlik numarasını gereksiz yere bir modelde daha
-/// taşımak onu bir log satırına daha yaklaştırır.
+/// Oturum sahibinin **son** incelemesi. TCKN yanıtta geliyor ama alınmıyor:
+/// ekranın ihtiyacı yok, gereksiz kopya onu log satırına yaklaştırır.
 class IdentityReview {
   const IdentityReview({
     required this.id,
@@ -50,11 +37,9 @@ class IdentityReview {
   final String id;
   final IdentityReviewStatus status;
 
-  /// Personelin yazdığı red gerekçesi; yalnız [IdentityReviewStatus.rejected]
-  /// durumunda dolu. Boş dizge gelirse `null` sayılıyor.
+  /// Yalnız reddedilende dolu; boş dize `null`.
   final String? rejectionReason;
 
-  /// Fotoğrafların gönderildiği an.
   final DateTime? createdAt;
 
   final DateTime? rejectedAt;
@@ -67,9 +52,8 @@ class IdentityReview {
 
   bool get isRejected => status == IdentityReviewStatus.rejected;
 
-  /// Yanıtı çözer; durum tanınmıyorsa `null` — ekran o zaman "inceleme yok"
-  /// gibi davranıp formu çiziyor, bilinmeyen bir durum adına ekranı
-  /// kilitlemiyor.
+  /// Durum tanınmıyorsa `null`: ekran "inceleme yok" gibi davranır, bilinmeyen
+  /// durum için kilitlenmez.
   static IdentityReview? fromJson(Map<String, dynamic> json) {
     final status = IdentityReviewStatus.fromCode(json['status']);
     if (status == null) return null;
@@ -92,37 +76,25 @@ class IdentityReview {
   }
 }
 
-/// Kullanıcının kimlik durumu: `/users/me` bayrağı ile son incelemenin
-/// birleşimi.
-///
-/// İkisi ayrı yerden geliyor ve tek başına yetmiyor: bayrak yalnız
-/// "doğrulandı / doğrulanmadı" diyor, inceleme ise doğrulanmamış kullanıcının
-/// **neden** hâlâ öyle olduğunu — bekliyor mu, reddedildi mi, hiç
-/// göndermedi mi. Rozet ve durum ekranı bu dört hâli ayırıyor.
+/// Kimlik durumu: `/users/me` bayrağı ile son incelemenin birleşimi. Bayrak
+/// yalnız doğrulandı/doğrulanmadı diyor; inceleme doğrulanmamışın **neden**
+/// öyle olduğunu.
 enum IdentityStatus {
-  /// `identityVerified == true`. İnceleme kaydı olsun olmasın son söz bu.
+  /// İnceleme olsun olmasın son söz bu.
   verified('Kimlik doğrulandı'),
 
-  /// Fotoğraflar personel kuyruğunda.
   pending('Kimlik incelemede'),
 
-  /// Son inceleme reddedildi; kullanıcı yeniden yüklemeli.
   rejected('Kimlik reddedildi'),
 
-  /// Ne doğrulama ne bekleyen inceleme var.
   unverified('Kimlik doğrulanmadı');
 
   const IdentityStatus(this.label);
 
-  /// Rozette görünen metin.
   final String label;
 
-  /// Bayrak ile incelemeden durumu türetir.
-  ///
-  /// Onaylanmış inceleme bayrağı beklemiyor: personel onayı `identityVerified`
-  /// damgasını atıyor ama `/users/me` kopyası tazelenene kadar eski kalabilir;
-  /// sunucunun "onaylandı" dediği bir kaydı "doğrulanmadı" diye göstermek
-  /// yanlış olurdu.
+  /// Onaylanmış inceleme bayrağı beklemiyor: `/users/me` kopyası tazelenene
+  /// kadar eski kalabilir.
   static IdentityStatus resolve({
     required bool identityVerified,
     required IdentityReview? review,

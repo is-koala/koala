@@ -14,51 +14,35 @@ abstract class WorkDetailPagemodel
   TransportService get _transportService =>
       widget.transportService ?? TransportService();
 
-  /// Ekranın gösterdiği kayıt. Rotadan gelenle başlıyor; bir eylemden sonra
-  /// sunucudan yeniden okunup yerine konuyor.
+  /// Eylemden sonra sunucudan yeniden okunup yerine konur.
   late MyJob job = widget.job;
 
-  /// İlanın tam hâli: adres, açıklama, ilanı açan kişi ve şirket.
-  ///
-  /// Satırın taşıdığı özet bunları içermiyor (`JobSummaryDto`), o yüzden
-  /// ayrı bir istek. Gelemezse sayfa çökmüyor: adres ilçe/il'e, işveren adı
-  /// özetteki şirket adına düşüyor ve [detailError] üstte bir şerit çiziyor.
+  /// İlanın tam hâli; özet içermiyor. Gelemezse adres ilçe/il'e, işveren özete
+  /// düşer ve [detailError] şerit çizer.
   JobDetail? detail;
   String? detailError;
 
-  /// Atamanın mesai oturumları; çizelgenin giriş/çıkış satırları ve süren
-  /// işteki "başladın" satırı buradan.
   List<WorkSession> sessions = const [];
 
-  /// Süren işin açık oturumu; yoksa `null`.
   WorkSession? get openSession =>
       sessions.where((session) => session.isOpen).firstOrNull;
 
-  /// İptal kaydı: `GET .../cancellation` ile çekilen tam kayıt. Çekilemezse
-  /// atamanın içinde gelen özet ([Assignment.cancellation]) kullanılıyor.
+  /// Çekilemezse atamadaki özet kullanılır.
   Cancellation? cancellation;
 
-  /// Atamanın uyuşmazlıkları, en yeni önde (is-koala/koala#215). Çekilemezse
-  /// boş kalıyor ve özet kartı çizilmiyor — sayfanın geri kalanı etkilenmez.
+  /// En yeni önde (#215); çekilemezse özet kartı çizilmez.
   List<Dispute> disputes = const [];
 
-  /// Bir eylem sonrası kayıt yeniden okunurken.
   bool refreshing = false;
 
-  /// Atamanın ulaşım görünümü (is-koala/koala#197). Satırın taşıdığı
-  /// `MyAssignmentDto.transport` ile açılıyor, aktif atamada
-  /// `GET /job-assignments/{id}/transport` ile tazeleniyor; koltuk seçimi
-  /// sunucunun döndürdüğü görünümü yerine koyuyor. Plan yoksa `null`.
+  /// Ulaşım görünümü (#197); aktif atamada tazelenir, koltuk seçimi sunucunun
+  /// döndürdüğünü koyar.
   late AssignmentTransport? transport = job.assignment?.transport;
 
-  /// Koltuk isteği sunucuda olan yön; kart o düğmeyi kilitliyor.
   ShuttleDirection? seatBusyDirection;
 
-  /// Son bilinen görünümde koltuğu olup taze görünümde kalmayan yönler.
-  ///
-  /// Sunucu yön başına "düştü" bayrağı taşımıyor; satırın taşıdığı görünüm
-  /// (push'tan önceki son bilinen seçim) taze `GET` ile karşılaştırılıyor.
-  /// Kullanıcı o yöne yeniden koltuk seçince düşüyor.
+  /// Son bilinende koltuğu olup taze görünümde kalmayan yönler; sunucu "düştü"
+  /// bayrağı taşımıyor.
   Set<ShuttleDirection> droppedSeatDirections = const {};
 
   static Set<ShuttleDirection> _seatedDirections(
@@ -69,7 +53,6 @@ abstract class WorkDetailPagemodel
         if (transport.selectedStop(direction) != null) direction,
   };
 
-  /// Taze görünümü yerine koyar ve düşen yönleri günceller.
   void _applyTransport(AssignmentTransport? loaded) {
     final before = _seatedDirections(transport);
     final after = _seatedDirections(loaded);
@@ -80,9 +63,8 @@ abstract class WorkDetailPagemodel
     transport = loaded;
   }
 
-  /// Koltuk seçilebilir mi: sunucu yalnız `PENDING_CONFIRMATION` /
-  /// `CONFIRMED` / `IN_PROGRESS` atamada kabul ediyor
-  /// (`TRANSPORT_ASSIGNMENT_NOT_ACTIVE`).
+  /// Sunucu yalnız `PENDING_CONFIRMATION` / `CONFIRMED` / `IN_PROGRESS`'te
+  /// kabul ediyor.
   bool get canSelectSeat =>
       job.assignmentId != null &&
       switch (job.status) {
@@ -99,10 +81,8 @@ abstract class WorkDetailPagemodel
         MyJobStatus.unknown => false,
       };
 
-  /// Biniş teyit edilebilir mi (is-koala/koala#217): sunucu
-  /// `CONFIRMED` / `IN_PROGRESS` / `COMPLETED` atamada kabul ediyor; iş
-  /// bittikten sonra okutacak bir servis kalmadığı için kart düğmeyi yalnız
-  /// onaylı ve süren işte gösteriyor.
+  /// Sunucu `CONFIRMED` / `IN_PROGRESS` / `COMPLETED`'de kabul ediyor; iş
+  /// bitince okutacak servis kalmadığı için düğme onaylı ve süren işte.
   bool get canBoard =>
       job.assignmentId != null &&
       (job.status == MyJobStatus.approved ||
@@ -111,7 +91,6 @@ abstract class WorkDetailPagemodel
   BoardingQueueProvider? _boardingQueue;
   int _boardingRevision = 0;
 
-  /// Açık mesai süresini işleten sayaç; İşlerim'dekiyle aynı gerekçe.
   Timer? _elapsedTicker;
 
   @override
@@ -134,13 +113,8 @@ abstract class WorkDetailPagemodel
     super.dispose();
   }
 
-  /// Eylemden sonra yalnızca bu kaydı tazeler.
-  ///
-  /// Atama `GET /job-assignments/{id}` ile tek istekte geliyor. Başvuru
-  /// için böyle bir uç yok; [ApplyProvider] listesini yeniden çekiyor ve
-  /// aynı kimlikli kayıt oradan alınıyor. Kayıt bir atamaya dönüştüyse
-  /// (kabul edildi) listeden düşer; o zaman eldeki hâl kalıyor — kullanıcı
-  /// İşlerim'e döndüğünde yeni satırı görecek.
+  /// Yalnız bu kaydı tazeler. Başvuru için tek kayıt ucu yok, [ApplyProvider]
+  /// listeyi çeker; kayıt atamaya dönüştüyse eldeki hâl kalır.
   @override
   Future<void> refreshWork() async {
     final assignmentId = job.assignmentId;
@@ -192,18 +166,9 @@ abstract class WorkDetailPagemodel
     }
   }
 
-  /// Mesai oturumlarını, iptal kaydını ve uyuşmazlıkları çeker.
-  ///
-  /// Üçü de yalnızca ilgili durumda isteniyor: oturum, onaydan önce
-  /// olamaz; iptal kaydı, iptal edilmemiş atamada `null` döner ve boşuna
-  /// bir istektir; uyuşmazlık emanette para yokken açılamaz
-  /// ([_mayHaveDispute]). Hata sayfayı kapatmıyor — çizelge o satırlar
-  /// olmadan çiziliyor, iptal kartı atamanın içindeki özete düşüyor,
-  /// uyuşmazlık kartı çizilmiyor.
-  ///
-  /// Sayaç oturumlardan hemen sonra kuruluyor: iptal ve uyuşmazlık okumaları
-  /// birbirinden bağımsız ve paralel, açık mesainin geçen süresi onların
-  /// ağ gecikmesini beklemiyor.
+  /// Oturum, iptal kaydı ve uyuşmazlıkları yalnız ilgili durumda çeker; hata
+  /// sayfayı kapatmaz. Sayaç oturumlardan hemen sonra kurulur, diğer okumaları
+  /// beklemez.
   Future<void> _loadAssignmentRecords() async {
     final assignmentId = job.assignmentId;
     if (assignmentId == null) return;
@@ -245,19 +210,13 @@ abstract class WorkDetailPagemodel
     }
   }
 
-  /// Bu atamada uyuşmazlık olabilir mi.
-  ///
-  /// Uyuşmazlık yalnız emanette para varken açılabiliyor
-  /// (`dispute.nothing.to.dispute`): onay bekleyen (`PENDING_CONFIRMATION`)
-  /// ve reddedilmiş atamada para hiç emanete girmedi, o yüzden istek boşuna.
-  /// Sonuçlanmış uyuşmazlık, iş iptal olsa bile kayıt olarak kalıyor.
+  /// Yalnız emanette para olmuşsa; onay bekleyen ve reddedilmişte istek boşuna.
   bool get _mayHaveDispute => switch (job.status) {
     MyJobStatus.awaitingApproval || MyJobStatus.rejected => false,
     _ => true,
   };
 
-  /// Uyuşmazlık ekranını açar; dönünce özet (durum) tazeleniyor — karar bu
-  /// arada verilmiş olabilir.
+  /// Dönünce özet tazelenir; karar verilmiş olabilir.
   Future<void> openDisputeScreen() async {
     final assignmentId = job.assignmentId;
     if (assignmentId == null) return;
@@ -267,12 +226,8 @@ abstract class WorkDetailPagemodel
     unawaited(_loadAssignmentRecords());
   }
 
-  /// Ulaşım görünümünü sunucudan tazeler.
-  ///
-  /// Yalnız koltuk seçilebilen atamada: kapanmış atamada satırın taşıdığı
-  /// görünüm yeterli ve boşuna istek. `404` planın olmadığını söylüyor —
-  /// kart kalkıyor; başka hata eldeki görünümü koruyor, kart o hâliyle
-  /// duruyor.
+  /// Yalnız koltuk seçilebilen atamada. `404` plan yok demek, kart kalkar;
+  /// başka hata eldeki görünümü korur.
   Future<void> _loadTransport() async {
     final assignmentId = job.assignmentId;
     if (assignmentId == null || !canSelectSeat) return;
@@ -291,9 +246,8 @@ abstract class WorkDetailPagemodel
     }
   }
 
-  /// Biniş kuyruğuna bağlanır: oturum sahibi için başlatır (önceki
-  /// oturumda saklanmış okutmalar gönderilsin) ve arka planda bir okutma
-  /// teslim edilince biniş durumunu yeniden okur.
+  /// Önceki oturumda saklanan okutmalar gönderilsin; teslimde biniş durumu
+  /// yeniden okunur.
   Future<void> _initializeBoardingQueue() async {
     final queue = Provider.of<BoardingQueueProvider?>(context, listen: false);
     if (queue == null) return;
@@ -318,7 +272,6 @@ abstract class WorkDetailPagemodel
     unawaited(_loadTransport());
   }
 
-  /// Servisteki QR'ı okutma ekranı; dönünce biniş durumu yeniden okunur.
   Future<void> openBoardingScan(ShuttleDirection direction) async {
     final assignmentId = job.assignmentId;
     if (assignmentId == null) return;
@@ -332,7 +285,6 @@ abstract class WorkDetailPagemodel
     if (mounted) await _loadTransport();
   }
 
-  /// İşverenin okutacağı kişisel QR; dönünce biniş durumu yeniden okunur.
   Future<void> openMyBoardingQr(ShuttleDirection direction) async {
     final assignmentId = job.assignmentId;
     if (assignmentId == null) return;
@@ -342,16 +294,12 @@ abstract class WorkDetailPagemodel
     if (mounted) await _loadTransport();
   }
 
-  /// Reddedilmiş okutmanın uyarısını kapatır.
   void dismissBoarding(String clientEventId) {
     unawaited(_boardingQueue?.dismiss(clientEventId));
   }
 
-  /// Yön için servis+durak seçtirir ve sunucuya yazar.
-  ///
-  /// `409` (dolu, aktif değil, aynı anda yazıldı) sunucunun mesajıyla
-  /// gösteriliyor ve görünüm yeniden okunuyor — elimizdeki doluluk bayat
-  /// demek. `404` de aynı yolu izliyor: servis/durak plandan kalkmış.
+  /// Yön için koltuk seçtirir. `409` ve `404` sunucunun mesajıyla gösterilir ve
+  /// görünüm yeniden okunur; doluluk bayat.
   Future<void> selectSeat(ShuttleDirection direction) async {
     final assignmentId = job.assignmentId;
     final current = transport;
@@ -390,7 +338,6 @@ abstract class WorkDetailPagemodel
     }
   }
 
-  /// Şoförü arar (`tel:`); açılamazsa toast.
   Future<void> callDriver(String phone) async {
     final digits = phone.replaceAll(RegExp(r'[^0-9+]'), '');
     final opened = await _openExternal(Uri(scheme: 'tel', path: digits));
@@ -398,8 +345,6 @@ abstract class WorkDetailPagemodel
     AppToast.error(context, 'Arama başlatılamadı');
   }
 
-  /// Mesai yalnızca çalışan onayladıktan sonra başlayabiliyor; cevap
-  /// bekleyen ya da reddedilmiş atamada oturum yok.
   bool get _mayHaveSessions => switch (job.status) {
     MyJobStatus.approved ||
     MyJobStatus.inProgress ||
@@ -414,7 +359,6 @@ abstract class WorkDetailPagemodel
     MyJobStatus.unknown => false,
   };
 
-  /// Açık oturum varken sayacı çalıştırır, kalmadığında durdurur.
   void _syncElapsedTicker() {
     if (openSession == null) {
       _elapsedTicker?.cancel();
@@ -427,22 +371,16 @@ abstract class WorkDetailPagemodel
     });
   }
 
-  /// Sayfanın gösterdiği ilan özeti; sohbet ve ilan sheet'i bunu istiyor.
   Job? get summaryJob => job.assignment?.job ?? job.application?.job;
 
-  /// Adresin kesinliği: detay karar veriyor, gelmediyse özet, o da yoksa
-  /// yaklaşık — kanıtlanmamış yetki kesin sayılmaz (ADR-0003).
+  /// Detay karar verir, yoksa özet, o da yoksa yaklaşık (ADR-0003).
   AddressPrecision get addressPrecision =>
       detail?.addressPrecision ??
       summaryJob?.addressPrecision ??
       AddressPrecision.approximate;
 
-  /// Yol tarifinin hedefi; yalnız **kesin** konumda ve koordinat varsa.
-  ///
-  /// Koordinat önce detayın adresinden (`address.position`), o yoksa özetten
-  /// — ama özetinki yalnız özet de `EXACT` derken: `APPROXIMATE` özet
-  /// yuvarlanmış koordinat taşır ve yol tarifi olmayan bir kapıya götürürdü.
-  /// Varış hedefi işin başlangıcı (is-koala/koala#188).
+  /// Yalnız **kesin** konumda. Özetin koordinatı yalnız özet de `EXACT`
+  /// diyorsa: yuvarlanmış koordinat olmayan kapıya götürür (#188).
   DirectionsTarget? get directionsTarget {
     if (addressPrecision.isApproximate) return null;
     final position = detail?.address?.position;
@@ -467,13 +405,9 @@ abstract class WorkDetailPagemodel
     );
   }
 
-  /// Toplu taşıma yol tarifini harici haritada açar.
-  ///
-  /// iOS'ta Apple Haritalar / Google Haritalar seçtiriyor; Google uygulaması
-  /// yoksa (`comgooglemaps://` açılamazsa) evrensel bağlantıya düşüyor.
-  /// Android'de doğrudan evrensel bağlantı: sistem seçicisi Google
-  /// Haritalar'ı ya da tarayıcıyı sunuyor. Kullanıcının konumu hiçbir
-  /// bağlantıda yok; harita uygulaması başlangıcı kendisi okuyor.
+  /// iOS'ta Apple / Google Haritalar seçtirilir, Google yoksa evrensel
+  /// bağlantı; Android'de doğrudan evrensel bağlantı. Kullanıcının konumu
+  /// bağlantıda yok.
   Future<void> openDirections(DirectionsTarget target) async {
     final Uri primary;
     Uri? fallback;
@@ -503,9 +437,8 @@ abstract class WorkDetailPagemodel
     AppToast.error(context, 'Harita uygulaması açılamadı');
   }
 
-  /// Bağlantıyı açar; açıcı `false` dönerse ya da fırlatırsa `false`.
-  /// Android'de işleyicisi olmayan şema `PlatformException` fırlatabiliyor,
-  /// yedek bağlantıya geçiş bunu da "açılamadı" saymalı.
+  /// Android'de işleyicisi olmayan şema `PlatformException` fırlatabilir; o da
+  /// "açılamadı" sayılır.
   Future<bool> _openExternal(Uri url) async {
     final open =
         widget.openExternalUrl ??
@@ -517,23 +450,18 @@ abstract class WorkDetailPagemodel
     }
   }
 
-  /// Şirket sayfasına gider; kimlik bilinmiyorsa dokunma bağlanmıyor.
   VoidCallback? get openCompany {
     final companyId = job.companyId ?? detail?.company?.id;
     if (companyId == null) return null;
     return () => context.push('/company-detail', extra: companyId);
   }
 
-  /// Bireysel ilanın sahibi olan kişi: atamanın `employer`'ı, yoksa ilan
-  /// detayının `creator`'ı (koala-backend#282 sırası). Bilinmiyorsa `null`.
-  /// İşveren kartının adı ve fotoğrafı ile profile bağlantısı **aynı**
-  /// kişiyi buradan okuyor; ikisi iki yerde hesaplanırsa ayrışabilir.
+  /// Atamanın `employer`'ı, yoksa ilan detayının `creator`'ı. Kartın adı ve
+  /// profil bağlantısı aynı kişiyi buradan okuyor ki ayrışmasın.
   JobCreator? get individualEmployer =>
       job.assignment?.employer ?? detail?.creator;
 
-  /// Bireysel işverenin herkese açık profilini açar (is-koala/koala#182);
-  /// kişi bilinmiyorsa dokunma bağlanmıyor. Kişi, şirket ilanında kart
-  /// şirketi gösterdiği için yalnız bireysel ilanda aranıyor.
+  /// Yalnız bireysel ilanda (#182).
   VoidCallback? get openEmployerProfile {
     final person = individualEmployer;
     if (person == null || person.id.isEmpty) return null;
@@ -548,12 +476,8 @@ abstract class WorkDetailPagemodel
     );
   }
 
-  /// Başvuruyu geri çeker; başarılıysa sayfayı provider'daki hâline
-  /// çevirir.
-  ///
-  /// [ApplyProvider.withdraw] satırı yerinde güncelliyor ve `409`'da
-  /// listeyi kendisi yeniden çekiyor; burada ikinci bir yükleme yok, yeni
-  /// durum [ApplyProvider.appliedJobs]'tan okunuyor.
+  /// [ApplyProvider.withdraw] satırı güncelliyor, `409`'da listeyi kendisi
+  /// çekiyor; durum oradan okunur.
   Future<void> withdraw() async {
     final withdrawn = await withdrawApplication(job);
     if (!withdrawn || !mounted) return;

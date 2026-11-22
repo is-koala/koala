@@ -1,4 +1,3 @@
-/// Hesap silme yaşam döngüsünün backend'deki durumu.
 enum AccountDeletionStatus {
   requested('REQUESTED'),
   anonymized('ANONYMIZED'),
@@ -17,7 +16,6 @@ enum AccountDeletionStatus {
   }
 }
 
-/// Hesap silme talebinin sunucuda kaydedilmiş görünümü.
 class AccountDeletion {
   const AccountDeletion({
     required this.status,
@@ -32,8 +30,8 @@ class AccountDeletion {
   final DateTime? requestedAt;
   final DateTime? processedAt;
 
-  /// Talep kabul edilmiş olsa bile anonimleştirmeyi bekleten açık iş,
-  /// ödeme, emanet hesap veya uyuşmazlığın kullanıcıya çevrilmiş açıklaması.
+  /// Anonimleştirmeyi bekleten açık iş, ödeme, emanet ya da uyuşmazlığın
+  /// açıklaması.
   final String? blockedReason;
 
   bool get isBlocked => blockedReason?.trim().isNotEmpty ?? false;

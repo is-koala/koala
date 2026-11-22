@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/business/features/home/presentation/pages/b_create_page.dart';
@@ -15,10 +15,8 @@ import 'package:provider/provider.dart';
 
 import '../../../../../support/fake_api.dart';
 
-/// İlan formu adresi haritada seçtirir: alan `/pick-address`'i
-/// `push<ConfirmedAddress>` ile açar, dönen adres özet olarak görünür ve
-/// yeniden açılışta `extra` olarak geri verilir. Harita ekranının kendisi
-/// `test/product/widgets/map_first_address_page_test.dart`'ta.
+/// İlan formu adresi `push<ConfirmedAddress>` ile seçtirir; dönen adres özet
+/// olur ve yeniden açılışta `extra` olarak geri verilir.
 const _createLocation = '/business/create';
 const _pickerLocation = '/pick-address';
 

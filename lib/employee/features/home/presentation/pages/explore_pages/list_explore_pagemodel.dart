@@ -4,14 +4,10 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
     with AutomaticKeepAliveClientMixin<ListExplorePage> {
   bool isOpen = true;
 
-  /// Listenin sonuna bu kadar kala sonraki sayfa isteniyor; kullanıcı dibe
-  /// değmeden yükleme başlasın. `NotificationView` ile aynı eşik.
+  /// Dibe değmeden yükleme başlasın.
   static const double _loadMoreThreshold = 240;
 
-  /// Arama kutusunda yazımın durmasını bu kadar bekliyoruz.
-  ///
-  /// Her tuşta istek atmak `GET /jobs`'un PUBLIC kovasındaki dakikada 120
-  /// istek sınırını tek aramada tüketebiliyor.
+  /// Her tuşta istek dakikada 120'lik sınırı tek aramada tüketebilir.
   static const Duration _searchDebounce = Duration(milliseconds: 400);
 
   final ScrollController _scrollController = ScrollController();
@@ -21,12 +17,8 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
   Timer? _searchTimer;
   Position? _currentPosition;
 
-  /// Süzgeç sheet'inin uygulanmış hâli.
-  ///
-  /// Sunucu sorgusu bundan **türetiliyor** ([JobFilterSelection.toQuery]);
-  /// tersi mümkün değil, çünkü sorgu kategorinin adını ya da kullanıcının
-  /// seçtiği kilometreyi taşımıyor — sınırlayıcı kutudan yarıçapa geri
-  /// dönülemez. Çubuktaki çipler bu seçimden çiziliyor.
+  /// Süzgecin uygulanmış hâli; sorgu bundan türetiliyor, tersi mümkün değil
+  /// (kutudan yarıçapa dönülemez).
   JobFilterSelection _selection = const JobFilterSelection();
 
   @override
@@ -37,8 +29,7 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      // Filtre sheet'i açıldığında kategoriler hazır olsun; provider aynı
-      // listeyi ikinci kez çekmiyor.
+      // Süzgeç açıldığında kategoriler hazır olsun.
       context.read<JobCategoryProvider>().load();
       context.read<JobSearchProvider>().load();
     });
@@ -67,11 +58,8 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
     if (remaining <= _loadMoreThreshold) _search.loadMore();
   }
 
-  /// Konumu bir kez okur.
-  ///
-  /// İki işi var: `lat`/`lng` (kartın `distanceKm`'si ve yakınlık sıralaması)
-  /// ve mesafe süzgecinin sınırlayıcı kutusu. İzin yoksa mesafe süzgeci ve
-  /// "En yakın" kapalı çiziliyor — bkz. [_requestLocation].
+  /// Konumu bir kez okur: `lat`/`lng` ve mesafe kutusu için. İzin yoksa mesafe
+  /// süzgeci ve "En yakın" kapalı.
   Future<void> _resolvePosition() async {
     Position? position;
     try {
@@ -87,9 +75,7 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
 
   // ------------------------------------------------------------------- Arama
 
-  /// Parametre almıyor: aranan metni `_searchController` zaten tutuyor ve
-  /// [_buildQuery] onu oradan okuyor. `onChanged`'in verdiği dizeyi ikinci bir
-  /// kaynak olarak taşımak, ikisinin ayrışabileceği bir yer açardı.
+  /// Metin `_searchController`'dan okunuyor; ikinci kaynak ayrışabilirdi.
   void _onSearchChanged() {
     setState(() {}); // temizleme ikonu metne göre çiziliyor
     _searchTimer?.cancel();
@@ -105,7 +91,6 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
 
   // --------------------------------------------------------------- Süzgeçler
 
-  /// Arayüzdeki seçimleri tek bir sunucu sorgusuna çevirir.
   JobSearchQuery _buildQuery() {
     return _selection.toQuery(
       searchText: _searchController.text,
@@ -119,8 +104,7 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
     _search.applyQuery(_buildQuery());
   }
 
-  /// Süzgeç sheet'ini açar. Sheet yalnız "Uygula"ya basılırsa değer döndürüyor;
-  /// vazgeçilerek kapatıldığında sorgu olduğu gibi kalıyor.
+  /// Yalnız "Uygula"da değer döner; vazgeçilirse sorgu değişmez.
   Future<void> _openFilterSheet() async {
     final picked = await JobFilterSheet.show(
       context,
@@ -152,22 +136,17 @@ abstract class ListExplorePagemodel extends State<ListExplorePage>
     _applyQuery();
   }
 
-  /// Çubuktaki çipin çarpısı: yalnız o alanı temizliyor.
   void _removeFilter(JobFilterField field) {
     setState(() => _selection = _selection.without(field));
     _applyQuery();
   }
 
-  /// Bütün süzgeçleri sıfırlar; boş sonuç ekranındaki çıkış da buna bağlı.
   void _clearFilters() {
     setState(() => _selection = _selection.cleared());
     _applyQuery();
   }
 
-  /// Konum iznini ister ve alınırsa konumu tazeler.
-  ///
-  /// Mesafe süzgeci izin olmadan çalışamıyor; eskiden bu durumda süzgeç
-  /// sessizce yok sayılıyordu.
+  /// Mesafe süzgeci izinsiz çalışmaz; izin yoksa sessizce yok sayılmamalı.
   Future<bool> _requestLocation() async {
     try {
       var permission = await Geolocator.checkPermission();

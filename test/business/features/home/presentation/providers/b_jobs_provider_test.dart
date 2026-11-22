@@ -36,11 +36,7 @@ Map<String, dynamic> applicantJson(
   'applicant': {'id': 'u_$id', 'firstName': firstName, 'lastName': 'Yılmaz'},
 };
 
-/// İlan listesi ve başvuruları birlikte döndüren sahte sunucu.
-///
-/// [applicantsByJob] içinde olmayan ilan boş liste alıyor; `null` verilen
-/// ilan ise 500 dönüyor, "tek ilanın başvurusu gelmezse ne olur" durumunu
-/// kurmak için.
+/// [applicantsByJob]'da olmayan ilan boş liste, `null` verilen `500` alır.
 FakeApi buildApi({
   required List<Map<String, dynamic>> jobs,
   Map<String, List<Map<String, dynamic>>?> applicantsByJob = const {},
@@ -57,9 +53,8 @@ FakeApi buildApi({
         );
       }
 
-      final match = RegExp(
-        r'^/jobs/([^/]+)/applications$',
-      ).firstMatch(options.path);
+      final match = RegExp(r'^/jobs/([^/]+)/applications$')
+          .firstMatch(options.path);
       if (match != null) {
         final jobId = match.group(1)!;
         if (applicantsByJob.containsKey(jobId) &&
@@ -184,10 +179,8 @@ void main() {
       },
     );
 
-    // Geri çekilen aday `applied` sanılıyordu: işverene "yanıt bekliyor"
-    // görünüyor, "Kabul Et"e basınca sunucudan `409` geliyordu. Artık
-    // bekleyen sayılmıyor ama listeden de düşmüyor — sunucu kaydı silmiyor
-    // ve işverenin listesinde tutuyor.
+    // Geri çekilen aday bekleyen sayılmamalı (kabul `409` olurdu) ama listeden
+    // de düşmemeli.
     test(
       'geri çekilen aday yanıt bekleyen değil ama listede kalıyor',
       () async {
@@ -944,10 +937,8 @@ void main() {
     expect(provider.errorMessage, isNull);
   });
   group('listeden bağımsız ilan', () {
-    // `GET /users/me/jobs` yalnız ilanı açan kullanıcının ilanlarını getiriyor.
-    // Şirket ilanını başka bir yetkili açtıysa ya da kullanıcının ilanı ilk
-    // sayfaya sığmadıysa ilan listede yok; ama sunucu başvuruları bu
-    // kullanıcıya açıyor (company contact ya da ilan sahibi).
+    // Liste yalnız kullanıcının açtığı ilanları getiriyor; başka yetkilinin
+    // şirket ilanı listede yok ama başvuruları bu kullanıcıya açık.
     test('başka yetkilinin açtığı şirket ilanı benimsenir', () async {
       final api = buildApi(
         jobs: [jobJson('benim')],

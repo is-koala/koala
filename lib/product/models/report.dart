@@ -1,7 +1,4 @@
-/// Şikayetin gerekçesi. Backend `ReportReason` karşılığı.
-///
-/// Sunucu gerekçeyi zorunlu tutuyor (`CreateReportDto.reason` `@NotNull`),
-/// bu yüzden listeden seçiliyor — serbest metin değil.
+/// Şikayet gerekçesi; sunucu zorunlu tuttuğu için listeden seçiliyor.
 enum ReportReason {
   spam('SPAM', 'Spam veya reklam'),
   harassment('HARASSMENT', 'Taciz, hakaret veya tehdit'),
@@ -12,24 +9,16 @@ enum ReportReason {
   noShow('NO_SHOW', 'İşe gelmedi'),
   other('OTHER', 'Diğer'),
 
-  /// Sunucu yeni bir gerekçe eklerse buraya düşüyor. Var olan bir gerekçeye
-  /// yamamak, kullanıcıya kendi şikayetini yanlış sebeple gösterirdi.
-  ///
-  /// Kodu boş: [selectable] bu değeri listeden çıkarıyor, yani kullanıcı
-  /// hiçbir zaman bunu seçip sunucuya gönderemiyor.
+  /// Tanınmayan gerekçe; kodu boş ve [selectable] dışında, gönderilemez.
   unknown('', 'Bilinmeyen gerekçe');
 
   const ReportReason(this.code, this.displayName);
 
-  /// Backend'in beklediği değer.
   final String code;
 
-  /// Kullanıcıya gösterilen ad.
   final String displayName;
 
-  /// Şikayet formunda seçilebilen gerekçeler.
-  ///
-  /// [unknown] yalnızca **okurken** var: sunucuya gönderilirse `400` olurdu.
+  /// [unknown] yalnız okurken var.
   static List<ReportReason> get selectable =>
       values.where((reason) => reason != ReportReason.unknown).toList();
 
@@ -41,17 +30,13 @@ enum ReportReason {
   }
 }
 
-/// Şikayetin inceleme durumu. Backend `ReportStatus` karşılığı.
-///
-/// Durumu yalnızca moderasyon değiştiriyor; uygulama okuyor.
+/// İnceleme durumu; yalnız moderasyon değiştirir.
 enum ReportStatus {
   open('OPEN', 'İnceleme bekliyor'),
   underReview('UNDER_REVIEW', 'İnceleniyor'),
   actioned('ACTIONED', 'İşlem yapıldı'),
   dismissed('DISMISSED', 'Kapatıldı'),
 
-  /// Sunucu yeni bir durum eklerse buraya düşüyor; rozet "Bilinmiyor"
-  /// yazıyor, uygulama çökmüyor.
   unknown('', 'Bilinmiyor');
 
   const ReportStatus(this.code, this.displayName);
@@ -67,10 +52,7 @@ enum ReportStatus {
   }
 }
 
-/// Açılmış tek bir şikayet. Backend `ReportDto` karşılığı.
-///
-/// Dört hedef alanından biri dolu: şikayet ya bir kullanıcıya, ya bir ilana,
-/// ya bir mesaja ya da bir görsele işaret ediyor.
+/// Tek şikayet; dört hedef alanından biri dolu.
 class Report {
   const Report({
     required this.id,
@@ -88,37 +70,28 @@ class Report {
 
   final String id;
 
-  /// Şikayet edilen kullanıcı.
   final String? reportedUserId;
 
-  /// Şikayet edilen ilan.
   final String? jobId;
 
-  /// Şikayet edilen mesaj.
   final String? messageId;
 
-  /// Şikayet edilen görsel. Sunucu destekliyor; uygulamada şirket galerisi
-  /// yönetilmediği için hiçbir ekran bu alanı doldurmuyor.
+  /// Sunucu destekliyor ama hiçbir ekran doldurmuyor.
   final String? imageId;
 
   final ReportReason reason;
 
-  /// Kullanıcının yazdığı açıklama; isteğe bağlı, sunucuda en fazla 2000
-  /// karakter.
   final String? description;
 
   final ReportStatus status;
 
-  /// Moderasyonun bıraktığı not. Yalnızca incelenmiş şikayetlerde dolu.
+  /// Yalnız incelenmiş şikayette dolu.
   final String? reviewNote;
 
   final DateTime? reviewedAt;
   final DateTime? createdAt;
 
-  /// Şikayetin neye açıldığı; listede gerekçenin altında yazıyor.
-  ///
-  /// Sunucu hedefin kendisini (ilanın başlığı, mesajın metni) döndürmüyor,
-  /// yalnızca kimliğini — bu yüzden tür yazılıyor, içerik değil.
+  /// Sunucu hedefin içeriğini döndürmediği için tür yazılıyor.
   String get targetLabel {
     if (reportedUserId != null) return 'Kullanıcı şikayeti';
     if (jobId != null) return 'İlan şikayeti';
@@ -153,10 +126,7 @@ class Report {
   }
 }
 
-/// Sayfalı şikayet listesi. Backend `PageDto<ReportDto>` karşılığı.
-///
-/// Alan adları sunucunun `PageDto`'suyla birebir; desen
-/// `ConversationPage` ile aynı.
+/// Sayfalı şikayet listesi (`PageDto<ReportDto>`).
 class ReportPage {
   const ReportPage({
     this.reports = const [],
@@ -196,15 +166,8 @@ class ReportPage {
   }
 }
 
-/// Şikayetin işaret ettiği kayıt.
-///
-/// Sunucu dört hedef alanından **en az birini** zorunlu tutuyor
-/// (`CreateReportDto.isPointingAtSomething()`). Bu sınıf o kuralı istemcide
-/// yapısal olarak karşılıyor: hedefsiz bir şikayet kurulamıyor, yani
-/// "hiçbir şeye işaret etmeyen şikayet" hatası sunucuya hiç gitmiyor.
-///
-/// Görsel şikayeti (`imageId`) burada yok: şirket galerisi mobilde
-/// yönetilmiyor, alan yalnızca serviste duruyor.
+/// Şikayetin hedefi. Sunucunun "en az bir hedef" kuralını yapısal olarak
+/// karşılar: hedefsiz şikayet kurulamaz.
 class ReportTarget {
   const ReportTarget._({
     required this.sheetTitle,
@@ -214,17 +177,14 @@ class ReportTarget {
     this.messageId,
   });
 
-  /// Şikayet formunun başlığı.
   final String sheetTitle;
 
-  /// Başlığın altında, neyin şikayet edileceğini söyleyen satır.
   final String description;
 
   final String? reportedUserId;
   final String? jobId;
   final String? messageId;
 
-  /// Bir kullanıcıyı şikayet eder.
   factory ReportTarget.user({required String userId, String? name}) {
     return ReportTarget._(
       reportedUserId: userId,
@@ -235,7 +195,6 @@ class ReportTarget {
     );
   }
 
-  /// Bir ilanı şikayet eder.
   factory ReportTarget.job({required String jobId, String? title}) {
     return ReportTarget._(
       jobId: jobId,
@@ -246,7 +205,6 @@ class ReportTarget {
     );
   }
 
-  /// Tek bir mesajı şikayet eder.
   factory ReportTarget.message({required String messageId}) {
     return ReportTarget._(
       messageId: messageId,

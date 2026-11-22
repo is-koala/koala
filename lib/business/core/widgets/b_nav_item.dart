@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_radius.dart';
@@ -6,10 +6,7 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// Business navbar'ının bir öğesi.
-///
-/// Navbar zemini temadan bağımsız marka yeşili; bu yüzden öğenin renkleri de
-/// `context` erişimcilerinden değil [AppColors]'tan geliyor.
+/// İşveren navbar öğesi; zemin temadan bağımsız yeşil, renkler [AppColors]'tan.
 class BNavItem extends StatelessWidget {
   final int index;
   final AppIconData icon;
@@ -17,8 +14,7 @@ class BNavItem extends StatelessWidget {
   final VoidCallback onTap;
   final String? label;
 
-  /// Ortadaki "ilan oluştur" butonu mu. Bu öğe beyaz dolu bir daire olarak
-  /// çizilir ve etiket taşımaz.
+  /// Ortadaki "ilan oluştur": beyaz dolu daire, etiketsiz.
   final bool? centerItem;
 
   const BNavItem({
@@ -31,8 +27,6 @@ class BNavItem extends StatelessWidget {
     this.centerItem,
   });
 
-  /// Seçili olmayan öğenin rengi; yeşil zeminde beyazdan geri planda dursun
-  /// diye soluk.
   static const double _idleAlpha = 0.7;
 
   @override

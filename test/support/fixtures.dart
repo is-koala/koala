@@ -2,11 +2,7 @@ import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/product/models/canonical_address.dart';
 
-/// Testlerde kullanılan hazır [Job] üreticisi.
-///
-/// `Job` sekiz zorunlu alan istiyor; her testte hepsini tekrar yazmak testin
-/// asıl konusunu gölgeliyor. Sadece o testin önemsediği alan geçilsin diye
-/// geri kalanına makul varsayılanlar veriliyor.
+/// Testin önemsemediği alanlar makul varsayılanlarla.
 Job buildJob({
   String id = 'job_1',
   String title = 'Part-time Garson',
@@ -106,12 +102,8 @@ JobDetail buildJobDetail({
   );
 }
 
-/// Sunucunun `EXACT` yanıtta gönderdiği koordinat: **tam hassasiyetli**,
-/// yuvarlama yok.
-///
-/// Fikstürün ondalıkları burada önemli. Yuvarlanmış bir koordinatla kurulan
-/// `EXACT` durumu, yalnız o dalda kesin değeri sızdıran bir hatayı göremezdi:
-/// iki dal da aynı sayıyı taşırdı.
+/// `EXACT` koordinatı tam hassasiyette; yuvarlanmış olsa kesin değeri sızdıran
+/// hata görünmezdi.
 const double exactLatitude = 41.015137;
 const double exactLongitude = 28.979530;
 
@@ -119,13 +111,8 @@ const double exactLongitude = 28.979530;
 const double roundedLatitude = 41.02;
 const double roundedLongitude = 28.98;
 
-/// Aynı ilanın **yetkili** görünümü: kesin koordinat, `EXACT` bayrağı.
-///
-/// İsim aktör saymıyor, bilerek. Aktör → kesinlik eşlemesini **sunucu**
-/// kuruyor (`JobAddressVisibility`); mobilde onu bağlayan hiçbir şey yok. Bu
-/// yüzden istemci tarafında ölçülebilen tek şey iki durum: sunucu kesin verdi,
-/// ya da vermedi. "İşveren", "atanmış çalışan", "anonim ziyaretçi" diye dört
-/// isim koymak, testin ölçmediği bir eşlemeyi ölçüyormuş gibi gösterirdi.
+/// Yetkili görünüm. İsim aktör saymıyor: eşleme sunucuda, istemcide ölçülebilen
+/// tek şey kesin verildi mi.
 Job exactView() => buildJob(
   id: 'job_ayni',
   latitude: exactLatitude,

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/company_detail/presentation/pages/company_detail_page.dart';
 import 'package:koala/employee/features/company_detail/services/company_service.dart';

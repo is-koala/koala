@@ -2,13 +2,10 @@ part of 'worker_boarding_scan_page.dart';
 
 abstract class WorkerBoardingScanPagemodel
     extends State<WorkerBoardingScanPage> {
-  /// Okutma sunucuda / kuyrukta.
   bool busy = false;
 
-  /// Reddedilen son okutmanın sonucu; kamera açık kalır.
   BoardingResultPanel? lastResult;
 
-  /// Kaydedildi ya da kuyruğa alındı: kamera kapanır, bu sonuç çizilir.
   BoardingResultPanel? finishedResult;
 
   WorkerBoardingSubmitter _submitter() =>
@@ -46,8 +43,7 @@ abstract class WorkerBoardingScanPagemodel
       if (!mounted) return;
       setState(() => _apply(submission));
     } catch (_) {
-      // Kuyruk başlatılamadı (oturum okunamadı, depolama). Hata metni
-      // token taşıyabilir; yazdırılmıyor.
+      // Hata metni token taşıyabilir; yazdırılmıyor.
       if (!mounted) return;
       setState(
         () => lastResult = const BoardingResultPanel(

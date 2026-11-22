@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/product/models/reference_location.dart';
 import 'package:koala/product/widgets/option_sheet.dart';
@@ -49,10 +49,8 @@ void main() {
       await tester.tap(find.text('aç'));
       await tester.pumpAndSettle();
 
-      // `ListTile` kullanılırsa Flutter "background color or ink splashes may
-      // be invisible" hatasını bildiriyor ve test bu yüzden düşüyor:
-      // `AppBottomSheet`'in renkli kabuğu araya giriyor. Bu test o gerilemeyi
-      // tutuyor.
+      // `ListTile` renkli kabukta "ink splashes may be invisible" verir; bu
+      // test o gerilemeyi tutuyor.
       expect(tester.takeException(), isNull);
       expect(find.text('Ankara'), findsOneWidget);
       expect(find.text('İstanbul'), findsOneWidget);

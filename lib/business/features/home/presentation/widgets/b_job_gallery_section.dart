@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:koala/business/features/home/services/b_gallery_upload_validator.dart';
 import 'package:koala/business/features/home/presentation/widgets/b_gallery_tile.dart';
@@ -16,11 +16,8 @@ import 'package:koala/product/widgets/job_gallery_view.dart';
 
 typedef GalleryImageChooser = Future<String?> Function();
 
-/// İşveren ilan ayrıntısındaki galeri yönetim yüzeyi.
-///
-/// Yetkisiz çağrıda aynı galeri salt okunur çizilir. Yönetimde upload,
-/// şirket galerisinden medya seçme, sıralama, kapak ve kaldırma tek modülde
-/// kalır; bütün mutasyonlar yalnız başarılı `GET` sonrasında açılır.
+/// İşverenin ilan galerisi yönetimi; yetkisizde salt okunur. Mutasyonlar yalnız
+/// başarılı `GET` sonrası açılır.
 class BJobGallerySection extends StatefulWidget {
   const BJobGallerySection({
     super.key,
@@ -35,12 +32,9 @@ class BJobGallerySection extends StatefulWidget {
   final bool canManage;
   final List<GalleryImage> companyImages;
 
-  /// Sayfa yaşam döngüsüne bağlı galeri durumu. Verilmezse modül kendi
-  /// provider'ını oluşturur; dışarıdan verilmesi aynı durumu testte veya
-  /// üst düzey bir sayfada paylaşmayı sağlar.
+  /// Verilmezse kendi provider'ını kurar.
   final JobGalleryProvider? provider;
 
-  /// Platform galeri seçicisi. Varsayılanı `image_picker` adapter'ıdır.
   final GalleryImageChooser? chooseImage;
 
   @override
@@ -267,7 +261,6 @@ class _CompanyGalleryPickerSheet extends StatelessWidget {
 
   final List<GalleryImage> images;
 
-  /// Uzun şirket galerisi kayarken alttaki sayfa bağlamını görünür bırakır.
   static const double _maxHeightRatio = 0.6;
 
   @override

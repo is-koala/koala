@@ -6,12 +6,8 @@ import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 import 'package:koala/product/models/canonical_address.dart';
 
-/// İşverenin şirketini **yazma** uçları ve istatistikleri.
-///
-/// Okuma burada değil: şirketi çekmek iki uygulamada da aynı uç ve
-/// `employee/features/company_detail/services/company_service.dart`'ta
-/// duruyor. Burada yalnızca işverene özel, yetki isteyen işlemler var —
-/// `b_` öneki de o ayrımı taşıyor.
+/// İşverenin şirketini **yazma** uçları; okuma iki uygulamanın ortak
+/// `company_service.dart`'ında.
 class BCompanyService {
   BCompanyService._(this._apiClient);
 
@@ -26,7 +22,7 @@ class BCompanyService {
 
   final ApiClient _apiClient;
 
-  /// Yeni şirket oluşturur; çağıran kullanıcı sunucuda ADMIN yetkilisi olur.
+  /// Çağıran sunucuda ADMIN yetkilisi olur.
   Future<Company> createCompany({
     required String name,
     required String email,
@@ -57,17 +53,9 @@ class BCompanyService {
     );
   }
 
-  /// Şirketi günceller ve yeni hâlini döndürür.
-  ///
-  /// Sunucu beş metin alanını ve isteğe bağlı adresi kabul ediyor
-  /// (`UpdateCompanyRequestDto`); vergi numarası, tür ve logo kurulduktan
-  /// sonra buradan değiştirilemiyor. Verilmeyen alan gövdeye hiç konmuyor;
-  /// boş metin göndermek alanı silmek anlamına gelirdi.
-  ///
-  /// [address] `POST /companies` ile aynı `AddressWriteDto` biçiminde gider
-  /// (koala-backend#288): sunucu yeni bir adres kaydı açıp şirketi ona
-  /// bağlıyor, yanıttaki `address` yeni kayıt. Yalnızca `ADMIN` çağırabilir;
-  /// diğer yetkililere `404 USER_NOT_ASSOCIATED_WITH_COMPANY` dönüyor.
+  /// Şirketi günceller. Vergi numarası, tür ve logo buradan değişmez;
+  /// verilmeyen alan gövdeye konmaz, boş metin alanı silerdi. [address] yeni
+  /// bir adres kaydı açar. Yalnız `ADMIN`.
   Future<Company> updateCompany(
     String companyId, {
     String? name,
@@ -91,11 +79,7 @@ class BCompanyService {
     );
   }
 
-  /// Şirketin logosunu değiştirir.
-  ///
-  /// Sunucu `multipart/form-data` bekliyor ve parçanın adı **`logo`**.
-  /// Yalnızca şirketin `ADMIN` yetkilisi çağırabiliyor; görselin metadata'sı
-  /// temizlenerek depoya yazılıyor. Yanıt şirketin yeni hâli.
+  /// Parça adı **`logo`**; yalnız `ADMIN`. Yanıt şirketin yeni hâli.
   Future<Company> updateLogo(String companyId, String filePath) {
     return _apiClient.putFile<Company>(
       ApiPaths.companyLogo(companyId),
@@ -105,9 +89,7 @@ class BCompanyService {
     );
   }
 
-  /// Şirketin logosunu kaldırır.
-  ///
-  /// Yalnızca bağlantı düşüyor, depodaki nesne silinmiyor.
+  /// Yalnız bağlantı düşer, depodaki nesne kalır.
   Future<Company> removeLogo(String companyId) {
     return _apiClient.delete<Company>(
       ApiPaths.companyLogo(companyId),
@@ -117,15 +99,9 @@ class BCompanyService {
 
   // ----------------------------------------------------------------- Galeri
 
-  /// Galeriye bir görsel ekler ve galerinin yeni hâlini döndürür.
-  ///
-  /// Sunucu `multipart/form-data` bekliyor, parçanın adı **`image`** ve
-  /// yanına konacak bir JSON parçası yok. Yanıt `201` ve galerinin tamamı;
-  /// kapak sunucuda belirleniyor (ilk yüklenen görsel kapak oluyor), istemci
-  /// hesaplamıyor. Galeri doluysa `409` geliyor.
-  ///
-  /// [filePath] okunamıyorsa `ApiException` değil `FileSystemException`
-  /// fırlıyor: dosya istekten **önce** okunuyor.
+  /// Galeriye görsel ekler; parça adı **`image`**, JSON parçası yok. Kapağı
+  /// sunucu belirler. Galeri doluysa `409`. Dosya istekten önce okunduğu için
+  /// okunamazsa `FileSystemException` fırlar.
   Future<List<GalleryImage>> addCompanyImage(
     String companyId,
     String filePath,
@@ -138,12 +114,8 @@ class BCompanyService {
     );
   }
 
-  /// Galeriyi toptan değiştirir: sıralama ve kapak seçimi buradan geçiyor.
-  ///
-  /// **[images] galerinin tamamı olmalı.** Sunucu gövdedeki listede olmayan
-  /// kaydı galeriden düşürüyor; yalnız değişen satırı göndermek diğerlerini
-  /// silerdi. Sıra listedeki konumdan yazılıyor, galeride bulunmayan bir
-  /// görsel gönderilirse `404` geliyor.
+  /// Galeriyi toptan değiştirir (sıra ve kapak). **[images] galerinin tamamı
+  /// olmalı**: listede olmayan görsel düşer.
   Future<List<GalleryImage>> replaceCompanyGallery(
     String companyId,
     List<GalleryImage> images,
@@ -160,9 +132,7 @@ class BCompanyService {
     );
   }
 
-  /// Görseli galeriden çıkarır ve galerinin yeni hâlini döndürür.
-  ///
-  /// Kapak silinirse sunucu kalanların ilkini kapak yapıyor.
+  /// Kapak silinirse sunucu kalanların ilkini kapak yapar.
   Future<List<GalleryImage>> removeCompanyImage(
     String companyId,
     String imageId,
@@ -173,11 +143,9 @@ class BCompanyService {
     );
   }
 
-  /// Dört galeri ucunun da döndürdüğü `List<GalleryImageDto>`.
   static List<GalleryImage> _gallery(Object? data) =>
       GalleryImage.listFromJson(data);
 
-  /// İşverenin özet sayıları.
   Future<EmployerStats> fetchEmployerStats(String userId) {
     return _apiClient.get<EmployerStats>(
       ApiPaths.employerStats(userId),

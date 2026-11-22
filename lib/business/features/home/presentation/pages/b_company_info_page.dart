@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:koala/employee/features/company_detail/models/company.dart';
@@ -26,17 +26,9 @@ import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
 import 'package:provider/provider.dart';
 
-/// Firma bilgilerini düzenleme ekranı.
-///
-/// Backend `PATCH /companies/{id}` beş metin alanını kabul ediyor
-/// (`UpdateCompanyRequestDto`): ad, e-posta, telefon, website, açıklama.
-/// Adres de aynı uçtan ama ayrı bir yoldan gidiyor: *Adresi değiştir*
-/// harita-öncelikli ekranı (`BCompanyAddressPage`) açıyor ve kayıt orada
-/// bitiyor (is-koala/koala#184). Yalnızca şirketin `ADMIN` yetkilisi
-/// değiştirebiliyor; diğer yetkililer adresi salt okunur görüyor.
-/// Vergi numarası şirket kurulurken belirleniyor ve sonradan
-/// değiştirilemiyor — alan ekranda duruyor ama kapalı, çünkü işverenin
-/// kayıtlı değeri görmesi gerekiyor.
+/// Firma bilgileri. `PATCH /companies/{id}` beş metin alanını alıyor; adres
+/// ayrı ekranda (`BCompanyAddressPage`, yalnız `ADMIN`). Vergi numarası
+/// değiştirilemez ama görünsün diye kapalı alan olarak duruyor.
 class BCompanyInfoPage extends StatefulWidget {
   const BCompanyInfoPage({super.key});
 
@@ -45,20 +37,14 @@ class BCompanyInfoPage extends StatefulWidget {
 }
 
 class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
-  /// "Hakkımızda" alanının yüksekliği: yaklaşık dört satır.
   static const double _descriptionHeight = 120;
 
-  /// Bilgi kutusunun zemin opaklığı.
   static const double _noticeAlpha = 0.1;
 
-  /// Logonun önizleme boyutu.
   static const double _logoSize = 88;
 
-  /// Galeri satırındaki kapak önizlemesi; logodan küçük çünkü satırın
-  /// yüksekliğini belirlemesi gerekmiyor.
   static const double _galleryCoverSize = 48;
 
-  /// Logo işlemi sürerken; iki kez tetiklenmesin diye.
   bool _isLogoBusy = false;
 
   final _nameController = TextEditingController();
@@ -68,8 +54,7 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
   final _descriptionController = TextEditingController();
   final _taxNumberController = TextEditingController();
 
-  /// Alanların hangi şirketten dolduğu. Sağlayıcı sonradan veriyi getirince
-  /// alanlar bir kez doldurulsun, kullanıcının yazdığı üstüne yazılmasın.
+  /// Alanlar bir kez dolsun, kullanıcının yazdığının üstüne yazılmasın.
   String? _filledFrom;
 
   bool _isSaving = false;
@@ -80,13 +65,9 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
-  /// Kullanıcıyı, ardından şirketini çeker.
-  ///
-  /// Sıra zorunlu: hangi şirketin isteneceği `/users/me` yanıtındaki üyelik
-  /// listesinden çıkıyor. Kullanıcı daha okunmamışsa (ana sayfanın sessiz
-  /// yüklemesi düşmüş, ya da buraya doğrudan gelinmiş) önce o okunuyor;
-  /// yoksa ekran "firmanız yok" deyip şirketi olan işverene kurma düğmesi
-  /// gösterirdi.
+  /// Önce kullanıcıyı, sonra şirketini çeker; şirket üyelikten çıkıyor.
+  /// Kullanıcı okunmadan karar verilseydi şirketi olan işverene "firmanız yok"
+  /// denirdi.
   Future<void> _load({bool force = false}) async {
     if (!mounted) return;
 
@@ -111,7 +92,6 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
     super.dispose();
   }
 
-  /// Alanları şirketin son hâliyle doldurur.
   void _fill(Company company) {
     if (_filledFrom == company.id) return;
     _filledFrom = company.id;
@@ -126,16 +106,11 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
 
   // ------------------------------------------------------------------- Logo
 
-  /// Galeriden logo seçer ve yükler.
-  ///
-  /// Boyut ve uzantı istemcide de kontrol ediliyor: sunucu aynı kuralları
-  /// uyguluyor ama kullanıcıyı yüklemeyi bekleyip hata almaya bırakmanın
-  /// anlamı yok.
+  /// Uzantı ve boyut istemcide de kontrol ediliyor.
   Future<void> _pickLogo() async {
     if (_isLogoBusy) return;
 
-    // Ham dosya gönderiliyor: yeniden kodlamak PNG saydamlığını kaybettirir,
-    // logolarda bu görünür bir bozulma.
+    // Ham dosya: yeniden kodlamak PNG saydamlığını bozar.
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (picked == null || !mounted) return;
 
@@ -199,8 +174,7 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
     final provider = context.read<BCompanyProvider>();
     final saved = await provider.updateCompany(
       name: name,
-      // Boş bırakılan alan `null` gidiyor: sunucu gövdede olmayan alana
-      // dokunmuyor, boş metin göndermek değeri silmek olurdu.
+      // Boş alan `null` gider; boş metin değeri silerdi.
       email: _trimmedOrNull(_emailController),
       phoneNumber: _trimmedOrNull(_phoneController),
       website: _trimmedOrNull(_websiteController),
@@ -250,8 +224,7 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
     BCompanyProvider provider,
     Company? company,
   ) {
-    // Şirketin olup olmadığını `/users/me`'deki üyelik söylüyor, sağlayıcının
-    // varsayılan `null`'ı değil. Kullanıcı gelmeden karar verilmiyor.
+    // Şirket var mı sorusunu üyelik cevaplıyor, sağlayıcının `null`'ı değil.
     final user = userProvider.user;
     if (user == null) {
       final userError = userProvider.errorMessage;
@@ -267,16 +240,14 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
     if (message != null && company == null) return _errorState(message);
 
     if (company == null) {
-      // Üyelik var ama şirket kaydı daha gelmedi (istek henüz atılmadı):
-      // bu "firmanız yok" değil, bekleme.
+      // Üyelik var ama şirket daha gelmedi: bekleme, "firmanız yok" değil.
       if (user.primaryCompany != null) {
         return const Center(child: CircularProgressIndicator());
       }
       return _noCompanyState();
     }
 
-    // Adresi yalnızca ADMIN değiştirebiliyor (sunucu da öyle); rol
-    // `/users/me`'deki üyelikten geliyor, yetkililer sayfasıyla aynı kaynak.
+    // Rol `/users/me`'deki üyelikten.
     final canEditAddress = user.primaryCompany?.isAdmin ?? false;
 
     return FormPageBody(
@@ -343,7 +314,6 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
     );
   }
 
-  /// Logo önizlemesi ve değiştirme/kaldırma eylemleri.
   Widget _logoSection(Company company) {
     final hasLogo = company.logoUrl != null && company.logoUrl!.isNotEmpty;
 
@@ -398,10 +368,7 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
     );
   }
 
-  /// Galeri ekranına giriş: kapak önizlemesi, sayı ve chevron.
-  ///
-  /// Kapağı `Company.coverImage` veriyor — kapak işaretli görsel, yoksa
-  /// galerinin ilki. Hesabı sunucu yapıyor, ekran yalnız gösteriyor.
+  /// Kapağı `Company.coverImage` veriyor; ekran yalnız gösteriyor.
   Widget _galleryRow(Company company) {
     final cover = company.coverImage;
     final count = company.images.length;
@@ -575,8 +542,6 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
     );
   }
 
-  /// Kullanıcı ya da şirket okunamadığında gösterilen ekran; yeniden deneme
-  /// ikisini de sırayla çekiyor.
   Widget _errorState(String message) {
     return EmptyState(
       icon: AppIcons.alert,
@@ -589,11 +554,8 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
     );
   }
 
-  /// Şirketi olmayan işverenin gördüğü ekran.
-  ///
-  /// Bireysel devam eden işveren şirketini buradan kuruyor; kayıt akışındaki
-  /// formun aynısı açılıyor ve o form kaydedince sağlayıcıları tazeleyip geri
-  /// dönüyor, bu ekran da yeni şirketi çiziyor.
+  /// Şirketi olmayan işveren: kayıt akışındaki form buradan açılır, kaydedince
+  /// bu ekran yeni şirketi çizer.
   Widget _noCompanyState() {
     return EmptyState(
       icon: AppIcons.building,
@@ -608,10 +570,8 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
     );
   }
 
-  /// Şirket kurma formunu açar.
-  ///
-  /// `POST /companies` doğrulanmamış kullanıcıyı reddettiği için form, kimlik
-  /// kapısından geçmeden açılmıyor; vazgeçen kullanıcı burada kalıyor.
+  /// `POST /companies` doğrulanmamış kullanıcıyı reddettiği için form kimlik
+  /// kapısından sonra açılır.
   Future<void> _createCompany() async {
     final verified = await CompanyIdentityGate.ensureVerified(context);
     if (!verified || !mounted) return;
@@ -619,13 +579,9 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
     await context.push(RegistrationRoutes.companyInformations);
   }
 
-  /// Şirket adresi: kayıtlı değer salt okunur satırlarda, altında ADMIN
-  /// için *Adresi değiştir*, diğer yetkililer için nedenini söyleyen not.
-  ///
-  /// Değerler `LockedField` ile doğrudan şirketten çiziliyor, denetleyiciyle
-  /// değil: adres harita ekranında kaydedilip sağlayıcı tazelenince bu
-  /// satırlar kendiliğinden yeni adresi gösteriyor; [_fill] ise kullanıcının
-  /// yazdığını korumak için yalnızca bir kez doluyor.
+  /// Şirket adresi salt okunur ([LockedField]) ve doğrudan şirketten: sağlayıcı
+  /// tazelenince kendiliğinden güncellenir. ADMIN'e *Adresi değiştir*,
+  /// diğerlerine not.
   List<Widget> _addressSection(Company company, {required bool canEdit}) {
     final address = company.address;
     return [
@@ -653,19 +609,13 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
     ];
   }
 
-  /// Harita-öncelikli şirket adresi ekranını açar.
-  ///
-  /// Kayıt o ekranda bitiyor ve sağlayıcıyı tazeliyor; bu sayfa sağlayıcıyı
-  /// izlediği için dönüşte yeni adres kendiliğinden görünüyor.
   void _changeAddress() => context.push('/business/company-address');
 
-  /// Neden bazı alanların kapalı olduğunu anlatan kutu.
   Widget _lockedNotice() => _notice(
     'Vergi numarası firma kaydıyla birlikte belirleniyor; değiştirmek için '
     'destek ekibiyle iletişime geçin.',
   );
 
-  /// Vurgu zeminli bilgi kutusu.
   Widget _notice(String message) {
     return Container(
       width: double.infinity,
@@ -705,8 +655,7 @@ class _BCompanyInfoPageState extends State<BCompanyInfoPage> {
       controller: _descriptionController,
       height: _descriptionHeight,
       expands: true,
-      // Tek satırlık alanların tam yuvarlak köşesi bu yükseklikte metni
-      // sıkıştırıyor.
+      // Tam yuvarlak köşe bu yükseklikte metni sıkıştırıyor.
       borderRadius: AppRadius.innerCircular,
     );
   }

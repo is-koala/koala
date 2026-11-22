@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_filter_selection.dart';
@@ -78,10 +78,7 @@ Future<void> openSheet(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-/// Sheet uzun; alt bölümler ekrana ancak kaydırılınca giriyor.
-///
-/// [warnIfMissed] yalnız kapalı bir satıra dokunurken kapatılıyor: orada
-/// dokunuşun bir şey tetiklememesi beklenen sonuç.
+/// [warnIfMissed] yalnız kapalı satıra dokunurken kapatılır.
 Future<void> tapScrolled(
   WidgetTester tester,
   Finder finder, {

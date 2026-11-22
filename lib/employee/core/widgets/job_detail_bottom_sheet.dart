@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/core/widgets/job_location_card.dart';
 import 'package:koala/employee/core/widgets/job_transport_card.dart';
@@ -27,6 +27,7 @@ import 'package:koala/product/widgets/job_gallery_view.dart';
 import 'package:koala/product/widgets/report_sheet.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:provider/provider.dart';
+
 import 'dart:ui' show lerpDouble;
 
 class JobDetailBottomSheet extends StatefulWidget {
@@ -37,11 +38,7 @@ class JobDetailBottomSheet extends StatefulWidget {
   final DraggableScrollableController? sheetController;
   final JobGalleryService? galleryService;
 
-  /// İlan detayının geldiği yer. Üretimde `null` — sheet kendi
-  /// [JobService]'ini kuruyor; test sahte bir sunucuya bağlı olanı veriyor.
-  ///
-  /// Konum satırının kesinliği **detaydan** geliyor, yani hangi kesinliğin
-  /// gösterildiği ancak detay yanıtı denetlenebildiğinde sınanabiliyor.
+  /// Üretimde `null`, sheet kendi servisini kurar; testler sahte sunucu verir.
   final JobService? jobService;
 
   const JobDetailBottomSheet({
@@ -55,13 +52,8 @@ class JobDetailBottomSheet extends StatefulWidget {
     this.jobService,
   });
 
-  /// Sheet'in kapalı ve tam açık yükseklikleri.
-  ///
-  /// İçerik iki hâlde de **aynı**: aynı boyutlar, aynı bölümler. Kapalı
-  /// hâlde sheet yalnız alçak, alttaki bölümler pencerenin dışında kalıyor.
-  /// Sürüklerken yalnız sheet'in yüksekliği değişiyor; eskiden dört metin
-  /// kare kare büyüyor ve bölümler bir eşikte beliriyordu, sheet her karede
-  /// baştan dizildiği için takılıyormuş gibi görünüyordu.
+  /// Kapalı ve açık yükseklikler. İçerik iki hâlde aynı; sürüklerken yalnız
+  /// yükseklik değişiyor, içerik her karede dizilseydi sheet takılırdı.
   static const double _collapsedSize = 0.46;
   static const double _expandedSize = 0.95;
 
@@ -97,23 +89,18 @@ class JobDetailBottomSheet extends StatefulWidget {
 }
 
 class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
-  /// Sheet açık uca yakın mı. Yalnız alttaki birincil düğmenin işini
-  /// ("Detayları Gör" / "Başvur") ve kaydet düğmesini belirliyor; içerik buna
-  /// bakmıyor. Yalnız eşik geçildiğinde değişiyor, sürüklemenin her
-  /// karesinde değil.
+  /// Yalnız birincil düğmenin işini ve kaydet düğmesini belirliyor; eşik
+  /// geçilince değişir, her karede değil.
   bool _isExpanded = false;
 
-  /// Sheet'in kapalıdan (0) açığa (1) ne kadar açıldığı. Yalnız saydamlık,
-  /// ölçek ve renk geçişleri dinliyor ([_onProgress]); bunlar yerleşimi
-  /// değiştirmediği için hiçbir metin yeniden dizilmiyor ve sheet sürüklerken
-  /// baştan kurulmuyor.
+  /// Açılma oranı (0-1). Yalnız saydamlık, ölçek ve renk dinliyor
+  /// ([_onProgress]); yerleşim değişmediği için sürüklerken sheet yeniden
+  /// kurulmuyor.
   final ValueNotifier<double> _progress = ValueNotifier(0);
   late final JobGalleryProvider _galleryProvider;
 
-  /// `GET /jobs` yalnızca özet döndürüyor: açıklama, görevler, yaş aralığı ve
-  /// adres bu ekran açıldığında ayrı bir istekle geliyor. Başlık ve ücret
-  /// özetten geldiği için sheet anında dolu açılıyor, yalnızca alt bölümler
-  /// bekliyor.
+  /// `GET /jobs` yalnız özet döndürüyor; alt bölümler ayrı istekle geliyor,
+  /// başlık ve ücret özetten anında dolu.
   JobDetail? _detail;
   bool _detailLoading = true;
   String? _detailError;
@@ -142,8 +129,6 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     }
   }
 
-  /// Sheet bu boyutu geçince "açık" sayılıyor: kapalı ile açık uçların
-  /// ortası.
   static const double _expandedThreshold =
       (JobDetailBottomSheet._collapsedSize +
           JobDetailBottomSheet._expandedSize) /
@@ -151,32 +136,25 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
 
   static const Duration _animation = Duration(milliseconds: 200);
 
-  /// Düğme metninin ("Detayları Gör" / "Başvur") geçişi. Kısa: iki metin
-  /// birbirinin üstünde uzun süre görünmesin.
+  /// Kısa: iki metin üst üste uzun görünmesin.
   static const Duration _textSwitch = Duration(milliseconds: 100);
 
-  /// Açıklama ve görevler metni.
   static const double _descriptionFont = 15;
   static const double _descriptionHeight = 1.6;
 
-  /// Başlık ve fiyat. Ölçek slotlarına oturmuyorlar; ilanın iki ana bilgisi
-  /// sayfanın geri kalanından belirgin büyük.
+  /// İlanın iki ana bilgisi; ölçek slotlarına oturmayacak kadar büyük.
   static const double _companyFont = 14;
   static const double _titleFont = 28;
   static const double _priceFont = 30;
 
-  /// Başlık ve fiyatın satır yüksekliği. Poppins'in varsayılanı ~1.5; büyük
-  /// yazıda her satırın altında ve üstünde gereksiz boşluk bırakıyordu.
+  /// Poppins'in ~1.5'i büyük yazıda gereksiz boşluk bırakıyor.
   static const double _titleHeight = 1.2;
   static const double _priceHeight = 1.1;
 
-  /// Üst kısmın kapalı (yalnız tutamaç) ve açık (yalnız düğmeler)
-  /// yükseklikleri.
   static const double _handleArea = AppSizes.spaceLarge;
   static const double _headerArea = 56;
 
-  /// Kapalı hâlde başlık ve fiyatın ölçeği. Yazı boyutu değil ölçek
-  /// değişiyor: metin bir bütün olarak küçülüyor, satırlar yeniden kırılmıyor.
+  /// Yazı boyutu değil ölçek değişiyor: satırlar yeniden kırılmıyor.
   static const double _titleScaleMin = 24 / _titleFont;
   static const double _priceScaleMin = 26 / _priceFont;
 
@@ -216,8 +194,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     if (expanded != _isExpanded) setState(() => _isExpanded = expanded);
   }
 
-  /// [child]'ı açılma oranıyla yeniden boyar; [child] her karede yeniden
-  /// kurulmuyor.
+  /// [child]'ı açılma oranıyla yeniden boyar; [child] her karede kurulmaz.
   Widget _onProgress(
     Widget child,
     Widget Function(double progress, Widget child) builder,
@@ -274,7 +251,6 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
       ),
       child: Row(
         children: [
-          // Kaydet düğmesi sheet açılınca yandan kayarak geliyor.
           AnimatedSize(
             duration: _animation,
             curve: Curves.easeOut,
@@ -312,7 +288,6 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
             borderRadius: AppRadius.primaryCircular,
             onTap: () => _toggleSave(provider),
             child: Center(
-              // Kaydedilince dolu: dolu/çizgisel fark burada bir durum.
               child: AppIcon(
                 AppIcons.bookmark,
                 filled: isSaved,
@@ -339,7 +314,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
                       Navigator.pop(context);
                       context.push('/apply', extra: widget.job);
                     }
-                  // Kapalıyken buton başvuru değil, sheet'i açma eylemi.
+                  // Kapalıyken buton sheet'i açar.
                   : () {
                       widget.sheetController?.animateTo(
                         JobDetailBottomSheet._expandedSize,
@@ -356,12 +331,10 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
             borderRadius: AppRadius.primaryCircular,
           ),
           elevation: 0,
-          // Metin rengi burada değil; butonun kendi foregroundColor'ı
-          // uyguluyor, böylece pasif hâlde disabledForegroundColor geçerli
-          // oluyor.
+          // Renk butonun `foregroundColor`'ından gelsin ki pasif hâl doğru
+          // çizilsin.
           textStyle: context.textTheme.titleSmall,
         ),
-        // Metin yalnız sheet bir uca oturunca değişiyor; geçiş yumuşak.
         child: AnimatedSwitcher(
           duration: _textSwitch,
           child: Text(
@@ -383,8 +356,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
         controller: widget.scrollController,
         padding: AppPadding.primaryHorizontal,
         children: [
-          // Boşluk ritmi: grup içinde sıkı (4 / 8), gruplar arasında 12–16,
-          // bölümler arasında 24, bölüm başlığından metnine 8.
+          // Boşluk ritmi: grup içi 4/8, gruplar arası 12–16, bölümler arası 24.
           _companyRow(),
           const SizedBox(height: AppSizes.spaceTiny),
           _title(),
@@ -413,8 +385,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
           const SizedBox(height: AppSizes.spaceLarge),
           _buildInfoCard('Tarih ve Saat', [
             ..._schedule(),
-            // Yayın tarihi yalnızca detayda (`JobDetailDto.createdAt`);
-            // özet taşımıyor, detay gelmeden satır yok.
+            // Yayın tarihi yalnız detayda.
             if (_detail?.createdAt != null)
               _appIconInfoRow(
                 AppIcons.clock,
@@ -469,17 +440,12 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
             ]),
           ],
           _locationCard(),
-          // Ulaşım yalnız detayla geliyor (`JobDetailDto.transport`); planı
-          // olmayan ilanda ve eski sunucuda alan `null`, kart yok.
+          // Ulaşım yalnız detayda; planı olmayan ilanda ve eski sunucuda
+          // `null`.
           if (_detail?.transport != null) ...[
-            // Konum satırı alt boşluk taşımıyor; tam bölüm aralığı.
             const SizedBox(height: AppSizes.spaceLarge),
             JobTransportCard(transport: _detail!.transport!, plain: true),
           ],
-          // Liste, alttaki buton çubuğunun üstünde bitiyor (aynı Column'da,
-          // üst üste değil); navbar payı gerekmiyor. Eskiden burada
-          // `navBarClearance` + güvenli alan vardı ve sonda boş bir ekran
-          // kalıyordu.
           const SizedBox(height: AppSizes.spaceLarge),
         ],
       ),
@@ -500,9 +466,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     ];
   }
 
-  /// Detay yüklenirken açıklamanın altında duran gösterge. Başlık, ücret ve
-  /// kategori özetten geldiği için sheet zaten dolu görünüyor; bekleyen
-  /// yalnızca alt bölümler.
+  /// Detay yüklenirken; özet zaten dolu, bekleyen yalnız alt bölümler.
   Widget _detailPlaceholder() {
     return const Padding(
       padding: EdgeInsets.symmetric(vertical: AppSizes.spaceLarge),
@@ -516,8 +480,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     );
   }
 
-  /// Detay çekilemediğinde: özet bilgiler ekranda kalıyor, yalnızca eksik
-  /// bölümlerin yerine hata ve tekrar denemek için bir bağlantı geliyor.
+  /// Detay çekilemedi: özet kalır, eksik bölümlerin yerine hata ve tekrar dene.
   Widget _detailErrorRow() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSizes.spaceMedium),
@@ -547,8 +510,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     );
   }
 
-  /// Kaydet/kaldır. İkon iyimser olarak hemen değişiyor; sunucu reddederse
-  /// provider geri alıyor ve sebebi burada gösteriliyor.
+  /// İkon iyimser değişir; sunucu reddederse provider geri alır.
   Future<void> _toggleSave(SavedJobsProvider provider) async {
     final succeeded = await provider.toggleSave(widget.job);
     if (succeeded || !mounted) return;
@@ -556,20 +518,13 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     AppToast.error(context, provider.errorMessage ?? 'İşlem tamamlanamadı.');
   }
 
-  /// Sunucunun konumu bu görüntüleyene hangi kesinlikte verdiği.
-  ///
-  /// Kural istemcide **yeniden kurulmuyor**: kimin yetkili olduğuna sunucu
-  /// karar veriyor ve cevabını bu bayrakla söylüyor. Yetkiyi burada tahmin
-  /// etmek (oturum var mı, atanmış mıyım) sunucunun kuralından sessizce
-  /// ayrışırdı — örneğin `isAddressPublic` işaretli bir şirket ilanında sunucu
-  /// **anonim** ziyaretçiye de `EXACT` döndürüyor.
-  ///
-  /// Detay geldiyse onunki geçerli; gelmeden önce özetteki bayrak kullanılıyor.
+  /// Konumun bu görüntüleyene hangi kesinlikte verildiği. Kural istemcide
+  /// **yeniden kurulmuyor**: yetkiyi tahmin etmek sunucudan ayrışırdı (ör.
+  /// adresi açık şirket ilanında anonime de `EXACT`). Detay geldiyse onunki.
   AddressPrecision get _addressPrecision =>
       _detail?.addressPrecision ?? widget.job.addressPrecision;
 
-  /// Konum satırı. Detay geldiyse açık adres, gelmediyse özetteki ilçe/il,
-  /// o da yoksa ham koordinat yazılıyor.
+  /// Açık adres, yoksa özetteki ilçe/il, o da yoksa koordinat.
   String _locationLabel() {
     final address = _detail?.addressLabel;
     if (address != null && address.isNotEmpty) return address;
@@ -582,8 +537,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     return widget.job.coordinateLabel;
   }
 
-  /// Aranan kişi sayısı: detay geldiyse onunki, gelmediyse özetteki.
-  /// İkisi de göndermiyorsa (eski sunucu) `null` ve satır çizilmiyor.
+  /// İkisi de göndermiyorsa `null`, satır çizilmez.
   int? get _headcount => _detail?.headcount ?? widget.job.headcount;
 
   int get _hiredCount => _detail?.hiredCount ?? widget.job.hiredCount;
@@ -592,7 +546,6 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
       '${value.day}/${value.month}/${value.year} - '
       '${value.hour}:${value.minute.toString().padLeft(2, '0')}';
 
-  /// Tutamaç: her iki hâlde de aynı, sheet'in sürüklenebildiğini söylüyor.
   Widget _handleBar() {
     return Center(
       child: Container(
@@ -608,19 +561,16 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
   }
 
   Widget _companyRow() {
-    // Bireysel ilanlarda şirket yok; o zaman ilanı açan kişinin adı, o da
-    // gelmediyse kategori adı yazılıyor — satır hiç boş kalmıyor.
+    // Bireyselde şirket yok: ilanı açanın adı, o da yoksa kategori.
     final label =
         widget.job.company ??
         _detail?.employerName ??
         widget.job.category.displayName;
 
-    // Şirket kimliği yalnızca ilan detayında var; liste ucu şirketin adını
-    // döndürüyor, kimliğini değil. Detay gelmediyse satır düz metin kalıyor.
+    // Şirket kimliği yalnız detayda; gelmediyse satır düz metin.
     final companyId = _detail?.company?.id;
 
-    // İşveren türü rozet değil, adın önünde küçük bir ikon: kurumsalda bina,
-    // bireyselde kişi. Ad bütün satırı alıyor ve kesilmiyor.
+    // İşveren türü adın önünde küçük ikon (bina / kişi).
     final isCompany = widget.job.employerType == JobEmployerType.company;
 
     return Row(
@@ -680,8 +630,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Kategori ve iş türü rozet değil, düz metin: kategori ikonu kendi
-          // renginde, yazı sönük. İşin ne olduğunu fiyatın yanında söylüyor.
+          // Kategori ve tür rozet değil düz metin.
           Expanded(
             child: Row(
               children: [
@@ -727,9 +676,8 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     );
   }
 
-  /// Kapalı hâlde bakan kişinin işe karar vermek için ilk sorduğu iki şey:
-  /// ne zaman ve ne kadar uzakta. İkisi de özetten geliyor, detay
-  /// beklenmiyor; olmayan satıra yer ayrılmıyor.
+  /// Kapalı hâlde karar için ilk iki soru: ne zaman, ne kadar uzakta. İkisi de
+  /// özetten; olmayan satıra yer ayrılmaz.
   Widget _quickFacts() {
     final start = widget.job.startDateTime?.toLocal();
     final distance = widget.job.distanceKm;
@@ -747,8 +695,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     ];
     if (facts.isEmpty) return const SizedBox.shrink();
 
-    // Her bilgi kendi satırında: yan yana dizildiğinde sığıp sığmamasına
-    // göre bazı ilanlarda yan yana, bazılarında alt alta düşüyordu.
+    // Her bilgi kendi satırında; sığmaya göre yan yana/alt alta düşmesin.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -785,7 +732,6 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     );
   }
 
-  /// Kapalı hâlde sönük, açıldıkça normal rengine geçiyor; boyutu sabit.
   Widget _description() {
     return ValueListenableBuilder<double>(
       valueListenable: _progress,
@@ -817,15 +763,10 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
 
   // ------------------------------------------------------------------ Başlık
 
-  /// Sheet'in üstü: tutamaç, kapatma ve şikayet. İki hâlde de aynı yerde.
   Widget appBar() {
-    // Tutamaç ve düğme satırı üst üste: kapalıyken yalnız tutamaç kadar,
-    // açıkken yalnız düğmeler kadar yer kaplıyor. Eskiden tutamaç açık hâlde
-    // görünmez ama yerini tutuyordu, düğme satırı da üstüne biniyordu; en
-    // üstte büyük bir boşluk kalıyordu. Yükseklik açıldıkça büyüyor; bu yalnız
-    // alttaki içeriği kaydırıyor, metin yeniden dizilmiyor. Kapatma ve
-    // şikayet kapalı hâlde görünmüyor: bakan kişi ilk bakışta işi ve parayı
-    // görmek istiyor.
+    // Tutamaç ve düğme satırı üst üste: kapalıyken tutamaç, açıkken düğmeler
+    // kadar yer kaplıyor. Kapatma ve şikayet kapalı hâlde görünmüyor; ilk
+    // bakışta iş ve para görünsün.
     final buttons = Align(
       alignment: Alignment.bottomCenter,
       child: Padding(
@@ -846,8 +787,8 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     );
     final handle = Align(alignment: Alignment.topCenter, child: _handleBar());
 
-    // `buttons` ve `handle` bir kez kuruluyor; sürüklerken yalnız yükseklik
-    // ve saydamlık değişiyor, ikisi yeniden kurulmuyor.
+    // `buttons` ve `handle` bir kez kuruluyor; sürüklerken yalnız yükseklik ve
+    // saydamlık değişiyor.
     return ValueListenableBuilder<double>(
       valueListenable: _progress,
       builder: (context, progress, _) => SizedBox(
@@ -867,9 +808,8 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     );
   }
 
-  /// İlanı sistemin paylaşım menüsüyle gönderir: başlık ve web'deki ilan
-  /// sayfasının bağlantısı. Bağlantıyı uygulaması olan açarsa ilan uygulamada,
-  /// olmayan açarsa web'de açılıyor.
+  /// Başlık ve web'deki ilan bağlantısını paylaşır; uygulaması olan uygulamada,
+  /// olmayan web'de açar.
   Widget _shareButton() {
     return Builder(
       builder: (buttonContext) => IconButton(
@@ -882,7 +822,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
 
   Future<void> _share(BuildContext buttonContext) async {
     final link = JobShareLink.forJob(widget.job.id);
-    // iPad'de paylaşım menüsü bir noktaya bağlanmak zorunda: düğmenin kendisi.
+    // iPad'de paylaşım menüsü bir noktaya bağlanmalı.
     final box = buttonContext.findRenderObject() as RenderBox?;
     await SharePlus.instance.share(
       ShareParams(
@@ -895,8 +835,6 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     );
   }
 
-  /// İlanı şikayet eder.
-  ///
   Widget _reportButton() {
     return IconButton(
       tooltip: 'İlanı Şikayet Et',
@@ -910,9 +848,8 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
 
   // -------------------------------------------------------------- Bilgi kartı
 
-  /// Bilgi bölümü: kart zemini yok, Açıklama gibi bölüm başlığı ve altında
-  /// satırlar. Her satır altında [AppSizes.space] boşluk taşıyor; bölümler
-  /// arası [_sectionGap] bundan o kadar kısa, görünen aralık yine 24.
+  /// Kartsız bilgi bölümü; satırların kendi alt boşluğu yüzünden [_sectionGap]
+  /// o kadar kısa.
   Widget _buildInfoCard(String title, List<Widget> children) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -924,12 +861,8 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     );
   }
 
-  /// Bilgi bölümleri arası boşluk: satırların kendi alt boşluğu (12) ile
-  /// birlikte [AppSizes.spaceLarge] eder.
   static const double _sectionGap = AppSizes.spaceLarge - AppSizes.space;
 
-  /// Bilgi satırı. Sheet'teki bütün ikonlar Reicon'un çizgisel ailesinden;
-  /// eskiden Material'in dolu ikonlarıyla karışıktı.
   Widget _appIconInfoRow(AppIconData icon, String label, String value) {
     return _infoRowBody(
       AppIcon(icon, size: AppSizes.iconMedium, color: context.accentColor),
@@ -938,8 +871,7 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     );
   }
 
-  /// Başlangıç ve bitiş: ikisi de varsa ikonlar arasında noktalı çizgiyle
-  /// küçük bir zaman çizelgesi; biri yoksa sıradan satır.
+  /// İkisi de varsa noktalı çizgiyle küçük zaman çizelgesi.
   List<Widget> _schedule() {
     final start = widget.job.startDateTime;
     final end = widget.job.endDateTime;
@@ -967,8 +899,6 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
     ];
   }
 
-  /// Zaman çizelgesinin bir adımı: ikonun altından bir sonraki adımın
-  /// ikonuna kadar noktalı çizgi iniyor.
   Widget _timelineRow(
     AppIconData icon,
     String label,
@@ -1043,13 +973,11 @@ class _JobDetailBottomSheetState extends State<JobDetailBottomSheet> {
   }
 }
 
-/// Dikey noktalı çizgi; zaman çizelgesindeki adımları bağlıyor.
 class _DottedLinePainter extends CustomPainter {
   const _DottedLinePainter({required this.color});
 
   final Color color;
 
-  /// Noktanın çapı ve iki nokta arası boşluk.
   static const double _dot = 2;
   static const double _gap = 3;
 

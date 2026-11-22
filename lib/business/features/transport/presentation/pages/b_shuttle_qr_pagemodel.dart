@@ -5,10 +5,8 @@ abstract class BShuttleQrPagemodel extends State<BShuttleQrPage>
   TransportService get _service =>
       widget.transportService ?? TransportService();
 
-  /// Basılı (süresiz) QR seçili mi.
   bool isStatic = false;
 
-  /// Anahtar yenileme sunucuda.
   bool rotating = false;
 
   late final BoardingQrController controller = BoardingQrController(
@@ -57,8 +55,7 @@ abstract class BShuttleQrPagemodel extends State<BShuttleQrPage>
     await controller.switchTo(_loader(isStatic: isStatic));
   }
 
-  /// Onaydan sonra anahtarı yeniler. Yanıt yeni dönen QR; basılı QR
-  /// seçiliyse yeni anahtarla basılı QR ayrıca istenir.
+  /// Anahtarı yeniler; basılı QR seçiliyse yeni anahtarla ayrıca istenir.
   Future<void> rotate() async {
     final confirmed = await ConfirmDialog.show(
       context,
@@ -91,8 +88,7 @@ abstract class BShuttleQrPagemodel extends State<BShuttleQrPage>
     if (error.type == ApiErrorType.notFound) {
       return 'Servis bulunamadı ya da bu servisi yönetme yetkiniz yok.';
     }
-    return BoardingFailure.classify(
-      error,
-    ).message(BoardingActor.employer, serverMessage: error.message);
+    return BoardingFailure.classify(error)
+        .message(BoardingActor.employer, serverMessage: error.message);
   }
 }

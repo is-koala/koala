@@ -1,12 +1,8 @@
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/product/models/canonical_address.dart';
 
-/// Yeni ilan isteğinin gövdesi.
-///
-/// İki uca da aynı model gidiyor: `POST /users/me/jobs` (bireysel) ve
-/// `POST /companies/{id}/jobs` (kurumsal). Fark iki alan:
-/// [insuranceRequired] ve [addressPublic] — `CreateIndividualJobDto` ikisini
-/// de taşımıyor, o yüzden bireysel istekte gönderilmiyorlar (bkz. [toJson]).
+/// Yeni ilan gövdesi; bireysel ve şirket ucu aynı modeli kullanıyor. Fark
+/// [insuranceRequired] ve [addressPublic]: bireysel uç ikisini tanımıyor.
 class CreateJobRequest {
   const CreateJobRequest({
     required this.categoryId,
@@ -37,8 +33,7 @@ class CreateJobRequest {
   final JobType type;
   final SalaryType salaryType;
 
-  /// JSON'da dize gönderilir; backend `BigDecimal` olarak okur. Böylece
-  /// teklif alınan değer IEEE-754 dönüşümüne uğramadan snapshot'a taşınır.
+  /// Dize gönderilir ki teklif alınan değer IEEE-754 dönüşümüne uğramasın.
   final String salary;
   final DateTime startDateTime;
   final DateTime endDateTime;
@@ -47,24 +42,17 @@ class CreateJobRequest {
   final bool experienceRequired;
   final bool insuranceRequired;
 
-  /// Şirket ilanının tam konumu (kesin pin, sokak ve bina) herkese açık mı.
-  ///
-  /// Kural sunucuda (Yusuf, 04.11.2026): şirket ilanında tam konum varsayılan
-  /// olarak açık, işveren "Adresi gizle" ile kapatabiliyor; kapalıyken ilan
-  /// herkese yaklaşık konumla görünüyor. Kat, daire ve tarif bu alandan
-  /// bağımsız olarak yalnız ilan sahibine ve atanan çalışana gidiyor.
-  /// Sunucu alan gelmezse `true` sayıyor; yine de şirket isteğinde her zaman
-  /// açıkça yazılıyor ki varsayılanın sunucuda değişmesi formu sessizce
-  /// başka bir şey yapar hâle getirmesin.
+  /// Şirket ilanının tam konumu herkese açık mı. Kapalıyken ilan yaklaşık
+  /// konumla görünür; kat, daire ve tarif her durumda yalnız ilan sahibine ve
+  /// atanan çalışana gider. Sunucu varsayılanı `true` ama alan her zaman açıkça
+  /// yazılıyor ki varsayılan değişince form sessizce başka şey yapmasın.
   final bool addressPublic;
   final String? sector;
   final String? duties;
   final String? dressCode;
 
-  /// [forCompany] `false` iken `insuranceRequired` ve `addressPublic`
-  /// düşüyor: bireysel uç bu alanları tanımıyor ve fazladan alan gönderince
-  /// istek reddedilebiliyor. Bireysel ilanın konumu her zaman herkese
-  /// yaklaşık; bunu işveren seçmiyor.
+  /// Bireysel istekte `insuranceRequired` ve `addressPublic` düşer; bireysel
+  /// ilanın konumu her zaman yaklaşık.
   Map<String, dynamic> toJson({required bool forCompany}) => {
     'categoryId': categoryId,
     'title': title,
@@ -76,7 +64,6 @@ class CreateJobRequest {
     'type': type.code,
     'salaryType': salaryType.code,
     'salary': salary,
-    // Backend `LocalDateTime` bekliyor: saat dilimi eki olmadan, yerel saat.
     'startDateTime': _localIso(startDateTime),
     'endDateTime': _localIso(endDateTime),
     'minAge': minAge,

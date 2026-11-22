@@ -26,9 +26,8 @@ void main() {
         ),
       );
 
-      final candidate = await BCandidateProfileService.withClient(
-        api.client,
-      ).fetchProfile('worker-1');
+      final candidate = await BCandidateProfileService.withClient(api.client)
+          .fetchProfile('worker-1');
 
       expect(api.requests.single.path, '/users/worker-1');
       expect(candidate.profile.fullName, 'Ayşe Yılmaz');
@@ -54,9 +53,8 @@ void main() {
         ),
       );
 
-      final badges = await BCandidateProfileService.withClient(
-        api.client,
-      ).fetchBadges('worker-1');
+      final badges = await BCandidateProfileService.withClient(api.client)
+          .fetchBadges('worker-1');
 
       expect(api.requests.single.path, '/users/worker-1/badges');
       expect(badges.single.name, 'Kimliği Doğrulandı');
@@ -70,9 +68,8 @@ void main() {
         ),
       );
 
-      final badges = await BCandidateProfileService.withClient(
-        api.client,
-      ).fetchBadges('worker-1');
+      final badges = await BCandidateProfileService.withClient(api.client)
+          .fetchBadges('worker-1');
 
       expect(badges, isEmpty);
     });

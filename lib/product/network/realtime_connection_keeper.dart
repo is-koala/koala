@@ -4,25 +4,15 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/widgets.dart';
 import 'package:koala/product/network/realtime_client.dart';
 
-/// Canlı bağlantıyı uygulamanın yaşam döngüsüne ve ağa bağlar.
+/// Canlı bağlantıyı yaşam döngüsüne ve ağa bağlar.
 ///
-/// STOMP kütüphanesi kopan soketi kendi zamanlayıcısıyla yeniden deniyor,
-/// ama iki durumu göremiyor: işletim sistemi arka plandaki soketi sessizce
-/// öldürdüğünde kalp atışı bekçisi bunu ancak on saniyeler sonra anlıyor,
-/// ağ değiştiğinde (Wi-Fi → hücresel) eski TCP bağlantısı "kapandı" demeden
-/// ölü kalabiliyor. Bu sınıf o iki anda [RealtimeClient.resume] çağırıyor:
-///
-/// - **Ön plana dönüş.** Kısa bir ayrılıştan (bildirim çekmecesi, uygulama
-///   değiştirici) sonra bağlantı büyük olasılıkla sağlam; yalnızca
-///   `resumed` duyurulur ve ekranlar bir kez REST'ten tamamlar.
-///   [staleAfter]'dan uzun kalınmışsa soket şüpheli sayılır ve yeniden
-///   kurulur.
-/// - **Ağ geri geldi / değişti.** Her seferinde yeniden kurulur; art arda
-///   gelen olaylar (Wi-Fi ve hücresel aynı anda) [networkDebounce] içinde
+/// STOMP kütüphanesi iki durumu göremiyor: işletim sisteminin arka planda
+/// öldürdüğü soket ve ağ değişince ölü kalan TCP bağlantısı. Bu sınıf o anlarda
+/// [RealtimeClient.resume] çağırıyor:
+/// - **Ön plana dönüş:** kısa ayrılışta yalnız `resumed`; [staleAfter]'dan
+///   uzunsa yeniden kurulur.
+/// - **Ağ değişti:** yeniden kurulur; art arda olaylar [networkDebounce] içinde
 ///   tek sayılır.
-///
-/// Dinleyen ekran yoksa istemci zaten hiçbir şey yapmıyor; bağlantıyı
-/// ekranlar açıyor, bu sınıf yalnızca ayakta tutuyor.
 class RealtimeConnectionKeeper with WidgetsBindingObserver {
   RealtimeConnectionKeeper({
     RealtimeClient? client,
@@ -33,22 +23,17 @@ class RealtimeConnectionKeeper with WidgetsBindingObserver {
        _networkAvailable = networkAvailable ?? _connectivityChanges(),
        _now = now ?? DateTime.now;
 
-  /// Arka planda bundan uzun kalınmışsa soket ölü sayılıp yeniden kuruluyor.
-  ///
-  /// Kalp atışı 10 s; kütüphanenin bekçisi iki kayıp atıştan sonra kapatıyor.
-  /// Bu süreden kısa ayrılışlarda soket ya sağlam ya da bekçi zaten
-  /// yakalamak üzere.
+  /// Kalp atışı 10 sn ve bekçi iki kayıp atıştan sonra kapatıyor; bundan kısa
+  /// ayrılışta soket ya sağlam ya da bekçi yakalamak üzere.
   static const Duration staleAfter = Duration(seconds: 20);
 
-  /// Ağ olaylarının tek sayıldığı pencere.
   static const Duration networkDebounce = Duration(seconds: 2);
 
   final RealtimeClient _client;
   final Stream<void> _networkAvailable;
   final DateTime Function() _now;
 
-  /// Uygulama ön plana döndüğünde çağrılır; bağlantıdan bağımsız tazelemeler
-  /// (bildirim rozeti) buraya bağlanıyor.
+  /// Bağlantıdan bağımsız tazelemeler (bildirim rozeti) için.
   final VoidCallback? onResumed;
 
   StreamSubscription<void>? _network;
@@ -93,7 +78,7 @@ class RealtimeConnectionKeeper with WidgetsBindingObserver {
       case AppLifecycleState.resumed:
         _onResumed();
       case AppLifecycleState.inactive:
-        // Geçiş durumu: gelen arama, kontrol merkezi. Ne kopuş ne dönüş.
+        // Geçiş durumu (gelen arama, kontrol merkezi): ne kopuş ne dönüş.
         break;
     }
   }

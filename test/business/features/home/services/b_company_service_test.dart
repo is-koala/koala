@@ -139,9 +139,8 @@ void main() {
             const FakeApiResponse(statusCode: 200, body: _companyBody),
       );
 
-      await BCompanyService.withClient(
-        api.client,
-      ).updateCompany('comp_1', name: 'Yeni Ad', description: null);
+      await BCompanyService.withClient(api.client)
+          .updateCompany('comp_1', name: 'Yeni Ad', description: null);
 
       final request = api.requests.single;
       expect(request.method, 'PATCH');
@@ -220,9 +219,8 @@ void main() {
             const FakeApiResponse(statusCode: 200, body: _companyBody),
       );
 
-      final company = await BCompanyService.withClient(
-        api.client,
-      ).removeLogo('comp_1');
+      final company = await BCompanyService.withClient(api.client)
+          .removeLogo('comp_1');
 
       expect(api.requests.single.method, 'DELETE');
       expect(api.requests.single.path, '/companies/comp_1/logo');
@@ -238,9 +236,8 @@ void main() {
         ..writeAsBytesSync(const [1, 2, 3]);
       addTearDown(() => file.deleteSync());
 
-      await BCompanyService.withClient(
-        api.client,
-      ).updateLogo('comp_1', file.path);
+      await BCompanyService.withClient(api.client)
+          .updateLogo('comp_1', file.path);
 
       final request = api.requests.single;
       expect(request.method, 'PUT');
@@ -261,9 +258,8 @@ void main() {
         ..writeAsBytesSync(const [1, 2, 3]);
       addTearDown(() => file.deleteSync());
 
-      final images = await BCompanyService.withClient(
-        api.client,
-      ).addCompanyImage('comp_1', file.path);
+      final images = await BCompanyService.withClient(api.client)
+          .addCompanyImage('comp_1', file.path);
 
       final request = api.requests.single;
       expect(request.method, 'POST');
@@ -294,9 +290,8 @@ void main() {
       addTearDown(() => file.deleteSync());
 
       await expectLater(
-        BCompanyService.withClient(
-          api.client,
-        ).addCompanyImage('comp_1', file.path),
+        BCompanyService.withClient(api.client)
+            .addCompanyImage('comp_1', file.path),
         throwsA(
           isA<ApiException>()
               .having((e) => e.type, 'type', ApiErrorType.dataConflict)
@@ -315,12 +310,11 @@ void main() {
             const FakeApiResponse(statusCode: 200, body: _galleryBody),
       );
 
-      await BCompanyService.withClient(
-        api.client,
-      ).replaceCompanyGallery('comp_1', const [
-        GalleryImage(id: 'img_2', url: '', sortOrder: 1, caption: 'Mutfak'),
-        GalleryImage(id: 'img_1', url: '', sortOrder: 0, isCover: true),
-      ]);
+      await BCompanyService.withClient(api.client)
+          .replaceCompanyGallery('comp_1', const [
+            GalleryImage(id: 'img_2', url: '', sortOrder: 1, caption: 'Mutfak'),
+            GalleryImage(id: 'img_1', url: '', sortOrder: 0, isCover: true),
+          ]);
 
       final request = api.requests.single;
       expect(request.method, 'PUT');
@@ -374,9 +368,8 @@ void main() {
             const FakeApiResponse(statusCode: 200, body: _galleryBody),
       );
 
-      final images = await BCompanyService.withClient(
-        api.client,
-      ).removeCompanyImage('comp_1', 'img_3');
+      final images = await BCompanyService.withClient(api.client)
+          .removeCompanyImage('comp_1', 'img_3');
 
       expect(api.requests.single.method, 'DELETE');
       // Yol satır kimliğini değil görselin kimliğini taşıyor.
@@ -404,9 +397,8 @@ void main() {
         ),
       );
 
-      final stats = await BCompanyService.withClient(
-        api.client,
-      ).fetchEmployerStats('user_1');
+      final stats = await BCompanyService.withClient(api.client)
+          .fetchEmployerStats('user_1');
 
       expect(api.requests.single.path, '/users/user_1/employer-stats');
       expect(stats.jobsPosted, 12);
@@ -426,9 +418,8 @@ void main() {
         ),
       );
 
-      final stats = await BCompanyService.withClient(
-        api.client,
-      ).fetchEmployerStats('user_1');
+      final stats = await BCompanyService.withClient(api.client)
+          .fetchEmployerStats('user_1');
 
       // Puanı olmayan işverene "0.0" yazmak kötü puan almış gibi görünürdü.
       expect(stats.hasRating, isFalse);

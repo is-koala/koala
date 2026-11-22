@@ -3,24 +3,14 @@ import 'package:koala/employee/features/settings/models/identity_photo.dart';
 import 'package:koala/employee/features/settings/models/identity_photo_slot.dart';
 import 'package:koala/product/services/picked_file_probe.dart';
 
-/// Kimlik fotoğrafını kameradan ya da galeriden alan sınır.
-///
-/// `image_picker` zaten pubspec'te (şirket logosu ve profil fotoğrafı için
-/// eklenmişti); kamera desteği aynı eklentide, yeni paket gerekmiyor. Sınıf
-/// olarak duruyor ki testler yerli eklenti olmadan bir sahteyle değiştirsin.
-///
-/// Seçiciye ölçek ve kalite **her zaman** veriliyor ([IdentityPhotoPolicy]):
-/// hem dosya boyutunu sunucu sınırının altında tutuyor hem de iPhone'un
-/// HEIC karesini JPEG'e çevirtiyor — iki platformun seçicisi de ölçekleme
-/// istendiğinde yeniden kodlayarak yazıyor. Sunucu HEIC açamıyor.
+/// Kimlik fotoğrafını kamera ya da galeriden alır; testler sahtesiyle
+/// değiştirsin diye sınıf. Ölçek ve kalite her zaman veriliyor: sınırın altında
+/// kalır ve HEIC JPEG'e çevrilir.
 class IdentityPhotoPicker {
   const IdentityPhotoPicker();
 
-  /// Kareyi alır; kullanıcı vazgeçtiyse `null`.
-  ///
-  /// Dönen aday henüz sınırlardan geçmedi; biçim ve boyut kararı
-  /// [IdentityPhotoPolicy.accept]'in işi. Boyut ve baş baytlar burada
-  /// okunuyor ki sayfa dosyayı bir daha açmasın.
+  /// Vazgeçilirse `null`. Boyut ve baş baytlar burada okunur ki sayfa dosyayı
+  /// bir daha açmasın.
   Future<IdentityPhotoCandidate?> pick(
     IdentityPhotoSlot slot,
     IdentityPhotoSource source,
@@ -42,8 +32,6 @@ class IdentityPhotoPicker {
     return candidateFor(slot, picked.path);
   }
 
-  /// Diskteki dosyadan aday kurar: boyut ve içerik imzası için baş baytlar
-  /// ([PickedFileProbe]; uyuşmazlık kanıtı seçicisiyle ortak okuma).
   static IdentityPhotoCandidate candidateFor(
     IdentityPhotoSlot slot,
     String path,

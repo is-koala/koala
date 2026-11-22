@@ -1,10 +1,6 @@
-/// Tarih biçimlendirme yardımcıları.
-///
-/// `intl` paketi projede yok ve yalnızca ay adları için bağımlılık eklemeye
-/// değmiyor; ihtiyaç duyulan iki biçim burada elle kuruluyor.
+/// Tarih biçimleri; yalnız ay adları için `intl` eklemeye değmiyor.
 extension DateExtensions on DateTime {
-  /// Türkçe ay adları. Dizinin ilk elemanı boş: `DateTime.month` 1'den
-  /// başlıyor, böylece indis kaydırmaya gerek kalmıyor.
+  /// İlk eleman boş: `DateTime.month` 1'den başlıyor.
   static const List<String> _monthNames = [
     '',
     'Ocak',
@@ -21,43 +17,33 @@ extension DateExtensions on DateTime {
     'Aralık',
   ];
 
-  /// `Ocak 2023`. Deneyim ve eğitim satırlarında kullanılıyor.
+  /// `Ocak 2023`.
   String get asMonthYear => '${_monthNames[month]} $year';
 
-  /// `15.02.2026`.
   String get asShortDate {
     final d = day.toString().padLeft(2, '0');
     final m = month.toString().padLeft(2, '0');
     return '$d.$m.$year';
   }
 
-  /// `09:00`.
   String get asShortTime {
     final h = hour.toString().padLeft(2, '0');
     final min = minute.toString().padLeft(2, '0');
     return '$h:$min';
   }
 
-  /// `15.02.2026 09:00`. İlanın başlangıç/bitiş anı gün ve saatin ikisini de
-  /// taşıdığı için tek başına tarih yetmiyor.
+  /// `15.02.2026 09:00`.
   String get asShortDateTime => '$asShortDate $asShortTime';
 
-  /// Sunucunun `LocalDate` alanları için `yyyy-MM-dd`.
-  ///
-  /// `toIso8601String` saat kısmını da yazıyor ve backend'in çözümleyicisi
-  /// onu reddediyor — deneyim, eğitim ve profil uçlarının üçü de bunu
-  /// bekliyor.
+  /// Sunucunun `LocalDate` alanları için `yyyy-MM-dd`; `toIso8601String`'in
+  /// saat kısmını backend reddediyor.
   String get asLocalDate {
     final month = this.month.toString().padLeft(2, '0');
     final day = this.day.toString().padLeft(2, '0');
     return '$year-$month-$day';
   }
 
-  /// Bildirim listesindeki göreli zaman: "az önce", "5 dk önce",
-  /// "2 saat önce", "3 gün önce".
-  ///
-  /// Bir haftadan eskisinde tarihe düşüyor — "37 gün önce" kimsenin
-  /// kafasında bir tarihe karşılık gelmiyor.
+  /// Göreli zaman ("5 dk önce"); bir haftadan eskisinde tarihe düşer.
   String get asRelative {
     final difference = DateTime.now().difference(this);
 
@@ -72,13 +58,10 @@ extension DateExtensions on DateTime {
     return asShortDate;
   }
 
-  /// Göreli zamanın tarihe döndüğü sınır, gün olarak.
   static const int _relativeDayLimit = 7;
 }
 
-/// Bir tarih aralığını okunur hâle getirir.
-///
-/// Bitiş yoksa "Halen" yazılıyor — devam eden deneyim/eğitim için.
+/// Bitiş yoksa "Halen".
 String formatDateRange(DateTime? start, DateTime? end) {
   final startLabel = start?.asMonthYear;
   final endLabel = end?.asMonthYear ?? 'Halen';
@@ -87,12 +70,9 @@ String formatDateRange(DateTime? start, DateTime? end) {
   return '$startLabel - $endLabel';
 }
 
-/// Süre biçimleri.
 extension DurationExtensions on Duration {
-  /// Mesai süresi: "2s 15dk", bir saatin altında yalnızca "45dk".
-  ///
-  /// Saniye gösterilmiyor; mesai dakika hassasiyetinde tutuluyor, sunucu da
-  /// oturumun süresini dakika olarak yazıyor.
+  /// Mesai süresi: "2s 15dk", saatin altında "45dk". Sunucu dakika
+  /// hassasiyetinde tutuyor.
   String get asWorkDuration {
     final hours = inHours;
     final minutes = inMinutes.remainder(Duration.minutesPerHour);

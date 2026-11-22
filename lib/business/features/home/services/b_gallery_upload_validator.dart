@@ -2,10 +2,7 @@ import 'dart:io';
 
 import 'package:koala/product/constants/upload_limits.dart';
 
-/// İşveren galeri yüklemelerinin dosya sistemi ön kontrolü.
-///
-/// Şirket ve ilan galerileri aynı tür/boyut kurallarına tabidir. Sunucu da
-/// doğrular; bu kontrol kullanıcıyı gereksiz yükleme bekleyişinden korur.
+/// Galeri yüklemesinin ön kontrolü; kullanıcı yükleme bekleyip reddedilmesin.
 abstract final class BGalleryUploadValidator {
   static Future<String?> errorFor(String path) async {
     if (!UploadLimits.hasAllowedImageExtension(path)) {

@@ -3,12 +3,8 @@ import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/jobs/models/job_application.dart';
 
-/// İşverenin gelen kutusundaki tek başvuru. Backend `ReceivedApplicationDto`
-/// karşılığı: `GET /users/me/received-applications`.
-///
-/// [JobApplicant]'tan farkı: o bir ilanın altında, ilan zaten biliniyorken
-/// çiziliyor; bu **ilanlar arası** bir satır olduğu için hangi ilana, hangi
-/// şirket adına geldiğini de taşıyor ([jobId], [postingTitle], [companyName]).
+/// İşverenin gelen kutusundaki başvuru. İlanlar arası satır olduğu için ilanı
+/// ve şirketi de taşıyor.
 class ReceivedApplication {
   const ReceivedApplication({
     required this.id,
@@ -25,41 +21,31 @@ class ReceivedApplication {
     this.assignmentId,
   });
 
-  /// Başvurunun kimliği. Kabul/ret bu kimlikle gidiyor; satırın anahtarı da
-  /// bu.
   final String id;
 
   final ApplicationStatus status;
 
-  /// Başvuran kişi. `SafeUserDto`; e-posta ve telefon bilerek yok.
+  /// `SafeUserDto`; e-posta ve telefon bilerek yok.
   final JobCreator applicant;
 
-  /// Başvurunun geldiği ilan. Karar ekranı (`/business/job-detail`) bununla
-  /// açılıyor.
   final String jobId;
 
-  /// İlanın başlığı. Alan adı `jobTitle` değil: aynı ekranın kardeş DTO'sunda
-  /// `jobTitle` başvuranın **mesleği** (`JobApplicantDto.jobTitle`).
+  /// `jobTitle` değil: kardeş DTO'da o ad başvuranın mesleği.
   final String postingTitle;
 
-  /// İlanın şu anki durumu. Kapanmış ya da iptal edilmiş ilanın başvurusu
-  /// listede kalıyor; satır bunu söylüyor.
+  /// Kapalı ya da iptal ilanın başvurusu listede kalır; satır bunu söyler.
   final JobStatus jobStatus;
 
   final DateTime? applicationDateTime;
 
-  /// Başvurunun kabul ya da reddedildiği an; bekleyen başvuruda `null`.
   final DateTime? answeredDateTime;
 
-  /// Başvuru sırasında yazılan ön yazı.
   final String? notes;
 
-  /// İlan şirket adına açıldıysa şirketin kimliği ve adı; bireysel ilanda
-  /// ikisi de `null`.
+  /// Bireysel ilanda `null`.
   final String? companyId;
   final String? companyName;
 
-  /// Kabulle doğan atamanın kimliği; kabul edilmediyse `null`.
   final String? assignmentId;
 
   String get fullName {
@@ -68,14 +54,10 @@ class ReceivedApplication {
     return applicant.username ?? '';
   }
 
-  /// İlan artık başvuru almıyor mu (kapalı ya da iptal).
   bool get isJobClosed => jobStatus != JobStatus.open;
 
-  /// Adayın profil ekranı için başvuran kaydı.
-  ///
-  /// `BUserProfilePage` başvuruyu `JobApplicant` olarak alıyor; kapağı bununla
-  /// hemen çiziyor, mesleği ve özgeçmişi `GET /users/{id}`'den dolduruyor.
-  /// Gelen kutusu satırı ikisini taşımıyor — `null`.
+  /// Profil ekranı için başvuran kaydı; meslek ve özgeçmiş gelmiyor (`null`),
+  /// ekran onları profilden dolduruyor.
   JobApplicant toJobApplicant() {
     return JobApplicant(
       id: id,
@@ -119,8 +101,6 @@ class ReceivedApplication {
       value is String && value.trim().isNotEmpty ? value : null;
 }
 
-/// Sayfalı gelen kutusu yanıtı. Backend `PageDto<ReceivedApplicationDto>`
-/// karşılığı; anahtarlar `JobPage` ve `TalentPoolPage` ile aynı.
 class ReceivedApplicationPage {
   const ReceivedApplicationPage({
     this.applications = const [],

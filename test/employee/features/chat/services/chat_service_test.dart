@@ -55,9 +55,8 @@ void main() {
         ),
       );
 
-      final page = await ChatService.withClient(
-        api.client,
-      ).fetchConversations(currentUserId: _me);
+      final page = await ChatService.withClient(api.client)
+          .fetchConversations(currentUserId: _me);
 
       expect(api.requests.single.path, '/conversations');
       final conversation = page.conversations.single;
@@ -111,9 +110,8 @@ void main() {
         ),
       );
 
-      final page = await ChatService.withClient(
-        api.client,
-      ).fetchMessages(conversationId: 'conv_1', currentUserId: _me);
+      final page = await ChatService.withClient(api.client)
+          .fetchMessages(conversationId: 'conv_1', currentUserId: _me);
 
       expect(api.requests.single.path, '/conversations/conv_1/messages');
       expect(page.messages.map((m) => m.id), ['eski', 'yeni']);
@@ -135,9 +133,8 @@ void main() {
         ),
       );
 
-      final page = await ChatService.withClient(
-        api.client,
-      ).fetchMessages(conversationId: 'conv_1', currentUserId: _me);
+      final page = await ChatService.withClient(api.client)
+          .fetchMessages(conversationId: 'conv_1', currentUserId: _me);
 
       final byId = {for (final m in page.messages) m.id: m};
       expect(byId['benim']!.isMe, isTrue);
@@ -242,9 +239,8 @@ void main() {
         ),
       );
 
-      await ChatService.withClient(
-        api.client,
-      ).fetchMessages(conversationId: 'conv_1', currentUserId: _me);
+      await ChatService.withClient(api.client)
+          .fetchMessages(conversationId: 'conv_1', currentUserId: _me);
 
       expect(api.requests.single.queryParameters, {'page': 0, 'size': 30});
     });
@@ -290,9 +286,8 @@ void main() {
           ),
         );
 
-        final conversation = await ChatService.withClient(
-          api.client,
-        ).fetchConversation(conversationId: 'conv_1', currentUserId: _me);
+        final conversation = await ChatService.withClient(api.client)
+            .fetchConversation(conversationId: 'conv_1', currentUserId: _me);
 
         expect(api.requests.single.method, 'GET');
         expect(api.requests.single.path, '/conversations/conv_1');
@@ -315,9 +310,8 @@ void main() {
       );
 
       await expectLater(
-        ChatService.withClient(
-          api.client,
-        ).fetchConversation(conversationId: 'conv_x', currentUserId: _me),
+        ChatService.withClient(api.client)
+            .fetchConversation(conversationId: 'conv_x', currentUserId: _me),
         throwsA(
           isA<ApiException>().having(
             (e) => e.type,
@@ -338,9 +332,8 @@ void main() {
         ),
       );
 
-      await ChatService.withClient(
-        api.client,
-      ).openConversationForJob(jobId: 'job_1', currentUserId: _me);
+      await ChatService.withClient(api.client)
+          .openConversationForJob(jobId: 'job_1', currentUserId: _me);
 
       expect(api.requests.single.path, '/jobs/job_1/conversation');
       expect(api.requests.single.queryParameters, isEmpty);
@@ -379,9 +372,8 @@ void main() {
         ),
       );
 
-      final presence = await ChatService.withClient(
-        api.client,
-      ).fetchPresence(['a', 'b']);
+      final presence = await ChatService.withClient(api.client)
+          .fetchPresence(['a', 'b']);
 
       expect(api.requests.single.path, '/presence/lookup');
       expect(api.requests.single.data, ['a', 'b']);
@@ -395,9 +387,8 @@ void main() {
         handler: (_) => const FakeApiResponse(statusCode: 200),
       );
 
-      final presence = await ChatService.withClient(
-        api.client,
-      ).fetchPresence(const []);
+      final presence = await ChatService.withClient(api.client)
+          .fetchPresence(const []);
 
       expect(presence, isEmpty);
       expect(api.requests, isEmpty);

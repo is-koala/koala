@@ -18,13 +18,8 @@ enum AddressPositionSource {
   }
 }
 
-/// Ters geokod adayının hangi düzeyde bulunduğu; sunucunun opsiyonel
-/// `precision` alanı (is-koala/koala-backend#273).
-///
-/// Sağlayıcı bina bulamayınca sokak ya da mahalle düzeyine düşüyor ve bina
-/// numarası boş geliyor; ekran buna bakarak "bina numarasını girin" ipucu
-/// gösteriyor. Alan gelmezse ya da tanınmayan bir değer taşırsa `null`:
-/// eski sunucuyla davranış değişmez.
+/// Ters geokod adayının düzeyi. Bina bulunamayınca numara boş gelir ve ekran
+/// "bina numarasını girin" der. Alan gelmezse `null`.
 enum AddressCandidatePrecision {
   building('BUILDING'),
   street('STREET'),
@@ -34,7 +29,6 @@ enum AddressCandidatePrecision {
 
   final String code;
 
-  /// Bina numarası sağlayıcıdan gelmedi; kullanıcının girmesi gerekir.
   bool get lacksBuildingNumber => this != building;
 
   static AddressCandidatePrecision? fromCode(Object? value) {
@@ -118,9 +112,7 @@ class AddressPosition {
     );
   }
 
-  /// Koordinat gövdeye altı ondalıkla yazılır: adres yazımı (`AddressWrite`)
-  /// ilan, şirket ve çalışan adresinin hepsinde bu yoldan geçiyor ve sunucu
-  /// `AddressPositionRequestDto` üzerinde `@Digits(fraction = 6)` uyguluyor.
+  /// Sunucu `@Digits(fraction = 6)` uyguladığı için koordinat altı ondalıkla.
   Map<String, dynamic> toJson() => {
     'latitude': CoordinatePrecision.round6(latitude),
     'longitude': CoordinatePrecision.round6(longitude),
@@ -219,7 +211,6 @@ class AddressCandidate {
   final bool needsUserReview;
   final String attribution;
 
-  /// Sunucu göndermediyse `null`; ipucu o zaman çıkmaz.
   final AddressCandidatePrecision? precision;
 
   factory AddressCandidate.fromJson(Map<String, dynamic> json) {

@@ -111,9 +111,8 @@ void main() {
         isFalse,
       );
       expect(
-        ChatParticipant.fromJson(
-          buildJson()..remove('lastReadAt'),
-        ).hasReadSince(sentAt),
+        ChatParticipant.fromJson(buildJson()..remove('lastReadAt'))
+            .hasReadSince(sentAt),
         isFalse,
       );
     });

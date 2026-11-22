@@ -1,7 +1,6 @@
 import 'package:koala/product/models/availability_exception.dart';
 import 'package:koala/product/models/availability_slot.dart';
 
-/// Bir kullanıcının haftalık şablonu ve yaklaşan tarih istisnaları.
 class Availability {
   Availability({
     required List<AvailabilitySlot> slots,

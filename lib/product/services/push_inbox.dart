@@ -1,38 +1,19 @@
 import 'package:koala/product/services/push_notification_dedupe.dart';
 
-/// FCM olayını uygulama içi davranışa çevirir.
+/// FCM olayını uygulama içi davranışa çevirir; Firebase'siz test edilebilsin
+/// diye ham `data` alıyor.
 ///
-/// Firebase bu sınıfta yok: ön plan tazeleme, dokunma ve dedupe burada
-/// sınanır; eklenti sarmalayıcısı yalnız ham `data` haritasını buraya bırakır.
+/// - **Bildirim** (`notificationId`): ön planda liste tazelenir; dokununca
+///   bildirim ekranı açılır, kayıt okundu olur.
+/// - **Mesaj** (`type=MESSAGE`): ön planda hiçbir şey; mesaj STOMP'tan zaten
+///   geldi. Dokununca sohbet açılır.
+/// - **Ulaşım** (`type=TRANSPORT`): dokununca iş detayı; `SEAT_DROPPED`
+///   "yeniden seçin" bağlamıyla.
+/// - **Biniş**: `SHUTTLE_REMINDER_BOARDING` işçinin QR'ını,
+///   `SHUTTLE_NOTICE_NOT_BOARDED` biniş listesini açar.
 ///
-/// İki tür yük var:
-///
-/// - **Bildirim** (`notificationId`): ön planda bildirim listesi tazelenir;
-///   dokununca bildirim ekranı açılır ve kayıt okundu işaretlenir.
-/// - **Sohbet mesajı** (`type=MESSAGE`, `conversationId`, `messageId`,
-///   `notificationId`): ön planda **hiçbir şey yapılmaz** — açık sohbet ve
-///   liste aynı mesajı STOMP'tan zaten aldı, ikinci bir sayaç artışı ya da
-///   yerel bildirim olmamalı. Dokununca ilgili sohbet açılır
-///   ([onConversationOpened]); bildirim ekranı ve `markRead` bu yolda yok,
-///   çünkü mesaj push'ının `IN_APP` satırı yok ve sohbeti açmak zaten
-///   sohbeti okundu işaretliyor.
-///
-/// - **Ulaşım** (`type=TRANSPORT`, `event`, `jobId`, `jobAssignmentId`,
-///   `notificationId`; is-koala/koala#197): ön planda sıradan bildirim gibi
-///   liste tazelenir (`IN_APP` satırı var). Dokununca iş detayı açılır
-///   ([onTransportOpened]) ve kayıt okundu işaretlenir; `SEAT_DROPPED`
-///   olayı sayfaya "yeniden seçin" bağlamıyla gider.
-///
-/// - **Biniş** (`type=TRANSPORT`, is-koala/koala#217): `SHUTTLE_REMINDER_BOARDING`
-///   (işçiye kalkıştan 15 dk önce; `jobAssignmentId`, `direction`) doğrudan
-///   işçinin biniş QR'ını açar ([onBoardingReminderOpened]);
-///   `SHUTTLE_NOTICE_NOT_BOARDED` (yetkililere; `shuttleId`, atama yok)
-///   servisin biniş listesini açar ([onNotBoardedOpened]). Verilmezlerse
-///   eski yol: iş detayı ya da bildirim ekranı.
-///
-/// Dokunma dedupe anahtarı mesaj için `messageId`, yoksa `notificationId`:
-/// soğuk açılışta `getInitialMessage` ile `onMessageOpenedApp` aynı yükü
-/// iki kez verebiliyor.
+/// Soğuk açılışta aynı yük iki kez gelebildiği için dokunmalar `messageId` ya
+/// da `notificationId` ile tekilleştiriliyor.
 class PushInbox {
   PushInbox({
     required this.dedupe,
@@ -47,21 +28,15 @@ class PushInbox {
     this.onNotBoardedOpened,
   });
 
-  /// Sohbet mesajı push'ının `data.type` değeri
-  /// (`ActivityNotificationManager.messageSent`).
   static const String messageType = 'MESSAGE';
 
-  /// Ulaşım push'ının `data.type` değeri (`TransportManager.PUSH_TYPE`).
   static const String transportType = 'TRANSPORT';
 
-  /// Ulaşım push'unun koltuk düştü olayı; diğerleri (`PLAN_UPDATED`,
-  /// `SHUTTLE_REMINDER_*`) aynı sayfayı bağlamsız açıyor.
+  /// Diğer ulaşım olayları aynı sayfayı bağlamsız açıyor.
   static const String seatDroppedEvent = 'SEAT_DROPPED';
 
-  /// İşçiye biniş hatırlatması: kişisel QR açılır.
   static const String boardingReminderEvent = 'SHUTTLE_REMINDER_BOARDING';
 
-  /// Yetkililere "henüz binmedi" bildirimi: biniş listesi açılır.
   static const String notBoardedEvent = 'SHUTTLE_NOTICE_NOT_BOARDED';
 
   final PushNotificationDedupe dedupe;
@@ -71,27 +46,22 @@ class PushInbox {
   final Future<void> Function() onForeground;
   final Future<void> Function(String notificationId) onOpened;
 
-  /// `type=MESSAGE` dokunması: sohbeti getirip açmak çağıranın işi.
   final Future<void> Function(String conversationId) onConversationOpened;
 
-  /// `type=TRANSPORT` dokunması: atamayı getirip iş detayını açmak
-  /// çağıranın işi. Verilmezse ulaşım push'u sıradan bildirim gibi
-  /// bildirim ekranına gider.
+  /// Verilmezse ulaşım push'u bildirim ekranına gider.
   final Future<void> Function({
     required String assignmentId,
     required bool seatDropped,
   })?
   onTransportOpened;
 
-  /// `SHUTTLE_REMINDER_BOARDING` dokunması; [direction] sunucunun yön kodu
-  /// (`OUTBOUND` | `RETURN`).
+  /// [direction] `OUTBOUND` | `RETURN`.
   final Future<void> Function({
     required String assignmentId,
     required String direction,
   })?
   onBoardingReminderOpened;
 
-  /// `SHUTTLE_NOTICE_NOT_BOARDED` dokunması.
   final Future<void> Function(String shuttleId)? onNotBoardedOpened;
 
   Map<String, String>? _pendingOpen;
@@ -179,8 +149,7 @@ class PushInbox {
   static bool _isTransport(Map<String, String> data) =>
       data['type'] == transportType && _present(data['jobAssignmentId']);
 
-  /// Dokunmanın dedupe anahtarı; yük tanınmıyorsa `null` ve dokunma yok
-  /// sayılır.
+  /// Yük tanınmıyorsa `null` ve dokunma yok sayılır.
   static String? _openKeyOf(Map<String, String> data) {
     final notificationId = data['notificationId'];
     if (_isMessage(data)) {

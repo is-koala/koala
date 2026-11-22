@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:camera/camera.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:koala/employee/features/settings/models/chip_read_failure.dart';
@@ -11,12 +11,10 @@ import 'package:koala/employee/features/settings/models/mrz_scan_session.dart';
 import 'package:koala/employee/features/settings/services/mrz_camera_session.dart';
 import 'package:koala/employee/features/settings/services/mrz_scanner.dart';
 
-/// Kamera eklentisini oturumdan ayıran üretim sınırı.
 abstract interface class MrzDeviceCameraFactory {
   Future<MrzDeviceCameraController> createRearCamera();
 }
 
-/// Yaşam döngüsü ve yarış testlerinde gerçek oturum sahipliğini sınayan seam.
 abstract interface class MrzDeviceCameraController {
   bool get isStreamingImages;
   DeviceOrientation get deviceOrientation;
@@ -100,10 +98,8 @@ class _PluginMrzDeviceCameraController implements MrzDeviceCameraController {
   Future<void> stopImageStream() => controller.stopImageStream();
 }
 
-/// Resmî Flutter kamera eklentisini ML Kit MRZ çözümleyicisine bağlar.
-///
-/// Kareler yalnız bellekte yaşar, dosyaya ve loga yazılmaz. ML Kit sürerken
-/// yeni kare düşürülür; böylece kişisel veri kuyruğu ve eşzamanlı OCR oluşmaz.
+/// Kamera eklentisini ML Kit'e bağlar. Kareler yalnız bellekte; OCR sürerken
+/// yeni kare düşer, kişisel veri kuyruğu oluşmaz.
 class DeviceMrzCameraSession implements MrzCameraSession {
   DeviceMrzCameraSession({
     MrzScanner? scanner,
@@ -124,10 +120,8 @@ class DeviceMrzCameraSession implements MrzCameraSession {
   DateTime? _lastAnalysisAt;
   Future<void> _operationTail = Future<void>.value();
 
-  /// Kamera akışını düşük cihazlarda da akıcı tutan analiz aralığı.
   static const Duration _analysisInterval = Duration(milliseconds: 180);
 
-  /// Önizleme, sensör dönüşümü ve OCR metadata'sı aynı kilidi kullanır.
   static const DeviceOrientation _captureOrientation =
       DeviceOrientation.portraitUp;
 
@@ -193,7 +187,7 @@ class DeviceMrzCameraSession implements MrzCameraSession {
     }
   }
 
-  /// Her yerli `await` sonrasında sahiplik hâlâ bu başlangıca mı ait.
+  /// Her yerli `await` sonrası sahiplik hâlâ bu başlangıcın mı.
   Future<bool> _keepOrDispose(
     MrzDeviceCameraController candidate,
     int generation,
@@ -310,7 +304,6 @@ class DeviceMrzCameraSession implements MrzCameraSession {
     );
   }
 
-  /// Capture portrait kilitliyken cihazın anlık yönü OCR dönüşünü değiştirmez.
   @visibleForTesting
   static InputImageRotation? rotationForCamera(
     MrzDeviceCameraController controller, {
@@ -334,7 +327,7 @@ class DeviceMrzCameraSession implements MrzCameraSession {
       try {
         await controller.stopImageStream();
       } on Object {
-        // Yerli kaynakları yine de bırakmak için dispose'a devam edilir.
+        // Yerli kaynakları bırakmak için devam edilir.
       }
     }
     await controller.dispose();

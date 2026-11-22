@@ -41,17 +41,13 @@ void main() {
 
     test('negatif ya da sayı olmayan boyut sıfır olur', () {
       expect(
-        DisputeEvidence.fromJson({
-          ...evidenceJson('a'),
-          'fileSize': -5,
-        }).fileSize,
+        DisputeEvidence.fromJson({...evidenceJson('a'), 'fileSize': -5})
+            .fileSize,
         0,
       );
       expect(
-        DisputeEvidence.fromJson({
-          ...evidenceJson('a'),
-          'fileSize': 'x',
-        }).fileSize,
+        DisputeEvidence.fromJson({...evidenceJson('a'), 'fileSize': 'x'})
+            .fileSize,
         0,
       );
     });

@@ -1,7 +1,6 @@
 import 'package:koala/product/models/canonical_address.dart';
 import 'package:koala/product/models/gallery_image.dart';
 
-/// Şirketin hukuki türü. Backend `CompanyType` enum'ının birebir karşılığı.
 enum CompanyType {
   soleProprietorship('SOLE_PROPRIETORSHIP', 'Şahıs Şirketi'),
   limited('LIMITED', 'Limited Şirket'),
@@ -17,8 +16,7 @@ enum CompanyType {
   final String code;
   final String displayName;
 
-  /// Tanınmayan değerde [CompanyType.other]; backend enum'a yeni bir tür
-  /// eklerse uygulama patlamasın.
+  /// Tanınmayan değerde [CompanyType.other].
   static CompanyType fromCode(Object? value) {
     return CompanyType.values.firstWhere(
       (type) => type.code == value,
@@ -27,13 +25,8 @@ enum CompanyType {
   }
 }
 
-/// Bir şirket. `GET /companies/{id}` yanıtındaki `CompanyDto`.
-///
-/// **İki uygulama da bunu kullanıyor.** Çalışan tarafı şirket detayını
-/// okuyor, işveren tarafı kendi şirketini okuyup güncelliyor. Model çalışan
-/// tarafında duruyor çünkü sohbette olduğu gibi paylaşılan alan modelleri
-/// burada toplanıyor; işverene özel **yazma** uçları `b_company_service`'te
-/// kalıyor.
+/// Şirket (`CompanyDto`); iki uygulama kullanıyor. İşverene özel yazma uçları
+/// `b_company_service`'te.
 class Company {
   const Company({
     required this.id,
@@ -56,40 +49,30 @@ class Company {
   final String name;
   final String? email;
 
-  /// Logonun R2 bağlantısı; yüklenmemişse `null`.
   final String? logoUrl;
 
   final String? phoneNumber;
   final String? website;
   final String? description;
 
-  /// Vergi numarası. Şirket kurulurken zorunlu, sonradan değiştirilemiyor.
+  /// Kurulurken zorunlu, sonradan değişmez.
   final String? taxNumber;
 
   final CompanyType? type;
   final CanonicalAddress? address;
 
-  /// Şirketin galerisi.
-  ///
-  /// Ayrı bir uç var (`GET /companies/{id}/images`) ama şirket detayı zaten
-  /// görselleri gövdesinde taşıyor; ikinci bir istek atmaya gerek yok.
+  /// Şirket detayı görselleri gövdesinde taşıyor; ayrı istek gerekmiyor.
   final List<GalleryImage> images;
 
-  /// Şirketi takip eden kullanıcı sayısı.
   final int followerCount;
 
-  /// Oturum sahibi bu şirketi takip ediyor mu. Sunucudaki alan `following`.
+  /// Sunucudaki alan `following`.
   final bool isFollowing;
 
-  /// Şirket onaylanmış mı. Onaysız şirket adına ilan yayınlanamıyor.
-  ///
-  /// Sunucudaki alan adı `approved`, `isApproved` değil — `/users/me`'deki
-  /// `CompanyMembershipDto.approved` ile aynı kavram, API'de tek ad taşısın
-  /// diye böyle. Dart tarafında ad `isApproved` kalıyor çünkü bir bayrağın
-  /// okunuşu öyle.
+  /// Onaysız şirket adına ilan yayınlanamaz. Sunucuda alan `approved`.
   final bool isApproved;
 
-  /// Kapak görseli; yoksa galerinin ilki, o da yoksa `null`.
+  /// Kapak; yoksa galerinin ilki.
   GalleryImage? get coverImage {
     for (final image in images) {
       if (image.isCover) return image;
@@ -97,9 +80,7 @@ class Company {
     return images.isEmpty ? null : images.first;
   }
 
-  /// [images] galeri uçları için: dört uç da `Company` değil
-  /// `List<GalleryImageDto>` döndürüyor, yani yanıt eldeki kaydın üstüne
-  /// yazılamıyor — yalnız galerisi değişiyor.
+  /// [images] galeri uçları için: onlar `Company` değil liste döndürüyor.
   Company copyWith({
     bool? isApproved,
     bool? isFollowing,

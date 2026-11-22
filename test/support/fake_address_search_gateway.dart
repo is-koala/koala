@@ -4,10 +4,7 @@ import 'package:koala/product/models/canonical_address.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/services/address_search_service.dart';
 
-/// Kadıköy / Moda'da bir aday; ters geokod ve arama testlerinin ortak
-/// sunucu yanıtı. [source] ve [position] adayın hangi yoldan geldiğini
-/// söyler: sunucu ters geokodda istenen pinin kendisini, aramada
-/// sağlayıcının konumunu döndürüyor.
+/// Moda'da bir aday; [source] ve [position] hangi yoldan geldiğini söyler.
 AddressCandidate modaCandidate({
   AddressPositionSource source = AddressPositionSource.reverseGeocodeConfirmed,
   AddressPosition? position,
@@ -44,17 +41,9 @@ AddressCandidate modaCandidate({
   );
 }
 
-/// Adres arama kapısının sahtesi.
-///
-/// Ters geokod, istenen pini adayın konumu yapar (sunucu da öyle yapıyor:
-/// kanıt pinle birebir eşleşmek zorunda). [reverseFailure] verilirse her
-/// ters geokod o hatayla düşer — sunucunun üç `errorCode`'u
-/// ([outsideServiceAreaFailure], [noResultFailure], [providerFailure])
-/// buradan sürülür; hata metinleri `messages_tr.properties`'teki
-/// karşılıkları. [reversePrecision] sunucunun opsiyonel `precision`
-/// alanını taklit eder; sokak/mahalle düzeyinde bina numarası boş gelir.
-/// Arama yolu tek bir öneri döndürür ve çözümü [searchCandidate] adayına
-/// gider.
+/// Adres arama sahtesi. Ters geokod pini adayın konumu yapar (sunucu da öyle).
+/// [reverseFailure] sunucunun üç `errorCode`'unu, [reversePrecision]
+/// `precision` alanını taklit eder.
 class FakeAddressSearchGateway implements AddressSearchGateway {
   FakeAddressSearchGateway({
     this.reverseFailure,

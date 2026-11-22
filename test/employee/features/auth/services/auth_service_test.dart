@@ -328,9 +328,8 @@ void main() {
         ),
       );
 
-      final verification = await AuthService.withClient(
-        api.client,
-      ).verifyRegistrationToken('token-uuid');
+      final verification = await AuthService.withClient(api.client)
+          .verifyRegistrationToken('token-uuid');
 
       expect(api.requests.single.path, '/auth/verify-registration-token');
       expect(api.requests.single.data, {'registrationToken': 'token-uuid'});

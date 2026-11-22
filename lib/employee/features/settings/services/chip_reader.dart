@@ -3,20 +3,16 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dmrtd/dmrtd.dart';
-// `StatusWord` yalnızca `internal.dart`'tan dışa açılıyor; hangi APDU
-// durumunun hangi kullanıcı hatasına karşılık geldiğini ayırmak için
-// gerekiyor.
+// `StatusWord` yalnız `internal.dart`'tan açık; APDU durumunu kullanıcı
+// hatasına eşlemek için gerekli.
 import 'package:dmrtd/internal.dart';
 import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
 import 'package:koala/employee/features/auth/models/chip_evidence.dart';
 import 'package:koala/employee/features/settings/models/chip_read_failure.dart';
 import 'package:koala/employee/features/settings/models/mrz_key.dart';
 
-/// Çip okumanın kullanıcıya gösterilen aşaması.
-///
-/// iOS okuma sırasında kendi sistem sayfasını gösteriyor ve bizim
-/// tasarımımız onun altında kalıyor; ilerleme oraya da yazılabilsin diye
-/// aşama dışarı veriliyor.
+/// iOS okumada kendi sistem sayfasını gösteriyor; ilerleme oraya da
+/// yazılabilsin diye dışarı veriliyor.
 enum ChipReadStep {
   waitingForCard('Kartı telefonun arka üst kısmına yasla'),
   openingSession('Kartla güvenli bağlantı kuruluyor'),
@@ -29,40 +25,25 @@ enum ChipReadStep {
   final String label;
 }
 
-/// NFC'nin cihazdaki durumu.
 enum NfcAvailability { available, disabled, unsupported }
 
-/// Kimlik kartının çipini okuyup sunucuya gidecek kanıtı üretir.
-///
-/// Protokolün tamamı `dmrtd`'de (ICAO Doc 9303); burada olan üç şey var:
-/// oturumun **BAC mi PACE mi** açılacağına karar vermek, **hangi veri
-/// gruplarının** okunacağını seçmek ve `dmrtd`'nin hatalarını kullanıcıya
-/// ne yapacağını söyleyen [ChipReadFailure] değerlerine çevirmek.
+/// Çipi okuyup kanıtı üretir. Protokol `dmrtd`'de; burada BAC/PACE kararı,
+/// okunacak veri grupları ve hataların [ChipReadFailure]'a çevrilmesi var.
 class ChipReader {
   ChipReader();
 
-  /// Kartın aranma süresi. iOS sistem sayfası da bu süre boyunca açık
-  /// kalıyor; kullanıcının kartı çantadan çıkarmasına yetecek kadar uzun,
-  /// unutulmuş bir ekranda takılı kalmayacak kadar kısa.
+  /// Kartı çantadan çıkarmaya yetecek, unutulan ekranda takılmayacak kadar.
   static const Duration _pollTimeout = Duration(seconds: 30);
 
-  /// Sunucunun ürettiği tek kullanımlık sayının ham uzunluğu
-  /// (`IdentityChallengeManager.CHALLENGE_BYTES`). `INTERNAL AUTHENTICATE`
-  /// de tam sekiz bayt istiyor.
+  /// Sunucunun `CHALLENGE_BYTES`'ı; `INTERNAL AUTHENTICATE` de sekiz bayt
+  /// istiyor.
   static const int _challengeLength = 8;
 
-  /// NFC durumu sorgusunun beklenebileceği süre.
-  ///
-  /// Sorgu yerli tarafa gidiyor ve **yanıtsız kalabiliyor** — eklentinin
-  /// kanalı bağlı değilse `Future` hiç tamamlanmıyor. Süre sınırı olmadan
-  /// ekran sonsuza kadar dönen bir göstergede kalırdı; kullanıcının tek
-  /// çıkışı geri tuşu olurdu.
+  /// Yerli sorgu yanıtsız kalabiliyor; sınır olmadan ekran sonsuza dek döner.
   static const Duration _availabilityTimeout = Duration(seconds: 5);
 
-  /// Cihazda NFC var mı, açık mı.
-  ///
-  /// Okumaya girmeden **önce** sorulması gerekiyor: NFC'si olmayan bir
-  /// telefonda kullanıcıyı kart okutmaya çağırmak, sonu olmayan bir döngü.
+  /// Okumadan **önce** sorulmalı: NFC'siz telefonda kart okutmaya çağırmak
+  /// sonsuz döngü.
   Future<NfcAvailability> availability() async {
     try {
       final status = await FlutterNfcKit.nfcAvailability.timeout(
@@ -78,23 +59,14 @@ class ChipReader {
           return NfcAvailability.unsupported;
       }
     } on Object {
-      // Sorulamadıysa (hata ya da zaman aşımı) donanım yokmuş gibi
-      // davranıyoruz: kullanıcıyı açılmayacak bir okumaya sokmaktansa elle
-      // girişe yönlendirmek daha az zarar veriyor.
+      // Sorulamadıysa donanım yok sayılır; açılmayacak okumadan elle giriş iyi.
       return NfcAvailability.unsupported;
     }
   }
 
-  /// Kartı okur ve sunucuya gidecek kanıtı döndürür.
-  ///
-  /// [challenge] sunucudan **kart okunmadan önce** alınmış olmalı: çipe
-  /// imzalatılacak şey o. Kart okunduktan sonra alınan bir sayı, imzalanmış
-  /// olmayacağı için tekrar korumasını sağlamaz.
-  ///
-  /// Kartta `DG15` yoksa Active Authentication adımı **atlanıyor** ve akış
-  /// yine tamamlanıyor; sunucu bugün bunu kabul ediyor.
-  ///
-  /// Yalnızca [ChipReadException] yükseltiyor.
+  /// Kartı okuyup kanıtı döndürür. [challenge] **kart okunmadan önce** alınmış
+  /// olmalı. `DG15` yoksa Active Authentication atlanır, akış tamamlanır.
+  /// Yalnız [ChipReadException] yükseltir.
   Future<ChipEvidence> read({
     required MrzKey key,
     required String challenge,
@@ -125,24 +97,15 @@ class ChipReader {
 
       final dg1 = await passport.readEfDG1();
 
-      // DG11 kartta olmayabiliyor. Varsa gönderiliyor çünkü MRZ adı
-      // ASCII'ye katlıyor: **ÇAĞRI** DG1'de **CAGRI** olarak duruyor.
+      // MRZ adı ASCII'ye katlıyor (**ÇAĞRI** → **CAGRI**); DG11 varsa gider.
       final dg11 = available.contains(EfDG11.TAG)
           ? await passport.readEfDG11()
           : null;
 
-      // DG14 çipin güvenlik bilgilerini taşıyor; sunucu Active
-      // Authentication imzasını hangi algoritmayla doğrulayacağını buradan
-      // öğreniyor (`ActiveAuthenticationInfo.signatureAlgorithm`). AA'dan
-      // **önce** okunuyor ki imza kanıtla birlikte tam gitsin. Yardımcı
-      // bilgi olduğu için okunamaması akışı bozmuyor: bu PR öncesinde
-      // doğrulanabilen bir kart, DG14 yüzünden doğrulanamaz hâle gelmemeli.
-      //
-      // Süre maliyeti (gerçek kartta ölçülmedi, APDU sayısından hesap):
-      // `dmrtd` dosyayı 112 baytlık parçalarla okuyor; tek EC anahtarlı
-      // tipik bir DG14 (~300–600 bayt) 4–7 APDU ediyor, telefon NFC'sinde
-      // güvenli kanalda APDU başına ~40–80 ms → toplam **~0,2–0,6 sn**.
-      // Adım metni değişmiyor; bu süre "Kart bilgileri okunuyor" altında.
+      // DG14: sunucu AA imzasının algoritmasını buradan öğreniyor; AA'dan
+      // **önce** okunur. Yardımcı bilgi, okunamazsa akış bozulmaz. Tahmini
+      // maliyet
+      // 0,2–0,6 sn (4–7 APDU).
       final dg14 = available.contains(EfDG14.TAG)
           ? await readOptional(passport.readEfDG14)
           : null;
@@ -156,13 +119,10 @@ class ChipReader {
       }
 
       step(ChipReadStep.finishing);
-      // SOD en sona bırakılıyor: en büyük dosya o ve kart erken çekilirse
-      // küçük olanların hepsi zaten okunmuş olur, kullanıcı da daha erken
-      // bir noktada değil doğrudan sonda hata görür.
+      // SOD en sonda: en büyük dosya; kart erken çekilirse hata doğrudan sonda.
       final sod = await passport.readEfSOD();
 
-      // DG2 kasıtlı olarak okunmuyor: sunucu istemiyor, yüz eşleştirmesi
-      // cihazda kalıyor ve büyük dosya okuma süresini gereksiz uzatıyor.
+      // DG2 kasıtlı okunmuyor: sunucu istemiyor, okumayı gereksiz uzatır.
 
       return ChipEvidence(
         sod: base64Encode(sod.toBytes()),
@@ -180,27 +140,19 @@ class ChipReader {
     } on Object catch (error) {
       throw ChipReadException(failureFor(error), cause: error);
     } finally {
-      // Bağlantı her hâlükârda kapanmalı: iOS'ta açık kalan oturum sistem
-      // sayfasını ekranda bırakıyor, Android'de kartı meşgul tutuyor.
+      // iOS'ta açık oturum sistem sayfasını bırakıyor, Android'de kartı meşgul
+      // tutuyor.
       try {
         await provider.disconnect();
       } on Object {
-        // Kapanışın kendi hatası, okumanın sonucunu değiştirmiyor.
+        // Kapanışın hatası sonucu değiştirmez.
       }
     }
   }
 
-  /// Oturumu açar: kart PACE destekliyorsa PACE, desteklemiyorsa BAC.
-  ///
-  /// ICAO Doc 9303 Part 11 §4.1 üç uyumlu yapılandırma tanımlıyor (yalnız
-  /// BAC / PACE+BAC / yalnız PACE) ve belge verenlere **1/1/2027'den
-  /// itibaren PACE'i zorunlu** kılıyor. Yalnız BAC yazmak kısa vadeli borç
-  /// olurdu; ikisi de burada.
-  ///
-  /// `EF.CardAccess` PACE parametrelerini taşıyan dosya — okunabiliyorsa
-  /// kart PACE'i biliyor demektir. PACE denemesi başarısız olursa BAC'e
-  /// düşülüyor: geçiş dönemindeki bir kart ikisini de destekliyor olabilir
-  /// ve ilkinin başarısızlığı kullanıcının işini bitirmemeli.
+  /// Kart PACE destekliyorsa PACE, yoksa BAC. ICAO 2027'den itibaren PACE'i
+  /// zorunlu kılıyor; ikisi de burada. `EF.CardAccess` okunabiliyorsa PACE
+  /// deneniyor, başarısızsa BAC'e düşülüyor.
   Future<void> _openSession(Passport passport, MrzKey key) async {
     EfCardAccess? cardAccess;
     try {
@@ -222,8 +174,7 @@ class ChipReader {
         );
         return;
       } on Object {
-        // PACE tutmadıysa BAC deneniyor; ikisi de tutmazsa aşağıdaki
-        // hata kullanıcıya "bilgiler eşleşmedi" olarak dönüyor.
+        // İkisi de tutmazsa hata "bilgiler eşleşmedi" olur.
       }
     }
 
@@ -249,16 +200,9 @@ class ChipReader {
     return bytes;
   }
 
-  /// Yokluğu akışı bozmayacak bir dosyayı okur; okunamazsa `null` döner.
-  ///
-  /// Yalnız **dosya düzeyindeki** hatalar yutuluyor: kart dosyayı vermedi
-  /// ([PassportError]) ya da içerik çözülemedi ([EfParseError]). Güvenli
-  /// kanal hatalı bir yanıtta da sayaç ilerlettiği için oturum bozulmuyor,
-  /// bir sonraki dosya normal okunuyor. Bağlantı kopması
-  /// ([ComProviderError], [ChipReadException]) yutulmuyor — o durumda
-  /// sonraki okuma da başarısız olacak ve kullanıcı doğru sebebi görmeli.
-  ///
-  /// Statik çünkü cihaz olmadan test edilebilmesi gerekiyor.
+  /// Yokluğu akışı bozmayacak dosyayı okur; okunamazsa `null`. Yalnız dosya
+  /// düzeyindeki hatalar yutulur; bağlantı kopması yükselir, kullanıcı doğru
+  /// sebebi görmeli.
   static Future<T?> readOptional<T>(Future<T> Function() read) async {
     try {
       return await read();
@@ -269,24 +213,18 @@ class ChipReader {
     }
   }
 
-  /// `dmrtd`'nin hatasını kullanıcıya ne yapacağını söyleyen bir sebebe
-  /// çevirir.
-  ///
-  /// Ayrı bir statik metot çünkü asıl kıymetli kısım bu ve cihaz olmadan
-  /// test edilebilmesi gerekiyor.
+  /// `dmrtd` hatasını kullanıcı sebebine çevirir; cihazsız test için statik.
   static ChipReadFailure failureFor(Object error) {
     if (error is ChipReadException) return error.reason;
 
     if (error is PassportError) {
       final status = error.code;
 
-      // 0x6982 / 0x6300 / 0x63CF: güvenlik durumu sağlanmadı. Pratikte tek
-      // anlamı var — MRZ'den türetilen anahtar kartın beklediği değil.
+      // Güvenlik durumu sağlanmadı: anahtar kartın beklediği değil.
       if (status == StatusWord.securityStatusNotSatisfied ||
           (status?.sw1 == 0x63)) {
         return ChipReadFailure.wrongKey;
       }
-      // Uygulama ya da dosya yok: okutulan şey eMRTD değil.
       if (status == StatusWord.fileNotFound ||
           status == StatusWord.recordNotFound) {
         return ChipReadFailure.chipUnsupported;
@@ -294,7 +232,6 @@ class ChipReader {
       return ChipReadFailure.cardMoved;
     }
 
-    // Bağlantı koptu, kart uzaklaştı ya da yoklama zaman aşımına uğradı.
     if (error is ComProviderError) return ChipReadFailure.cardMoved;
     if (error is EfParseError) return ChipReadFailure.chipUnsupported;
 
@@ -302,27 +239,13 @@ class ChipReader {
   }
 }
 
-/// Projenin kendi NFC taşıması.
+/// Projenin NFC taşıması; `dmrtd`'ninkinden farkı:
+/// - **`androidCheckNDEF: false`**: eMRTD NDEF değil, yoklama boşa ve kartı
+///   rahatsız edebilir.
+/// - Yalnız ISO 14443 A/B.
 ///
-/// `dmrtd`'nin hazır `NfcProvider`'ı yerine yazıldı çünkü iki ayarı
-/// geçirmesi gerekiyordu:
-///
-/// - **`androidCheckNDEF: false`** → `FLAG_READER_SKIP_NDEF_CHECK`. eMRTD
-///   NDEF değil; yoklama hem boşa gidiyor hem kartı rahatsız edebiliyor.
-/// - Yalnız ISO 14443 A/B taranıyor; 15693 ve 18092 kimlik kartında yok.
-///
-/// `flutter_nfc_kit` Android'de zaten `enableReaderMode()` kullanıyor,
-/// foreground dispatch değil.
-///
-/// ⚠️ `EXTRA_READER_PRESENCE_CHECK_DELAY` **geçirilemiyor**:
-/// `flutter_nfc_kit` `enableReaderMode`'a `extras` olarak `null` veriyor ve
-/// bunu dışarı açan bir seçenek sunmuyor. Uzun okumanın agresif varlık
-/// yoklamasıyla kesilmesi bu yüzden bugün ayarlanamıyor durumda.
-///
-/// `NfcProvider`'dan türüyor (`ComProvider`'dan değil) çünkü tabanın
-/// istediği `Logger` `logging` paketinden geliyor ve o paket bize yalnızca
-/// `dmrtd` üzerinden geçişli olarak ulaşıyor — doğrudan içe aktarmak
-/// referans edilmemiş bir pakete bağımlılık olurdu.
+/// ⚠️ `EXTRA_READER_PRESENCE_CHECK_DELAY` geçirilemiyor: `flutter_nfc_kit`
+/// `extras`'ı `null` veriyor.
 class _KoalaNfcProvider extends NfcProvider {
   NFCTag? _tag;
 
@@ -357,9 +280,7 @@ class _KoalaNfcProvider extends NfcProvider {
     _tag = tag;
   }
 
-  /// iOS'un sistem NFC sayfasındaki metni günceller; oturum yokken ya da
-  /// Android'de sessizce geçiliyor. Hata yutuluyor çünkü ilerleme metnini
-  /// yazamamak okumayı bozmamalı.
+  /// iOS sistem sayfasındaki metni günceller; yazamamak okumayı bozmamalı.
   void showStep(String message) {
     unawaited(setIosAlertMessage(message).catchError((_) {}));
   }

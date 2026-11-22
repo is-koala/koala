@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -99,10 +99,7 @@ void main() {
 
   setUp(() => server = _Server());
 
-  /// Firma bilgilerini temsil eden kökten şirket adresi ekranını açar.
-  ///
-  /// [withCompany] `false` ise sağlayıcı boş: ekran harita yerine "firmanız
-  /// yok" durumunu çizmeli, çökmemeli.
+  /// [withCompany] `false` ise ekran "firmanız yok" çizmeli, çökmemeli.
   Future<void> pumpAddress(
     WidgetTester tester, {
     bool withCompany = true,

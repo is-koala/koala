@@ -81,8 +81,7 @@ void main() {
     );
   }
 
-  /// Denetleyicinin bir sonraki `notifyListeners` çağrısı; tamamlama sessiz
-  /// olduğu için bitişi ancak buradan anlaşılıyor.
+  /// Tamamlama sessiz olduğu için bitişi ancak buradan anlaşılıyor.
   Future<void> nextNotify(ChatThreadController thread) {
     final completer = Completer<void>();
     late final VoidCallback listener;
@@ -211,11 +210,9 @@ void main() {
         .map((r) => r.queryParameters['after'])
         .toList();
 
-    // Tamamlama artımlı: eldeki en yeni mesaj çapa olur ve sunucudan yalnız
-    // ondan sonrakiler istenir. Kopukken gelen eklenir, eldeki tekrar
-    // eklenmez; `after` kipinde `sort` gönderilmez (sunucu 400 verir).
-    // Okunmamış kendi mesajımız (m2) olduğu için en yeni sayfa da bir kez
-    // okunur: kopukken okunanın `readAt`'i sunucudan gelir.
+    // Artımlı tamamlama: en yeni mesaj çapa, yalnız sonrakiler istenir; `after`
+    // kipinde `sort` yok (sunucu 400 verir). Okunmamış kendi mesajımız (m2)
+    // var, en yeni sayfa da bir kez okunur.
     test('kopup gelen bağlantı kaçanları after= ile tamamlar', () async {
       var readOffline = false;
       final messages = [
@@ -291,9 +288,8 @@ void main() {
       );
     });
 
-    // Çapa sunucuda bilinmiyorsa (silinmiş ya da başka sohbetin mesajı)
-    // sunucu 400 MESSAGING_AFTER_UNKNOWN veriyor; liste baştan çekilir ve
-    // kimlikle birleştirilir, aynı mesaj iki kez durmaz.
+    // Çapa bilinmiyorsa `400 MESSAGING_AFTER_UNKNOWN`; liste baştan çekilir ve
+    // kimlikle birleşir.
     test('400 MESSAGING_AFTER_UNKNOWN gelirse liste baştan çekilir', () async {
       final api = FakeApi(
         handler: (options) {
@@ -769,9 +765,8 @@ void main() {
     });
   });
 
-  // Grup: katılımcı başına okundu damgası (is-koala/koala-backend#281).
-  // "Kimler gördü" `participants[].lastReadAt >= sentAt` ile hesaplanıyor;
-  // READ olayı damgayı canlı ileri alıyor.
+  // Grup: katılımcı başına okundu damgası; "kimler gördü" `lastReadAt >=
+  // sentAt`, READ olayı damgayı canlı ileri alır.
   group('grup katılımcıları', () {
     const officer = 'user_officer';
     const gone = 'user_gone';
@@ -1185,8 +1180,7 @@ void main() {
   });
 
   group('engelli sohbet', () {
-    /// Sunucu engelli sohbette `403` ve kendi Türkçe mesajını döndürüyor
-    /// (`messages_tr.properties:319`).
+    /// Sunucu engelli sohbette `403` ve kendi Türkçe mesajını döndürüyor.
     const blocked = FakeApiResponse(
       statusCode: 403,
       body: {'success': false, 'message': 'Bu kullanıcıyla mesajlaşamazsınız.'},
@@ -1353,18 +1347,10 @@ void main() {
       expect(thread.isLoading, isFalse);
     });
 
-    // Engelin `statusCode` yerine kategoriden tanındığını ölçen tek test
-    // aşağıdaki. Bir ara "ACCESS_DENIED kategorisi sohbeti kilitliyor" diye
-    // ikinci bir test daha vardı; `403` + `ACCESS_DENIED` kuruyordu, yani
-    // üstündeki iki `403` testinin kopyasıydı — `403` tek başına zaten
-    // `forbidden` üretiyor, kategori satırı sonucu hiç değiştirmiyordu.
-    // Ölçüldü: `_captureBlock` `statusCode == 403`'e geri çevrildiğinde o
-    // test yeşil kalıyor, yalnızca bu kırmızıya dönüyordu. Kaldırıldı;
-    // ayırt edici gücü olmayan bir test, kapsamı olduğundan geniş gösterir.
-    //
-    // Kategoriyle durum kodunun **çeliştiği** yönün diğer yarısı
-    // (`401` + `ACCESS_DENIED` → `forbidden`) sınıflandırmanın kendi
-    // testinde: `api_client_error_category_test.dart`.
+    // Engelin `statusCode` yerine kategoriden tanındığını ölçen tek test bu.
+    // `403` + `ACCESS_DENIED` testi `403` tek başına `forbidden` ürettiği için
+    // ayırt edici değildi. Çelişen yönün öbür yarısı (`401` + `ACCESS_DENIED`)
+    // `api_client_error_category_test.dart`'ta.
     test('403 taşıyan TOKEN_EXPIRED engel sayılmıyor', () async {
       final thread = build(
         FakeApi(
@@ -1386,9 +1372,8 @@ void main() {
     });
 
     test('401 engel sayılmıyor', () async {
-      // `401` artık `unauthenticated`, `403` ise `forbidden`. Süresi dolmuş
-      // oturum mesaj kutusunu kilitlememeli: kullanıcının yapması gereken
-      // yeniden giriş, sohbeti terk etmek değil.
+      // Süresi dolmuş oturum mesaj kutusunu kilitlememeli; gereken yeniden
+      // giriş.
       final thread = build(
         FakeApi(
           handler: (_) => const FakeApiResponse(
@@ -1405,9 +1390,9 @@ void main() {
     });
   });
 
-  // Ödeme kapısı da engel gibi 403 + ACCESS_DENIED geliyor; ikisini yalnız
-  // `errorCode` ayırıyor. Kapı `gate`'e düşmeli, `blockedMessage` boş kalmalı
-  // ki ekran kırmızı engel şeridi değil ödeme açıklaması çizsin.
+  // Ödeme kapısı da engel gibi `403 ACCESS_DENIED`; yalnız `errorCode`
+  // ayırıyor. Kapı `gate`'e düşmeli ki kırmızı engel şeridi değil ödeme
+  // açıklaması çizilsin.
   group('mesajlaşma kapısı', () {
     const paymentRequired = FakeApiResponse(
       statusCode: 403,

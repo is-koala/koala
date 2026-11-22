@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/employee/features/settings/models/identity_chip_result.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -8,22 +8,9 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// Kimlik ekranındaki çip okuma kartı.
-///
-/// İki hâli var ve ikisi de aynı yeri kaplıyor: okumadan **önce** ne
-/// kazanılacağını anlatan bir davet, okumadan **sonra** neyin
-/// kanıtlandığını söyleyen bir özet.
-///
-/// Davet metni "zorunlu" demiyor, çünkü değil: çip okunmadan da doğrulama
-/// tamamlanıyor.
-///
-/// Özet iki eylem taşıyor ve ikisi ayrı: **Yeniden Oku** kanıtı yenisiyle
-/// değiştiriyor, **Okumayı Kaldır** kanıtı ve ondan türeyen beş alanı
-/// birlikte bırakıp formu elle düzenlemeye açıyor. Kullanıcının elle
-/// düzenlemeye dönmesinin başka yolu yok — kanıt dururken alanlara
-/// dokunmak, ekrandaki beyanı kanıttan ayrıştırmak olurdu. (Sunucunun
-/// kanıtı `IDENTITY_CHALLENGE_INVALID` ile reddetmesi de aynı geçişten
-/// geçiyor; o kararı sayfa veriyor, kart yalnız sonucu çiziyor.)
+/// Çip okuma kartı: okumadan önce davet, sonra özet. "Zorunlu" demez; çipsiz de
+/// doğrulama tamamlanır. **Yeniden Oku** kanıtı değiştirir, **Okumayı Kaldır**
+/// kanıtı ve beş alanı bırakıp formu elle düzenlemeye açar.
 class IdentityChipCard extends StatelessWidget {
   const IdentityChipCard({
     super.key,
@@ -32,16 +19,12 @@ class IdentityChipCard extends StatelessWidget {
     required this.onRemove,
   });
 
-  /// Okuma tamamlandıysa sonuç; `null` ise henüz okunmadı.
   final IdentityChipResult? result;
 
-  /// Kartı (yeniden) okut.
   final VoidCallback onRead;
 
-  /// Eldeki okumayı bırak; form elle düzenlemeye dönüyor.
   final VoidCallback onRemove;
 
-  /// Bilgilendirme metinlerinin satır aralığı; ekranın geri kalanıyla aynı.
   static const double _lineHeight = 1.4;
 
   @override
@@ -54,7 +37,6 @@ class IdentityChipCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: AppPadding.primaryAll,
-      // Çerçevesiz kart: sayfadaki diğer kartlar gibi yalnız zemin tonu.
       decoration: BoxDecoration(
         color: context.tileColor,
         borderRadius: AppRadius.secondaryCircular,
@@ -99,9 +81,8 @@ class IdentityChipCard extends StatelessWidget {
   }
 
   Widget _summary(BuildContext context, IdentityChipResult read) {
-    // DG15 taşımayan kartta canlı çip doğrulaması yapılamıyor ve akış yine
-    // tamamlanıyor. İkisini aynı metinle anlatmak, olmayan bir şeyi
-    // yapılmış göstermek olurdu.
+    // DG15'siz kartta canlı doğrulama yok; aynı metin olmayan şeyi yapılmış
+    // gösterirdi.
     final proved = read.evidence.provesChipPresence;
 
     return Container(

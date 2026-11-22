@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -8,13 +8,8 @@ import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/models/confirmed_address.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// Bir formun içinde onaylı adresi gösteren ve dokununca harita ekranını
-/// açan alan.
-///
-/// İlan ve şirket formları adresi kendi isteklerinin içinde gönderdiği için
-/// `MapFirstAddressPage` onlara yalnız [ConfirmedAddress] döndürür; bu alan
-/// o değerin özetini formun ızgarasında gösterir. Adres yokken çerçeve vurgu
-/// rengiyle çizilir: alan zorunlu ve dokunulacak yer burası.
+/// Formda onaylı adresin özetini gösterir, dokununca harita ekranını açar.
+/// Adres yokken çerçeve vurgu renginde: alan zorunlu.
 class ConfirmedAddressField extends StatelessWidget {
   const ConfirmedAddressField({
     super.key,
@@ -30,7 +25,6 @@ class ConfirmedAddressField extends StatelessWidget {
   final String label;
   final String placeholder;
 
-  /// Formun doğrulaması bu alanı eksik bulduğunda altına yazılan satır.
   final String? errorText;
 
   @override

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icon_data.dart';
 import 'package:koala/product/constants/app_padding.dart';
@@ -73,9 +73,7 @@ class _NavItemState extends State<NavItem> with SingleTickerProviderStateMixin {
       child: AnimatedBuilder(
         animation: _animationController,
         builder: (context, child) {
-          // Navbar zemini temadan bağımsız marka yeşili; üstündeki içerik
-          // de öyle. Bu yüzden renkler context'ten değil AppColors'tan
-          // okunuyor.
+          // Navbar zemini temadan bağımsız yeşil; renkler `AppColors`'tan.
           Color backgroundColor;
           if (widget.isSelected) {
             backgroundColor = AppColors.onAccent;

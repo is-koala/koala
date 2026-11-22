@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/jobs/presentation/providers/boarding_queue_provider.dart';
 import 'package:koala/employee/features/jobs/services/worker_boarding_submitter.dart';
@@ -17,12 +17,8 @@ import 'package:provider/provider.dart';
 
 part 'worker_boarding_scan_pagemodel.dart';
 
-/// İşçi servisteki QR'ı okutur (is-koala/koala#217):
-/// `POST /shuttles/{shuttleId}/boardings`.
-///
-/// Okutma [BoardingQueueProvider]'a gider: bağlantı yoksa cihazda saklanır,
-/// sonra gönderilir. Kayıt ya da kuyruğa alma sonrası kamera kapanır ve
-/// sonuç yazılır; ret olursa kamera açık kalır, işçi yeniden okutabilir.
+/// İşçi servisteki QR'ı okutur (#217). Okutma kuyruğa gider (çevrimdışıyken
+/// saklanır); kayıtta kamera kapanır, retde açık kalır.
 class WorkerBoardingScanPage extends StatefulWidget {
   const WorkerBoardingScanPage({
     super.key,
@@ -35,14 +31,11 @@ class WorkerBoardingScanPage extends StatefulWidget {
     this.appScheme,
   });
 
-  /// İş detayından açıldıysa atama ve yön; kart bekleyen okutmayı bunlarla
-  /// buluyor.
   final String? assignmentId;
   final ShuttleDirection? direction;
 
-  /// İşçinin o yöndeki koltuğunun servisi. Biliniyorsa başka servisin QR'ı
-  /// çevrimdışıyken de hemen "yanlış servis" der; sunucu yine son sözü
-  /// söyler (`TRANSPORT_WRONG_SHUTTLE`).
+  /// Biliniyorsa yanlış servis çevrimdışıyken de hemen söylenir; son söz
+  /// sunucunun.
   final String? expectedShuttleId;
 
   final WorkerBoardingSubmitter? submitter;
@@ -57,8 +50,6 @@ class WorkerBoardingScanPage extends StatefulWidget {
       'Bunun yerine iş detayındaki "QR\'ımı göster" ile kendi QR\'ınızı '
       'işverene okutabilirsiniz.';
 
-  /// Gönderim sonucunun ekrandaki hâli; tarama ekranı ve telefon
-  /// kamerasıyla açılan bağlantı sayfası aynı cümleleri kullanıyor.
   static BoardingResultPanel resultFor(BoardingSubmission submission) {
     return switch (submission) {
       BoardingRecorded(:final event) => BoardingResultPanel(
@@ -84,8 +75,7 @@ class WorkerBoardingScanPage extends StatefulWidget {
     };
   }
 
-  /// Telefon kamerasıyla okutulan `{şema}://board?t=…` bağlantısı
-  /// (`/boarding-link`) işçi oturumunda buradan gönderilir.
+  /// `/boarding-link` işçi oturumunda buradan gönderilir.
   static Future<BoardingResultPanel> submitFromLink(
     BuildContext context,
     BoardingToken token,

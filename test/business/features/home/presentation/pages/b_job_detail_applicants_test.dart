@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/business/features/home/presentation/pages/b_job_detail_page.dart';
 import 'package:koala/business/features/home/presentation/providers/b_company_provider.dart';

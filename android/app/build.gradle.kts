@@ -30,23 +30,15 @@ val hasReleaseSigning = listOf(
 
 plugins {
     id("com.android.application")
-    // ⚠️ Bu satır bilerek geri geldi. `flutter_nfc_kit` hâlâ
-    // `org.jetbrains.kotlin.android` uyguluyor ve AGP 9'un built-in
-    // Kotlin'iyle bir arada çalışmıyor; bu yüzden `gradle.properties`'te
-    // `android.builtInKotlin=false` var ve app modülünün Kotlin'i yeniden
-    // eklentiden geliyor. Gerekçenin tamamı ve geri açma koşulu
-    // `android/gradle.properties` içinde.
-    id("org.jetbrains.kotlin.android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    // Kotlin AGP 9'un built-in Kotlin'inden geliyor; `kotlin-android`
+    // uygulanmıyor. Flutter eklentisi Android eklentisinden sonra gelmeli.
     id("dev.flutter.flutter-gradle-plugin")
     id("com.google.gms.google-services")
 }
 
-// App Links host'u Dart tarafıyla tek kaynaktan gelir: config/<flavor>.json
-// içindeki WEB_HOSTS. İlk host flavor manifestinin `appLinkHost`, ikincisi
-// `appLinkHostAlias` placeholder'ını doldurur. Manifestteki satır sayısı ile
-// yapılandırmadaki host sayısı ayrışırsa derleme sessizce eksik host'la
-// çıkmak yerine burada durur (#155).
+// App Links host'ları config/<flavor>.json'daki WEB_HOSTS'tan geliyor.
+// Manifestteki host satırı sayısı tutmazsa derleme eksik host'la çıkmak yerine
+// burada durur (#155).
 fun appLinkPlaceholders(flavor: String, manifestHostLines: Int): Map<String, String> {
     val configFile = rootProject.file("../config/$flavor.json")
     check(configFile.exists()) { "config/$flavor.json bulunamadı; App Links host'u okunamıyor." }
@@ -67,12 +59,9 @@ fun appLinkPlaceholders(flavor: String, manifestHostLines: Int): Map<String, Str
 
 configurations.configureEach {
     resolutionStrategy.dependencySubstitution {
-        // Flutter eklentisi Latin modelini APK'ya gömüyor. Yalnız bu modülü
-        // Play Services varyantına çevirerek diğer alfabelerin sözleşmesine
-        // dokunmadan production APK'sındaki yaklaşık 31 MB'ı kaldırıyoruz.
-        // Kaynak sürüm de sözleşmenin parçası. Eklenti yeni bir bundled sürüme
-        // geçerse onu sessizce eski Play Services sürümüne zorlamak yerine
-        // aşağıdaki graph doğrulaması açıkça hata vermeli.
+        // Latin OCR modelini Play Services varyantına çevirmek production
+        // APK'sından ~31 MB düşürüyor. Eklenti yeni bir gömülü sürüme geçerse
+        // aşağıdaki doğrulama açıkça hata vermeli.
         substitute(module("com.google.mlkit:text-recognition:16.0.1"))
             .using(module("com.google.android.gms:play-services-mlkit-text-recognition:19.0.1"))
             .because("Latin OCR modeli Google Play Services üzerinden indirilir")
@@ -103,12 +92,9 @@ val verifyUnbundledMlKitModels by tasks.registering {
             "Production graph exact unbundled ML Kit 19.0.1 bekliyor: $unbundled"
         }
 
-        // Biniş QR'ı (is-koala/koala#217): mobile_scanner barkod modelini
-        // `dev.steenbakker.mobile_scanner.useUnbundled=true` ile Play
-        // Services'tan alıyor (`gradle.properties`). Bayrak düşerse eklenti
-        // sessizce gömülü `com.google.mlkit:barcode-scanning`'e döner ve APK
-        // birkaç MB büyür; burada açıkça kırılsın. Sürüm eklentinin seçimi,
-        // sabitlenmiyor — yalnız varyant sözleşme.
+        // Biniş QR'ı (#217): barkod modeli `useUnbundled=true` ile Play
+        // Services'tan geliyor. Bayrak düşerse eklenti sessizce gömülü modele
+        // döner; burada kırılsın.
         val bundledBarcode = modules.filter {
             it.group == "com.google.mlkit" && it.name == "barcode-scanning"
         }
@@ -131,8 +117,8 @@ tasks.named("check") {
     dependsOn(verifyUnbundledMlKitModels)
 }
 
-// Flutter CI `check` çağırmadan doğrudan assemble/bundle çalıştırıyor. Model
-// graph sözleşmesi gerçek APK/AAB kapısından da geçmeden artefact üretilmesin.
+// Flutter CI `check` çağırmadan assemble/bundle çalıştırıyor; doğrulama
+// artefakt kapısına da bağlı.
 tasks.matching {
     it.name.startsWith("assemble") || it.name.startsWith("bundle")
 }.configureEach {
@@ -141,11 +127,9 @@ tasks.matching {
 
 android {
     namespace = "com.example.koala"
-    // permission_handler_android 14 compileSdk 37 ile derleniyor; Flutter'ın
-    // varsayılanı (flutter.compileSdkVersion) hâlâ 36 olduğu için elle sabitlendi.
-    // SDK paketi `platforms;android-37.0`; AGP 9.1.1+ `37` değerini o pakete
-    // eşliyor (gerekçe `android/settings.gradle.kts`'te). AGP 9.1.0'a geri
-    // dönülürse temiz SDK'da `android-37` hedefi bulunamaz.
+    // permission_handler_android 14 compileSdk 37 istiyor, Flutter'ın
+    // varsayılanı 36. AGP 9.1.1'den eskisi temiz SDK'da `android-37`'yi
+    // bulamaz.
     compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
@@ -156,12 +140,8 @@ android {
 
     defaultConfig {
         applicationId = "com.iskoala.koala"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        // flutter_nfc_kit 3.6.x minSdk 24 istiyor. Flutter'ın varsayılanına
-        // (flutter.minSdkVersion) bırakılırsa SDK sürümüyle birlikte sessizce
-        // değişir; NFC'nin tabanı sürüm notlarına yazılacak bir karar olduğu
-        // için elle sabitlendi.
+        // flutter_nfc_kit minSdk 24 istiyor; Flutter varsayılanı sessizce
+        // değişmesin diye sabit.
         minSdk = 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -224,17 +204,15 @@ android {
 
     buildTypes {
         release {
-            // R8 kuralları `proguard-rules.pro`'da; ML Kit'in kullanılmayan
-            // dil modelleri olmadan release build'i düşüyor.
+            // ML Kit'in kullanılmayan dil modelleri için R8 kuralları
+            // `proguard-rules.pro`'da; onlarsız release düşüyor.
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
 
-            // Release hiçbir zaman debug anahtarıyla imzalanmaz. Yerelde
-            // key.properties, CI'da yalnız secret-backed ortam değişkenleri
-            // kullanılır; değerler eksikse çıktı imzasız kalır ve release
-            // workflow'u yüklemeden önce açıkça durur.
+            // Release hiçbir zaman debug anahtarıyla imzalanmaz. Anahtar yoksa
+            // çıktı imzasız kalır ve release workflow'u yüklemeden önce durur.
             signingConfig = if (hasReleaseSigning) {
                 signingConfigs.getByName("release")
             } else {

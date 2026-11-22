@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -8,18 +8,14 @@ import 'package:koala/product/providers/notification_provider.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:provider/provider.dart';
 
-/// Bildirim ekranını açan zil. Rozet yalnızca okunmamış varken çiziliyor.
-///
-/// Sayı gösteriliyor: akış `IN_APP` kanalına süzüldüğünden bir olay bir
-/// kayıt, yani sayı gerçek. (Kanal ayrımı gelmeden önce sunucu olay başına
-/// birden fazla kayıt yazdığı için burada yalnızca nokta vardı.)
+/// Bildirim ekranını açan zil; rozet okunmamış varken çizilir. Akış `IN_APP`'e
+/// süzüldüğü için sayı gerçek.
 class NotificationBell extends StatefulWidget {
   const NotificationBell({super.key, required this.route, this.color});
 
-  /// Basılınca gidilecek yol; iki uygulamanın bildirim ekranı ayrı.
+  /// İki uygulamanın bildirim ekranı ayrı.
   final String route;
 
-  /// Zilin rengi. Verilmezse ikincil metin rengi kullanılıyor.
   final Color? color;
 
   @override
@@ -27,7 +23,6 @@ class NotificationBell extends StatefulWidget {
 }
 
 class _NotificationBellState extends State<NotificationBell> {
-  /// Rozette yazılabilecek en büyük sayı; üstü "99+" oluyor.
   static const int _maxBadgeCount = 99;
 
   @override
@@ -55,8 +50,7 @@ class _NotificationBellState extends State<NotificationBell> {
       icon: unreadCount == 0
           ? icon
           : Badge(
-              // Üç haneli sayı rozeti taşırıyor; okunmamışın kaç tane
-              // olduğu değil, çok olduğu bilgisi yetiyor.
+              // Üç haneli sayı rozeti taşırıyor; "çok" bilgisi yetiyor.
               label: Text(
                 unreadCount > _maxBadgeCount
                     ? '$_maxBadgeCount+'

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/company_detail/services/company_service.dart';
 import 'package:koala/employee/features/profile/models/followed_company.dart';
@@ -13,11 +13,8 @@ import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/empty_state.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 
-/// Takip edilen şirketler.
-///
-/// Takibi buradan bırakmak **yok**: liste özet kayıt taşıyor, bırakma da
-/// şirketin kendi ekranında zaten var. İki yerde iki ayrı doğruluk kaynağı
-/// tutmaktansa satıra dokununca şirkete gidiliyor.
+/// Takip edilen şirketler. Takibi bırakmak burada yok, şirket ekranında; iki
+/// doğruluk kaynağı olmasın.
 class FollowedCompaniesPage extends StatefulWidget {
   const FollowedCompaniesPage({super.key});
 
@@ -29,10 +26,8 @@ class _FollowedCompaniesPageState extends State<FollowedCompaniesPage> {
   final CompanyService _service = CompanyService();
   final ScrollController _controller = ScrollController();
 
-  /// Listenin sonuna bu kadar kala sonraki sayfa isteniyor.
   static const double _loadMoreThreshold = 240;
 
-  /// Logo kutusunun kenar uzunluğu.
   static const double _logoBox = 48;
 
   final List<FollowedCompany> _companies = [];
@@ -99,7 +94,7 @@ class _FollowedCompaniesPageState extends State<FollowedCompaniesPage> {
         _isLast = page.last;
       });
     } on ApiException catch (error) {
-      // Eldeki liste duruyor; kullanıcı okumaya devam edebilsin.
+      // Eldeki liste kalır, okumaya devam edilsin.
       if (mounted) setState(() => _errorMessage = error.message);
     } finally {
       if (mounted) setState(() => _isLoadingMore = false);
@@ -177,7 +172,6 @@ class _FollowedCompaniesPageState extends State<FollowedCompaniesPage> {
           color: context.textTertiary,
         ),
       ),
-      // Şirket ekranı kimliği `extra` ile alıyor.
       onTap: () => context.push('/company-detail', extra: company.companyId),
     );
   }
@@ -193,7 +187,7 @@ class _FollowedCompaniesPageState extends State<FollowedCompaniesPage> {
           width: _logoBox,
           height: _logoBox,
           fit: BoxFit.cover,
-          // Logo açılmazsa satır kaybolmasın; harf kutusuna düşülüyor.
+          // Logo açılmazsa harf kutusuna düşülür.
           errorBuilder: (_, _, _) => _logoFallback(company),
         ),
       );

@@ -2,12 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:koala/product/network/api_config.dart';
 
-/// Erişim ve yenileme token'larının saklandığı yer.
-///
-/// Yenileme token'ı 30 gün geçerli olduğu için `SharedPreferences` yerine
-/// Keychain/Keystore kullanılıyor; oturum bayrağı (`is_logged_in`) hâlâ
-/// prefs'te, çünkü router yönlendirmeyi senkron okumaya yakın bir yerde
-/// yapıyor ve o bilgi gizli değil.
+/// Erişim ve yenileme token'ları. Yenileme token'ı 30 gün geçerli olduğu için
+/// Keychain/Keystore'da; gizli olmayan oturum bayrağı prefs'te.
 class TokenStorage {
   TokenStorage._internal()
     : _storage = const FlutterSecureStorage(),
@@ -17,11 +13,9 @@ class TokenStorage {
 
   factory TokenStorage() => _instance;
 
-  /// Testlerin gerçek Keychain'e gitmemesi için sahte bir depo geçilebilir.
   @visibleForTesting
-  TokenStorage.withStorage(FlutterSecureStorage storage, {String? apiOrigin})
-    : _storage = storage,
-      _apiOrigin = apiOrigin;
+  TokenStorage.withStorage(FlutterSecureStorage storage, {this._apiOrigin})
+    : _storage = storage;
 
   final FlutterSecureStorage _storage;
   final String? _apiOrigin;
@@ -30,7 +24,6 @@ class TokenStorage {
   static const String _refreshTokenKey = 'koala_refresh_token';
   static const String _refreshExpiresAtKey = 'koala_refresh_expires_at';
 
-  /// Token ve oturum bayraklarının ortak saklama kapsamı.
   String get apiOrigin => _apiOrigin ?? ApiConfig.baseUrl;
 
   String _key(String name) => '${Uri.encodeComponent(apiOrigin)}:$name';
@@ -41,7 +34,7 @@ class TokenStorage {
   Future<String?> readRefreshToken() =>
       _storage.read(key: _key(_refreshTokenKey));
 
-  /// Yenileme token'ının son kullanma anı. Yoksa ya da bozuksa `null`.
+  /// Yoksa ya da bozuksa `null`.
   Future<DateTime?> readRefreshExpiresAt() async {
     final raw = await _storage.read(key: _key(_refreshExpiresAtKey));
     if (raw == null) return null;
@@ -65,8 +58,7 @@ class TokenStorage {
     }
   }
 
-  /// Yalnızca erişim token'ını günceller; `/auth/refresh-token` sonrası
-  /// yenileme token'ı aynı kalıyor.
+  /// `/auth/refresh-token` sonrası yenileme token'ı aynı kalıyor.
   Future<void> saveAccessToken(String accessToken) {
     return _storage.write(key: _key(_accessTokenKey), value: accessToken);
   }

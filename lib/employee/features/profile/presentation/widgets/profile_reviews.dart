@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/employee/features/jobs/models/rating_summary.dart';
 import 'package:koala/employee/features/jobs/models/review.dart';
 import 'package:koala/employee/features/jobs/services/review_service.dart';
@@ -10,12 +10,8 @@ import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/widgets/rating_summary_badge.dart';
 import 'package:koala/product/widgets/review_tile.dart';
 
-/// Kullanıcı hakkında yazılmış değerlendirmeler ve puan özeti.
-///
-/// Kendi verisini kendisi çekiyor: iki ayrı uç (`/users/{id}/rating-summary`
-/// ve `/users/{id}/reviews`) ve ikisi de profilin geri kalanından bağımsız.
-/// Bu yüzden bölüm başarısız olduğunda profil boşalmıyor, yalnızca bu şerit
-/// hatayı gösteriyor.
+/// Değerlendirmeler ve puan özeti; kendi uçlarından çekiliyor, düşerse profil
+/// boşalmıyor.
 class ProfileReviews extends StatefulWidget {
   const ProfileReviews({
     super.key,
@@ -25,24 +21,17 @@ class ProfileReviews extends StatefulWidget {
     this.summary,
   });
 
-  /// Hakkında değerlendirme okunacak kişi.
   final String userId;
 
-  /// Testlerde sahte sunucuya bağlı servis; verilmezse üretim tekili.
   final ReviewService? service;
 
-  /// Hiç değerlendirme yokken yazılan cümle. Varsayılanı profilin sahibine
-  /// konuşuyor ("Henüz değerlendirilmedin"); başkasının profilinde bu cümle
-  /// yanlış olurdu, orada çağıran kendi cümlesini veriyor.
+  /// Varsayılan profilin sahibine konuşuyor; başkasının profilinde çağıran
+  /// kendi cümlesini verir.
   final String? emptyMessage;
 
-  /// Çağıranın zaten bildiği puan özeti. Verilirse `rating-summary` ucu
-  /// çağrılmıyor (başkasının profilinde `GET /users/{id}` özeti taşıyor);
-  /// `reviewCount`'u sıfır olan özet "henüz puan yok" çiziyor. Verilmezse —
-  /// kendi profili, eski sunucu — özet kendi ucundan çekiliyor.
+  /// Verilirse `rating-summary` çağrılmaz; verilmezse kendi ucundan.
   final RatingSummary? summary;
 
-  /// Kendi profilinde boş durumun cümlesi.
   static const String ownEmptyMessage =
       'Henüz değerlendirilmedin. Tamamladığın işlerden sonra işverenler '
       'buraya yazabilir.';
@@ -54,8 +43,7 @@ class ProfileReviews extends StatefulWidget {
 class _ProfileReviewsState extends State<ProfileReviews> {
   late final ReviewService _service = widget.service ?? ReviewService();
 
-  /// Listede gösterilen yorum sayısı. Profil bir değerlendirme sayfası değil;
-  /// tamamı için ayrı bir ekran gerekir.
+  /// Profil değerlendirme sayfası değil.
   static const int _visibleCount = 3;
 
   RatingSummary? _summary;
@@ -82,9 +70,7 @@ class _ProfileReviewsState extends State<ProfileReviews> {
     });
 
     try {
-      // İkisi paralel gidiyor; özet, yorum listesinden bağımsız bir uç.
-      // Çağıran özeti zaten biliyorsa (profil yanıtı taşıyor) ayrı uç
-      // çağrılmıyor.
+      // Paralel; özet biliniyorsa ayrı uç çağrılmaz.
       final known = widget.summary;
       final Future<RatingSummary?> summary = known != null
           ? Future<RatingSummary?>.value(known)
@@ -173,10 +159,7 @@ class _ProfileReviewsState extends State<ProfileReviews> {
     style: context.textTheme.bodyMedium?.copyWith(color: context.textSecondary),
   );
 
-  /// Değerlendirmeler çekilemediğinde: mesaj ve tekrar deneme.
-  ///
-  /// Profilin geri kalanı yerinde kalıyor; bu bölüm profilin tamamlayıcısı,
-  /// ön koşulu değil.
+  /// Bölüm profilin tamamlayıcısı; geri kalanı yerinde kalır.
   Widget _errorStrip(String message) {
     return Container(
       width: double.infinity,

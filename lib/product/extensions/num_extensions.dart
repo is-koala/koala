@@ -1,14 +1,9 @@
-/// Sayı biçimlendirme yardımcıları.
 extension PriceExtension on num {
-  /// Ücreti binlik ayracıyla yazar: `1500` → `1.500`.
-  ///
-  /// Kuruş gösterilmiyor; ilan ücretleri tam sayı olarak giriliyor.
+  /// `1500` → `1.500`; ilan ücretleri tam sayı.
   String get asPrice => _withThousandsSeparator(toStringAsFixed(0));
 
-  /// Küsuratı yuvarlamadan Türkçe sayı biçiminde yazar.
-  ///
-  /// İlan ücretleri tam sayı olsa da iş alarmı sözleşmesi ondalık asgari ücret
-  /// kabul eder: `1250.5` → `1.250,5`.
+  /// Yuvarlamadan Türkçe biçim: `1250.5` → `1.250,5` (iş alarmı ondalık kabul
+  /// ediyor).
   String get asExactPrice {
     final parts = toString().split('.');
     final whole = _withThousandsSeparator(parts.first);

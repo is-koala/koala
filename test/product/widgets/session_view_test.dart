@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -28,10 +28,7 @@ const _sessionsJson = <Map<String, dynamic>>[
   },
 ];
 
-/// Oturum listesi ve ayrıntı uçlarını karşılayan sahte sunucu.
-///
-/// [detailStatus] `404` iken eski sunucu taklit ediliyor: ayrıntı ucu yok,
-/// liste olduğu gibi duruyor.
+/// [detailStatus] `404` iken eski sunucu taklit ediliyor.
 class _Server {
   int detailStatus = 200;
   List<Map<String, dynamic>> sessions = List.of(_sessionsJson);
@@ -45,9 +42,8 @@ class _Server {
         body: {'success': true, 'data': sessions},
       );
     }
-    final match = RegExp(
-      r'^/users/me/sessions/([^/]+)$',
-    ).firstMatch(request.path);
+    final match = RegExp(r'^/users/me/sessions/([^/]+)$')
+        .firstMatch(request.path);
     if (match != null && request.method == 'GET') {
       if (detailStatus == 404) {
         return const FakeApiResponse(

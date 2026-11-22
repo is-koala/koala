@@ -17,15 +17,9 @@ Map<String, dynamic> alertJson(int index, {bool active = true}) => {
 JobAlertsProvider providerWith(FakeApi api) =>
     JobAlertsProvider(service: JobAlertService.withClient(api.client));
 
-/// Sunucunun hata zarfı.
-///
-/// `errorCode` **hiçbir zaman boş gelmiyor**: `ErrorResult:20` boş bırakılanı
-/// kategori adıyla dolduruyor, yani alan doğrulamalarının hepsi tek tip
-/// `VALIDATION_FAILED` taşıyor (`ErrorContractIT:137` bunu sabitliyor).
-/// Kotanın kendi kodu var; alan hatalarını ancak `details` ayırıyor.
-///
-/// `errorCategory` zarfa gerçeğe sadık kalsın diye konuyor; bugünkü
-/// `ApiResponse.fromJson` onu **okumuyor**, yani hiçbir iddia ona dayanmıyor.
+/// `errorCode` hiç boş gelmiyor: alan hatalarının hepsi `VALIDATION_FAILED`,
+/// onları `details` ayırıyor. `errorCategory` gerçeğe sadık kalsın diye var,
+/// hiçbir iddia ona dayanmıyor.
 FakeApiResponse errorResponse({
   required int statusCode,
   required String message,
@@ -251,12 +245,8 @@ void main() {
     expect(provider.isLoading, isFalse);
   });
 
-  // Bu dört testin tamamı `_messageFor`'un yönlendirmesini sabitliyor.
-  // AGENTS.md: "ApiException.errorCode is what routing keys off, never the
-  // message text."
-  // Bu grubun tamamı `_messageFor`'un yönlendirmesini sabitliyor.
-  // AGENTS.md: "ApiException.errorCode is what routing keys off, never the
-  // message text."
+  // `_messageFor`'un yönlendirmesini sabitliyor: karar `errorCode`'dan,
+  // metinden değil.
   group('sunucu hatası doğru mesaja yönleniyor', () {
     test('kota aşımı ölçüt mesajını değil kendi mesajını gösterir', () async {
       // Sunucu kotayı `ValidationException` ile döndürüyor

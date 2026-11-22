@@ -1,7 +1,6 @@
 import 'package:koala/employee/features/chat/models/conversation.dart';
 import 'package:koala/employee/features/chat/models/message.dart';
 
-/// Sayfalı sohbet listesi. Backend `PageDto<ConversationDto>` karşılığı.
 class ConversationPage {
   const ConversationPage({
     this.conversations = const [],
@@ -38,10 +37,8 @@ class ConversationPage {
   }
 }
 
-/// Sayfalı mesaj listesi. Backend `PageDto<MessageDto>` karşılığı.
-///
-/// Sunucu en yeni mesajı başta döndürüyor; arayüz eskiden yeniye çizdiği için
-/// liste burada tarihe göre artan sıraya alınıyor.
+/// Sunucu en yeniyi başta döndürüyor; arayüz eskiden yeniye çizdiği için artan
+/// sıraya alınır.
 class MessagePage {
   const MessagePage({
     this.messages = const [],

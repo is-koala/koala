@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/company_detail/models/company.dart';
 import 'package:koala/business/features/home/models/employer_stats.dart';
@@ -24,11 +24,8 @@ import 'package:provider/provider.dart';
 
 part 'b_profile_pagemodel.dart';
 
-/// İşverenin kendi profili.
-///
-/// İki hâli var ve ikisi de geçerli: şirket üyeliği olan işveren **şirketini**
-/// görüyor, olmayan **kendini**. Bireysel işveren bir eksiklik değil — backend
-/// `POST /users/me/jobs` ile bireysel ilan açtırıyor.
+/// İşverenin profili: şirket üyeliği varsa **şirketi**, yoksa **kendisi**.
+/// Bireysel işveren eksiklik değil.
 class BProfilePage extends StatefulWidget {
   const BProfilePage({super.key});
 
@@ -109,7 +106,7 @@ class _BProfilePageState extends BProfilePageModel {
   }
 
   Widget _errorState(String message) {
-    // Kaydırılabilir kalmalı: aşağı çekip yenileme bu ekranda da çalışıyor.
+    // Aşağı çekip yenileme için kaydırılabilir.
     return ListView(
       padding: AppPadding.primaryAll,
       children: [
@@ -140,7 +137,7 @@ class _BProfilePageState extends BProfilePageModel {
 
   // -------------------------------------------------------------------- Kapak
 
-  /// Kapak marka yeşili; üstündeki her şey temadan bağımsız beyaz.
+  /// Kapak yeşil; üstündeki her şey temadan bağımsız beyaz.
   Widget _profileHeader(
     CurrentUser user,
     Company? company,
@@ -234,7 +231,6 @@ class _BProfilePageState extends BProfilePageModel {
     );
   }
 
-  /// Şirketin hukuki türü; şirketi olmayan işverende "Bireysel İşveren".
   Widget _typeBadge(Company? company) {
     final label = company == null
         ? 'Bireysel İşveren'
@@ -258,11 +254,8 @@ class _BProfilePageState extends BProfilePageModel {
     );
   }
 
-  /// Şirketi olanda şirketin onayı, olmayanda kişinin kimlik doğrulaması.
-  ///
-  /// İkisi de aynı şeyi anlatıyor: bu hesap ilan yayınlayabilir mi. Kimlik
-  /// tarafı çalışan profilindeki rozetin kendisi: dört hâl, dokununca
-  /// kimlik ekranı; kapak yeşil olduğu için beyaz varyantı.
+  /// Şirkette onay, bireyselde kimlik doğrulaması; ikisi de "ilan
+  /// yayınlayabilir mi"yi anlatıyor.
   Widget _statusRow(CurrentUser user, Company? company) {
     if (company != null) {
       return _coverStatus(
@@ -311,7 +304,6 @@ class _BProfilePageState extends BProfilePageModel {
     );
   }
 
-  /// İletişim bilgileri: şirket varsa şirketin, yoksa kişinin.
   Widget _contactInfoSection(CurrentUser user, Company? company) {
     final email = company?.email ?? user.email;
     final phone = company?.phoneNumber ?? user.phoneNumber;
@@ -336,12 +328,8 @@ class _BProfilePageState extends BProfilePageModel {
     );
   }
 
-  /// Adres bölümü. Şirketin adresi yoksa kişininki gösteriliyor.
-  ///
-  /// Bireysel işverenin adresi yoksa bölüm boş bırakılmıyor: ödeme bu adres
-  /// olmadan başlamıyor (`JOB_ASSIGNMENT_ADDRESS_NOT_PROVIDED_FOR_EMPLOYER`)
-  /// ve kullanıcı bunu ödeme anında değil burada öğrenmeli. Şirket
-  /// işvereninde adres şirketin; o da yoksa çizilecek bir şey yok.
+  /// Bireysel işverenin adresi yoksa ekleme çağrısı gösterilir: ödeme adres
+  /// olmadan başlamıyor ve kullanıcı bunu burada öğrenmeli.
   List<Widget> _addressSection(CurrentUser user, Company? company) {
     final address = company?.address ?? user.address;
     if (address == null) {
@@ -395,7 +383,6 @@ class _BProfilePageState extends BProfilePageModel {
     ];
   }
 
-  /// Adresi olmayan bireysel işverene adres ekleme çağrısı.
   List<Widget> _missingAddressSection() {
     return [
       _sectionTitle("Adres"),
@@ -447,9 +434,7 @@ class _BProfilePageState extends BProfilePageModel {
     ];
   }
 
-  /// İstatistikler `GET /users/{id}/employer-stats`'tan geliyor ve **kişiye**
-  /// bağlı: şirket adına açılan ilan da onu açan kullanıcının sayısına
-  /// yazılıyor.
+  /// Sayılar **kişiye** bağlı; şirket ilanı da açana yazılıyor.
   Widget _statsSection(BCompanyProvider provider) {
     final stats = provider.stats;
 
@@ -482,8 +467,7 @@ class _BProfilePageState extends BProfilePageModel {
               Expanded(
                 child: _statCard(
                   icon: AppIcons.star,
-                  // Hiç değerlendirme yokken "0.0" yazmak kötü puan almış
-                  // gibi görünürdü.
+                  // Değerlendirmesizken "0.0" kötü puan gibi görünür.
                   value: stats.hasRating
                       ? stats.averageRating.toStringAsFixed(1)
                       : '—',
@@ -498,8 +482,7 @@ class _BProfilePageState extends BProfilePageModel {
     );
   }
 
-  /// Sayılar gelmediğinde onların yerine geçen kutu. Profilin geri kalanı
-  /// çizilmeye devam ediyor.
+  /// Sayılar gelmeyince profilin geri kalanı çizilmeye devam eder.
   Widget _statsNotice(String? message) {
     return Container(
       width: double.infinity,

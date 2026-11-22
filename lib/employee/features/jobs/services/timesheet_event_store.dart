@@ -1,7 +1,6 @@
 import 'package:koala/employee/features/jobs/models/timesheet_event.dart';
 import 'package:sqflite/sqflite.dart';
 
-/// Kalıcı mesai kayıtlarının saklama seam'i.
 abstract interface class TimesheetEventStore {
   Future<void> add(TimesheetEvent event);
 
@@ -16,13 +15,11 @@ abstract interface class TimesheetEventStore {
   Future<void> setLastActiveUser(String? userId);
 }
 
-/// Yeniden açılışta profil ağına ihtiyaç duymadan doğru kullanıcı bölümü
-/// bulunabilsin diye olaylarla son etkin kullanıcıyı aynı SQLite dosyasında
-/// tutan adapter.
+/// Son etkin kullanıcı da aynı dosyada: açılışta ağ olmadan doğru bölüm
+/// bulunsun.
 class SqfliteTimesheetEventStore implements TimesheetEventStore {
-  SqfliteTimesheetEventStore({DatabaseFactory? factory, String? databasePath})
-    : _factory = factory ?? databaseFactory,
-      _databasePath = databasePath;
+  SqfliteTimesheetEventStore({DatabaseFactory? factory, this._databasePath})
+    : _factory = factory ?? databaseFactory;
 
   static const String _databaseName = 'koala_timesheet_queue.db';
   static const String _table = 'timesheet_events';
@@ -87,7 +84,6 @@ class SqfliteTimesheetEventStore implements TimesheetEventStore {
     );
   }
 
-  /// Testlerde ve sınırlı yaşam döngüsü sahiplerinde dosyayı kapatır.
   Future<void> close() async {
     final database = _database ?? await _openingDatabase;
     _database = null;

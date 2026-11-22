@@ -18,10 +18,8 @@ Map<String, dynamic> _job(String id) => {
   'status': 'OPEN',
 };
 
-/// [total] bilerek `ids.length`'ten ayrı verilebiliyor: sunucunun saydığı
-/// toplam, o sayfada dönen ilan sayısı **değil**. Varsayılanı içerik uzunluğuna
-/// eşitlemek, `totalElements`'i yanlışlıkla `content.length`'e bağlamış bir
-/// uygulamayı da yeşil bırakırdı.
+/// [total] bilerek ayrı: içerik uzunluğuna eşitlemek `totalElements`'i
+/// `content.length`'e bağlamış bir uygulamayı da yeşil bırakırdı.
 Map<String, dynamic> _page({
   required List<String> ids,
   required int page,

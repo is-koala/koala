@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/constants/app_icons.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
@@ -8,12 +8,8 @@ import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/features/transport/models/transport_plan.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// İlan detayındaki (başvuru öncesi) "Ulaşım" kartı (is-koala/koala#197).
-///
-/// Herkese açık görünümü çiziyor: yöntemler, servis sayısı, durakların
-/// ilçe/semt adı ve saati, yol parası tutarı. Plaka, şoför ve tam adres bu
-/// görünümde **yok** — sunucu göndermiyor, kart da bilmiyor; koltuk seçimi
-/// atama kurulduktan sonra iş detayında.
+/// İlan detayındaki "Ulaşım" kartı (#197): herkese açık görünüm. Plaka, şoför
+/// ve tam adres yok; koltuk seçimi atamadan sonra iş detayında.
 class JobTransportCard extends StatelessWidget {
   const JobTransportCard({
     super.key,
@@ -23,8 +19,7 @@ class JobTransportCard extends StatelessWidget {
 
   final JobTransport transport;
 
-  /// `true` ise kart zemini ve iç boşluğu olmadan, sayfanın bölüm başlığıyla
-  /// çiziliyor (ilan detayı sheet'i kartsız düzende).
+  /// `true` ise kartsız, bölüm başlığıyla.
   final bool plain;
 
   @override

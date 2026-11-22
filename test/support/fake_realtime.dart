@@ -3,11 +3,8 @@ import 'dart:async';
 import 'package:koala/product/network/realtime_client.dart';
 import 'package:koala/product/network/realtime_event.dart';
 
-/// Widget testlerinde gerçek WebSocket açmadan sessiz kalan canlı istemci.
-///
-/// Denetleyici testlerinin sahteleri de bunu genişletiyor: yalnızca olay
-/// basmak istedikleri akışı ezip gerisini buradan alıyorlar, böylece
-/// `RealtimeClient`'a eklenen her üye tek yerde karşılanıyor.
+/// Sessiz canlı istemci; denetleyici sahteleri bunu genişletir ki yeni üye tek
+/// yerde karşılansın.
 class FakeSilentRealtimeClient implements RealtimeClient {
   final StreamController<RealtimeEvent> _events =
       StreamController<RealtimeEvent>.broadcast();
@@ -62,10 +59,7 @@ class FakeSilentRealtimeClient implements RealtimeClient {
   }
 }
 
-/// Kişisel kuyruğa ve sohbet topic'ine olay basabilen canlı istemci.
-///
-/// İki kabuğun sohbet listesinin ve açık sohbet ekranının aynı denetleyici
-/// üzerinden, çekme yapmadan canlı mesaj aldığını göstermek için var.
+/// İki kabuğun aynı denetleyiciyle canlı mesaj aldığını göstermek için.
 class FakeLiveRealtimeClient extends FakeSilentRealtimeClient {
   final StreamController<RealtimeEvent> _userEvents =
       StreamController<RealtimeEvent>.broadcast();

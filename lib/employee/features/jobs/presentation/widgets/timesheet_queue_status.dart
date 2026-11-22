@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/employee/features/jobs/models/timesheet_event.dart';
 import 'package:koala/product/constants/app_colors.dart';
 import 'package:koala/product/constants/app_icons.dart';
@@ -8,7 +8,6 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// Bir atamanın cihazda bekleyen veya destek isteyen mesai kayıtları.
 class TimesheetQueueStatus extends StatelessWidget {
   const TimesheetQueueStatus({super.key, required this.events, this.onSupport});
 

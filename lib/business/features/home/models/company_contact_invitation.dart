@@ -1,7 +1,6 @@
 import 'package:koala/business/features/home/models/company_contact.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
 
-/// Davetin durumu. Backend `CompanyContactInvitationStatus` karşılığı.
 enum CompanyContactInvitationStatus {
   pending('PENDING'),
   accepted('ACCEPTED'),
@@ -19,7 +18,6 @@ enum CompanyContactInvitationStatus {
   }
 }
 
-/// Şirket yetkili daveti. Backend `GetCompanyContactInvitationDto` karşılığı.
 class CompanyContactInvitation {
   const CompanyContactInvitation({
     required this.id,

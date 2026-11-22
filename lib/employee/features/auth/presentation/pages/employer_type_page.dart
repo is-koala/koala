@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/presentation/company_identity_gate.dart';
 import 'package:koala/employee/features/auth/presentation/registration_routes.dart';
@@ -7,13 +7,8 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/my_button.dart';
 
-/// Kayıt tamamlandıktan sonra işverenin hangi modelle ilerleyeceğini seçer.
-///
-/// Bireysel işveren kişisel ilan uçlarını kullanır; şirket seçen kullanıcı
-/// gerçek şirket oluşturma formunu tamamlamadan işveren ana sayfasına gitmez.
-///
-/// Şirket yolu kimlik kapısından geçiyor: sunucu doğrulanmamış kullanıcının
-/// şirketini reddettiği için form, doğrulama bitmeden hiç açılmıyor.
+/// Kayıttan sonra işverenin modeli: bireysel ya da şirket. Şirket yolu kimlik
+/// kapısından geçiyor; doğrulanmadan form açılmaz.
 class EmployerTypePage extends StatelessWidget {
   const EmployerTypePage({
     super.key,
@@ -24,8 +19,7 @@ class EmployerTypePage extends StatelessWidget {
   final VoidCallback? onIndividualSelected;
   final VoidCallback? onCompanySelected;
 
-  /// Kimlik doğrulanmışsa (ya da az önce doğrulandıysa) şirket formuna
-  /// geçer; vazgeçen kullanıcı bu ekranda kalır, hedefi kaybolmaz.
+  /// Vazgeçen kullanıcı bu ekranda kalır.
   Future<void> _continueAsCompany(BuildContext context) async {
     final verified = await CompanyIdentityGate.ensureVerified(context);
     if (!verified || !context.mounted) return;

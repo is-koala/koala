@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/models/pending_verification.dart';
@@ -21,14 +21,8 @@ import 'package:provider/provider.dart';
 
 part 'verification_code_pagemodel.dart';
 
-/// E-posta ve telefon değişikliğinin 6 haneli kod ekranı.
-///
-/// `PATCH /users/me` yeni değeri yazmıyor: yeni adrese/numaraya bir kod
-/// gönderip bekleyen doğrulamayı döndürüyor. Bu ekran o kodun girildiği yer;
-/// onaylanana kadar eski değer geçerli kalıyor.
-///
-/// Ekrandaki bütün metinler uygulamada yazılı; sunucu yalnız doğrulamanın
-/// türünü, hedefini ve son kullanma anını taşıyor.
+/// E-posta / telefon değişikliğinin 6 haneli kod ekranı; onaylanana kadar eski
+/// değer geçerli.
 class VerificationCodePage extends StatefulWidget {
   const VerificationCodePage({
     super.key,
@@ -38,20 +32,15 @@ class VerificationCodePage extends StatefulWidget {
     this.now,
   });
 
-  /// Onaylanacak bekleyen doğrulama. Tekrar gönderimde yerini yenisi alıyor.
+  /// Tekrar gönderimde yerini yenisi alıyor.
   final PendingVerification verification;
 
-  /// Testlerde sahte sunucuya bağlı örnek geçilebilsin diye.
   final VerificationService? verificationService;
 
-  /// Ekran kapanırken sonucu bildirir: doğrulama tamamlandıysa `true`,
-  /// kayıt geçersiz olduğu için bırakıldıysa `false`. Verilmezse ekran
-  /// kendini `context.pop(sonuç)` ile kapatıyor — çağıran sıradaki
-  /// doğrulamaya geçip geçmeyeceğine buna bakarak karar veriyor.
+  /// Tamamlandıysa `true`, kayıt geçersizse `false`. Verilmezse ekran
+  /// `context.pop(sonuç)` ile kapanır.
   final ValueChanged<bool>? onFinished;
 
-  /// Sayaç testlerinde zaman sınırını denetleyebilmek için kullanılan saat.
-  /// Uygulamada verilmediğinde cihazın güncel saati okunur.
   final DateTime Function()? now;
 
   @override
@@ -96,9 +85,8 @@ class _VerificationCodePageState extends VerificationCodePagemodel {
     );
   }
 
-  /// Kalan süre sunucunun son kullanma anından hesaplanır. Eski sunucuda bu
-  /// alan yoksa ekran açılışından başlayan yaklaşık süre gösterilir. Her iki
-  /// durumda da geçerliliğe sunucu karar verdiği için giriş kapatılmaz.
+  /// Kalan süre sunucunun son kullanma anından (eski sunucuda tahmin).
+  /// Geçerliliğe sunucu karar verdiği için giriş kapatılmaz.
   Widget _remainingLine() {
     return SettingsHint(
       hasTimeLeft
@@ -108,9 +96,7 @@ class _VerificationCodePageState extends VerificationCodePagemodel {
     );
   }
 
-  /// Tekrar gönderme satırı. Soğuma süresi dolana kadar düğme kapalı;
-  /// sunucunun tekrar gönderme ucu olmadığı için bu aslında `PATCH`'in
-  /// tekrarı ve arka arkaya SMS gitmesi istenmiyor.
+  /// Tekrar gönderme aslında `PATCH`'in tekrarı; soğuma dolana kadar kapalı.
   Widget _resendRow() {
     return Container(
       width: double.infinity,

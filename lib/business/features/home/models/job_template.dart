@@ -1,14 +1,8 @@
 import 'package:koala/employee/features/home/models/job.dart';
 
-/// İşverenin kaydettiği ilan şablonu. Backend `JobTemplateDto` karşılığı.
-///
-/// Şablon **formdan değil, yayınlanmış bir ilandan** çıkarılıyor: sunucu
-/// `POST /users/me/job-templates` gövdesinde yalnızca `templateName` ve
-/// `jobId` kabul ediyor, alanları ilandan kendisi kopyalıyor.
-///
-/// **Adres, tarih ve durum kopyalanmıyor.** Aynı ilan bir sonraki hafta başka
-/// güne ve çoğu zaman başka adrese açıldığı için sunucu bunları bilerek
-/// taşımıyor; forma uygularken de o alanlara dokunulmuyor.
+/// İşverenin ilan şablonu. Formdan değil **yayınlanmış ilandan** çıkarılıyor;
+/// adres, tarih ve durum kopyalanmıyor, forma uygularken de o alanlara
+/// dokunulmuyor.
 class JobTemplate {
   const JobTemplate({
     required this.id,
@@ -33,11 +27,10 @@ class JobTemplate {
 
   final String id;
 
-  /// Kullanıcının verdiği ad: `Cumartesi garson`. Sunucuda `@NotBlank`.
+  /// `Cumartesi garson`; sunucuda `@NotBlank`.
   final String templateName;
 
-  /// Şablonun çıkarıldığı ilanın şirketi; bireysel ilandan çıkarıldıysa
-  /// `null`.
+  /// Bireysel ilandan çıkarıldıysa `null`.
   final String? companyId;
 
   final JobCategory? category;
@@ -106,13 +99,9 @@ class JobTemplate {
     };
   }
 
-  /// Şablonun kategori ve sigorta alanlarının bu işverende ne olacağı.
-  ///
-  /// Sunucu bireysel ilanda `insuranceRequired`'ı zorla `false` yazıyor ve
-  /// sigorta zorunlu kategoride bireysel ilan hiç açtırmıyor. Şablon böyle
-  /// bir ilandan çıkarılmış olabilir; kategoriyi sessizce başka bir şeye
-  /// çekmek yerine boş bırakıp nedenini söylemek gerekiyor — kullanıcı formu
-  /// doldurup en sonda `400` almasın.
+  /// Kategori ve sigortanın bu işverende ne olacağı. Sigorta zorunlu kategori
+  /// bireysel ilana kapalı; kategori sessizce değiştirilmez, boş bırakılıp
+  /// nedeni söylenir ki kullanıcı en sonda `400` almasın.
   JobTemplateApplication applyFor({required bool isCompanyJob}) {
     if (isCompanyJob) {
       return JobTemplateApplication(
@@ -147,8 +136,6 @@ class JobTemplate {
       value is String ? DateTime.tryParse(value) : null;
 }
 
-/// [JobTemplate.applyFor] sonucu: forma yazılacak kategori ve sigorta değeri,
-/// bir de düşürülen alan varsa kullanıcıya gösterilecek uyarı.
 class JobTemplateApplication {
   const JobTemplateApplication({
     required this.category,
@@ -156,12 +143,10 @@ class JobTemplateApplication {
     this.warning,
   });
 
-  /// Forma yazılacak kategori. Bireysel işverene kapalı bir kategoriyse
-  /// `null` — alan boş kalıyor ve kullanıcı kendisi seçiyor.
+  /// Bireysel işverene kapalıysa `null`; kullanıcı kendisi seçer.
   final JobCategory? category;
 
   final bool insuranceRequired;
 
-  /// Şablondan bir alan düşürüldüyse nedenini anlatan Türkçe uyarı.
   final String? warning;
 }

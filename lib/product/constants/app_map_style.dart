@@ -1,39 +1,26 @@
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/constants/app_colors.dart';
 
-/// Harita ekranlarının paylaştığı Koala harita stili (açık ve koyu).
+/// Koala harita stili (açık ve koyu).
 ///
-/// Stil uygulamanın içinde, `GoogleMap.style` ile verilir; Google Cloud'daki
-/// bulut stili (Map ID) bilerek kullanılmıyor. Map ID'li her harita açılışı
-/// Dynamic Maps olarak ücretlendiriliyor, JSON stili ise mobil SDK'nın
-/// ücretsiz kullanımında kalıyor. İkisi aynı uygulamada karıştırılamaz.
-///
-/// Amaç sade bir zemin: harita bilgisini taşıyan şey ilan pinleri. Bu yüzden
-/// pinlerle yarışan katmanlar kapalı (dükkan/restoran ikonları, otobüs
-/// durakları, otoyol tabelaları), konum bulmaya ve işe ulaşmaya yarayanlar
-/// açık ama sönük (sokak ve semt adları, parklar, raylı sistem durakları).
+/// `GoogleMap.style` ile veriliyor, bulut Map ID değil: Map ID'li her açılış
+/// ücretli, JSON stili ücretsiz. Pinlerle yarışan katmanlar (dükkan ikonları,
+/// otobüs durakları) kapalı; yön bulmaya yarayanlar açık ama sönük.
 class AppMapStyle {
   AppMapStyle._();
 
-  /// Uygulamanın etkin temasına göre stil. `GoogleMap.style` değişince
-  /// eklenti haritayı yeniden kurmadan günceller; tema değişimi anında yansır.
   static String of(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark ? dark : light;
 
-  /// Koyu temada harita zemini; koyu pin kenarı da bu.
   static const Color _darkLand = Color(0xFF161916);
 
-  /// İlan ve grup pinlerinin kenar rengi. Kenarın işi pini zeminden ve
-  /// üst üste binen komşusundan ayırmak: açık zeminde beyaz, koyu zeminde
-  /// zeminin kendi rengi. Koyu haritada beyaz kenar pinin kendisinden parlak
-  /// kalıyor ve gözü renge değil çerçeveye çekiyordu.
+  /// Pin kenarı: açık zeminde beyaz, koyu zeminde zeminin rengi. Koyu haritada
+  /// beyaz kenar gözü pinden çok çerçeveye çekiyor.
   static Color pinRim(Brightness brightness) =>
       brightness == Brightness.dark ? _darkLand : AppColors.onAccent;
 
-  /// Açık tema: hafif yeşile çalan kırık beyaz zemin, belirgin yeşil parklar,
-  /// kenar çizgili beyaz yollar ve okunaklı koyu etiketler.
   static final String light = _encode(
     const _Palette(
       land: Color(0xFFF2F4EF),
@@ -52,8 +39,6 @@ class AppMapStyle {
     ),
   );
 
-  /// Koyu tema: uygulamanın koyu zeminine (`darkBackground`) yakın, yeşil
-  /// tonlu; yollar ve etiketler zeminden net ayrılır ama parlamaz.
   static final String dark = _encode(
     const _Palette(
       land: _darkLand,
@@ -73,7 +58,6 @@ class AppMapStyle {
   );
 
   static String _encode(_Palette p) => jsonEncode([
-    // Zemin ve genel etiketler.
     _rule('all', 'geometry', {'color': p.land}),
     _rule('all', 'labels.text.fill', {'color': p.label}),
     _rule('all', 'labels.text.stroke', {'color': p.labelHalo}),
@@ -81,8 +65,7 @@ class AppMapStyle {
     _rule('water', 'geometry', {'color': p.water}),
     _rule('water', 'labels.text.fill', {'color': p.label}),
 
-    // İdari sınırlar: semt ve ilçe adı yön bulmaya yarar, çizgiler ve
-    // parsel bilgisi yalnızca kalabalık.
+    // İdari sınırlar: semt adı yön bulmaya yarar, çizgiler yalnız kalabalık.
     _rule('administrative', 'geometry', {'visibility': 'off'}),
     _rule('administrative.land_parcel', 'all', {'visibility': 'off'}),
     _rule('administrative.locality', 'labels.text.fill', {
@@ -92,15 +75,14 @@ class AppMapStyle {
       'color': p.label,
     }),
 
-    // Mekânlar: ilan pinleriyle yarışan ikonlar kapalı. İşletmeler
-    // (dükkan, restoran, otel) tamamen; diğerleri yalnızca adıyla kalır.
+    // Mekân ikonları ilan pinleriyle yarıştığı için kapalı.
     _rule('poi', 'labels.icon', {'visibility': 'off'}),
     _rule('poi', 'labels.text.fill', {'color': p.label}),
     _rule('poi.business', 'all', {'visibility': 'off'}),
     _rule('poi.park', 'geometry', {'color': p.park}),
     _rule('poi.park', 'labels.text.fill', {'color': p.parkLabel}),
 
-    // Yollar: sokak adları adres için gerekli; otoyol tabelaları değil.
+    // Sokak adları adres için gerekli; otoyol tabelaları değil.
     _rule('road', 'geometry.fill', {'color': p.road}),
     _rule('road', 'geometry.stroke', {'color': p.roadStroke}),
     _rule('road', 'labels.icon', {'visibility': 'off'}),
@@ -108,8 +90,7 @@ class AppMapStyle {
     _rule('road.highway', 'geometry.fill', {'color': p.highway}),
     _rule('road.highway', 'geometry.stroke', {'color': p.roadStroke}),
 
-    // Toplu taşıma: metro/tramvay durakları işe ulaşımı anlatır, kalır;
-    // otobüs durakları sokak seviyesinde haritayı ikonla doldurur.
+    // Raylı sistem durakları kalır; otobüs durakları haritayı ikonla doldurur.
     _rule('transit.line', 'geometry', {'color': p.transitLine}),
     _rule('transit.station.bus', 'all', {'visibility': 'off'}),
     _rule('transit.station', 'labels.text.fill', {'color': p.label}),
@@ -133,15 +114,12 @@ class AppMapStyle {
     ],
   };
 
-  /// Maps stil JSON'u `#RRGGBB` bekler; saydamlık taşımaz.
   static String _hex(Color color) {
     final rgb = color.toARGB32() & 0xFFFFFF;
     return '#${rgb.toRadixString(16).padLeft(6, '0').toUpperCase()}';
   }
 }
 
-/// Bir temanın harita renkleri; iki tema aynı kuralları paylaşır, yalnızca
-/// renkler değişir.
 class _Palette {
   const _Palette({
     required this.land,

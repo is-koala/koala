@@ -1,32 +1,23 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/dismiss_keyboard_on_tap.dart';
 
-/// Uygulamadaki bottom sheet'lerin ortak kabuğu: zemin, üst köşeler, başlık
-/// satırı ve alt güvenli alan payı.
+/// Bottom sheet'lerin ortak kabuğu: zemin, üst köşeler, başlık ve alt güvenli
+/// alan.
 ///
-/// İçeriğin kendi durumu varsa `builder` içinde bir `StatefulBuilder` ile
-/// sarmalayıp bu widget'ı onun altında kur; kabuk durumla ilgilenmiyor.
-///
-/// İçindeki dikey liste en üstteyken aşağı çekilmeye devam edilirse sheet
-/// kapanıyor ([_PullToDismiss]); ilan detayı sheet'i `DraggableScrollableSheet`
-/// ile bunu zaten yapıyordu, kaydırma içeren diğer sheet'lerde hareketi liste
-/// yutuyordu.
-///
-/// Kabuğun boş alanına dokunmak klavyeyi kapatıyor; metin alanı taşıyan
-/// sheet'ler klavye payını (`viewInsets`) kendileri ekliyor, çünkü sheet
-/// `Scaffold`'un dışında, Navigator katmanında duruyor.
+/// İçerik durumluysa `builder` içinde `StatefulBuilder` ile sar. Liste en
+/// üstteyken aşağı çekmek sheet'i kapatır ([_PullToDismiss]). Sheet `Scaffold`
+/// dışında durduğu için metin alanı taşıyanlar klavye payını kendileri ekler.
 class AppBottomSheet extends StatelessWidget {
   const AppBottomSheet({super.key, required this.title, required this.child});
 
   final String title;
   final Widget child;
 
-  /// Sheet'i açar. Zemin saydam veriliyor ki köşe yuvarlaklığı arkasındaki
-  /// varsayılan beyaz dikdörtgenle kesilmesin.
+  /// Zemin saydam ki köşeler arkadaki beyaz dikdörtgenle kesilmesin.
   static Future<T?> show<T>(
     BuildContext context, {
     required WidgetBuilder builder,
@@ -75,17 +66,13 @@ class AppBottomSheet extends StatelessWidget {
   }
 }
 
-/// İçerideki dikey liste en üstteyken aşağı çekilince sheet'i parmakla
-/// birlikte aşağı kaydırır; bırakınca yeterince çekildiyse kapatır, değilse
-/// yerine yaylandırır.
+/// Liste en üstteyken aşağı çekilince sheet'i parmakla kaydırır; yeterince
+/// çekildiyse kapatır, değilse geri yaylandırır.
 ///
-/// Flutter'ın modal sheet'i kendi sürüklemesini yalnız kaydırma içermeyen
-/// alanda yapıyor; içerik bir listeyse hareketi liste yutuyor. Burada listenin
-/// üst kenardan taşan çekişi (`OverscrollNotification`) sheet'in kaymasına
-/// çevriliyor. Taşma bildirimi kenetlenen kaydırmada geldiği için sheet
-/// içindeki listeler iOS'ta da [ClampingScrollPhysics] kullanıyor; esneyen
-/// liste sheet'le birlikte çifte hareket ederdi. Yatay şeritler ve
-/// programatik kaydırma sayılmıyor; yalnız bir bottom sheet rotasında çalışır.
+/// Modal sheet kendi sürüklemesini yalnız kaydırmasız alanda yapıyor, listede
+/// hareketi liste yutuyor; burada taşan çekiş (`OverscrollNotification`)
+/// sheet'e aktarılıyor. Bu bildirim kenetlenen kaydırmada geldiği için sheet
+/// listeleri iOS'ta da [ClampingScrollPhysics] kullanıyor.
 class _PullToDismiss extends StatefulWidget {
   const _PullToDismiss({required this.child});
 
@@ -97,15 +84,13 @@ class _PullToDismiss extends StatefulWidget {
 
 class _PullToDismissState extends State<_PullToDismiss>
     with SingleTickerProviderStateMixin {
-  /// Sheet boyunun bu oranından fazla çekilirse bırakınca kapanır.
   static const double _dismissFraction = 0.25;
 
-  /// Bu hızdan (piksel/sn) hızlı aşağı fırlatma, mesafeye bakmadan kapatır.
+  /// Bu hızdan (px/sn) hızlı fırlatma mesafeye bakmadan kapatır.
   static const double _flingVelocity = 700;
 
   static const Duration _settle = Duration(milliseconds: 200);
 
-  /// Sheet'in şu anki aşağı kayması (piksel).
   late final AnimationController _offset = AnimationController.unbounded(
     vsync: this,
   );
@@ -133,7 +118,6 @@ class _PullToDismissState extends State<_PullToDismiss>
         _dragging &&
         (notification.scrollDelta ?? 0) > 0 &&
         _offset.value > 0) {
-      // Sheet aşağıdayken parmak geri yukarı: önce sheet yukarı gelsin.
       _offset.value = (_offset.value - notification.scrollDelta!).clamp(
         0,
         double.infinity,
@@ -161,9 +145,8 @@ class _PullToDismissState extends State<_PullToDismiss>
     return NotificationListener<ScrollNotification>(
       onNotification: _onScroll,
       child: ScrollConfiguration(
-        behavior: ScrollConfiguration.of(
-          context,
-        ).copyWith(physics: const ClampingScrollPhysics()),
+        behavior: ScrollConfiguration.of(context)
+            .copyWith(physics: const ClampingScrollPhysics()),
         child: AnimatedBuilder(
           animation: _offset,
           builder: (context, child) => Transform.translate(

@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/services/user_service.dart';
@@ -30,7 +30,7 @@ const Map<String, Object?> _ayseProfile = {
   'about': 'Moda\'da küçük bir kafe işletiyorum.',
   'cityName': 'İstanbul',
   'districtName': 'Kadıköy',
-  // koala-backend#282: özet profil yanıtında da geliyor.
+  // Özet profil yanıtında da geliyor.
   'reviewCount': 12,
   'averageRating': 4.5,
 };
@@ -259,9 +259,8 @@ void main() {
     role: ChatParticipantRole.employer,
   );
 
-  // Şirket ilanına bağlı bir sohbetten gelen işveren: şirket satırı için ilan
-  // uçlarına gitmesi **mümkün** olan açılış. "Profil gelmeden ilan istenmez"
-  // testleri bununla çalışıyor; `jobId`'siz `ayse` ile o koşul hiç ısırmazdı.
+  // Şirket ilanına bağlı sohbetten gelen işveren: ilan ucuna gitmesi mümkün
+  // olan açılış; `jobId`'siz kişiyle "ilan istenmez" testleri bir şey ölçmezdi.
   const ayseAtJob = PublicProfileArgs(
     userId: 'user-9',
     name: 'Ayşe Yılmaz',
@@ -307,10 +306,8 @@ void main() {
         },
       );
 
-      // `GET /users/{id}` bugün 403 üretmiyor (giriş yapmış herkes var olan
-      // her kullanıcıyı görüyor); 404 ile 403'ün aynılığı savunmacı eşitlik —
-      // ileride bir görünürlük kuralı gelirse hesabın var olup olmadığı
-      // ekrandan okunamasın.
+      // Bugün `403` üretilmiyor; `404` ile aynılığı savunmacı, ileride hesabın
+      // varlığı ekrandan okunamasın.
       testWidgets('hata: 404 ve 403 aynı tek "profil görüntülenemiyor" '
           'durumu, çağıranın verdiği ad bile çizilmez', (tester) async {
         final notFoundHarness = await _pump(
@@ -383,8 +380,7 @@ void main() {
         expect(find.text('Kafe işletmecisi'), findsOneWidget);
       });
 
-      // Grup sohbetinde şikayet/engelle yok ve sunucu grupta engeli
-      // uygulamıyor: çalışanın ekip arkadaşını ya da şirket yetkilisini
+      // Grup sohbetinde şikayet/engelle yok; çalışanın ekip arkadaşını
       // bildirebileceği yer burası.
       testWidgets('şikayet eylemi mevcut ReportSheet\'i açar, engelle yok', (
         tester,
@@ -544,9 +540,8 @@ void main() {
       expect(args.role, ChatParticipantRole.companyContact);
     });
 
-    // Şirketten ayrılan yetkili (`leaveCompanyCrews`) satırı silinmeden
-    // `COMPANY_CONTACT` rolüyle kalıyor: ilan taşırsak ayrıldığı şirketin adı
-    // profilinde yazardı.
+    // Şirketten ayrılan yetkili `COMPANY_CONTACT` rolüyle kalıyor; ilan taşısa
+    // profilinde ayrıldığı şirket yazardı.
     test('ayrılan katılımcı ilan taşımaz, aktif olan taşır', () {
       const active = ChatParticipant(
         id: 'user-9',
@@ -710,8 +705,7 @@ void main() {
       expect(find.text('Koala Cafe'), findsNothing);
     });
 
-    // Şirket satırı ikinci (ağır) ilan isteğinden sonra geliyor; üstte
-    // belirince "Hakkında" ve yorumlar aşağı sıçramasın, boyut animasyonla
+    // Geç gelen şirket satırı içeriği aşağı sıçratmasın; boyut animasyonla
     // açılsın.
     testWidgets('şirket satırı geç gelince içerik sıçramaz, animasyonla iner', (
       tester,

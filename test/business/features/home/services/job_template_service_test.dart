@@ -40,9 +40,8 @@ void main() {
         ),
       );
 
-      final templates = await JobTemplateService.withClient(
-        api.client,
-      ).fetchTemplates();
+      final templates = await JobTemplateService.withClient(api.client)
+          .fetchTemplates();
 
       final request = api.requests.single;
       expect(request.method, 'GET');
@@ -62,9 +61,8 @@ void main() {
         ),
       );
 
-      final templates = await JobTemplateService.withClient(
-        api.client,
-      ).fetchTemplates();
+      final templates = await JobTemplateService.withClient(api.client)
+          .fetchTemplates();
 
       expect(templates, isEmpty);
     });
@@ -79,9 +77,8 @@ void main() {
         ),
       );
 
-      final created = await JobTemplateService.withClient(
-        api.client,
-      ).createFromJob(jobId: 'job-9', templateName: 'Cumartesi garson');
+      final created = await JobTemplateService.withClient(api.client)
+          .createFromJob(jobId: 'job-9', templateName: 'Cumartesi garson');
 
       final request = api.requests.single;
       expect(request.method, 'POST');
@@ -101,9 +98,8 @@ void main() {
             const FakeApiResponse(statusCode: 200, body: {'success': true}),
       );
 
-      await JobTemplateService.withClient(
-        api.client,
-      ).deleteTemplate('template-1');
+      await JobTemplateService.withClient(api.client)
+          .deleteTemplate('template-1');
 
       final request = api.requests.single;
       expect(request.method, 'DELETE');

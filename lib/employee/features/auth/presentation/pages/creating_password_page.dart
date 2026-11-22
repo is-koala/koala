@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 import 'package:koala/employee/features/auth/models/agreement_version.dart';
 import 'package:koala/employee/features/auth/models/consent_decision.dart';
@@ -34,7 +34,6 @@ class CreatingPasswordPage extends StatefulWidget {
 
   final String? token;
 
-  /// Testlerde sahte sunucuya bağlı servisler; üretimde tekil örnekler.
   final AuthService? authService;
   final LegalService? legalService;
 
@@ -56,7 +55,7 @@ class _CreatingPasswordPageState extends CreatingPasswordPagemodel {
     );
   }
 
-  /// Sayfanın üç hâli var: hazırlık sürüyor, hazırlık başarısız ve form.
+  /// Hazırlık sürüyor, hazırlık başarısız ve form.
   Widget _body() {
     if (isPreparing) {
       return Center(
@@ -89,7 +88,6 @@ class _CreatingPasswordPageState extends CreatingPasswordPagemodel {
     );
   }
 
-  /// Token doğrulanamadığında ya da sözleşmeler alınamadığında gösterilir.
   Widget _errorSection(String message) {
     return Padding(
       padding: AppPadding.primaryAll,
@@ -126,7 +124,7 @@ class _CreatingPasswordPageState extends CreatingPasswordPagemodel {
     );
   }
 
-  /// Sözleşme onayları. Zorunlu olanlar işaretlenmeden buton açılmıyor.
+  /// Zorunlular işaretlenmeden buton açılmaz.
   Widget _consentsSection() {
     if (agreements.isEmpty) return const SizedBox.shrink();
 
@@ -188,7 +186,6 @@ class _CreatingPasswordPageState extends CreatingPasswordPagemodel {
     );
   }
 
-  /// Şifre kutusunun altındaki durum kartı: gücü ve tekrarla eşleşmesi.
   Widget _passwordHints() {
     return Container(
       padding: AppPadding.card,

@@ -4,8 +4,6 @@ import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
 /// `/users/me/notification-preferences` uçları.
-///
-/// Hesap düzeyinde: çalışan da işveren de aynı tabloyu görüyor.
 class NotificationPreferenceService {
   NotificationPreferenceService._(this._apiClient);
 
@@ -21,7 +19,6 @@ class NotificationPreferenceService {
 
   final ApiClient _apiClient;
 
-  /// Çözümlenmiş tablo: her kategori × kanal için bir satır.
   Future<List<NotificationPreference>> fetchAll() {
     return _apiClient.get<List<NotificationPreference>>(
       ApiPaths.currentUserNotificationPreferences,
@@ -29,11 +26,8 @@ class NotificationPreferenceService {
     );
   }
 
-  /// Yalnız [changes]'taki kombinasyonları yazar, güncel tabloyu döndürür.
-  ///
-  /// İşlemsel bir kategoriyi kapatmak `400` (`NOTIFICATION_PREFERENCE_NOT_
-  /// OPTIONAL`); ekran o satırların anahtarını zaten kilitli çiziyor, yani
-  /// buraya normalde gelmiyor.
+  /// Yalnız [changes]'ı yazar, güncel tabloyu döndürür. İşlemsel kategoriyi
+  /// kapatmak `400`.
   Future<List<NotificationPreference>> update(
     List<NotificationPreferenceWrite> changes,
   ) {

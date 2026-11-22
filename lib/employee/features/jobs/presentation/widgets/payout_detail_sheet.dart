@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:koala/employee/features/jobs/models/payout.dart';
 import 'package:koala/employee/features/jobs/presentation/widgets/payout_status_badge.dart';
@@ -13,13 +13,8 @@ import 'package:koala/product/widgets/app_bottom_sheet.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/app_toast.dart';
 
-/// Bir hakedişin detayı (is-koala/koala#189): iş, şirket, çıkış ve mutabakat
-/// zamanı, gittiği hesabın maskeli IBAN'ı ve sağlayıcı referansı.
-///
-/// Kesin ifade yalnız `COMPLETED`'da: mutabakat satırı o zaman dolu, diğer
-/// durumlarda `—`. IBAN sunucudan maskeli geliyor ve hesap silinmişse hiç
-/// gelmiyor; not bunu söylüyor. Referans kopyalanabilir — destek yazışmasında
-/// istenen şey o.
+/// Hakediş detayı (#189). Kesin ifade yalnız `COMPLETED`'da. IBAN maskeli,
+/// hesap silinmişse yok. Referans kopyalanabilir: destek onu istiyor.
 class PayoutDetailSheet extends StatelessWidget {
   const PayoutDetailSheet({
     super.key,
@@ -30,18 +25,14 @@ class PayoutDetailSheet extends StatelessWidget {
 
   final Payout payout;
 
-  /// Hakedişin ait olduğu işin detayını açar; sayfa üstlenir, sheet önce
-  /// kendini kapatır.
+  /// Sheet önce kendini kapatır.
   final VoidCallback onOpenWork;
 
-  /// İş başlığı yedeği: eski sunucu `jobTitle` göndermiyorsa atama
-  /// listesinden gelen ad.
+  /// Eski sunucu `jobTitle` göndermiyorsa atama listesinden.
   final String? jobTitle;
 
-  /// Bilinmeyen değerin yerine yazılan işaret.
   static const String _unknown = '—';
 
-  /// IBAN satırının altındaki açıklama.
   static const String ibanNote =
       'Bu hesap silinmişse IBAN görünmez; hakediş çıkış anındaki hesaba '
       'gönderildi.';

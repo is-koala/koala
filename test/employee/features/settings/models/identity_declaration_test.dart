@@ -4,13 +4,8 @@ import 'package:koala/employee/features/settings/models/identity_declaration.dar
 
 import '../../../../support/chip_fixtures.dart';
 
-/// Kabul maddesi: **kanıt varken uyuşmaz beyan üretilemez.**
-///
-/// Bunu bir bayrakla değil tiple sağlıyoruz: [ChipDeclaration]'ın tek
-/// girdisi çip sonucu, beş alanı da o sonucun kanıtından türeyen getter'lar.
-/// Alan yazacak bir kurucu parametresi ya da `copyWith` **yok** — yani
-/// kanıtla çelişen bir beyanı derleyecek kod da yok. Buradaki testler o
-/// türetmenin doğru kanıta baktığını ölçüyor.
+/// Kabul maddesi: **kanıt varken uyuşmaz beyan üretilemez**; tip sağlıyor.
+/// Testler türetmenin doğru kanıta baktığını ölçüyor.
 void main() {
   group('ChipDeclaration', () {
     test('beş alan da kanıtın kendisinden türüyor', () {

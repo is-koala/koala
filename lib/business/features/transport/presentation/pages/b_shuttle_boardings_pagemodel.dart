@@ -1,6 +1,5 @@
 part of 'b_shuttle_boardings_page.dart';
 
-/// Aynı durak ve kalkış saatindeki koltuklar.
 class BoardingStopGroup {
   BoardingStopGroup({
     required this.stopId,
@@ -20,11 +19,11 @@ abstract class BShuttleBoardingsPagemodel extends State<BShuttleBoardingsPage> {
   TransportService get _service =>
       widget.transportService ?? TransportService();
 
-  /// Sunucunun listesi; ilk yükleme bitene kadar `null`.
+  /// İlk yükleme bitene kadar `null`.
   List<ShuttleBoardingRow>? rows;
   String? errorMessage;
 
-  /// İşareti sunucuda olan koltuk; satırların düğmeleri kilitli.
+  /// İşareti sunucuda olan koltuk; düğmeleri kilitli.
   String? busySeatId;
 
   int _generation = 0;
@@ -34,8 +33,6 @@ abstract class BShuttleBoardingsPagemodel extends State<BShuttleBoardingsPage> {
     return name == null || name.isEmpty ? 'Biniş listesi' : name;
   }
 
-  /// Durak + kalkış saatine göre gruplar, saate göre sıralı; grup içinde
-  /// ada göre.
   List<BoardingStopGroup> get groupedRows {
     final groups = <String, BoardingStopGroup>{};
     for (final row in rows ?? const <ShuttleBoardingRow>[]) {
@@ -77,9 +74,8 @@ abstract class BShuttleBoardingsPagemodel extends State<BShuttleBoardingsPage> {
       if (!mounted || generation != _generation) return;
       final message = error.type == ApiErrorType.notFound
           ? 'Servis bulunamadı ya da bu servisi yönetme yetkiniz yok.'
-          : BoardingFailure.classify(
-              error,
-            ).message(BoardingActor.employer, serverMessage: error.message);
+          : BoardingFailure.classify(error)
+                .message(BoardingActor.employer, serverMessage: error.message);
       if (rows == null) {
         setState(() => errorMessage = message);
       } else {
@@ -88,7 +84,7 @@ abstract class BShuttleBoardingsPagemodel extends State<BShuttleBoardingsPage> {
     }
   }
 
-  /// Listeden BİNDİ / BİNMEDİ işareti; token yok, kaynak `EMPLOYER_MARKED`.
+  /// Listeden işaret; token yok, kaynak `EMPLOYER_MARKED`.
   Future<void> mark(ShuttleBoardingRow row, BoardingKind kind) async {
     if (busySeatId != null) return;
     setState(() => busySeatId = row.seatAssignmentId);
@@ -139,8 +135,7 @@ abstract class BShuttleBoardingsPagemodel extends State<BShuttleBoardingsPage> {
     );
   }
 
-  /// Tarama ekranından dönünce liste yeniden okunur: okutulan binişler
-  /// sunucuda.
+  /// Okutulan binişler sunucuda; dönünce liste yeniden okunur.
   Future<void> openScanner() async {
     await context.push(
       BusinessRoutes.shuttleScanLocation(

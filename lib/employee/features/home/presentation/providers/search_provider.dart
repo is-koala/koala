@@ -1,12 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
-/// Haritanın arama kipi: arama çubuğu açık mı, değil mi.
-///
-/// Aranan metnin kendisi burada **durmuyor**. Bir zamanlar duruyordu (`query`,
-/// `setQuery`, `clearQuery`) ama hiçbir yerde okunmuyordu: metni `TextField`'ın
-/// kendi denetleyicisi tutuyor, sunucuya gideni `MapExploreController` tutuyor.
-/// Üçüncü bir kopya yalnızca senkron kalması gereken bir yer daha demekti —
-/// ve okunmadığı için senkronsuzluğu kimse fark etmezdi.
+/// Haritanın arama kipi: çubuk açık mı. Metin burada tutulmuyor; `TextField` ve
+/// `MapExploreController` tutuyor, üçüncü kopya ayrışırdı.
 class SearchProvider extends ChangeNotifier {
   bool _isSearching = false;
 

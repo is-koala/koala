@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 import 'package:koala/employee/features/home/presentation/providers/page_provider.dart';
 import 'package:koala/employee/features/jobs/presentation/pages/my_jobs_page.dart';
@@ -32,7 +32,6 @@ class _JobsPageState extends State<JobsPage>
     super.build(context);
     return Consumer<PageProvider>(
       builder: (context, pageProvider, child) {
-        // PageProvider değiştiğinde sayfa animasyonu yap
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_pageController.hasClients) {
             _pageController.jumpToPage(

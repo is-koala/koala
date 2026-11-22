@@ -1,7 +1,5 @@
-/// Backend'den ondalık dize olarak gelen tutarları Türkçe gösterime çevirir.
-///
-/// Tutarı kayan noktaya dönüştürmez; ondalık basamakları ve sondaki sıfırları
-/// aynen korur.
+/// Ondalık dize tutarları Türkçe gösterime çevirir; kayan noktaya geçmez,
+/// basamaklar aynen kalır.
 abstract final class TurkishMoneyFormatter {
   static final RegExp _decimalPattern = RegExp(r'^([+-]?)(\d+)(?:\.(\d+))?$');
 

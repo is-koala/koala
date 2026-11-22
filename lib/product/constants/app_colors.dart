@@ -1,18 +1,13 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
-/// Temadan bağımsız marka, vurgu ve durum renkleri.
-///
-/// Zemin, metin, ayraç gibi **temaya göre değişen** renkler burada değil,
-/// [ThemeData.colorScheme] içinde tanımlı; onlara `context` üzerinden
-/// erişilir (`context.tileColor`, `context.textPrimary` ...).
-/// Bkz. `product/extensions/context_extensions.dart`.
+/// Temadan bağımsız marka, vurgu ve durum renkleri. Temaya göre değişenler
+/// `ColorScheme`'de; `context` üzerinden okunur (`context.textPrimary` ...).
 class AppColors {
-  /// Renkli ikon kutularının ve rozetlerin zemin opaklığı. Renk değil ton
-  /// farkı yaratacak kadar düşük: ikon önde kalmalı, kutu geride.
+  /// Renkli ikon kutusu zemininin opaklığı: ikon önde, kutu geride kalsın.
   static const double surfaceTintAlpha = 0.12;
 
-  /// Okunmamış / seçili satırın zemin vurgusu. Kutu tonundan daha da
-  /// düşük, çünkü bütün satırı kaplıyor.
+  /// Okunmamış / seçili satır vurgusu; bütün satırı kapladığı için kutudan da
+  /// düşük.
   static const double rowTintAlpha = 0.04;
 
   // ---------------------------------------------------------------- Marka
@@ -26,12 +21,10 @@ class AppColors {
   /// [primaryColor]'ın açık tonu: seçili satır zemini, rozet arka planı.
   static const Color primarySoft = Color(0xFFDCEDDB);
 
-  /// Dokunma dalgası (splash) ve seçili satır vurgusu. [primarySoft]'tan
-  /// koyu: dalga zeminin üstünde görünsün diye.
+  /// Dokunma dalgası; zeminde görünsün diye [primarySoft]'tan koyu.
   static final Color primaryTint = primaryColor.withValues(alpha: 0.18);
 
-  /// Doygun renkli zeminlerin (yeşil buton, ikon dairesi) üstündeki içerik.
-  /// Temadan bağımsız: her iki temada da beyaz kalır.
+  /// Doygun zeminlerin (yeşil buton) üstündeki içerik; iki temada beyaz.
   static const Color onAccent = Color(0xFFFFFFFF);
 
   // -------------------------------------------------------- Durum renkleri
@@ -45,72 +38,48 @@ class AppColors {
   /// Olumsuz durum: reddedilen başvuru, silme eylemi, hata.
   static const Color danger = Color(0xFFE74C3C);
 
-  /// Bilgilendirme ve nötr vurgu. Sohbet balonu ve rozetlerde kullanılıyor.
   static const Color info = Color(0xFF5B8DEF);
 
-  /// Değerlendirilmiş / tamamlanmış etiketlerinin metin rengi; soluk yeşil
-  /// zemin üstünde [success] yeterince okunmuyor.
+  /// Soluk yeşil zeminde [success] yeterince okunmuyor.
   static const Color successStrong = Color(0xFF388E3C);
 
-  /// Başvurusu değerlendirmede bekleyen iş.
   static const Color pending = Color(0xFF9C27B0);
 
-  /// Puanlama yıldızları. Sarı, temadan bağımsız: yıldız her iki temada da
-  /// aynı renkte okunuyor.
   static const Color rating = Color(0xFFFFC107);
 
-  /// Puan etiketinin metin rengi; soluk sarı zeminde [rating] okunmuyor.
+  /// Soluk sarı zeminde [rating] okunmuyor.
   static const Color ratingStrong = Color(0xFFFF8F00);
 
   // ------------------------------------------------- Durum bölümü zeminleri
 
-  /// Durum bölümlerinin renkli zeminleri.
-  ///
-  /// Bölümü sayfadan ayıran şey rengin tonu; bu yüzden ikisinin de koyu tema
-  /// karşılığı var. Koyu tonlar [darkTile]'a yakın ama hafif renkli: aynı
-  /// ayrımı koyu zeminde de veriyorlar. Widget'lar bunları doğrudan değil
-  /// `context.pendingSurface` / `context.payoutSurface` üzerinden okur.
+  /// Durum bölümlerinin zeminleri. Koyu karşılıkları [darkTile]'a yakın ama
+  /// renkli; widget'lar `context.pendingSurface` gibi okur.
   static const Color surfacePending = Color(0xFFF3E5F5);
   static const Color surfacePendingDark = Color(0xFF2A2130);
 
   static const Color surfacePayout = Color(0xFFFFF3E0);
   static const Color surfacePayoutDark = Color(0xFF302719);
 
-  /// "Onayını Bekleyen İşler" bölümünün zemini.
-  ///
-  /// [info] mavisinin soluk tonu: bölüm bir eylem bekliyor ama ne olumlu ne
-  /// olumsuz, o yüzden ne yeşil ne turuncu. `context.awaitingSurface`
-  /// üzerinden okunur.
+  /// "Onayını Bekleyen İşler" zemini: eylem bekliyor ama ne olumlu ne olumsuz,
+  /// o yüzden mavi.
   static const Color surfaceAwaiting = Color(0xFFE8F0FE);
   static const Color surfaceAwaitingDark = Color(0xFF1C2433);
 
-  /// "Devam Eden İş" bölümünün zemini ve rozeti.
-  ///
-  /// Turkuaz, çünkü diğer dört bölümün hepsi tutulmuş: yeşil onaylanan,
-  /// mor başvuru, turuncu ödeme, mavi onay bekleyen. Süren iş bunların
-  /// hiçbiriyle karışmamalı — kullanıcının o an ne yapması gerektiğini
-  /// söyleyen bölüm bu.
+  /// "Devam Eden İş": diğer bölümlerin renkleri tutulu olduğu için turkuaz;
+  /// hiçbiriyle karışmamalı.
   static const Color progress = Color(0xFF00897B);
   static const Color surfaceProgress = Color(0xFFE0F2F1);
   static const Color surfaceProgressDark = Color(0xFF16292A);
 
-  /// Temadan bağımsız **açık** zeminlerin üstündeki içerik.
-  ///
-  /// Giriş ekranının tam ekran harita görseli iki temada da aynı açık
-  /// görsel; üstündeki kelime markası `context.textPrimary` ile okunsaydı
-  /// koyu temada beyaza döner ve kaybolurdu.
+  /// Temadan bağımsız açık zeminlerin üstündeki içerik (girişteki harita
+  /// görseli); `textPrimary` koyu temada beyaza dönüp kaybolurdu.
   static const Color onLightSurface = Color(0xFF212121);
 
   // ---------------------------------------------------- Kategori renkleri
 
-  /// İş kategorilerinin ayırt edici renkleri. Harita pini, liste avatarı ve
-  /// kategori rozeti aynı rengi kullanıyor; kullanıcı ilanı listede gördüğü
-  /// renkten haritada da tanısın diye.
-  ///
-  /// Tonlar bilerek sönük: Material'ın doygun 500 tonları sade haritanın
-  /// üstünde göz yoruyordu. Ton (mor, turuncu, yeşil, mavi, kahve) korunuyor,
-  /// doygunluk düşük; kategoriler bir bakışta ayrılmaya devam ediyor. Beyaz
-  /// ikon ve yazı iki temada da okunur kalacak koyulukta.
+  /// Kategori renkleri; pin, avatar ve rozet aynı rengi kullanıyor ki ilan
+  /// listede ve haritada tanınsın. Doygun tonlar sade haritada göz yorduğu için
+  /// bilerek sönük.
   static const Color categoryPhotography = Color(0xFF9479AD);
   static const Color categoryWaiter = Color(0xFFD4845F);
   static const Color categoryPetCare = Color(0xFF6E9E73);
@@ -119,12 +88,8 @@ class AppColors {
 
   // ------------------------------------------------------- Avatar paleti
 
-  /// Görseli olmayan firma/kişi avatarlarının renk çiftleri.
-  ///
-  /// Zemin soluk, üstündeki baş harfler aynı rengin koyu tonu; ikisi birlikte
-  /// seçildiği için okunurluk her seferinde garanti. Hangi çiftin
-  /// kullanılacağı ismin `hashCode`'undan türetilir, yani aynı isim her
-  /// açılışta aynı rengi alır.
+  /// Görseli olmayan avatarların renk çiftleri; çift ismin `hashCode`'undan
+  /// seçiliyor, aynı isim hep aynı rengi alır.
   static final List<AvatarColor> avatarPalette = [
     AvatarColor(const Color(0xFF2196F3), const Color(0xFF1976D2)),
     AvatarColor(const Color(0xFF4CAF50), const Color(0xFF388E3C)),
@@ -140,31 +105,24 @@ class AppColors {
     AvatarColor(const Color(0xFF8BC34A), const Color(0xFF689F38)),
   ];
 
-  /// İsim henüz girilmemişken kullanılan nötr avatar.
   static final AvatarColor avatarPlaceholder = AvatarColor(
     const Color(0xFF9E9E9E),
     const Color(0xFF757575),
   );
 
-  /// [avatarPalette] içinden [seed] için kararlı bir renk çifti seçer.
-  /// [seed] boşsa [avatarPlaceholder] döner.
+  /// [seed] için kararlı bir çift; boşsa [avatarPlaceholder].
   static AvatarColor avatarColorFor(String seed) {
     if (seed.isEmpty) return avatarPlaceholder;
     return avatarPalette[seed.hashCode.abs() % avatarPalette.length];
   }
 
   // ------------------------------------------------ Tema besleyici değerler
-  // Buradan aşağısı yalnızca theme.dart'taki ColorScheme'leri besler.
-  // Widget'larda **doğrudan kullanılmaz**; karşılıkları context üzerinden
-  // okunur (context.backgroundColor, context.textPrimary ...).
+  // Yalnız theme.dart'taki ColorScheme'ler için; widget'larda kullanılmaz.
 
   static const Color lightBackground = Color(0xFFFFFFFF);
 
-  // Açık temanın yüzey grileri **nötr**: üç kanal eşit. Eskiden iOS sistem
-  // grileriydi (#F2F2F7 ...) ve mavi kanalı birkaç adım yüksekti; metinler
-  // nötr, koyu tema nötr, harita ve marka yeşili sıcak taraftayken kartlar
-  // soğuk ve maviye çalıyordu. Parlaklık korunarak mavi payı kanallara
-  // dağıtıldı.
+  // Açık temanın grileri nötr (üç kanal eşit): iOS grileri maviye çalıyor ve
+  // kartlar uygulamanın sıcak tonları arasında soğuk duruyor.
 
   /// Kartın zemini. Sayfa zemininden ayrılsın diye beyazdan bir tık koyu.
   static const Color lightSurfaceLow = Color(0xFFF9F9F9);
@@ -188,47 +146,35 @@ class AppColors {
 
   // ------------------------------------------------------------- Yüzeyler
 
-  /// Yüzen navbar'ın gölgesi. Navbar zemini temadan bağımsız yeşil olduğu
-  /// için gölgesi de sabit.
+  /// Navbar zemini temadan bağımsız yeşil, gölgesi de sabit.
   static final Color navShadow = Colors.black.withValues(alpha: 0.30);
 
-  /// Sayfanın altına sabitlenen buton çubuğunun gölgesi. Navbar'ınkinden çok
-  /// hafif: çubuk yüzmüyor, zemine yapışık duruyor.
+  /// Alt buton çubuğunun gölgesi; çubuk yüzmüyor, o yüzden çok hafif.
   static final Color barShadow = Colors.black.withValues(alpha: 0.05);
 
-  /// Tam ekran overlay ve bottom sheet'lerin arkasındaki karartma. Modal
-  /// karartma temadan bağımsız koyu kalır: açık temada beyaza gitseydi hem
-  /// öndeki içerik zeminden ayrışmaz hem de "arkadaki sayfa devre dışı"
-  /// hissi kaybolurdu. Opaklığı karartmayı çizen widget veriyor.
+  /// Modal karartma iki temada da koyu: beyaz karartma arkadaki sayfanın devre
+  /// dışı olduğunu anlatmaz.
   static const Color scrim = Color(0xFF000000);
 
-  /// Biniş QR'ının zemini ve modülleri (is-koala/koala#217). İki temada da
-  /// beyaz üstüne siyah: koyu temada ters renkli QR'ı birçok okuyucu
-  /// tanımıyor, karşı telefonun kamerası ekranı en yüksek kontrastla
-  /// görmeli. Zemin aynı zamanda QR'ın sessiz bölgesi.
+  /// Biniş QR'ı iki temada da beyaz üstüne siyah: ters renkli QR'ı birçok
+  /// okuyucu tanımıyor.
   static const Color qrBackground = Color(0xFFFFFFFF);
   static const Color qrForeground = Color(0xFF000000);
 
   /// Kamera vizöründe tarama penceresi dışındaki karartmanın opaklığı.
   static const double scannerScrimAlpha = 0.55;
 
-  /// Harita üzerindeki kart ve butonların gölgesi. Harita zemini temadan
-  /// bağımsız olduğu için bu da sabit.
+  /// Harita zemini temadan bağımsız, gölgesi de sabit.
   static final Color mapShadow = Colors.black.withValues(alpha: 0.15);
 }
 
-/// Bir avatarın zemin ve üstündeki metin rengi.
-///
-/// İkisi birlikte tanımlı: zemin tek başına seçilip metin rengi ayrıca
-/// tahmin edilmeye çalışıldığında okunurluk garanti edilemiyor.
+/// Avatar zemini ve metin rengi; okunurluk için birlikte tanımlı.
 class AvatarColor {
   const AvatarColor(this._base, this.foreground);
 
   final Color _base;
 
-  /// Avatarın zemini: taban rengin soluk hâli.
   Color get background => _base.withValues(alpha: 0.2);
 
-  /// Zeminin üstündeki baş harfler.
   final Color foreground;
 }

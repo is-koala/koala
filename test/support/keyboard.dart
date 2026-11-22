@@ -1,24 +1,15 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koala/product/widgets/button_navbar.dart';
 import 'package:koala/product/widgets/form_page_body.dart';
 import 'package:koala/product/widgets/keyboard_done_bar.dart';
 import 'package:koala/product/widgets/my_button.dart';
 
-/// Testte simüle edilen klavyenin mantıksal yüksekliği.
-///
-/// 800×600'lük test penceresinin yarısı: gerçek bir telefonda klavye de
-/// ekranın kabaca yarısını kaplıyor, o yüzden alt düğmenin "arkada kalması"
-/// aynı oranla yeniden üretilebiliyor.
+/// Test penceresinin yarısı; gerçek telefonda da klavye kabaca yarıyı kaplıyor.
 const double keyboardHeight = 300;
 
-/// Klavyeyi simüle eder: alt `viewInsets`'i [height] kadar açar ve test
-/// bitince sıfırlar. `MediaQuery` bunu gerçek klavye gibi görür; `Scaffold`
-/// gövdeyi küçültür, `FormPageBody` ve `ButtonNavbar` paylarını büyütür.
-///
-/// Yardımcılar `pumpAndSettle` yerine tek `pump` kullanıyor: geri sayım gibi
-/// sürekli zamanlayıcı taşıyan ekranlarda `pumpAndSettle` hiç dönmüyor,
-/// odak ve kaydırma ise tek karede yerine oturuyor.
+/// Klavyeyi `viewInsets` ile simüle eder. Tek `pump`: sürekli zamanlayıcılı
+/// ekranlarda `pumpAndSettle` hiç dönmüyor.
 Future<void> showKeyboard(
   WidgetTester tester, {
   double height = keyboardHeight,
@@ -43,10 +34,8 @@ double keyboardTopOf(WidgetTester tester, {double height = keyboardHeight}) {
   return screenHeightOf(tester) - height;
 }
 
-/// Düğmenin klavyenin (ve şeridin) üstünde, ekranda ve dokunulabilir
-/// olduğunu doğrular; gövdenin içindeyse önce oraya kaydırır.
-/// `hitTestable` düğmenin merkezine giden dokunuşun ona ulaştığını
-/// söylüyor: şeridin arkasında kalan bir düğme burada düşer.
+/// `hitTestable` dokunuşun düğmeye ulaştığını söylüyor; şeridin arkasındaki
+/// düğme burada düşer.
 Future<void> expectAboveKeyboard(
   WidgetTester tester,
   Finder cta, {
@@ -120,10 +109,7 @@ bool anyFieldFocused(WidgetTester tester) => tester
     .widgetList<EditableText>(find.byType(EditableText))
     .any((field) => field.focusNode.hasFocus);
 
-/// Alanı odaklar, boş alana dokunur ve odağın düştüğünü doğrular.
-///
-/// `unfocus` odağı en yakın `FocusScope`'a bırakır, `primaryFocus` hiç
-/// `null` olmaz; o yüzden ölçülen şey alanın odağı.
+/// `unfocus` odağı `FocusScope`'a bırakır; ölçülen şey alanın odağı.
 Future<void> expectTapOutsideDropsFocus(
   WidgetTester tester,
   Finder field,

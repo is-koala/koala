@@ -26,9 +26,8 @@ void main() {
         ),
       );
 
-      final sessions = await SessionService.withClient(
-        api.client,
-      ).fetchSessions();
+      final sessions = await SessionService.withClient(api.client)
+          .fetchSessions();
 
       final request = api.requests.single;
       expect(request.path, '/users/me/sessions');
@@ -82,9 +81,8 @@ void main() {
         ),
       );
 
-      final detail = await SessionService.withClient(
-        api.client,
-      ).fetchDetail('ses_1');
+      final detail = await SessionService.withClient(api.client)
+          .fetchDetail('ses_1');
 
       final request = api.requests.single;
       expect(request.path, '/users/me/sessions/ses_1');
@@ -132,9 +130,8 @@ void main() {
         ),
       );
 
-      await SessionService.withClient(
-        api.client,
-      ).renameDevice('dev_1', 'İş telefonum');
+      await SessionService.withClient(api.client)
+          .renameDevice('dev_1', 'İş telefonum');
 
       final request = api.requests.single;
       expect(request.path, '/users/me/devices/dev_1');
