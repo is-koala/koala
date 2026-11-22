@@ -2,25 +2,13 @@ import 'package:material_ui/material_ui.dart';
 import 'package:koala/product/widgets/dismiss_keyboard_on_tap.dart';
 import 'package:koala/product/widgets/keyboard_insets.dart';
 
-/// Metin alanı taşıyan sayfaların ortak gövdesi.
+/// Metin alanı taşıyan sayfaların ortak gövdesi: kaydırılabilir, alt pay klavye
+/// kadar ([KeyboardInsets]) büyür, boşa dokunmak ya da sürüklemek klavyeyi
+/// kapatır.
 ///
-/// Üç şeyi tek yerde çözüyor:
-/// - Gövde kaydırılabilir; klavye açılınca içerik ve gövdenin içindeki
-///   düğme kaydırılarak klavyenin üstüne getirilebiliyor. `Scaffold`
-///   varsayılan `resizeToAvoidBottomInset` ile küçüldüğünde odaklı alan
-///   `EditableText`'in kendi kaydırmasıyla görünür kalıyor.
-/// - Alt pay klavye kadar büyüyor ([KeyboardInsets]: sistem klavyesi + iOS
-///   "Bitti" şeridi). Küçülen bir `Scaffold` gövdeye klavye payını vermiyor
-///   (`viewInsets` sıfır okunuyor), o yüzden sistem payı yalnızca
-///   `resizeToAvoidBottomInset: false` seçen ekranlarda devreye giriyor ve
-///   çift boşluk oluşmuyor. Şerit payı ise `Scaffold`'un alt çubuğu yoksa
-///   ekleniyor; çubuk varsa gövde zaten onun üstünde bitiyor.
-/// - Boş alana dokununca ya da liste sürüklenince klavye kapanıyor.
-///
-/// Alt CTA `Scaffold.bottomNavigationBar`'da duruyorsa `ButtonNavbar`
-/// klavyenin üstüne kendisi çıkıyor; gövdenin içindeyse kaydırılarak
-/// erişiliyor. İkisi de "düğme klavyenin arkasında kalmasın" kabulünü
-/// karşılıyor.
+/// Küçülen `Scaffold` gövdeye `viewInsets` vermediği için sistem payı yalnız
+/// `resizeToAvoidBottomInset: false` ekranlarda ekleniyor; çift boşluk olmuyor.
+/// Şerit payı alt çubuk yoksa ekleniyor.
 class FormPageBody extends StatelessWidget {
   const FormPageBody({
     super.key,
@@ -31,7 +19,6 @@ class FormPageBody extends StatelessWidget {
 
   final Widget child;
 
-  /// İçeriğin kenar payı; klavye payı bunun üstüne ekleniyor.
   final EdgeInsets padding;
 
   final ScrollController? controller;

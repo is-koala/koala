@@ -19,18 +19,13 @@ import 'package:koala/product/widgets/password_field.dart';
 
 part 'change_password_pagemodel.dart';
 
-/// Ayarlardan açılan parola değiştirme ekranı.
-///
-/// İki uygulamanın da ayarlarından aynı ekran açılıyor: parola kullanıcıya
-/// ait, işveren ya da çalışan olmasına bağlı değil.
+/// Parola değiştirme; iki tarafın ayarları da açıyor.
 class ChangePasswordPage extends StatefulWidget {
   const ChangePasswordPage({super.key, this.userService, this.onCompleted});
 
-  /// Testlerde sahte sunucuya bağlı örnek geçilebilsin diye.
   final UserService? userService;
 
-  /// Parola değiştikten sonra çalışan geri çağırım. Verilmezse ekran
-  /// kendini kapatıyor.
+  /// Verilmezse ekran kendini kapatır.
   final VoidCallback? onCompleted;
 
   @override
@@ -87,8 +82,7 @@ class _ChangePasswordPageState extends ChangePasswordPagemodel {
     );
   }
 
-  /// Kaydetmeden **önce** görünen uyarı: sunucu parola değişince bu cihaz
-  /// dışındaki bütün oturumları kapatıyor, kullanıcı bunu sonradan değil
+  /// Sunucu parola değişince diğer bütün oturumları kapatıyor; kullanıcı bunu
   /// önceden bilmeli.
   Widget _sessionWarning() {
     return Container(

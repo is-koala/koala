@@ -28,15 +28,10 @@ import 'package:koala/product/widgets/option_sheet.dart';
 
 part 'b_transport_plan_pagemodel.dart';
 
-/// `/business/transport-plan` rotasının `extra`'sı.
-///
-/// İki mod var:
-/// - **İlan modu** ([jobId] dolu): sayfa `GET /jobs/{id}/transport-plan` ile
-///   açılır (`404` → boş taslak), *Kaydet* `PUT` atar ve sunucunun
-///   döndürdüğü [TransportPlan] ile kapanır.
-/// - **Taslak modu** ([jobId] boş, ilan oluşturma): sunucuya gidilmez;
-///   *Kaydet* [TransportPlanDraft] ile kapanır, ilan açıldıktan sonra form
-///   planı yazar.
+/// - **İlan modu** ([jobId] dolu): plan sunucudan okunur (`404` → boş taslak),
+///   *Kaydet* `PUT` atar ve [TransportPlan] ile kapanır.
+/// - **Taslak modu** (ilan oluşturma): sunucuya gidilmez, [TransportPlanDraft]
+///   ile kapanır; ilan açılınca form yazar.
 class BTransportPlanArgs {
   const BTransportPlanArgs({
     this.jobId,
@@ -47,27 +42,21 @@ class BTransportPlanArgs {
 
   final String? jobId;
 
-  /// Açılış taslağı; ilan modunda sunucudan okunan planın kopyası, taslak
-  /// modunda formun elindeki taslak. Boşsa sayfa boş taslakla ya da
-  /// (ilan modunda) sunucudan okuyarak açılır.
+  /// Boşsa boş taslak ya da (ilan modunda) sunucudan okunur.
   final TransportPlanDraft? initial;
 
-  /// İlan modunda sunucudaki plan; silme uyarısının koltuk sayısı buradan.
-  /// Verilmezse sayfa okuyor.
+  /// Silme uyarısının koltuk sayısı buradan.
   final TransportPlan? original;
 
-  /// İşin başlangıcı; durak saat seçicisinin varsayılanı.
   final DateTime? jobStart;
 }
 
-/// Ulaşım planı düzenleyicisi (is-koala/koala#197): gidiş/dönüş yöntemi,
-/// yol parası, not ve yön başına servis listesi.
+/// Ulaşım planı düzenleyicisi (#197).
 class BTransportPlanPage extends StatefulWidget {
   const BTransportPlanPage({super.key, required this.args, this.service});
 
   final BTransportPlanArgs args;
 
-  /// Testler için; verilmezse üretimdeki tekil servis.
   final TransportService? service;
 
   @override
@@ -149,8 +138,7 @@ class _BTransportPlanPageState extends BTransportPlanPagemodel {
   Widget _sectionLabel(String title) =>
       Text(title, style: context.textTheme.titleMedium);
 
-  /// Plan okunamadı: form boş açıldı, kaydetmek mevcut planın üstüne
-  /// yazar — kullanıcı bunu bilmeli.
+  /// Plan okunamadı ve form boş açıldı: kaydetmek mevcut planın üstüne yazar.
   Widget _loadErrorStrip() {
     return Container(
       padding: AppPadding.card,

@@ -3,7 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 typedef PaymentLaunchModeSupport = Future<bool> Function(LaunchMode mode);
 typedef PaymentUrlLauncher = Future<bool> Function(Uri url, LaunchMode mode);
 
-/// Iyzico hosted ödeme sayfasını uygulamadan çıkmadan açan sınır.
+/// Iyzico ödeme sayfasını uygulama içinde açar.
 class BPaymentBrowser {
   BPaymentBrowser({
     PaymentLaunchModeSupport? supportsMode,
@@ -21,9 +21,8 @@ class BPaymentBrowser {
   final PaymentLaunchModeSupport _supportsMode;
   final PaymentUrlLauncher _launch;
 
-  /// Yalnız Iyzico'nun HTTPS hosted sayfasını Custom Tabs veya
-  /// SFSafariViewController içinde açar. Platform bunu desteklemiyorsa
-  /// harici tarayıcıya sessizce düşmek yerine başarısız döner.
+  /// Yalnız Iyzico'nun HTTPS sayfasını Custom Tabs / SFSafariViewController'da
+  /// açar; desteklenmiyorsa harici tarayıcıya düşmek yerine `false`.
   Future<bool> open(Uri url) async {
     if (!_isAllowed(url)) return false;
     if (!await _supportsMode(LaunchMode.inAppBrowserView)) return false;

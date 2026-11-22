@@ -4,19 +4,10 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 
-/// Değeri değiştirilemeyen bir form satırı: solda etiket, sağda değer.
-///
-/// Kimlik ekranı çipten türeyen beş alanı bununla çiziyor. Kapalı bir
-/// `MyTextfield` yerine ayrı bir widget, çünkü metin alanının bir
-/// `TextEditingController`'ı var ve o denetleyici ekranın gösterdiği şeyi
-/// beyandan bağımsız değiştirebilirdi; burada değer doğrudan geçiliyor ve
-/// başka bir kaynağı yok. Görünüm doğum tarihi satırıyla aynı — beş alan
-/// birlikte "karttan okunan özet" gibi okunsun diye.
-///
-/// Ekran okuyucuya **tek düğüm** olarak gidiyor: etiket `label`, değer
-/// `value`, salt okunur. İki `Text` iki ayrı düğüm olsaydı okuyucu "Ad" ve
-/// "ÇAĞRI"yı birbirinden bağımsız iki öğe gibi duyurur, hangisinin neyin
-/// değeri olduğu kaybolurdu.
+/// Değiştirilemeyen form satırı: solda etiket, sağda değer. Kapalı
+/// `MyTextfield` değil, çünkü denetleyici değeri beyandan bağımsız
+/// değiştirebilirdi. Ekran okuyucuya tek düğüm olarak gidiyor ki etiket ile
+/// değer ayrı öğeler gibi duyulmasın.
 class LockedField extends StatelessWidget {
   const LockedField({super.key, required this.label, required this.value});
 
@@ -30,8 +21,6 @@ class LockedField extends StatelessWidget {
       label: label,
       value: value,
       readOnly: true,
-      // İki `Text`'in kendi düğümleri yukarıdakinin altına ayrıca eklenmesin;
-      // ekran okuyucu aynı şeyi iki kez duymasın.
       excludeSemantics: true,
       child: Container(
         width: double.infinity,
@@ -49,8 +38,7 @@ class LockedField extends StatelessWidget {
               ),
             ),
             const SizedBox(width: AppSizes.spaceSmall),
-            // Kalan genişliğin tamamı değere: uzun bir ad taşmak yerine sağa
-            // yaslı biçimde alt satıra iniyor.
+            // Uzun ad taşmak yerine alt satıra iniyor.
             Expanded(
               child: Text(
                 value,

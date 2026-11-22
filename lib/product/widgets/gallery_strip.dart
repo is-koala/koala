@@ -8,22 +8,17 @@ import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/models/gallery_image.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// Sıralı bir galerinin yatay şeridi.
-///
-/// Şirket ve ilan galerileri aynı backend modelini taşır. Şerit listeyi
-/// yeniden sıralamaz; sunucunun döndürdüğü sırayı olduğu gibi gösterir.
+/// Galerinin yatay şeridi; sunucunun sırasını değiştirmeden gösterir.
 class GalleryStrip extends StatelessWidget {
   const GalleryStrip({super.key, required this.images});
 
   final List<GalleryImage> images;
 
-  /// Dikey ekranda galeriyi içerikten daha baskın yapmadan okunur tutar.
   static const double _stripHeight = 140;
 
-  /// Sonraki görselin kenarını göstererek yatay kaydırmayı belli eder.
+  /// Sonraki görselin kenarı görünsün ki kaydırılabildiği belli olsun.
   static const double _cardWidth = 180;
 
-  /// Metni okunur tutarken görsel başlığını tamamen karartmaz.
   static const double _captionScrimAlpha = 0.45;
 
   @override
@@ -123,7 +118,6 @@ class GalleryStrip extends StatelessWidget {
   }
 }
 
-/// Galeriyi yakınlaştırma desteğiyle tam ekran gösteren sayfa.
 class GalleryViewer extends StatefulWidget {
   const GalleryViewer({
     super.key,

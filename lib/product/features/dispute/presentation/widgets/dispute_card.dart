@@ -14,8 +14,6 @@ import 'package:koala/product/features/dispute/presentation/widgets/evidence_til
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/status_badge.dart';
 
-/// Uyuşmazlığın rozet rengi: açık bekleyen turuncu, incelenen mavi,
-/// sonuçlanan yeşil.
 extension DisputeStatusStyle on DisputeStatus {
   Color get color => switch (this) {
     DisputeStatus.open => AppColors.warning,
@@ -24,12 +22,8 @@ extension DisputeStatusStyle on DisputeStatus {
   };
 }
 
-/// Tek bir uyuşmazlık: durum, gerekçe, sonuç ve kanıtlar.
-///
-/// Kendi başına bir istek atmıyor; sayfa [DisputeCase]'i ve eylemleri veriyor.
-/// Kanıt ekleme düğmesi yalnız [DisputeCase.canAttach] iken çiziliyor; neden
-/// çizilmediğini ([DisputeCase.isLimitReached], sonuçlanmış) satır söylüyor —
-/// sessizce kaybolan bir düğme "bozuk" gibi okunur.
+/// Tek uyuşmazlık: durum, gerekçe, sonuç, kanıtlar. Ekleme düğmesi
+/// çizilmediğinde nedeni yazılıyor; sessizce kaybolan düğme bozuk görünür.
 class DisputeCard extends StatelessWidget {
   const DisputeCard({
     super.key,
@@ -43,10 +37,8 @@ class DisputeCard extends StatelessWidget {
 
   final DisputeCase entry;
 
-  /// Bu uyuşmazlığa giden yükleme; başka uyuşmazlığınki ya da yok ise `null`.
   final EvidenceUpload? upload;
 
-  /// Süren indirmenin kanıt kimliği (başka satır kilitli kalıyor).
   final String? downloadingId;
 
   final VoidCallback onAttach;
@@ -221,7 +213,6 @@ class DisputeCard extends StatelessWidget {
     );
   }
 
-  /// Ekleme düğmesi ve uyarıları.
   List<Widget> _attachSection(BuildContext context) {
     final style = context.textTheme.labelMedium?.copyWith(
       color: context.textTertiary,
@@ -287,11 +278,8 @@ class DisputeCard extends StatelessWidget {
         style: style,
       ),
       const SizedBox(height: AppSizes.spaceTiny),
-      // Konum bilgisi istemcide silinmiyor (EvidencePicker) ve sunucu dosyayı
-      // olduğu gibi saklıyor (koala-backend#347): kullanıcı neyin gittiğini
-      // bilmeli, karşı taraf da dosyayı indirebiliyor. Galeriyi anıyoruz:
-      // iOS galeri asıl dosyanın metadata'sını taşıyor, Android kamerası da
-      // etiketleyebilir — bu cümle kamera için de doğru.
+      // Konum bilgisi istemcide silinmiyor ve karşı taraf dosyayı
+      // indirebiliyor; kullanıcı neyin gittiğini bilmeli.
       Text(
         'Galeriden seçilen fotoğraflar konum bilgisi taşıyabilir. Yüklediğiniz '
         'dosyayı karşı taraf indirebilir, Koala destek ekibi de görür.',

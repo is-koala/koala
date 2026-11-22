@@ -14,12 +14,8 @@ import 'package:koala/product/widgets/my_appbar.dart';
 
 part 'b_shuttle_scan_pagemodel.dart';
 
-/// İşveren çalışanın kişisel QR'ını okutur (is-koala/koala#217):
-/// `POST /seat-assignments/{seatAssignmentId}/boardings` token ile.
-///
-/// Dolu bir servisi tek telefondan taramak için kamera açık kalır: her
-/// okutmanın sonucu altta yazılır ve sıradaki çalışan okutulabilir. Koltuk
-/// kimliği token'ın kendisinde; ad, servisin biniş listesinden bulunur.
+/// İşveren çalışanın QR'ını okutur (#217). Kamera açık kalır ki dolu servis tek
+/// telefondan taransın; ad servisin biniş listesinden bulunur.
 class BShuttleScanPage extends StatefulWidget {
   const BShuttleScanPage({
     super.key,
@@ -47,15 +43,10 @@ class BShuttleScanPage extends StatefulWidget {
       'Bunun yerine biniş listesinden çalışanları elle işaretleyebilir ya da '
       'servis QR\'ını çalışanlara okutabilirsiniz.';
 
-  /// Konum bu sürede gelmezse okutma konumsuz gider.
   static const Duration locationTimeout = Duration(seconds: 3);
 
-  /// Çalışan QR'ını kaydeder ve sonucun ekrandaki hâlini döndürür. Konum
-  /// yalnız izin zaten verilmişse eklenir; diyalog açılmaz.
-  ///
-  /// [shuttleId] ve [names] (bu servisin koltuk → ad listesi) verilirse
-  /// okutulan koltuk bu serviste değilse kayıt yine yapılır ama sonuç
-  /// uyarı olarak yazılır: işçi yanlış servise binmiş olabilir.
+  /// Çalışan QR'ını kaydeder. Konum yalnız izin zaten varsa. Koltuk bu serviste
+  /// değilse kayıt yine yapılır ama sonuç uyarı olur.
   static Future<BoardingResultPanel> record({
     required TransportService service,
     required DeviceLocationSource location,
@@ -109,8 +100,7 @@ class BShuttleScanPage extends StatefulWidget {
     }
   }
 
-  /// Telefon kamerasıyla okutulan `{şema}://board?t=…` bağlantısı
-  /// (`/boarding-link`) işveren oturumunda buradan gönderilir.
+  /// `/boarding-link` işveren oturumunda buradan gönderilir.
   static Future<BoardingResultPanel> submitFromLink(
     BuildContext context,
     BoardingToken token,

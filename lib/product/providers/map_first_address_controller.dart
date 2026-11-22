@@ -13,7 +13,6 @@ import 'package:koala/product/services/address_search_service.dart';
 import 'package:koala/product/services/device_location_source.dart';
 import 'package:koala/product/services/reference_location_service.dart';
 
-/// Kartta satır içi hata taşıyabilen alanlar.
 enum AddressField {
   city,
   district,
@@ -24,35 +23,27 @@ enum AddressField {
   position,
 }
 
-/// Ters geokodun neden düştüğü. Şeridin metnini ve eylemini, kaydet
-/// düğmesinin açık kalıp kalmayacağını bu belirler; sunucu üç durumu üç
-/// ayrı `errorCode` ile ayırıyor ve kullanıcı için üçünün çözümü farklı
-/// (is-koala/koala#173).
+/// Ters geokodun neden düştüğü; sunucu üç durumu ayrı `errorCode` ile veriyor
+/// ve çözümleri farklı (#173).
 enum ReverseGeocodeFailureKind {
-  /// Pin İstanbul hizmet alanı dışında: aynı pinle tekrar denemek boş,
-  /// adres de kaydedilemez; pinin taşınması gerekir.
+  /// Pin hizmet alanı dışında: adres kaydedilemez, pin taşınmalı.
   outsideServiceArea,
 
-  /// Sağlayıcı bu nokta için adres bulamadı: pin geçerli, alanlar elle
-  /// tamamlanır.
+  /// Adres bulunamadı: pin geçerli, alanlar elle.
   noResult,
 
-  /// Sağlayıcıya ulaşılamadı: geçici; yenilemek anlamlı, elle giriş de açık.
+  /// Geçici; yenilemek anlamlı.
   providerUnavailable,
 
-  /// Ağ, zaman aşımı ya da tanınmayan kod: genel metin, tekrar dene.
+  /// Ağ, zaman aşımı ya da tanınmayan kod.
   unknown,
 }
 
-/// Düşen ters geokodun kullanıcıya söylenecek hâli.
 class ReverseGeocodeFailure {
   const ReverseGeocodeFailure({required this.kind, required this.message});
 
-  /// Sunucunun `errorCode`'undan türetir. Metin sunucununki; sunucu metin
-  /// göndermediyse koda özel Türkçe yedek. Tanınmayan kod ve sunucuya hiç
-  /// varmamış hatalar [ReverseGeocodeFailureKind.unknown] olur ve sabit
-  /// genel cümleyi taşır — ağ hatasının kendi metni ("internet bağlantını
-  /// kontrol et") pinin altındaki şeride uymuyor.
+  /// `errorCode`'dan türetir; metin sunucunun, yoksa Türkçe yedek. Ağ hatasının
+  /// kendi metni pinin altındaki şeride uymadığı için sabit cümle.
   factory ReverseGeocodeFailure.of(ApiException error) {
     final kind = switch (error.errorCode) {
       AddressReverseErrorCodes.outsideServiceArea =>
@@ -88,11 +79,8 @@ class ReverseGeocodeFailure {
   final ReverseGeocodeFailureKind kind;
   final String message;
 
-  /// Şeridin eylem yazısı; `null` ise şerit eylem taşımaz.
-  ///
-  /// Hizmet alanı dışında aynı pinle yeniden istemek bir şey değiştirmez.
-  /// Sağlayıcı düştüyse "Yenile": geçici bir durum, kullanıcı biraz sonra
-  /// dener. Diğerlerinde "Tekrar dene".
+  /// `null` ise şerit eylem taşımaz; hizmet alanı dışında yeniden istemek bir
+  /// şey değiştirmez.
   String? get retryLabel => switch (kind) {
     ReverseGeocodeFailureKind.outsideServiceArea => null,
     ReverseGeocodeFailureKind.providerUnavailable => 'Yenile',
@@ -100,39 +88,18 @@ class ReverseGeocodeFailure {
     ReverseGeocodeFailureKind.unknown => 'Tekrar dene',
   };
 
-  /// Adres bu pinle kaydedilemez; kullanıcının pini taşıması gerekir.
   bool get blocksSave => kind == ReverseGeocodeFailureKind.outsideServiceArea;
 }
 
-/// Harita yokken pinin nereden geldiği; kart bunu kullanıcıya söyler
-/// (is-koala/koala#172). Haritalı akışta anlamsız, `null` kalır.
-enum MaplessPinOrigin {
-  /// Düzenlenen adresin kayıtlı konumu korunuyor.
-  saved,
+/// Haritasız kipte pinin kaynağı (#172).
+enum MaplessPinOrigin { saved, device, search, cityCenter }
 
-  /// İzin zaten verilmişti ya da kullanıcı "Konumumu kullan" dedi.
-  device,
-
-  /// Kullanıcı arama sonucunu seçti; konum adaydan geldi.
-  search,
-
-  /// Hiçbiri yok: İstanbul merkezi ([AppMap.istanbulCenter]).
-  cityCenter,
-}
-
-/// Harita-öncelikli adres ekranının durumu ve iş mantığı.
+/// Harita-öncelikli adres ekranının durumu.
 ///
-/// Tek gerçek **pin**dir: kullanıcı haritayı kaydırıp bıraktığında kamera
-/// hedefi pin olur ([cameraIdle]), pin durunca ters geokod adayı alanları
-/// doldurur; arama adayı ve cihaz konumu ise pini kendileri taşır ve
-/// haritadan onları izlemesi istenir ([pendingCameraTarget]). Böylece
-/// haritanın gönderdiği "durdu" olayı pinle aynı noktadaysa hiçbir şey
-/// yapmaz — programatik kamera hareketi ikinci bir ters geokod üretmez.
-///
-/// Sağlayıcı verisi yalnız aday sınırında kalır (ADR-0007): aday alanlara
-/// yazılır, kullanıcı görür ve düzenler; pin elle oynadığı anda aday kanıtı
-/// düşer ve kaynak `USER_CONFIRMED_PIN` olur. Sunucu aday kanıtını **pinle
-/// birebir** eşleştirdiği için adayın konumu pinin kendisi olur.
+/// Tek gerçek **pin**: kullanıcı haritayı bırakınca kamera hedefi pin olur
+/// ([cameraIdle]) ve ters geokod alanları doldurur. Arama ve cihaz konumu pini
+/// kendileri taşır ([pendingCameraTarget]); programatik hareket ikinci bir ters
+/// geokod üretmez. Pin elle oynayınca aday kanıtı düşer (ADR-0007).
 class MapFirstAddressController extends ChangeNotifier {
   MapFirstAddressController({
     required AddressSearchGateway searchGateway,
@@ -196,13 +163,11 @@ class MapFirstAddressController extends ChangeNotifier {
     }
   }
 
-  /// Pin durduktan sonra ters geokod isteğine kadar beklenen süre: art arda
-  /// küçük düzeltmeler tek istek olsun, ama kullanıcı "bekliyor" hissetmesin.
+  /// Art arda küçük düzeltmeler tek istek olsun, ama bekleme hissedilmesin.
   static const Duration defaultReverseDebounce = Duration(milliseconds: 600);
 
-  /// Kamera hedefi pinle bu kadar yakınsa aynı nokta sayılır. Altı ondalık
-  /// yuvarlamanın (~11 cm) ve harita animasyonunun kayma payından büyük,
-  /// bir binanın genişliğinden küçük.
+  /// Altı ondalık yuvarlamadan ve animasyon kaymasından büyük, bir binadan
+  /// küçük.
   static const double _samePointTolerance = 0.00001;
 
   final AddressSearchGateway _searchGateway;
@@ -223,23 +188,20 @@ class MapFirstAddressController extends ChangeNotifier {
   final TextEditingController postalCode;
   final TextEditingController additionalDirections;
 
-  /// Arama kutusunun metni.
   final TextEditingController searchText;
 
   ReferenceLocation? country;
   ReferenceLocation? city;
   ReferenceLocation? district;
 
-  /// Onaylanacak konum; harita ilk kez durana kadar `null`.
+  /// İlk durana kadar `null`.
   LatLng? pin;
   AddressPositionSource positionSource;
   String? candidateToken;
 
-  /// Alanları dolduran sağlayıcının adı; aday yokken `null`.
   String? providerAttribution;
   bool candidateNeedsReview = false;
 
-  /// Adayın bulunduğu düzey; sunucu göndermediyse ya da aday yokken `null`.
   AddressCandidatePrecision? candidatePrecision;
 
   late final AddressAutocompleteController autocomplete;
@@ -257,12 +219,9 @@ class MapFirstAddressController extends ChangeNotifier {
     additionalDirections,
   ];
 
-  /// Alanlar bir adaydan mı doldu; "Sadece pini kullan" bu durumda görünür.
   bool get hasCandidate => candidateToken != null;
 
-  /// Aday sokak ya da mahalle düzeyinde kaldı ve bina numarası hâlâ boş:
-  /// kullanıcıya "bina numarasını girin" ipucu gösterilir. Kullanıcı
-  /// numarayı yazınca ipucu kalkar; pin oynayınca adayla birlikte düşer.
+  /// Aday sokak/mahalle düzeyinde ve bina numarası boş: ipucu gösterilir.
   bool get buildingNumberHintVisible =>
       (candidatePrecision?.lacksBuildingNumber ?? false) &&
       buildingNumber.text.trim().isEmpty;
@@ -273,12 +232,10 @@ class MapFirstAddressController extends ChangeNotifier {
   LatLng? _pendingCameraTarget;
   bool _resolvingOpeningPosition = false;
 
-  /// Pin için ters geokod henüz istenmedi. Programatik kamera hareketinde
-  /// harita "hareket" olaylarıyla zamanlayıcıyı iptal ediyor; "durdu" olayı
-  /// pinle aynı noktaya gelince bu bayrak sayesinde istek yeniden kurulur.
+  /// Programatik harekette harita zamanlayıcıyı iptal ediyor; "durdu" pinle
+  /// aynı noktaya gelince istek bu bayrakla yeniden kurulur.
   bool _pinNeedsReverse = false;
 
-  /// Haritanın açıldığı nokta: düzenlenen adresin pini, yoksa şehir merkezi.
   LatLng get initialCameraTarget => pin ?? AppMap.istanbulCenter;
 
   // ------------------------------------------------------------ Harita yok
@@ -286,21 +243,13 @@ class MapFirstAddressController extends ChangeNotifier {
   bool _mapless = false;
   MaplessPinOrigin? _maplessPinOrigin;
 
-  /// Ekran haritasız açıldı ([openWithoutMap]): kamera olayı gelmez, ters
-  /// geokod istenmez, pin arama sonucundan, cihazdan ya da şehir merkezinden
-  /// gelir.
+  /// Haritasız kip: kamera olayı ve ters geokod yok.
   bool get mapless => _mapless;
 
-  /// Haritasız kipte pinin kaynağı; haritalı kipte `null`. "Sadece pini
-  /// kullan" adayı düşürse de pin adayın konumunda kalır, kaynak da öyle.
   MaplessPinOrigin? get maplessPinOrigin => _mapless ? _maplessPinOrigin : null;
 
-  /// Haritasız açılış (is-koala/koala#172): harita çizilemediği için pin
-  /// kullanıcının kaydırmasıyla değil şuradan gelir — düzenlenen adresin
-  /// konumu, o yoksa izin zaten verilmişse cihaz, o da yoksa İstanbul
-  /// merkezi. Ters geokod **atlanır**: kullanıcı pinin nerede durduğunu
-  /// göremediği için sağlayıcının o noktaya yazacağı adresi de doğrulayamaz;
-  /// alanlar aramadan ya da elle dolar. İzin istenmez.
+  /// Haritasız açılış (#172): pin kayıtlı adresten, izin varsa cihazdan, yoksa
+  /// şehir merkezinden. Kullanıcı pini göremediği için ters geokod **atlanır**.
   Future<void> openWithoutMap() async {
     _mapless = true;
     if (pin != null) {
@@ -321,8 +270,7 @@ class MapFirstAddressController extends ChangeNotifier {
     _selectPin(_cameraTarget);
   }
 
-  /// Haritanın gitmesi istenen nokta. Sayfa okuyup kamerayı oraya taşır ve
-  /// [takePendingCameraTarget] ile tüketir.
+  /// Sayfa okuyup kamerayı taşır ve [takePendingCameraTarget] ile tüketir.
   LatLng? get pendingCameraTarget => _pendingCameraTarget;
 
   LatLng? takePendingCameraTarget() {
@@ -331,15 +279,14 @@ class MapFirstAddressController extends ChangeNotifier {
     return target;
   }
 
-  /// Kamera hareket hâlinde; her karede gelir, o yüzden dinleyici uyandırmaz.
+  /// Her karede gelir; dinleyici uyandırmaz.
   void cameraMoved(LatLng target) {
     _cameraTarget = target;
     _reverseTimer?.cancel();
   }
 
-  /// Kamera durdu. Hedef pinden farklıysa pin oraya taşınır ve ters geokod
-  /// zamanlanır; aynı noktadaysa (programatik hareket, açılış) pin
-  /// dokunulmaz, yalnız bekleyen bir ters geokod varsa yeniden kurulur.
+  /// Kamera durdu. Hedef pinden farklıysa pin taşınır ve ters geokod
+  /// zamanlanır; aynıysa yalnız bekleyen istek yeniden kurulur.
   void cameraIdle() {
     if (_resolvingOpeningPosition) return;
     final current = pin;
@@ -359,8 +306,7 @@ class MapFirstAddressController extends ChangeNotifier {
   void _settleAt(LatLng target) {
     _selectPin(target);
     if (_mapless) {
-      // Buraya yalnız "Konumumu kullan" getirir; kullanıcı pini göremiyor,
-      // ters geokodun yazacağı adresi de doğrulayamaz.
+      // Kullanıcı pini göremediği için ters geokod yok.
       _maplessPinOrigin = MaplessPinOrigin.device;
       notifyListeners();
       return;
@@ -374,7 +320,7 @@ class MapFirstAddressController extends ChangeNotifier {
     _reverseTimer = Timer(_reverseDebounce, () => _reverseGeocode(target));
   }
 
-  /// Pini kullanıcı seçimi yapar: aday kanıtı düşer, kaynak elle seçime döner.
+  /// Elle seçim: aday kanıtı düşer.
   void _selectPin(LatLng target) {
     pin = target;
     positionSource = AddressPositionSource.userConfirmedPin;
@@ -400,15 +346,10 @@ class MapFirstAddressController extends ChangeNotifier {
 
   bool get reverseGeocoding => _reverseGeocoding;
 
-  /// Son ters geokod düştüyse nedeni ve metni; başarıda ve pin oynayınca
-  /// `null`.
   ReverseGeocodeFailure? get reverseFailure => _reverseFailure;
 
-  /// Kaydet düğmesinin kapalı olmasının gerekçesi; açıkken `null`.
-  ///
-  /// Sunucu bu pini hizmet alanı dışı saydı: aynı pinle kaydetmeyi denemek
-  /// aynı `400` ile dönerdi, o yüzden düğme baştan kapalı ve yanında neden
-  /// yazıyor. Hizmet alanı kutusunun kendisi değişmez.
+  /// Sunucu pini hizmet alanı dışı saydı; aynı pinle kaydetmek aynı `400`'ü
+  /// verir, o yüzden düğme kapalı.
   String? get saveBlockedReason => (_reverseFailure?.blocksSave ?? false)
       ? 'Kaydetmek için pini İstanbul içine taşıyın.'
       : null;
@@ -438,7 +379,6 @@ class MapFirstAddressController extends ChangeNotifier {
     }
   }
 
-  /// Başarısız ters geokodu aynı pin için yeniden dener.
   Future<void> retryReverse() async {
     final current = pin;
     if (current == null) return;
@@ -446,11 +386,8 @@ class MapFirstAddressController extends ChangeNotifier {
     await _reverseGeocode(current);
   }
 
-  /// Adayın doldurduğu alanları boşaltır, pini korur.
-  ///
-  /// İl/ilçe kalır: Koala referansından geliyor ve kullanıcının seçtiği pinin
-  /// içinde bulunduğu ilçe; yanlışsa listeden değiştirilebilir. Sağlayıcının
-  /// yazdığı metinler ve aday kanıtı düşer, kaynak elle seçime döner.
+  /// Adayın doldurduğu metinleri boşaltır, pini korur. İl/ilçe referanstan
+  /// geldiği için kalır.
   void usePinOnly() {
     neighborhood.clear();
     thoroughfare.clear();
@@ -465,8 +402,7 @@ class MapFirstAddressController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Adayı alanlara yazar; kullanıcıya özel ayrıntılar (blok, bina adı, kat,
-  /// daire, tarif) korunur çünkü sağlayıcı onları bilemez.
+  /// Kullanıcıya özel ayrıntılar (kat, daire, tarif) korunur.
   void _applyCandidate(AddressCandidate candidate) {
     country = ReferenceLocation(
       id: candidate.countryId,
@@ -495,7 +431,6 @@ class MapFirstAddressController extends ChangeNotifier {
 
   // ------------------------------------------------------------------ Arama
 
-  /// Arama adayını çözer, alanlara yazar ve haritayı oraya taşır.
   Future<void> selectSuggestion(AddressSuggestion suggestion) async {
     final candidate = await autocomplete.select(suggestion);
     if (_disposed || candidate == null) return;
@@ -505,15 +440,13 @@ class MapFirstAddressController extends ChangeNotifier {
       suggestion.secondaryText,
     ].where((value) => value.isNotEmpty).join(', ');
 
-    // Bekleyen ters geokod adayın üstüne yazmasın.
     _reverseTimer?.cancel();
     _pinNeedsReverse = false;
     _reverseRevision++;
     _reverseGeocoding = false;
     _reverseFailure = null;
 
-    // Harita adayı izlesin; ardından gelen "durdu" olayı pinle aynı noktada
-    // olacağı için ikinci bir ters geokod üretmez.
+    // Harita adayı izlesin; ardından gelen "durdu" ikinci istek üretmez.
     final target = LatLng(
       candidate.position.latitude,
       candidate.position.longitude,
@@ -530,11 +463,10 @@ class MapFirstAddressController extends ChangeNotifier {
 
   bool get locating => _locating;
 
-  /// Konum izni alındı; harita mavi noktayı çizebilir.
   bool get locationGranted => _locationGranted;
 
-  /// Açılışta pin yoksa ve izin **zaten** verilmişse haritayı cihaza taşır;
-  /// izin yoksa haritanın açıldığı nokta pin olur. İzin istemez (ADR-0007).
+  /// Açılışta pin yoksa ve izin **zaten** varsa haritayı cihaza taşır; izin
+  /// istemez (ADR-0007).
   Future<void> locateOnOpen() async {
     if (pin != null) return;
 
@@ -555,8 +487,7 @@ class MapFirstAddressController extends ChangeNotifier {
     }
   }
 
-  /// "Konumumu kullan": izni bu anda ister, konumu alır ve haritayı taşır.
-  /// Başarısızsa kullanıcıya söylenecek mesajı döner; başarıda `null`.
+  /// "Konumumu kullan": izni ister ve haritayı taşır. Başarısızsa mesaj döner.
   Future<String?> useMyLocation() async {
     if (_locating) return null;
     _locating = true;
@@ -599,11 +530,10 @@ class MapFirstAddressController extends ChangeNotifier {
 
   // -------------------------------------------------------------- Referans
 
-  /// Ülke seçenekleri; aday gelmeden il seçmek isteyen kullanıcı için.
   Future<List<ReferenceLocation>> countryOptions() =>
       _referenceService.fetchCountries();
 
-  /// Seçili ülkenin illeri. Ülke seçilmemişse ve tek ülke varsa onu seçer.
+  /// Ülke seçilmemişse ve tek ülke varsa onu seçer.
   Future<List<ReferenceLocation>> cityOptions() async {
     if (country == null) {
       final countries = await countryOptions();
@@ -614,7 +544,6 @@ class MapFirstAddressController extends ChangeNotifier {
     return _referenceService.fetchCities(selected.id);
   }
 
-  /// Seçili ilin ilçeleri; il yoksa boş.
   Future<List<ReferenceLocation>> districtOptions() async {
     final selected = city;
     if (selected == null) return const [];
@@ -645,14 +574,13 @@ class MapFirstAddressController extends ChangeNotifier {
 
   bool _validationAttempted = false;
 
-  /// Kaydet denendi mi; satır içi hatalar ancak o zaman gösterilir.
+  /// Satır içi hatalar ancak kaydet denenince görünür.
   bool get validationAttempted => _validationAttempted;
 
   String? _validate(AddressField field) {
     switch (field) {
       case AddressField.city:
-        // Ülke kartta ayrı bir alan değil; il seçilirken kendiliğinden
-        // çözülüyor. O yüzden önce il istenir.
+        // Ülke il seçilirken çözüldüğü için önce il istenir.
         if (city == null) return 'İl seçin';
         if (country == null) return 'Ülke seçin';
         return null;
@@ -678,12 +606,9 @@ class MapFirstAddressController extends ChangeNotifier {
     }
   }
 
-  /// Alanın satır içi hatası; kaydet denenmediyse ya da alan geçerliyse
-  /// `null`.
   String? errorFor(AddressField field) =>
       _validationAttempted ? _validate(field) : null;
 
-  /// Hepsi geçerliyse `null`, değilse ilk eksik alanın mesajı.
   String? get validationMessage {
     for (final field in AddressField.values) {
       final message = _validate(field);
@@ -692,7 +617,6 @@ class MapFirstAddressController extends ChangeNotifier {
     return null;
   }
 
-  /// Kullanıcının gördüğü alanlardan kurulan onaylı adres; eksik varsa `null`.
   ConfirmedAddress? get confirmed {
     if (validationMessage != null) return null;
 
@@ -721,9 +645,8 @@ class MapFirstAddressController extends ChangeNotifier {
     );
   }
 
-  /// Kaydetme girişimi: satır içi hataları açar ve geçerliyse adresi döner.
-  /// Kaydet kapalıyken ([saveBlockedReason]) hiçbir şey yapmaz; düğme zaten
-  /// basılamıyor, bu yalnız programatik çağrıya karşı kapı.
+  /// Hataları açar ve geçerliyse adresi döner. Kaydet kapalıyken bir şey
+  /// yapmaz.
   ConfirmedAddress? submit() {
     if (saveBlockedReason != null) return null;
     _validationAttempted = true;
@@ -736,8 +659,7 @@ class MapFirstAddressController extends ChangeNotifier {
   bool _disposed = false;
 
   void _textChanged() {
-    // Kaydet denendikten sonra kullanıcı düzelttikçe hata satırı kalksın;
-    // bina numarası ipucu da kullanıcı numarayı yazınca kalksın.
+    // Hata satırı ve bina numarası ipucu kullanıcı düzelttikçe kalksın.
     if (_validationAttempted || candidatePrecision != null) notifyListeners();
   }
 

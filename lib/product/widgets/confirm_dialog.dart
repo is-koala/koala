@@ -4,10 +4,6 @@ import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 
 /// Geri alınamayan işlemler için onay kutusu.
-///
-/// Silme, oturum kapatma ve yönlendirme kutuları aynı biçimi üç ayrı yerde
-/// kuruyordu; biçimi tek yerde tutmak metinlerin de aynı tonda kalmasını
-/// sağlıyor.
 class ConfirmDialog extends StatelessWidget {
   const ConfirmDialog({
     super.key,
@@ -21,19 +17,15 @@ class ConfirmDialog extends StatelessWidget {
   final String title;
   final String message;
 
-  /// Onay düğmesinin metni. "Tamam" değil, ne olacağını söyleyen bir fiil
-  /// olmalı — kullanıcı düğmeye bakarak karar veriyor.
+  /// "Tamam" değil, ne olacağını söyleyen bir fiil.
   final String actionLabel;
 
-  /// Sonuç geri alınamıyorsa onay düğmesi kırmızı. Yönlendirme gibi zararsız
-  /// onaylarda kapatılıyor.
+  /// Geri alınamıyorsa onay düğmesi kırmızı.
   final bool isDestructive;
 
   final String cancelLabel;
 
-  /// Kutuyu açar; onaylanırsa `true`, vazgeçilir ya da dışına dokunulursa
-  /// `null` döner. Çağıranlar `!= true` ile kontrol ediyor, böylece iki
-  /// durum ayrı ayrı ele alınmak zorunda kalmıyor.
+  /// Onaylanırsa `true`, vazgeçilirse `null`; çağıranlar `!= true` ile bakar.
   static Future<bool?> show(
     BuildContext context, {
     required String title,

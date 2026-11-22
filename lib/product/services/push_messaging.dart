@@ -20,11 +20,8 @@ import 'package:koala/product/services/push_token_lifecycle.dart';
 import 'package:koala/product/services/push_work_detail_opener.dart';
 import 'package:koala/product/services/firebase_messaging_push_token_source.dart';
 
-/// Firebase ve FCM dinleyicilerinin tek giriş noktası.
-///
-/// [Firebase.initializeApp] `main` içinde değil splash'te çağrılır: `main`
-/// senkron kalmak zorunda. Başlatma düşerse push kapalı kalır, uygulama
-/// açılmaya devam eder.
+/// Firebase ve FCM dinleyicilerinin giriş noktası. Başlatma splash'te (`main`
+/// senkron kalmalı); düşerse push kapalı kalır.
 class PushMessaging {
   PushMessaging._();
 
@@ -45,10 +42,7 @@ class PushMessaging {
     }
   }
 
-  /// FCM dinleyicilerini bağlar.
-  ///
-  /// [users] `type=MESSAGE` dokunması için: sohbet ekranı karşı tarafı
-  /// oturum sahibine göre seçiyor, kimlik `/users/me`'den geliyor.
+  /// [users] sohbet ekranının oturum sahibini bilmesi için.
   static Future<void> bindListeners({
     NotificationProvider? notifications,
     UserProvider? users,
@@ -81,8 +75,8 @@ class PushMessaging {
               isBusiness() ? '/business/notifications' : '/notifications',
           navigate: _navigate,
           onConversationOpened: conversations.open,
-          // Ulaşım push'u yalnız işçiye gidiyor; işveren oturumunda iş
-          // detayı rotası yok, bildirim ekranına düşülüyor.
+          // Ulaşım push'u yalnız işçiye gidiyor; işveren bildirim ekranına
+          // düşer.
           onTransportOpened: ({required assignmentId, required seatDropped}) {
             if (isBusiness()) {
               _navigate('/business/notifications');
@@ -93,7 +87,6 @@ class PushMessaging {
               seatDropped: seatDropped,
             );
           },
-          // Biniş hatırlatması yalnız işçiye gidiyor; QR'ı doğrudan açar.
           onBoardingReminderOpened:
               ({required assignmentId, required direction}) {
                 if (isBusiness()) {
@@ -106,7 +99,6 @@ class PushMessaging {
                 }
                 return Future.value();
               },
-          // "Henüz binmedi" yalnız yetkililere gidiyor; biniş listesini açar.
           onNotBoardedOpened: (shuttleId) {
             if (isBusiness()) {
               _navigateOver(
@@ -149,11 +141,8 @@ class PushMessaging {
     await _inbox!.flush();
   }
 
-  /// Bildirim kutusuna ilk girişte sistem iznini sorar.
-  ///
-  /// Açılışta değil: kullanıcı bildirimi göreceği ilk anda sorulur.
-  /// `permission_handler` kullanılmaz; FCM kendi Android 13+ diyaloğunu
-  /// açar. Reddedilirse uygulama çalışmaya devam eder, token gitmez.
+  /// Bildirim kutusuna ilk girişte sistem iznini sorar; açılışta değil.
+  /// Reddedilirse token gitmez.
   static Future<void> requestPermissionOnInboxOpen() async {
     if (!_initialized) return;
     try {
@@ -175,8 +164,7 @@ class PushMessaging {
     });
   }
 
-  /// Önce [base]'e gider, bir sonraki karede [location]'ı üstüne iter;
-  /// geri çıkınca kullanıcı listeye düşer (`openWorkDetailOn` gerekçesi).
+  /// Önce [base], sonraki karede [location]; geri çıkınca liste görünsün.
   static void _navigateOver(String base, String location) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       RouterManager.router.go(base);

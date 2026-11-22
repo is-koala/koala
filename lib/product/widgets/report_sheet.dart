@@ -14,32 +14,23 @@ import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/my_button.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
 
-/// Kullanıcı, ilan ve mesaj şikayetlerinin ortak formu.
-///
-/// `ReasonDialog` bu iş için yetmiyordu: orada gerekçe serbest metin, burada
-/// sunucunun `ReportReason` listesinden **seçiliyor**.
-///
-/// Gönderimi sheet'in kendisi yapıyor. Dört giriş noktası var ve her birinde
-/// aynı hata/başarı işlemesini tekrarlamak, dördünün bir yerde ayrışması
-/// demekti.
+/// Kullanıcı, ilan ve mesaj şikayeti formu; gerekçe sunucunun `ReportReason`
+/// listesinden seçiliyor. Gönderimi sheet yapıyor ki dört giriş noktası
+/// ayrışmasın.
 ///
 /// ```dart
-/// ReportSheet.show(
-///   context,
-///   ReportTarget.user(userId: chat.counterpartId, name: chat.name),
-/// );
+/// ReportSheet.show(context, ReportTarget.user(userId: id, name: name));
 /// ```
 class ReportSheet extends StatefulWidget {
   const ReportSheet({super.key, required this.target});
 
-  /// Şikayetin işaret ettiği kayıt: kullanıcı, ilan ya da mesaj.
   final ReportTarget target;
 
-  /// Sunucunun `@Size(max = 2000)` sınırı. İstemcide de tutuluyor ki
-  /// kullanıcı 2000. karakterden sonra yazdığını gönderirken kaybetmesin.
+  /// Sunucunun `@Size(max = 2000)` sınırı; kullanıcı fazlasını gönderirken
+  /// kaybetmesin.
   static const int descriptionLimit = 2000;
 
-  /// Sheet'i açar. Şikayet gönderildiyse `true`, vazgeçildiyse `null` döner.
+  /// Gönderildiyse `true`, vazgeçildiyse `null`.
   static Future<bool?> show(BuildContext context, ReportTarget target) {
     return AppBottomSheet.show<bool>(
       context,
@@ -52,8 +43,7 @@ class ReportSheet extends StatefulWidget {
 }
 
 class _ReportSheetState extends State<ReportSheet> {
-  /// Tembel kuruluyor: form açılıp vazgeçilirse ağ istemcisine hiç
-  /// dokunulmuyor.
+  /// Tembel: vazgeçilen form ağ istemcisine dokunmasın.
   late final ReportService _service = ReportService();
 
   final TextEditingController _description = TextEditingController();
@@ -61,16 +51,12 @@ class _ReportSheetState extends State<ReportSheet> {
   ReportReason? _reason;
   bool _isSending = false;
 
-  /// Formun ekranın en fazla ne kadarını kaplayabileceği. Sekiz gerekçe,
-  /// açıklama alanı ve düğme küçük ekranlarda sığmıyor; sınır olmadan
-  /// `Column` taşıyor, sınırla içerik kayıyor.
+  /// Sekiz gerekçe, açıklama ve düğme küçük ekrana sığmıyor; sınırla içerik
+  /// kayıyor.
   static const double _maxHeightRatio = 0.72;
 
-  /// Çok satırlı açıklama alanının yüksekliği.
   static const double _descriptionHeight = 96;
 
-  /// Seçili gerekçenin zemin opaklığı ve halkası; `ThemeModeSheet` ile aynı
-  /// kurgu.
   static const double _selectedTintAlpha = 0.1;
   static const double _selectedBorderWidth = 2.0;
 
@@ -105,8 +91,7 @@ class _ReportSheetState extends State<ReportSheet> {
                 const SizedBox(height: AppSizes.spaceMedium),
                 Text('Gerekçe', style: context.textTheme.titleSmall),
                 const SizedBox(height: AppSizes.spaceSmall),
-                // Bilinmeyen gerekçe listede yok: kodu boş, sunucuya
-                // gönderilse `400` olurdu.
+                // Bilinmeyen gerekçenin kodu boş; gönderilse `400` olurdu.
                 for (final reason in ReportReason.selectable)
                   Padding(
                     padding: const EdgeInsets.only(bottom: AppSizes.spaceSmall),
@@ -134,8 +119,6 @@ class _ReportSheetState extends State<ReportSheet> {
                 MyButton(
                   title: 'Gönder',
                   isLoading: _isSending,
-                  // Gerekçe zorunlu: sunucudan `400` beklemek yerine
-                  // istemci durduruyor.
                   onPressed: _reason == null ? null : _submit,
                 ),
               ],
@@ -146,12 +129,8 @@ class _ReportSheetState extends State<ReportSheet> {
     );
   }
 
-  /// Gerekçe satırı.
-  ///
-  /// `RadioListTile` **kullanılamıyor**: içeride bir `ListTile` kuruyor ve
-  /// `AppBottomSheet`'in renkli kabuğu araya girdiği için Flutter
-  /// "background color or ink splashes may be invisible" assert'ini
-  /// düşürüyor. Kurgu `ThemeModeSheet._option` ile aynı.
+  /// `RadioListTile` değil: içindeki `ListTile` renkli kabukta "ink splashes
+  /// may be invisible" assert'i veriyor.
   Widget _reasonRow(ReportReason reason) {
     final isSelected = _reason == reason;
     final accent = context.accentColor;
@@ -202,8 +181,7 @@ class _ReportSheetState extends State<ReportSheet> {
 
     setState(() => _isSending = true);
 
-    // Boş açıklama gövdeye hiç konmuyor; `""` göndermek "yazdı ama boş
-    // bıraktı" gibi kaydedilirdi.
+    // Boş açıklama gövdeye konmuyor; `""` "boş bıraktı" diye kaydedilirdi.
     final description = _description.text.trim();
 
     try {
@@ -216,15 +194,12 @@ class _ReportSheetState extends State<ReportSheet> {
       );
 
       if (!mounted) return;
-      // Toast önce gösteriliyor: `ScaffoldMessenger` sheet'in üstünde, sheet
-      // kapandıktan sonra da ekranda kalıyor.
+      // Toast önce: `ScaffoldMessenger` sheet kapandıktan sonra da ekranda.
       AppToast.success(context, 'Şikayetin alındı, teşekkürler.');
       Navigator.pop(context, true);
     } on ApiException catch (error) {
       if (!mounted) return;
       setState(() => _isSending = false);
-      // Sunucu `Accept-Language: tr` ile zaten Türkçe döndürüyor —
-      // "Kendinizi şikayet edemezsiniz." gibi. Metni yeniden yazmıyoruz.
       AppToast.error(context, error.message);
     }
   }

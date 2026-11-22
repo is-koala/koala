@@ -1,9 +1,4 @@
-/// Bir işverenin özet sayıları. `GET /users/{userId}/employer-stats`
-/// yanıtındaki `EmployerStatsDto`.
-///
-/// Sayılar **kişiye** bağlı, şirkete değil: şirket adına açılan ilan da onu
-/// açan kullanıcının hanesine yazılıyor. Şirketin birden çok yetkilisi varsa
-/// her biri kendi sayısını görür.
+/// İşverenin özet sayıları; şirkete değil **kişiye** bağlı.
 class EmployerStats {
   const EmployerStats({
     required this.userId,
@@ -16,23 +11,19 @@ class EmployerStats {
 
   final String userId;
 
-  /// Açılan toplam ilan sayısı; kapanmışlar da dâhil.
+  /// Kapanmışlar dâhil.
   final int jobsPosted;
 
-  /// Tamamlanmış iş sayısı.
   final int completedJobs;
 
-  /// Ortalama puan. Hiç değerlendirme yoksa backend `0` döndürüyor —
-  /// [hasRating] bu ikisini ayırıyor.
+  /// Değerlendirme yoksa `0`; [hasRating] ayırıyor.
   final double averageRating;
 
   final int reviewCount;
 
-  /// Hesabın açıldığı an.
   final DateTime? memberSince;
 
-  /// Puan gösterilebilir mi. Değerlendirmesi olmayan işverene "0.0" yazmak
-  /// kötü puan almış gibi görünürdü.
+  /// Değerlendirmesiz işverene "0.0" yazmak kötü puan gibi görünür.
   bool get hasRating => reviewCount > 0;
 
   factory EmployerStats.fromJson(Map<String, dynamic> json) {

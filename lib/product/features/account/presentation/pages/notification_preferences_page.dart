@@ -14,16 +14,12 @@ import 'package:koala/product/widgets/settings_hint.dart';
 
 part 'notification_preferences_pagemodel.dart';
 
-/// Bildirim tercihleri: kategori × kanal anahtar tablosu.
-///
-/// Hesap kullanıcıya ait; iki uygulamanın ayarları da aynı ekranı açıyor.
-/// Her anahtar kendi başına kaydediliyor (`PUT` yalnız o kombinasyonu
-/// taşıyor): ayrı bir "Kaydet" düğmesi, yedi kategoride hangi anahtarın
-/// değiştiğini kullanıcının aklında tutmasını isterdi.
+/// Bildirim tercihleri: kategori × kanal tablosu. Her anahtar kendi başına
+/// kaydediliyor; ayrı "Kaydet" yedi kategoride neyin değiştiğini akılda tutmayı
+/// isterdi.
 class NotificationPreferencesPage extends StatefulWidget {
   const NotificationPreferencesPage({super.key, this.service});
 
-  /// Testlerde sahte sunucuya bağlı örnek geçilebilsin diye.
   final NotificationPreferenceService? service;
 
   @override
@@ -119,9 +115,7 @@ class _NotificationPreferencesPageState
     );
   }
 
-  /// Tek bir kanal satırı. Kilitli satırın anahtarı devre dışı: sunucu bu
-  /// kombinasyonu kapatmayı reddediyor, kullanıcıya deneyip hata görmek
-  /// yerine baştan söyleniyor.
+  /// Kilitli satırın anahtarı kapalı: sunucu kapatmayı reddediyor.
   Widget _channelRow(NotificationPreference row) {
     final isBusy = isSaving(row);
     final canToggle = row.editable && !isBusy;

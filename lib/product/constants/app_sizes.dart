@@ -1,148 +1,108 @@
-/// İkon boyutları, bileşen ölçüleri ve dikey/yatay boşluk değerleri.
-///
-/// Bu dosyadaki değerler kodda en sık geçen ölçülerden türetildi; yeni bir
-/// ölçüye ihtiyacın olursa sayıyı widget'a gömmek yerine buraya anlamlı bir
-/// isimle ekle ve **neden** o değer olduğunu yaz.
+/// İkon, bileşen ve boşluk ölçüleri. Yeni ölçüyü widget'a gömme; buraya anlamlı
+/// bir adla ekle ve **neden** o değer olduğunu yaz.
 class AppSizes {
   // ---------------------------------------------------------------- İkonlar
 
-  /// Rozet, etiket ve satır içi küçük ikonlar.
   static const double iconSmall = 16.0;
 
-  /// Liste satırlarındaki ikincil ikonlar (chevron, saat, konum).
+  /// Satırlardaki ikincil ikonlar (chevron, saat, konum).
   static const double iconMedium = 20.0;
 
-  /// Varsayılan ikon boyutu: appbar, navbar ve buton ikonları.
   static const double icon = 24.0;
 
-  /// Boş durum (empty state) ve başlık ikonları.
   static const double iconLarge = 40.0;
 
-  /// Onboarding ve boş liste görsellerindeki dev ikon.
   static const double iconHuge = 64.0;
 
   // ------------------------------------------------------------- Bileşenler
 
-  /// Liste satırlarını ayıran çizginin kalınlığı. Bir piksel: ayırıcı
-  /// satırları bölmeli, kendisi bir öğe gibi durmamalı.
+  /// Ayırıcı satırları bölmeli, kendisi öğe gibi durmamalı.
   static const double divider = 1.0;
 
-  /// Harita üstündeki düğme hapının yüksekliği ve haptaki her düğmenin
-  /// kenarı. Düğme **kare**: 24'lük ikonun her yanında `spaceSmall` (8) pay,
-  /// basınca çıkan vurgu da tam daire olup hapın içine oturuyor. Dikdörtgen
-  /// düğmede vurgu oval çiziliyordu.
+  /// Harita düğme hapının yüksekliği. Düğme kare ki basınca çıkan vurgu oval
+  /// değil daire olsun.
   static const double mapPillHeight = 40.0;
 
-  /// Haritadaki sessiz yenileme çizgisinin kalınlığı: pinler ekrandayken
-  /// arka planda süren isteği bir kart açmadan haber veriyor.
+  /// Pinler ekrandayken arka plandaki isteği kart açmadan gösteren çizgi.
   static const double refreshBar = 3.0;
 
-  /// Liste satırındaki kare görsel (ilan kartı, sohbet satırı). Metin
-  /// bloğundan kasıtlı olarak yüksek: satır yüksekliğini hep görsel
-  /// belirlesin ve tüm satırlar eşit boyda kalsın.
+  /// Liste satırındaki görsel; metinden yüksek ki satır boyunu hep görsel
+  /// belirlesin.
   static const double thumbnail = 72.0;
 
-  /// Sohbet listesi ve başvuran satırındaki avatar.
   static const double avatar = 48.0;
 
-  /// Appbar'daki ve profil satırındaki küçük avatar.
   static const double avatarSmall = 40.0;
 
-  /// Profil sayfasının başındaki büyük avatar.
   static const double avatarLarge = 88.0;
 
-  /// Ayar ve bilgi satırlarındaki dolu renkli ikon dairesi.
   static const double iconCircle = 40.0;
 
-  /// Liste satırlarındaki renkli ikon kutusu. [iconCircle]'dan büyük:
-  /// içinde `icon` boyunda bir ikon var ve iki yanında nefes payı kalıyor.
+  /// İçinde `icon` boyunda ikon ve iki yanında pay var.
   static const double iconTile = 44.0;
 
-  /// Harita üzerindeki iş pininin kenar uzunluğu.
   static const double mapPin = 48.0;
 
-  /// Ana butonların ve form alanlarının yüksekliği. İkisi aynı: giriş
-  /// ekranlarında alt alta dizildiklerinde eşit boyda durmaları gerekiyor.
+  /// Buton ve form alanı aynı yükseklikte: alt alta eşit dursunlar.
   static const double buttonHeight = 60.0;
   static const double fieldHeight = 60.0;
 
-  /// Bottom sheet içindeki eylem butonu; sayfa butonundan alçak çünkü
-  /// sheet'in kendi yüksekliği sınırlı.
+  /// Sheet'in yüksekliği sınırlı olduğu için sayfa butonundan alçak.
   static const double buttonHeightCompact = 56.0;
 
-  /// Kart içindeki ve alt çubuktaki eylem düğmeleri (iş detayı: mesai,
-  /// kabul/ret, koltuk seçimi, yol tarifi). Tam boy [buttonHeight] form
-  /// CTA'sı için; kartın içinde o yükseklik baskın kalıyor.
+  /// Kart içi ve alt çubuktaki eylem düğmeleri; tam boy [buttonHeight] kartta
+  /// baskın kalıyor.
   static const double actionButtonHeight = 48.0;
 
-  /// Filtre çubuğundaki hap butonun yüksekliği.
   static const double filterButton = 40.0;
 
-  /// Navbar ikonu; sayfa içi ikonlardan büyük çünkü tek başına duruyor,
-  /// yanında etiket yok.
+  /// Yanında etiket olmadığı için sayfa ikonlarından büyük.
   static const double iconNav = 28.0;
 
-  /// Employee navbar'ının yüksekliği ve yüzen hap (floating pill) genişliği.
-  /// Sabit genişlik verilerek ekran boyutundan bağımsız tutarlı bir ikon
-  /// aralığı ve görünüm sağlanır.
+  /// Employee navbar'ı; sabit genişlik ekran boyundan bağımsız ikon aralığı
+  /// veriyor.
   static const double navBar = 64.0;
 
-  /// Navbar'ın arkasındaki zemine geçişin en alttaki opaklığı. Tam opak
-  /// beyaz, sayfanın altına sert bir bant çiziyordu.
+  /// Tam opak geçiş sayfanın altına sert bir bant çiziyor.
   static const double navBarFadeMaxAlpha = 0.85;
   static const double navBarWidth = 250.0;
 
-  /// Business navbar'ının yüksekliği; employee'ninkinden yüksek çünkü
-  /// öğeleri ikon + etiket olarak iki satır taşıyor.
+  /// İkon + etiket taşıdığı için employee navbar'ından yüksek.
   static const double bNavBar = 76.0;
 
-  /// Okunmamış mesaj / bildirim rozeti.
   static const double badgeDot = 8.0;
 
-  /// Bottom sheet'in üstündeki tutamaç.
   static const double sheetHandleWidth = 40.0;
   static const double sheetHandleHeight = 4.0;
 
-  /// iOS sayısal klavyenin üstüne çizilen "Bitti" şeridi; sistemin kendi
-  /// klavye araç çubuğuyla aynı boyda dursun diye 44.
+  /// Sistemin klavye araç çubuğuyla aynı boy.
   static const double keyboardToolbar = 44.0;
 
-  /// Odaklanan alanın görünür alanın kenarına bırakacağı pay;
-  /// `EditableText`'in kendi varsayılanı (20) korunuyor, "Bitti" şeridi
-  /// varken üstüne şerit boyu ekleniyor.
+  /// `EditableText` varsayılanı; "Bitti" şeridi varken şerit boyu eklenir.
   static const double caretScrollPadding = 20.0;
 
   // --------------------------------------------------------------- Boşluklar
 
-  /// Etiket ile hemen altındaki değeri arası; iki satır tek blok gibi
-  /// okunsun diye en küçük boşluk.
+  /// Etiket ile değeri tek blok gibi okunsun.
   static const double smallGap = 2.0;
 
-  /// İkon ile hemen yanındaki etiket arası.
   static const double spaceTiny = 4.0;
 
-  /// Satır içi öğeler arası.
   static const double spaceSmall = 8.0;
 
-  /// Varsayılan dikey boşluk; form alanları ve kart içi bloklar arası.
+  /// Form alanları ve kart içi bloklar arası.
   static const double space = 12.0;
 
-  /// Kartlar ve liste öğeleri arası.
   static const double spaceMedium = 16.0;
 
-  /// İki bölüm arası (başlık bloğu ile içerik gibi).
   static const double spaceLarge = 24.0;
 
-  /// Başlık bloğu ile onu izleyen içerik arası.
   static const double spaceXLarge = 32.0;
 
-  /// Sayfa içindeki bağımsız bölümler arası.
   static const double sectionSpace = 40.0;
 
-  /// Sayfanın en tepesindeki nefes payı (giriş ve onboarding ekranları).
   static const double spaceHuge = 64.0;
 
-  /// Yüzen navbar'ın altında kalmasın diye listelerin sonuna eklenen pay.
-  /// Navbar yüksekliği + kenar boşluğu + biraz nefes.
+  /// Yüzen navbar'ın altında kalmasın diye liste sonuna eklenen pay.
   static const double navBarClearance = 100.0;
 }

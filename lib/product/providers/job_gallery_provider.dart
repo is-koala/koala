@@ -4,11 +4,8 @@ import 'package:koala/product/models/gallery_image.dart';
 import 'package:koala/product/network/api_exception.dart';
 import 'package:koala/product/services/job_gallery_service.dart';
 
-/// Tek bir ilanın galerisini ve yazma yaşam döngüsünü yönetir.
-///
-/// Her başarılı istekte liste bütünüyle sunucu yanıtıyla değiştirilir. Bu
-/// özellikle kapak seçimi ve şirket galerisinden görsel ekleme için önemli:
-/// istemci, sunucunun varsayılan kapak kararını tahmin etmez.
+/// Tek ilanın galerisi. Her başarılı istekte liste sunucu yanıtıyla değişir;
+/// istemci kapak kararını tahmin etmez.
 class JobGalleryProvider extends ChangeNotifier {
   JobGalleryProvider({JobGalleryService? service})
     : _service = service ?? JobGalleryService();
@@ -41,9 +38,8 @@ class JobGalleryProvider extends ChangeNotifier {
     if (isLoadedFor(jobId) && !force && _errorMessage == null) return;
 
     final generation = ++_generation;
-    // Yeni yükleme, aynı ilanı zorla yenilese bile süren yazmayı geçersiz
-    // kılar. Eski isteğin finally bloğu nesil uyuşmadığı için bu bayrağı
-    // temizleyemez; yeni galeri kendi meşgul durumuyla başlamalı.
+    // Yeni yükleme süren yazmayı geçersiz kılar; eski isteğin `finally`'si
+    // nesil uyuşmadığı için bu bayrağı temizleyemez.
     _isBusy = false;
     _isLoading = true;
     _loadingJobId = jobId;

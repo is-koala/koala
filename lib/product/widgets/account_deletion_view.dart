@@ -18,16 +18,12 @@ typedef AccountDeletionRequest = Future<AccountDeletion> Function({
   String? reason,
 });
 
-/// Hesap silme talebini iki uygulama için aynı davranışla başlatır.
-///
-/// Silme anlık olmadığı için bu görünüm oturumu kapatmaz. Backend talebi
-/// bekleme süresi ve açık yükümlülük kontrollerinden sonra anonimleştirir;
-/// kullanıcı bu sırada hesabındaki son durumu görmeye devam edebilir.
+/// Hesap silme talebini iki uygulamada aynı şekilde başlatır. Silme anlık değil
+/// (bekleme süresi, açık yükümlülükler); bu yüzden oturumu kapatmaz.
 class AccountDeletionView extends StatefulWidget {
   const AccountDeletionView({super.key, required this.requestDeletion});
 
-  /// Widget testinin davranışı gerçek HTTP olmadan gözleyebilmesi için seam.
-  /// Çalışma zamanında iki sayfa da aynı `LegalService` metodunu verir.
+  /// Testin gerçek HTTP olmadan gözleyebilmesi için.
   final AccountDeletionRequest requestDeletion;
 
   @override
@@ -35,7 +31,6 @@ class AccountDeletionView extends StatefulWidget {
 }
 
 class _AccountDeletionViewState extends State<AccountDeletionView> {
-  /// Gerekçe zorunlu değil; alan bir açıklama cümlesi taşıyabilecek kadar uzun.
   static const double _reasonFieldHeight = 132;
 
   final TextEditingController _reasonController = TextEditingController();

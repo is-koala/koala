@@ -1,9 +1,7 @@
 name: iOS derleme
 
-# PR ve main macos-latest dakikası yakmaz (macOS dakikası 10 kat sayılır).
-# PR kapısı ci.yml'de ubuntu-latest'tedir; bu iş yalnız elle workflow_dispatch.
-# Store/TestFlight imzalı IPA hâlâ mobile-release.yml içinde mobile-v*
-# etiketindedir; aynı etikete ikinci, imzasız bir derleme eklenmez.
+# macOS dakikası 10 kat sayıldığı için yalnız elle. İmzalı IPA
+# mobile-release.yml'de.
 on:
   workflow_dispatch:
 
@@ -25,8 +23,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Deponun konvansiyonu tam SHA. ci.yml'deki eski hâli hareketli `@v2`
-      # etiketine bağlıydı; mobile-release.yml'in kullandığı SHA'ya sabitlendi.
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -36,7 +32,5 @@ jobs:
       - name: Bağımlılıkları indir
         run: flutter pub get
 
-      # İmzalama sertifikası olmadığı için --no-codesign; amaç native tarafın
-      # derlendiğini görmek.
       - name: iOS derle (imzasız)
         run: flutter build ios --no-codesign --flavor staging --dart-define-from-file=config/staging.json

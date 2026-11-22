@@ -2,15 +2,11 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-/// Cihaz konumu isteğinin sonucu.
 enum DeviceLocationStatus {
-  /// Konum alındı; [DeviceLocationResult.position] dolu.
   located,
 
-  /// Cihazın konum servisi kapalı.
   serviceDisabled,
 
-  /// Kullanıcı izni reddetti ya da daha önce kalıcı olarak reddetmiş.
   denied,
 
   /// İzin var ama konum alınamadı (zaman aşımı, platform hatası).
@@ -27,35 +23,24 @@ class DeviceLocationResult {
   final LatLng? position;
 }
 
-/// Cihaz konumuna açılan kapı.
-///
-/// İki yol var ve ayrımı ADR-0007 koyuyor: harita ekranı açılırken yalnız
-/// **zaten verilmiş** izinle konum okunur ([currentIfGranted]); izin diyaloğu
-/// yalnız kullanıcı "Konumumu kullan"a bastığında açılır ([requestCurrent]).
-/// Gerçeği [GeolocatorLocationSource]; testler [FakeDeviceLocationSource]
-/// enjekte eder.
+/// Cihaz konumu (ADR-0007): ekran açılırken yalnız **zaten verilmiş** izinle
+/// okunur ([currentIfGranted]); izin diyaloğu yalnız "Konumumu kullan"da
+/// ([requestCurrent]).
 abstract interface class DeviceLocationSource {
-  /// İzin daha önce verilmişse konumu döner; izin **istemez**. İzin yoksa,
-  /// servis kapalıysa ya da konum alınamazsa `null`.
+  /// İzin istemez; izin yoksa ya da konum alınamazsa `null`.
   Future<LatLng?> currentIfGranted();
 
-  /// [currentIfGranted] gibi izin istemez; ama anlık konum alınamazsa son
-  /// bilinen konuma **yalnız [maxAge]'den gençse** düşer. Servis binişi
-  /// (is-koala/koala#217) bunu kullanıyor: saatler önceki bir okuma
-  /// "durağa uzak" bayrağını yanlış üretir, konumsuz biniş ise yalnız
-  /// bayraksız kalır.
+  /// İzin istemez; anlık konum yoksa son bilinene yalnız [maxAge]'den gençse
+  /// düşer. Biniş (#217) için: eski okuma yanlış "durağa uzak" bayrağı üretir.
   Future<LatLng?> freshIfGranted({required Duration maxAge});
 
-  /// Gerekiyorsa izni ister ve konumu döner.
   Future<DeviceLocationResult> requestCurrent();
 }
 
-/// `geolocator` üzerinden gerçek cihaz konumu.
 class GeolocatorLocationSource implements DeviceLocationSource {
   const GeolocatorLocationSource();
 
-  /// Anlık konum bu sürede gelmezse son bilinen konuma düşülüyor: adres
-  /// pini için birkaç yüz metrelik eski bir okuma bile boş haritadan iyi.
+  /// Adres pini için birkaç yüz metre eski okuma boş haritadan iyi.
   static const Duration _fixTimeout = Duration(seconds: 8);
 
   @override
@@ -94,8 +79,7 @@ class GeolocatorLocationSource implements DeviceLocationSource {
     }
   }
 
-  /// Son bilinen konum [maxAge]'den gençse onu, değilse `null` döner.
-  /// Gelecekteki bir zaman damgası (saat kayması) da taze sayılmaz.
+  /// Gelecekteki zaman damgası (saat kayması) taze sayılmaz.
   @visibleForTesting
   static LatLng? freshFallback(
     Position? last, {
@@ -136,7 +120,6 @@ class GeolocatorLocationSource implements DeviceLocationSource {
       permission == LocationPermission.always ||
       permission == LocationPermission.whileInUse;
 
-  /// Anlık konum; alınamazsa son bilinen konum; o da yoksa `null`.
   static Future<LatLng?> _read() async {
     Position? position;
     try {
@@ -155,7 +138,6 @@ class GeolocatorLocationSource implements DeviceLocationSource {
   }
 }
 
-/// Testte enjekte edilen kaynak; hangi yolun ne zaman çağrıldığını sayar.
 @visibleForTesting
 class FakeDeviceLocationSource implements DeviceLocationSource {
   FakeDeviceLocationSource({
@@ -165,13 +147,12 @@ class FakeDeviceLocationSource implements DeviceLocationSource {
     ),
   });
 
-  /// [currentIfGranted]'ın döndürdüğü konum; `null` "izin yok" demek.
+  /// `null` "izin yok" demek.
   LatLng? granted;
 
-  /// [freshIfGranted]'ın döndürdüğü konum; verilmezse [granted].
+  /// Verilmezse [granted].
   LatLng? fresh;
 
-  /// [freshIfGranted]'a verilen son yaş sınırı.
   Duration? lastMaxAge;
 
   DeviceLocationResult requestResult;

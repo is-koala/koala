@@ -7,14 +7,11 @@ abstract class BShuttleScanPagemodel extends State<BShuttleScanPage> {
   DeviceLocationSource get _location =>
       widget.locationSource ?? const GeolocatorLocationSource();
 
-  /// Okutma sunucuda.
   bool busy = false;
 
-  /// Son okutmanın sonucu.
   BoardingResultPanel? lastResult;
 
-  /// Koltuk → çalışan adı; sonuç satırında ad yazmak için. Liste
-  /// okunamazsa boş kalır ve satır adsız yazılır.
+  /// Liste okunamazsa boş; satır adsız yazılır.
   Map<String, String> _names = const {};
 
   @override

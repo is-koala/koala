@@ -7,21 +7,13 @@ import 'package:koala/product/network/api_exception.dart';
 
 typedef BoardingQrLoader = Future<BoardingQr> Function();
 
-/// Ekrandaki biniş QR'ını sunucunun `refreshAt`'ine göre yenileyen
-/// denetleyici (is-koala/koala#217). İşçinin kendi QR'ı ve işverenin servis
-/// QR'ı aynı döngüyü kullanıyor.
-///
-/// Zamanlama cihaz saatine değil sunucunun verdiği süreye bağlı: yeni QR
-/// yanıtın geldiği andan `refreshAt - issuedAt` sonra istenir, böylece saati
-/// kaymış bir telefon da QR'ı zamanında yeniler. Yenileme düşerse eldeki QR
-/// sunucunun kabul ettiği süre boyunca (`expiresAt`) gösterilmeye devam
-/// eder, [retryDelay] sonra yeniden denenir; süre dolunca [isExpired] olur
-/// ve ekran QR'ı geçersiz diye işaretler.
+/// Ekrandaki biniş QR'ını sunucunun süresine göre yeniler (#217); saati kaymış
+/// telefon da zamanında yeniler. Yenileme düşerse eldeki QR `expiresAt`'e kadar
+/// gösterilir, sonra [isExpired].
 class BoardingQrController extends ChangeNotifier {
   BoardingQrController({required this._load, DateTime Function()? clock})
     : _clock = clock ?? DateTime.now;
 
-  /// Geçici bir hatayla düşen yenilemeden sonra bekleme.
   static const Duration retryDelay = Duration(seconds: 10);
 
   BoardingQrLoader _load;
@@ -40,8 +32,7 @@ class BoardingQrController extends ChangeNotifier {
   ApiException? get error => _error;
   bool get isLoading => _loading;
 
-  /// Gösterilen QR'ın sunucu tarafında kabul süresi doldu mu. Statik QR hiç
-  /// dolmaz.
+  /// Statik QR hiç dolmaz.
   bool get isExpired {
     final lifetime = _lifetime;
     final receivedAt = _receivedAt;
@@ -56,9 +47,8 @@ class BoardingQrController extends ChangeNotifier {
     return expiresAt.difference(qr.issuedAt);
   }
 
-  /// Yükleyiciyi değiştirir (işverenin dönen/sabit QR seçimi) ve hemen
-  /// yeniden okur. Eski QR yeni gelene kadar gösterilmez: iki türü
-  /// karıştırmak yanlış QR'ı bastırırdı.
+  /// Yükleyiciyi değiştirip hemen okur; eski QR gösterilmez, iki türü
+  /// karıştırmak yanlış QR bastırırdı.
   Future<void> switchTo(BoardingQrLoader load) {
     _load = load;
     _qr = null;
@@ -66,7 +56,6 @@ class BoardingQrController extends ChangeNotifier {
     return refresh();
   }
 
-  /// Sunucudan yeni QR ister.
   Future<void> refresh() async {
     if (_disposed) return;
     final generation = ++_generation;
@@ -81,21 +70,19 @@ class BoardingQrController extends ChangeNotifier {
       if (_disposed || generation != _generation) return;
       _error = error;
       _loading = false;
-      // Yalnız geçici hatalar kendiliğinden yeniden denenir; koltuk yok ya
-      // da yetki yok gibi bir cevap beklemekle değişmez.
+      // Kalıcı cevaplar (koltuk yok, yetki yok) beklemekle değişmez.
       if (BoardingFailure.classify(error).isRetryable) _schedule(retryDelay);
       notifyListeners();
     }
   }
 
-  /// Başka bir yoldan gelen QR'ı (anahtar yenileme yanıtı) gösterir.
+  /// Anahtar yenileme yanıtındaki QR'ı gösterir.
   void replace(BoardingQr qr) {
     if (_disposed) return;
     _generation++;
     _accept(qr);
   }
 
-  /// Uygulama arka plandayken zamanlayıcılar durur.
   void pause() {
     _refreshTimer?.cancel();
     _expiryTimer?.cancel();

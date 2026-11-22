@@ -1,8 +1,7 @@
 part of 'dispute_page.dart';
 
 abstract class DisputePagemodel extends State<DisputePage> {
-  /// Sayfanın kendi örneği: uygulama boyunca yaşayan provider yok, çıkışta
-  /// temizlenecek bir şey kalmıyor ([DisputeProvider]).
+  /// Sayfaya ait; uygulama boyunca yaşamıyor.
   late final DisputeProvider _provider;
 
   late final EvidencePicker _picker = widget.picker ?? const EvidencePicker();
@@ -25,9 +24,8 @@ abstract class DisputePagemodel extends State<DisputePage> {
     super.dispose();
   }
 
-  /// Çekip yenileme. Eldeki uyuşmazlıklar varken başarısız olursa liste yerinde
-  /// kalıyor ve nedenini bir toast söylüyor; boş ekranda hata durumu zaten
-  /// kendi mesajını çiziyor.
+  /// Eldeki liste varken başarısızlık toast'la söylenir; boş ekran kendi hata
+  /// durumunu çizer.
   Future<void> _onRefresh() async {
     await _provider.refresh();
     if (!mounted) return;
@@ -37,12 +35,8 @@ abstract class DisputePagemodel extends State<DisputePage> {
     }
   }
 
-  /// Kanıt ekleme: kaynak seç → dosyayı al → doğrula ve yükle.
-  ///
-  /// Seçici vazgeçilirse sessizce dönüyor. Sınırlardan dönen dosya ve sunucu
-  /// reddi aynı yoldan, kullanıcının **ne yapacağını** söyleyen bir toast
-  /// ([AttachResult.message]); sunucu "durum değişmiş" dediğinde sayfa kendini
-  /// zaten yeniden okuyor ([DisputeProvider.attach]).
+  /// Kaynak seç → dosyayı al → doğrula ve yükle. Vazgeçilirse sessiz döner; red
+  /// ne yapılacağını söyleyen toast olur.
   Future<void> _attach(DisputeCase entry) async {
     final source = await OptionSheet.show<EvidenceSource>(
       context,
@@ -73,8 +67,7 @@ abstract class DisputePagemodel extends State<DisputePage> {
     if (message != null) AppToast.error(context, message);
   }
 
-  /// İndirme: imzalı adres üç dakika geçerli, o yüzden hemen harici tarayıcıya
-  /// veriliyor ve saklanmıyor.
+  /// İmzalı adres üç dakika geçerli; hemen tarayıcıya veriliyor.
   Future<void> _download(DisputeEvidence evidence) async {
     final result = await _provider.download(evidence);
     if (!mounted) return;
@@ -115,8 +108,7 @@ abstract class DisputePagemodel extends State<DisputePage> {
     EvidenceSource.document => AppIcons.fileText,
   };
 
-  /// İzin reddi ile diğer seçici hatalarını ayırır; ilki kullanıcının
-  /// düzeltebileceği bir şey.
+  /// İzin reddi kullanıcının düzeltebileceği bir şey; ayrı mesaj.
   static String _pickFailureMessage(
     EvidenceSource source,
     PlatformException error,

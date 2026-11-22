@@ -4,14 +4,8 @@ import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
 
-/// Göster/gizle düğmesi taşıyan parola alanı.
-///
-/// Aynı beşli ([MyTextfield] + `isObscureText` + `showSuffixIcon` +
-/// `visiblePassword` klavyesi + göz ikonu) giriş, parola oluşturma ve parola
-/// değiştirme ekranlarında üç kez elle kuruluyordu. Tek yerde durmasının asıl
-/// kazancı ikonun anlamı: **gizliyken kapalı göz, görünürken açık göz**.
-/// Kopyaların ikisi aynı bayrağı zıt adlarla taşıyordu, yani ikonun bir
-/// ekranda ters dönmesi bir sonraki düzenlemeye kalmıştı.
+/// Göster/gizle düğmeli parola alanı. Tek yerde ki ikonun anlamı her ekranda
+/// aynı kalsın: **gizliyken kapalı göz, görünürken açık göz**.
 class PasswordField extends StatelessWidget {
   const PasswordField({
     super.key,
@@ -25,11 +19,8 @@ class PasswordField extends StatelessWidget {
   final String labelText;
   final TextEditingController controller;
 
-  /// Metin gizli mi. `true` iken alan noktalarla yazıyor ve ikon kapalı göz
-  /// oluyor; ikonu çeviren state sayfada kalıyor.
   final bool isHidden;
 
-  /// Göz ikonuna basıldığında çağrılır.
   final VoidCallback onToggle;
 
   final ValueChanged<String>? onChanged;

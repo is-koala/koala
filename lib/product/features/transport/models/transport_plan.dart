@@ -2,7 +2,6 @@ import 'package:koala/product/extensions/num_extensions.dart';
 import 'package:koala/product/features/transport/models/boarding.dart';
 import 'package:koala/product/models/canonical_address.dart';
 
-/// Bir yöndeki ulaşım yöntemi. Backend `TransportMethod` karşılığı.
 enum TransportMethod {
   shuttle('SHUTTLE', 'Servis'),
   cashAllowance('CASH_ALLOWANCE', 'Yol parası'),
@@ -14,8 +13,7 @@ enum TransportMethod {
   final String code;
   final String displayName;
 
-  /// Tanınmayan ya da boş değerde `null`: eski sunucu alanı hiç
-  /// göndermiyor, planı "yok" saymak gerekiyor.
+  /// Tanınmayan ya da boşsa `null`; eski sunucu göndermiyor, plan "yok".
   static TransportMethod? fromCode(Object? value) {
     for (final method in values) {
       if (method.code == value) return method;
@@ -24,7 +22,6 @@ enum TransportMethod {
   }
 }
 
-/// Servisin yönü. Backend `ShuttleDirection` karşılığı.
 enum ShuttleDirection {
   outbound('OUTBOUND', 'Gidiş'),
   returnTrip('RETURN', 'Dönüş');
@@ -42,10 +39,8 @@ enum ShuttleDirection {
   }
 }
 
-/// Servisin bir durağı (`ShuttleStopDto`).
-///
-/// [address] yalnız işverene ve atanmış işçiye geliyor; ilan detayındaki
-/// herkese açık görünüm [PublicStop]'ta.
+/// Servis durağı; [address] yalnız işverene ve atanmış işçiye geliyor, herkese
+/// açık görünüm [PublicStop].
 class ShuttleStop {
   const ShuttleStop({
     required this.id,
@@ -59,22 +54,19 @@ class ShuttleStop {
   final String id;
   final String? label;
 
-  /// Servisin bu duraktan kalkacağı an (UTC).
   final DateTime scheduledAt;
   final int sortOrder;
   final CanonicalAddress? address;
 
-  /// Bu durağı seçen koltuk sayısı.
   final int seatsTaken;
 
-  /// Listede yazılan ad: etiket, yoksa ilçe/il, o da yoksa "Durak".
+  /// Etiket, yoksa ilçe/il, o da yoksa "Durak".
   String get displayName {
     final text = label;
     if (text != null && text.trim().isNotEmpty) return text.trim();
     return address?.shortLabel ?? 'Durak';
   }
 
-  /// Tam adres satırı; sunucu adresi göndermediyse `null`.
   String? get addressLine {
     final line = address?.displayAddress;
     if (line != null && line.isNotEmpty) return line;
@@ -98,10 +90,8 @@ class ShuttleStop {
   }
 }
 
-/// Bir servis (`ShuttleDto`).
-///
-/// Plaka ve şoför bilgisi işverene her serviste, işçiye yalnız koltuk seçtiği
-/// serviste geliyor; diğerlerinde `null`.
+/// Servis. Plaka ve şoför işverene her serviste, işçiye yalnız koltuk seçtiği
+/// serviste geliyor.
 class Shuttle {
   const Shuttle({
     required this.id,
@@ -131,7 +121,6 @@ class Shuttle {
 
   int get remainingSeats => (capacity - seatsTaken).clamp(0, capacity);
 
-  /// Doluluk metni: `3/12 dolu`.
   String get occupancyLabel => '$seatsTaken/$capacity dolu';
 
   ShuttleStop? stopById(String stopId) =>
@@ -161,7 +150,6 @@ class Shuttle {
   }
 }
 
-/// Ulaşım planının iki yönü ve yol parası; üç görünümün ortak parçası.
 mixin TransportMethods {
   TransportMethod get outboundMethod;
   TransportMethod get returnMethod;
@@ -179,7 +167,6 @@ mixin TransportMethods {
       outboundMethod == TransportMethod.cashAllowance ||
       returnMethod == TransportMethod.cashAllowance;
 
-  /// Yöntem satırı, iki kabuğun kartlarında aynı:
   /// `Gidiş: Servis · Dönüş: Yol parası (₺150)`.
   String get methodsLine {
     String label(ShuttleDirection direction) {
@@ -196,8 +183,7 @@ mixin TransportMethods {
   }
 }
 
-/// İşverenin gördüğü plan (`TransportPlanDto`): plaka, şoför, tam adres ve
-/// `seatsTaken` dahil.
+/// İşverenin gördüğü plan: plaka, şoför, tam adres ve `seatsTaken` dahil.
 class TransportPlan with TransportMethods {
   const TransportPlan({
     required this.outboundMethod,
@@ -227,8 +213,7 @@ class TransportPlan with TransportMethods {
   List<Shuttle> shuttlesFor(ShuttleDirection direction) =>
       shuttles.where((shuttle) => shuttle.direction == direction).toList();
 
-  /// Yöntemler okunamıyorsa `null`: eski sunucuda ya da planı olmayan
-  /// ilanda kart çizilmiyor.
+  /// Okunamıyorsa `null`; kart çizilmez.
   static TransportPlan? parse(Object? value) {
     if (value is! Map<String, dynamic>) return null;
     final outbound = TransportMethod.fromCode(value['outboundMethod']);
@@ -256,7 +241,7 @@ class TransportPlan with TransportMethods {
   }
 }
 
-/// Atamanın seçtiği koltuk (`SeatAssignmentDto`); yön başına en fazla bir.
+/// Yön başına en fazla bir koltuk.
 class SeatAssignment {
   const SeatAssignment({
     required this.id,
@@ -271,9 +256,7 @@ class SeatAssignment {
   final String shuttleId;
   final String stopId;
 
-  /// Bu koltuğun güncel servisi ve kalkış günü için biniş durumu
-  /// (is-koala/koala#217): BOARDED, yoksa son NO_SHOW; kayıt yoksa ya da
-  /// sunucu alanı göndermiyorsa `null`.
+  /// Bu koltuğun kalkış günündeki biniş durumu (#217); kayıt yoksa `null`.
   final SeatBoardingStatus? boarding;
 
   static SeatAssignment? parse(Map<String, dynamic> json) {
@@ -289,11 +272,8 @@ class SeatAssignment {
   }
 }
 
-/// Atamanın ulaşım görünümü (`AssignmentTransportDto`): plan + servisler +
-/// bu atamanın koltukları.
-///
-/// İşçi görünümünde plaka/şoför yalnız koltuk seçilen serviste dolu; kart
-/// başka servisin plakasını hiç çizmiyor, sunucu zaten göndermiyor.
+/// Atamanın ulaşım görünümü: plan, servisler, koltuklar. İşçide plaka/şoför
+/// yalnız koltuk seçilen serviste dolu.
 class AssignmentTransport with TransportMethods {
   const AssignmentTransport({
     required this.outboundMethod,
@@ -322,8 +302,7 @@ class AssignmentTransport with TransportMethods {
   SeatAssignment? seatFor(ShuttleDirection direction) =>
       seats.where((seat) => seat.direction == direction).firstOrNull;
 
-  /// Seçili koltuğun servisi; koltuk yoksa ya da servis plandan düştüyse
-  /// `null` — o zaman "yeniden seçin" durumu.
+  /// Koltuk yoksa ya da servis plandan düştüyse `null`: "yeniden seçin".
   Shuttle? selectedShuttle(ShuttleDirection direction) {
     final seat = seatFor(direction);
     if (seat == null) return null;
@@ -338,7 +317,6 @@ class AssignmentTransport with TransportMethods {
     return selectedShuttle(direction)?.stopById(seat.stopId);
   }
 
-  /// Yöntem servis ama bu yönde geçerli bir koltuk yok.
   bool needsSeat(ShuttleDirection direction) =>
       usesShuttle(direction) && selectedStop(direction) == null;
 
@@ -374,7 +352,7 @@ class AssignmentTransport with TransportMethods {
   }
 }
 
-/// İlan detayındaki herkese açık durak (`PublicStopDto`): ilçe/semt ve saat.
+/// Herkese açık durak: ilçe/semt ve saat.
 class PublicStop {
   const PublicStop({
     required this.districtName,
@@ -386,7 +364,6 @@ class PublicStop {
   final String? neighborhood;
   final DateTime scheduledAt;
 
-  /// `Kadıköy · Caferağa`; semt yoksa yalnız ilçe.
   String get placeLabel {
     final parts = [
       districtName,
@@ -406,7 +383,7 @@ class PublicStop {
   }
 }
 
-/// Herkese açık servis (`PublicShuttleDto`): plaka, şoför, tam adres yok.
+/// Herkese açık servis: plaka, şoför, tam adres yok.
 class PublicShuttle {
   const PublicShuttle({
     required this.direction,
@@ -435,7 +412,6 @@ class PublicShuttle {
   }
 }
 
-/// İlan detayındaki ulaşım özeti (`JobDetailDto.transport`).
 class JobTransport with TransportMethods {
   const JobTransport({
     required this.outboundMethod,
@@ -480,7 +456,7 @@ class JobTransport with TransportMethods {
   }
 }
 
-/// Yol parasının ekrana yazılan hâli: `₺150`, küsuratlıysa `₺1.250,5`.
+/// `₺150`, küsuratlıysa `₺1.250,5`.
 String formatAllowance(double amount) => '₺${amount.asExactPrice}';
 
 List<Shuttle> _parseShuttles(Object? value) => value is List

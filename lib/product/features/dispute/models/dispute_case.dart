@@ -3,12 +3,9 @@ import 'package:koala/product/features/dispute/models/dispute_evidence.dart';
 import 'package:koala/product/features/dispute/models/evidence_file.dart';
 import 'package:koala/product/models/upload_progress.dart';
 
-/// Bir uyuşmazlık ve onun kanıtları.
-///
-/// Kanıtlar uyuşmazlıktan **ayrı** isteniyor ve ayrı başarısız olabiliyor:
-/// liste gelmiş, kanıtlar gelmemiş bir uyuşmazlık "kanıt yok" demiyor,
-/// "kanıtlar alınamadı" diyor ve yeni dosya eklemeye izin vermiyor (sayı
-/// bilinmiyor).
+/// Uyuşmazlık ve kanıtları. Kanıtlar ayrı isteniyor ve ayrı düşebiliyor: o
+/// zaman "kanıt yok" değil "kanıtlar alınamadı" denir ve sayı bilinmediği için
+/// ekleme kapalı.
 class DisputeCase {
   const DisputeCase({
     required this.dispute,
@@ -20,16 +17,13 @@ class DisputeCase {
   final Dispute dispute;
   final List<DisputeEvidence> evidence;
 
-  /// Kanıt listesi isteği sürüyor ve elde gösterilecek bir liste yok.
   final bool isEvidenceLoading;
 
-  /// Kanıt listesinin hata mesajı; elde eski liste varsa o korunur.
+  /// Elde eski liste varsa o korunur.
   final String? evidenceError;
 
-  /// Sayının bilindiği hâl: yüklenmiş ve hatasız.
   bool get isEvidenceKnown => !isEvidenceLoading && evidenceError == null;
 
-  /// Bu uyuşmazlığa şimdi kanıt eklenebilir mi ([DisputeEvidencePolicy]).
   bool get canAttach =>
       isEvidenceKnown &&
       DisputeEvidencePolicy.canAttach(
@@ -37,7 +31,7 @@ class DisputeCase {
         count: evidence.length,
       );
 
-  /// Sınır doldu ama uyuşmazlık hâlâ açık: ekran nedenini söylüyor.
+  /// Sınır doldu ama uyuşmazlık açık: ekran nedenini söylüyor.
   bool get isLimitReached =>
       dispute.isOpen &&
       isEvidenceKnown &&
@@ -62,7 +56,6 @@ class DisputeCase {
   static const Object _keep = Object();
 }
 
-/// Süren yüklemenin ilerlemesi.
 class EvidenceUpload {
   const EvidenceUpload({
     required this.disputeId,
@@ -76,7 +69,7 @@ class EvidenceUpload {
   final int sent;
   final int total;
 
-  /// 0-1 arası oran; gövde boyutu henüz bilinmiyorsa `null` (belirsiz çubuk).
+  /// Gövde boyutu bilinmiyorsa `null` (belirsiz çubuk).
   double? get fraction => uploadFraction(sent, total);
 
   EvidenceUpload withProgress(int sent, int total) => EvidenceUpload(

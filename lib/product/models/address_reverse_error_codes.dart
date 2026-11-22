@@ -1,25 +1,15 @@
-/// `POST /locations/address-candidates/reverse` uç noktasının döndürdüğü
-/// `errorCode` değerleri.
-///
-/// Kodlar mesaj anahtarından türüyor
-/// (`{address.reverse.noResult}` → `ADDRESS_REVERSE_NORESULT`,
-/// `KoalaException.deriveErrorCode`: nokta alt çizgi olur, büyük harfe
-/// çevrilir, deve harfleri **birleşik** kalır). Metne değil koda bakılıyor;
-/// `test/support/backend_error_codes_test.dart` bu dosyadaki her dizgeyi
-/// backend kataloğuyla karşılaştırıyor (is-koala/koala#173).
+/// `POST /locations/address-candidates/reverse` hata kodları. Metne değil koda
+/// bakılıyor; `backend_error_codes_test.dart` bunları backend kataloğuyla
+/// karşılaştırıyor (#173).
 abstract final class AddressReverseErrorCodes {
-  /// `400` — pin İstanbul hizmet alanı kutusunun dışında
-  /// (`AddressSearchManager.reverse` → `ValidationException`). Aynı pinle
-  /// tekrar denemek sonucu değiştirmez; kullanıcının pini taşıması gerekir.
+  /// `400`: pin hizmet alanı dışında; aynı pinle tekrar denemek boşuna.
   static const String outsideServiceArea =
       'ADDRESS_SEARCHCANDIDATE_OUTSIDESERVICEAREA';
 
-  /// `400` — sağlayıcı bu nokta için adres bulamadı. Pin geçerli; adres
-  /// elle tamamlanır.
+  /// `400`: sağlayıcı adres bulamadı; pin geçerli, adres elle tamamlanır.
   static const String noResult = 'ADDRESS_REVERSE_NORESULT';
 
-  /// `502` — Google Geocoding'e ulaşılamadı ya da beklenmedik durum döndü
-  /// (`ExternalServiceException`). Geçici; yenilemek anlamlı.
+  /// `502`: Google Geocoding'e ulaşılamadı; geçici.
   static const String providerUnavailable =
       'ADDRESS_SEARCHPROVIDER_UNAVAILABLE';
 }

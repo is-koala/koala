@@ -4,10 +4,8 @@ import 'package:koala/employee/features/chat/models/conversation.dart';
 import 'package:koala/employee/features/chat/services/chat_service.dart';
 import 'package:koala/product/network/api_exception.dart';
 
-/// Bir kabuğun sohbet rotaları: liste ve tek sohbet.
-///
-/// İki kabuk aynı `ChatPage`/`BChatPage` sözleşmesini kullanıyor (`extra`
-/// olarak [Conversation]); yalnız yol adları farklı.
+/// Bir kabuğun sohbet rotaları; iki kabuk aynı `extra` sözleşmesini
+/// ([Conversation]) kullanıyor.
 class ChatRoutes {
   const ChatRoutes({required this.list, required this.detail});
 
@@ -25,15 +23,9 @@ class ChatRoutes {
   final String detail;
 }
 
-/// `type=MESSAGE` push'una dokunulunca gidilecek yeri bulur.
-///
-/// Bildirim yalnız `conversationId` taşıyor, sohbet ekranı ise `extra`
-/// olarak tam bir [Conversation] istiyor; tek sohbet
-/// `GET /conversations/{id}` ile okunur ve sohbet ekranı açılır. Sohbet
-/// bulunamazsa (`404` — silinmiş ya da artık taraf değilsiniz), oturum
-/// sahibi okunamazsa ya da istek düşerse sohbet **listesi** açılır: dokunan
-/// kullanıcı bir yere varmalı, boş bir ekran ya da hiçbir şey olmaması
-/// bozuk okunur.
+/// `type=MESSAGE` push'una dokunulunca sohbeti açar. Push yalnız
+/// `conversationId` taşıdığı için sohbet `GET /conversations/{id}` ile
+/// okunuyor; okunamazsa sohbet **listesi** açılır, kullanıcı bir yere varmalı.
 class PushConversationOpener {
   PushConversationOpener({
     required this.currentUserId,
@@ -42,14 +34,11 @@ class PushConversationOpener {
     ChatService? chatService,
   }) : _chatService = chatService ?? ChatService();
 
-  /// Oturum sahibinin kimliği; [Conversation.fromJson] karşı tarafı buna
-  /// göre seçiyor. Okunamazsa `null`.
+  /// Okunamazsa `null`.
   final Future<String?> Function() currentUserId;
 
-  /// Oturumun kabuğuna göre rota çifti.
   final ChatRoutes Function() routes;
 
-  /// [conversation] doluysa liste üstüne sohbet ekranı, boşsa yalnız liste.
   final void Function(ChatRoutes routes, Conversation? conversation) navigate;
 
   final ChatService _chatService;
@@ -77,14 +66,8 @@ class PushConversationOpener {
   }
 }
 
-/// Sohbet listesine gider; sohbet varsa üstüne sohbet ekranını iter.
-///
-/// Önce liste: sohbetten geri çıkınca kullanıcı listeye düşmeli, boş bir
-/// yığına değil. `push` bir sonraki kareye bırakılıyor ki `go`'nun rota
-/// çözümü tamamlanmış olsun ve `push` yeni yığını taban alsın; iki kabuk da
-/// aynı `extra` sözleşmesini kullanıyor ([Conversation]).
-/// `PushMessaging` bunu uygulamanın router'ıyla çağırıyor; testler kendi
-/// küçük router'larıyla.
+/// Önce listeye `go`, bir sonraki karede sohbeti `push`: geri çıkınca kullanıcı
+/// listeye düşsün ve `push` yeni yığını taban alsın.
 void openChatOn(
   GoRouter router,
   ChatRoutes routes,

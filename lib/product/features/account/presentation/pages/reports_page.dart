@@ -4,10 +4,7 @@ import 'package:koala/product/features/account/presentation/widgets/account_list
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:koala/product/widgets/report_view.dart';
 
-/// Hesabın açtığı şikayetler.
-///
-/// İki uygulamanın ayarları da bu ekranı açıyor; gövde [ReportView]'den
-/// geliyor, alt pay kabuğa göre ([AccountListClearance]).
+/// Açılan şikayetler; gövde [ReportView], alt pay [AccountListClearance].
 class ReportsPage extends StatelessWidget {
   const ReportsPage({super.key});
 

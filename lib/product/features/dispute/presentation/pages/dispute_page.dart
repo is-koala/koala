@@ -24,13 +24,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 part 'dispute_pagemodel.dart';
 
-/// Bir atamanın uyuşmazlıkları ve kanıtları (is-koala/koala#215).
-///
-/// Çalışan da işveren de aynı ekranı açıyor (`DisputeRoutes`): atamanın
-/// uyuşmazlıkları en yeni önde; her biri durumu, gerekçesi, varsa sonucu ve
-/// **kanıtlarıyla**. Açık uyuşmazlığa kamera / galeri / PDF ile dosya
-/// eklenebiliyor, mevcut dosyalar indirilebiliyor — sonuçlanmış uyuşmazlığın
-/// dosyaları da (karar sonrası okumak meşru).
+/// Atamanın uyuşmazlıkları ve kanıtları (#215), en yeni önde. Açık uyuşmazlığa
+/// dosya eklenir; sonuçlanmışın dosyaları da indirilebilir.
 class DisputePage extends StatefulWidget {
   const DisputePage({
     super.key,
@@ -44,18 +39,13 @@ class DisputePage extends StatefulWidget {
 
   final String assignmentId;
 
-  /// Testler için: verilmezse üretimdeki tekil servisler / gerçek seçiciler.
   final AssignmentService? assignmentService;
   final DisputeEvidenceService? evidenceService;
   final EvidencePicker? picker;
 
-  /// İndirme adresini açan kapı; verilmezse harici tarayıcı (`url_launcher`).
-  /// `BJobDetailPage.openExternalUrl` / `WorkDetailPage.openExternalUrl` ile
-  /// aynı kalıp: testler hangi adresin açıldığını ölçüyor.
+  /// Testler hangi adresin açıldığını ölçüyor; verilmezse `url_launcher`.
   final Future<bool> Function(Uri url)? openExternalUrl;
 
-  /// Yükleme anı; adı olmayan dosya buna göre adlanıyor. Testler sabit saat
-  /// veriyor.
   final DateTime Function()? clock;
 
   @override
@@ -75,9 +65,8 @@ class _DisputePageState extends DisputePagemodel {
     );
   }
 
-  /// Dört durum ayrı çiziliyor: yükleniyor, hata (mesaj + Tekrar Dene), hiç
-  /// uyuşmazlık yok ve liste. Sunucuya ulaşılamadığında "sorun bildirilmemiş"
-  /// demek yanlış olurdu.
+  /// Yükleniyor, hata, hiç uyuşmazlık yok ve liste ayrı: ulaşılamayan sunucuda
+  /// "sorun bildirilmemiş" demek yanlış olur.
   Widget _body(BuildContext context) {
     switch (_provider.load) {
       case DisputeLoad.loading:

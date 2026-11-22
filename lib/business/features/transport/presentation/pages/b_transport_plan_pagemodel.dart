@@ -5,15 +5,12 @@ abstract class BTransportPlanPagemodel extends State<BTransportPlanPage> {
 
   String? get _jobId => widget.args.jobId;
 
-  /// Üzerinde çalışılan taslak. Açılış değeri kopyalanıyor ki geri çıkınca
-  /// çağıranın elindeki taslak değişmemiş olsun.
+  /// Kopya ki geri çıkınca çağıranın taslağı değişmesin.
   late TransportPlanDraft _draft = (widget.args.initial ?? TransportPlanDraft())
       .copy();
 
-  /// İlan modunda sunucudaki plan; silme uyarısı koltukları buradan sayıyor.
   late TransportPlan? _original = widget.args.original;
 
-  /// İlan modunda plan okunurken; taslak modunda hiç açılmıyor.
   bool _isLoading = false;
   String? _loadError;
   bool _isSaving = false;
@@ -29,7 +26,6 @@ abstract class BTransportPlanPagemodel extends State<BTransportPlanPage> {
   @override
   void initState() {
     super.initState();
-    // İlan modunda açılış planı verilmediyse sunucudan okunuyor.
     if (_jobId != null && widget.args.initial == null) {
       unawaited(_loadPlan());
     }
@@ -49,9 +45,7 @@ abstract class BTransportPlanPagemodel extends State<BTransportPlanPage> {
     return '$amount';
   }
 
-  /// `GET /jobs/{id}/transport-plan`; `404 TRANSPORT_PLAN_NOT_FOUND` "henüz
-  /// plan yok" demek ve boş taslak açılıyor. Başka hata şerit çiziyor —
-  /// kaydetmek mevcut planın üstüne yazacağı için kullanıcı bilmeli.
+  /// `404` "henüz plan yok", boş taslak açılır. Başka hata şerit çizer.
   Future<void> _loadPlan() async {
     final jobId = _jobId;
     if (jobId == null) return;
@@ -118,8 +112,7 @@ abstract class BTransportPlanPagemodel extends State<BTransportPlanPage> {
     });
   }
 
-  /// Koltuğu olan servisi silmek onay istiyor ("N çalışanın koltuğu
-  /// düşecek"); sayı sunucunun `seatsTaken` alanından.
+  /// Koltuğu olan servisi silmek onay ister.
   Future<void> _removeShuttle(int index) async {
     final shuttle = _draft.shuttles[index];
     final seats = shuttle.droppedSeatsIfRemoved;
@@ -137,7 +130,6 @@ abstract class BTransportPlanPagemodel extends State<BTransportPlanPage> {
     setState(() => _draft.shuttles.removeAt(index));
   }
 
-  /// Alanları taslağa yazar.
   void _syncFields() {
     final amountText = _allowanceController.text.trim().replaceAll(',', '.');
     _draft
@@ -164,7 +156,6 @@ abstract class BTransportPlanPagemodel extends State<BTransportPlanPage> {
       return;
     }
 
-    // Sunucudaki plana göre düşecek koltuklar: silinen servis/durak.
     final dropped = _draft.droppedSeats(_original);
     if (dropped > 0) {
       final confirmed = await ConfirmDialog.show(
@@ -187,10 +178,8 @@ abstract class BTransportPlanPagemodel extends State<BTransportPlanPage> {
     } on ApiException catch (error) {
       if (!mounted) return;
       AppToast.error(context, _messageFor(error));
-      // Elimizdeki plan bayat: servis/durak kimliği sunucuda artık yok
-      // (404) ya da koltuk tabanı (`seatsTaken`) yükselmiş ve kapasite onun
-      // altında kalmış (409). İkisinde de plan yeniden okunmalı, yoksa her
-      // deneme aynı hataya çarpar.
+      // Plan bayat (kimlik yok ya da kapasite koltukların altında); yeniden
+      // okunmazsa her deneme aynı hataya çarpar.
       final stale =
           TransportErrorCodes.staleReferences.contains(error.errorCode) ||
           error.errorCode == TransportErrorCodes.capacityBelowSeats;
@@ -200,14 +189,12 @@ abstract class BTransportPlanPagemodel extends State<BTransportPlanPage> {
     }
   }
 
-  /// Yön kilidi düzenleyicinin diliyle: sunucunun mesajı doğru ama ekranda
-  /// yön alanı olmadığı için "ne yapmalıyım"ı söylemiyor.
+  /// Sunucunun mesajı doğru ama ekranda yön alanı yok; ne yapılacağını
+  /// söylemiyor.
   static const String directionLockedText =
       'Kayıtlı bir servisin yönü değiştirilemez; diğer yön için yeni servis '
       'ekleyin.';
 
-  /// Alan hatasında (`400`) ilk alanın mesajı; `409`larda sunucunun Türkçe
-  /// mesajı, yön kilidinde düzenleyicinin kendi cümlesi.
   static String _messageFor(ApiException error) {
     if (error.errorCode == TransportErrorCodes.directionLocked) {
       return directionLockedText;

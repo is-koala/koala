@@ -10,8 +10,7 @@ import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/formatters/turkish_money_formatter.dart';
 import 'package:koala/product/formatters/financial_failure_message.dart';
 
-/// Bir atamanın ödeme denemelerini kendi yükleme, hata ve boş durumlarıyla
-/// gösteren salt-okunur bölüm.
+/// Atamanın ödeme denemeleri (salt okunur).
 class BPaymentAttemptsSection extends StatelessWidget {
   const BPaymentAttemptsSection({
     super.key,
@@ -125,10 +124,8 @@ class BPaymentAttemptsSection extends StatelessWidget {
     );
   }
 
-  /// Başlatılma ve — sunucu göndermişse — tamamlanma anı.
-  ///
-  /// `completedAt` başarılı denemede tahsilatın kesinleştiği, başarısızda
-  /// sonucun öğrenildiği an; hâlâ süren denemede boş.
+  /// `completedAt` başarılı denemede tahsilatın, başarısızda sonucun anı; süren
+  /// denemede boş.
   static String _timestamps(BPaymentAttempt attempt) {
     final started = attempt.createdAt.toLocal().asShortDateTime;
     final completed = attempt.completedAt;
@@ -136,8 +133,7 @@ class BPaymentAttemptsSection extends StatelessWidget {
     return '$started · Tamamlandı: ${completed.toLocal().asShortDateTime}';
   }
 
-  /// Denemenin dökümü: çalışan ücreti ve komisyon. Backend dizeleri olduğu
-  /// gibi biçimleniyor, toplam ayrıca hesaplanmıyor — o zaten üst satırda.
+  /// Dizeler olduğu gibi biçimleniyor; toplam üst satırda.
   static String _breakdown(BPaymentAttempt attempt) {
     final payout = TurkishMoneyFormatter.format(
       attempt.workerPayout,

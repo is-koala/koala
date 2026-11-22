@@ -1,34 +1,21 @@
 import 'package:koala/product/network/api_exception.dart';
 
-/// Hata sonrası ekranın yapacağı şey.
-///
-/// Mesaj **ne olduğunu** söylüyor; bu değer ekranın ne yapacağını. Ayrı
-/// tutuluyor çünkü aynı kodun hem bir metni hem bir davranışı var: "uyuşmazlık
-/// sonuçlanmış" hem yazılıyor hem de ekran kendini yeniden okuyor.
+/// Hata sonrası ekranın ne yapacağı; mesaj ne olduğunu, bu davranışı söylüyor.
 enum DisputeEvidenceAction {
-  /// Başka bir dosya seçilmeli; sayfanın durumu doğru.
   pickAnother,
 
-  /// Sunucudaki durum bizim bildiğimizden farklı (sonuçlandı, sınır doldu,
-  /// kayıt yok); uyuşmazlıklar ve kanıtlar yeniden okunmalı.
+  /// Sunucudaki durum değişti (sonuçlandı, sınır doldu); yeniden okunmalı.
   reload,
 
-  /// Geçici sorun; aynı dosyayla tekrar denenebilir.
+  /// Geçici; aynı dosyayla tekrar denenebilir.
   retry,
 }
 
-/// Kanıt uçlarının döndürebildiği `errorCode` değerleri
-/// (`DisputeEvidenceController`, `UploadValidator`; is-koala/koala#215).
-///
-/// Kodlar sunucuda mesaj anahtarından türüyor
-/// (`{dispute.evidence.dispute.closed}` → `DISPUTE_EVIDENCE_DISPUTE_CLOSED`);
-/// `test/support/backend_error_codes_test.dart` bu dosyadaki her büyük harfli
-/// dizgeyi `messages_tr.properties` ile karşılaştırıyor. Yönlendirme **koda**
-/// bakıyor, mesaj metnine değil: `409` hem "sonuçlandı" hem "sınır doldu"
-/// anlamına gelebiliyor ve ikisinin cevabı farklı.
+/// Kanıt uçlarının hata kodları (#215). Yönlendirme koda bakıyor: `409` hem
+/// "sonuçlandı" hem "sınır doldu" demek olabilir. `backend_error_codes_test`
+/// kataloğa karşı sabitliyor.
 enum DisputeEvidenceError {
-  /// `409` — uyuşmazlık sonuçlanmış; yeni kanıt eklenemez ama mevcutlar
-  /// okunur.
+  /// `409`: sonuçlanmış; yeni kanıt eklenemez, mevcutlar okunur.
   disputeClosed(
     code: 'DISPUTE_EVIDENCE_DISPUTE_CLOSED',
     message:
@@ -37,7 +24,7 @@ enum DisputeEvidenceError {
     action: DisputeEvidenceAction.reload,
   ),
 
-  /// `409` — uyuşmazlık başına en çok beş dosya; iki tarafın toplamı.
+  /// `409`: uyuşmazlık başına en çok beş dosya, iki tarafın toplamı.
   limitReached(
     code: 'DISPUTE_EVIDENCE_LIMIT_REACHED',
     message:
@@ -46,22 +33,19 @@ enum DisputeEvidenceError {
     action: DisputeEvidenceAction.reload,
   ),
 
-  /// `400` — dosya boş.
   empty(
     code: 'DISPUTE_EVIDENCE_EMPTY',
     message: 'Dosya boş. İçeriği olan bir dosya seçip yeniden deneyin.',
     action: DisputeEvidenceAction.pickAnother,
   ),
 
-  /// `400` — dosya 10 MB sınırını aşıyor.
   tooLarge(
     code: 'DISPUTE_EVIDENCE_TOO_LARGE',
     message: 'Dosya 10 MB sınırını aşıyor. Daha küçük bir dosya seçin.',
     action: DisputeEvidenceAction.pickAnother,
   ),
 
-  /// `400` — uzantı listede yok ya da içerik uzantıyla uyuşmuyor / açılamıyor
-  /// (HEIC dahil; WEBP de — koala-backend#348).
+  /// `400`: uzantı ya da içerik kabul edilmiyor (HEIC, WEBP dahil).
   unsupportedType(
     code: 'STORAGE_UNSUPPORTED_TYPE',
     message:
@@ -70,7 +54,7 @@ enum DisputeEvidenceError {
     action: DisputeEvidenceAction.pickAnother,
   ),
 
-  /// `400` — görselin çözünürlüğü 50 megapiksel tavanını aşıyor.
+  /// `400`: 50 megapiksel tavanı aşıldı.
   resolutionTooHigh(
     code: 'STORAGE_IMAGE_TOO_LARGE',
     message:
@@ -79,7 +63,6 @@ enum DisputeEvidenceError {
     action: DisputeEvidenceAction.pickAnother,
   ),
 
-  /// `413` — gövde sunucunun `MAX_REQUEST_SIZE` sınırını aştı.
   requestTooLarge(
     code: 'REQUEST_BODY_TOO_LARGE',
     message:
@@ -88,8 +71,7 @@ enum DisputeEvidenceError {
     action: DisputeEvidenceAction.pickAnother,
   ),
 
-  /// `404` — uyuşmazlık yok ya da kullanıcı atamanın tarafı değil (sunucu
-  /// ikisini ayırt ettirmiyor).
+  /// `404`: uyuşmazlık yok ya da taraf değilsin; sunucu ikisini ayırmıyor.
   disputeNotFound(
     code: 'DISPUTE_NOT_FOUND',
     message:
@@ -97,15 +79,14 @@ enum DisputeEvidenceError {
     action: DisputeEvidenceAction.reload,
   ),
 
-  /// `404` — kanıt yok (liste bu sırada değişmiş).
   evidenceNotFound(
     code: 'DISPUTE_EVIDENCE_NOT_FOUND',
     message: 'Kanıt dosyası bulunamadı; liste değişmiş olabilir, yeniliyoruz.',
     action: DisputeEvidenceAction.reload,
   ),
 
-  /// `500` — depo yazması ya da satır yazması başarısız oldu; sunucu yarım
-  /// kalan nesneyi siliyor, tekrar denemek güvenli.
+  /// `500`: yazma başarısız; sunucu yarım nesneyi siliyor, tekrar denemek
+  /// güvenli.
   uploadFailed(
     code: 'DISPUTE_EVIDENCE_UPLOAD_FAILED',
     message: 'Kanıt dosyası yüklenemedi. Biraz sonra yeniden deneyin.',
@@ -118,15 +99,12 @@ enum DisputeEvidenceError {
     required this.action,
   });
 
-  /// Sunucunun `errorCode`'u.
   final String code;
 
-  /// Kullanıcıya gösterilen cümle: ne oldu ve ne yapılacak.
   final String message;
 
   final DisputeEvidenceAction action;
 
-  /// `errorCode`'dan hatayı bulur; tanınmayan kod `null`.
   static DisputeEvidenceError? fromCode(String? code) {
     if (code == null) return null;
     for (final error in values) {
@@ -136,18 +114,14 @@ enum DisputeEvidenceError {
   }
 }
 
-/// Bir yükleme ya da indirme hatasının kullanıcıya söylenişi.
 class DisputeEvidenceFailure {
   const DisputeEvidenceFailure({required this.message, required this.action});
 
   final String message;
   final DisputeEvidenceAction action;
 
-  /// [error]'ı kodla çözer; kod tanınmıyorsa tür ve durum koduna bakar, o da
-  /// yetmezse sunucunun kendi mesajını olduğu gibi gösterir.
-  ///
-  /// `429` ve `413` zarfsız da gelebiliyor (vekil sunucu): koda değil
-  /// duruma bakıyor.
+  /// Önce kod, sonra tür ve durum, en son sunucunun mesajı. `429` ve `413`
+  /// zarfsız gelebildiği için duruma bakılıyor.
   factory DisputeEvidenceFailure.from(ApiException error) {
     final known = DisputeEvidenceError.fromCode(error.errorCode);
     if (known != null) {

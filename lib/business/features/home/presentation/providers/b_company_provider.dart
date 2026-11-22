@@ -9,15 +9,9 @@ import 'package:koala/product/constants/upload_limits.dart';
 import 'package:koala/product/models/confirmed_address.dart';
 import 'package:koala/product/network/api_exception.dart';
 
-/// İşverenin profil verisi: şirketi ve özet sayıları.
-///
-/// Sayfada değil burada duruyor çünkü aynı kaydı üç ekran okuyor — profil,
-/// ayarlar ve firma bilgileri. Firma bilgileri kaydedip geri döndüğünde
-/// profil başlığı kendiliğinden tazeleniyor.
-///
-/// Kimin yükleneceğini provider bilmiyor: kullanıcı kimliği ve şirket
-/// kimliği `/users/me`'den geliyor ve çağıran taraf veriyor. İki provider'ı
-/// birbirine bağlamamak için bilerek böyle.
+/// İşverenin şirketi ve özet sayıları; profil, ayarlar ve firma bilgileri aynı
+/// kaydı okuyor. Kimlikleri çağıran veriyor ki provider'lar birbirine
+/// bağlanmasın.
 class BCompanyProvider extends ChangeNotifier {
   BCompanyProvider({BCompanyService? service, CompanyService? companyService})
     : _service = service ?? BCompanyService(),
@@ -25,7 +19,6 @@ class BCompanyProvider extends ChangeNotifier {
 
   final BCompanyService _service;
 
-  /// Şirketi okumak iki uygulamada da aynı uç; okuma oradan geliyor.
   final CompanyService _companyService;
 
   Company? _company;
@@ -35,35 +28,28 @@ class BCompanyProvider extends ChangeNotifier {
   String? _errorMessage;
   String? _statsErrorMessage;
 
-  /// En son hangi kullanıcı/şirket çifti için yüklendiği. Oturum değişince
-  /// eldeki veri geçersiz olsun diye.
+  /// Oturum değişince eldeki veri geçersiz olsun.
   String? _loadedKey;
 
-  /// Çıkıştan sonra tamamlanan isteklerin yeni oturuma yazmasını engeller.
+  /// Çıkıştan sonra dönen istekler yeni oturuma yazmasın.
   int _generation = 0;
 
-  /// Şirket. İşveren bireyselse (şirket üyeliği yoksa) `null` — bu bir hata
-  /// değil, profilin kişi olarak çizileceği anlamına geliyor.
+  /// Bireysel işverende `null`; hata değil.
   Company? get company => _company;
 
   EmployerStats? get stats => _stats;
 
   bool get isLoading => _isLoading;
 
-  /// Şirket çekilemediğinde dolan mesaj; profil bu durumda çizilemiyor.
   String? get errorMessage => _errorMessage;
 
-  /// İstatistikler çekilemediğinde dolan mesaj. Ayrı tutuluyor: sayıların
-  /// gelmemesi profilin geri kalanını gizlememeli.
+  /// Ayrı tutuluyor: sayıların gelmemesi profili gizlememeli.
   String? get statsErrorMessage => _statsErrorMessage;
 
   bool get hasLoaded => _loadedKey != null;
 
-  /// Şirketi ve istatistikleri çeker.
-  ///
-  /// [companyId] `null` ise yalnızca istatistikler isteniyor. [isApproved]
-  /// `/users/me`'deki üyelik kaydından geliyor: `CompanyDto` onay bilgisini
-  /// döndürmüyor.
+  /// [companyId] `null` ise yalnız istatistikler. [isApproved] `/users/me`'den,
+  /// çünkü `CompanyDto` onay bilgisini döndürmüyor.
   Future<void> load({
     required String userId,
     String? companyId,
@@ -80,8 +66,7 @@ class BCompanyProvider extends ChangeNotifier {
     _statsErrorMessage = null;
     notifyListeners();
 
-    // İki istek paralel: biri diğerini beklemiyor ve biri düşerse öteki
-    // yine de ekrana geliyor.
+    // Paralel: biri düşerse öteki yine gelir.
     await Future.wait([
       _loadCompany(companyId, isApproved: isApproved, generation: generation),
       _loadStats(userId, generation: generation),
@@ -128,10 +113,6 @@ class BCompanyProvider extends ChangeNotifier {
     }
   }
 
-  /// [load]'u `/users/me` yanıtındaki kimliklerle çağırır.
-  ///
-  /// Şirket kimliği ve onay durumu orada duruyor; her ekranın bunu tek tek
-  /// çıkarması yerine tek yerde.
   Future<void> loadFor(CurrentUser user, {bool force = false}) {
     final membership = user.primaryCompany;
 
@@ -143,11 +124,7 @@ class BCompanyProvider extends ChangeNotifier {
     );
   }
 
-  /// Firma bilgilerini günceller.
-  ///
-  /// Sunucu beş metin alanını kabul ediyor; vergi numarası ve logo buradan
-  /// değiştirilemiyor, adres [updateAddress] ile ayrı gidiyor. Başarılıysa
-  /// eldeki kayıt yanıttakiyle değişiyor ve `true` dönüyor.
+  /// Firma bilgilerini günceller (adres [updateAddress] ile ayrı).
   Future<bool> updateCompany({
     String? name,
     String? email,
@@ -170,14 +147,8 @@ class BCompanyProvider extends ChangeNotifier {
     );
   }
 
-  /// Şirket adresini değiştirir ve eldeki kaydı yanıttakiyle değiştirir.
-  ///
-  /// Diğer güncellemeler gibi `bool` dönmüyor, `ApiException`'ı **fırlatıyor**:
-  /// harita ekranı `onSave` fırlatınca açık kalıp mesajı gösteriyor ve
-  /// kullanıcı pini düzeltip yeniden deniyor — *Adresim* ile aynı sözleşme.
-  /// Eski sunucunun alan hatası da bu yoldan kullanıcıya ulaşıyor.
-  ///
-  /// Yalnızca şirket yüklüyken çağrılır; şirketsiz çağrı programlama hatası.
+  /// Şirket adresini değiştirir. `bool` değil `ApiException` fırlatır: harita
+  /// ekranı açık kalıp mesajı gösterir ve kullanıcı yeniden dener.
   Future<void> updateAddress(ConfirmedAddress address) async {
     final current = _company;
     if (current == null) {
@@ -198,10 +169,6 @@ class BCompanyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Şirketin logosunu değiştirir.
-  ///
-  /// [filePath] cihazdaki görselin yolu. Başarılıysa eldeki kayıt yanıttakiyle
-  /// değişiyor ve profil başlığı kendiliğinden tazeleniyor.
   Future<bool> updateLogo(String filePath) {
     final current = _company;
     if (current == null) return Future.value(false);
@@ -209,7 +176,6 @@ class BCompanyProvider extends ChangeNotifier {
     return _replaceCompany(() => _service.updateLogo(current.id, filePath));
   }
 
-  /// Şirketin logosunu kaldırır.
   Future<bool> removeLogo() {
     final current = _company;
     if (current == null) return Future.value(false);
@@ -219,61 +185,42 @@ class BCompanyProvider extends ChangeNotifier {
 
   // ----------------------------------------------------------------- Galeri
 
-  /// Şirketin galerisi.
-  ///
-  /// Ayrı bir alanda değil şirketin içinde duruyor: `GET /companies/{id}`
-  /// görselleri zaten gövdesinde döndürüyor ve iki kopya tutmak şirket
-  /// detayındaki galeri ile buradakinin ayrışmasına açık kapı bırakırdı.
+  /// Galeri şirketin içinde duruyor; iki kopya tutmak ayrışmaya kapı açardı.
   List<GalleryImage> get galleryImages => _company?.images ?? const [];
 
-  /// Galeriye görsel eklenebilir mi. Sunucu sınırı aştığında `409` döndürüyor;
-  /// düğmenin kapalı olması kullanıcıyı o hatayı almadan durduruyor.
+  /// Sınırda düğme kapanır, kullanıcı `409` almasın.
   bool get canAddGalleryImage =>
       _company != null && galleryImages.length < UploadLimits.maxGalleryImages;
 
-  /// Galeri işlemi sürerken; düğmeler kapansın ve istek iki kez atılmasın.
   bool get isGalleryBusy => _isGalleryBusy;
 
-  /// Galeri isteği düştüğünde dolan mesaj. Şirketin kendi hatasından ayrı:
-  /// yükleme başarısız diye şirket bilgileri ekranı boşalmamalı.
+  /// Şirketin hatasından ayrı: yükleme düştü diye ekran boşalmamalı.
   String? get galleryErrorMessage => _galleryErrorMessage;
 
   bool _isGalleryBusy = false;
   String? _galleryErrorMessage;
 
-  /// Galeriye bir görsel ekler.
-  ///
-  /// [filePath] cihazdaki görselin yolu. Uzantı ve boyut denetimi çağıran
-  /// ekranda; burada yalnız istek var.
+  /// Uzantı ve boyut denetimi çağıranda.
   Future<bool> addGalleryImage(String filePath) {
     return _replaceGallery(
       (companyId) => _service.addCompanyImage(companyId, filePath),
     );
   }
 
-  /// Sıralamayı ve kapak seçimini tek istekte kaydeder.
-  ///
-  /// [images] galerinin **tamamı** olmalı: sunucu listede olmayan görseli
-  /// galeriden düşürüyor.
+  /// [images] galerinin **tamamı** olmalı.
   Future<bool> replaceGallery(List<GalleryImage> images) {
     return _replaceGallery(
       (companyId) => _service.replaceCompanyGallery(companyId, images),
     );
   }
 
-  /// Görseli galeriden çıkarır. Kapak silinirse sunucu kalanların ilkini
-  /// kapak yapıyor; ekran dönen listeyi olduğu gibi gösteriyor.
   Future<bool> removeGalleryImage(String imageId) {
     return _replaceGallery(
       (companyId) => _service.removeCompanyImage(companyId, imageId),
     );
   }
 
-  /// Galerinin yeni hâlini döndüren üç isteğin ortak sarmalayıcısı.
-  ///
-  /// Yanıt `Company` değil `List<GalleryImageDto>` olduğu için
-  /// [_replaceCompany] kullanılamıyor: eldeki şirketin yalnızca galerisi
-  /// değişiyor.
+  /// Yanıt `List<GalleryImageDto>` olduğu için yalnız galeri değişiyor.
   Future<bool> _replaceGallery(
     Future<List<GalleryImage>> Function(String companyId) call,
   ) async {
@@ -305,9 +252,7 @@ class BCompanyProvider extends ChangeNotifier {
     }
   }
 
-  /// Şirketin yeni hâlini döndüren isteklerin ortak sarmalayıcısı.
-  ///
-  /// Onay bilgisi yanıtlarda gelmeyebiliyor, eldeki değer korunuyor.
+  /// Onay bilgisi yanıtlarda gelmeyebiliyor; eldeki korunur.
   Future<bool> _replaceCompany(Future<Company> Function() call) async {
     final current = _company;
     if (current == null) return false;
@@ -334,7 +279,6 @@ class BCompanyProvider extends ChangeNotifier {
     }
   }
 
-  /// Çıkışta önceki işverenin şirketi kalmasın.
   void clear() {
     _generation++;
     _company = null;

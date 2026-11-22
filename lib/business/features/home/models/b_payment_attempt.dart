@@ -1,7 +1,6 @@
 import 'package:koala/business/features/home/models/b_pricing_breakdown.dart';
 import 'package:koala/product/network/json_field.dart';
 
-/// Tek bir ödeme denemesinin backend durumu.
 enum BPaymentAttemptStatus {
   initiated('INITIATED', 'Başlatıldı'),
   inReview('IN_REVIEW', 'İnceleniyor'),
@@ -27,7 +26,6 @@ enum BPaymentAttemptStatus {
   }
 }
 
-/// İşverenin atama için başlattığı tek ödeme girişimi.
 class BPaymentAttempt {
   const BPaymentAttempt({
     required this.id,
@@ -47,7 +45,7 @@ class BPaymentAttempt {
   final BPaymentAttemptStatus status;
   final String currency;
 
-  /// Backend ondalıkları; hesap yapılmadan dize olarak korunur.
+  /// Ondalıklar hesap yapılmadan dize olarak korunur.
   final String workerPayout;
   final String commissionAmount;
   final String commissionRate;

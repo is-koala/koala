@@ -1,12 +1,9 @@
 import 'package:material_ui/material_ui.dart';
 
-/// `EdgeInsets` sabitleri.
-///
-/// Padding değerleri widget'ın içine yazılmaz; buradan okunur. İhtiyacın olan
-/// boşluk yoksa anlamlı bir isimle ekle ve **neden** o değer olduğunu yaz.
+/// `EdgeInsets` sabitleri. Gereken değer yoksa anlamlı bir adla ekle ve
+/// **neden** o değer olduğunu yaz.
 final class AppPadding {
-  /// Sayfaların kenar boşluğu. Uygulamadaki bütün ana içerik bu değerde
-  /// hizalanır; değiştirilirse her sayfa birlikte kayar.
+  /// Sayfa kenar boşluğu; bütün ana içerik bununla hizalı.
   static const double primary = 16.0;
 
   static const zero = EdgeInsets.zero;
@@ -15,7 +12,6 @@ final class AppPadding {
   static const primaryVertical = EdgeInsets.symmetric(vertical: primary);
   static const primaryHorizontal = EdgeInsets.symmetric(horizontal: primary);
 
-  /// Sayfanın yalnızca bir kenarına ana boşluk gerektiğinde.
   static const primaryTop = EdgeInsets.only(top: primary);
   static const primaryBottom = EdgeInsets.only(bottom: primary);
   static const primaryLeft = EdgeInsets.only(left: primary);
@@ -23,102 +19,79 @@ final class AppPadding {
 
   // -------------------------------------------------------------- Kart / tile
 
-  /// Kart ve bilgi kutularının iç boşluğu.
   static const card = EdgeInsets.all(12);
 
-  /// Liste satırının iç boşluğu. Satır yüksekliğini metin değil soldaki
-  /// görsel/avatar belirlediği için dikeyde dar.
+  /// Satır yüksekliğini görsel belirlediği için dikeyde dar.
   static const tile = EdgeInsets.symmetric(horizontal: 16, vertical: 8);
 
-  /// Görseli olmayan, yüksekliğini metnin belirlediği satır ([tile] kadar
-  /// daraltılırsa sıkışık görünüyor).
+  /// Görselsiz, yüksekliği metne bağlı satır; [tile] kadar dar sıkışık durur.
   static const infoTile = EdgeInsets.symmetric(horizontal: 16, vertical: 12);
 
-  /// Kendi çerçevesi olan, tek başına duran satır (menü tile'ı). Çerçeve
-  /// metne yapışmasın diye [infoTile]'dan bir tık ferah.
+  /// Kendi çerçevesi olan menü satırı; çerçeve metne yapışmasın.
   static const tileTall = EdgeInsets.symmetric(horizontal: 16, vertical: 14);
 
-  /// Textfield'ın iç boşluğu. Yatayda ana boşlukla, dikeyde alanın
-  /// [AppSizes.fieldHeight] yüksekliğini dolduracak şekilde hizalı.
+  /// Yatayda sayfa boşluğuyla, dikeyde [AppSizes.fieldHeight]'ı dolduracak
+  /// şekilde.
   static const field = EdgeInsets.symmetric(horizontal: 16.0, vertical: 18.0);
 
-  /// Rozet ve etiketlerin (chip) iç boşluğu.
   static const chip = EdgeInsets.symmetric(horizontal: 12, vertical: 6);
 
-  /// Küçük durum rozeti; [chip]'ten dar, tek kelimelik metin taşıyor.
   static const badge = EdgeInsets.symmetric(horizontal: 8, vertical: 4);
 
   // ----------------------------------------------------------------- Toast
 
-  /// Toast'un iç boşluğu. Yatayda geniş: kapsülün kavisi içeriği kenardan
-  /// ittiği için soldaki ikon dar boşlukta yaya değiyor.
+  /// Kapsülün kavisi içeriği ittiği için yatayda geniş.
   static const toast = EdgeInsets.symmetric(horizontal: 20, vertical: 14);
 
-  /// Toast'un ekran kenarlarına payı; sayfa boşluğuyla ([primary]) hizalı.
   static const toastMargin = EdgeInsets.all(primary);
 
   // ----------------------------------------------------------------- Buton
 
-  /// Ana boşluktan dar yatay boşluk; buton çubuğunun içindeki butonun
-  /// çubuğun kendi boşluğuna ikinci kez eklenmemesi için.
+  /// Buton çubuğundaki butona çubuğun boşluğu ikinci kez eklenmesin.
   static const horizontalSmall = EdgeInsets.symmetric(horizontal: 12);
 
-  /// Ana butonların iç boşluğu.
   static const button = EdgeInsets.all(12);
 
-  /// İkon butonların iç boşluğu; dokunma alanını 48px'e tamamlıyor.
+  /// Dokunma alanını 48px'e tamamlıyor.
   static const iconButton = EdgeInsets.all(8);
 
   // ---------------------------------------------------------------- Navbar
 
-  /// Employee tarafındaki yüzen navbar'ın alt kenar boşluğu.
-  /// Genişlik sabit ([AppSizes.navBarWidth]) tutulduğu için yatay boşluk
-  /// yerine sayfa ortalanır.
+  /// Navbar genişliği sabit olduğu için yalnız alt boşluk; yatayda ortalanıyor.
   static const EdgeInsets bottomNavBarPadding = EdgeInsets.only(bottom: 30);
 
-  /// Yüzen navbar'ın kendi iç boşluğu.
-  /// Uçlardaki dairesel butonların kapsülün kavis yaylarıyla tam
-  /// eşmerkezli (concentric) oturması için dikey ve yatay boşluk eşittir.
+  /// Uçlardaki dairesel butonlar kapsülün kavisiyle eşmerkezli otursun diye her
+  /// yön eşit.
   static const navBarContent = EdgeInsets.all(8);
 
-  /// Sayfanın altına sabitlenen buton çubuğunun boşluğu. Alt güvenli alan
-  /// payını çubuk çalışma zamanında ekliyor, o yüzden burada alt değer
-  /// güvenli alanın *üstüne* binen paydan ibaret.
+  /// Alt güvenli alan payı çalışma zamanında ekleniyor.
   static const bottomBar = EdgeInsets.fromLTRB(16, 12, 16, 12);
 
-  /// Business navbar'ının yatay boşluğu. Alt güvenli alan payını `BShellPage`
-  /// çalışma zamanında ekliyor, o yüzden burada dikey değer yok.
+  /// Alt güvenli alan payını `BShellPage` ekliyor.
   static const bNavBarPadding = EdgeInsets.symmetric(horizontal: 8);
 
   // --------------------------------------------------------------- Sayfalar
 
-  /// Auth sayfalarının içeriği. Üstte boşluk yok: başlık appbar'ın hemen
-  /// altından başlıyor.
+  /// Başlık appbar'ın hemen altından başladığı için üstte boşluk yok.
   static const authContent = EdgeInsets.only(left: 16, right: 16, bottom: 16);
 
-  /// Kayıt tipi seçim sayfasının içeriği; iki büyük kart taşıdığı için
-  /// [authContent]'ten geniş.
+  /// İki büyük kart taşıdığı için [authContent]'ten geniş.
   static const authContentWide = EdgeInsets.only(
     left: 28,
     right: 28,
     bottom: 16,
   );
 
-  /// Auth sayfalarının en altındaki "hesabın var mı?" satırı.
   static const authFooter = EdgeInsets.only(bottom: 40, left: 12, right: 12);
 
-  /// Kayıt tipi seçim kartının iç boşluğu; içindeki görsel kartın kenarına
-  /// yapışmasın diye [card]'dan geniş.
+  /// İçindeki görsel kenara yapışmasın diye [card]'dan geniş.
   static const selectionCard = EdgeInsets.all(14);
 
-  /// Bottom sheet'in iç boşluğu. Alt güvenli alan payı çalışma zamanında
-  /// ayrıca ekleniyor.
+  /// Alt güvenli alan payı ayrıca ekleniyor.
   static const sheet = EdgeInsets.all(20);
 
-  /// Bölüm başlığının boşluğu; üstündeki içerikten ayrılsın diye tepesi geniş.
   static const sectionHeader = EdgeInsets.only(top: 24, bottom: 8);
 
-  /// Sohbet balonunun iç boşluğu.
   static const messageBubble = EdgeInsets.symmetric(
     horizontal: 14,
     vertical: 10,

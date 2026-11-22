@@ -7,15 +7,9 @@ import 'package:koala/product/widgets/my_button.dart';
 
 /// Sayfanın altına sabitlenen tek butonluk çubuk.
 ///
-/// Kendi zemini var: içeriğin altından kaydığında butonun okunur kalmasını
-/// sağlıyor. Alt güvenli alan payı çalışma zamanında ekleniyor.
-///
-/// Klavye açılınca çubuk klavyenin üstüne çıkıyor: `Scaffold`
-/// `bottomNavigationBar`'ı ekranın en altına sabitler, klavyeyi hesaba
-/// katmaz; bu yüzden alt pay klavye kadar ([KeyboardInsets], iOS "Bitti"
-/// şeridi dâhil) büyütülüyor ve gövde çubuğun üstünde bitiyor. Klavye
-/// açıkken sistem güvenli alan payı zaten sıfır bildiriliyor, iki pay üst
-/// üste binmiyor.
+/// `Scaffold` alt çubuğu klavyeyi hesaba katmadığı için alt pay klavye kadar
+/// ([KeyboardInsets], iOS "Bitti" şeridi dâhil) büyütülüyor. Klavye açıkken
+/// sistem güvenli alanı sıfır geliyor, paylar üst üste binmiyor.
 class ButtonNavbar extends StatelessWidget {
   const ButtonNavbar({
     super.key,

@@ -1,17 +1,12 @@
-/// Ülke / il / ilçe kayıtlarının ortak modeli.
-///
-/// Backend üç ayrı DTO döndürüyor (`CountryDto`, `CityDto`, `DistrictDto`)
-/// ama alanları aynı; tek fark ülkedeki [code]. Üç sınıf yerine tek model
-/// tutuluyor çünkü seçiciler de aynı listeyi çiziyor.
+/// Ülke / il / ilçe kaydı; tek fark ülkedeki [code].
 class ReferenceLocation {
   const ReferenceLocation({required this.id, required this.name, this.code});
 
   final String id;
 
-  /// Görünen ad: `Türkiye`, `Ankara`, `Çankaya`.
   final String name;
 
-  /// ISO ülke kodu (`TR`). İl ve ilçede `null`.
+  /// ISO ülke kodu; il ve ilçede `null`.
   final String? code;
 
   factory ReferenceLocation.fromJson(Map<String, dynamic> json) {
@@ -22,8 +17,7 @@ class ReferenceLocation {
     );
   }
 
-  /// Eşitlik [id] üzerinden: açılır listedeki seçili değer farklı bir
-  /// istekten gelmiş olsa da karşılaştırma tutmalı.
+  /// Eşitlik [id] üzerinden: seçili değer başka bir istekten gelse de tutsun.
   @override
   bool operator ==(Object other) =>
       other is ReferenceLocation && other.id == id;

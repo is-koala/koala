@@ -5,14 +5,9 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// Listesi boş olan sekmelerin ortak boş durumu.
-///
-/// Ölçü ve hizası tek yerde: sekmeler arasında geçerken içerik zıplamasın diye
-/// ikon, başlık ve açıklama hep aynı yükseklikte duruyor. Ekranlar bunu kendi
-/// başlarına kurduğunda hizalar tutmuyordu.
-///
-/// Kendisi kaydırılabilir ([ListView]); böylece sarmalayan
-/// `RefreshIndicator` boş ekranda da çalışıyor.
+/// Boş listelerin ortak görünümü; ölçü tek yerde ki sekme değişince içerik
+/// zıplamasın. Kendisi kaydırılabilir, böylece `RefreshIndicator` boşken de
+/// çalışıyor.
 class EmptyState extends StatelessWidget {
   const EmptyState({
     super.key,
@@ -26,15 +21,11 @@ class EmptyState extends StatelessWidget {
   final String title;
   final String description;
 
-  /// Açıklamanın altına eklenen isteğe bağlı buton (ör. "Aramayı Temizle").
   final Widget? action;
 
-  /// İkonun kenar uzunluğu. Ekranın tek görseli olduğu için normal
-  /// ikonlardan belirgin biçimde büyük.
   static const double _iconSize = 80;
 
-  /// İçeriği dikeyde tam ortalamak yerine biraz yukarıda tutan pay; tam
-  /// ortada navbar'a fazla yaklaşıyor.
+  /// Tam ortada navbar'a fazla yaklaşıyor.
   static const double _topRatio = 0.22;
 
   @override

@@ -11,13 +11,9 @@ import 'package:koala/product/features/transport/models/boarding.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
-/// Biniş QR'ının çizimi (is-koala/koala#217).
-///
-/// İki temada da beyaz zemin üstüne siyah ([AppColors.qrBackground] /
-/// [AppColors.qrForeground]); koyu temada ters renkli QR'ı birçok okuyucu
-/// tanımıyor. QR'a sunucunun verdiği `uri` aynen basılır; istemci içerik
-/// üretmez. Boyut ekrana göre büyür ama [maxSide]'ı geçmez — karşı telefon
-/// 30-40 cm'den okuyabilsin diye büyük, sayfa kaydırılmasın diye sınırlı.
+/// Biniş QR'ının çizimi (#217): iki temada beyaz üstüne siyah, sunucunun
+/// `uri`'si aynen basılır. [maxSide]'a kadar büyür: karşı telefon 30-40 cm'den
+/// okusun, sayfa kaymasın.
 class BoardingQrView extends StatelessWidget {
   const BoardingQrView({
     super.key,
@@ -28,15 +24,12 @@ class BoardingQrView extends StatelessWidget {
 
   final BoardingQr qr;
 
-  /// Sunucunun kabul süresi doldu: QR soluklaşır ve üstüne açıklama yazılır,
-  /// geçersiz bir kodun okutulup "süresi dolmuş" hatası alınmasın.
+  /// Süresi doldu: soluklaşır ve açıklama yazılır ki geçersiz kod okutulmasın.
   final bool expired;
   final double maxSide;
 
-  /// Varsayılan en büyük kenar.
   static const double defaultMaxSide = 320;
 
-  /// Süresi dolmuş QR'ın opaklığı.
   static const double _expiredOpacity = 0.12;
 
   @override

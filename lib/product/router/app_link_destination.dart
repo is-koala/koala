@@ -1,11 +1,8 @@
-/// Özel şema ve doğrulanmış HTTPS linklerini go_router rotalarına çeviren sınır.
 class AppLinkDestination {
   const AppLinkDestination._();
 
-  /// Android manifest'in ve web `appLinkPaths` listesinin sahiplendiği HTTPS
-  /// yol önekleri. `test/product/router/platform_link_configuration_test.dart`
-  /// flavor manifestlerini bu listeyle karşılaştırır; buraya eklenen yol
-  /// manifest'e de girmeden bağlantı uygulamaya ulaşmaz.
+  /// Manifest ve web `appLinkPaths`'in sahiplendiği HTTPS önekleri;
+  /// `platform_link_configuration_test.dart` manifestlerle karşılaştırıyor.
   static const List<String> httpsPathPrefixes = [
     '/hesap-dogrula',
     '/sifre-belirle',
@@ -13,15 +10,11 @@ class AppLinkDestination {
     '/eposta-onayla',
     '/payment/result',
     '/davet',
-    // Paylaşılan ilan: `/is-ilanlari/<jobId>`. Sondaki `/` liste sayfasını
-    // (`/is-ilanlari`) dışarıda bırakıyor; liste web'de kalıyor.
+    // Sondaki `/` liste sayfasını dışarıda bırakıyor; liste web'de kalıyor.
     '/is-ilanlari/',
   ];
 
-  /// [uri]'yi uygulama rotasına çevirir; sözleşmeye uymayan bağlantıda `null`.
-  ///
-  /// [appScheme] çalışan flavor'ın özel şeması, [webHosts] aynı flavor'ın
-  /// `WEB_HOSTS` yapılandırmasından gelen doğrulanmış HTTPS hostlarıdır.
+  /// [uri]'yi rotaya çevirir; sözleşmeye uymayan bağlantıda `null`.
   static String? routeFor(
     Uri uri, {
     required String appScheme,
@@ -71,17 +64,14 @@ class AppLinkDestination {
     }
 
     if (destination == 'job') {
-      // HTTPS'te kimlik web'in `/is-ilanlari/<id>` yolundan, özel şemada
-      // (`koala://job?id=`) sorgu alanından okunur.
       final id = link.pathId ?? _parameter(uri, 'id');
       if (id == null) return null;
       return Uri(path: '/shared-job', queryParameters: {'id': id}).toString();
     }
 
     if (destination == 'board') {
-      // Biniş QR'ı (is-koala/koala#217): `{şema}://board?t=<token>`. Token
-      // olduğu gibi taşınır; türünü ve kimliğini sayfa okur, imzayı sunucu
-      // doğrular. Yalnız özel şemada — HTTPS karşılığı yok.
+      // Biniş QR'ı (#217): `{şema}://board?t=<token>`; token olduğu gibi
+      // taşınır, imzayı sunucu doğrular. HTTPS karşılığı yok.
       final token = _parameter(uri, 't');
       if (token == null || link.pathId != null) return null;
       return Uri(
@@ -91,8 +81,7 @@ class AppLinkDestination {
     }
 
     if (destination == 'company-invitation') {
-      // HTTPS'te kimlik web'in `/davet/<id>` yolundan okunur ve sorgu alanı
-      // yok sayılır; özel şemada yol boş olduğu için `id` sorgu alanındadır.
+      // HTTPS'te kimlik yoldan, özel şemada `id` sorgusundan.
       final id = link.pathId ?? _parameter(uri, 'id');
       if (id == null) return null;
       return Uri(
@@ -166,8 +155,6 @@ class AppLinkDestination {
   }
 }
 
-/// Doğrulanmış bağlantının kanonik hedefi ve yoldan okunan kimlik (davet ya
-/// da ilan).
 class _ResolvedLink {
   const _ResolvedLink(this.destination, {this.pathId});
 

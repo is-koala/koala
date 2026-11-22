@@ -11,15 +11,9 @@ import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/rating_summary_badge.dart';
 import 'package:koala/product/widgets/review_tile.dart';
 
-/// Adayın itibarı: puan özeti, tamamlanan iş sayısı, rozetler ve son
-/// yorumlar. Salt çizim; veriyi sayfa çekiyor ve her parça tek tek boş
-/// olabiliyor.
-///
-/// Boş ile hatalı ayrı: hiç değerlendirilmemiş aday "henüz puan yok"
-/// görüyor, puan ucu cevap vermediğinde "puan alınamadı"; rozetlerde de
-/// aynı üçlü (yükleniyor / yok / alınamadı). Yorumlar alınamayınca şerit ve
-/// *Tekrar dene*. Hata gelse de elde olan parçalar çiziliyor — puan gelmiş
-/// yorum gelmemişse puan durur.
+/// Adayın itibarı: puan, tamamlanan iş, rozetler, son yorumlar. Boş ile hatalı
+/// ayrı çiziliyor ("henüz puan yok" / "puan alınamadı"); hata gelse de elde
+/// olan parçalar duruyor.
 class BCandidateReputationSection extends StatelessWidget {
   const BCandidateReputationSection({
     super.key,
@@ -34,34 +28,28 @@ class BCandidateReputationSection extends StatelessWidget {
     this.errorMessage,
   });
 
-  /// Puan özeti; hiç değerlendirilmemiş adayda `null`.
+  /// Hiç değerlendirilmemişse `null`.
   final RatingSummary? summary;
 
-  /// Puan ucu düştü ve yedek yok: "puan yok" yerine "alınamadı" yazılır.
   final bool summaryFailed;
 
-  /// Son yorumlar, yeniden eskiye; sayfa kaç tane istediyse o kadar.
   final List<Review> reviews;
 
-  /// Rozetler; henüz gelmediyse `null`, hiç yoksa boş liste.
+  /// Gelmediyse `null`, hiç yoksa boş.
   final List<UserBadge>? badges;
 
-  /// Rozet ucu düştü ve yedek yok: "yükleniyor" yerine "alınamadı" yazılır.
   final bool badgesFailed;
 
-  /// Tamamlanan iş sayısı; sunucu göndermiyorsa `null` ve satır çizilmiyor.
+  /// Sunucu göndermiyorsa `null`, satır çizilmez.
   final int? completedJobCount;
 
   final bool isLoading;
 
-  /// Şeritte gösterilen hata; yanında *Tekrar dene*.
   final String? errorMessage;
   final VoidCallback onRetry;
 
-  /// Rozet çipindeki görsel.
   static const double _badgeIconSize = 18;
 
-  /// Rozet çipinin zemin opaklığı; diğer rozetlerle aynı.
   static const double _tintAlpha = 0.12;
 
   @override
@@ -89,7 +77,6 @@ class BCandidateReputationSection extends StatelessWidget {
     );
   }
 
-  /// Başlık ve puan rozeti aynı satırda.
   Widget _header(BuildContext context) {
     final summary = this.summary;
     final muted = context.textTheme.labelMedium?.copyWith(
@@ -100,7 +87,7 @@ class BCandidateReputationSection extends StatelessWidget {
       children: [
         Text('Değerlendirmeler', style: context.textTheme.titleMedium),
         const Spacer(),
-        // Değerlendirmesi olmayana "0.0" yazmak onu kötü puanlı gösterirdi.
+        // Değerlendirmesiz adaya "0.0" yazmak kötü puan gibi görünür.
         if (summary != null && summary.hasRating)
           KeyedSubtree(
             key: const ValueKey('candidate-rating-summary'),
@@ -122,7 +109,6 @@ class BCandidateReputationSection extends StatelessWidget {
     );
   }
 
-  /// Tamamlanan iş sayısı ve rozetler.
   Widget _statsPanel(BuildContext context) {
     final count = completedJobCount;
 
@@ -166,7 +152,6 @@ class BCandidateReputationSection extends StatelessWidget {
     );
   }
 
-  /// Rozet alanının üç hâli: yükleniyor, alınamadı, yok — ve liste.
   Widget _badgesBody(BuildContext context) {
     final badges = this.badges;
     final muted = context.textTheme.bodySmall?.copyWith(
@@ -203,7 +188,6 @@ class BCandidateReputationSection extends StatelessWidget {
     );
   }
 
-  /// Tek rozet: görsel (yerel varlık → sunucu ikonu → yıldız), ad ve kademe.
   Widget _badgeChip(BuildContext context, UserBadge badge) {
     final tier = badge.tier.label;
 
@@ -234,8 +218,7 @@ class BCandidateReputationSection extends StatelessWidget {
     );
   }
 
-  /// Çalışanın kendi profiliyle aynı sıra: önce uygulamadaki varlık, yoksa
-  /// sunucudaki ikon, o da yoksa yıldız.
+  /// Önce yerel varlık, yoksa sunucu ikonu, o da yoksa yıldız.
   Widget _badgeVisual(BuildContext context, UserBadge badge) {
     final asset = badge.localAsset;
     final url = badge.iconUrl;
@@ -260,7 +243,6 @@ class BCandidateReputationSection extends StatelessWidget {
     return fallback;
   }
 
-  /// Son yorumlar; yoksa öyle yazıyor.
   Widget _reviewsPanel(BuildContext context) {
     return Container(
       width: double.infinity,
@@ -290,8 +272,6 @@ class BCandidateReputationSection extends StatelessWidget {
     );
   }
 
-  /// Uçlar cevap vermediğinde: mesaj ve tekrar deneme. Profilin geri kalanı
-  /// yerinde kalıyor.
   Widget _errorStrip(BuildContext context, String message) {
     return Container(
       width: double.infinity,

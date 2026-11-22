@@ -24,7 +24,6 @@ abstract class BShuttleEditorPagemodel extends State<BShuttleEditorPage> {
     super.dispose();
   }
 
-  /// Alanları taslağa yazar; doğrulama ve kaydetme bunu okuyor.
   void _syncFields() {
     _shuttle
       ..name = _nameController.text

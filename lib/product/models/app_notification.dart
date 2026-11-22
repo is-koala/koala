@@ -1,21 +1,14 @@
-/// Bildirimin hangi kanaldan gönderildiği. Backend `NotificationChannel`
-/// karşılığı.
-///
-/// Adı yanıltıcı gelmesin: bu, bildirimin **gönderim yolu**, kullanıcının
-/// onu nerede gördüğü değil. Sunucu her olay için birden fazla kayıt
-/// üretebiliyor ve akış hepsini döndürüyor — hangisinin gösterileceği
-/// çağıranın kararı.
+/// Bildirimin **gönderim yolu** (`NotificationChannel`), kullanıcının onu
+/// nerede gördüğü değil.
 enum NotificationChannel {
   email('EMAIL'),
   sms('SMS'),
   push('PUSH'),
 
-  /// Uygulama içi bildirim. Akış **yalnızca bunu** döndürüyor; e-posta ve
-  /// push kayıtları gönderim kaydı olarak duruyor ama listeye girmiyor.
+  /// Akış yalnız bunu döndürüyor.
   inApp('IN_APP'),
 
-  /// Sunucu tanımadığımız bir kanal eklerse buraya düşüyor. Bilinmeyeni
-  /// var olan bir kanala yamamak, akışı sessizce yanlış gösterirdi.
+  /// Tanınmayan kanal; var olana yamamak akışı yanlış gösterirdi.
   unknown('');
 
   const NotificationChannel(this.code);
@@ -30,10 +23,7 @@ enum NotificationChannel {
   }
 }
 
-/// Bildirimin konusu. Backend `NotificationCategory` karşılığı.
-///
-/// Kullanıcıya görünen tek sınıflandırma bu, o yüzden Türkçe adları da
-/// burada duruyor.
+/// Bildirimin konusu; kullanıcıya görünen tek sınıflandırma.
 enum NotificationCategory {
   accountSecurity('ACCOUNT_SECURITY', 'Hesap Güvenliği'),
   applicationUpdates('APPLICATION_UPDATES', 'Başvurular'),
@@ -43,8 +33,7 @@ enum NotificationCategory {
   jobAlerts('JOB_ALERTS', 'İş Alarmları'),
   newsletter('NEWSLETTER', 'Bülten'),
 
-  /// Sunucu yeni bir kategori eklerse buraya düşüyor. Var olan bir
-  /// kategoriye yamasaydık bildirim yanlış başlık altında görünürdü.
+  /// Tanınmayan kategori; var olana yamamak yanlış başlık gösterirdi.
   other('', 'Diğer');
 
   const NotificationCategory(this.code, this.displayName);
@@ -60,11 +49,7 @@ enum NotificationCategory {
   }
 }
 
-/// Gönderimin durumu. Backend `NotificationStatus` karşılığı.
-///
-/// Bu, gönderim hattının durumu — kullanıcının bildirimi okuyup okumadığı
-/// değil. Okundu bilgisi [AppNotification.isRead] üzerinden `readAt`
-/// alanından geliyor.
+/// Gönderim hattının durumu; okundu bilgisi [AppNotification.isRead]'de.
 enum NotificationStatus {
   queued('QUEUED'),
   processing('PROCESSING'),
@@ -86,8 +71,7 @@ enum NotificationStatus {
   }
 }
 
-/// Bildirime dokunulduğunda gidilecek kaydın türü. Backend
-/// `NotificationTargetType` karşılığı.
+/// Dokununca gidilecek kaydın türü.
 enum NotificationTargetType {
   job('JOB'),
   jobApplication('JOB_APPLICATION'),
@@ -96,7 +80,7 @@ enum NotificationTargetType {
   user('USER'),
   companyContactInvitation('COMPANY_CONTACT_INVITATION'),
 
-  /// Hedefi olmayan ya da tanınmayan tür. Satır tıklanamaz kalıyor.
+  /// Hedefsiz ya da tanınmayan; satır tıklanamaz.
   none('');
 
   const NotificationTargetType(this.code);
@@ -111,15 +95,8 @@ enum NotificationTargetType {
   }
 }
 
-/// Kullanıcıya gönderilmiş tek bir bildirim. Backend `NotificationDto`
-/// karşılığı.
-///
-/// Sınıf adı `Notification` değil: Flutter'ın kendi `Notification` sınıfı
-/// (`NotificationListener`'ın taşıdığı) ile çakışırdı.
-///
-/// İki metin taşıyor: [subject] neyle ilgili olduğunu (ilanın başlığı),
-/// [body] ne olduğunu ("Başvurunuz kabul edildi") söylüyor. Nereye
-/// gidileceği [targetType] ve [targetId] ile geliyor.
+/// Tek bildirim (`NotificationDto`). Adı `Notification` değil, Flutter'ınkiyle
+/// çakışırdı. [subject] neyle ilgili, [body] ne olduğu.
 class AppNotification {
   const AppNotification({
     required this.id,
@@ -139,52 +116,41 @@ class AppNotification {
   final NotificationCategory category;
   final NotificationStatus status;
 
-  /// Başlık: bildirimin neyle ilgili olduğu, genelde ilanın adı. Hedefi
-  /// olmayan bildirimlerde (ör. kimlik doğrulandı) boş geliyor.
+  /// Genelde ilanın adı; hedefsiz bildirimlerde boş.
   final String? subject;
 
-  /// Olayın kendisi: "Başvurunuz kabul edildi" gibi.
   final String? body;
 
-  /// Dokununca gidilecek kaydın türü; hedefi yoksa
-  /// [NotificationTargetType.none].
   final NotificationTargetType targetType;
 
   final String? targetId;
 
-  /// Dokunulabilir mi. Hedefi olmayan bildirim tıklanınca hiçbir yere
-  /// gitmemeli — basılıp da bir şey olmaması bozuk izlenimi veriyor.
+  /// Hedefsiz bildirime basıp bir şey olmaması bozuk izlenimi verir.
   bool get hasTarget =>
       targetType != NotificationTargetType.none && targetId != null;
 
   final DateTime? sentAt;
 
-  /// Okunma anı. Tek tek (`POST .../{id}/read`) ya da toptan
-  /// (`POST .../read`) işaretlenebiliyor.
   final DateTime? readAt;
 
   bool get isRead => readAt != null;
 
-  /// Gösterilecek bir başlığı var mı. Boş satır listede yer kaplamamalı.
   bool get hasSubject => subject != null && subject!.trim().isNotEmpty;
 
   bool get hasBody => body != null && body!.trim().isNotEmpty;
 
-  /// Listedeki başlık. Bildirimin başlığı boşsa olayın kendisi başlığa
-  /// çıkıyor; ikisi de boşsa kategori adı kalıyor.
+  /// Başlık boşsa olay, o da boşsa kategori adı.
   String get title => hasSubject
       ? subject!
       : hasBody
       ? body!
       : category.displayName;
 
-  /// Başlığın altındaki satır. Başlık zaten olayın kendisiyse tekrar
-  /// yazılmıyor.
+  /// Başlık zaten olaysa tekrar yazılmıyor.
   String? get detail => hasSubject && hasBody ? body : null;
 
-  /// Okunmuş kopyası. Tek bir alan değiştiği için tam bir `copyWith`
-  /// yazılmadı; modelin geri kalanı sunucudan geliyor ve elde
-  /// değiştirilmiyor.
+  /// Okunmuş kopyası; model elde başka türlü değişmediği için tam `copyWith`
+  /// yok.
   AppNotification copyWithRead(DateTime readAt) {
     return AppNotification(
       id: id,
@@ -223,10 +189,7 @@ class AppNotification {
   }
 }
 
-/// Bildirim akışı. Backend `NotificationFeedDto` karşılığı.
-///
-/// Sayfa ile okunmamış sayısı **birlikte** geliyor: rozetteki sayı,
-/// sayfalamadan bağımsız olarak kullanıcının toplam okunmamışını gösteriyor.
+/// Bildirim akışı; okunmamış sayısı sayfalamadan bağımsız toplam.
 class NotificationFeed {
   const NotificationFeed({
     this.notifications = const [],
@@ -238,8 +201,7 @@ class NotificationFeed {
 
   final List<AppNotification> notifications;
 
-  /// Okunmamış toplam. Sayfadaki okunmamışların sayısı **değil** — sunucu
-  /// bunu ayrıca sayıyor.
+  /// Sayfadakilerin değil toplamın sayısı.
   final int unreadCount;
 
   final int page;

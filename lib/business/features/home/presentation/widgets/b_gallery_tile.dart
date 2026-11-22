@@ -8,11 +8,7 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// Galeri yönetimindeki tek bir görsel satırı.
-///
-/// Sayfadan ayrı bir dosyada çünkü satır hem önizlemeyi hem rozeti hem de iki
-/// eylemi taşıyor; `build` içinde kalsaydı sıralama listesinin kendisi
-/// okunmaz hâle gelirdi.
+/// Galeri yönetimindeki tek görsel satırı.
 class BGalleryTile extends StatelessWidget {
   const BGalleryTile({
     super.key,
@@ -25,17 +21,14 @@ class BGalleryTile extends StatelessWidget {
 
   final GalleryImage image;
 
-  /// Görselin listedeki sırası (1'den başlayan). Başlığı olmayan görsele ad
-  /// olarak yazılıyor.
+  /// 1'den başlar; başlıksız görsele ad olarak yazılır.
   final int position;
 
-  /// Ekleme, sıralama ve kaldırma yalnız galeriyi yönetebilen kullanıcıda.
   final bool canManage;
 
   final VoidCallback? onSetCover;
   final VoidCallback? onRemove;
 
-  /// Önizlemenin kenar uzunluğu. Liste satırındaki kare görselle aynı ölçü.
   static const double _previewSize = AppSizes.thumbnail;
 
   @override
@@ -54,8 +47,8 @@ class BGalleryTile extends StatelessWidget {
           Expanded(child: _details(context)),
           if (canManage) ...[
             const SizedBox(width: AppSizes.spaceSmall),
-            // Sürükleme tutamacı değil, sürüklenebileceğini söyleyen ipucu:
-            // `ReorderableListView` satırın tamamını uzun basmaya bağlıyor.
+            // Tutamaç değil ipucu: `ReorderableListView` satırın tamamını uzun
+            // basmaya bağlıyor.
             AppIcon(
               AppIcons.sort,
               size: AppSizes.iconMedium,
@@ -112,7 +105,7 @@ class BGalleryTile extends StatelessWidget {
     );
   }
 
-  /// Kapak rozeti. Kapağı sunucu belirliyor; bu yalnız onu gösteriyor.
+  /// Kapağı sunucu belirliyor; bu yalnız gösteriyor.
   Widget _coverBadge(BuildContext context) {
     return Container(
       padding: AppPadding.badge,

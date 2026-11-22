@@ -37,8 +37,6 @@ class _AppState extends State<App> {
     );
     _sessionManager.addListener(_flushPendingDeepLink);
     _appLinkSubscription = AppLinks().uriLinkStream.listen(_handleDeepLink);
-    // Canlı bağlantı arka plandan dönüşte ve ağ değişiminde yeniden
-    // kuruluyor; rozet de aynı anda sessizce tazeleniyor.
     _realtimeKeeper = RealtimeConnectionKeeper(onResumed: _refreshBadge)
       ..start();
   }
@@ -48,9 +46,8 @@ class _AppState extends State<App> {
     unawaited(context.read<NotificationProvider>().refreshQuietly());
   }
 
-  /// Backend'in ürettiği kayıt, şifre ve ödeme bağlantılarını çalışan
-  /// flavor'ın özel şeması ve yapılandırılmış web hostlarıyla doğrulayıp
-  /// oturum hazır olduğunda açar.
+  /// Backend'in ürettiği bağlantıları flavor şeması ve web hostlarıyla
+  /// doğrular, oturum hazır olunca açar.
   void _handleDeepLink(Uri uri) {
     _appLinkCoordinator.handle(
       uri,
@@ -87,10 +84,8 @@ class _AppState extends State<App> {
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       title: 'Koala',
-      // Uygulama yalnız Türkçe. Tarih/saat seçicileri, "Tamam/İptal" gibi
-      // sistem metinleri ve metin seçme menüsü buradan Türkçe geliyor.
-      // `delegates` Material, Cupertino ve Widgets çevirilerinin üçünü de
-      // içeriyor (material_ui; eski flutter_localizations delegeleri eskidi).
+      // Tarih seçicileri ve sistem metinleri Türkçe gelsin; delegeler Material,
+      // Cupertino ve Widgets çevirilerini içeriyor.
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
       supportedLocales: const [Locale('tr')],
       locale: const Locale('tr'),
@@ -98,9 +93,8 @@ class _AppState extends State<App> {
       darkTheme: darkTheme,
       themeMode: context.watch<ThemeProvider>().themeMode,
       routerConfig: RouterManager.router,
-      // Sürüm kapısı her uçtan gelebildiği için yönlendirmeyle değil,
-      // uygulamanın üstünü kapatarak karşılanıyor: hangi ekranda olursa
-      // olsun sonuç aynı ve geri dönülecek bir yer yok.
+      // Sürüm kapısı her uçtan gelebildiği için uygulamanın üstünü kapatarak
+      // karşılanıyor.
       builder: (context, child) => ValueListenableBuilder<String?>(
         valueListenable: AppUpdateGate().message,
         builder: (context, message, _) => message == null

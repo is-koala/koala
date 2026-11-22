@@ -4,10 +4,7 @@ import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/models/gallery_image.dart';
 import 'package:koala/product/widgets/gallery_strip.dart';
 
-/// İlan galerisinin salt okunur yüzeyi.
-///
-/// İki uygulama da aynı yükleme/boş/hata ayrımını kullanır. Boş galeri hiç
-/// çizilmez; galeri bir ilanın zorunlu alanı değildir.
+/// İlan galerisinin salt okunur yüzeyi; boş galeri hiç çizilmez.
 class JobGalleryView extends StatelessWidget {
   const JobGalleryView({
     super.key,
@@ -22,7 +19,6 @@ class JobGalleryView extends StatelessWidget {
   final String? errorMessage;
   final VoidCallback? onRetry;
 
-  /// Küçük yükleme göstergesinde halkayı ağırlaştırmayan kalınlık.
   static const double _loadingStrokeWidth = 2;
 
   @override

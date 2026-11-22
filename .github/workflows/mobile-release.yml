@@ -9,9 +9,7 @@ concurrency:
   group: mobile-release-${{ github.ref }}
   cancel-in-progress: false
 
-# Self-hosted Pi runner kaldırıldı; Linux işleri GitHub'ın ubuntu-latest
-# runner'larında, TestFlight macos-latest'te koşar. Yalnız mobile-v* etiketi
-# tetikler, PR'da koşmaz.
+# Yalnız mobile-v* etiketi tetikler.
 permissions:
   contents: read
 
@@ -58,23 +56,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Flutter önce kurulur: setup-android-x64-tools'un gen_snapshot yoklaması
-      # FLUTTER_ROOT istiyor (flutter-action GITHUB_ENV'e yazar).
+      # setup-android-x64-tools'un gen_snapshot yoklaması FLUTTER_ROOT istiyor.
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
 
-      # JDK + Android SDK + x64 emülasyon nöbetçisi tek yerde; aynı 19 satır
-      # eskiden ci.yml ile bayt bayt aynıydı.
       - uses: ./.github/actions/setup-android-x64-tools
         with:
           java-version: ${{ env.JAVA_VERSION }}
-          # Bu iş release AAB derliyor: Android AOT yolu gerçekten çalışıyor,
-          # yani x86-64 gen_snapshot da yoklanmalı. Eski nöbetçi yalnız aapt2'ye
-          # bakıyordu ve yeşil verdikten sonra derleme emüle edilmemiş
-          # gen_snapshot'a çarpabiliyordu.
+          # Release AAB AOT yolunu çalıştırıyor; x86-64 gen_snapshot da
+          # yoklanmalı.
           probe-gen-snapshot: "true"
 
       - name: İmzalama sırlarını doğrula

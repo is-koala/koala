@@ -3,15 +3,8 @@ import 'package:koala/product/models/reference_location.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
-/// Ülke / il / ilçe listelerinin kaynağı (`/reference/**`).
-///
-/// **İki uygulama da kullanıyor:** işveren ilan açarken, çalışan adresini
-/// girerken. Tek tarafa ait olmadığı için `product/` altında duruyor.
-///
-/// Adres yazma sözleşmesi bu kayıtların değişmeyen kimliklerini kullanıyor;
-/// görünen adlar yalnızca arayüzde gösteriliyor.
-///
-/// Listeler nadiren değiştiği için bir kez çekilip bellekte tutuluyor.
+/// Ülke / il / ilçe listeleri; iki uygulama kullanıyor. Adres sözleşmesi
+/// kimlikleri kullanıyor, adlar yalnız arayüzde. Bellekte önbelleklenir.
 class ReferenceLocationService {
   ReferenceLocationService._(this._apiClient);
 

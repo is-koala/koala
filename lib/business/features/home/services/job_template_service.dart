@@ -3,10 +3,7 @@ import 'package:koala/business/features/home/models/job_template.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
-/// İşverenin ilan şablonlarının gerçek backend kapısı.
-///
-/// Sunucu yalnızca oluştur / oku / sil sunuyor; şablonu düzenleme ucu yok.
-/// Şablonu değiştirmek "sil + yeni ilandan yeniden çıkar" demek.
+/// İlan şablonu uçları; düzenleme yok, değiştirmek "sil + yeniden çıkar".
 class JobTemplateService {
   JobTemplateService._(this._apiClient);
 
@@ -21,9 +18,7 @@ class JobTemplateService {
 
   final ApiClient _apiClient;
 
-  /// Oturum sahibinin şablonları, en yenisi başta.
-  ///
-  /// Uç sayfalama yapmıyor: yanıt düz bir dizi.
+  /// En yeni başta; sayfasız.
   Future<List<JobTemplate>> fetchTemplates() {
     return _apiClient.get<List<JobTemplate>>(
       ApiPaths.currentUserJobTemplates,
@@ -36,10 +31,7 @@ class JobTemplateService {
     );
   }
 
-  /// Var olan bir ilandan şablon çıkarır.
-  ///
-  /// Gövdede yalnızca bu iki alan var; başlık, kategori, ücret gibi alanları
-  /// sunucu ilandan kopyalıyor. Adres, tarih ve durum kopyalanmıyor.
+  /// Var olan ilandan şablon çıkarır; alanları sunucu kopyalar.
   Future<JobTemplate> createFromJob({
     required String jobId,
     required String templateName,
@@ -51,7 +43,7 @@ class JobTemplateService {
     );
   }
 
-  /// Şablonu siler. Sahibi olmayana `404` dönüyor.
+  /// Sahibi olmayana `404`.
   Future<void> deleteTemplate(String templateId) {
     return _apiClient.deleteWithoutData(
       ApiPaths.currentUserJobTemplate(templateId),

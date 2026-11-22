@@ -4,18 +4,11 @@ import 'package:koala/business/features/home/services/talent_pool_service.dart';
 import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/product/network/api_exception.dart';
 
-/// Havuz üyeliği. Liste sayfalı olduğu için "listede yok" demek "havuzda
-/// yok" demek değildir: henüz yüklenmemiş bir sayfada duruyor olabilir.
-///
-/// Bilinmiyorken düğme iyimser `PUT` atmaz — gövdesiz `PUT` var olan notu
-/// siler.
+/// Havuz üyeliği. Liste sayfalı: "listede yok" "havuzda yok" demek değil.
+/// Bilinmiyorken `PUT` atılmaz, gövdesiz `PUT` notu siler.
 enum TalentPoolMembership { yes, no, unknown }
 
-/// İşverenin yetenek havuzu.
-///
-/// Ekleme ve çıkarma iyimser: ikon dokunulduğu anda değişir, sunucu
-/// reddederse geri alınır. Üyelik [isInPool] üç durumludur; bilinmiyorken
-/// kalan sayfalar çekilmeden `PUT` atılmaz.
+/// Yetenek havuzu. Ekleme ve çıkarma iyimser; reddedilirse geri alınır.
 class BTalentPoolProvider extends ChangeNotifier {
   BTalentPoolProvider({TalentPoolService? service})
     : _service = service ?? TalentPoolService();
@@ -43,10 +36,7 @@ class BTalentPoolProvider extends ChangeNotifier {
 
   String? get errorMessage => _errorMessage;
 
-  /// Üyelik, yüklenmiş sayfalara bakarak cevaplanır.
-  ///
-  /// Son sayfa gelmeden listede görünmeyen biri için [unknown] döner;
-  /// "yok" demek o kayda gövdesiz `PUT` attırırdı.
+  /// Son sayfa gelmeden görünmeyen biri için [unknown].
   TalentPoolMembership isInPool(String workerId) {
     if (_entries.any((entry) => entry.worker.id == workerId)) {
       return TalentPoolMembership.yes;
@@ -109,8 +99,6 @@ class BTalentPoolProvider extends ChangeNotifier {
     }
   }
 
-  /// Üyelik bilinmiyorsa kalan sayfalar çekilir; bilinmiyorken `PUT`
-  /// atılmaz.
   Future<TalentPoolMembership> ensureMembership(String workerId) async {
     var membership = isInPool(workerId);
     if (membership != TalentPoolMembership.unknown) return membership;
@@ -125,15 +113,13 @@ class BTalentPoolProvider extends ChangeNotifier {
       final before = _entries.length;
       await loadMore();
       if (_entries.length == before && !_isLast) {
-        // Sayfa eklenemedi; döngüye girmemek için dur.
         break;
       }
     }
     return isInPool(workerId);
   }
 
-  /// İşçiyi havuza ekler. Zaten havuzdaysa notu günceller; not yoksa
-  /// gövdesiz `PUT` atılmaz.
+  /// Zaten havuzdaysa notu günceller; not yoksa gövdesiz `PUT` atılmaz.
   Future<bool> addWorker(JobCreator worker, {String? note}) async {
     if (isInPool(worker.id) == TalentPoolMembership.yes && note == null) {
       return true;
@@ -181,8 +167,6 @@ class BTalentPoolProvider extends ChangeNotifier {
     }
   }
 
-  /// Havuzdaysa çıkarır, değilse notla ekler. Üyelik bilinmiyorsa önce
-  /// sayfalar yüklenir; bilinmiyorken `PUT` atılmaz.
   Future<bool> toggleWorker(JobCreator worker, {String? note}) async {
     final membership = await ensureMembership(worker.id);
     if (membership == TalentPoolMembership.unknown) {

@@ -61,8 +61,8 @@ class AddressSearchService implements AddressSearchGateway {
     );
   }
 
-  /// Pin koordinatını altı ondalığa yuvarlayarak gönderir; ham harita değeri
-  /// sunucunun `@Digits(fraction = 6)` kuralına takılıp 400 dönüyordu.
+  /// Ham harita koordinatı sunucunun `@Digits(fraction = 6)` kuralına
+  /// takılıyor; altı ondalığa yuvarlanıyor.
   @override
   Future<AddressCandidate> reverse(double latitude, double longitude) {
     return _apiClient.post<AddressCandidate>(

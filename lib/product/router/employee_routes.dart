@@ -1,50 +1,28 @@
-/// Çalışan kabuğunun birden çok yerden açılan rotaları.
-///
-/// Yol dizgesi tek yerde dursun diye: aynı rota grup sohbetinin katılımcı
-/// listesinden ve iş detayındaki bireysel işveren kartından açılıyor.
-/// `RouterManager` rotayı ve yönlendirme bekçisinin çalışan listesini buradan
-/// kuruyor; çağıranlar `context.push` ile buraya gidiyor. İşveren kabuğunun
-/// karşılığı `BusinessRoutes`.
+/// Çalışan kabuğunun birden çok yerden açılan rotaları; karşılığı
+/// `BusinessRoutes`.
 class EmployeeRoutes {
   const EmployeeRoutes._();
 
-  /// Başka bir kullanıcının herkese açık profilinin yol öneki; yönlendirme
-  /// bekçisinin çalışan listesi bu önekle eşleşiyor. Rotanın kendisi
-  /// [publicProfilePattern], açılan adres [publicProfile].
+  /// Yönlendirme bekçisinin çalışan listesi bu önekle eşleşiyor.
   static const String publicProfilePrefix = '/public-profile';
 
-  /// Herkese açık profil rotasının kalıbı (is-koala/koala#182). **Kimlik yol
-  /// parametresi** ve tek doğru kaynak; `extra` yalnızca çağıranın bildiği ad,
-  /// fotoğraf ve rolle kapağı önceden doldurmak için (`PublicProfileArgs`),
-  /// verilmese ya da yanlış olsa da sayfa açılıyor.
-  ///
-  /// İşveren kabuğunda bu rota yok: orada aynı iş `BusinessRoutes.userProfile`
-  /// ile görülüyor ve yönlendirme bekçisi işvereni bu yoldan geri çeviriyor.
+  /// Herkese açık profil (#182). Kimlik yol parametresi ve tek kaynak; `extra`
+  /// (`PublicProfileArgs`) yalnız kapağı önceden doldurur. İşveren kabuğunda
+  /// yok, onun karşılığı `BusinessRoutes.userProfile`.
   static const String publicProfilePattern = '$publicProfilePrefix/:userId';
 
-  /// [userId]'nin herkese açık profilinin adresi; `context.push` bunu alır.
   static String publicProfile(String userId) =>
       '$publicProfilePrefix/${Uri.encodeComponent(userId)}';
 
-  /// Oturum sahibinin kendi profil sekmesi. Kendi kimliğiyle açılan herkese
-  /// açık profil ve sohbetteki kendi satırın buraya yönleniyor: kendi
-  /// profilinin "başkasının gözüyle" görünümü ayrı bir ekran değil.
-  ///
-  /// Yönlendirme bekçisi, shell rotası ve yönlendirenler aynı sabiti
-  /// okuyor; yol değişirse hiçbiri sessizce ayrışmıyor.
+  /// Kendi profil sekmesi; kendi kimliğiyle açılan profil buraya yönleniyor.
   static const String ownProfile = '/profile';
 
-  /// Servis binişi rotalarının öneki (is-koala/koala#217); yönlendirme
-  /// bekçisinin çalışan listesi bununla eşleşiyor.
   static const String boardingPrefix = '/shuttle-boarding';
 
-  /// İşçinin kişisel biniş QR'ı. Sorgu: `assignmentId`, `direction`
-  /// (`OUTBOUND` | `RETURN`). `SHUTTLE_REMINDER_BOARDING` push'u da buraya
-  /// iniyor.
+  /// İşçinin biniş QR'ı. Sorgu: `assignmentId`, `direction`.
   static const String boardingQr = '$boardingPrefix/qr';
 
-  /// Servisteki QR'ı okutma ekranı. Sorgu isteğe bağlı: `assignmentId`,
-  /// `direction`, `shuttleId` (beklenen servis).
+  /// Sorgu isteğe bağlı: `assignmentId`, `direction`, `shuttleId`.
   static const String boardingScan = '$boardingPrefix/scan';
 
   static String boardingQrLocation(String assignmentId, String direction) =>

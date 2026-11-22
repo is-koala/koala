@@ -1,20 +1,10 @@
-# Bu proje eklentilerinin çoğunu Swift Package Manager üzerinden alıyor;
-# CocoaPods yalnızca google_maps_flutter_ios için ayakta. O eklenti bir
-# Package.swift yayınladığı gün bu dosya tamamen silinebilir.
-#
-# permission_handler artık SPM'de ve izinleri Info.plist anahtarlarından
-# okuyor, bu yüzden eski PERMISSION_LOCATION post_install makrosu kaldırıldı.
+# Eklentilerin çoğu SPM'den geliyor; CocoaPods yalnız google_maps_flutter_ios
+# için. O eklenti Package.swift yayınlayınca bu dosya silinebilir.
 
-# Uncomment this line to define a global platform for your project
-#
-# 15.5, 15.0 değil: google_mlkit_text_recognition (ve altındaki
-# google_mlkit_commons) podspec'lerinde `ios.deployment_target = '15.5'`
-# diyor. 15.0 bırakılırsa pod çözümlemesi hata veriyor. Xcode tarafındaki
-# IPHONEOS_DEPLOYMENT_TARGET da aynı değere çekildi; ikisi ayrışırsa build
-# yalnız bir tarafta kırılıyor.
+# google_mlkit podspec'leri 15.5 istiyor; Xcode'daki IPHONEOS_DEPLOYMENT_TARGET
+# da aynı değerde kalmalı.
 platform :ios, '15.5'
 
-# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
 project 'Runner', {

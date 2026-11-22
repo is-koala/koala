@@ -2,12 +2,8 @@ import 'package:dio/dio.dart';
 import 'package:koala/product/network/device_hints.dart';
 import 'package:koala/product/network/device_identity.dart';
 
-/// Her isteğe cihaz kimliği ve cihaz ipucu başlıklarını ekler.
-///
-/// Ayrı bir interceptor olmasının sebebi, başlıkların oturumdan bağımsız
-/// olması: giriş yapılmamış isteklerde de gidiyor, çünkü backend cihazı
-/// `/auth/login` ve `/auth/complete-registration` sırasında oluşturuyor ve
-/// adını da o anda gelen [DeviceHints]'ten yazıyor.
+/// Her isteğe cihaz kimliği ve ipucu başlıklarını ekler. Oturumdan bağımsız,
+/// çünkü backend cihazı giriş ve kayıt sırasında oluşturuyor.
 class DeviceInterceptor extends Interceptor {
   DeviceInterceptor(this._deviceIdentity, {required this._hints});
 

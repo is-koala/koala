@@ -1,15 +1,8 @@
 import 'package:koala/product/models/user_session.dart';
 import 'package:koala/product/network/json_field.dart';
 
-/// Tek bir oturumun ayrıntısı. Backend `SessionDetailDto` karşılığı
-/// (koala-backend#306, 0.9.28).
-///
-/// Listedeki [UserSession]'ın üstüne eklenenler: oluşturulma anı, kullanıcının
-/// verdiği özel ad, toplam giriş sayısı ve son girişlerin geçmişi. Ortak
-/// alanlar [session]'da duruyor — ayrıntı DTO'su liste DTO'sunun bir üst
-/// kümesi, aynı sekiz alan ikinci kez okunmuyor. Eski sunucu bu ucu
-/// tanımıyor (`404`); o hâlde liste satırı hiç açılmıyor, bu model
-/// kurulmuyor.
+/// Tek oturumun ayrıntısı; ortak alanlar [session]'da. Eski sunucu ucu
+/// tanımıyor, o zaman bu model kurulmaz.
 class SessionDetail {
   const SessionDetail({
     required this.session,
@@ -19,22 +12,17 @@ class SessionDetail {
     this.loginHistory = const [],
   });
 
-  /// Listedeki satırla aynı alanlar: kimlik, cihaz, IP, konum, zamanlar,
-  /// "bu cihaz" bayrağı ve görünen ad.
   final UserSession session;
 
-  /// Kullanıcının verdiği özel ad; yoksa `null`. Adlandırma kutusunu
-  /// doldurmak için ayrı tutuluyor — [UserSession.deviceName] özel ad yokken
-  /// türetilmiş adı taşıyor, onu kutuya koymak kullanıcıya "bunu siz
-  /// yazdınız" derdi.
+  /// Kullanıcının verdiği ad; yoksa `null`. [UserSession.deviceName] türetilmiş
+  /// adı taşıyor, onu kutuya koymak "bunu siz yazdınız" derdi.
   final String? deviceCustomName;
 
   final DateTime? createdAt;
 
-  /// Bu cihazdan yapılan toplam giriş sayısı.
   final int logins;
 
-  /// Son girişler, yeniden eskiye (sunucu en çok 20 tane veriyor).
+  /// Yeniden eskiye, en çok 20.
   final List<LoginHistoryEntry> loginHistory;
 
   factory SessionDetail.fromJson(Map<String, dynamic> json) {
@@ -55,7 +43,6 @@ class SessionDetail {
   }
 }
 
-/// Giriş geçmişindeki tek satır. Backend `LoginHistoryEntryDto` karşılığı.
 class LoginHistoryEntry {
   const LoginHistoryEntry({
     required this.successful,
@@ -68,9 +55,8 @@ class LoginHistoryEntry {
   final String? ipAddress;
   final String? location;
 
-  /// Giriş başarılı mıydı. Sunucu alanı `success` diye yazıyor; yanlış
-  /// parola denemeleri de listede, kullanıcı hesabına kimin dokunduğunu
-  /// görsün diye.
+  /// Yanlış parola denemeleri de listede, kullanıcı hesabına kimin dokunduğunu
+  /// görsün.
   final bool successful;
 
   factory LoginHistoryEntry.fromJson(Map<String, dynamic> json) {

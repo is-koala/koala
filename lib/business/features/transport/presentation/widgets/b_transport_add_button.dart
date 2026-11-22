@@ -4,11 +4,7 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// "Ulaşım planı ekle" düğmesi (is-koala/koala#197).
-///
-/// İlan formu (taslak yokken) ve ilan detayı (sunucuda plan yokken) aynı
-/// düğmeyi çiziyor; iki yerde ayrı ayrı kurmak metnin ve ikonun zamanla
-/// birbirinden ayrılması demekti.
+/// "Ulaşım planı ekle" (#197); ilan formu ve detayı ortak.
 class BTransportAddButton extends StatelessWidget {
   const BTransportAddButton({super.key, required this.onPressed});
 

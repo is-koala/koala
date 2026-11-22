@@ -8,13 +8,9 @@ import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/extensions/date_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// Sigorta bildirimi için açılan çalışan kimlik bilgileri.
-///
-/// Atama panelinde, "Kimlik bilgilerini göster" onaylanıp sunucu yanıt
-/// verince çiziliyor. Değerleri yalnızca gösterir; süreyi ve silmeyi sayfa
-/// tutuyor — kart bellekte kopya bırakmasın diye kendi state'i yok. TCKN
-/// tek dokunuşla kopyalanabiliyor: sigorta ekranına elle yazılan 11 hane
-/// en sık hata kaynağı.
+/// Sigorta bildirimi için açılan kimlik bilgileri. Kendi state'i yok, süre ve
+/// silme sayfada: kart bellekte kopya bırakmasın. TCKN tek dokunuşla
+/// kopyalanır; elle yazılan 11 hane en sık hata kaynağı.
 class BWorkerIdentityCard extends StatelessWidget {
   const BWorkerIdentityCard({
     super.key,
@@ -25,17 +21,13 @@ class BWorkerIdentityCard extends StatelessWidget {
 
   final WorkerIdentity identity;
 
-  /// TCKN'yi panoya kopyalar.
   final VoidCallback onCopyIdentityNumber;
 
-  /// Süre dolmadan gizler.
   final VoidCallback onHide;
 
-  /// Değer yoksa yerine yazılan. Ad ya da tarih sunucudan boş gelebilir;
-  /// kart alanı yine çizer ki hangi bilginin gelmediği görünsün.
+  /// Boş gelen alan da çizilir ki neyin gelmediği görünsün.
   static const String _unknown = '—';
 
-  /// Etiket sütunu; değerler hizalı dursun diye sabit.
   static const double _labelWidth = 104;
 
   @override
@@ -95,9 +87,8 @@ class BWorkerIdentityCard extends StatelessWidget {
             'TCKN',
             identity.tcIdentityNumber,
             valueKey: const ValueKey('worker-identity-tckn'),
-            // Ekran okuyucu 11 haneyi sayı gibi ("on milyar…") okumasın:
-            // hane hane, boşluklu. `liveRegion` bilerek yok — kart her
-            // yeniden çizimde yeniden duyurulmamalı.
+            // Ekran okuyucu 11 haneyi sayı gibi okumasın; `liveRegion` yok, her
+            // çizimde yeniden duyurulmasın.
             semanticsLabel: identity.tcIdentityNumber.split('').join(' '),
             trailing: IconButton(
               key: const ValueKey('worker-identity-copy'),

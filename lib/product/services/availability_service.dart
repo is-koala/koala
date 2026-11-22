@@ -5,7 +5,6 @@ import 'package:koala/product/models/availability_slot.dart';
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
-/// Haftalık müsaitlik şablonu ve tarihe özel istisnalar.
 class AvailabilityService {
   AvailabilityService._(this._apiClient);
 
@@ -22,7 +21,6 @@ class AvailabilityService {
 
   final ApiClient _apiClient;
 
-  /// Kullanıcının herkese açık müsaitliğini getirir.
   Future<Availability> fetchForUser(String userId) {
     return _apiClient.get<Availability>(
       ApiPaths.userAvailability(userId),
@@ -30,11 +28,8 @@ class AvailabilityService {
     );
   }
 
-  /// Haftalık şablonu toptan değiştirir.
-  ///
-  /// Bu uç kısmi güncelleme yapmaz: sunucu önce bütün eski aralıkları siler.
-  /// Çağıran, kullanıcı tek bir günü değiştirmiş olsa bile bütün haftayı
-  /// [slots] içinde göndermek zorundadır.
+  /// Haftalık şablonu toptan değiştirir; tek gün değişse de bütün hafta
+  /// gönderilmeli.
   Future<Availability> replaceSlots(List<AvailabilitySlot> slots) {
     return _apiClient.put<Availability>(
       ApiPaths.currentUserAvailability,
@@ -43,7 +38,6 @@ class AvailabilityService {
     );
   }
 
-  /// Tarihe özel çalışabilir / çalışamaz kaydını ekler veya günceller.
   Future<AvailabilityException> saveException({
     required DateTime date,
     required bool available,
@@ -63,7 +57,7 @@ class AvailabilityService {
     );
   }
 
-  /// Tarih istisnasını siler. Başkasının kaydı `404`.
+  /// Başkasının kaydı `404`.
   Future<void> deleteException(String exceptionId) {
     return _apiClient.deleteWithoutData(
       ApiPaths.currentUserAvailabilityException(exceptionId),

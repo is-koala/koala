@@ -20,12 +20,9 @@ class MyButton extends StatelessWidget {
   final bool? isReversed;
   final bool isLoading;
 
-  /// Ekran okuyucunun düğmeye odaklanınca başlığın ardından okuduğu ipucu;
-  /// düğme kapalıyken nedenini söylemek için. Düğmenin **kendi** semantik
-  /// düğümüne yazılır: `ElevatedButton` çocuklarını kendi düğümünde
-  /// birleştirdiği için ipucu içeride durmalı — düğmeyi dışarıdan
-  /// `Semantics(hint:)` ile sarmak ayrı bir üst düğüm üretiyor ve odak
-  /// düğmedeyken okunmuyor (is-koala/koala#174 incelemesi).
+  /// Ekran okuyucunun başlıktan sonra okuduğu ipucu (ör. kapalı düğmenin
+  /// nedeni). Düğmenin kendi düğümüne yazılıyor: dışarıdan `Semantics` ile
+  /// sarmak odak düğmedeyken okunmuyor.
   final String? semanticHint;
 
   @override
@@ -42,8 +39,8 @@ class MyButton extends StatelessWidget {
               borderRadius: AppRadius.primaryCircular,
             ),
             backgroundColor: isReversed!
-                // Ters buton yeşilin üstünde değil, yeşilin yerine duruyor:
-                // zemini sayfanınkiyle aynı, ayıran şey yeşil kenarlığı.
+                // Ters buton yeşilin yerine duruyor: zemin sayfanınki, ayıran
+                // yeşil kenarlık.
                 ? context.backgroundColor
                 : context.accentColor,
             disabledBackgroundColor: context.accentColor.withValues(alpha: 0.7),

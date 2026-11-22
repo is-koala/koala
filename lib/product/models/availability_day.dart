@@ -1,7 +1,4 @@
-/// Haftalık müsaitlik şablonunda kullanılan gün.
-///
-/// Backend kodu yalnız JSON sınırında [code] üzerinden çevrilir. Arayüz ve
-/// durum modülü günleri dizeyle değil bu domain tipiyle taşır.
+/// Müsaitlik şablonundaki gün; backend kodu yalnız JSON sınırında [code].
 enum AvailabilityDay {
   monday('MONDAY', 'Pazartesi', 1),
   tuesday('TUESDAY', 'Salı', 2),

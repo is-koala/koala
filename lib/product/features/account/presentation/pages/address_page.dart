@@ -10,18 +10,9 @@ import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/map_first_address_page.dart';
 import 'package:provider/provider.dart';
 
-/// Kullanıcının kendi adresi: harita-öncelikli ekranın
-/// `PUT /users/me/address` ile bağlanmış hâli.
-///
-/// Adres hesaba ait, tarafına değil: çalışan başvuru kapısından, işveren
-/// ayarlardaki *Adresim* satırından ve ödeme kapısından aynı ekrana geliyor.
-/// Bireysel işverenin ödemesi bu adres olmadan başlamıyor
-/// (`JOB_ASSIGNMENT_ADDRESS_NOT_PROVIDED_FOR_EMPLOYER`); önceden işveren
-/// tarafında bu ekranın hiç yolu yoktu.
-///
-/// Kayıt başarılıysa `UserProvider` tazelenir ve ekran kapanır; açan ekran
-/// (hesap bilgileri, başvuru kapısı, işveren profili) tazelenmiş kullanıcıyı
-/// zaten izliyor.
+/// Kullanıcının adresi: harita ekranının `PUT /users/me/address`'e bağlı hâli.
+/// Çalışan başvuru kapısından, işveren ayarlardan ve ödeme kapısından geliyor.
+/// Kayıt başarılıysa `UserProvider` tazelenir ve ekran kapanır.
 class AddressPage extends StatelessWidget {
   const AddressPage({
     super.key,
@@ -32,9 +23,7 @@ class AddressPage extends StatelessWidget {
     this.locationSource,
   });
 
-  /// Ekranın açılacağı kullanıcı. Verilmezse `UserProvider`'daki kullanıcı
-  /// okunuyor; o da yoksa harita boş adresle açılıyor — kullanıcı adresini
-  /// yine girebiliyor, yalnız önceden dolu alan olmuyor.
+  /// Verilmezse `UserProvider`; o da yoksa harita boş açılır.
   final CurrentUser? user;
 
   final UserService? userService;

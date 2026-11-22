@@ -1,10 +1,7 @@
 import 'package:koala/product/network/api_client.dart';
 import 'package:koala/product/network/api_paths.dart';
 
-/// Cihaz push token'ını sunucuya yazar ve siler.
-///
-/// Kaynağı (FCM/APNs) [PushTokenSource] sağlar; bu servis yalnız HTTP
-/// sözleşmesini bilir. Android üretim kaynağı splash'te bağlanır.
+/// Push token'ını sunucuya yazar ve siler; yalnız HTTP sözleşmesini bilir.
 class PushTokenService {
   PushTokenService._(this._apiClient);
 
@@ -12,10 +9,6 @@ class PushTokenService {
 
   factory PushTokenService() => _instance;
 
-  /// Verilen istemciyle kurulu örnek.
-  ///
-  /// Testlerde sahte sunucuya bağlamak için, [AuthService] içinde de aynı
-  /// istemciyi paylaşmak için kullanılıyor.
   factory PushTokenService.withClient(ApiClient apiClient) {
     return PushTokenService._(apiClient);
   }

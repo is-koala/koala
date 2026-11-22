@@ -2,16 +2,9 @@ import 'package:koala/business/features/home/models/job_applicant.dart';
 import 'package:koala/employee/features/home/models/job.dart';
 import 'package:koala/employee/features/jobs/models/job_application.dart';
 
-/// İşverenin ilan listesindeki tek satır: ilanın özeti + o ilana gelen
-/// başvurular.
-///
-/// İlan `GET /users/me/jobs`'tan ([Job], yani `JobSummaryDto`) geliyor;
-/// açıklama/görevler/adres gibi alanlar burada **yok**, onlar için detay
-/// ekranı `GET /jobs/{id}` çağırıyor.
-///
-/// Başvurular ayrı bir uçtan (`GET /jobs/{jobId}/applications`) geldiği için
-/// ilan listesi geldikten sonra dolduruluyor — [applicantsLoaded] o ana kadar
-/// `false` kalıyor ki "henüz başvuru yok" yazısı yükleme sırasında görünmesin.
+/// İşverenin ilan listesindeki satır: ilan özeti + başvurular. Başvurular ayrı
+/// uçtan sonra geldiği için [applicantsLoaded] o ana kadar `false`, ki "henüz
+/// başvuru yok" yüklenirken görünmesin.
 class BJobPost {
   const BJobPost({
     required this.job,
@@ -23,62 +16,42 @@ class BJobPost {
 
   final Job job;
 
-  /// İlana gelen bütün başvurular; bekleyeni de kabul edileni de reddedileni
-  /// de içeriyor.
   final List<JobApplicant> applications;
 
   final bool applicantsLoaded;
 
-  /// Başvuranlar için uçuşta istek var mı.
-  ///
-  /// Yenilemede daha önceki [applications] korunabildiği için bu değer,
-  /// [applicantsLoaded]'dan bağımsızdır.
+  /// Yenilemede eski liste korunabildiği için [applicantsLoaded]'dan bağımsız.
   final bool applicantsLoading;
 
-  /// Yalnızca bu ilanın başvuranlarını yükleme/yenileme hatası.
-  /// İlan listesinin hatasıyla karışmaz ve mevcut [applications]'ı silmez.
+  /// İlan listesinin hatasıyla karışmaz, mevcut listeyi silmez.
   final String? applicantsError;
 
-  /// İlan hâlâ yürürlükte mi. "Aktif" ve "Geçmiş" sekmelerini bu ayırıyor;
-  /// karar sunucudaki [JobStatus]'a ait, uygulamanın kendi bayrağına değil.
+  /// Aktif/Geçmiş ayrımı sunucudaki [JobStatus]'a ait.
   bool get isActive => job.status == JobStatus.open;
 
-  /// Yanıt bekleyen başvurular — işverenin kabul/ret göstereceği liste.
-  ///
-  /// Bir eylem çağrısı, o yüzden dar: yalnızca `APPLIED`. Geri çekilen ya da
-  /// durumu tanınmayan kayıt burada yok; ilan detayındaki tam liste için
+  /// Kabul/ret gösterilecek başvurular: yalnız `APPLIED`. Tam liste
   /// [unansweredApplicants].
   List<JobApplicant> get applicants =>
       applications.where((a) => a.isPending).toList();
 
-  /// İşverenin yanıtlamadığı başvurular — ilan detayındaki "Başvuranlar".
-  ///
-  /// [applicants]'tan farkı: geri çekilen ve durumu tanınmayan kayıtlar da
-  /// burada. Sunucu geri çekilen başvuruyu silmiyor ve işverenin listesinden
-  /// düşürmüyor — kart çiziliyor, yalnızca kabul/ret butonları çıkmıyor
-  /// ([JobApplicant.isPending]). Kaydı gizlemek işverene başvuranın hiç
-  /// olmadığını söylerdi.
+  /// Yanıtlanmamış başvurular; geri çekilenler de burada. Kart çiziliyor ama
+  /// kabul/ret yok: kaydı gizlemek başvuranın hiç olmadığını söylerdi.
   List<JobApplicant> get unansweredApplicants => applications
       .where((application) => !application.status.isAnsweredByEmployer)
       .toList();
 
-  /// Kabul edilmiş başvurular.
-  ///
-  /// Kabul, ilanı kendiliğinden kapatmıyor — sunucu bir atama açıp çalışanın
-  /// onayını bekliyor — ve bir ilana birden çok kişi kabul edilebiliyor. Bu
-  /// yüzden tek kişi değil liste: aksi hâlde kabul edilen aday, ilan hâlâ
-  /// açıkken hiçbir yerde görünmüyordu.
+  /// Kabul edilenler. Kabul ilanı kapatmıyor ve birden çok kişi kabul
+  /// edilebiliyor; bu yüzden liste.
   List<JobApplicant> get acceptedApplicants => applications
       .where((application) => application.status == ApplicationStatus.accepted)
       .toList();
 
-  /// İşi alan kişi: kabul edilmiş ilk başvuru. Kabul edilen yoksa `null`.
+  /// İlk kabul edilen; yoksa `null`.
   JobApplicant? get worker {
     final accepted = acceptedApplicants;
     return accepted.isEmpty ? null : accepted.first;
   }
 
-  /// Liste yenilemesindeki yeni ilan özetini alırken başvuran durumunu korur.
   BJobPost withJob(Job value) {
     return BJobPost(
       job: value,

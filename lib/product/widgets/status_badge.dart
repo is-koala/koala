@@ -4,16 +4,12 @@ import 'package:koala/product/constants/app_padding.dart';
 import 'package:koala/product/constants/app_radius.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 
-/// Tek renkli küçük durum rozeti: renk tonu zemin, rengin kendisi metin.
-///
-/// Oturum listesindeki "Bu cihaz" ve ayrıntıdaki Başarılı / Başarısız
-/// rozetleri aynı kabuğu çiziyor; şekil tek yerde dursun diye çıkarıldı.
+/// Tek renkli küçük durum rozeti: rengin tonu zemin, kendisi metin.
 class StatusBadge extends StatelessWidget {
   const StatusBadge(this.text, {super.key, required this.color});
 
   final String text;
 
-  /// Rozetin anlam rengi (`AppColors.success` gibi); zemin bunun soluk tonu.
   final Color color;
 
   @override
@@ -35,8 +31,7 @@ class StatusBadge extends StatelessWidget {
   }
 }
 
-/// İsteği atan oturumun rozeti. Sunucu `current` ile işaretliyor; liste ve
-/// ayrıntı aynı rozeti çiziyor.
+/// İsteği atan oturumun rozeti ("Bu cihaz").
 class CurrentSessionBadge extends StatelessWidget {
   const CurrentSessionBadge({super.key});
 

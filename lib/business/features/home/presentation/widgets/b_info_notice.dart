@@ -6,11 +6,7 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// Nötr bir bilgi satırı: ikon + açıklama.
-///
-/// Şablon akışının iki ekranı da aynı cümleyi söylemek zorunda — şablonda
-/// adres ve tarih yok. Bunu iki yerde ayrı ayrı kurmak, iki metnin zamanla
-/// birbirinden ayrılması demekti.
+/// Nötr bilgi satırı; şablon akışının iki ekranı aynı cümleyi söylesin diye.
 class BInfoNotice extends StatelessWidget {
   const BInfoNotice({super.key, required this.message});
 

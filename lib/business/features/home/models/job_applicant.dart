@@ -1,12 +1,8 @@
 import 'package:koala/employee/features/home/models/job_detail.dart';
 import 'package:koala/employee/features/jobs/models/job_application.dart';
 
-/// Bir ilana gelen başvuru, işverenin gördüğü hâliyle.
-///
-/// `GET /jobs/{jobId}/applications` yanıtındaki `JobApplicantDto` karşılığı.
-/// Çalışan tarafındaki [JobApplication] ile karıştırılmamalı: o başvuranın
-/// gördüğü kayıt ve içinde ilan var; bu işverenin gördüğü kayıt ve içinde
-/// başvuran var.
+/// İlana gelen başvuru, işverenin gördüğü hâliyle (`JobApplicantDto`).
+/// Çalışanın gördüğü kayıt [JobApplication].
 class JobApplicant {
   const JobApplicant({
     required this.id,
@@ -20,62 +16,39 @@ class JobApplicant {
     this.assignmentId,
   });
 
-  /// Başvurunun kimliği. Kabul/ret bu kimlikle gönderiliyor
-  /// (`POST /job-applications/{id}/respond`), kullanıcı kimliğiyle değil.
+  /// Kabul/ret bu kimlikle gönderilir, kullanıcı kimliğiyle değil.
   final String id;
 
   final ApplicationStatus status;
 
-  /// Başvuran kişi. Backend `SafeUserDto` döndürüyor; onun Dart karşılığı
-  /// [JobCreator] olarak zaten var, ikinci bir kopya çıkarılmadı.
   final JobCreator user;
 
   final DateTime? applicationDateTime;
 
-  /// Başvuru sırasında yazılan ön yazı; boş bırakılmış olabilir.
   final String? notes;
 
-  /// Başvuranın mesleği.
-  ///
-  /// Alan `SafeUserDto`'da değil `JobApplicantDto`'nun kendisinde: o DTO on
-  /// ayrı yanıtta kullanılıyor ve mesleği hepsine yaymanın gereği yok.
+  /// Meslek `SafeUserDto`'da değil `JobApplicantDto`'da.
   final String? jobTitle;
 
-  /// Başvuranın özgeçmişinin bağlantısı; yüklememişse `null`.
-  ///
-  /// Sunucu bu adresi yalnızca ilanın işverenine döndürüyor, indirme yolu da
-  /// ayrıca sahiplik kontrolü yapıyor — başkasının dosyası `404`.
+  /// Yalnız ilanın işverenine dolu; yoksa `null`.
   final String? cvUrl;
 
-  /// Başvurunun kabul ya da reddedildiği an; henüz yanıtlanmadıysa `null`.
-  ///
-  /// koala-backend#282 ile geldi; eski sunucuda alan yok ve kart o satırı
-  /// çizmiyor.
+  /// Yanıtlanmadıysa ya da eski sunucuda `null`.
   final DateTime? answeredDateTime;
 
-  /// Kabulle doğan atamanın kimliği; kabul edilmediyse ya da sunucu alanı
-  /// göndermiyorsa `null`. Aday kartı atamasını önce bununla buluyor;
-  /// çalışan kimliğiyle eşlemek iptal sonrası yeniden kabulde en yeni atamayı
-  /// tahmin etmeyi gerektiriyor, bu alan doğrudan doğru kaydı söylüyor.
-  ///
-  /// `JobApplicantDto.rejectionReason` bilerek okunmuyor: işveren ekranı
-  /// reddedilmiş başvuruyu çizmiyor, okunup gösterilmeyen alan olurdu.
+  /// Kabulle doğan atama; aday kartı atamasını bununla buluyor. İptal sonrası
+  /// yeniden kabulde doğru kaydı tahmine gerek kalmadan söylüyor.
   final String? assignmentId;
 
   String get fullName => user.fullName;
 
-  /// Özgeçmiş bağlantısı var mı. Sunucu adresi yalnızca ilanın işverenine
-  /// dolduruyor; boş dize de "yok" sayılıyor.
+  /// Boş dize de "yok".
   bool get hasCv => cvUrl != null && cvUrl!.isNotEmpty;
 
   String? get profilePictureUrl => user.profilePictureUrl;
 
-  /// Başvurunun hâlâ yanıt bekleyip beklemediği.
-  ///
-  /// Kararı [ApplicationStatus.isPending] veriyor: geri çekilen, yanıtlanan ve
-  /// durumu tanınmayan başvuru bekleyen sayılmıyor, o yüzden kabul/ret
-  /// butonları çizilmiyor. Sunucu da yalnızca `APPLIED` başvuruyu
-  /// yanıtlatıyor; geri çekilmişe basmak `409` demekti.
+  /// Geri çekilen, yanıtlanan ve tanınmayan başvuru bekleyen sayılmaz;
+  /// kabul/ret çizilmez.
   bool get isPending => status.isPending;
 
   factory JobApplicant.fromJson(Map<String, dynamic> json) {

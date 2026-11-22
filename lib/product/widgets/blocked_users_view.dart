@@ -14,14 +14,8 @@ import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/confirm_dialog.dart';
 import 'package:koala/product/widgets/empty_state.dart';
 
-/// Kullanıcının engellediği kişilerin listesi ("Engellediklerim").
-///
-/// Ekranın kendisi değil gövdesi: `Scaffold` ve başlık çubuğu çağırana ait,
-/// çünkü iki uygulamanın başlık çubuğu farklı kuruluyor — [SessionView] ve
-/// [ReportView] ile aynı düzen.
-///
-/// Liste **sayfalı değil**: `GET /users/me/blocks` düz bir liste döndürüyor,
-/// o yüzden burada [ReportView]'deki sonsuz kaydırma yok.
+/// Engellenenler listesinin gövdesi; `Scaffold` ve başlık çağırana ait
+/// ([SessionView] gibi). Liste sayfalı değil.
 class BlockedUsersView extends StatefulWidget {
   const BlockedUsersView({
     super.key,
@@ -29,12 +23,9 @@ class BlockedUsersView extends StatefulWidget {
     this.service,
   });
 
-  /// Listenin altındaki boşluk. İşveren tarafında navbar'ın altında
-  /// kalmasın diye büyütülüyor.
+  /// İşveren tarafında navbar'ın altında kalmasın diye büyütülüyor.
   final double bottomPadding;
 
-  /// Yalnızca testlerin sahte istemci geçebilmesi için; uygulamada boş
-  /// bırakılıyor ve tekil servis kullanılıyor.
   final UserBlockService? service;
 
   @override
@@ -73,11 +64,8 @@ class _BlockedUsersViewState extends State<BlockedUsersView> {
     }
   }
 
-  /// Engeli kaldırır ve satırı listeden düşürür.
-  ///
-  /// Liste yeniden çekilmiyor, kayıt elde siliniyor: uç idempotent ve tek
-  /// bir kaydı kaldırıyor — başka satırı etkilemesinin yolu yok. Kullanıcı
-  /// sonucu beklemeden görüyor.
+  /// Engeli kaldırır ve satırı yerelde düşürür; uç idempotent, başka satırı
+  /// etkilemez.
   Future<void> _unblock(UserBlock block) async {
     final name = block.blocked.displayName;
 
@@ -111,7 +99,7 @@ class _BlockedUsersViewState extends State<BlockedUsersView> {
 
   @override
   Widget build(BuildContext context) {
-    // Üç durum ayrı ayrı çiziliyor: yükleniyor, açılamadı, gerçekten boş.
+    // Yükleniyor, açılamadı ve gerçekten boş ayrı çiziliyor.
     if (_isLoading && _blocks.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }

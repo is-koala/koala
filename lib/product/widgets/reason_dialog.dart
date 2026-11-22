@@ -6,24 +6,13 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/my_textfield.dart';
 
-/// Gerekçe soran onay kutusu.
-///
-/// İptal ve uyuşmazlık uçlarının ikisi de gerekçeyi **zorunlu** tutuyor ve
-/// boş gerekçeyi `400` ile reddediyor; bu yüzden onay butonu alan dolana
-/// kadar kapalı duruyor. Sunucudan hata almadan önce burada durdurmak
-/// kullanıcıya bir gidiş dönüş kazandırıyor.
-///
-/// İki uygulama da kullanıyor: çalışan işi iptal ederken, işveren hem iptal
-/// ederken hem uyuşmazlık açarken.
+/// Gerekçe soran onay kutusu. İptal ve uyuşmazlık uçları boş gerekçeyi `400`
+/// ile reddettiği için onay butonu alan dolana kadar kapalı.
 ///
 /// ```dart
-/// final reason = await ReasonDialog.show(
-///   context,
-///   title: 'İşi iptal et',
-///   description: 'İptal geri alınamaz.',
-///   fieldLabel: 'İptal gerekçen',
-///   confirmLabel: 'İptal Et',
-/// );
+/// final reason = await ReasonDialog.show(context, title: 'İşi iptal et',
+///     description: 'İptal geri alınamaz.', fieldLabel: 'İptal gerekçen',
+///     confirmLabel: 'İptal Et');
 /// ```
 class ReasonDialog extends StatefulWidget {
   const ReasonDialog({
@@ -39,23 +28,21 @@ class ReasonDialog extends StatefulWidget {
 
   final String title;
 
-  /// Kullanıcının ne olacağını anlaması için başlığın altındaki metin.
   final String description;
 
   final String fieldLabel;
   final String confirmLabel;
 
-  /// Onay butonunun kırmızı olup olmayacağı. Geri alınamayan işlemlerde
-  /// kırmızı; nötr bir talepte (uyuşmazlık açma) değil.
+  /// Geri alınamayan işlemde kırmızı; uyuşmazlık açma gibi nötr taleplerde
+  /// değil.
   final bool isDestructive;
 
-  /// Alanı açıkken doldurmak için. Not güncellemede önceki metin burada.
+  /// Not güncellemede önceki metin.
   final String? initialText;
 
-  /// İstemci tarafı uzunluk tavanı. Sunucu da ayrıca doğrular.
   final int? maxLength;
 
-  /// Kutuyu açar. Vazgeçilirse `null`, onaylanırsa girilen gerekçe döner.
+  /// Vazgeçilirse `null`, onaylanırsa gerekçe.
   static Future<String?> show(
     BuildContext context, {
     required String title,
@@ -89,7 +76,6 @@ class _ReasonDialogState extends State<ReasonDialog> {
     text: widget.initialText ?? '',
   );
 
-  /// Açıklama metninin satır aralığı; çok satırlı gövde sıkışık duruyordu.
   static const double _lineHeight = 1.4;
 
   @override
@@ -136,7 +122,6 @@ class _ReasonDialogState extends State<ReasonDialog> {
           child: const Text('Vazgeç'),
         ),
         TextButton(
-          // Gerekçe zorunlu; boşken buton kapalı.
           onPressed: reason.isEmpty
               ? null
               : () => Navigator.pop(context, reason),

@@ -18,10 +18,8 @@ class MyAppbar extends StatelessWidget implements PreferredSizeWidget {
   final bool showBackButton;
   final List<Widget>? actions;
 
-  /// Başlık bir tık büyük çizilsin mi.
-  ///
-  /// Sekme kökü olan sayfalar (Profilim, Ayarlar, Sohbetler) alt sayfalardan
-  /// ayrışsın diye büyük başlık kullanıyor.
+  /// Sekme kökleri (Profilim, Ayarlar, Sohbetler) alt sayfalardan ayrışsın diye
+  /// büyük başlık.
   final bool isLarge;
 
   @override
@@ -29,8 +27,6 @@ class MyAppbar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Zemin, gölge ve başlık stili appBarTheme'den geliyor; burada yalnızca
-    // sayfaya özgü olanlar veriliyor.
     return AppBar(
       leading: showBackButton
           ? IconButton(

@@ -17,8 +17,7 @@ import 'package:provider/provider.dart';
 class BChatListPage extends StatefulWidget {
   const BChatListPage({super.key, this.controller});
 
-  /// Dışarıdan verilirse yaşam döngüsü çağırana ait olan liste durumu;
-  /// testler için. Verilmezse sayfa kendi denetleyicisini kurup atıyor.
+  /// Testler için; verilmezse sayfa kendi denetleyicisini kurar.
   final ChatListController? controller;
 
   @override
@@ -31,18 +30,12 @@ class _BChatListPageState extends State<BChatListPage> {
 
   bool get _ownsController => widget.controller == null;
 
-  /// Oturum sahibi yüklenemediyse gösterilecek mesaj; sohbetlerin kendi
-  /// hataları [ChatListController] üzerinde.
   String? _sessionError;
 
-  /// Sohbet satırındaki avatarın ölçüleri; employee listesindekinden küçük,
-  /// satır burada iki değil tek blok metin taşıyor.
   static const double _avatarSize = 54;
   static const double _avatarRadius = 16;
   static const double _avatarDotSize = 14;
 
-  /// Okunmamış satırın zemin vurgusu; renk değil ton farkı olsun diye çok
-  /// düşük opaklık.
   static const double _unreadTintAlpha = 0.04;
 
   @override
@@ -66,8 +59,8 @@ class _BChatListPageState extends State<BChatListPage> {
   }
 
   Future<void> _load() async {
-    // Karşı tarafın kim olduğu oturum sahibine göre belirleniyor, o yüzden
-    // sohbetlerden önce kullanıcının yüklenmiş olması gerekiyor.
+    // Karşı taraf oturum sahibine göre belirlendiği için önce kullanıcı
+    // yüklenmeli.
     final userProvider = context.read<UserProvider>();
     if (userProvider.user == null) await userProvider.load();
     if (!mounted) return;
@@ -162,7 +155,7 @@ class _BChatListPageState extends State<BChatListPage> {
     return InkWell(
       onTap: () async {
         await context.push('/business/chat-detail', extra: chat);
-        // Geri döndüğünde okunmamış sayacı ve son mesaj değişmiş olur.
+        // Dönüşte okunmamış sayısı ve son mesaj değişmiş olur.
         if (mounted) await _load();
       },
       child: Container(
@@ -231,9 +224,8 @@ class _BChatListPageState extends State<BChatListPage> {
     );
   }
 
-  /// Satır başlığı: ikili sohbette karşı tarafın adı, grupta ilan başlığı
-  /// ve yanında katılımcı sayısı. Sayı başlığın yanında duruyor ki uzun bir
-  /// ilan adı üç noktayla kısalırken kaybolmasın.
+  /// İkilide karşı tarafın adı, grupta ilan başlığı + katılımcı sayısı. Sayı
+  /// ayrı duruyor ki uzun başlık kısalırken kaybolmasın.
   Widget _chatTitle(Conversation chat, {required bool hasUnread}) {
     return Row(
       children: [

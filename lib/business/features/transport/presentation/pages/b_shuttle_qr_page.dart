@@ -20,14 +20,9 @@ import 'package:koala/product/widgets/my_appbar.dart';
 
 part 'b_shuttle_qr_pagemodel.dart';
 
-/// Servisin biniş QR'ı (is-koala/koala#217): `GET /shuttles/{id}/qr`.
-///
-/// Varsayılan dönen QR: `refreshAt`'te kendiliğinden yenilenir, servisteki
-/// tablet ya da telefonda açık tutulur. "Basılı QR" süresizdir, kâğıda
-/// basılır; onunla yapılan biniş `STATIC_QR` bayrağı taşır. "QR'ı yenile"
-/// (`POST …/qr/rotate`) anahtarı değiştirir: basılı QR dahil eski servis
-/// QR'ları ve çalışanların bu servisteki QR'ları anında geçersiz olur —
-/// onaylı bir işlem.
+/// Servisin biniş QR'ı (#217). Dönen QR kendiliğinden yenilenir; basılı QR
+/// süresizdir ve binişe `STATIC_QR` bayrağı koyar. "QR'ı yenile" anahtarı
+/// değiştirir ve basılı dahil bütün QR'ları geçersiz kılar; onay ister.
 class BShuttleQrPage extends StatefulWidget {
   const BShuttleQrPage({
     super.key,
@@ -109,7 +104,6 @@ class _BShuttleQrPageState extends BShuttleQrPagemodel {
     );
   }
 
-  /// Dönen / basılı seçimi; keşfet süzgeçlerinin hapıyla aynı bileşen.
   Widget _modeSelector(BuildContext context) {
     return Row(
       key: const ValueKey('b-shuttle-qr-mode'),

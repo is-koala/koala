@@ -1,6 +1,5 @@
 import 'package:koala/employee/features/home/models/job_detail.dart';
 
-/// Şirket yetkilisinin rolü. Backend `CompanyContactRole` karşılığı.
 enum CompanyContactRole {
   admin('ADMIN', 'Yönetici'),
   staff('STAFF', 'Çalışan');
@@ -10,8 +9,8 @@ enum CompanyContactRole {
   final String code;
   final String displayName;
 
-  /// Tanınmayan değer `null`: eski `OWNER`/`MANAGER` belgelerini yetkili
-  /// sanmamak için. Arayüz o zaman rozeti gizler.
+  /// Tanınmayan değer `null`: eski `OWNER`/`MANAGER` yetkili sanılmasın, rozet
+  /// gizlenir.
   static CompanyContactRole? fromCode(Object? value) {
     for (final role in CompanyContactRole.values) {
       if (role.code == value) return role;
@@ -20,7 +19,6 @@ enum CompanyContactRole {
   }
 }
 
-/// Şirketin bir yetkilisi. Backend `CompanyContactDto` karşılığı.
 class CompanyContact {
   const CompanyContact({
     required this.id,

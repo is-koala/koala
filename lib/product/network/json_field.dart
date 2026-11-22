@@ -1,7 +1,5 @@
-/// JSON sınırından geçen değerler için katı okuyucular.
-///
-/// Sayıları bilerek dizeye dönüştürmez. Finansal DTO'lar JSON dizeleri
-/// kullandığı için backend'in ondalık gösterimi değişmeden korunur.
+/// JSON değerleri için katı okuyucular. Sayıları dizeye çevirmez; finansal
+/// DTO'lar ondalığı dize olarak taşıyor.
 abstract final class JsonField {
   static final RegExp _decimalPattern = RegExp(r'^[+-]?\d+(?:\.\d+)?$');
 
@@ -27,8 +25,8 @@ abstract final class JsonField {
     throw FormatException('$field alanı eksik veya geçersiz.');
   }
 
-  /// Finansal DTO'ların yeni dize sözleşmesini korur; rolling deploy sırasında
-  /// eski backend'in JSON sayılarını da geçici olarak kabul eder.
+  /// Finansal dize sözleşmesi; geçiş döneminde eski backend'in sayılarını da
+  /// kabul eder.
   static String rollingDecimalString(
     Object? value,
     String field, {

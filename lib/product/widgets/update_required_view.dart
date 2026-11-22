@@ -11,11 +11,8 @@ import 'package:koala/product/widgets/app_icon.dart';
 import 'package:koala/product/widgets/my_button.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// Sürüm kapısı kapandığında uygulamanın üstünü kapatan ekran.
-///
-/// Kapatma yolu **yok**: sunucu bu sürümden gelen her isteği geri
-/// çeviriyor, arkadaki ekranlara dönmek kullanıcıyı boş bir uygulamada
-/// dolaştırmaktan başka işe yaramaz.
+/// Sürüm kapısı kapanınca uygulamanın üstünü kapatan ekran. Kapatma yolu yok:
+/// sunucu bu sürümün her isteğini reddediyor.
 class UpdateRequiredView extends StatelessWidget {
   const UpdateRequiredView({
     super.key,
@@ -24,32 +21,23 @@ class UpdateRequiredView extends StatelessWidget {
     this.androidPackageId = AppInfo.androidPackageId,
   });
 
-  /// Sunucunun gönderdiği açıklama.
   final String message;
 
-  /// App Store'daki sayısal uygulama kimliği. Varsayılanı `AppInfo`'dan
-  /// geliyor; testler kimliğin dolu ve boş hâllerini buradan geçiyor.
+  /// Testler kimliğin dolu ve boş hâllerini buradan geçiyor.
   final String iosAppStoreId;
 
-  /// Play Store paket adı. Varsayılanı `AppInfo`'dan geliyor.
   final String androidPackageId;
 
-  /// İkonu taşıyan kutunun kenar uzunluğu.
   static const double _iconBox = 96;
 
-  /// Mağaza adresi bilinmiyorken kullanıcıya bırakılan yol. Düğmenin
-  /// olmaması tek başına "peki ne yapayım" sorusunu cevaplamıyor.
+  /// Mağaza adresi bilinmiyorken kullanıcıya bırakılan yol.
   static const String _noStoreGuidance =
       'Bu cihaz için mağaza bağlantımız henüz yok. Uygulamayı kurduğun '
       'yerden güncelleyebilir, sorun sürerse ${AppInfo.supportEmail} adresine '
       'yazabilirsin.';
 
-  /// Verilen platformun mağaza adresi; o platformun kimliği boşsa `null`.
-  ///
-  /// Yedek yol **yok**. Kimlikler ikisi de boşken davranış doğruydu ama
-  /// yalnız Android kimliği doldurulunca yedek yol iPhone kullanıcısını
-  /// Google Play'e göndermeye başladı: hiçbir yere gitmeyen bir düğme
-  /// olmayan düğmeden kötüyse, yanlış mağazaya giden düğme daha da kötü.
+  /// Platformun mağaza adresi; kimliği boşsa `null`. Diğer platforma yedek yol
+  /// **yok**: iPhone kullanıcısını Google Play'e göndermek düğmesizlikten kötü.
   @visibleForTesting
   static Uri? storeUriFor({
     required TargetPlatform platform,
@@ -65,9 +53,7 @@ class UpdateRequiredView extends StatelessWidget {
     _ => null,
   };
 
-  /// Çalışılan platformun mağaza adresi. Düğmenin çizilip çizilmeyeceği de
-  /// buradan geliyor: düğmenin varlığı ile açtığı adres tek bir değer, ayrı
-  /// bir bayrak olsaydı biri değişip diğeri yerinde kalabilirdi.
+  /// Düğmenin varlığı ile adresi tek değer; ayrı bayrak olsa ayrışabilirdi.
   Uri? get _storeUri => storeUriFor(
     platform: defaultTargetPlatform,
     iosAppStoreId: iosAppStoreId,

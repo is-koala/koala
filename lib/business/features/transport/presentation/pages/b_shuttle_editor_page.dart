@@ -21,24 +21,17 @@ import 'package:koala/product/widgets/my_textfield.dart';
 
 part 'b_shuttle_editor_pagemodel.dart';
 
-/// `/business/transport-shuttle` rotasının `extra`'sı.
 class BShuttleEditorArgs {
   const BShuttleEditorArgs({required this.shuttle, this.jobStart});
 
-  /// Düzenlenecek servis; sayfa kopyası üzerinde çalışıyor.
+  /// Sayfa kopyası üzerinde çalışıyor.
   final ShuttleDraft shuttle;
 
-  /// İşin başlangıcı; durak saat seçicisine geçiyor.
   final DateTime? jobStart;
 }
 
-/// Tek servisin düzenleyicisi (is-koala/koala#197): ad, plaka, kapasite,
-/// şoför ve sıralı duraklar.
-///
-/// Kaydedince [ShuttleDraft] ile kapanıyor. Duraklar eklendikleri sırayla
-/// gidiyor; sunucu bu sırayı `sortOrder` yapıyor. Koltuğu olan bir durağı
-/// silmek "N çalışanın koltuğu düşecek" onayı istiyor — koltuk sunucuda
-/// kaydedilince düşüyor, o yüzden uyarı kesin değil ama sayı gerçek.
+/// Tek servisin düzenleyicisi (#197). Durak sırası `sortOrder` olur. Koltuğu
+/// olan durağı silmek onay ister; koltuk kaydedince düşüyor.
 class BShuttleEditorPage extends StatefulWidget {
   const BShuttleEditorPage({super.key, required this.args});
 

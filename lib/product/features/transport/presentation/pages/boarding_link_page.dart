@@ -10,21 +10,16 @@ import 'package:koala/product/features/transport/presentation/widgets/boarding_r
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:koala/product/widgets/my_button.dart';
 
-/// Bağlantıdaki token'ı gönderen fonksiyon; oturumun tarafına göre
-/// rotada seçiliyor (işçi kuyruğu ya da işverenin koltuk işareti).
+/// Oturumun tarafına göre rotada seçiliyor.
 typedef BoardingLinkSubmit = Future<BoardingResultPanel> Function(
   BuildContext context,
   BoardingToken token,
   DateTime capturedAt,
 );
 
-/// Telefonun kendi kamerasıyla okutulan `{şema}://board?t=<token>`
-/// bağlantısı (is-koala/koala#217). `AppLinkDestination` bunu
-/// `/boarding-link?t=…`'ye çeviriyor; rota iki tarafa da açık.
-///
-/// Servis QR'ı (`s1.`) işçinin, çalışan QR'ı (`w1.`) işverenin işi: yanlış
-/// tarafın açtığı bağlantı gönderilmez, ne yapılacağı söylenir. Sayfa
-/// açılır açılmaz bir kez gönderir; "Tamam" kendi ana sayfasına götürür.
+/// Telefon kamerasıyla okutulan biniş bağlantısı (#217). Servis QR'ı işçinin,
+/// çalışan QR'ı işverenin işi; yanlış tarafta gönderilmez, ne yapılacağı
+/// söylenir. Açılınca bir kez gönderir.
 class BoardingLinkPage extends StatefulWidget {
   const BoardingLinkPage({
     super.key,
@@ -35,7 +30,6 @@ class BoardingLinkPage extends StatefulWidget {
     this.now,
   });
 
-  /// Bağlantının `t` parametresi.
   final String token;
   final BoardingTokenKind acceptedKind;
   final String homeRoute;

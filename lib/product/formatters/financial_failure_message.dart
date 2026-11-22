@@ -1,6 +1,5 @@
-/// Backend'in kalıcı finansal hata anahtarlarını kullanıcıya güvenli Türkçe
-/// metin olarak sunar. Sağlayıcıdan veya bankadan gelen tanınmayan ham metin
-/// hiçbir zaman ekrana taşınmaz.
+/// Kalıcı finansal hata anahtarlarını Türkçe metne çevirir; sağlayıcının ham
+/// metni ekrana taşınmaz.
 abstract final class FinancialFailureMessage {
   static const paymentFallback = 'Ödeme tamamlanamadı. Lütfen tekrar dene.';
   static const payoutFallback =

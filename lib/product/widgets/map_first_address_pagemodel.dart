@@ -1,36 +1,26 @@
 part of 'map_first_address_page.dart';
 
 abstract class MapFirstAddressPagemodel extends State<MapFirstAddressPage> {
-  /// Kartın açılış yüksekliği: arama kutusu, durum satırı ve ilk alanlar
-  /// görünür; pin ekranın üst yarısında serbest kalır.
+  /// Açılışta arama, durum satırı ve ilk alanlar görünür; pin üst yarıda.
   static const double _sheetInitialSize = 0.42;
 
-  /// Kart bu kadar küçülebilir: haritayı geniş görmek isteyen kullanıcı için
-  /// yalnız tutamaç ve arama kutusu kalır.
   static const double _sheetMinSize = 0.18;
 
-  /// Kart bu kadar büyüyebilir: alanlar ve kaydet düğmesi klavye açıkken de
-  /// kaydırılarak erişilebilsin.
+  /// Klavye açıkken de kaydet düğmesine kaydırılarak ulaşılsın.
   static const double _sheetMaxSize = 0.92;
 
-  /// Kart bir uçtan diğerine kayarken geçen süre.
   static const Duration _sheetAnimation = Duration(milliseconds: 250);
 
-  /// Haritanın kayıtlı bir adrese ya da cihaza odaklanma süresi.
   static const Duration _cameraAnimation = Duration(milliseconds: 400);
 
   late final MapFirstAddressController controller;
   late final bool _ownsController;
 
-  /// Harita bu derlemede çizilebilir mi (is-koala/koala#172). Kapalıysa
-  /// `GoogleMap` hiç kurulmaz — iOS'ta kurulduğu an çöküyordu — ekran arama
-  /// ve il/ilçe seçimiyle çalışır, pin [MapFirstAddressController.openWithoutMap]
-  /// kuralıyla belirlenir.
+  /// Haritasız derlemede (#172) `GoogleMap` hiç kurulmaz; iOS'ta kurulduğu anda
+  /// çöküyor.
   late final bool mapsAvailable = MapsAvailability.of(context).isAvailable;
 
-  /// Haritanın açıldığı kare: düzenlenen adres varsa sokak ölçeğinde onun
-  /// pini, yoksa şehir ölçeğinde merkez. Harita kurulduktan sonra
-  /// değişmez; sonraki hareketler kameraya animasyonla verilir.
+  /// Açılış karesi; sonraki hareketler animasyonla.
   late final CameraPosition initialCamera;
   final DraggableScrollableController sheetController =
       DraggableScrollableController();
@@ -83,11 +73,8 @@ abstract class MapFirstAddressPagemodel extends State<MapFirstAddressPage> {
     _followPendingCamera();
   }
 
-  /// Karttaki herhangi bir alan odaklanınca kart açılır: arama kutusunda
-  /// öneri listesi, diğer alanlarda alanın kendisi klavyenin üstünde yer
-  /// bulsun. Kart başlangıç boyundayken klavye kartın neredeyse tamamını
-  /// örtüyor; küçülmeyen `Scaffold`'da odaklı alanı görünür tutmanın tek yolu
-  /// kartı büyütmek.
+  /// Bir alan odaklanınca kart açılır; küçülmeyen `Scaffold`'da odaklı alanı
+  /// klavyenin üstünde tutmanın tek yolu bu.
   void onCardFocusChanged(bool hasFocus) {
     if (hasFocus) expandSheet();
   }
@@ -101,10 +88,8 @@ abstract class MapFirstAddressPagemodel extends State<MapFirstAddressPage> {
     );
   }
 
-  /// Kontrolcünün istediği kamera hareketini haritaya uygular.
-  ///
-  /// Harita henüz kurulmadıysa hedef kontrolcüde bekler; `onMapCreated` bu
-  /// metodu yeniden çağırır.
+  /// Bekleyen kamera hareketini uygular; harita kurulmadıysa `onMapCreated`
+  /// yeniden çağırır.
   void _followPendingCamera() {
     final mapController = _mapController;
     if (mapController == null || controller.pendingCameraTarget == null) return;
@@ -130,7 +115,6 @@ abstract class MapFirstAddressPagemodel extends State<MapFirstAddressPage> {
     await controller.selectSuggestion(suggestion);
   }
 
-  /// İl seçtirir; ülke henüz seçilmemişse önce onu çözer.
   Future<void> pickCity() async {
     if (controller.country == null) {
       final countries = await _loadOptions(controller.countryOptions);
@@ -179,7 +163,7 @@ abstract class MapFirstAddressPagemodel extends State<MapFirstAddressPage> {
     if (district != null) controller.selectDistrict(district);
   }
 
-  /// Referans listesini çeker; sunucu düşerse toast gösterip `null` döner.
+  /// Sunucu düşerse toast gösterip `null` döner.
   Future<List<ReferenceLocation>?> _loadOptions(
     Future<List<ReferenceLocation>> Function() load,
   ) async {
@@ -191,8 +175,8 @@ abstract class MapFirstAddressPagemodel extends State<MapFirstAddressPage> {
     }
   }
 
-  /// Adresi onaylar: eksik alan varsa kart açılır ve satır içi hatalar
-  /// gösterilir; geçerliyse önce çağıranın kaydı, sonra geri dönüş.
+  /// Eksik alan varsa kartı açıp hataları gösterir; geçerliyse kaydeder ve
+  /// döner.
   Future<void> save() async {
     if (isSaving) return;
     FocusScope.of(context).unfocus();

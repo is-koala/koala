@@ -5,17 +5,14 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// Beş yıldızlık puan satırı: dolu yıldızlar puan rengiyle, kalanı çizgi.
-///
-/// İki kabuk da aynı satırı çiziyor (çalışanın kendi profili, işverenin
-/// gördüğü aday profili); yıldız sayısı ve renkleri tek yerde dursun.
+/// Beş yıldızlık puan satırı: dolu yıldızlar puan renginde, kalanı çizgi.
 class RatingStars extends StatelessWidget {
   const RatingStars({super.key, required this.rating});
 
-  /// 1 ile 5 arası; sunucu aralık dışını reddediyor.
+  /// 1 ile 5 arası.
   final int rating;
 
-  /// Bir değerlendirmedeki en yüksek puan; sunucunun `@Max(5)` sınırı.
+  /// Sunucunun `@Max(5)` sınırı.
   static const int maxRating = 5;
 
   @override

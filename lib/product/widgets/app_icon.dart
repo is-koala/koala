@@ -5,13 +5,10 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:reicon_flutter/reicon_flutter.dart';
 
-/// Reicon ikonlarını Material'ın `Icon` widget'ı gibi kullanmayı sağlar.
-///
-/// Reicon ikonları `IconData` değil ham SVG path verisi olarak gelir; bu widget
-/// çözme ve renklendirme işini tek yerde toplar.
+/// Reicon ikonlarını `Icon` gibi kullandırır; ikonlar `IconData` değil SVG
+/// path, çözme ve renklendirme burada.
 ///
 /// ```dart
-/// AppIcon(AppIcons.home)
 /// AppIcon(AppIcons.home, filled: true, color: context.accentColor)
 /// ```
 class AppIcon extends StatelessWidget {
@@ -23,16 +20,13 @@ class AppIcon extends StatelessWidget {
     this.filled = false,
   });
 
-  /// `AppIcons` içindeki ikon adı.
   final AppIconData name;
 
-  /// İkon boyutu (logical pixels). Varsayılan `AppSizes.icon`.
   final double size;
 
-  /// Verilmezse önce `IconTheme`, o da yoksa `context.textPrimary` kullanılır.
+  /// Verilmezse `IconTheme`, o da yoksa `context.textPrimary`.
   final Color? color;
 
-  /// `true` ise Filled, değilse Outline ağırlığı kullanılır.
   final bool filled;
 
   @override

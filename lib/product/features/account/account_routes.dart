@@ -14,31 +14,24 @@ import 'package:koala/product/features/account/presentation/pages/session_detail
 import 'package:koala/product/features/account/presentation/pages/sessions_page.dart';
 import 'package:koala/product/features/account/presentation/pages/verification_code_page.dart';
 
-/// Hesap modülünün rotaları.
-///
-/// Hesap kullanıcıya ait, tarafına değil: çalışan da işveren de aynı
-/// ekranları açıyor. Yollar bu yüzden `/business/` öneki taşımıyor — önek
-/// yönlendirme kapısında çalışanı geri çevirir, öneksiz yol iki tarafa da
-/// açık (`RouterManager.resolveRedirect`). İki ayarlar menüsü de buradaki
-/// sabitlere gidiyor; `/business/...` kopyası tutulmuyor.
+/// Hesap modülünün rotaları. Hesap kullanıcıya ait, tarafına değil; yollar
+/// `/business/` öneki taşımıyor ki iki tarafa da açık olsun.
 class AccountRoutes {
   const AccountRoutes._();
 
-  /// Hesap bilgileri. `extra`: [CurrentUser].
+  /// `extra`: [CurrentUser].
   static const String accountInfo = '/account-info';
 
-  /// Kullanıcının kendi adresi, harita-öncelikli ekranda. `extra` olarak
-  /// [CurrentUser] verilebilir; verilmezse ekran `UserProvider`'daki
-  /// kullanıcıya açılır.
+  /// Kendi adres. `extra` [CurrentUser] olabilir; yoksa `UserProvider`.
   static const String address = '/address';
 
   static const String changePassword = '/change-password';
 
   static const String sessions = '/sessions';
 
-  /// Tek oturumun ayrıntısı. `extra`: yüklenmiş [SessionDetail] — liste
-  /// ayrıntıyı önce kendisi çekiyor ki eski sunucunun `404`'ü boş sayfa
-  /// açmasın. Oturum kapatıldıysa `true` ile kapanır.
+  /// `extra`: yüklenmiş [SessionDetail]; liste ayrıntıyı önce çekiyor ki eski
+  /// sunucunun `404`'ü boş sayfa açmasın. Oturum kapatıldıysa `true` ile
+  /// kapanır.
   static const String sessionDetail = '/session-detail';
 
   static const String notificationPreferences = '/notification-preferences';
@@ -49,15 +42,11 @@ class AccountRoutes {
 
   static const String accountDeletion = '/account-deletion';
 
-  /// E-posta/telefon değişikliğinin kod ekranı. `extra`:
-  /// [PendingVerification]; `bool` sonucuyla kapanır.
+  /// `extra`: [PendingVerification]; `bool` sonucuyla kapanır.
   static const String verification = '/verification';
 
-  /// Modülün `GoRoute` listesi.
-  ///
-  /// [page], shell dışındaki sayfaların `Page`'ini üreten fonksiyon
-  /// (`RouterManager._page`): her rota kendi `pageBuilder`'ını vermek zorunda,
-  /// yoksa go_router sayfayı animasyonsuz açıyor.
+  /// [page] shell dışı sayfaların `Page`'ini üretir; vermezsek go_router
+  /// animasyonsuz açar.
   static List<GoRoute> routes(
     Page<void> Function(GoRouterState state, Widget child) page,
   ) {
@@ -113,10 +102,8 @@ class AccountRoutes {
         pageBuilder: (context, state) =>
             page(state, const AccountDeletionPage()),
       ),
-      // Hesap ekranından açılıyor: e-posta ya da telefon değiştiğinde sunucu
-      // değeri yazmıyor, önce buradaki kodun girilmesini bekliyor. Sonucu
-      // `bool` olarak döndürüyor; çağıran sıradaki doğrulamaya geçip
-      // geçmeyeceğine buna bakarak karar veriyor.
+      // E-posta/telefon değişince sunucu önce bu kodu bekliyor; `bool` sonucu
+      // çağıranın sıradaki doğrulamaya geçip geçmeyeceğini belirler.
       GoRoute(
         path: verification,
         pageBuilder: (context, state) {

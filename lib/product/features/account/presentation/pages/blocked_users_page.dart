@@ -4,11 +4,7 @@ import 'package:koala/product/features/account/presentation/widgets/account_list
 import 'package:koala/product/widgets/blocked_users_view.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 
-/// Hesabın engellediği kullanıcılar.
-///
-/// Engel listesi kullanıcıya ait, tarafına değil: iki uygulamanın ayarları
-/// da bu ekranı açıyor. Gövde [BlockedUsersView]'den geliyor; alt pay kabuğa
-/// göre ([AccountListClearance]).
+/// Engellenenler; gövde [BlockedUsersView], alt pay [AccountListClearance].
 class BlockedUsersPage extends StatelessWidget {
   const BlockedUsersPage({super.key});
 

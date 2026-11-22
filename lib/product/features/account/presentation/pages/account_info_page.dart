@@ -26,18 +26,9 @@ import 'package:provider/provider.dart';
 
 part 'account_info_pagemodel.dart';
 
-/// Hesap bilgileri: fotoğraf, ad-soyad, telefon, e-posta, adres ve kimlik.
-///
-/// Hesap kullanıcıya ait, tarafına değil: çalışan da işveren de aynı ekranı
-/// açıyor. Çalışana özgü profil alanları (meslek, IBAN, hakkımda,
-/// yetkinlikler, ilgi alanları) yalnız `isEmployer == false` iken çiziliyor;
-/// işverenin bunlara karşılık gelen bilgisi şirket ekranında.
-///
-/// Kimliği doğrulanmış kullanıcının ad ve soyadı çipten geliyor ve sunucu
-/// değişikliği reddediyor (is-koala/koala#151); iki alan o zaman kapalı
-/// metin kutusu değil [LockedField] olarak çiziliyor — düzenlenebilir gibi
-/// görünüp reddedilen bir alan yerine, kimlik ekranındakiyle aynı "karttan
-/// okunan değer" görünümü.
+/// Hesap bilgileri. Çalışana özgü alanlar yalnız `isEmployer == false` iken.
+/// Kimliği doğrulanmış kullanıcının adı çipten geliyor ve sunucu değişikliği
+/// reddediyor (#151); o zaman [LockedField] olarak çiziliyor.
 class AccountInfoPage extends StatefulWidget {
   final CurrentUser user;
 
@@ -48,14 +39,10 @@ class AccountInfoPage extends StatefulWidget {
 }
 
 class _AccountInfoPageState extends AccountInfoPagemodel {
-  /// Profil fotoğrafının kenar uzunluğu.
   static const double _avatarSize = 100;
 
-  /// "Hakkımda" alanının yüksekliği: yaklaşık dört satır.
   static const double _aboutHeight = 120;
 
-  /// Yetkinlik ve ilgi alanı kutularının yüksekliği; tanıtım yazısından
-  /// kısa metinler bekleniyor.
   static const double _multilineHeight = 90;
 
   @override
@@ -103,8 +90,8 @@ class _AccountInfoPageState extends AccountInfoPagemodel {
                 "kalıyor.",
               ),
               const SizedBox(height: AppSizes.spaceMedium),
-              // Adres kendi ekranında düzenleniyor: uç toptan yazıyor ve
-              // harita üzerinde onaylanmış koordinat istiyor.
+              // Adres kendi ekranında: uç toptan yazıyor ve onaylı koordinat
+              // istiyor.
               _addressRow(),
               const SizedBox(height: AppSizes.spaceMedium),
               _identityRow(),
@@ -117,8 +104,6 @@ class _AccountInfoPageState extends AccountInfoPagemodel {
     );
   }
 
-  /// Ad ve soyad: düzenlenebilirken metin kutusu, kimlik doğrulandıktan sonra
-  /// kilitli satır.
   List<Widget> _nameFields() {
     if (canEditName) {
       return [
@@ -138,7 +123,6 @@ class _AccountInfoPageState extends AccountInfoPagemodel {
     ];
   }
 
-  /// Çalışan profilinin alanları; işverende çizilmiyor.
   List<Widget> _workerFields() {
     return [
       const SizedBox(height: AppSizes.spaceMedium),
@@ -177,7 +161,6 @@ class _AccountInfoPageState extends AccountInfoPagemodel {
     ];
   }
 
-  /// Adres satırı: özet ve düzenleme ekranına geçiş.
   Widget _addressRow() {
     final label = locationController.text;
 
@@ -190,10 +173,8 @@ class _AccountInfoPageState extends AccountInfoPagemodel {
     );
   }
 
-  /// Kimlik doğrulama satırı. Doğrulanmışsa yalnızca durumu gösteriyor;
-  /// değilse incelemenin nerede olduğunu (bekliyor / reddedildi / hiç yok)
-  /// ve dokununca kimlik ekranını açıyor — bekleyen incelemede de açılıyor,
-  /// kullanıcı durumu oradan izliyor.
+  /// Kimlik satırı. Doğrulanmamışsa incelemenin durumunu gösterir ve kimlik
+  /// ekranını açar.
   Widget _identityRow() {
     final status = IdentityStatus.resolve(
       identityVerified: widget.user.identityVerified,
@@ -228,8 +209,8 @@ class _AccountInfoPageState extends AccountInfoPagemodel {
     };
   }
 
-  /// Başka bir ekrana götüren satır. Eksik bilgi vurgulu duruyor: adres ve
-  /// kimlik çalışanda başvurunun, işverende ödemenin ön koşulu.
+  /// Eksik bilgi vurgulu: adres ve kimlik çalışanda başvurunun, işverende
+  /// ödemenin ön koşulu.
   Widget _linkRow({
     Key? key,
     required String label,
@@ -316,8 +297,7 @@ class _AccountInfoPageState extends AccountInfoPagemodel {
       controller: aboutController,
       height: _aboutHeight,
       expands: true,
-      // Tek satırlık alanların tam yuvarlak köşesi bu yükseklikte metni
-      // sıkıştırıyor.
+      // Tam yuvarlak köşe bu yükseklikte metni sıkıştırıyor.
       borderRadius: AppRadius.innerCircular,
     );
   }

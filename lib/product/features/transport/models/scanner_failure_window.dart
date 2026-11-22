@@ -1,11 +1,6 @@
-/// QR çözücünün "çalışmıyor" kararını veren zaman pencereli sayaç
-/// (is-koala/koala#217).
-///
-/// Android'de barkod modeli Play Services'tan geliyor; model yoksa ya da
-/// inmediyse her kare hata döner. Arada bir düşen tek tük kare hatası ise
-/// sağlam bir cihazda da olur. Bu yüzden karar "üst üste N hata" değil,
-/// "[window] içinde [threshold] hata": seyrek hatalar birikip yanlışlıkla
-/// "QR okuyucu hazırlanamadı" dedirtmez. Başarılı bir okuma sayacı sıfırlar.
+/// QR çözücünün "çalışmıyor" kararı (#217). Android'de model Play Services'tan
+/// geliyor, yoksa her kare hata döner; tek tük hata ise sağlam cihazda da olur.
+/// Karar "[window] içinde [threshold] hata"; başarılı okuma sıfırlar.
 class ScannerFailureWindow {
   ScannerFailureWindow({
     this.threshold = defaultThreshold,
@@ -19,7 +14,7 @@ class ScannerFailureWindow {
   final Duration window;
   final List<DateTime> _failures = [];
 
-  /// Hatayı kaydeder; eşik bu pencerede aşıldıysa `true`.
+  /// Eşik aşıldıysa `true`.
   bool record(DateTime now) {
     _failures
       ..removeWhere((at) => now.difference(at) > window)
@@ -27,6 +22,5 @@ class ScannerFailureWindow {
     return _failures.length >= threshold;
   }
 
-  /// Başarılı okuma: geçmiş hatalar unutulur.
   void reset() => _failures.clear();
 }

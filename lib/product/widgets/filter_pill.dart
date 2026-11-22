@@ -6,14 +6,7 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// Süzgeç sheet'lerindeki seçenek hapı.
-///
-/// Keşfet'in süzgeç ve sıralama sheet'leri ile çubuktaki etkin süzgeç özeti
-/// aynı çipi çiziyor; sayfaya gömülü özel bir metot olarak kalsaydı üç kopya
-/// olurdu.
-///
-/// Adı `FilterChip` değil: Flutter'ın kendi `FilterChip`'i var ve aynı adı
-/// taşıyan bir widget onu import eden ilk dosyada çakışır.
+/// Süzgeç seçenek hapı. Adı `FilterChip` değil: Material'inkiyle çakışırdı.
 class FilterPill extends StatelessWidget {
   const FilterPill({
     super.key,
@@ -28,19 +21,14 @@ class FilterPill extends StatelessWidget {
   final bool isSelected;
   final VoidCallback? onTap;
 
-  /// Verilirse çipin sağında bir çarpı çiziliyor: çubuktaki etkin süzgeç
-  /// özetinde her çip kendi alanını temizliyor.
+  /// Verilirse sağda çarpı çizilir (etkin süzgeç özetinde).
   final VoidCallback? onRemove;
 
-  /// Kapalıyken soluk çiziliyor ve dokunmayı yutuyor — seçeneğin neden
-  /// kullanılamadığını çipin yanındaki açıklama anlatıyor, çip sessizce
-  /// kaybolmuyor.
+  /// Kapalıyken soluk ve dokunulmaz; nedeni yanındaki açıklama söylüyor.
   final bool enabled;
 
-  /// Seçili çipin zemin opaklığı.
   static const double _selectedAlpha = 0.15;
 
-  /// Kapalı çipin opaklığı.
   static const double _disabledOpacity = 0.4;
 
   @override

@@ -8,23 +8,19 @@ import 'package:koala/product/constants/app_sizes.dart';
 import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// Bir biniş okutmasının sonucunun türü.
 enum BoardingResultTone {
-  /// Kaydedildi.
   success,
 
-  /// Cihazda saklandı, sonra gönderilecek.
   queued,
 
-  /// Kaydedildi ama dikkat isteyen bir durum var (başka servisin koltuğu).
+  /// Kaydedildi ama dikkat isteyen bir durum var.
   warning,
 
-  /// Kaydedilemedi.
   failure,
 }
 
-/// Okutma sonucunu çizen kutu; işçinin ve işverenin tarama ekranları ve
-/// telefon kamerasıyla açılan bağlantı sayfası aynı dili kullanıyor.
+/// Okutma sonucunu çizen kutu; iki tarafın tarama ekranları ve bağlantı sayfası
+/// ortak.
 class BoardingResultPanel extends StatelessWidget {
   const BoardingResultPanel({
     super.key,
@@ -36,7 +32,6 @@ class BoardingResultPanel extends StatelessWidget {
   final BoardingResultTone tone;
   final String message;
 
-  /// İkinci satır (bayraklar, "daha önce kaydedilmişti" gibi).
   final String? detail;
 
   @override
@@ -49,8 +44,7 @@ class BoardingResultPanel extends StatelessWidget {
     };
     final detail = this.detail;
 
-    // Sonuç kamera açıkken, ekranın altında beliriyor; ekran okuyucu onu
-    // kendiliğinden okusun.
+    // Sonuç kamera açıkken beliriyor; ekran okuyucu kendiliğinden okusun.
     return Semantics(
       liveRegion: true,
       child: Container(

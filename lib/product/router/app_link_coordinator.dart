@@ -1,22 +1,18 @@
 import 'package:koala/product/router/app_link_destination.dart';
 
-/// Native bağlantıyı oturum yüklemesiyle sıralayan küçük koordinatör.
-///
-/// Cold-start bağlantısı, router henüz oturumu okumamışken gelirse doğrudan
-/// gezinmek muhafız tarafından splash'a geri çevrilir. Bu sınıf son geçerli
-/// bağlantıyı bellekte tutar ve oturum hazır olduğunda yalnız bir kez açar.
+/// Uygulama bağlantısını oturum yüklemesiyle sıralar: soğuk açılışta router
+/// oturumu okumadan gelen bağlantı muhafıza takılırdı. Son geçerli bağlantı
+/// bekletilir ve oturum hazır olunca bir kez açılır.
 class AppLinkCoordinator {
   AppLinkCoordinator({required this.appScheme, required this.webHosts});
 
   final String appScheme;
 
-  /// Çalışan flavor'ın `WEB_HOSTS` yapılandırmasından gelen HTTPS hostları.
   final Set<String> webHosts;
 
   String? _pendingRoute;
 
-  /// Bağlantıyı doğrular; oturum hazırsa açar, değilse son geçerli rotayı
-  /// bekletir. Geçersiz bir bağlantı mevcut bekleyen rotayı silemez.
+  /// Geçersiz bağlantı bekleyen rotayı silemez.
   void handle(
     Uri uri, {
     required bool sessionInitialized,
@@ -37,7 +33,6 @@ class AppLinkCoordinator {
     navigate(route);
   }
 
-  /// Oturum okunduysa bekleyen rotayı alır, siler ve açar.
   void flush({
     required bool sessionInitialized,
     required void Function(String route) navigate,

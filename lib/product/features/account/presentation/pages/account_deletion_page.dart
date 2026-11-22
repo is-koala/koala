@@ -7,18 +7,12 @@ import 'package:koala/product/widgets/account_deletion_view.dart';
 import 'package:koala/product/widgets/my_appbar.dart';
 import 'package:provider/provider.dart';
 
-/// Hesap silme talebi.
-///
-/// Silme hesabın kendisine ait: çalışan da işveren de aynı ekrandan,
-/// aynı `LegalService` çağrısıyla talep açıyor. Gövde
-/// [AccountDeletionView]'den geliyor.
+/// Hesap silme talebi; iki taraf aynı ekranı kullanıyor.
 class AccountDeletionPage extends StatelessWidget {
   const AccountDeletionPage({super.key});
 
-  /// Talep kabul edilince cihazda bekleyen servis biniş okutmaları
-  /// (token ve konum taşıyorlar) silinir (is-koala/koala#217). Kuyruk
-  /// yalnız uygulama ağacında var; testte ya da işveren oturumunda boş
-  /// geçilir.
+  /// Talep kabul edilince cihazda bekleyen biniş okutmaları (token ve konum
+  /// taşıyorlar) silinir (#217).
   static Future<AccountDeletion> _requestDeletion(
     BuildContext context, {
     String? reason,

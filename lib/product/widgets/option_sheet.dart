@@ -7,21 +7,10 @@ import 'package:koala/product/extensions/context_extensions.dart';
 import 'package:koala/product/widgets/app_bottom_sheet.dart';
 import 'package:koala/product/widgets/app_icon.dart';
 
-/// Bir listeden tek seçim yaptıran bottom sheet.
+/// Listeden tek seçim yaptıran bottom sheet (kategori, ülke, il, ilçe).
 ///
-/// İlan oluşturma ekranındaki bütün açılır alanlar bunu kullanıyor: kategori,
-/// ülke, il, ilçe. Kategori bir zamanlar çip dizisiydi; liste sunucudan
-/// geldiği ve büyüyebildiği için diğerleriyle aynı kalıba alındı.
-///
-/// **`product/` altında ve öneksiz**, çünkü artık çalışan tarafındaki keşfet
-/// süzgeci de il ve ilçe seçimini bununla yaptırıyor; `b_` öneki "yalnız
-/// işveren tarafı" demek.
-///
-/// Satırlar `ListTile` değil, [ThemeModeSheet]'teki gibi `Material` + `InkWell`:
-/// `AppBottomSheet`'in kabuğu renkli bir `DecoratedBox` ve `ListTile` zeminini
-/// en yakın `Material`'a çizdiği için o kabuk zemini gizliyor — Flutter bunu
-/// "ListTile background color or ink splashes may be invisible" diye
-/// bildiriyor.
+/// Satırlar `ListTile` değil `Material` + `InkWell`: sheet'in renkli kabuğu
+/// `ListTile`'ın zeminini gizliyor ("ink splashes may be invisible").
 class OptionSheet<T> extends StatelessWidget {
   const OptionSheet({
     super.key,
@@ -33,35 +22,29 @@ class OptionSheet<T> extends StatelessWidget {
     this.colorOf,
   });
 
-  /// Sheet'in başlığı.
   final String title;
 
   final List<T> options;
 
-  /// Satırda yazan ad.
   final String Function(T) labelOf;
 
-  /// Seçili olan; halkalı ve tikli çiziliyor.
   final T? selected;
 
-  /// Satırın solundaki ikon. Verilmezse ikon sütunu hiç çizilmiyor.
+  /// Verilmezse ikon sütunu çizilmez.
   final AppIconData? Function(T)? iconOf;
 
-  /// Satırın vurgu rengi. Verilmezse tema vurgusu kullanılıyor — kategoriler
-  /// kendi renkleriyle çizilsin diye açık bırakıldı.
+  /// Verilmezse tema vurgusu; kategoriler kendi rengiyle çizilsin diye açık.
   final Color? Function(T)? colorOf;
 
-  /// Seçili satırın zemin opaklığı.
   static const double _selectedTintAlpha = 0.1;
 
-  /// Seçili satırın halkası; zemin tonu tek başına seçimi anlatmıyor.
+  /// Zemin tonu tek başına seçimi anlatmıyor.
   static const double _selectedBorderWidth = 2.0;
 
-  /// Listenin kaplayabileceği en fazla yükseklik oranı. 81 il tam ekranı
-  /// doldurmasın, altındaki sayfa görünmeye devam etsin diye.
+  /// 81 il ekranı doldurmasın, alttaki sayfa görünsün.
   static const double _maxHeightRatio = 0.6;
 
-  /// Sheet'i açar ve seçilen değeri döndürür; vazgeçilirse `null`.
+  /// Seçilen değeri döndürür; vazgeçilirse `null`.
   static Future<T?> show<T>(
     BuildContext context, {
     required String title,

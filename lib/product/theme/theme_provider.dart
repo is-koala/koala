@@ -1,20 +1,13 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Uygulamanın tema tercihi: sistem, açık ya da koyu.
-///
-/// Tercih [ThemeMode] olarak tutuluyor; açık/koyu temayı Flutter'ın kendisi
-/// [MaterialApp.themeMode] üzerinden seçiyor, böylece "sistem" seçeneği cihaz
-/// ayarını canlı takip edebiliyor — kullanıcı telefonunu gece moduna alınca
-/// uygulama yeniden açılmadan geçiyor.
+/// Tema tercihi (sistem, açık, koyu). "Sistem" cihaz ayarını canlı izliyor.
 class ThemeProvider with ChangeNotifier {
   static const String _prefsKey = 'themeMode';
 
-  /// Tercih tek bir bool olarak saklanırdı; eski kullanıcıların seçimi
-  /// kaybolmasın diye ilk açılışta okunup yeni anahtara taşınıyor.
+  /// Eski bool tercih; ilk açılışta yeni anahtara taşınıyor.
   static const String _legacyPrefsKey = 'isDarkMode';
 
-  /// Varsayılan: cihazın ayarını takip et.
   static const ThemeMode _defaultMode = ThemeMode.system;
 
   ThemeMode _themeMode = _defaultMode;
@@ -23,10 +16,8 @@ class ThemeProvider with ChangeNotifier {
     _load();
   }
 
-  /// Tercih diskten okunana kadar [_defaultMode] döner. Varsayılan "sistem"
-  /// olduğu için çoğu kullanıcıda kayıtlı tercih yok ve açılışta geçiş de
-  /// olmuyor; yalnızca cihaz ayarının tersini seçmiş kullanıcı ilk karede
-  /// kısa bir geçiş görür.
+  /// Diskten okunana kadar [_defaultMode]; yalnız cihazın tersini seçen
+  /// kullanıcı ilk karede kısa bir geçiş görür.
   ThemeMode get themeMode => _themeMode;
 
   Future<void> setThemeMode(ThemeMode mode) async {
@@ -48,7 +39,6 @@ class ThemeProvider with ChangeNotifier {
         orElse: () => _defaultMode,
       );
     } else if (prefs.containsKey(_legacyPrefsKey)) {
-      // Eski sürümden gelen bool tercihi taşı.
       _themeMode = (prefs.getBool(_legacyPrefsKey) ?? false)
           ? ThemeMode.dark
           : ThemeMode.light;

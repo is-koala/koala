@@ -10,11 +10,8 @@ import 'package:koala/product/widgets/app_toast.dart';
 import 'package:koala/product/widgets/reason_dialog.dart';
 import 'package:provider/provider.dart';
 
-/// Adayı yetenek havuzuna ekleyen / çıkaran yer imi düğmesi.
-///
-/// Üyelik bilinmiyorken dolu çizilmez ve dokununca önce sayfalar yüklenir.
-/// Havuzdaysa ikinci dokunuş `DELETE` atar — gövdesiz `PUT` var olan notu
-/// silerdi.
+/// Yetenek havuzu yer imi. Üyelik bilinmiyorken önce sayfalar yüklenir;
+/// havuzdaysa `DELETE` atar, gövdesiz `PUT` notu silerdi.
 class BTalentPoolButton extends StatefulWidget {
   const BTalentPoolButton({super.key, required this.worker, this.iconSize});
 

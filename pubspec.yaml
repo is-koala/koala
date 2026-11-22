@@ -12,18 +12,14 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # Storage
   shared_preferences: ^2.5.5
   sqflite: ^2.4.3
 
-  # Bağlantı durumu yalnızca kalıcı mesai kuyruğunu yeniden denemeyi tetikler.
+  # Kalıcı mesai kuyruğunu bağlantı gelince yeniden denemek için.
   connectivity_plus: ^7.3.1
 
-  # UI
-  # Material ve Cupertino Flutter 3.50'den beri SDK dışında, ayrı paketler
-  # (UI ayrıştırması). `package:flutter/material.dart` eskidi; uygulama bu
-  # iki paketi doğrudan kullanıyor. Çeviriler de burada:
-  # `GlobalMaterialLocalizations.delegates` (app.dart).
+  # Flutter 3.50'den beri Material/Cupertino SDK dışında; çeviriler de
+  # `material_ui`'dan (`GlobalMaterialLocalizations.delegates`).
   material_ui: ^1.11.1
   cupertino_ui: ^1.1.7
   smooth_page_indicator: ^3.0.0
@@ -32,96 +28,59 @@ dependencies:
   lottie: ^3.5.1
   flutter_svg: ^2.3.0
 
-  # Maps
   google_maps_flutter: ^2.18.0
 
-  # Routing
   go_router: ^18.0.0
   app_links: ^7.2.1
 
-  # Permissions
   permission_handler: ^13.0.1
   geolocator: ^14.0.3
 
-  # Media & dış bağlantı
-  # image_picker: şirket logosu galeriden seçiliyor.
-  # url_launcher: adayın özgeçmişi imzalı bir adrese yönlendiriliyor, tarayıcıda
-  # açılıyor; işçinin iş detayındaki toplu taşıma yol tarifi de harici haritaya
-  # derin bağlantıyla gidiyor (#188).
-  # camera: TCKK MRZ'si uygulama içindeki canlı önizlemede, ham kareyi
-  # diske yazmadan ve yalnız kadraj alanını kullanarak okunuyor.
   image_picker: ^1.2.0
   camera: ^0.12.1
   url_launcher: ^6.3.2
 
-  # Kimlik kartı çipi (NFC) ve MRZ okuma
+  # dmrtd: ICAO 9303'ün tek ciddi Dart uygulaması; pub.dev'de yok. Çip protokolü
+  # sessizce değişmesin diye commit sabit.
   #
-  # dmrtd: ICAO Doc 9303'ü Dart'ta uygulayan tek ciddi açık kaynak kütüphane.
-  # pub.dev'de **yok** (https://pub.dev/packages/dmrtd 404 dönüyor), yalnızca
-  # GitHub'da yaşıyor. `ref:` ile commit sabitlendi — dal takip edilmiyor,
-  # çünkü çip protokolü sessizce değişirse doğrulama akışı üretimde kırılır.
-  #
-  # ⚠️ LİSANS SORUSU AÇIK: dmrtd LGPL-3.0 ya da ticari lisansla dağıtılıyor.
-  # Kapalı kaynak bir uygulamaya statik olarak girdiğinde yeniden bağlama
-  # yükümlülüğü doğurabilir. Soru hukuk tarafında ve **mağazaya çıkmadan önce
-  # cevaplanmalı**; kod yazmayı bloke etmiyor ama yayını bloke ediyor.
+  # ⚠️ Lisans açık: LGPL-3.0 kapalı kaynakta yeniden bağlama yükümlülüğü
+  # doğurabilir. Mağazaya çıkmadan önce hukuk cevaplamalı.
   dmrtd:
     git:
       url: https://github.com/ZeroPass/dmrtd.git
       ref: 3b6c091843573b275ae68a87335e1872f8b60ea0
 
-  # dmrtd'nin ham APDU taşıması. Zaten dmrtd'nin bağımlılığı; burada açıkça
-  # yazılı çünkü NFC'nin var / kapalı / desteklenmiyor ayrımını doğrudan bu
-  # paketin `nfcAvailability` alanından okuyoruz.
+  # dmrtd'nin bağımlılığı; NFC var/kapalı/yok ayrımını `nfcAvailability`'den
+  # okuduğumuz için doğrudan yazılı.
   flutter_nfc_kit: ^3.7.0
 
-  # MRZ okuması için **genel OCR**. MRZ ayrıştırıcı değil: TD1 düzeni ve ICAO
-  # kontrol hanesi doğrulaması `settings/models/mrz_key.dart` içinde bizim.
+  # Yalnız OCR; MRZ ayrıştırma ve kontrol hanesi `mrz_key.dart`'ta.
   google_mlkit_text_recognition: ^1.0.3
 
-  # Serviste biniş teyidi QR'ı (is-koala/koala#217). Yusuf 2026-11-05
-  # onayladı; `google_mlkit_barcode_scanning` yerine seçildi.
-  # mobile_scanner: QR okuma. Android'de ML Kit barkod modeli, iOS'ta Apple
-  # Vision. Android modeli APK'ya gömülmüyor, Play Services'tan geliyor
-  # (`android/gradle.properties` → `useUnbundled`), OCR ile aynı karar.
-  # qr_flutter: işçinin ve servisin QR'ını çizer; saf Dart, native parçası
-  # yok.
+  # Biniş QR'ı (#217). Android barkod modeli Play Services'tan geliyor
+  # (`gradle.properties` → `useUnbundled`).
   mobile_scanner: ^7.5.0
   qr_flutter: ^4.1.0
 
-  # State Management
   provider: ^6.1.5
 
-  # Network
   dio: ^5.11.0
   flutter_secure_storage: ^11.0.0
   stomp_dart_client: ^3.0.1
   file_picker: ^13.4.1
 
-  # Push. flutter/packages dışı; Yusuf 2026-09-12 onayladı (#141).
-  # Sürüm sabit (FlutterFire, Flutter 3.50 hattı; built-in Kotlin destekli).
-  # flutter_local_notifications yok: ön planda yerel bildirim çizilmez,
-  # arka planı FCM sistem tepsisi taşır.
+  # FlutterFire sürümleri sabit. Ön planda yerel bildirim çizilmiyor, o yüzden
+  # flutter_local_notifications yok.
   firebase_core: 5.2.0
   firebase_messaging: 17.1.0
   share_plus: ^13.3.1
 
-# dmrtd `archive: ^3.6.1` istiyor, lottie 3.5.1 ise `archive: ^4.0.0`; ikisi
-# aynı anda çözülemiyor ve pub'ın önerdiği çıkış yolu lottie'yi 3.3.0'a
-# düşürmek — yani zaten yayında olan bir paketi geriye almak.
+# dmrtd `archive` 3, lottie 3.5 `archive` 4 istiyor. lottie'nin kullandığı
+# zip/gzip API'leri 3.6.1'de aynı ve tek Lottie varlığımız düz JSON, yani o kod
+# hiç çalışmıyor.
 #
-# Bunun yerine `archive` 3.6.1'e sabitlendi. Gerekçe:
-# - lottie'nin `archive`'dan kullandığı **her şey** (`ZipDecoder.decodeBytes`,
-#   `GZipDecoder.decodeBytes`, `ArchiveFile.name/.content`) 3.6.1'de aynı
-#   imzayla var; `composition.dart` dışında `archive`'a hiç dokunmuyor.
-# - O iki yol da sihirli baytla korumalı (`PK`, `1f 8b`) ve uygulamanın tek
-#   Lottie varlığı düz JSON (`assets/lottie/email_verification_pending.json`),
-#   yani zip/gzip kodu çalışma zamanında hiç çalışmıyor.
-#
-# ⚠️ Bu bir override: lottie kendi tabanının altında çalışıyor. `archive` 4
-# isteyen **yeni** bir paket eklenirse bu satır onu sessizce eski sürüme
-# çeker — o gün burayı okuyun. dmrtd `archive` 4'e geçtiğinde ya da dmrtd
-# ticari bir SDK ile değiştiğinde bu blok tümüyle silinmeli.
+# ⚠️ `archive` 4 isteyen yeni bir paket bu override yüzünden sessizce eski
+# sürüme düşer. dmrtd `archive` 4'e geçince bu blok silinmeli.
 dependency_overrides:
   archive: ^3.6.1
 
